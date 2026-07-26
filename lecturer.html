@@ -714,82 +714,388 @@
                 </div>
             </section>
 
-            <!-- ===== PROFILE SECTION ===== -->
-            <section id="profile-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
-                <h2><i class="fas fa-user"></i> My Profile</h2>
-                
-                <div class="profile-card" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
-                    <img id="profileImg" src="https://via.placeholder.com/120x120/4C1D95/FFFFFF?text=Profile" alt="Profile Photo" class="profile-avatar" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #4C1D95;">
-                    <div class="profile-info">
-                        <h3 id="profileNameDisplay" style="color: #0A3D62; font-size: 22px;">Loading...</h3>
-                        <p class="role" id="profileRoleDisplay" style="color: #64748b;">Lecturer</p>
-                        <span class="profile-status" style="display: inline-block; padding: 4px 12px; background: #d1fae5; color: #059669; border-radius: 20px; font-size: 12px; font-weight: 600;">Active</span>
-                        <div class="profile-actions" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button class="btn btn-action" id="editProfileBtn" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;"><i class="fas fa-edit"></i> Edit Details</button>
-                            <button class="btn btn-action" id="updatePasswordBtn" style="background: #f59e0b; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;"><i class="fas fa-key"></i> Change Password</button>
-                            <button class="btn btn-action" id="updatePhotoBtn" style="background: #8b5cf6; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;"><i class="fas fa-camera"></i> Change Photo</button>
-                            <input type="file" id="photoUploadInput" accept="image/*" style="display: none;">
-                        </div>
-                    </div>
+           <!-- ===== PROFILE SECTION - ENHANCED ===== -->
+<section id="profile-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+        <div>
+            <h2 style="margin: 0;"><i class="fas fa-user" style="color: #FDB913;"></i> My Profile</h2>
+            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">View and manage your personal information and account settings</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <span style="background: #d1fae5; padding: 4px 12px; border-radius: 20px; font-size: 12px; color: #059669; display: flex; align-items: center; gap: 4px;">
+                <i class="fas fa-circle" style="font-size: 8px;"></i> Active
+            </span>
+            <button onclick="LecturerProfile.refresh()" style="background: #4C1D95; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+    
+    <!-- Profile Card -->
+    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 35px; flex-wrap: wrap; position: relative; overflow: hidden;">
+        <!-- Decorative background -->
+        <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: linear-gradient(135deg, rgba(76,29,149,0.05), rgba(253,185,19,0.05)); border-radius: 50%;"></div>
+        
+        <!-- Profile Photo -->
+        <div style="position: relative; flex-shrink: 0;">
+            <img id="profileImg" src="https://via.placeholder.com/120x120/4C1D95/FFFFFF?text=Profile" alt="Profile Photo" style="width: 130px; height: 130px; border-radius: 50%; object-fit: cover; border: 4px solid #4C1D95; box-shadow: 0 4px 15px rgba(76,29,149,0.2);">
+            <label for="photoUploadInput" style="position: absolute; bottom: 0; right: 0; background: #4C1D95; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid white; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                <i class="fas fa-camera" style="font-size: 14px;"></i>
+            </label>
+            <input type="file" id="photoUploadInput" accept="image/*" style="display: none;">
+        </div>
+        
+        <!-- Profile Info -->
+        <div style="flex: 1; min-width: 200px;">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <h3 id="profileNameDisplay" style="color: #0A3D62; font-size: 24px; margin: 0;">Loading...</h3>
+                <span style="background: #d1fae5; color: #059669; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+                    <i class="fas fa-check-circle"></i> Active
+                </span>
+            </div>
+            <p id="profileRoleDisplay" style="color: #64748b; margin: 4px 0 8px 0; font-size: 16px;">
+                <i class="fas fa-briefcase" style="color: #4C1D95; width: 18px;"></i> Lecturer
+            </p>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
+                <span style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 5px;">
+                    <i class="fas fa-envelope" style="color: #4C1D95;"></i> <span id="profileEmail">-</span>
+                </span>
+                <span style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 5px;">
+                    <i class="fas fa-phone" style="color: #4C1D95;"></i> <span id="profilePhone">-</span>
+                </span>
+                <span style="font-size: 13px; color: #475569; display: flex; align-items: center; gap: 5px;">
+                    <i class="fas fa-building" style="color: #4C1D95;"></i> <span id="profileDept">-</span>
+                </span>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="editProfileBtn" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-edit"></i> Edit Profile
+                </button>
+                <button id="updatePasswordBtn" style="background: #f59e0b; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(245,158,11,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-key"></i> Change Password
+                </button>
+                <button id="updatePhotoBtn" style="background: #8b5cf6; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(139,92,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-camera"></i> Change Photo
+                </button>
+            </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div style="display: flex; gap: 20px; flex-shrink: 0; padding-left: 20px; border-left: 2px solid #e5e7eb;">
+            <div style="text-align: center;">
+                <div style="font-size: 24px; font-weight: 800; color: #4C1D95;" id="profileCoursesCount">0</div>
+                <div style="font-size: 11px; color: #94a3b8;">Courses</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 24px; font-weight: 800; color: #10b981;" id="profileStudentsCount">0</div>
+                <div style="font-size: 11px; color: #94a3b8;">Students</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 24px; font-weight: 800; color: #f59e0b;" id="profileYearsCount">0</div>
+                <div style="font-size: 11px; color: #94a3b8;">Years</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile Details Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; border-left: 4px solid #4C1D95;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #ede9fe; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-id-card" style="color: #4C1D95;"></i>
                 </div>
-                
-                <div class="profile-details-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div class="detail-item" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Employee ID</strong><span id="profileId" style="display: block; color: #1e293b;">-</span></div>
-                    <div class="detail-item" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Department</strong><span id="profileDept" style="display: block; color: #1e293b;">-</span></div>
-                    <div class="detail-item" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Email Address</strong><span id="profileEmail" style="display: block; color: #1e293b;">-</span></div>
-                    <div class="detail-item" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Phone Number</strong><span id="profilePhone" style="display: block; color: #1e293b;">-</span></div>
-                    <div class="detail-item" style="padding: 10px 0;"><strong>Join Date</strong><span id="profileJoinDate" style="display: block; color: #1e293b;">-</span></div>
-                    <div class="detail-item" style="padding: 10px 0;"><strong>Program Focus</strong><span id="profileProgramFocus" style="display: block; color: #1e293b;">-</span></div>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Employee ID</div>
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;" id="profileId">-</div>
                 </div>
-            </section>
-
-            <!-- ===== MY COURSES SECTION ===== -->
-            <section id="my-courses-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
-                <h2><i class="fas fa-book"></i> My Assigned Courses</h2>
-                
-                <div class="filter-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
-                    <h3 style="color: #0A3D62; margin-bottom: 15px;">Courses for Current Academic Period</h3>
-                    <div class="filter-row" style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="intakeYearFilter" style="font-weight: 600; font-size: 13px; color: #475569;">Filter by Intake Year:</label>
-                            <select id="intakeYearFilter" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                                <option value="">All Intake Years</option>
-                            </select>
-                        </div>
-                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="academicPeriodFilter" id="academicPeriodLabel" style="font-weight: 600; font-size: 13px; color: #475569;">Filter by Block:</label>
-                            <select id="academicPeriodFilter" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                                <option value="">All Blocks</option>
-                            </select>
-                        </div>
-                    </div>
+            </div>
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; border-left: 4px solid #10b981;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #d1fae5; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-building" style="color: #10b981;"></i>
                 </div>
-                
-                <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <input type="text" id="courseSearch" placeholder="Search courses by name or code..." style="flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                    <button class="btn btn-action" id="courseSearchBtn" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-search"></i> Search</button>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Department</div>
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;" id="profileDept">-</div>
                 </div>
-                
-                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                        <thead>
-                            <tr style="background: #f8fafc;">
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course Code</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course Name</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Intake Year</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Total Students</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="lecturerCoursesTable">
-                            <tr><td colspan="7" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading courses...</td></tr>
-                        </tbody>
-                    </table>
+            </div>
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; border-left: 4px solid #3b82f6;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #dbeafe; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-envelope" style="color: #3b82f6;"></i>
                 </div>
-            </section>
-
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Email Address</div>
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px; word-break: break-all;" id="profileEmail">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; border-left: 4px solid #f59e0b;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #fef3c7; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-phone" style="color: #f59e0b;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Phone Number</div>
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;" id="profilePhone">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; border-left: 4px solid #8b5cf6;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #ede9fe; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-calendar" style="color: #8b5cf6;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Join Date</div>
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;" id="profileJoinDate">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; border-left: 4px solid #ec4899;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #fce7f3; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-graduation-cap" style="color: #ec4899;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Program Focus</div>
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;" id="profileProgramFocus">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Account Activity -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; margin-top: 20px;">
+        <h4 style="color: #0A3D62; margin: 0 0 15px 0; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-clock" style="color: #FDB913;"></i> Account Activity
+        </h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8fafc; border-radius: 8px;">
+                <i class="fas fa-sign-in-alt" style="color: #4C1D95;"></i>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8;">Last Login</div>
+                    <div style="font-size: 13px; font-weight: 500; color: #1e293b;" id="lastLoginTime">Today, 09:30 AM</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8fafc; border-radius: 8px;">
+                <i class="fas fa-globe" style="color: #10b981;"></i>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8;">IP Address</div>
+                    <div style="font-size: 13px; font-weight: 500; color: #1e293b;" id="lastLoginIP">192.168.1.1</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8fafc; border-radius: 8px;">
+                <i class="fas fa-browser" style="color: #f59e0b;"></i>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8;">Browser</div>
+                    <div style="font-size: 13px; font-weight: 500; color: #1e293b;" id="lastLoginBrowser">Chrome</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8fafc; border-radius: 8px;">
+                <i class="fas fa-mobile-alt" style="color: #8b5cf6;"></i>
+                <div>
+                    <div style="font-size: 11px; color: #94a3b8;">Device</div>
+                    <div style="font-size: 13px; font-weight: 500; color: #1e293b;" id="lastLoginDevice">Desktop</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+           <!-- ===== MY COURSES SECTION - ENHANCED ===== -->
+<section id="my-courses-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+        <div>
+            <h2 style="margin: 0;"><i class="fas fa-book" style="color: #FDB913;"></i> My Assigned Courses</h2>
+            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">View and manage all courses assigned to you for the current academic period</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <span style="background: #dbeafe; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-calendar"></i> <span id="currentAcademicYear">2025</span>
+            </span>
+            <button onclick="LecturerCourses.refresh()" style="background: #4C1D95; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+    
+    <!-- Course Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #4C1D95;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #ede9fe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-book-open" style="color: #4C1D95; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="totalCoursesCount2">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Total Courses</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #10b981;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #d1fae5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-users" style="color: #10b981; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="totalStudentsCount2">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Total Students</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #fef3c7; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-clock" style="color: #f59e0b; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="activeCoursesCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Active Courses</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #8b5cf6;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #ede9fe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-check-circle" style="color: #8b5cf6; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="completedCoursesCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Completed</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
+            <i class="fas fa-filter" style="color: #4C1D95;"></i>
+            <h4 style="margin: 0; color: #0A3D62; font-size: 15px;">Filter Courses</h4>
+            <span style="margin-left: auto; font-size: 12px; color: #94a3b8;" id="courseFilterCount">Showing all courses</span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="intakeYearFilter" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-calendar-alt" style="color: #4C1D95; width: 18px;"></i> Intake Year
+                </label>
+                <select id="intakeYearFilter" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">All Intake Years</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="academicPeriodFilter" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> Block
+                </label>
+                <select id="academicPeriodFilter" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">All Blocks</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="courseStatusFilter" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-circle" style="color: #4C1D95; width: 18px;"></i> Status
+                </label>
+                <select id="courseStatusFilter" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                </select>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+            <button onclick="applyCourseFilters()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-search"></i> Apply Filters
+            </button>
+            <button onclick="clearCourseFilters()" style="background: transparent; color: #64748b; border: 1px solid #e2e8f0; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                <i class="fas fa-times"></i> Clear
+            </button>
+        </div>
+    </div>
+    
+    <!-- Search -->
+    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px; position: relative;">
+            <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+            <input type="text" id="courseSearch" placeholder="Search courses by name, code, or program..." style="width: 100%; padding: 12px 14px 12px 40px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'" onkeyup="searchCourses()">
+        </div>
+        <button id="courseSearchBtn" onclick="searchCourses()" style="background: #4C1D95; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+            <i class="fas fa-search"></i> Search
+        </button>
+        <button onclick="exportCourses()" style="background: #10b981; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+            <i class="fas fa-file-export"></i> Export
+        </button>
+    </div>
+    
+    <!-- Courses Table -->
+    <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-code" style="margin-right: 8px; color: #4C1D95;"></i> Code
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-book" style="margin-right: 8px; color: #4C1D95;"></i> Course Name
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-graduation-cap" style="margin-right: 8px; color: #4C1D95;"></i> Program
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-layer-group" style="margin-right: 8px; color: #4C1D95;"></i> Block
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-calendar" style="margin-right: 8px; color: #4C1D95;"></i> Intake
+                        </th>
+                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-users" style="margin-right: 8px; color: #4C1D95;"></i> Students
+                        </th>
+                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-cog" style="margin-right: 8px; color: #4C1D95;"></i> Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="lecturerCoursesTable">
+                    <tr>
+                        <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p style="margin: 15px 0 0 0; font-weight: 500;">Loading courses...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Table Footer -->
+        <div style="padding: 12px 18px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <span style="font-size: 13px; color: #64748b;">
+                <i class="fas fa-database"></i> <span id="courseCountDisplay">0</span> courses found
+            </span>
+            <div style="display: flex; gap: 8px;">
+                <span style="font-size: 12px; color: #94a3b8;">
+                    <i class="fas fa-print"></i> Print
+                </span>
+                <span style="font-size: 12px; color: #94a3b8;">
+                    <i class="fas fa-file-export"></i> Export
+                </span>
+            </div>
+        </div>
+    </div>
+</section>
             <!-- ===== MY STUDENTS SECTION ===== -->
             <section id="my-students-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-users"></i> Students Under My Supervision</h2>
