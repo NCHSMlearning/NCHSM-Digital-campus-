@@ -2,8 +2,7 @@
 /**
  * NCHSM Lecturer Resources Module
  * AUTO-PUBLISH - No admin approval required
- * Uses dedicated lecturer database with ID resolution
- * MATCHES ORIGINAL LOGIC
+ * Resources are published immediately for students
  */
 
 const LecturerResources = {
@@ -49,7 +48,6 @@ const LecturerResources = {
                 .ilike('lecturer_name', `%${fullName}%`);
             
             if (!nameError && nameData && nameData.length > 0) {
-                // Prefer non-STAFF IDs
                 const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
                 if (nonStaff) {
                     this.lecturerAssignmentId = nonStaff.lecturer_id;
@@ -61,7 +59,6 @@ const LecturerResources = {
                 return;
             }
             
-            // Fallback to auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -81,24 +78,24 @@ const LecturerResources = {
                 return;
             }
             
-            // ✅ Get resources using the fixed lecturerDB.getResources
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 console.warn('Supabase not available');
                 return;
             }
             
-            // ✅ FIX: Direct query with correct column names (approval_status, not status)
+            const userId = this.lecturerAssignmentId || profile.user_id;
+            
+            // Get ALL resources uploaded by this lecturer (no approval filter)
             const { data: resources, error } = await supabase
                 .from('resources')
                 .select('*')
-                .eq('target_program', program)
+                .eq('uploaded_by', userId)
                 .order('created_at', { ascending: false });
             
             if (error) {
                 console.error('Failed to load resources:', error);
-                // Try fallback with lecturerDB
-                this.resources = await window.lecturerDB.getResources(program);
+                this.resources = [];
             } else {
                 this.resources = resources || [];
             }
@@ -134,20 +131,10 @@ const LecturerResources = {
             return;
         }
         
-        const statusBadges = {
-            'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
-            'approved': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Approved</span>',
-            'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Rejected</span>',
-            'published': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Published</span>'
-        };
-        
         tbody.innerHTML = resources.map(r => {
-            const status = r.approval_status || r.status || 'published';
             const isOwner = r.uploaded_by === this.lecturerAssignmentId || r.uploaded_by === window.lecturerDB?.getCurrentUserId();
-            const canDelete = isOwner && (status === 'pending' || status === 'draft' || status === 'published');
             const programDisplay = r.target_program || r.program_type || r.program || 'N/A';
             const blockDisplay = r.block || r.block_term || 'N/A';
-            const showDownload = status === 'approved' || status === 'published';
             
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
@@ -172,16 +159,18 @@ const LecturerResources = {
                         ${this.formatDate(r.created_at)}
                     </td>
                     <td style="padding: 14px 18px;">
-                        ${statusBadges[status] || statusBadges.published}
+                        <span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                            <i class="fas fa-check-circle"></i> Published
+                        </span>
                     </td>
                     <td style="padding: 14px 18px;">
                         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                            ${showDownload && r.file_url ? `
+                            ${r.file_url ? `
                                 <a href="${r.file_url}" target="_blank" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
                                     <i class="fas fa-download"></i> View
                                 </a>
                             ` : ''}
-                            ${canDelete ? `
+                            ${isOwner ? `
                                 <button onclick="LecturerResources.deleteResource('${r.id}')" 
                                         style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                                     <i class="fas fa-trash"></i> Delete
@@ -198,13 +187,11 @@ const LecturerResources = {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
         
-        // Program
         const programSelect = document.getElementById('resourceProgram');
         if (programSelect && program) {
             programSelect.innerHTML = `<option value="${program}">${program}</option>`;
         }
         
-        // Intake years
         const years = [2024, 2025, 2026, 2027, 2028];
         const intakeSelect = document.getElementById('resourceIntake');
         if (intakeSelect) {
@@ -212,7 +199,6 @@ const LecturerResources = {
                 years.map(y => `<option value="${y}">${y}</option>`).join('');
         }
         
-        // Blocks
         const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
         const blockSelect = document.getElementById('resourceBlock');
         if (blockSelect) {
@@ -222,13 +208,11 @@ const LecturerResources = {
     },
     
     setupEventListeners() {
-        // Upload form
         const form = document.getElementById('uploadResourceForm');
         if (form) {
             form.addEventListener('submit', (e) => this.handleUpload(e));
         }
         
-        // Search
         const searchInput = document.getElementById('resourceSearch');
         if (searchInput) {
             let timeout;
@@ -238,7 +222,6 @@ const LecturerResources = {
             });
         }
         
-        // Search button
         const searchBtn = document.getElementById('resourceSearchBtn');
         if (searchBtn) {
             searchBtn.addEventListener('click', () => {
@@ -320,7 +303,10 @@ const LecturerResources = {
                     upsert: false
                 });
             
-            if (uploadError) throw new Error('Failed to upload file: ' + uploadError.message);
+            if (uploadError) {
+                console.error('Upload error:', uploadError);
+                throw new Error('Failed to upload file: ' + uploadError.message);
+            }
             
             // Get public URL
             const { data: urlData } = supabase.storage
@@ -329,7 +315,7 @@ const LecturerResources = {
             
             const fileUrl = urlData?.publicUrl || '';
             
-            // Save to database - IMMEDIATELY PUBLISHED (NO APPROVAL)
+            // ✅ Save to database - IMMEDIATELY PUBLISHED (NO APPROVAL NEEDED)
             const { data: result, error: dbError } = await supabase
                 .from('resources')
                 .insert({
@@ -339,23 +325,24 @@ const LecturerResources = {
                     program: program,
                     intake: intake,
                     block: block,
-                    target_program: program,
                     block_term: block,
+                    target_program: program,
                     file_url: fileUrl,
                     file_path: filePath,
                     file_name: file.name,
                     file_size: file.size,
-                    file_type: file.type,
+                    file_type: file.type || file.name.split('.').pop(),
                     uploaded_by: userId,
                     uploaded_by_name: profile?.full_name || 'Lecturer',
-                    approval_status: 'approved',
-                    status: 'published',
-                    published: true,
+                    approval_status: 'approved', // ✅ Auto-approved
                     created_at: new Date().toISOString()
                 })
                 .select();
             
-            if (dbError) throw new Error('Failed to save resource: ' + dbError.message);
+            if (dbError) {
+                console.error('DB Error:', dbError);
+                throw new Error('Failed to save resource: ' + dbError.message);
+            }
             
             // Add to local list
             if (result && result.length > 0) {
@@ -466,4 +453,4 @@ window.LecturerResources = LecturerResources;
 window.uploadResource = (e) => LecturerResources.handleUpload(e);
 window.loadResources = () => LecturerResources.loadResources();
 
-console.log('✅ LecturerResources module loaded - Auto-Publish with original logic');
+console.log('✅ LecturerResources module loaded - Auto-Publish (No Admin Approval)');
