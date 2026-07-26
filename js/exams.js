@@ -1642,149 +1642,185 @@
             }
         }
         
-        // ============================================
-        // 📊 VIEW DETAILED EXAM RESULTS (STUDENT PORTAL)
-        // ✅ Students see ALL questions, answers, correct answers, explanations
-        // ============================================
-        async viewDetailedResults(examId) {
-            try {
-                const supabase = window.db?.supabase;
-                if (!supabase) {
-                    this.showToast('Database connection not available', 'warning');
-                    return;
-                }
+       // ============================================
+// 📊 VIEW DETAILED EXAM RESULTS - NO JOIN VERSION
+// ✅ Uses separate queries - NO foreign key required
+// ============================================
+
+async viewDetailedResults(examId) {
+    try {
+        const supabase = window.db?.supabase;
+        if (!supabase) {
+            this.showToast('Database connection not available', 'warning');
+            return;
+        }
+        
+        const userId = this.userId || window.db?.currentUserId;
+        if (!userId) {
+            this.showToast('Please log in to view results', 'warning');
+            return;
+        }
+        
+        // ✅ 1. Get exam details (separate query)
+        const { data: exam, error: examError } = await supabase
+            .from('exams')
+            .select('*')
+            .eq('id', parseInt(examId))
+            .single();
+        
+        if (examError) {
+            console.error('Exam error:', examError);
+            throw examError;
+        }
+        
+        // ✅ 2. Get ALL exam questions (separate query - NO JOIN)
+        const { data: questions, error: questionsError } = await supabase
+            .from('exam_questions')
+            .select('*')
+            .eq('exam_id', parseInt(examId))
+            .order('question_number', { ascending: true });
+        
+        if (questionsError) {
+            console.error('Questions error:', questionsError);
+            throw questionsError;
+        }
+        
+        // ✅ 3. Get student answers (separate query - NO JOIN)
+        const { data: answers, error: answersError } = await supabase
+            .from('exam_grades')
+            .select('*')
+            .eq('student_id', userId)
+            .eq('exam_id', parseInt(examId))
+            .neq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        if (answersError) {
+            console.error('Answers error:', answersError);
+            throw answersError;
+        }
+        
+        // ✅ 4. Get overall grade (separate query)
+        const { data: grade, error: gradeError } = await supabase
+            .from('exam_grades')
+            .select('*')
+            .eq('student_id', userId)
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .single();
+        
+        if (gradeError) {
+            console.error('Grade error:', gradeError);
+            throw gradeError;
+        }
+        
+        // ✅ 5. Build question review by matching in JavaScript (NO DATABASE JOIN)
+        const questionReview = (questions || []).map(q => {
+            const answer = answers?.find(a => a.question_id === q.id);
+            return {
+                question_text: q.question_text || 'Question ' + q.id,
+                student_answer: answer?.selected_answer || 'Not answered',
+                correct_answer: q.correct_answer || 'N/A',
+                is_correct: answer?.selected_answer === q.correct_answer,
+                explanation: q.explanation || null,
+                marks_obtained: answer?.marks || 0,
+                total_marks: q.marks || 1
+            };
+        });
+        
+        const totalCorrect = questionReview.filter(q => q.is_correct).length;
+        const totalQuestions = questionReview.length;
+        const score = grade?.marks || 0;
+        const totalMarks = exam?.total_marks || 100;
+        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
+        const passed = parseFloat(percentage) >= (exam?.pass_mark || 60);
+        
+        // ✅ 6. Build questions HTML
+        let questionsHtml = '';
+        if (questionReview.length === 0) {
+            questionsHtml = `
+                <div style="text-align: center; padding: 30px; color: #94A3B8;">
+                    <i class="fas fa-question-circle" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
+                    <p>No question data available for this exam.</p>
+                </div>
+            `;
+        } else {
+            questionReview.forEach((q, index) => {
+                const isCorrect = q.is_correct;
+                const icon = isCorrect ? '✅' : '❌';
+                const bgColor = isCorrect ? '#F0FDF4' : '#FEF2F2';
+                const borderColor = isCorrect ? '#D1FAE5' : '#FEE2E2';
+                const answerColor = isCorrect ? '#38A169' : '#DC2626';
                 
-                const userId = this.userId || window.db?.currentUserId;
-                if (!userId) {
-                    this.showToast('Please log in to view results', 'warning');
-                    return;
-                }
-                
-                // Get exam details
-                const { data: exam, error: examError } = await supabase
-                    .from('exams')
-                    .select('*')
-                    .eq('id', examId)
-                    .single();
-                
-                if (examError) throw examError;
-                
-                // Get student answers with questions
-                const { data: answers, error: answersError } = await supabase
-                    .from('exam_grades')
-                    .select('*, exam_questions!inner(*)')
-                    .eq('student_id', userId)
-                    .eq('exam_id', examId)
-                    .neq('question_id', '00000000-0000-0000-0000-000000000000');
-                
-                if (answersError) throw answersError;
-                
-                // Get overall grade
-                const { data: grade, error: gradeError } = await supabase
-                    .from('exam_grades')
-                    .select('*')
-                    .eq('student_id', userId)
-                    .eq('exam_id', examId)
-                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
-                    .single();
-                
-                if (gradeError) throw gradeError;
-                
-                // Build question review
-                const questions = answers.map(a => ({
-                    question_text: a.exam_questions.question_text,
-                    student_answer: a.selected_answer || 'Not answered',
-                    correct_answer: a.exam_questions.correct_answer,
-                    is_correct: a.selected_answer === a.exam_questions.correct_answer,
-                    explanation: a.exam_questions.explanation || null,
-                    marks_obtained: a.marks || 0,
-                    total_marks: a.exam_questions.marks || 1
-                }));
-                
-                const totalCorrect = questions.filter(q => q.is_correct).length;
-                const totalQuestions = questions.length;
-                const score = grade.marks || 0;
-                const totalMarks = exam.total_marks || 100;
-                const percentage = ((score / totalMarks) * 100).toFixed(1);
-                const passed = parseFloat(percentage) >= (exam.pass_mark || 60);
-                
-                // Build the detailed review modal
-                let questionsHtml = '';
-                questions.forEach((q, index) => {
-                    const isCorrect = q.is_correct;
-                    const icon = isCorrect ? '✅' : '❌';
-                    const bgColor = isCorrect ? '#F0FDF4' : '#FEF2F2';
-                    const borderColor = isCorrect ? '#D1FAE5' : '#FEE2E2';
-                    
-                    questionsHtml += `
-                        <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;">
-                            <div style="font-weight: 600; color: #0A3D62; margin-bottom: 6px;">
-                                ${icon} Q${index + 1}: ${q.question_text}
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.9rem;">
-                                <div>Your answer: <strong style="color: ${isCorrect ? '#38A169' : '#DC2626'};">${q.student_answer}</strong></div>
-                                <div>Correct answer: <strong style="color: #38A169;">${q.correct_answer}</strong></div>
-                                <div style="color: ${isCorrect ? '#38A169' : '#DC2626'}; font-weight: 600;">${isCorrect ? '✓ Correct' : '✗ Wrong'}</div>
-                                <div>Marks: ${isCorrect ? q.marks_obtained : 0}/${q.total_marks}</div>
-                            </div>
-                            ${q.explanation ? `<div style="margin-top: 6px; font-size: 0.85rem; color: #64748B; background: white; padding: 8px; border-radius: 4px;">💡 ${q.explanation}</div>` : ''}
+                questionsHtml += `
+                    <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;">
+                        <div style="font-weight: 600; color: #0A3D62; margin-bottom: 6px;">
+                            ${icon} Q${index + 1}: ${this.escapeHtml(q.question_text)}
                         </div>
-                    `;
-                });
-                
-                const modalHtml = `
-                    <div id="detailedResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
-                        <div style="background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                <h2 style="margin: 0; color: #0A3D62;">
-                                    <i class="fas fa-clipboard-list"></i> Detailed Exam Review
-                                </h2>
-                                <button onclick="document.getElementById('detailedResultsModal').remove()" 
-                                        style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #94A3B8;">
-                                    &times;
-                                </button>
-                            </div>
-                            
-                            <div style="text-align: center; padding: 16px; background: #F8FAFC; border-radius: 12px; margin-bottom: 20px;">
-                                <h3 style="margin: 0; color: #0A3D62;">${this.escapeHtml(exam.exam_name)}</h3>
-                                <div style="font-size: 2.5rem; font-weight: 700; color: ${passed ? '#38A169' : '#DC2626'};">
-                                    ${percentage}%
-                                </div>
-                                <div style="font-weight: 600; color: ${passed ? '#38A169' : '#DC2626'};">
-                                    ${passed ? '✅ PASS' : '❌ FAIL'}
-                                </div>
-                                <div style="display: flex; justify-content: center; gap: 24px; margin-top: 12px;">
-                                    <div><span style="color: #64748B;">Score:</span> <strong>${score}/${totalMarks}</strong></div>
-                                    <div><span style="color: #64748B;">Correct:</span> <strong style="color: #38A169;">${totalCorrect}/${totalQuestions}</strong></div>
-                                    <div><span style="color: #64748B;">Wrong:</span> <strong style="color: #DC2626;">${totalQuestions - totalCorrect}</strong></div>
-                                </div>
-                            </div>
-                            
-                            <h4 style="color: #0A3D62; margin-bottom: 12px;">📝 Question-by-Question Review</h4>
-                            ${questionsHtml}
-                            
-                            <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #E2E8F0; padding-top: 16px;">
-                                <button onclick="document.getElementById('detailedResultsModal').remove()" 
-                                        style="padding: 10px 24px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                                    Close
-                                </button>
-                            </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.9rem;">
+                            <div>Your answer: <strong style="color: ${answerColor};">${this.escapeHtml(q.student_answer)}</strong></div>
+                            <div>Correct answer: <strong style="color: #38A169;">${this.escapeHtml(q.correct_answer)}</strong></div>
+                            <div style="color: ${isCorrect ? '#38A169' : '#DC2626'}; font-weight: 600;">${isCorrect ? '✓ Correct' : '✗ Wrong'}</div>
+                            <div>Marks: ${isCorrect ? q.marks_obtained : 0}/${q.total_marks}</div>
                         </div>
+                        ${q.explanation ? `<div style="margin-top: 6px; font-size: 0.85rem; color: #64748B; background: white; padding: 8px; border-radius: 4px;">💡 ${this.escapeHtml(q.explanation)}</div>` : ''}
                     </div>
                 `;
-                
-                const existing = document.getElementById('detailedResultsModal');
-                if (existing) existing.remove();
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
-                document.getElementById('detailedResultsModal').addEventListener('click', function(e) {
-                    if (e.target === this) this.remove();
-                });
-                
-            } catch (error) {
-                console.error('Error loading detailed results:', error);
-                this.showToast('Error loading exam details', 'error');
-            }
+            });
         }
+        
+        // ✅ 7. Build the modal
+        const modalHtml = `
+            <div id="detailedResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
+                <div style="background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 style="margin: 0; color: #0A3D62;">
+                            <i class="fas fa-clipboard-list"></i> Detailed Exam Review
+                        </h2>
+                        <button onclick="document.getElementById('detailedResultsModal').remove()" 
+                                style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #94A3B8;">
+                            &times;
+                        </button>
+                    </div>
+                    
+                    <div style="text-align: center; padding: 16px; background: #F8FAFC; border-radius: 12px; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: #0A3D62;">${this.escapeHtml(exam?.exam_name || 'Exam')}</h3>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: ${passed ? '#38A169' : '#DC2626'};">
+                            ${percentage}%
+                        </div>
+                        <div style="font-weight: 600; color: ${passed ? '#38A169' : '#DC2626'};">
+                            ${passed ? '✅ PASS' : '❌ FAIL'}
+                        </div>
+                        <div style="display: flex; justify-content: center; gap: 24px; margin-top: 12px;">
+                            <div><span style="color: #64748B;">Score:</span> <strong>${score}/${totalMarks}</strong></div>
+                            <div><span style="color: #64748B;">Correct:</span> <strong style="color: #38A169;">${totalCorrect}/${totalQuestions}</strong></div>
+                            <div><span style="color: #64748B;">Wrong:</span> <strong style="color: #DC2626;">${totalQuestions - totalCorrect}</strong></div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="color: #0A3D62; margin-bottom: 12px;">📝 Question-by-Question Review</h4>
+                    ${questionsHtml}
+                    
+                    <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #E2E8F0; padding-top: 16px;">
+                        <button onclick="document.getElementById('detailedResultsModal').remove()" 
+                                style="padding: 10px 24px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const existing = document.getElementById('detailedResultsModal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('detailedResultsModal').addEventListener('click', function(e) {
+            if (e.target === this) this.remove();
+        });
+        
+    } catch (error) {
+        console.error('Error loading detailed results:', error);
+        this.showToast('Error loading exam details: ' + error.message, 'error');
+    }
+}
         
         showProfessionalTranscript() {
             const completedReleased = this.completedExams.filter(e => e.isReleased && e.totalPercentage !== null);
