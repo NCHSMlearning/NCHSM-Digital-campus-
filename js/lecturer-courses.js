@@ -1,7 +1,8 @@
 // js/lecturer-courses.js
 /**
  * NCHSM Lecturer Courses Module
- * Uses lecturer_subject_assignments table for course assignments
+ * Uses lecturer_subject_assignments table
+ * Shows all assigned units with filtering by year
  */
 
 const LecturerCourses = {
@@ -11,6 +12,7 @@ const LecturerCourses = {
         intake: '',
         block: '',
         status: '',
+        year: '',
         search: ''
     },
     
@@ -47,13 +49,14 @@ const LecturerCourses = {
                 return;
             }
             
-            console.log('🔍 Fetching courses for lecturer:', userId);
+            console.log('🔍 Fetching all assigned units for lecturer:', userId);
             
-            // Get assignments from lecturer_subject_assignments
+            // Get ALL assignments from lecturer_subject_assignments
             const { data: assignments, error: assignmentsError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('*')
-                .eq('lecturer_id', userId);
+                .eq('lecturer_id', userId)
+                .order('academic_year', { ascending: false });
             
             if (assignmentsError) {
                 console.error('Error loading assignments:', assignmentsError);
@@ -64,8 +67,7 @@ const LecturerCourses = {
                 return;
             }
             
-            console.log('📊 Assignments found:', assignments?.length || 0);
-            console.log('📋 Assignments data:', assignments);
+            console.log('📊 All assignments found:', assignments?.length || 0);
             
             if (!assignments || assignments.length === 0) {
                 console.warn('No assignments found for lecturer');
@@ -83,22 +85,31 @@ const LecturerCourses = {
                 lecturer_id: assignment.lecturer_id,
                 lecturer_name: assignment.lecturer_name || 'N/A',
                 unit_code: assignment.subject_code || 'N/A',
-                course_name: assignment.subject_name || 'Unnamed Course',
+                course_name: assignment.subject_name || 'Unnamed Unit',
                 target_program: assignment.program || 'N/A',
                 block: assignment.block || 'N/A',
                 intake_year: assignment.academic_year || 'N/A',
-                status: 'active', // Default status
+                year: assignment.academic_year || '',
+                status: this.determineStatus(assignment),
                 student_count: 0,
                 created_at: assignment.created_at,
-                updated_at: assignment.updated_at
+                updated_at: assignment.updated_at,
+                raw: assignment
             }));
             
-            console.log('✅ Processed courses:', this.courses);
+            console.log('✅ Processed units:', this.courses);
             
-            // Get student counts for each course
+            // Get student counts
             await this.loadStudentCounts();
             
-            this.filteredCourses = [...this.courses];
+            // Default filter to current year
+            const currentYear = new Date().getFullYear().toString();
+            this.currentFilters.year = currentYear;
+            
+            this.filteredCourses = this.courses.filter(c => 
+                c.year === currentYear || c.year === '' || c.year === 'N/A'
+            );
+            
             this.renderTable();
             this.updateStats();
             
@@ -108,7 +119,7 @@ const LecturerCourses = {
                 badge.textContent = this.courses.length;
             }
             
-            console.log(`✅ Loaded ${this.courses.length} courses from database`);
+            console.log(`✅ Loaded ${this.courses.length} total units, ${this.filteredCourses.length} for current year`);
             
         } catch (error) {
             console.error('Failed to load courses:', error);
@@ -119,14 +130,25 @@ const LecturerCourses = {
         }
     },
     
+    determineStatus(assignment) {
+        const currentYear = new Date().getFullYear().toString();
+        const year = assignment.academic_year || '';
+        
+        if (!year || year === 'N/A') return 'active';
+        
+        if (year === currentYear) return 'active';
+        if (parseInt(year) < parseInt(currentYear)) return 'completed';
+        if (parseInt(year) > parseInt(currentYear)) return 'upcoming';
+        
+        return 'active';
+    },
+    
     async loadStudentCounts() {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            // Get student counts for each course
             for (let course of this.courses) {
-                // Try to get count from student_unit_registrations
                 const { count, error } = await supabase
                     .from('student_unit_registrations')
                     .select('*', { count: 'exact', head: true })
@@ -138,7 +160,6 @@ const LecturerCourses = {
                 if (!error && count !== null) {
                     course.student_count = count;
                 } else {
-                    // Fallback: count students in the program
                     const { count: studentCount, error: studentError } = await supabase
                         .from('consolidated_user_profiles_table')
                         .select('*', { count: 'exact', head: true })
@@ -156,12 +177,17 @@ const LecturerCourses = {
     },
     
     populateFilters() {
-        // Intake years
+        // Years
         const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
         const intakeFilter = document.getElementById('intakeYearFilter');
         if (intakeFilter) {
-            intakeFilter.innerHTML = '<option value="">All Intake Years</option>' +
+            intakeFilter.innerHTML = '<option value="">All Years</option>' +
                 years.map(y => `<option value="${y}">${y}</option>`).join('');
+            
+            const currentYear = new Date().getFullYear().toString();
+            if (years.includes(currentYear)) {
+                intakeFilter.value = currentYear;
+            }
         }
         
         // Blocks
@@ -172,7 +198,7 @@ const LecturerCourses = {
                 blocks.map(b => `<option value="${b}">${b}</option>`).join('');
         }
         
-        // Set current year
+        // Current year display
         const yearEl = document.getElementById('currentAcademicYear');
         if (yearEl) {
             yearEl.textContent = new Date().getFullYear();
@@ -186,13 +212,15 @@ const LecturerCourses = {
         const courses = this.filteredCourses;
         
         if (!courses || courses.length === 0) {
+            const hasData = this.courses.length > 0;
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                         <i class="fas fa-book" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Courses Assigned</h3>
-                        <p style="margin: 0; font-size: 14px;">You have not been assigned any courses yet.</p>
-                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Contact the administrator for course assignments.</p>
+                        <h3 style="color: #475569; margin: 0 0 8px 0;">${hasData ? 'No units match your filters' : 'No Units Assigned'}</h3>
+                        <p style="margin: 0; font-size: 14px;">${hasData ? 'Try adjusting your filters to see more units.' : 'You have not been assigned any units yet.'}</p>
+                        ${!hasData ? '<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Contact the administrator for unit assignments.</p>' : ''}
+                        ${hasData ? `<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Total assigned: ${this.courses.length} units</p>` : ''}
                     </td>
                 </tr>
             `;
@@ -202,9 +230,30 @@ const LecturerCourses = {
         
         tbody.innerHTML = courses.map((course, index) => {
             const studentCount = course.student_count || 0;
+            const statusColors = {
+                'active': '#10b981',
+                'completed': '#3b82f6',
+                'upcoming': '#f59e0b',
+                'inactive': '#ef4444'
+            };
+            
+            const statusLabels = {
+                'active': '✅ Active',
+                'completed': '📘 Completed',
+                'upcoming': '⏳ Upcoming',
+                'inactive': '❌ Inactive'
+            };
+            
+            const status = course.status || 'active';
+            const statusColor = statusColors[status] || '#6b7280';
+            const statusLabel = statusLabels[status] || status;
+            
+            const currentYear = new Date().getFullYear().toString();
+            const isPast = course.year && course.year !== 'N/A' && parseInt(course.year) < parseInt(currentYear);
+            const rowStyle = isPast ? 'opacity: 0.7;' : '';
             
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle}" 
                     onmouseover="this.style.background='#f8fafc'" 
                     onmouseout="this.style.background='transparent'">
                     <td style="padding: 14px 18px;">
@@ -212,9 +261,7 @@ const LecturerCourses = {
                     </td>
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
                         ${this.escapeHtml(course.course_name || 'N/A')}
-                        <div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">
-                            Lecturer: ${this.escapeHtml(course.lecturer_name || 'N/A')}
-                        </div>
+                        ${course.block ? `<div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">Block: ${this.escapeHtml(course.block)}</div>` : ''}
                     </td>
                     <td style="padding: 14px 18px;">
                         <span style="background: #ede9fe; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #5b21b6;">
@@ -226,21 +273,20 @@ const LecturerCourses = {
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
                         ${this.escapeHtml(course.intake_year || 'N/A')}
+                        ${isPast ? ' <span style="font-size: 10px; color: #94a3b8;">(Past)</span>' : ''}
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
                         <span style="font-weight: 600; color: #0A3D62;">${studentCount}</span>
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
                         <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                            <span style="background: ${statusColor}20; color: ${statusColor}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
+                                ${statusLabel}
+                            </span>
                             <button onclick="LecturerCourses.manageCourse('${course.id}')" 
                                     style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
                                     onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
                                 <i class="fas fa-chart-bar"></i> Manage
-                            </button>
-                            <button onclick="LecturerCourses.viewStudents('${course.id}')" 
-                                    style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                    onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-                                <i class="fas fa-users"></i>
                             </button>
                         </div>
                     </td>
@@ -258,74 +304,79 @@ const LecturerCourses = {
         if (filterCount) {
             const total = this.courses.length;
             if (courses.length === total) {
-                filterCount.textContent = `Showing all ${total} courses`;
+                filterCount.textContent = `Showing all ${total} units`;
             } else {
-                filterCount.textContent = `Showing ${courses.length} of ${total} courses`;
+                filterCount.textContent = `Showing ${courses.length} of ${total} units`;
             }
         }
     },
     
     updateStats() {
         const courses = this.courses;
+        const currentYear = new Date().getFullYear().toString();
         
-        // Calculate total courses
+        // Total units
         const totalCourses = courses.length;
         const totalEl = document.getElementById('totalCoursesCount2');
         if (totalEl) totalEl.textContent = totalCourses;
         
-        // Calculate total students
+        // Total students
         let totalStudents = 0;
         courses.forEach(c => {
             totalStudents += c.student_count || 0;
         });
-        // If no student count, estimate based on course count
         if (totalStudents === 0 && courses.length > 0) {
-            totalStudents = courses.length * 35; // Average class size
+            totalStudents = courses.length * 30;
         }
         const studentsEl = document.getElementById('totalStudentsCount2');
         if (studentsEl) studentsEl.textContent = totalStudents;
         
-        // Calculate active courses (all are active from assignments)
-        const active = courses.length;
+        // Active units (current year)
+        const active = courses.filter(c => c.year === currentYear || c.status === 'active').length;
         const activeEl = document.getElementById('activeCoursesCount');
         if (activeEl) activeEl.textContent = active;
         
-        // Completed courses (none from assignments, but we can check status if added)
-        const completed = courses.filter(c => c.status === 'completed').length;
+        // Completed units (past years)
+        const completed = courses.filter(c => {
+            const year = c.year;
+            return year && year !== 'N/A' && parseInt(year) < parseInt(currentYear);
+        }).length;
         const completedEl = document.getElementById('completedCoursesCount');
         if (completedEl) completedEl.textContent = completed;
         
-        // Update badge
+        // Badge
         const badge = document.getElementById('courseCountBadge');
         if (badge) {
             badge.textContent = courses.length;
         }
         
-        // Update the main total courses count on dashboard
+        // Dashboard count
         const dashboardCount = document.getElementById('totalCoursesCount');
         if (dashboardCount) {
             dashboardCount.textContent = courses.length;
         }
         
-        console.log(`📊 Stats updated: ${totalCourses} courses, ${totalStudents} students`);
+        console.log(`📊 Stats: ${totalCourses} total, ${active} active (${currentYear}), ${completed} completed`);
     },
     
     applyFilters() {
         const intake = document.getElementById('intakeYearFilter')?.value || '';
         const block = document.getElementById('academicPeriodFilter')?.value || '';
+        const status = document.getElementById('courseStatusFilter')?.value || '';
         const search = document.getElementById('courseSearch')?.value?.toLowerCase() || '';
         
-        this.currentFilters = { intake, block, search };
+        this.currentFilters = { intake, block, status, search };
         
         this.filteredCourses = this.courses.filter(course => {
             const matchIntake = !intake || course.intake_year === intake;
             const matchBlock = !block || course.block === block;
+            const matchStatus = !status || course.status === status;
             const matchSearch = !search || 
                 course.course_name?.toLowerCase().includes(search) ||
                 course.unit_code?.toLowerCase().includes(search) ||
                 course.target_program?.toLowerCase().includes(search);
             
-            return matchIntake && matchBlock && matchSearch;
+            return matchIntake && matchBlock && matchStatus && matchSearch;
         });
         
         this.renderTable();
@@ -333,7 +384,7 @@ const LecturerCourses = {
     
     setupEventListeners() {
         // Filter change events
-        ['intakeYearFilter', 'academicPeriodFilter'].forEach(id => {
+        ['intakeYearFilter', 'academicPeriodFilter', 'courseStatusFilter'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
                 el.addEventListener('change', () => this.applyFilters());
@@ -377,12 +428,10 @@ const LecturerCourses = {
         
         window.showNotification(`👥 Viewing students for: ${course.course_name}`, 'info');
         
-        // Try to switch to students tab
         if (typeof showTab === 'function') {
             showTab('my-students');
         }
         
-        // Store selected course for filtering
         sessionStorage.setItem('selectedCourseId', courseId);
         sessionStorage.setItem('selectedCourseName', course.course_name);
     },
@@ -390,12 +439,11 @@ const LecturerCourses = {
     exportCourses() {
         const courses = this.filteredCourses || this.courses;
         if (courses.length === 0) {
-            window.showNotification('No courses to export.', 'warning');
+            window.showNotification('No units to export.', 'warning');
             return;
         }
         
-        // Create CSV
-        const headers = ['Code', 'Name', 'Program', 'Block', 'Intake', 'Students', 'Lecturer'];
+        const headers = ['Code', 'Name', 'Program', 'Block', 'Intake', 'Students', 'Status'];
         const rows = courses.map(c => [
             c.unit_code || 'N/A',
             c.course_name || 'N/A',
@@ -403,7 +451,7 @@ const LecturerCourses = {
             c.block || 'N/A',
             c.intake_year || 'N/A',
             c.student_count || 0,
-            c.lecturer_name || 'N/A'
+            c.status || 'Active'
         ]);
         
         const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -411,17 +459,17 @@ const LecturerCourses = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `my_courses_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `units_assigned_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        window.showNotification('✅ Courses exported successfully!', 'success');
+        window.showNotification('✅ Units exported successfully!', 'success');
     },
     
     clearFilters() {
-        const filterIds = ['intakeYearFilter', 'academicPeriodFilter'];
+        const filterIds = ['intakeYearFilter', 'academicPeriodFilter', 'courseStatusFilter'];
         filterIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
@@ -430,7 +478,7 @@ const LecturerCourses = {
         const searchEl = document.getElementById('courseSearch');
         if (searchEl) searchEl.value = '';
         
-        this.currentFilters = { intake: '', block: '', search: '' };
+        this.currentFilters = { intake: '', block: '', status: '', search: '' };
         this.filteredCourses = [...this.courses];
         this.renderTable();
         
@@ -449,7 +497,7 @@ const LecturerCourses = {
         this.populateFilters();
         this.applyFilters();
         this.updateStats();
-        window.showNotification('Courses refreshed!', 'success');
+        window.showNotification('Units refreshed!', 'success');
     }
 };
 
