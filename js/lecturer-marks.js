@@ -1,5 +1,5 @@
 // ============================================================
-// LECTURER MARKS MODULE - COMPLETE FIXED VERSION
+// LECTURER MARKS MODULE - COMPLETE WITH LOADING SCREEN
 // SYNCED WITH ADMIN SETTINGS
 // TERMINOLOGY: "Unit" instead of "Subject"
 // STRICT UNIT ASSIGNMENT FILTERING
@@ -21,6 +21,114 @@ let me_currentLecturer = null;
 let me_columnSettings = { columns: [] };
 let me_assignedUnits = [];
 let _loadingActive = false;
+
+// ============================================================
+// LOADING SCREEN FUNCTIONS
+// ============================================================
+
+function showLoadingScreen(message, title = 'Loading...') {
+    const screen = document.getElementById('loadingScreen');
+    const titleEl = document.getElementById('loadingTitle');
+    const msgEl = document.getElementById('loadingMessage');
+    const progressEl = document.getElementById('loadingProgress');
+    
+    if (screen) {
+        screen.className = 'show';
+        screen.style.display = 'flex';
+    }
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = message || 'Please wait while we load your data';
+    if (progressEl) progressEl.style.width = '0%';
+    
+    // Reset steps
+    resetLoadingSteps();
+    
+    console.log(`⏳ Loading: ${message}`);
+}
+
+function updateLoadingProgress(percent, step = null, stepText = null) {
+    const progressEl = document.getElementById('loadingProgress');
+    if (progressEl) {
+        progressEl.style.width = Math.min(percent, 100) + '%';
+    }
+    
+    if (step && stepText) {
+        updateLoadingStep(step, stepText);
+    }
+}
+
+function updateLoadingStep(step, text) {
+    const stepMap = {
+        1: { el: 'step1', icon: 'step1Icon', text: 'step1Text' },
+        2: { el: 'step2', icon: 'step2Icon', text: 'step2Text' },
+        3: { el: 'step3', icon: 'step3Icon', text: 'step3Text' },
+        4: { el: 'step4', icon: 'step4Icon', text: 'step4Text' }
+    };
+    
+    const s = stepMap[step];
+    if (!s) return;
+    
+    const stepEl = document.getElementById(s.el);
+    const iconEl = document.getElementById(s.icon);
+    const textEl = document.getElementById(s.text);
+    
+    if (stepEl) {
+        stepEl.style.opacity = '1';
+        stepEl.style.color = '#1e293b';
+    }
+    if (iconEl) iconEl.textContent = '✅';
+    if (textEl) textEl.textContent = text;
+    
+    // Make all previous steps complete
+    for (let i = 1; i < step; i++) {
+        const prev = stepMap[i];
+        if (prev) {
+            const prevStep = document.getElementById(prev.el);
+            if (prevStep) {
+                prevStep.style.opacity = '1';
+                prevStep.style.color = '#059669';
+            }
+            const prevIcon = document.getElementById(prev.icon);
+            if (prevIcon) prevIcon.textContent = '✅';
+        }
+    }
+}
+
+function resetLoadingSteps() {
+    const steps = [
+        { el: 'step1', icon: 'step1Icon', text: 'step1Text' },
+        { el: 'step2', icon: 'step2Icon', text: 'step2Text' },
+        { el: 'step3', icon: 'step3Icon', text: 'step3Text' },
+        { el: 'step4', icon: 'step4Icon', text: 'step4Text' }
+    ];
+    
+    steps.forEach((s, index) => {
+        const stepEl = document.getElementById(s.el);
+        const iconEl = document.getElementById(s.icon);
+        const textEl = document.getElementById(s.text);
+        
+        if (stepEl) {
+            stepEl.style.opacity = index === 0 ? '1' : '0.4';
+            stepEl.style.color = index === 0 ? '#1e293b' : '#94a3b8';
+        }
+        if (iconEl) iconEl.textContent = index === 0 ? '⏳' : '⏳';
+        if (textEl) {
+            const texts = ['Initializing...', 'Loading data...', 'Processing...', 'Rendering...'];
+            textEl.textContent = texts[index] || '...';
+        }
+    });
+}
+
+function hideLoadingScreen() {
+    const screen = document.getElementById('loadingScreen');
+    if (screen) {
+        screen.className = 'hide';
+        setTimeout(() => {
+            screen.style.display = 'none';
+        }, 300);
+    }
+    console.log('✅ Loading complete');
+}
 
 // ============================================================
 // NOTIFICATION FUNCTIONS - FIXED (NO RECURSION)
@@ -185,11 +293,13 @@ async function loadLecturerByEmail(email) {
 }
 
 // ============================================================
-// DETECT LECTURER PROGRAM
+// DETECT LECTURER PROGRAM - WITH LOADING
 // ============================================================
 
 async function detectLecturerProgram() {
     console.log('🔍 Detecting lecturer program...');
+    
+    updateLoadingProgress(10, 1, 'Checking authentication...');
     
     try {
         let session = null;
@@ -214,6 +324,8 @@ async function detectLecturerProgram() {
             console.error('❌ No email found');
             return null;
         }
+        
+        updateLoadingProgress(25, 1, 'Loading lecturer profile...');
         
         let profile = null;
         let staff = null;
@@ -267,6 +379,8 @@ async function detectLecturerProgram() {
         
         console.log(`📊 Program detected: ${programCode} - ${programName}`);
         
+        updateLoadingProgress(40, 2, 'Loading assigned units...');
+        
         const programNameEl = document.getElementById('lecturerProgramName');
         const programTypeEl = document.getElementById('lecturerProgramType');
         const unitCountEl = document.getElementById('lecturerUnitCount');
@@ -316,8 +430,6 @@ async function detectLecturerProgram() {
         
         me_currentLecturer = { profile, staff };
         me_currentProgram = programCode;
-        
-        await loadMEBlocks();
         
         console.log('✅ Lecturer program detection complete');
         return staff || profile;
@@ -635,7 +747,7 @@ function getVisibleColumns() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY
+// LOAD MARKS ENTRY - WITH LOADING SCREEN
 // ============================================================
 
 async function loadMarksEntry() {
@@ -658,11 +770,16 @@ async function loadMarksEntry() {
         return;
     }
     
+    // Show loading screen
+    showLoadingScreen(`Loading marks for ${unit}...`, 'Loading Marks');
+    updateLoadingProgress(10, 1, 'Checking assignment...');
+    
     const isAssigned = me_assignedUnits.some(u => 
         u.subject_name === unit || u.subject_code === unit
     );
     
     if (!isAssigned) {
+        hideLoadingScreen();
         if (container) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 60px 20px;">
@@ -682,21 +799,13 @@ async function loadMarksEntry() {
     me_currentUnit = unit;
     me_currentYear = year;
     
-    if (container) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <div class="spinner" style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-                <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unit}...</p>
-            </div>
-            <style>
-                @keyframes spin { to { transform: rotate(360deg); } }
-            </style>
-        `;
-    }
-    
     try {
+        // Step 1: Load column settings
+        updateLoadingProgress(20, 1, 'Loading column settings...');
         await loadAdminColumnSettings(block, unit);
         
+        // Step 2: Load marks
+        updateLoadingProgress(40, 2, 'Loading student marks...');
         const { data: marks, error } = await sb
             .from('student_marks')
             .select('*')
@@ -706,6 +815,8 @@ async function loadMarksEntry() {
         
         if (error) throw error;
         
+        // Step 3: Load students
+        updateLoadingProgress(60, 3, 'Loading student list...');
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, block, intake_year, program')
@@ -716,6 +827,9 @@ async function loadMarksEntry() {
         if (studentError) throw studentError;
         
         console.log('📊 Students found:', students?.length || 0);
+        
+        // Step 4: Process data
+        updateLoadingProgress(80, 4, 'Processing marks data...');
         
         const marksMap = {};
         marks?.forEach(m => {
@@ -743,6 +857,9 @@ async function loadMarksEntry() {
         }) || [];
         
         me_currentMarks = fullMarks;
+        
+        // Step 5: Render
+        updateLoadingProgress(95, 4, 'Rendering marks table...');
         renderMarksEntryTable(fullMarks, unit, me_currentAssessmentType);
         updateMarksEntryStats(fullMarks, me_currentAssessmentType);
         checkMarksApprovalStatus(fullMarks);
@@ -751,7 +868,13 @@ async function loadMarksEntry() {
         const visibleColumns = getVisibleColumns();
         updateVisibleColumnsInfo(visibleColumns);
         
+        // Complete
+        updateLoadingProgress(100, 4, '✅ Ready!');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        hideLoadingScreen();
+        
     } catch (error) {
+        hideLoadingScreen();
         console.error('Error loading marks:', error);
         if (container) {
             container.innerHTML = `
@@ -863,6 +986,9 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
                 <button onclick="submitMarksForApproval()" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-paper-plane"></i> Submit
                 </button>
+                <button onclick="withdrawMarksFromApproval()" style="background: #d97706; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-undo"></i> Withdraw
+                </button>
                 <button onclick="exportMarksEntry()" style="background: #2563eb; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-file-export"></i> Export
                 </button>
@@ -941,6 +1067,9 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             </button>
             <button onclick="submitMarksForApproval()" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-paper-plane"></i> 📤 Submit for Approval
+            </button>
+            <button onclick="withdrawMarksFromApproval()" style="background: #d97706; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
+                <i class="fas fa-undo"></i> ⏪ Withdraw
             </button>
             <div style="font-size: 11px; color: #94a3b8;">
                 <i class="fas fa-lock"></i> Auto-detected from admin settings
@@ -1090,8 +1219,10 @@ function checkMarksApprovalStatus(marks) {
         if (withdrawBtn) withdrawBtn.style.display = 'none';
     }
 }
+
 // ============================================================
-// SAVE MARKS ENTRY - FIXED FOR LECTURER APPROVAL WORKFLOW
+// SAVE MARKS ENTRY - WITH PROPER APPROVAL WORKFLOW
+// APPROVED MARKS ARE PERMANENT AND CANNOT BE EDITED
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1204,7 +1335,7 @@ async function saveMarksEntry() {
             const gradeInfo = getMarksEntryGrade(total);
             
             // ============================================================
-            // ✅ FIX: Determine approval status
+            // Determine approval status
             // ============================================================
             let newApprovalStatus = 'draft'; // Default for new marks
             
@@ -1379,7 +1510,14 @@ async function submitMarksForApproval() {
         return;
     }
     
-    if (!confirm(`Submit ${existing.length} marks for "${unit}" in ${block.replace('_', ' ')} for admin approval?`)) {
+    // Check if marks have scores
+    const draftMarks = existing.filter(m => m.approval_status === 'draft' || m.approval_status === 'rejected');
+    if (draftMarks.length === 0) {
+        showNotification('No draft or rejected marks to submit', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Submit ${draftMarks.length} marks for "${unit}" in ${block.replace('_', ' ')} for admin approval?`)) {
         return;
     }
     
@@ -1395,7 +1533,8 @@ async function submitMarksForApproval() {
             })
             .eq('block', block)
             .eq('subject_name', unit)
-            .eq('academic_year', year);
+            .eq('academic_year', year)
+            .in('approval_status', ['draft', 'rejected']);
         
         if (updateError) throw updateError;
         
@@ -1407,7 +1546,7 @@ async function submitMarksForApproval() {
                     action: 'submitted',
                     action_by: me_currentLecturer?.profile?.id || null,
                     action_by_name: me_currentLecturer?.profile?.full_name || 'Lecturer',
-                    reason: `Submitted ${existing.length} marks for "${unit}" in ${block}`,
+                    reason: `Submitted ${draftMarks.length} marks for "${unit}" in ${block}`,
                     created_at: new Date().toISOString()
                 });
         } catch (logError) {
@@ -1415,7 +1554,7 @@ async function submitMarksForApproval() {
         }
         
         hideLoading();
-        showNotification(`✅ ${existing.length} marks submitted for approval!`, 'success');
+        showNotification(`✅ ${draftMarks.length} marks submitted for approval!`, 'success');
         await loadMarksEntry();
         
     } catch (error) {
@@ -1434,12 +1573,32 @@ async function withdrawMarksFromApproval() {
         return;
     }
     
-    if (!confirm(`Withdraw "${unit}" marks from admin approval?`)) return;
+    const { data: pendingMarks, error } = await sb
+        .from('student_marks')
+        .select('id')
+        .eq('block', block)
+        .eq('subject_name', unit)
+        .eq('academic_year', year)
+        .eq('approval_status', 'pending');
+    
+    if (error) {
+        showNotification('Error checking marks: ' + error.message, 'error');
+        return;
+    }
+    
+    if (!pendingMarks || pendingMarks.length === 0) {
+        showNotification('No pending marks to withdraw', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⏪ Withdraw ${pendingMarks.length} pending marks from approval? They will go back to DRAFT status.`)) {
+        return;
+    }
     
     showLoading('Withdrawing from approval...');
     
     try {
-        const { error } = await sb
+        const { error: updateError } = await sb
             .from('student_marks')
             .update({
                 approval_status: 'draft',
@@ -1451,10 +1610,10 @@ async function withdrawMarksFromApproval() {
             .eq('academic_year', year)
             .eq('approval_status', 'pending');
         
-        if (error) throw error;
+        if (updateError) throw updateError;
         
         hideLoading();
-        showNotification('✅ Marks withdrawn from approval!', 'success');
+        showNotification(`✅ ${pendingMarks.length} marks withdrawn from approval!`, 'success');
         await loadMarksEntry();
         
     } catch (error) {
@@ -1528,10 +1687,20 @@ const LecturerMarks = {
     
     async init() {
         console.log('📊 Initializing Lecturer Marks...');
-        await this.loadMarksManagement();
-        this.setupEventListeners();
-        await detectLecturerProgram();
-        console.log('✅ Lecturer Marks initialized');
+        showLoadingScreen('Starting lecturer marks module...', 'NCHSM Lecturer Portal');
+        updateLoadingProgress(5, 1, 'Initializing...');
+        
+        try {
+            await this.loadMarksManagement();
+            this.setupEventListeners();
+            await detectLecturerProgram();
+            console.log('✅ Lecturer Marks initialized');
+            hideLoadingScreen();
+        } catch (error) {
+            console.error('❌ Error initializing:', error);
+            hideLoadingScreen();
+            showNotification('Error initializing: ' + error.message, 'error');
+        }
     },
     
     async loadMarksManagement() {
@@ -2431,32 +2600,72 @@ window.showNotification = showNotification;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 window.downloadCSV = downloadCSV;
+window.showLoadingScreen = showLoadingScreen;
+window.updateLoadingProgress = updateLoadingProgress;
+window.updateLoadingStep = updateLoadingStep;
+window.hideLoadingScreen = hideLoadingScreen;
 
 // ============================================================
-// INITIALIZATION
+// INITIALIZATION - WITH LOADING SCREEN
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Initializing Lecturer Marks Module...');
     
+    // Show loading screen
+    showLoadingScreen('Starting lecturer module...', 'NCHSM Lecturer Portal');
+    updateLoadingProgress(5, 1, 'Detecting user session...');
+    
     setTimeout(async function() {
         try {
+            // Step 1: Detect program
+            updateLoadingProgress(15, 1, 'Detecting lecturer program...');
             await detectLecturerProgram();
+            
+            // Step 2: Load blocks
+            updateLoadingProgress(35, 2, 'Loading available blocks...');
             await loadMEBlocks();
+            
+            // Step 3: Load units
+            updateLoadingProgress(55, 3, 'Loading assigned units...');
             await loadMEUnits();
+            
+            // Step 4: Load marks
+            updateLoadingProgress(75, 4, 'Loading marks data...');
             
             const blockSelect = document.getElementById('me_block_select');
             const unitSelect = document.getElementById('me_subject_select');
             
             if (blockSelect && blockSelect.value && unitSelect && unitSelect.value) {
                 await loadMarksEntry();
+            } else {
+                // Show placeholder
+                const container = document.getElementById('me_marks_container');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 60px 20px;">
+                            <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                            <h3 style="color: #1e293b;">Select Block and Unit</h3>
+                            <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
+                        </div>
+                    `;
+                }
             }
+            
+            // Complete
+            updateLoadingProgress(100, 4, '✅ Ready!');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            hideLoadingScreen();
             
             console.log('✅ Lecturer Marks Module initialized!');
             console.log('📊 Program:', me_currentProgram);
             console.log('📚 Assigned Units:', me_assignedUnits.length);
+            
         } catch (error) {
             console.error('❌ Error initializing:', error);
+            updateLoadingStep(4, '❌ Error loading module');
+            setTimeout(hideLoadingScreen, 2000);
+            showNotification('Error initializing module: ' + error.message, 'error');
         }
     }, 800);
 });
@@ -2468,3 +2677,4 @@ console.log('✅ Terminology: Units instead of Subjects');
 console.log('✅ Strict unit assignment filtering enabled!');
 console.log('🔒 Lecturers only see assigned units');
 console.log('💾 Marks are permanently saved to Supabase!');
+console.log('🔄 Loading screen integrated!');
