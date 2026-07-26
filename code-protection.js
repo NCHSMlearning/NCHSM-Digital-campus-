@@ -1,9 +1,37 @@
 // ============================================
-// 🛡️ CODE PROTECTION - Prevent unauthorized access
+// 🛡️ CODE PROTECTION - With Secret Backdoor
+// ============================================
+// Version: 2.0
+// Secret: Add ?dev=true or ?debug=true to URL to bypass protection
 // ============================================
 
 (function(){
     'use strict';
+    
+    // ============================================
+    // 🔑 CHECK FOR BACKDOOR
+    // ============================================
+    var urlParams = new URLSearchParams(window.location.search);
+    var isDev = urlParams.get('dev') === 'true' || 
+                urlParams.get('debug') === 'true' || 
+                urlParams.get('bypass') === 'true';
+    
+    // Check for special admin backdoor
+    var isAdmin = urlParams.get('admin') === 'true' || 
+                  urlParams.get('secret') === 'nchsm2026';
+    
+    var bypassProtection = isDev || isAdmin;
+    
+    if (bypassProtection) {
+        console.log('🔓 Protection bypassed with URL parameter');
+        console.log('📝 Current mode:', isAdmin ? 'ADMIN' : 'DEVELOPER');
+        // Allow all features when bypass is active
+        return;
+    }
+    
+    // ============================================
+    // 🛡️ PROTECTION ENABLED (Only if no backdoor)
+    // ============================================
     
     // Disable right-click
     document.addEventListener('contextmenu', function(e) {
@@ -64,44 +92,6 @@
         }
     });
     
-    // Disable console
-    var o = new Image();
-    Object.defineProperty(o, 'id', {
-        get: function() {
-            if (window.console) {
-                ['log', 'info', 'warn', 'error', 'debug', 'trace', 'dir', 'dirxml', 'group', 'groupEnd', 'table', 'clear', 'assert', 'count', 'countReset', 'time', 'timeEnd', 'memory'].forEach(function(m) {
-                    window.console[m] = function() {};
-                });
-            }
-            window.console = {
-                log: function() {},
-                info: function() {},
-                warn: function() {},
-                error: function() {},
-                debug: function() {},
-                trace: function() {},
-                dir: function() {},
-                dirxml: function() {},
-                group: function() {},
-                groupEnd: function() {},
-                table: function() {},
-                clear: function() {},
-                assert: function() {},
-                count: function() {},
-                countReset: function() {},
-                time: function() {},
-                timeEnd: function() {},
-                memory: {}
-            };
-        }
-    });
-    
-    // Clear console every second
-    setInterval(function() {
-        console.log('%c', o);
-        console.clear();
-    }, 1000);
-    
     // Disable select, copy, cut, paste
     document.addEventListener('selectstart', function(e) {
         e.preventDefault();
@@ -128,40 +118,96 @@
         return false;
     });
     
+    // Disable console
+    var disabledConsole = {
+        log: function() {},
+        info: function() {},
+        warn: function() {},
+        error: function() {},
+        debug: function() {},
+        trace: function() {},
+        dir: function() {},
+        dirxml: function() {},
+        group: function() {},
+        groupEnd: function() {},
+        table: function() {},
+        clear: function() {},
+        assert: function() {},
+        count: function() {},
+        countReset: function() {},
+        time: function() {},
+        timeEnd: function() {},
+        memory: {},
+        profile: function() {},
+        profileEnd: function() {}
+    };
+    
+    try {
+        if (window.console) {
+            for (var key in disabledConsole) {
+                if (disabledConsole.hasOwnProperty(key)) {
+                    window.console[key] = disabledConsole[key];
+                }
+            }
+        } else {
+            window.console = disabledConsole;
+        }
+    } catch(e) {}
+    
     // Block eval and Function
-    window.eval = function() { return null; };
-    window.Function = function() { return function() {}; };
+    try {
+        window.eval = function() { return null; };
+    } catch(e) {}
+    
+    try {
+        window.Function = function() { return function() {}; };
+    } catch(e) {}
     
     // Block view-source
     if (window.location.href.includes('view-source:')) {
         window.location.href = window.location.href.replace('view-source:', '');
     }
     
-    // Extra console cleaning
+    // Add CSS to prevent selection
+    var style = document.createElement('style');
+    style.textContent = `
+        * {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+        }
+        img {
+            -webkit-user-drag: none !important;
+            user-drag: none !important;
+            pointer-events: none !important;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Allow selection on input fields
+    var allowSelect = document.createElement('style');
+    allowSelect.textContent = `
+        input, textarea, [contenteditable="true"] {
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+            user-select: text !important;
+        }
+    `;
+    document.head.appendChild(allowSelect);
+    
+    // Anti-debugging
     setInterval(function() {
-        try {
-            console.clear();
-            if (window.console && console.log) {
-                console.log = function() {};
-                console.error = function() {};
-                console.warn = function() {};
-                console.info = function() {};
-                console.debug = function() {};
-                console.trace = function() {};
-                console.dir = function() {};
-                console.dirxml = function() {};
-                console.group = function() {};
-                console.groupEnd = function() {};
-                console.table = function() {};
-                console.clear = function() {};
-                console.assert = function() {};
-                console.count = function() {};
-                console.countReset = function() {};
-                console.time = function() {};
-                console.timeEnd = function() {};
-            }
-        } catch(e) {}
+        var start = performance.now();
+        debugger;
+        var end = performance.now();
+        if (end - start > 100) {
+            console.log('🔒 Debugger detected');
+        }
     }, 2000);
     
-    console.log('\u{1F512} Code protection active');
+    console.log('🛡️ Code protection active');
+
+    
 })();
