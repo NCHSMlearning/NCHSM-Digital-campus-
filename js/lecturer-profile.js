@@ -1,7 +1,7 @@
 // js/lecturer-profile.js
 /**
  * NCHSM Lecturer Profile Module
- * Manages lecturer profile, settings, and preferences
+ * Manages lecturer profile with inline editing, settings, and preferences
  * NO ADMIN APPROVAL - Settings are saved locally
  */
 
@@ -21,6 +21,7 @@ const LecturerProfile = {
         }
     },
     currentTab: 'notifications',
+    isEditing: false,
     
     async init() {
         console.log('👤 Initializing Lecturer Profile & Settings...');
@@ -30,6 +31,7 @@ const LecturerProfile = {
         this.renderSettings();
         this.setupEventListeners();
         this.setupSettingsTabs();
+        this.showReadOnly();
         console.log('✅ Lecturer Profile initialized');
     },
     
@@ -88,7 +90,7 @@ const LecturerProfile = {
         const roleEl = document.getElementById('profileRoleDisplay');
         if (roleEl) roleEl.textContent = p.role || 'Lecturer';
         
-        // Details
+        // Details - Read-only fields
         const fields = {
             'profileId': p.staff_id || p.employee_id || p.user_id || 'N/A',
             'profileEmail': p.email || 'N/A',
@@ -101,6 +103,19 @@ const LecturerProfile = {
         Object.keys(fields).forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = fields[id];
+        });
+        
+        // Editable fields (for inline editing)
+        const editFields = {
+            'editFullName': p.full_name || '',
+            'editEmail': p.email || '',
+            'editPhone': p.phone || '',
+            'editDepartment': p.department || ''
+        };
+        
+        Object.keys(editFields).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = editFields[id];
         });
         
         // Settings page profile info
@@ -116,6 +131,29 @@ const LecturerProfile = {
             const el = document.getElementById(id);
             if (el) el.textContent = settingsFields[id];
         });
+        
+        // Update stats
+        this.updateStats();
+    },
+    
+    updateStats() {
+        // Get courses count
+        const courses = window.LecturerCourses?.courses || [];
+        const coursesEl = document.getElementById('profileCoursesCount');
+        if (coursesEl) coursesEl.textContent = courses.length || 0;
+        
+        // Get students count
+        const students = window.LecturerStudents?.students || [];
+        const studentsEl = document.getElementById('profileStudentsCount');
+        if (studentsEl) studentsEl.textContent = students.length || 0;
+        
+        // Get years (from join date)
+        const joinDate = this.profile?.join_date || this.profile?.created_at;
+        if (joinDate) {
+            const years = Math.floor((new Date() - new Date(joinDate)) / (1000 * 60 * 60 * 24 * 365));
+            const yearsEl = document.getElementById('profileYearsCount');
+            if (yearsEl) yearsEl.textContent = years || 0;
+        }
     },
     
     loadSettings() {
@@ -227,7 +265,6 @@ const LecturerProfile = {
     },
     
     darkenColor(hex) {
-        // Simple color darkening for gradient
         let r = parseInt(hex.slice(1, 3), 16);
         let g = parseInt(hex.slice(3, 5), 16);
         let b = parseInt(hex.slice(5, 7), 16);
@@ -240,7 +277,6 @@ const LecturerProfile = {
     },
     
     setupSettingsTabs() {
-        // Tab switching
         const tabs = ['notifications', 'account', 'appearance'];
         tabs.forEach(tab => {
             const btn = document.getElementById(`settingsTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
@@ -253,7 +289,6 @@ const LecturerProfile = {
     switchSettingsTab(tab) {
         this.currentTab = tab;
         
-        // Update tabs
         const tabs = ['notifications', 'account', 'appearance'];
         tabs.forEach(t => {
             const btn = document.getElementById(`settingsTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -278,10 +313,22 @@ const LecturerProfile = {
     },
     
     setupEventListeners() {
-        // Edit profile button
+        // Edit profile button (main page)
         const editBtn = document.getElementById('editProfileBtn');
         if (editBtn) {
-            editBtn.addEventListener('click', () => this.openEditModal());
+            editBtn.addEventListener('click', () => this.enableEditing());
+        }
+        
+        // Save profile button (inline editing)
+        const saveBtn = document.getElementById('saveProfileBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveProfile());
+        }
+        
+        // Cancel edit button
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.cancelEditing());
         }
         
         // Change password button
@@ -321,76 +368,119 @@ const LecturerProfile = {
         }
     },
     
-    openEditModal() {
-        const p = this.profile;
-        if (!p) return;
+    enableEditing() {
+        this.isEditing = true;
         
-        // Check if modal already exists
-        const existing = document.getElementById('editProfileModal');
-        if (existing) {
-            existing.remove();
+        // Enable all editable fields
+        document.querySelectorAll('.profile-field').forEach(el => {
+            el.readOnly = false;
+            el.style.background = 'white';
+            el.style.borderColor = '#4C1D95';
+        });
+        
+        // Show field hints
+        document.querySelectorAll('.field-hint').forEach(el => {
+            el.style.display = 'block';
+        });
+        
+        // Show action buttons
+        const actions = document.getElementById('profileActions');
+        if (actions) actions.style.display = 'flex';
+        
+        // Hide edit button
+        const editBtn = document.getElementById('editProfileBtn');
+        if (editBtn) editBtn.style.display = 'none';
+        
+        // Show save/cancel buttons
+        const saveBtn = document.getElementById('saveProfileBtn');
+        if (saveBtn) saveBtn.style.display = 'inline-flex';
+        
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    },
+    
+    showReadOnly() {
+        this.isEditing = false;
+        
+        // Disable all editable fields
+        document.querySelectorAll('.profile-field').forEach(el => {
+            el.readOnly = true;
+            el.style.background = '#f8fafc';
+            el.style.borderColor = '#e2e8f0';
+        });
+        
+        // Hide field hints
+        document.querySelectorAll('.field-hint').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        // Hide action buttons
+        const actions = document.getElementById('profileActions');
+        if (actions) actions.style.display = 'none';
+        
+        // Show edit button
+        const editBtn = document.getElementById('editProfileBtn');
+        if (editBtn) editBtn.style.display = 'inline-flex';
+        
+        // Hide save/cancel buttons
+        const saveBtn = document.getElementById('saveProfileBtn');
+        if (saveBtn) saveBtn.style.display = 'none';
+        
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    },
+    
+    cancelEditing() {
+        // Reset fields to original values
+        const p = this.profile;
+        if (p) {
+            const editFields = {
+                'editFullName': p.full_name || '',
+                'editEmail': p.email || '',
+                'editPhone': p.phone || '',
+                'editDepartment': p.department || ''
+            };
+            
+            Object.keys(editFields).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = editFields[id];
+            });
+        }
+        
+        this.showReadOnly();
+        window.showNotification('Edit cancelled.', 'info');
+    },
+    
+    async saveProfile() {
+        const updates = {
+            full_name: document.getElementById('editFullName')?.value?.trim(),
+            email: document.getElementById('editEmail')?.value?.trim(),
+            phone: document.getElementById('editPhone')?.value?.trim(),
+            department: document.getElementById('editDepartment')?.value?.trim()
+        };
+        
+        // Validate
+        if (!updates.full_name) {
+            window.showNotification('Full name is required.', 'error');
+            document.getElementById('editFullName')?.focus();
             return;
         }
         
-        const modal = document.createElement('div');
-        modal.id = 'editProfileModal';
-        modal.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 9999;
-            display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(4px);
-        `;
-        modal.innerHTML = `
-            <div style="background: white; border-radius: 16px; padding: 30px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0; color: #0A3D62;"><i class="fas fa-user-edit"></i> Edit Profile</h3>
-                    <button onclick="document.getElementById('editProfileModal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
-                </div>
-                <form id="editProfileForm">
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 5px;">Full Name</label>
-                        <input type="text" id="editFullName" value="${this.escapeHtml(p.full_name || '')}" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 5px;">Phone</label>
-                        <input type="tel" id="editPhone" value="${this.escapeHtml(p.phone || '')}" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 5px;">Department</label>
-                        <input type="text" id="editDepartment" value="${this.escapeHtml(p.department || '')}" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 20px;">
-                        <button type="submit" style="flex: 1; background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                            <i class="fas fa-save"></i> Save Changes
-                        </button>
-                        <button type="button" onclick="document.getElementById('editProfileModal').remove()" style="flex: 1; background: #e2e8f0; color: #475569; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        `;
-        document.body.appendChild(modal);
+        if (!updates.email) {
+            window.showNotification('Email is required.', 'error');
+            document.getElementById('editEmail')?.focus();
+            return;
+        }
         
-        // Handle form submission
-        document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await this.saveProfile({
-                full_name: document.getElementById('editFullName').value,
-                phone: document.getElementById('editPhone').value,
-                department: document.getElementById('editDepartment').value
-            });
-            modal.remove();
-        });
+        if (!updates.phone) {
+            window.showNotification('Phone number is required.', 'error');
+            document.getElementById('editPhone')?.focus();
+            return;
+        }
         
-        // Close on overlay click
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.remove();
-        });
-    },
-    
-    async saveProfile(updates) {
         try {
+            window.showLoading('Saving profile...');
+            
             const supabase = window.lecturerDB?.supabase;
             if (supabase && this.profile) {
                 const { error } = await supabase
@@ -401,98 +491,94 @@ const LecturerProfile = {
                 if (error) throw error;
             }
             
+            // Update local profile
             this.profile = { ...this.profile, ...updates };
             this.renderProfile();
-            window.showNotification('Profile updated successfully!', 'success');
+            this.showReadOnly();
+            
+            window.hideLoading();
+            window.showNotification('✅ Profile updated successfully!', 'success');
             
         } catch (error) {
+            window.hideLoading();
             console.error('Update error:', error);
             window.showNotification('Failed to update profile: ' + error.message, 'error');
         }
     },
     
     async changePassword() {
-        // Simple password change modal
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 9999;
-            display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(4px);
-        `;
-        modal.innerHTML = `
-            <div style="background: white; border-radius: 16px; padding: 30px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                <h3 style="margin: 0 0 20px 0; color: #0A3D62;"><i class="fas fa-key"></i> Change Password</h3>
-                <form id="changePasswordForm">
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 5px;">Current Password</label>
-                        <input type="password" id="currentPassword" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 5px;">New Password</label>
-                        <input type="password" id="newPassword" required minlength="8" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                    </div>
-                    <div style="margin-bottom: 20px;">
-                        <label style="display: block; font-weight: 600; font-size: 13px; color: #475569; margin-bottom: 5px;">Confirm New Password</label>
-                        <input type="password" id="confirmPassword" required minlength="8" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button type="submit" style="flex: 1; background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                            <i class="fas fa-save"></i> Update Password
-                        </button>
-                        <button type="button" onclick="this.closest('div[style*=\\'fixed\\']').remove()" style="flex: 1; background: #e2e8f0; color: #475569; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-            </div>
-        `;
-        document.body.appendChild(modal);
+        const current = document.getElementById('currentPassword')?.value;
+        const newPass = document.getElementById('newPassword')?.value;
+        const confirm = document.getElementById('confirmPassword')?.value;
+        const feedback = document.getElementById('passwordFeedback');
         
-        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const current = document.getElementById('currentPassword').value;
-            const newPass = document.getElementById('newPassword').value;
-            const confirm = document.getElementById('confirmPassword').value;
-            
-            if (newPass !== confirm) {
-                window.showNotification('Passwords do not match.', 'error');
-                return;
-            }
-            
-            if (newPass.length < 8) {
-                window.showNotification('Password must be at least 8 characters.', 'error');
-                return;
-            }
-            
-            try {
-                const supabase = window.lecturerDB?.supabase;
-                if (supabase && this.profile) {
-                    // Update password via Supabase
-                    const { error } = await supabase.auth.updateUser({
-                        password: newPass
-                    });
-                    
-                    if (error) throw error;
-                }
-                
-                window.showNotification('Password updated successfully!', 'success');
-                modal.remove();
-                
-            } catch (error) {
-                console.error('Password update error:', error);
-                window.showNotification('Failed to update password: ' + error.message, 'error');
-            }
-        });
+        // Clear previous feedback
+        if (feedback) {
+            feedback.style.display = 'none';
+            feedback.textContent = '';
+        }
         
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.remove();
-        });
+        // Validate
+        if (!current) {
+            window.showNotification('Please enter your current password.', 'error');
+            document.getElementById('currentPassword')?.focus();
+            return;
+        }
+        
+        if (!newPass || newPass.length < 8) {
+            window.showNotification('New password must be at least 8 characters.', 'error');
+            document.getElementById('newPassword')?.focus();
+            return;
+        }
+        
+        if (newPass !== confirm) {
+            window.showNotification('Passwords do not match.', 'error');
+            document.getElementById('confirmPassword')?.focus();
+            return;
+        }
+        
+        try {
+            window.showLoading('Updating password...');
+            
+            const supabase = window.lecturerDB?.supabase;
+            if (supabase) {
+                const { error } = await supabase.auth.updateUser({
+                    password: newPass
+                });
+                
+                if (error) throw error;
+            }
+            
+            // Clear password fields
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            
+            window.hideLoading();
+            window.showNotification('✅ Password updated successfully!', 'success');
+            
+        } catch (error) {
+            window.hideLoading();
+            console.error('Password update error:', error);
+            window.showNotification('Failed to update password: ' + error.message, 'error');
+        }
     },
     
     async handlePhotoUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            window.showNotification('Please select an image file.', 'error');
+            return;
+        }
+        
+        // Validate file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            window.showNotification('Image must be less than 2MB.', 'error');
+            return;
+        }
         
         // Preview
         const reader = new FileReader();
@@ -503,9 +589,10 @@ const LecturerProfile = {
         reader.readAsDataURL(file);
         
         try {
+            window.showLoading('Uploading photo...');
+            
             const supabase = window.lecturerDB?.supabase;
             if (supabase && this.profile) {
-                // Upload to storage
                 const fileExt = file.name.split('.').pop();
                 const fileName = `avatar-${this.profile.user_id}-${Date.now()}.${fileExt}`;
                 const filePath = `avatars/${fileName}`;
@@ -516,12 +603,10 @@ const LecturerProfile = {
                 
                 if (uploadError) throw uploadError;
                 
-                // Get public URL
                 const { data: urlData } = supabase.storage
                     .from('avatars')
                     .getPublicUrl(filePath);
                 
-                // Update profile
                 const { error: updateError } = await supabase
                     .from('consolidated_user_profiles_table')
                     .update({ avatar_url: urlData.publicUrl })
@@ -530,9 +615,11 @@ const LecturerProfile = {
                 if (updateError) throw updateError;
                 
                 this.profile.avatar_url = urlData.publicUrl;
-                window.showNotification('Photo updated successfully!', 'success');
+                window.hideLoading();
+                window.showNotification('✅ Photo updated successfully!', 'success');
             }
         } catch (error) {
+            window.hideLoading();
             console.error('Photo upload error:', error);
             window.showNotification('Failed to upload photo: ' + error.message, 'error');
         }
@@ -541,12 +628,10 @@ const LecturerProfile = {
     async saveSettings(e) {
         if (e) e.preventDefault();
         
-        // Get notification settings
         this.settings.emailNotify = document.getElementById('emailNotify')?.checked !== false;
         this.settings.smsNotify = document.getElementById('smsNotify')?.checked === true;
         this.settings.pushNotify = document.getElementById('pushNotify')?.checked !== false;
         
-        // Get notification events
         this.settings.notifications = {
             marksEntry: document.getElementById('notifyMarksEntry')?.checked !== false,
             newSession: document.getElementById('notifyNewSession')?.checked !== false,
@@ -609,6 +694,7 @@ const LecturerProfile = {
         await this.loadProfile();
         this.loadSettings();
         this.renderSettings();
+        this.showReadOnly();
         window.showNotification('Profile refreshed!', 'success');
     }
 };
@@ -625,4 +711,5 @@ window.changeAccentColor = (color) => LecturerProfile.changeAccentColor(color);
 window.saveSettings = () => LecturerProfile.saveSettings();
 window.saveAppearanceSettings = () => LecturerProfile.saveAppearanceSettings();
 window.loadAccountSettings = () => LecturerProfile.loadProfile();
-window.loadCalendar = () => window.LecturerCalendar?.goToToday();
+
+console.log('✅ LecturerProfile module loaded');
