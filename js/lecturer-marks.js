@@ -747,7 +747,8 @@ function getVisibleColumns() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY - WITH LOADING SCREEN
+// LOAD MARKS ENTRY - WITH LOADING SCREEN (FIXED)
+// SHOWS ALL ENROLLED STUDENTS FROM student_marks
 // ============================================================
 
 async function loadMarksEntry() {
@@ -774,6 +775,7 @@ async function loadMarksEntry() {
     showLoadingScreen(`Loading marks for ${unit}...`, 'Loading Marks');
     updateLoadingProgress(10, 1, 'Checking assignment...');
     
+    // ✅ Check if lecturer is assigned to this unit
     const isAssigned = me_assignedUnits.some(u => 
         u.subject_name === unit || u.subject_code === unit
     );
@@ -804,7 +806,7 @@ async function loadMarksEntry() {
         updateLoadingProgress(20, 1, 'Loading column settings...');
         await loadAdminColumnSettings(block, unit);
         
-        // Step 2: Load marks
+        // ✅ Step 2: Load marks from student_marks (SOURCE OF TRUTH)
         updateLoadingProgress(40, 2, 'Loading student marks...');
         const { data: marks, error } = await sb
             .from('student_marks')
@@ -815,46 +817,64 @@ async function loadMarksEntry() {
         
         if (error) throw error;
         
-        // Step 3: Load students
-        updateLoadingProgress(60, 3, 'Loading student list...');
+        console.log(`📊 Found ${marks?.length || 0} enrolled students in student_marks`);
+        
+        // ✅ If no students enrolled, show empty state
+        if (!marks || marks.length === 0) {
+            hideLoadingScreen();
+            if (container) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
+                        <p style="color: #94a3b8;">Please contact the administrator to add students.</p>
+                    </div>
+                `;
+            }
+            updateMarksEntryStats([], me_currentAssessmentType);
+            return;
+        }
+        
+        // ✅ Step 3: Get student names from profile (for display only)
+        updateLoadingProgress(60, 3, 'Loading student details...');
+        const admissions = marks.map(m => m.admission_number);
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, block, intake_year, program')
             .eq('role', 'student')
-            .eq('program', program)
-            .eq('block', block);
+            .in('student_id', admissions);
         
-        if (studentError) throw studentError;
+        if (studentError) {
+            console.warn('⚠️ Could not fetch student names:', studentError);
+        }
         
-        console.log('📊 Students found:', students?.length || 0);
-        
-        // Step 4: Process data
-        updateLoadingProgress(80, 4, 'Processing marks data...');
-        
-        const marksMap = {};
-        marks?.forEach(m => {
-            marksMap[m.admission_number] = m;
+        const studentMap = {};
+        students?.forEach(s => {
+            studentMap[s.student_id] = s.full_name || 'Unknown';
         });
         
-        const fullMarks = students?.map(s => {
-            const studentId = s.student_id || '';
-            const existing = marksMap[studentId] || {};
-            
+        // ✅ Step 4: Build marks data - SHOW ALL STUDENTS (even with 0 scores)
+        updateLoadingProgress(80, 4, 'Processing marks data...');
+        
+        const fullMarks = marks.map(m => {
+            const admission = m.admission_number || '';
             return {
-                admission: studentId,
-                name: s.full_name || 'Unknown',
-                program: s.program || program,
-                cat1: existing.cat1_score || '',
-                cat2: existing.cat2_score || '',
-                exam: existing.exam_score || '',
-                final: existing.final_score || '',
-                grade: existing.grade || '',
-                gradedBy: existing.graded_by || '',
-                assessmentType: me_currentAssessmentType || 'full',
-                id: existing.id || null,
-                approval_status: existing.approval_status || 'draft'
+                admission: admission,
+                name: studentMap[admission] || m.student_name || 'Unknown',
+                program: program,
+                cat1: m.cat1_score || 0,
+                cat2: m.cat2_score || 0,
+                exam: m.exam_score || 0,
+                final: m.final_score || 0,
+                grade: m.grade || '',
+                gradedBy: m.graded_by || '',
+                assessmentType: m.assessment_type || me_currentAssessmentType || 'full',
+                id: m.id || null,
+                approval_status: m.approval_status || 'draft'
             };
-        }) || [];
+        });
+        
+        console.log(`📊 Displaying ${fullMarks.length} enrolled students (including those with 0 marks)`);
         
         me_currentMarks = fullMarks;
         
@@ -1141,86 +1161,45 @@ function getMarksEntryGrade(score) {
     else return { grade: 'D', rating: 'Fail', points: 0.0, color: '#991b1b' };
 }
 
+// ============================================================
+// UPDATE MARKS ENTRY STATS - SHOW ALL ENROLLED STUDENTS
+// ============================================================
+
 function updateMarksEntryStats(marks, assessmentType) {
+    // ✅ Count ALL enrolled students (including those with 0 marks)
+    const totalEnrolled = marks.length;
+    
+    // ✅ Students with scores (any score > 0)
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
+    
+    // ✅ Students passing
     const passing = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
         return total >= 60;
     });
+    
+    // ✅ Average score (only students with scores)
     const avg = withScores.length > 0 ? 
         withScores.reduce((sum, m) => sum + calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType), 0) / withScores.length : 0;
+    
+    // ✅ At risk: students with total < 60 (only those with scores)
+    const atRisk = marks.filter(m => {
+        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
+        return total > 0 && total < 60;
+    });
     
     const totalEl = document.getElementById('me_total_students');
     const subjectsEl = document.getElementById('me_total_subjects');
     const passEl = document.getElementById('me_pass_rate');
     const avgEl = document.getElementById('me_class_avg');
+    const atRiskEl = document.getElementById('me_at_risk');
     
-    if (totalEl) totalEl.textContent = marks.length;
+    if (totalEl) totalEl.textContent = totalEnrolled;
     if (subjectsEl) subjectsEl.textContent = marks.length > 0 ? 1 : 0;
-    if (passEl) passEl.textContent = marks.length > 0 ? Math.round((passing.length / marks.length) * 100) + '%' : '0%';
+    if (passEl) passEl.textContent = totalEnrolled > 0 ? Math.round((passing.length / totalEnrolled) * 100) + '%' : '0%';
     if (avgEl) avgEl.textContent = Math.round(avg) + '%';
+    if (atRiskEl) atRiskEl.textContent = atRisk.length;
 }
-
-function checkMarksApprovalStatus(marks) {
-    const pendingCount = marks.filter(m => m.approval_status === 'pending').length;
-    const approvedCount = marks.filter(m => m.approval_status === 'approved').length;
-    const rejectedCount = marks.filter(m => m.approval_status === 'rejected').length;
-    
-    const banner = document.getElementById('approvalStatusBanner');
-    const statusText = document.getElementById('approvalStatusText');
-    const statusBadge = document.getElementById('approvalStatusBadge');
-    const submitBtn = document.getElementById('submitForApprovalBtn');
-    const withdrawBtn = document.getElementById('withdrawApprovalBtn');
-    
-    if (!banner) return;
-    
-    if (pendingCount > 0) {
-        banner.style.display = 'block';
-        banner.style.borderLeftColor = '#f59e0b';
-        banner.style.background = '#fef3c7';
-        if (statusText) statusText.textContent = 'Pending Admin Approval';
-        if (statusBadge) {
-            statusBadge.textContent = '⏳ Pending';
-            statusBadge.className = 'badge badge-warning';
-        }
-        if (submitBtn) submitBtn.style.display = 'none';
-        if (withdrawBtn) withdrawBtn.style.display = 'inline-block';
-        document.getElementById('approvalDetails').style.display = 'block';
-        document.getElementById('rejectionReason').style.display = 'none';
-    } else if (approvedCount > 0) {
-        banner.style.display = 'block';
-        banner.style.borderLeftColor = '#10b981';
-        banner.style.background = '#d1fae5';
-        if (statusText) statusText.textContent = '✅ Approved by Admin';
-        if (statusBadge) {
-            statusBadge.textContent = '✅ Approved';
-            statusBadge.className = 'badge badge-success';
-        }
-        if (submitBtn) submitBtn.style.display = 'none';
-        if (withdrawBtn) withdrawBtn.style.display = 'none';
-        document.getElementById('approvalDetails').style.display = 'block';
-        document.getElementById('rejectionReason').style.display = 'none';
-    } else if (rejectedCount > 0) {
-        banner.style.display = 'block';
-        banner.style.borderLeftColor = '#dc2626';
-        banner.style.background = '#fee2e2';
-        if (statusText) statusText.textContent = '❌ Rejected by Admin';
-        if (statusBadge) {
-            statusBadge.textContent = '❌ Rejected';
-            statusBadge.className = 'badge badge-danger';
-        }
-        if (submitBtn) submitBtn.style.display = 'inline-block';
-        if (withdrawBtn) withdrawBtn.style.display = 'none';
-        document.getElementById('approvalDetails').style.display = 'block';
-        document.getElementById('rejectionReason').style.display = 'block';
-    } else {
-        banner.style.display = 'none';
-        if (submitBtn) submitBtn.style.display = 'inline-block';
-        if (withdrawBtn) withdrawBtn.style.display = 'none';
-    }
-}
-
-
 // ============================================================
 // SAVE MARKS ENTRY - WITH AUTO PROMPT FOR SUBMISSION
 // ============================================================
