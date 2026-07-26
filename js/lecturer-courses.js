@@ -1,8 +1,9 @@
-// js/lecturer-courses.js - FIXED to show all 3 units
+// js/lecturer-courses.js
 /**
  * NCHSM Lecturer Courses Module
  * Uses the same unit assignments as the marks system
  * Dynamically finds the correct lecturer ID from assignments
+ * PRIORITIZES NON-STAFF IDs
  */
 
 const LecturerCourses = {
@@ -26,6 +27,9 @@ const LecturerCourses = {
         console.log('✅ Lecturer Courses initialized');
     },
     
+    // ============================================
+    // RESOLVE THE CORRECT LECTURER ID - PRIORITIZES NON-STAFF IDs
+    // ============================================
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -35,23 +39,83 @@ const LecturerCourses = {
             if (!profile) return;
             
             const fullName = profile.full_name;
+            const authId = profile.user_id;
+            
+            console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // Find by name in lecturer_subject_assignments
-            const { data, error } = await supabase
+            // FIRST: Get ALL lecturers with similar names
+            const nameParts = fullName.toLowerCase().split(' ');
+            const { data: allLecturers, error: allError } = await supabase
                 .from('lecturer_subject_assignments')
-                .select('lecturer_id')
-                .eq('lecturer_name', fullName)
-                .limit(1);
+                .select('lecturer_id, lecturer_name')
+                .order('created_at', { ascending: false });
             
-            if (!error && data && data.length > 0) {
-                this.lecturerAssignmentId = data[0].lecturer_id;
-                console.log('✅ Found lecturer ID by name:', this.lecturerAssignmentId);
-                return;
+            if (!allError && allLecturers && allLecturers.length > 0) {
+                console.log('📚 All lecturers found:', allLecturers.length);
+                
+                // Score each lecturer
+                let bestMatch = null;
+                let bestScore = -1;
+                
+                for (const lecturer of allLecturers) {
+                    const lecturerName = lecturer.lecturer_name || '';
+                    const lecturerId = lecturer.lecturer_id;
+                    let score = 0;
+                    
+                    // Check if name contains any part of the full name
+                    const lecturerNameLower = lecturerName.toLowerCase();
+                    for (const part of nameParts) {
+                        if (part.length > 1 && lecturerNameLower.includes(part)) {
+                            score += 5;
+                        }
+                    }
+                    
+                    // Bonus for exact match of the whole name
+                    if (lecturerNameLower === fullName.toLowerCase()) {
+                        score += 20;
+                    }
+                    
+                    // BIG BONUS for non-STAFF IDs (UUID format)
+                    if (!lecturerId.toString().startsWith('STAFF')) {
+                        score += 50; // Big bonus for non-STAFF
+                    }
+                    
+                    // Bonus for UUID format (contains hyphens)
+                    if (lecturerId.toString().includes('-')) {
+                        score += 30;
+                    }
+                    
+                    // Bonus if the name matches exactly with the auth user's name parts
+                    const authNameParts = fullName.toLowerCase().split(' ');
+                    let authMatchCount = 0;
+                    for (const part of authNameParts) {
+                        if (part.length > 1 && lecturerNameLower.includes(part)) {
+                            authMatchCount++;
+                        }
+                    }
+                    if (authMatchCount === authNameParts.length && authNameParts.length > 0) {
+                        score += 25; // All parts match
+                    }
+                    
+                    console.log(`   ${lecturerId} (${lecturerName}): score ${score}`);
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = lecturerId;
+                    }
+                }
+                
+                // Use the best match
+                if (bestMatch) {
+                    this.lecturerAssignmentId = bestMatch;
+                    console.log(`✅ Selected lecturer ID with score ${bestScore}:`, this.lecturerAssignmentId);
+                    return;
+                }
             }
             
             // Fallback: use auth ID
-            this.lecturerAssignmentId = profile.user_id;
+            this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
         } catch (error) {
@@ -102,10 +166,9 @@ const LecturerCourses = {
             }
             
             console.log('📊 Found assignments:', assignments?.length || 0);
-            console.log('📋 Assignment details:', assignments);
             
             if (!assignments || assignments.length === 0) {
-                console.warn('No assignments found');
+                console.warn('No assignments found for ID:', lecturerId);
                 this.courses = [];
                 this.filteredCourses = [];
                 this.renderTable();
@@ -130,11 +193,12 @@ const LecturerCourses = {
             }));
             
             console.log(`✅ Processed ${this.courses.length} units from assignments`);
+            console.log('📋 Units:', this.courses.map(c => c.course_name));
             
             // Get student counts
             await this.loadStudentCounts();
             
-            // Set filtered courses to ALL courses (don't filter by year)
+            // Set filtered courses to ALL courses
             this.filteredCourses = [...this.courses];
             
             this.renderTable();
@@ -201,7 +265,6 @@ const LecturerCourses = {
             intakeFilter.innerHTML = '<option value="">All Years</option>' +
                 years.map(y => `<option value="${y}">${y}</option>`).join('');
             
-            // Set default to first year or current year
             if (years.length > 0) {
                 intakeFilter.value = years[0];
             }
@@ -233,6 +296,7 @@ const LecturerCourses = {
                         <i class="fas fa-book" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
                         <h3 style="color: #475569; margin: 0 0 8px 0;">No Units Assigned</h3>
                         <p style="margin: 0; font-size: 14px;">You have not been assigned any units yet.</p>
+                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Contact the administrator for unit assignments.</p>
                     </td>
                 </tr>
             `;
@@ -525,4 +589,4 @@ window.clearCourseFilters = () => LecturerCourses.clearFilters();
 window.searchCourses = () => LecturerCourses.applyFilters();
 window.exportCourses = () => LecturerCourses.exportCourses();
 
-console.log('✅ LecturerCourses module loaded - Shows ALL assigned units');
+console.log('✅ LecturerCourses module loaded - Prioritizes non-STAFF IDs');
