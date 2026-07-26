@@ -28,1118 +28,1096 @@
             <span></span>
         </button>
 
-   <!-- ===== SIDEBAR - SUPER ADMIN STYLE (FIXED DROPDOWNS) ===== -->
-<aside class="sidebar" id="sidebar" style="
-    width: 280px;
-    height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    position: fixed;
-    left: 0;
-    top: 0;
-    padding: 24px 16px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
-    z-index: 999;
-    overflow-y: auto;
-    transition: all 0.3s ease;
-">
-    <!-- Sidebar Header -->
-    <div style="
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 0 12px 24px 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.2);
-        margin-bottom: 20px;
-    ">
-        <img 
-            src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-            alt="NCHSM Logo"
-            style="
-                width: 48px;
-                height: 48px;
-                border-radius: 12px;
-                background: white;
-                padding: 8px;
-                object-fit: contain;
-            "
-            onerror="this.style.display='none'"
-        >
-        <div>
-            <h2 style="font-size: 18px; font-weight: 700; margin: 0; color: white;">Lecturer Portal</h2>
-            <span style="font-size: 11px; opacity: 0.8; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px;">Lecturer</span>
-            <span style="font-size: 10px; opacity: 0.7; background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px; margin-left: 4px;" id="userProgramBadge">Loading...</span>
-        </div>
-    </div>
-
-    <!-- Navigation -->
-    <ul style="
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        flex: 1;
-        overflow-y: auto;
-    " id="mainNav">
-        <!-- DASHBOARD -->
-        <li style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                data-tab="dashboard" 
-                class="active"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    background: rgba(255,255,255,0.15);
-                    border-left: 3px solid white;
-                "
-            >
-                <i class="fas fa-tachometer-alt" style="width: 20px; text-align: center;"></i>
-                <span>Dashboard</span>
-                <span style="margin-left: auto; background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 11px;">3</span>
-            </a>
-        </li>
-        
-        <!-- PROFILE -->
-        <li style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                data-tab="profile"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-user" style="width: 20px; text-align: center;"></i>
-                <span>My Profile</span>
-            </a>
-        </li>
-        
-        <!-- MY COURSES -->
-        <li style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                data-tab="my-courses"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-book" style="width: 20px; text-align: center;"></i>
-                <span>My Courses</span>
-            </a>
-        </li>
-        
-        <!-- MY STUDENTS -->
-        <li style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                data-tab="my-students"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-users" style="width: 20px; text-align: center;"></i>
-                <span>My Students</span>
-                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="studentCountBadge">0</span>
-            </a>
-        </li>
-        
-        <!-- SCHEDULING DROPDOWN (NO ONCLICK - USES EVENT LISTENER) -->
-        <li class="nav-dropdown" style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                class="dropdown-toggle"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-calendar-alt" style="width: 20px; text-align: center;"></i>
-                <span>Scheduling</span>
-                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
-            </a>
-            <ul 
-                class="dropdown-menu"
-                style="
-                    list-style: none;
-                    padding: 4px 0 4px 20px;
-                    margin: 0;
-                    display: none;
-                "
-            >
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="sessions"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-calendar-plus" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Manage Sessions</span>
-                    </a>
-                </li>
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="attendance"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-clipboard-check" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Attendance</span>
-                        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="attendanceBadge">0</span>
-                    </a>
-                </li>
-            </ul>
-        </li>
-        
-        <!-- ACADEMIC DROPDOWN (NO ONCLICK - USES EVENT LISTENER) -->
-        <li class="nav-dropdown" style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                class="dropdown-toggle"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
-                <span>Academic</span>
-                <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
-            </a>
-            <ul 
-                class="dropdown-menu"
-                style="
-                    list-style: none;
-                    padding: 4px 0 4px 20px;
-                    margin: 0;
-                    display: none;
-                "
-            >
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="cats"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Exams / CATS</span>
-                        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="examBadge">0</span>
-                    </a>
-                </li>
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="marks-management"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Marks Management</span>
-                    </a>
-                </li>
-                <li>
-                    <a 
-                        href="#" 
-                        data-tab="resources"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.8);
-                            text-decoration: none;
-                            font-size: 13px;
-                            transition: all 0.2s;
-                        "
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                        onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                    >
-                        <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Resources</span>
-                    </a>
-                </li>
-            </ul>
-        </li>
-        
-        <!-- REPORTS -->
-        <li style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                data-tab="reports"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-chart-bar" style="width: 20px; text-align: center;"></i>
-                <span>Reports</span>
-            </a>
-        </li>
-        
-        <!-- NURSE IQ -->
-        <li style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                data-tab="nurse-iq"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-stethoscope" style="width: 20px; text-align: center;"></i>
-                <span>Nurse IQ</span>
-            </a>
-        </li>
-        
-        <!-- MESSAGES -->
-        <li style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                data-tab="messages"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-envelope" style="width: 20px; text-align: center;"></i>
-                <span>Messages</span>
-                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="messageBadge">0</span>
-            </a>
-        </li>
-        
-        <!-- CALENDAR -->
-        <li style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                data-tab="calendar"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-calendar" style="width: 20px; text-align: center;"></i>
-                <span>Calendar</span>
-            </a>
-        </li>
-        
-        <!-- SETTINGS -->
-        <li style="margin-bottom: 2px;">
-            <a 
-                href="#" 
-                data-tab="settings"
-                style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                "
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='transparent'"
-            >
-                <i class="fas fa-cog" style="width: 20px; text-align: center;"></i>
-                <span>Settings</span>
-            </a>
-        </li>
-    </ul>
-
-    <!-- LOGOUT -->
-    <div 
-        style="
-            border-top: 1px solid rgba(255,255,255,0.2);
-            padding-top: 16px;
-            margin-top: 8px;
-        "
-    >
-        <a 
-            href="#" 
-            id="logoutBtn"
-            onclick="logout()"
-            style="
+        <!-- ===== SIDEBAR - SUPER ADMIN STYLE (FIXED DROPDOWNS) ===== -->
+        <aside class="sidebar" id="sidebar" style="
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+            z-index: 999;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        ">
+            <!-- Sidebar Header -->
+            <div style="
                 display: flex;
                 align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: white;
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                cursor: pointer;
-            "
-            onmouseover="this.style.background='rgba(255,255,255,0.15)'"
-            onmouseout="this.style.background='transparent'"
-        >
-            <i class="fas fa-sign-out-alt" style="width: 20px; text-align: center;"></i>
-            <span>Logout</span>
-            <span style="margin-left: auto; font-size: 11px; opacity: 0.6;">⌘Q</span>
-        </a>
-    </div>
-</aside>
-        <!-- ===== MAIN CONTENT ===== -->
-        <main class="main" id="mainContent">
-            <!-- Header -->
-            <header>
+                gap: 14px;
+                padding: 0 12px 24px 12px;
+                border-bottom: 1px solid rgba(255,255,255,0.2);
+                margin-bottom: 20px;
+            ">
+                <img 
+                    src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                    alt="NCHSM Logo"
+                    style="
+                        width: 48px;
+                        height: 48px;
+                        border-radius: 12px;
+                        background: white;
+                        padding: 8px;
+                        object-fit: contain;
+                    "
+                    onerror="this.style.display='none'"
+                >
                 <div>
-                    <h1>Welcome, <span id="welcomeHeader">Lecturer</span>!</h1>
-                    <p class="subtitle" id="programSubtitle">Loading your program...</p>
+                    <h2 style="font-size: 18px; font-weight: 700; margin: 0; color: white;">Lecturer Portal</h2>
+                    <span style="font-size: 11px; opacity: 0.8; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px;">Lecturer</span>
+                    <span style="font-size: 10px; opacity: 0.7; background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px; margin-left: 4px;" id="userProgramBadge">Loading...</span>
                 </div>
-                <div class="header-right">
-                    <span class="header-date">
+            </div>
+
+            <!-- Navigation -->
+            <ul style="
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                flex: 1;
+                overflow-y: auto;
+            " id="mainNav">
+                <!-- DASHBOARD -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="dashboard" 
+                        class="active"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            background: rgba(255,255,255,0.15);
+                            border-left: 3px solid #FDB913;
+                        "
+                    >
+                        <i class="fas fa-tachometer-alt" style="width: 20px; text-align: center;"></i>
+                        <span>Dashboard</span>
+                        <span style="margin-left: auto; background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 11px;">3</span>
+                    </a>
+                </li>
+                
+                <!-- PROFILE -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="profile"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-user" style="width: 20px; text-align: center;"></i>
+                        <span>My Profile</span>
+                    </a>
+                </li>
+                
+                <!-- MY COURSES -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="my-courses"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-book" style="width: 20px; text-align: center;"></i>
+                        <span>My Courses</span>
+                        <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="courseCountBadge">0</span>
+                    </a>
+                </li>
+                
+                <!-- MY STUDENTS -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="my-students"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-users" style="width: 20px; text-align: center;"></i>
+                        <span>My Students</span>
+                        <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="studentCountBadge">0</span>
+                    </a>
+                </li>
+                
+                <!-- SCHEDULING DROPDOWN (NO ONCLICK - USES EVENT LISTENER) -->
+                <li class="nav-dropdown" style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        class="dropdown-toggle"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-calendar-alt" style="width: 20px; text-align: center;"></i>
+                        <span>Scheduling</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                    </a>
+                    <ul 
+                        class="dropdown-menu"
+                        style="
+                            list-style: none;
+                            padding: 4px 0 4px 20px;
+                            margin: 0;
+                            display: none;
+                        "
+                    >
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="sessions"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-calendar-plus" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Manage Sessions</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="attendance"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-clipboard-check" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Attendance</span>
+                                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="attendanceBadge">0</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+                <!-- ACADEMIC DROPDOWN (NO ONCLICK - USES EVENT LISTENER) -->
+                <li class="nav-dropdown" style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        class="dropdown-toggle"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
+                        <span>Academic</span>
+                        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+                    </a>
+                    <ul 
+                        class="dropdown-menu"
+                        style="
+                            list-style: none;
+                            padding: 4px 0 4px 20px;
+                            margin: 0;
+                            display: none;
+                        "
+                    >
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="cats"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Exams / CATS</span>
+                                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="examBadge">0</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="marks-management"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                    background: rgba(5,150,105,0.15);
+                                    border-left: 3px solid #10b981;
+                                "
+                                onmouseover="this.style.background='rgba(5,150,105,0.3)'; this.style.color='white'"
+                                onmouseout="this.style.background='rgba(5,150,105,0.15)'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-pen-alt" style="width: 18px; text-align: center; font-size: 12px; color: #10b981;"></i>
+                                <span>Marks Entry</span>
+                                <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="#" 
+                                data-tab="resources"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    padding: 8px 14px;
+                                    border-radius: 8px;
+                                    color: rgba(255,255,255,0.8);
+                                    text-decoration: none;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+                            >
+                                <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                                <span>Resources</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                
+                <!-- REPORTS -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="reports"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-chart-bar" style="width: 20px; text-align: center;"></i>
+                        <span>Reports</span>
+                    </a>
+                </li>
+                
+                <!-- MESSAGES -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="messages"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-envelope" style="width: 20px; text-align: center;"></i>
+                        <span>Messages</span>
+                        <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="messageBadge">0</span>
+                    </a>
+                </li>
+                
+                <!-- CALENDAR -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="calendar"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-calendar" style="width: 20px; text-align: center;"></i>
+                        <span>Calendar</span>
+                    </a>
+                </li>
+                
+                <!-- SETTINGS -->
+                <li style="margin-bottom: 2px;">
+                    <a 
+                        href="#" 
+                        data-tab="settings"
+                        style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-radius: 10px;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            transition: all 0.2s;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='transparent'"
+                    >
+                        <i class="fas fa-cog" style="width: 20px; text-align: center;"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+
+            <!-- LOGOUT -->
+            <div 
+                style="
+                    border-top: 1px solid rgba(255,255,255,0.2);
+                    padding-top: 16px;
+                    margin-top: 8px;
+                "
+            >
+                <a 
+                    href="#" 
+                    id="logoutBtn"
+                    onclick="logout()"
+                    style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        padding: 10px 14px;
+                        border-radius: 10px;
+                        color: white;
+                        text-decoration: none;
+                        font-size: 14px;
+                        font-weight: 500;
+                        transition: all 0.2s;
+                        cursor: pointer;
+                    "
+                    onmouseover="this.style.background='rgba(255,255,255,0.15)'"
+                    onmouseout="this.style.background='transparent'"
+                >
+                    <i class="fas fa-sign-out-alt" style="width: 20px; text-align: center;"></i>
+                    <span>Logout</span>
+                    <span style="margin-left: auto; font-size: 11px; opacity: 0.6;">⌘Q</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <main class="main" id="mainContent" style="
+            margin-left: 280px;
+            padding: 40px;
+            min-height: 100vh;
+            background: #f0f4ff;
+        ">
+            <!-- Header -->
+            <header style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 15px;
+                margin-bottom: 30px;
+            ">
+                <div>
+                    <h1 style="font-size: 28px; color: #0b1124; margin-bottom: 4px;">
+                        Welcome, <span id="welcomeHeader" style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Lecturer</span>!
+                    </h1>
+                    <p class="subtitle" id="programSubtitle" style="color: #64748b; font-size: 16px;">Loading your program...</p>
+                </div>
+                <div class="header-right" style="display: flex; align-items: center; gap: 20px;">
+                    <span class="header-date" style="color: #64748b; font-size: 14px;">
                         <i class="fas fa-calendar"></i> <span id="currentDate"></span>
                     </span>
-                    <span class="header-status">
-                        <span class="status-dot online"></span> Online
+                    <span class="header-status" style="display: flex; align-items: center; gap: 6px; font-size: 14px; color: #22c55e;">
+                        <span class="status-dot online" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #22c55e;"></span> Online
                     </span>
-                    <button class="btn btn-notification" id="notificationBtn">
+                    <button class="btn btn-notification" id="notificationBtn" style="background: none; border: none; font-size: 20px; color: #4C1D95; cursor: pointer; position: relative; padding: 8px; border-radius: 50%;">
                         <i class="fas fa-bell"></i>
                     </button>
-                    <button class="btn btn-help" id="helpBtn">
+                    <button class="btn btn-help" id="helpBtn" style="background: none; border: none; font-size: 20px; color: #4C1D95; cursor: pointer; padding: 8px; border-radius: 50%;">
                         <i class="fas fa-question-circle"></i>
                     </button>
                 </div>
             </header>
 
             <!-- Feedback Message -->
-            <div id="feedbackMessage" class="feedback-info"></div>
+            <div id="feedbackMessage" class="feedback-info" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px;"></div>
 
             <!-- ===== DASHBOARD SECTION ===== -->
-            <section id="dashboard-content" class="tab-content active">
+            <section id="dashboard-content" class="tab-content active" style="display: block; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-tachometer-alt"></i> Lecturer Dashboard</h2>
                 
-                <div id="welcomeBanner">
-                    <span class="info-icon">💡</span>
-                    <span id="welcomeBannerText">Loading your dashboard...</span>
+                <div id="welcomeBanner" style="background: linear-gradient(135deg, #f0f7ff, #e6f0fa); border-radius: 12px; padding: 15px 20px; margin-bottom: 25px; border-left: 4px solid #FDB913; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <span class="info-icon" style="font-size: 24px;">💡</span>
+                    <span id="welcomeBannerText" style="margin: 0; color: #0A3D62; font-weight: 500;">Loading your dashboard...</span>
                 </div>
                 
-                <div class="cards">
-                    <div class="card" data-tab="my-students">
-                        <h3><i class="fas fa-users"></i> Total Assigned Students</h3>
-                        <p class="data" id="totalStudentsCount">0</p>
-                        <div class="card-description">Students under your supervision</div>
+                <!-- Stats Cards Row 1 -->
+                <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                    <div class="card" data-tab="my-students" onclick="showTab('my-students')" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.2s; border-top: 4px solid #0A3D62;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
+                        <h3 style="color: #0A3D62; font-size: 14px;"><i class="fas fa-users"></i> Total Assigned Students</h3>
+                        <p class="data" id="totalStudentsCount" style="color: #0A3D62; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <div class="card-description" style="font-size: 12px; color: #6b7280;">Students under your supervision</div>
                     </div>
                     
-                    <div class="card" data-tab="my-courses">
-                        <h3><i class="fas fa-book"></i> Total Assigned Courses</h3>
-                        <p class="data" id="totalCoursesCount">0</p>
-                        <div class="card-description">Courses you're teaching this term</div>
+                    <div class="card" data-tab="my-courses" onclick="showTab('my-courses')" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.2s; border-top: 4px solid #10b981;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
+                        <h3 style="color: #059669; font-size: 14px;"><i class="fas fa-book"></i> Total Assigned Courses</h3>
+                        <p class="data" id="totalCoursesCount" style="color: #059669; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <div class="card-description" style="font-size: 12px; color: #6b7280;">Courses you're teaching this term</div>
                     </div>
                     
-                    <div class="card card-alert-danger" data-tab="my-students">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Students at Risk</h3>
-                        <p class="data" id="studentsAtRiskCount">0</p>
-                        <div class="card-description">Require immediate attention</div>
+                    <div class="card card-alert-danger" data-tab="my-students" onclick="showTab('my-students')" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.2s; border-top: 4px solid #ef4444;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
+                        <h3 style="color: #dc2626; font-size: 14px;"><i class="fas fa-exclamation-triangle"></i> Students at Risk</h3>
+                        <p class="data" id="studentsAtRiskCount" style="color: #dc2626; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <div class="card-description" style="font-size: 12px; color: #6b7280;">Require immediate attention</div>
                     </div>
                     
-                    <div class="card card-alert-warning" data-tab="attendance">
-                        <h3><i class="fas fa-clipboard-list"></i> Pending Attendance</h3>
-                        <p class="data" id="pendingAttendanceCount">0</p>
-                        <div class="card-description">Need verification or approval</div>
-                    </div>
-                    
-                    <div class="card card-alert-warning" data-tab="cats">
-                        <h3><i class="fas fa-file-signature"></i> Exams Due for Grading</h3>
-                        <p class="data" id="examsDueCount">0</p>
-                        <div class="card-description">Awaiting your evaluation</div>
-                    </div>
-                    
-                    <div class="card card-alert-primary" data-tab="messages">
-                        <h3><i class="fas fa-envelope"></i> Unread Messages</h3>
-                        <p class="data" id="unreadMessagesCount">0</p>
-                        <div class="card-description">Require your response</div>
+                    <div class="card card-alert-warning" data-tab="attendance" onclick="showTab('attendance')" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.2s; border-top: 4px solid #f59e0b;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
+                        <h3 style="color: #d97706; font-size: 14px;"><i class="fas fa-clipboard-list"></i> Pending Attendance</h3>
+                        <p class="data" id="pendingAttendanceCount" style="color: #d97706; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <div class="card-description" style="font-size: 12px; color: #6b7280;">Need verification or approval</div>
                     </div>
                 </div>
 
-                <div class="attendance-metrics-dashboard">
-                    <h3><i class="fas fa-chart-bar"></i> Attendance Overview</h3>
-                    <div class="metric-cards">
-                        <div class="metric-card">
-                            <div class="metric-value" id="todayAttendanceTotal">0</div>
-                            <div class="metric-label">Today's Total</div>
-                            <div class="metric-subtext" id="todayDateDisplay"></div>
+                <!-- Stats Cards Row 2 -->
+                <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                    <div class="card card-alert-warning" data-tab="cats" onclick="showTab('cats')" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.2s; border-top: 4px solid #8b5cf6;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
+                        <h3 style="color: #6d28d9; font-size: 14px;"><i class="fas fa-file-signature"></i> Exams Due for Grading</h3>
+                        <p class="data" id="examsDueCount" style="color: #6d28d9; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <div class="card-description" style="font-size: 12px; color: #6b7280;">Awaiting your evaluation</div>
+                    </div>
+                    
+                    <div class="card card-alert-primary" data-tab="messages" onclick="showTab('messages')" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.2s; border-top: 4px solid #3b82f6;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
+                        <h3 style="color: #1d4ed8; font-size: 14px;"><i class="fas fa-envelope"></i> Unread Messages</h3>
+                        <p class="data" id="unreadMessagesCount" style="color: #1d4ed8; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <div class="card-description" style="font-size: 12px; color: #6b7280;">Require your response</div>
+                    </div>
+                    
+                    <div class="card" data-tab="attendance" onclick="showTab('attendance')" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.2s; border-top: 4px solid #2563eb;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
+                        <h3 style="color: #1d4ed8; font-size: 14px;"><i class="fas fa-calendar-day"></i> Today's Check-ins</h3>
+                        <p class="data" id="todayAttendanceTotal" style="color: #1d4ed8; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <div class="card-description" style="font-size: 12px; color: #6b7280;">Students present today</div>
+                    </div>
+                    
+                    <div class="card" style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: none; color: white; cursor: default;">
+                        <h3 style="color: rgba(255,255,255,0.9); font-size: 14px;"><i class="fas fa-chart-line"></i> Avg Performance</h3>
+                        <p class="data" id="avgPerformance" style="color: white; font-size: 32px; font-weight: 800; margin: 8px 0;">0%</p>
+                        <div class="card-description" style="font-size: 12px; color: rgba(255,255,255,0.7);">Class average</div>
+                    </div>
+                </div>
+
+                <!-- Attendance Metrics Dashboard -->
+                <div class="attendance-metrics-dashboard" style="margin-bottom: 25px;">
+                    <h3 style="color: #0A3D62; margin-bottom: 15px;"><i class="fas fa-chart-bar"></i> Attendance Overview</h3>
+                    <div class="metric-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                        <div class="metric-card" style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center;">
+                            <div class="metric-value" id="todayAttendanceTotal2" style="font-size: 28px; font-weight: 800; color: #4C1D95;">0</div>
+                            <div class="metric-label" style="font-size: 13px; color: #6b7280;">Today's Total</div>
+                            <div class="metric-subtext" id="todayDateDisplay" style="font-size: 11px; color: #94a3b8;"></div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-value" id="weeklyAttendanceTotal">0</div>
-                            <div class="metric-label">This Week</div>
-                            <div class="metric-subtext">Students Present</div>
+                        <div class="metric-card" style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center;">
+                            <div class="metric-value" id="weeklyAttendanceTotal" style="font-size: 28px; font-weight: 800; color: #059669;">0</div>
+                            <div class="metric-label" style="font-size: 13px; color: #6b7280;">This Week</div>
+                            <div class="metric-subtext" style="font-size: 11px; color: #94a3b8;">Students Present</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-value" id="monthlyAttendanceRate">0%</div>
-                            <div class="metric-label">Monthly Rate</div>
-                            <div class="metric-subtext">Attendance</div>
+                        <div class="metric-card" style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center;">
+                            <div class="metric-value" id="monthlyAttendanceRate" style="font-size: 28px; font-weight: 800; color: #f59e0b;">0%</div>
+                            <div class="metric-label" style="font-size: 13px; color: #6b7280;">Monthly Rate</div>
+                            <div class="metric-subtext" style="font-size: 11px; color: #94a3b8;">Attendance</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-value" id="overallAttendanceTotal">0</div>
-                            <div class="metric-label">Overall Total</div>
-                            <div class="metric-subtext">All Time Records</div>
+                        <div class="metric-card" style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center;">
+                            <div class="metric-value" id="overallAttendanceTotal" style="font-size: 28px; font-weight: 800; color: #8b5cf6;">0</div>
+                            <div class="metric-label" style="font-size: 13px; color: #6b7280;">Overall Total</div>
+                            <div class="metric-subtext" style="font-size: 11px; color: #94a3b8;">All Time Records</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin: 25px 0;">
+                    <button onclick="showTab('attendance')" style="background: #4C1D95; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-clipboard-check"></i> Take Attendance
+                    </button>
+                    <button onclick="showTab('marks-management')" style="background: #10b981; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-pen-alt"></i> Enter Marks
+                    </button>
+                    <button onclick="showTab('sessions')" style="background: #3b82f6; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(59,130,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-calendar-plus"></i> Schedule Session
+                    </button>
+                    <button onclick="showTab('cats')" style="background: #f59e0b; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(245,158,11,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-file-alt"></i> Create Exam
+                    </button>
+                    <button onclick="showTab('resources')" style="background: #8b5cf6; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(139,92,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-upload"></i> Upload Resource
+                    </button>
+                    <button onclick="showTab('my-students')" style="background: #ef4444; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(239,68,68,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-users"></i> View Students
+                    </button>
+                </div>
+
+                <!-- Charts Section -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                    
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h4 style="margin: 0; color: #0A3D62; font-size: 1rem;">
+                                <i class="fas fa-chart-bar" style="color: #FDB913;"></i> Student Performance
+                            </h4>
+                            <span style="font-size: 0.75rem; color: #6b7280;">By Course</span>
+                        </div>
+                        <div style="height: 250px;">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h4 style="margin: 0; color: #0A3D62; font-size: 1rem;">
+                                <i class="fas fa-venus-mars" style="color: #FDB913;"></i> Student Distribution
+                            </h4>
+                            <span style="font-size: 0.75rem; color: #6b7280;">By Program</span>
+                        </div>
+                        <div style="height: 250px;">
+                            <canvas id="studentDistributionChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h4 style="margin: 0; color: #0A3D62; font-size: 1rem;">
+                                <i class="fas fa-calendar-check" style="color: #FDB913;"></i> Attendance Trend
+                            </h4>
+                            <span style="font-size: 0.75rem; color: #6b7280;">Last 7 days</span>
+                        </div>
+                        <div style="height: 250px;">
+                            <canvas id="attendanceTrendChart"></canvas>
                         </div>
                     </div>
                 </div>
             </section>
 
             <!-- ===== PROFILE SECTION ===== -->
-            <section id="profile-content" class="tab-content">
+            <section id="profile-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-user"></i> My Profile</h2>
                 
-                <div class="profile-card">
-                    <img id="profileImg" src="https://via.placeholder.com/120x120/4C1D95/FFFFFF?text=Profile" alt="Profile Photo" class="profile-avatar">
+                <div class="profile-card" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
+                    <img id="profileImg" src="https://via.placeholder.com/120x120/4C1D95/FFFFFF?text=Profile" alt="Profile Photo" class="profile-avatar" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #4C1D95;">
                     <div class="profile-info">
-                        <h3 id="profileNameDisplay">Loading...</h3>
-                        <p class="role" id="profileRoleDisplay">Lecturer</p>
-                        <span class="profile-status">Active</span>
-                        <div class="profile-actions">
-                            <button class="btn btn-action" id="editProfileBtn"><i class="fas fa-edit"></i> Edit Details</button>
-                            <button class="btn btn-action" id="updatePasswordBtn"><i class="fas fa-key"></i> Change Password</button>
-                            <button class="btn btn-action" id="updatePhotoBtn"><i class="fas fa-camera"></i> Change Photo</button>
+                        <h3 id="profileNameDisplay" style="color: #0A3D62; font-size: 22px;">Loading...</h3>
+                        <p class="role" id="profileRoleDisplay" style="color: #64748b;">Lecturer</p>
+                        <span class="profile-status" style="display: inline-block; padding: 4px 12px; background: #d1fae5; color: #059669; border-radius: 20px; font-size: 12px; font-weight: 600;">Active</span>
+                        <div class="profile-actions" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-action" id="editProfileBtn" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;"><i class="fas fa-edit"></i> Edit Details</button>
+                            <button class="btn btn-action" id="updatePasswordBtn" style="background: #f59e0b; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;"><i class="fas fa-key"></i> Change Password</button>
+                            <button class="btn btn-action" id="updatePhotoBtn" style="background: #8b5cf6; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;"><i class="fas fa-camera"></i> Change Photo</button>
                             <input type="file" id="photoUploadInput" accept="image/*" style="display: none;">
                         </div>
                     </div>
                 </div>
                 
-                <div class="profile-details-grid">
-                    <div class="detail-item"><strong>Employee ID</strong><span id="profileId">-</span></div>
-                    <div class="detail-item"><strong>Department</strong><span id="profileDept">-</span></div>
-                    <div class="detail-item"><strong>Email Address</strong><span id="profileEmail">-</span></div>
-                    <div class="detail-item"><strong>Phone Number</strong><span id="profilePhone">-</span></div>
-                    <div class="detail-item"><strong>Join Date</strong><span id="profileJoinDate">-</span></div>
-                    <div class="detail-item"><strong>Program Focus</strong><span id="profileProgramFocus">-</span></div>
+                <div class="profile-details-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div class="detail-item" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Employee ID</strong><span id="profileId" style="display: block; color: #1e293b;">-</span></div>
+                    <div class="detail-item" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Department</strong><span id="profileDept" style="display: block; color: #1e293b;">-</span></div>
+                    <div class="detail-item" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Email Address</strong><span id="profileEmail" style="display: block; color: #1e293b;">-</span></div>
+                    <div class="detail-item" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Phone Number</strong><span id="profilePhone" style="display: block; color: #1e293b;">-</span></div>
+                    <div class="detail-item" style="padding: 10px 0;"><strong>Join Date</strong><span id="profileJoinDate" style="display: block; color: #1e293b;">-</span></div>
+                    <div class="detail-item" style="padding: 10px 0;"><strong>Program Focus</strong><span id="profileProgramFocus" style="display: block; color: #1e293b;">-</span></div>
                 </div>
             </section>
 
-            <!-- ===== COURSES SECTION ===== -->
-            <section id="my-courses-content" class="tab-content">
+            <!-- ===== MY COURSES SECTION ===== -->
+            <section id="my-courses-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-book"></i> My Assigned Courses</h2>
                 
-                <div class="filter-controls">
-                    <h3>Courses for Current Academic Period</h3>
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label for="intakeYearFilter">Filter by Intake Year:</label>
-                            <select id="intakeYearFilter">
+                <div class="filter-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
+                    <h3 style="color: #0A3D62; margin-bottom: 15px;">Courses for Current Academic Period</h3>
+                    <div class="filter-row" style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="intakeYearFilter" style="font-weight: 600; font-size: 13px; color: #475569;">Filter by Intake Year:</label>
+                            <select id="intakeYearFilter" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="">All Intake Years</option>
                             </select>
                         </div>
-                        <div class="filter-group">
-                            <label for="academicPeriodFilter" id="academicPeriodLabel">Filter by Block:</label>
-                            <select id="academicPeriodFilter">
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="academicPeriodFilter" id="academicPeriodLabel" style="font-weight: 600; font-size: 13px; color: #475569;">Filter by Block:</label>
+                            <select id="academicPeriodFilter" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="">All Blocks</option>
                             </select>
                         </div>
                     </div>
                 </div>
                 
-                <div class="search-container">
-                    <input type="text" id="courseSearch" placeholder="Search courses by name or code...">
-                    <button class="btn btn-action" id="courseSearchBtn"><i class="fas fa-search"></i> Search</button>
+                <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <input type="text" id="courseSearch" placeholder="Search courses by name or code..." style="flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                    <button class="btn btn-action" id="courseSearchBtn" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-search"></i> Search</button>
                 </div>
                 
-                <div class="table-responsive">
-                    <table>
+                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                         <thead>
-                            <tr>
-                                <th>Course Code</th>
-                                <th>Course Name</th>
-                                <th>Program</th>
-                                <th>Block</th>
-                                <th>Intake Year</th>
-                                <th>Total Students</th>
-                                <th>Action</th>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course Code</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course Name</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Intake Year</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Total Students</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="lecturerCoursesTable">
-                            <tr><td colspan="7">Loading courses...</td></tr>
+                            <tr><td colspan="7" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading courses...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- ===== STUDENTS SECTION ===== -->
-            <section id="my-students-content" class="tab-content">
+            <!-- ===== MY STUDENTS SECTION ===== -->
+            <section id="my-students-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-users"></i> Students Under My Supervision</h2>
                 
-                <div class="filter-controls" id="studentFilterControls">
-                    <h4><i class="fas fa-filter"></i> Filter Students</h4>
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <label for="studentIntakeFilter">Intake Year</label>
-                            <select id="studentIntakeFilter">
+                <div class="filter-controls" id="studentFilterControls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
+                    <h4 style="color: #0A3D62; margin-bottom: 15px;"><i class="fas fa-filter"></i> Filter Students</h4>
+                    <div class="filter-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="studentIntakeFilter" style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year</label>
+                            <select id="studentIntakeFilter" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="all">All Intakes</option>
                             </select>
                         </div>
-                        <div class="filter-group">
-                            <label for="studentStatusFilter">Status</label>
-                            <select id="studentStatusFilter">
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="studentStatusFilter" style="font-weight: 600; font-size: 13px; color: #475569;">Status</label>
+                            <select id="studentStatusFilter" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="all">All Statuses</option>
                                 <option value="Active">Active</option>
                                 <option value="Probation">Probation</option>
                                 <option value="Inactive">Inactive</option>
                             </select>
                         </div>
-                        <div class="filter-group">
-                            <label for="studentRiskFilter">Risk Level</label>
-                            <select id="studentRiskFilter">
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="studentRiskFilter" style="font-weight: 600; font-size: 13px; color: #475569;">Risk Level</label>
+                            <select id="studentRiskFilter" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="all">All Students</option>
                                 <option value="at-risk">At Risk Only</option>
                             </select>
                         </div>
-                        <div class="filter-group">
-                            <label for="studentSearch">Search</label>
-                            <input type="text" id="studentSearch" placeholder="Search by name or ID...">
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="studentSearch" style="font-weight: 600; font-size: 13px; color: #475569;">Search</label>
+                            <input type="text" id="studentSearch" placeholder="Search by name or ID..." style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
                     </div>
-                    <div class="student-stats" id="studentStats"></div>
+                    <div class="student-stats" id="studentStats" style="margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 8px; font-size: 14px; color: #475569;"></div>
                 </div>
                 
-                <div class="table-responsive">
-                    <table class="students-table">
+                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <table class="students-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
                         <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Reg. No.</th>
-                                <th>Email</th>
-                                <th>Program</th>
-                                <th>Intake</th>
-                                <th>Status</th>
-                                <th>Absences</th>
-                                <th>Action</th>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Name</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Reg. No.</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Email</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Intake</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Status</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Absences</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="studentsTableBody">
-                            <tr><td colspan="8">Loading students...</td></tr>
+                            <tr><td colspan="8" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading students...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
             <!-- ===== SESSIONS SECTION ===== -->
-            <section id="sessions-content" class="tab-content">
+            <section id="sessions-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-calendar-alt"></i> Schedule a New Session</h2>
                 
-                <form id="addSessionForm" class="check-in-controls">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="sessionTopic">Session Topic</label>
-                            <input type="text" id="sessionTopic" placeholder="e.g., Maternal Health - Block A" required>
+                <form id="addSessionForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); scheduleSession();">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="sessionTopic" style="font-weight: 600; font-size: 13px; color: #475569;">Session Topic</label>
+                            <input type="text" id="sessionTopic" placeholder="e.g., Maternal Health - Block A" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
-                        <div class="form-group">
-                            <label for="sessionDate">Date</label>
-                            <input type="date" id="sessionDate" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="sessionDate" style="font-weight: 600; font-size: 13px; color: #475569;">Date</label>
+                            <input type="date" id="sessionDate" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
-                        <div class="form-group">
-                            <label for="sessionTime">Time</label>
-                            <input type="time" id="sessionTime" required>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="sessionProgram">Program</label>
-                            <select id="sessionProgram" required></select>
-                        </div>
-                        <div class="form-group">
-                            <label for="sessionBlockTerm">Block/Term</label>
-                            <select id="sessionBlockTerm" required></select>
-                        </div>
-                        <div class="form-group">
-                            <label for="sessionCourseId">Course</label>
-                            <select id="sessionCourseId" required></select>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="sessionTime" style="font-weight: 600; font-size: 13px; color: #475569;">Time</label>
+                            <input type="time" id="sessionTime" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-action">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="sessionProgram" style="font-weight: 600; font-size: 13px; color: #475569;">Program</label>
+                            <select id="sessionProgram" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
+                        </div>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="sessionBlockTerm" style="font-weight: 600; font-size: 13px; color: #475569;">Block/Term</label>
+                            <select id="sessionBlockTerm" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
+                        </div>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="sessionCourseId" style="font-weight: 600; font-size: 13px; color: #475569;">Course</label>
+                            <select id="sessionCourseId" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-action" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-calendar-plus"></i> Schedule Session
                     </button>
                 </form>
                 
-                <h3>Upcoming Sessions</h3>
-                <div class="table-responsive">
-                    <table>
+                <h3 style="color: #0A3D62; margin-bottom: 15px;">Upcoming Sessions</h3>
+                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                         <thead>
-                            <tr>
-                                <th>Topic</th>
-                                <th>Date/Time</th>
-                                <th>Course</th>
-                                <th>Program/Block</th>
-                                <th>Attendance Link</th>
-                                <th>Action</th>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Topic</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date/Time</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program/Block</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Attendance Link</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="sessionsTable">
-                            <tr><td colspan="6">Loading sessions...</td></tr>
+                            <tr><td colspan="6" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading sessions...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
-           <!-- ===== ATTENDANCE SECTION ===== -->
-<section id="attendance-content" class="tab-content">
-    <h2><i class="fas fa-clipboard-check"></i> Attendance Management</h2>
-    
-    <!-- Program Indicator Banner -->
-    <div class="program-indicator-banner" style="
-        background: linear-gradient(135deg, #4f46e5, #7c3aed);
-        color: white;
-        padding: 12px 20px;
-        border-radius: 12px;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 10px;
-    ">
-        <div>
-            <i class="fas fa-graduation-cap"></i>
-            <strong id="programDisplayName">KRCHN Nursing</strong>
-            <span id="programTypeBadge" style="
-                background: rgba(255,255,255,0.2);
-                padding: 2px 12px;
-                border-radius: 20px;
-                font-size: 12px;
-                margin-left: 10px;
-            ">Nursing</span>
-        </div>
-        <div style="font-size: 13px; opacity: 0.9;">
-            <i class="fas fa-calendar"></i>
-            <span id="currentBlockDisplay">Introductory Block</span>
-            <span style="margin: 0 8px;">|</span>
-            <i class="fas fa-users"></i>
-            <span id="studentCountDisplay">0 Students</span>
-        </div>
-    </div>
-
-    <!-- ============================================
-         📊 ATTENDANCE FILTERS & EXPORT
-         ============================================ -->
-    
-    <div class="attendance-filters">
-        <div class="filter-row">
-            <div class="filter-group">
-                <label>📅 Date</label>
-                <input type="date" id="filterDate" onchange="applyAttendanceFilters()">
-            </div>
-            
-            <div class="filter-group">
-                <label id="blockFilterLabel">📚 Block/Term</label>
-                <select id="filterBlock" onchange="applyAttendanceFilters()">
-                    <option value="All">All Blocks/Terms</option>
-                    <!-- Dynamically populated -->
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label>📅 Year</label>
-                <select id="filterYear" onchange="applyAttendanceFilters()">
-                    <option value="All">All Years</option>
-                    <!-- Dynamically populated -->
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label>📋 Session Type</label>
-                <select id="filterSessionType" onchange="applyAttendanceFilters()">
-                    <option value="All">All Types</option>
-                    <option value="Class">Class</option>
-                    <option value="Clinical">Clinical</option>
-                    <option value="Lab">Lab</option>
-                    <option value="Tutorial">Tutorial</option>
-                    <option value="Exam">Exam</option>
-                </select>
-            </div>
-        </div>
-        
-        <div class="filter-row">
-            <div class="filter-group search-group">
-                <label>🔍 Search</label>
-                <input type="text" id="filterSearch" placeholder="Search by name, reg no, or course..." oninput="applyAttendanceFilters()">
-            </div>
-            
-            <div class="filter-group action-group">
-                <button class="btn btn-primary" onclick="applyAttendanceFilters()">
-                    <i class="fas fa-filter"></i> Apply Filters
-                </button>
-                <button class="btn btn-success" onclick="exportAttendanceCSV()">
-                    <i class="fas fa-file-csv"></i> Export CSV
-                </button>
-                <button class="btn btn-secondary" onclick="printAttendanceReport()">
-                    <i class="fas fa-print"></i> Print
-                </button>
-                <button class="btn btn-outline" onclick="resetAttendanceFilters()">
-                    <i class="fas fa-undo"></i> Reset
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- ============================================
-         📊 ATTENDANCE STATS
-         ============================================ -->
-    
-    <div class="attendance-stats">
-        <div class="stat-card">
-            <span class="stat-number" id="todayPresent">0</span>
-            <span class="stat-label">✅ Present Today</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-number" id="todayAbsent">0</span>
-            <span class="stat-label">❌ Absent Today</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-number" id="todayPending">0</span>
-            <span class="stat-label">⏳ Pending</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-number" id="attendanceRate">0%</span>
-            <span class="stat-label">📊 Attendance Rate</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-number" id="filteredCount">0</span>
-            <span class="stat-label">📋 Records Found</span>
-        </div>
-    </div>
-    
-    <!-- ============================================
-         👨‍🏫 LECTURER CHECK-IN
-         ============================================ -->
-    
-    <div class="check-in-controls">
-        <h4>👨‍🏫 Lecturer Geo-Check-in</h4>
-        <p>Mark your own attendance for record-keeping.</p>
-        <button id="lecturerCheckinBtn" class="btn btn-action">
-            <i class="fas fa-map-marker-alt"></i> Mark My Attendance
-        </button>
-    </div>
-    
-    <!-- ============================================
-         📝 MANUAL STUDENT ATTENDANCE
-         ============================================ -->
-    
-    <form id="manualAttendanceForm" class="check-in-controls">
-        <h4>📝 Manual Student Attendance Entry</h4>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="attStudentId">Student</label>
-                <select id="attStudentId" required></select>
-            </div>
-            <div class="form-group">
-                <label for="attSessionType">Session Type</label>
-                <select id="attSessionType" required>
-                    <option value="">-- Session Type --</option>
-                    <option value="Class">Class</option>
-                    <option value="Clinical">Clinical/Practicum</option>
-                    <option value="Exam">Exam/CAT</option>
-                    <option value="Lab">Lab</option>
-                    <option value="Tutorial">Tutorial</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="attCourseId">Course</label>
-                <select id="attCourseId"></select>
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="attLocation">Location</label>
-                <input type="text" id="attLocation" placeholder="e.g., Lecture Hall 3">
-            </div>
-            <div class="form-group">
-                <label for="attDate">Date</label>
-                <input type="date" id="attDate" required>
-            </div>
-            <div class="form-group">
-                <label for="attTime">Time</label>
-                <input type="time" id="attTime">
-            </div>
-        </div>
-        <button type="submit" class="btn btn-action">
-            <i class="fas fa-user-check"></i> Mark Student Present
-        </button>
-    </form>
-
-    <!-- ============================================
-         📊 TODAY'S ATTENDANCE LOGS (ENHANCED)
-         ============================================ -->
-    
-    <div class="todays-attendance-section">
-        <h3><i class="fas fa-calendar-day"></i> Today's Attendance Logs</h3>
-        <div class="table-responsive">
-            <table class="todays-attendance-table">
-                <thead>
-                    <tr>
-                        <th>Student Name</th>
-                        <th>Reg No</th>
-                        <th>Program</th>
-                        <th>Block/Term</th>
-                        <th>Year</th>
-                        <th>Session Type</th>
-                        <th>Course/Target</th>
-                        <th>Date/Time</th>
-                        <th>Location</th>
-                        <th>Distance</th>
-                        <th>Status</th>
-                        <th>Map</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceTable">
-                    <tr><td colspan="12">Loading attendance...</td></tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="table-footer">
-            <div class="pagination-info">
-                Showing <span id="filteredCount">0</span> records
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================
-         📋 PAST ATTENDANCE RECORDS (ENHANCED)
-         ============================================ -->
-    
-    <div class="past-attendance-section">
-        <h3><i class="fas fa-history"></i> Past Attendance Records</h3>
-        <div class="filter-controls">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="pastAttendanceDateFilter">📅 Date:</label>
-                    <input type="date" id="pastAttendanceDateFilter" onchange="filterPastAttendance()">
+            <!-- ===== ATTENDANCE SECTION ===== -->
+            <section id="attendance-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+                <h2><i class="fas fa-clipboard-check"></i> Attendance Management</h2>
+                
+                <!-- Program Indicator Banner -->
+                <div class="program-indicator-banner" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; color: white;">
+                    <div>
+                        <i class="fas fa-graduation-cap"></i>
+                        <strong id="programDisplayName">KRCHN Nursing</strong>
+                        <span id="programTypeBadge" style="background: rgba(255,255,255,0.2); padding: 2px 12px; border-radius: 20px; font-size: 12px; margin-left: 10px;">Nursing</span>
+                    </div>
+                    <div style="font-size: 13px; opacity: 0.9;">
+                        <i class="fas fa-calendar"></i>
+                        <span id="currentBlockDisplay">Introductory Block</span>
+                        <span style="margin: 0 8px;">|</span>
+                        <i class="fas fa-users"></i>
+                        <span id="studentCountDisplay">0 Students</span>
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <label for="pastAttendanceTypeFilter">📋 Session Type:</label>
-                    <select id="pastAttendanceTypeFilter" onchange="filterPastAttendance()">
-                        <option value="all">All Types</option>
-                        <option value="Class">Class</option>
-                        <option value="Clinical">Clinical</option>
-                        <option value="Exam">Exam</option>
-                        <option value="Lab">Lab</option>
-                        <option value="Tutorial">Tutorial</option>
-                        <option value="Lecturer Check-in">Lecturer</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label>🔍 Search:</label>
-                    <input type="text" id="pastAttendanceSearch" placeholder="Search records..." oninput="filterPastAttendance()">
-                </div>
-            </div>
-        </div>
-        <div class="table-responsive">
-            <table class="past-attendance-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Name</th>
-                        <th>Reg No</th>
-                        <th>Program</th>
-                        <th>Block/Term</th>
-                        <th>Session Type</th>
-                        <th>Course</th>
-                        <th>Time</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                        <th>Recorded By</th>
-                    </tr>
-                </thead>
-                <tbody id="pastAttendanceTable">
-                    <tr><td colspan="11">Loading past attendance records...</td></tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="table-footer">
-            <div class="pagination-info">
-                Showing <span id="pastAttendanceCount">0</span> records
-            </div>
-        </div>
-    </div>
 
-    <!-- Map Modal -->
-    <div id="mapModal" class="modal">
-        <div class="modal-content">
-            <span class="close" id="closeMapModal">&times;</span>
-            <p id="mapDetails"></p>
-            <div id="mapbox-map"></div>
-        </div>
-    </div>
-</section>
-            <!-- ===== EXAMS SECTION ===== -->
-            <section id="cats-content" class="tab-content">
+                <!-- Attendance Filters -->
+                <div class="attendance-filters" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
+                    <div class="filter-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">📅 Date</label>
+                            <input type="date" id="filterDate" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label id="blockFilterLabel" style="font-weight: 600; font-size: 13px; color: #475569;">📚 Block/Term</label>
+                            <select id="filterBlock" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                                <option value="All">All Blocks/Terms</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">📅 Year</label>
+                            <select id="filterYear" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                                <option value="All">All Years</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">📋 Session Type</label>
+                            <select id="filterSessionType" onchange="applyAttendanceFilters()" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                                <option value="All">All Types</option>
+                                <option value="Class">Class</option>
+                                <option value="Clinical">Clinical</option>
+                                <option value="Lab">Lab</option>
+                                <option value="Tutorial">Tutorial</option>
+                                <option value="Exam">Exam</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-row" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                        <div class="filter-group search-group" style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 5px;">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">🔍 Search</label>
+                            <input type="text" id="filterSearch" placeholder="Search by name, reg no, or course..." oninput="applyAttendanceFilters()" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div class="filter-group action-group" style="display: flex; gap: 10px;">
+                            <button class="btn btn-primary" onclick="applyAttendanceFilters()" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-filter"></i> Apply Filters</button>
+                            <button class="btn btn-success" onclick="exportAttendanceCSV()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-file-csv"></i> Export CSV</button>
+                            <button class="btn btn-secondary" onclick="printAttendanceReport()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-print"></i> Print</button>
+                            <button class="btn btn-outline" onclick="resetAttendanceFilters()" style="background: transparent; color: #475569; border: 2px solid #e2e8f0; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-undo"></i> Reset</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Stats -->
+                <div class="attendance-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="stat-card" style="background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                        <span class="stat-number" id="todayPresent" style="font-size: 24px; font-weight: 800; color: #10b981;">0</span>
+                        <span class="stat-label" style="display: block; font-size: 12px; color: #6b7280;">✅ Present Today</span>
+                    </div>
+                    <div class="stat-card" style="background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                        <span class="stat-number" id="todayAbsent" style="font-size: 24px; font-weight: 800; color: #ef4444;">0</span>
+                        <span class="stat-label" style="display: block; font-size: 12px; color: #6b7280;">❌ Absent Today</span>
+                    </div>
+                    <div class="stat-card" style="background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                        <span class="stat-number" id="todayPending" style="font-size: 24px; font-weight: 800; color: #f59e0b;">0</span>
+                        <span class="stat-label" style="display: block; font-size: 12px; color: #6b7280;">⏳ Pending</span>
+                    </div>
+                    <div class="stat-card" style="background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                        <span class="stat-number" id="attendanceRate" style="font-size: 24px; font-weight: 800; color: #4C1D95;">0%</span>
+                        <span class="stat-label" style="display: block; font-size: 12px; color: #6b7280;">📊 Attendance Rate</span>
+                    </div>
+                    <div class="stat-card" style="background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                        <span class="stat-number" id="filteredCount" style="font-size: 24px; font-weight: 800; color: #8b5cf6;">0</span>
+                        <span class="stat-label" style="display: block; font-size: 12px; color: #6b7280;">📋 Records Found</span>
+                    </div>
+                </div>
+
+                <!-- Lecturer Check-in -->
+                <div class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
+                    <h4 style="color: #0A3D62;">👨‍🏫 Lecturer Geo-Check-in</h4>
+                    <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">Mark your own attendance for record-keeping.</p>
+                    <button id="lecturerCheckinBtn" class="btn btn-action" onclick="lecturerCheckin()" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-map-marker-alt"></i> Mark My Attendance
+                    </button>
+                </div>
+
+                <!-- Manual Student Attendance -->
+                <form id="manualAttendanceForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); markAttendance();">
+                    <h4 style="color: #0A3D62;">📝 Manual Student Attendance Entry</h4>
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="attStudentId" style="font-weight: 600; font-size: 13px; color: #475569;">Student</label>
+                            <select id="attStudentId" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
+                        </div>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="attSessionType" style="font-weight: 600; font-size: 13px; color: #475569;">Session Type</label>
+                            <select id="attSessionType" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                                <option value="">-- Session Type --</option>
+                                <option value="Class">Class</option>
+                                <option value="Clinical">Clinical/Practicum</option>
+                                <option value="Exam">Exam/CAT</option>
+                                <option value="Lab">Lab</option>
+                                <option value="Tutorial">Tutorial</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="attCourseId" style="font-weight: 600; font-size: 13px; color: #475569;">Course</label>
+                            <select id="attCourseId" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
+                        </div>
+                    </div>
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="attLocation" style="font-weight: 600; font-size: 13px; color: #475569;">Location</label>
+                            <input type="text" id="attLocation" placeholder="e.g., Lecture Hall 3" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="attDate" style="font-weight: 600; font-size: 13px; color: #475569;">Date</label>
+                            <input type="date" id="attDate" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="attTime" style="font-weight: 600; font-size: 13px; color: #475569;">Time</label>
+                            <input type="time" id="attTime" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-action" style="background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-user-check"></i> Mark Student Present
+                    </button>
+                </form>
+
+                <!-- Today's Attendance Logs -->
+                <div class="todays-attendance-section" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
+                    <h3 style="color: #0A3D62; margin-bottom: 15px;"><i class="fas fa-calendar-day"></i> Today's Attendance Logs</h3>
+                    <div class="table-responsive" style="overflow-x: auto;">
+                        <table class="todays-attendance-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead>
+                                <tr style="background: #f8fafc;">
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Student Name</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Reg No</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block/Term</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Year</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Session Type</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course/Target</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date/Time</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Location</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTable">
+                                <tr><td colspan="10" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading attendance...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Past Attendance Records -->
+                <div class="past-attendance-section" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <h3 style="color: #0A3D62; margin-bottom: 15px;"><i class="fas fa-history"></i> Past Attendance Records</h3>
+                    <div class="table-responsive" style="overflow-x: auto;">
+                        <table class="past-attendance-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead>
+                                <tr style="background: #f8fafc;">
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Name</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Reg No</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block/Term</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Session Type</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Time</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Location</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pastAttendanceTable">
+                                <tr><td colspan="10" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading past attendance records...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== EXAMS / CATS SECTION ===== -->
+            <section id="cats-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-file-alt"></i> Exam & CAT Management</h2>
                 
-                <form id="addExamForm" class="check-in-controls">
-                    <h4>Create New Exam / CAT Record</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="examTitle">Exam/CAT Title *</label>
-                            <input type="text" id="examTitle" placeholder="e.g., Block A Mid-Term CAT" required>
+                <form id="addExamForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); createExam();">
+                    <h4 style="color: #0A3D62;">Create New Exam / CAT Record</h4>
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examTitle" style="font-weight: 600; font-size: 13px; color: #475569;">Exam/CAT Title *</label>
+                            <input type="text" id="examTitle" placeholder="e.g., Block A Mid-Term CAT" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
-                        <div class="form-group">
-                            <label for="examDate">Date *</label>
-                            <input type="date" id="examDate" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examDate" style="font-weight: 600; font-size: 13px; color: #475569;">Date *</label>
+                            <input type="date" id="examDate" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
-                        <div class="form-group">
-                            <label for="examType">Exam Type *</label>
-                            <select id="examType" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examType" style="font-weight: 600; font-size: 13px; color: #475569;">Exam Type *</label>
+                            <select id="examType" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="">-- Select Type --</option>
                                 <option value="CAT">CAT</option>
                                 <option value="Exam">End of Block Exam</option>
@@ -1147,14 +1125,14 @@
                             </select>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="examProgram">Program *</label>
-                            <select id="examProgram" required></select>
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examProgram" style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
+                            <select id="examProgram" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
                         </div>
-                        <div class="form-group">
-                            <label for="examIntake">Intake Year *</label>
-                            <select id="examIntake" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examIntake" style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year *</label>
+                            <select id="examIntake" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="">-- Select Intake --</option>
                                 <option value="2024">2024</option>
                                 <option value="2025">2025</option>
@@ -1163,37 +1141,37 @@
                                 <option value="2028">2028</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label for="examBlockTerm">Block/Term *</label>
-                            <select id="examBlockTerm" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examBlockTerm" style="font-weight: 600; font-size: 13px; color: #475569;">Block/Term *</label>
+                            <select id="examBlockTerm" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="">-- Select Block/Term --</option>
                             </select>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="examCourseId">Course</label>
-                            <select id="examCourseId">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examCourseId" style="font-weight: 600; font-size: 13px; color: #475569;">Course</label>
+                            <select id="examCourseId" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="">-- Select Course (Optional) --</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label for="examStartTime">Start Time</label>
-                            <input type="time" id="examStartTime">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examStartTime" style="font-weight: 600; font-size: 13px; color: #475569;">Start Time</label>
+                            <input type="time" id="examStartTime" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
-                        <div class="form-group">
-                            <label for="examDurationMinutes">Duration (minutes) *</label>
-                            <input type="number" id="examDurationMinutes" placeholder="e.g., 120" min="1" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examDurationMinutes" style="font-weight: 600; font-size: 13px; color: #475569;">Duration (minutes) *</label>
+                            <input type="number" id="examDurationMinutes" placeholder="e.g., 120" min="1" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="examLink">Online Link (Optional)</label>
-                            <input type="url" id="examLink" placeholder="https://...">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examLink" style="font-weight: 600; font-size: 13px; color: #475569;">Online Link (Optional)</label>
+                            <input type="url" id="examLink" placeholder="https://..." style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
-                        <div class="form-group">
-                            <label for="examStatus">Status *</label>
-                            <select id="examStatus" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="examStatus" style="font-weight: 600; font-size: 13px; color: #475569;">Status *</label>
+                            <select id="examStatus" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="Scheduled">Scheduled</option>
                                 <option value="InProgress">In Progress</option>
                                 <option value="Completed">Completed</option>
@@ -1201,242 +1179,215 @@
                             </select>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-action">
+                    <button type="submit" class="btn btn-action" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-plus-circle"></i> Create Exam Record
                     </button>
                 </form>
                 
-                <h3>My Exams & CATs</h3>
-                <div class="search-container">
-                    <input type="text" id="examSearch" placeholder="Search exams by title, course, or type...">
-                    <button class="btn btn-action" id="examSearchBtn"><i class="fas fa-search"></i> Search</button>
+                <h3 style="color: #0A3D62; margin-bottom: 15px;">My Exams & CATs</h3>
+                <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <input type="text" id="examSearch" placeholder="Search exams by title, course, or type..." style="flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                    <button class="btn btn-action" id="examSearchBtn" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-search"></i> Search</button>
                 </div>
-                <div class="table-responsive">
-                    <table>
+                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                         <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Title</th>
-                                <th>Course</th>
-                                <th>Program/Block</th>
-                                <th>Date/Time</th>
-                                <th>Duration</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Type</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Title</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program/Block</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date/Time</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Duration</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Status</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="examsTable">
-                            <tr><td colspan="8">Loading exams...</td></tr>
+                            <tr><td colspan="8" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading exams...</td></tr>
                         </tbody>
                     </table>
                 </div>
-               </section>
-<!-- ============================================================
-     MARKS MANAGEMENT SECTION - LECTURER VIEW
-     AUTO-DETECTED ASSESSMENT TYPE FROM ADMIN SETTINGS
-     NO COLUMN MANAGEMENT - READ ONLY
-     TERMINOLOGY: "Unit" instead of "Subject"
-     ============================================================ -->
-<section id="marks-management-content" class="tab-content">
-    <div class="marks-system-header">
-        <h2><i class="fas fa-chart-line"></i> Marks Management</h2>
-        <p>Enter marks for your assigned units. All submissions require admin approval before finalization.</p>
-        <p style="font-size: 13px; color: #6b7280; margin-top: 4px;">
-            <i class="fas fa-info-circle"></i> Column visibility and assessment type are managed by the Administrator.
-        </p>
-    </div>
-    
-    <!-- Lecturer Program Banner -->
-    <div id="lecturerProgramBanner" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div>
-            <i class="fas fa-user-graduate" style="color: white; font-size: 20px;"></i>
-            <span style="color: white; font-weight: 600; margin-left: 10px;">
-                <span id="lecturerProgramName">Loading...</span>
-            </span>
-            <span id="lecturerProgramBadge" style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; color: white; font-size: 12px; margin-left: 10px;">
-                <i class="fas fa-graduation-cap"></i> <span id="lecturerProgramType">Loading...</span>
-            </span>
-        </div>
-        <div style="color: rgba(255,255,255,0.9); font-size: 13px;">
-            <i class="fas fa-book"></i> <span id="lecturerUnitCount">0</span> Units Assigned
-        </div>
-    </div>
-    
-    <!-- Stats Cards -->
-    <div class="cards">
-        <div class="card" onclick="loadLecturerMarksEntry()" style="cursor: pointer; border-top: 4px solid #4C1D95;">
-            <h3>Total Students</h3>
-            <p class="data" id="lecTotalStudents">0</p>
-            <p class="minor-data">Under your supervision</p>
-        </div>
-        <div class="card" onclick="loadLecturerMarksEntry()" style="cursor: pointer; border-top: 4px solid #f59e0b;">
-            <h3>Pending Approval</h3>
-            <p class="data" id="lecPendingApproval">0</p>
-            <p class="minor-data">Awaiting admin review</p>
-        </div>
-        <div class="card" style="border-top: 4px solid #10b981;">
-            <h3>Approved Marks</h3>
-            <p class="data" id="lecApprovedMarks">0</p>
-            <p class="minor-data">Finalized by admin</p>
-        </div>
-        <div class="card" style="border-top: 4px solid #6366f1;">
-            <h3>Average Score</h3>
-            <p class="data" id="lecAvgScore">0%</p>
-            <p class="minor-data">Across all units</p>
-        </div>
-    </div>
-    
-    <!-- Approval Status Banner -->
-    <div id="approvalStatusBanner" style="display: none; background: #fef3c7; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div>
-                <i class="fas fa-clock" style="color: #d97706;"></i>
-                <strong>Approval Status:</strong>
-                <span id="approvalStatusText">Pending Admin Approval</span>
-                <span id="approvalStatusBadge" class="badge badge-warning" style="margin-left: 10px;">⏳ Pending</span>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button id="submitForApprovalBtn" class="btn btn-action" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;" onclick="submitMarksForApproval()">
-                    <i class="fas fa-paper-plane"></i> Submit for Approval
-                </button>
-                <button id="withdrawApprovalBtn" class="btn btn-action" style="background: #dc2626; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; display: none;" onclick="withdrawMarksFromApproval()">
-                    <i class="fas fa-undo"></i> Withdraw
-                </button>
-            </div>
-        </div>
-        <div id="approvalDetails" style="margin-top: 10px; font-size: 13px; color: #92400e; display: none;">
-            <p><strong>Submitted:</strong> <span id="submittedDate">-</span></p>
-            <p><strong>Submitted By:</strong> <span id="submittedBy">-</span></p>
-            <p id="rejectionReason" style="color: #dc2626; display: none;"><strong>Rejection Reason:</strong> <span id="rejectionReasonText">-</span></p>
-        </div>
-    </div>
-    
-    <!-- Selectors -->
-    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
-            <!-- Program - Auto-detected and locked -->
-            <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-tag"></i> Program
-                </label>
-                <select id="me_program_select" class="form-control" disabled style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f3f4f6; font-size: 14px; cursor: not-allowed;">
-                    <option value="">-- Loading Program --</option>
-                </select>
-                <small style="color: #6b7280; font-size: 11px;">Automatically detected from your profile</small>
-            </div>
-            <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-calendar"></i> Academic Year
-                </label>
-                <select id="me_year_select" class="form-control" onchange="loadMEBlocks()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
-                    <option value="2024">2024</option>
-                    <option value="2025" selected>2025</option>
-                    <option value="2026">2026</option>
-                    <option value="2027">2027</option>
-                    <option value="2028">2028</option>
-                </select>
-            </div>
-            <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-layer-group"></i> Block
-                </label>
-                <select id="me_block_select" class="form-control" onchange="loadMEUnits()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
-                    <option value="">-- Select Block --</option>
-                </select>
-            </div>
-            <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-book"></i> Unit
-                </label>
-                <select id="me_subject_select" class="form-control" onchange="loadMarksEntry()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
-                    <option value="">-- Select Unit --</option>
-                </select>
-            </div>
-            <!-- Assessment Type - Auto-detected, READ ONLY for lecturers -->
-            <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-tag"></i> Assessment Type
-                    <span style="font-size: 10px; color: #6b7280; font-weight: normal;">(Auto-detected)</span>
-                </label>
-                <div style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f3f4f6; font-size: 14px; cursor: default; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-robot" style="color: #4C1D95;"></i>
-                    <span id="me_assessment_type_display">Full (CAT1+CAT2+Exam)</span>
-                    <span style="font-size: 10px; background: #e2e8f0; padding: 2px 10px; border-radius: 12px; color: #475569; margin-left: auto;">Read Only</span>
-                </div>
-                <small style="color: #6b7280; font-size: 11px;">
-                    <i class="fas fa-info-circle"></i> Set by Administrator based on visible columns
-                </small>
-                <!-- Hidden input to store the value for JS -->
-                <input type="hidden" id="me_assessment_type" value="full">
-            </div>
-        </div>
-        
-        <!-- Column Settings Info - Read Only for Lecturers -->
-        <div style="margin-top: 12px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <i class="fas fa-eye" style="color: #64748b;"></i>
-            <span style="font-size: 13px; color: #475569;">
-                <strong>Visible Columns:</strong> 
-                <span id="lecturerVisibleColumns" style="color: #1e293b;">Loading...</span>
-            </span>
-            <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
-                <i class="fas fa-lock"></i> Managed by Administrator
-            </span>
-        </div>
-        
-        <!-- TVET Department Info -->
-        <div id="tvetDepartmentInfo" style="display: none; margin-top: 10px; padding: 10px 14px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
-            <i class="fas fa-info-circle" style="color: #d97706;"></i>
-            <span style="font-size: 13px; color: #92400e;">
-                <strong>TVET Department:</strong> <span id="tvetDepartmentName">Loading...</span> 
-                | <strong>Block:</strong> <span id="tvetBlockName">Loading...</span>
-            </span>
-        </div>
-        <!-- KRCHN Department Info -->
-        <div id="krchnDepartmentInfo" style="display: none; margin-top: 10px; padding: 10px 14px; background: #dbeafe; border-radius: 8px; border-left: 4px solid #3b82f6;">
-            <i class="fas fa-info-circle" style="color: #2563eb;"></i>
-            <span style="font-size: 13px; color: #1e40af;">
-                <strong>School of Nursing:</strong> KRCHN Program
-                | <strong>Block:</strong> <span id="krchnBlockName">Loading...</span>
-            </span>
-        </div>
-    </div>
-    
-    <!-- Marks Table Container -->
-    <div id="me_marks_container" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
-        <div style="text-align: center; padding: 60px 20px;">
-            <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-            <h3 style="color: #1e293b;">Select Block and Unit</h3>
-            <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for your assigned units</p>
-        </div>
-    </div>
+            </section>
 
-    <!-- Grading System Reference -->
-    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-top: 20px; border: 1px solid #e5e7eb;">
-        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
-            <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading System:</span>
-            <span style="background: #d1fae5; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 12px;">A (75-100%) → 4.0</span>
-            <span style="background: #dbeafe; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 12px;">B (65-74%) → 3.0</span>
-            <span style="background: #fef3c7; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 12px;">C (60-64%) → 2.0</span>
-            <span style="background: #fee2e2; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 12px;">D (Below 60%) → 0.0</span>
-            <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
-                <i class="fas fa-info-circle"></i> Applicable to all programs
-            </span>
-        </div>
-    </div>
-</section>
+            <!-- ===== MARKS MANAGEMENT SECTION ===== -->
+            <section id="marks-management-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+                <div class="marks-system-header">
+                    <h2><i class="fas fa-chart-line"></i> Marks Management</h2>
+                    <p style="color: #64748b;">Enter marks for your assigned units. All submissions require admin approval before finalization.</p>
+                    <p style="font-size: 13px; color: #6b7280; margin-top: 4px;">
+                        <i class="fas fa-info-circle"></i> Column visibility and assessment type are managed by the Administrator.
+                    </p>
+                </div>
+                
+                <!-- Lecturer Program Banner -->
+                <div id="lecturerProgramBanner" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; color: white;">
+                    <div>
+                        <i class="fas fa-user-graduate" style="font-size: 20px;"></i>
+                        <span style="font-weight: 600; margin-left: 10px;">
+                            <span id="lecturerProgramName">Loading...</span>
+                        </span>
+                        <span id="lecturerProgramBadge" style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-left: 10px;">
+                            <i class="fas fa-graduation-cap"></i> <span id="lecturerProgramType">Loading...</span>
+                        </span>
+                    </div>
+                    <div style="color: rgba(255,255,255,0.9); font-size: 13px;">
+                        <i class="fas fa-book"></i> <span id="lecturerUnitCount">0</span> Units Assigned
+                    </div>
+                </div>
+                
+                <!-- Stats Cards -->
+                <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                    <div class="card" onclick="loadLecturerMarksEntry()" style="cursor: pointer; border-top: 4px solid #4C1D95; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
+                        <h3 style="color: #4C1D95; font-size: 14px;">Total Students</h3>
+                        <p class="data" id="lecTotalStudents" style="color: #4C1D95; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <p class="minor-data" style="font-size: 12px; color: #6b7280;">Under your supervision</p>
+                    </div>
+                    <div class="card" onclick="loadLecturerMarksEntry()" style="cursor: pointer; border-top: 4px solid #f59e0b; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.08)'">
+                        <h3 style="color: #d97706; font-size: 14px;">Pending Approval</h3>
+                        <p class="data" id="lecPendingApproval" style="color: #d97706; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <p class="minor-data" style="font-size: 12px; color: #6b7280;">Awaiting admin review</p>
+                    </div>
+                    <div class="card" style="border-top: 4px solid #10b981; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: all 0.2s;">
+                        <h3 style="color: #059669; font-size: 14px;">Approved Marks</h3>
+                        <p class="data" id="lecApprovedMarks" style="color: #059669; font-size: 32px; font-weight: 800; margin: 8px 0;">0</p>
+                        <p class="minor-data" style="font-size: 12px; color: #6b7280;">Finalized by admin</p>
+                    </div>
+                    <div class="card" style="border-top: 4px solid #6366f1; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: all 0.2s;">
+                        <h3 style="color: #4f46e5; font-size: 14px;">Average Score</h3>
+                        <p class="data" id="lecAvgScore" style="color: #4f46e5; font-size: 32px; font-weight: 800; margin: 8px 0;">0%</p>
+                        <p class="minor-data" style="font-size: 12px; color: #6b7280;">Across all units</p>
+                    </div>
+                </div>
+                
+                <!-- Approval Status Banner -->
+                <div id="approvalStatusBanner" style="display: none; background: #fef3c7; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <i class="fas fa-clock" style="color: #d97706;"></i>
+                            <strong>Approval Status:</strong>
+                            <span id="approvalStatusText">Pending Admin Approval</span>
+                            <span id="approvalStatusBadge" class="badge badge-warning" style="margin-left: 10px; background: #fef3c7; color: #d97706; padding: 4px 12px; border-radius: 20px; font-weight: 600;">⏳ Pending</span>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="submitForApprovalBtn" class="btn btn-action" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;" onclick="submitMarksForApproval()">
+                                <i class="fas fa-paper-plane"></i> Submit for Approval
+                            </button>
+                            <button id="withdrawApprovalBtn" class="btn btn-action" style="background: #dc2626; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; display: none;" onclick="withdrawMarksFromApproval()">
+                                <i class="fas fa-undo"></i> Withdraw
+                            </button>
+                        </div>
+                    </div>
+                    <div id="approvalDetails" style="margin-top: 10px; font-size: 13px; color: #92400e; display: none;">
+                        <p><strong>Submitted:</strong> <span id="submittedDate">-</span></p>
+                        <p><strong>Submitted By:</strong> <span id="submittedBy">-</span></p>
+                        <p id="rejectionReason" style="color: #dc2626; display: none;"><strong>Rejection Reason:</strong> <span id="rejectionReasonText">-</span></p>
+                    </div>
+                </div>
+                
+                <!-- Selectors -->
+                <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                                <i class="fas fa-tag"></i> Program
+                            </label>
+                            <select id="me_program_select" class="form-control" disabled style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f3f4f6; font-size: 14px; cursor: not-allowed;">
+                                <option value="">-- Loading Program --</option>
+                            </select>
+                            <small style="color: #6b7280; font-size: 11px;">Automatically detected from your profile</small>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                                <i class="fas fa-calendar"></i> Academic Year
+                            </label>
+                            <select id="me_year_select" class="form-control" onchange="loadMEBlocks()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                                <option value="2024">2024</option>
+                                <option value="2025" selected>2025</option>
+                                <option value="2026">2026</option>
+                                <option value="2027">2027</option>
+                                <option value="2028">2028</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                                <i class="fas fa-layer-group"></i> Block
+                            </label>
+                            <select id="me_block_select" class="form-control" onchange="loadMEUnits()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                                <option value="">-- Select Block --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                                <i class="fas fa-book"></i> Unit
+                            </label>
+                            <select id="me_subject_select" class="form-control" onchange="loadMarksEntry()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                                <option value="">-- Select Unit --</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Assessment Type - Auto-detected, READ ONLY -->
+                    <div style="margin-top: 12px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <i class="fas fa-robot" style="color: #4C1D95;"></i>
+                        <span style="font-size: 13px; color: #475569;">
+                            <strong>Assessment Type:</strong> 
+                            <span id="me_assessment_type_display" style="color: #1e293b;">Full (CAT1+CAT2+Exam)</span>
+                            <span style="font-size: 10px; background: #e2e8f0; padding: 2px 10px; border-radius: 12px; color: #475569; margin-left: 8px;">Read Only</span>
+                        </span>
+                        <input type="hidden" id="me_assessment_type" value="full">
+                    </div>
+                    
+                    <!-- Visible Columns Info - Read Only -->
+                    <div style="margin-top: 12px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <i class="fas fa-eye" style="color: #64748b;"></i>
+                        <span style="font-size: 13px; color: #475569;">
+                            <strong>Visible Columns:</strong> 
+                            <span id="lecturerVisibleColumns" style="color: #1e293b;">Loading...</span>
+                        </span>
+                        <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
+                            <i class="fas fa-lock"></i> Managed by Administrator
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Marks Table Container -->
+                <div id="me_marks_container" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #1e293b;">Select Block and Unit</h3>
+                        <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for your assigned units</p>
+                    </div>
+                </div>
+
+                <!-- Grading System Reference -->
+                <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-top: 20px; border: 1px solid #e5e7eb;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+                        <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading System:</span>
+                        <span style="background: #d1fae5; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 12px;">A (75-100%) → 4.0</span>
+                        <span style="background: #dbeafe; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 12px;">B (65-74%) → 3.0</span>
+                        <span style="background: #fef3c7; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 12px;">C (60-64%) → 2.0</span>
+                        <span style="background: #fee2e2; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 12px;">D (Below 60%) → 0.0</span>
+                        <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
+                            <i class="fas fa-info-circle"></i> Applicable to all programs
+                        </span>
+                    </div>
+                </div>
+            </section>
+
             <!-- ===== RESOURCES SECTION ===== -->
-            <section id="resources-content" class="tab-content">
+            <section id="resources-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-file-upload"></i> Upload New Resource</h2>
                 
-                <form id="uploadResourceForm" class="check-in-controls">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="resourceTitle">Resource Title *</label>
-                            <input type="text" id="resourceTitle" placeholder="Resource Title" required>
+                <form id="uploadResourceForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); uploadResource();">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="resourceTitle" style="font-weight: 600; font-size: 13px; color: #475569;">Resource Title *</label>
+                            <input type="text" id="resourceTitle" placeholder="Resource Title" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
-                        <div class="form-group">
-                            <label for="resourceCategory">Category *</label>
-                            <select id="resourceCategory" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="resourceCategory" style="font-weight: 600; font-size: 13px; color: #475569;">Category *</label>
+                            <select id="resourceCategory" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="">Select Category</option>
                                 <option value="Academic">Academic</option>
                                 <option value="Mental Health">Mental Health</option>
@@ -1444,278 +1395,190 @@
                             </select>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="resourceProgram">Program *</label>
-                            <select id="resourceProgram" required></select>
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="resourceProgram" style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
+                            <select id="resourceProgram" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
                         </div>
-                        <div class="form-group">
-                            <label for="resourceIntake">Intake *</label>
-                            <select id="resourceIntake" required></select>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="resourceIntake" style="font-weight: 600; font-size: 13px; color: #475569;">Intake *</label>
+                            <select id="resourceIntake" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
                         </div>
-                        <div class="form-group">
-                            <label for="resourceBlock">Block *</label>
-                            <select id="resourceBlock" required></select>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="resourceFile">File *</label>
-                            <input type="file" id="resourceFile" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="resourceBlock" style="font-weight: 600; font-size: 13px; color: #475569;">Block *</label>
+                            <select id="resourceBlock" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-action">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="resourceFile" style="font-weight: 600; font-size: 13px; color: #475569;">File *</label>
+                            <input type="file" id="resourceFile" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-action" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-upload"></i> Upload Resource
                     </button>
                 </form>
                 
-                <h3>My Uploaded Resources</h3>
-                <div class="search-container">
-                    <input type="text" id="resourceSearch" placeholder="Search resources...">
-                    <button class="btn btn-action" id="resourceSearchBtn"><i class="fas fa-search"></i> Search</button>
+                <h3 style="color: #0A3D62; margin-bottom: 15px;">My Uploaded Resources</h3>
+                <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <input type="text" id="resourceSearch" placeholder="Search resources..." style="flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                    <button class="btn btn-action" id="resourceSearchBtn" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-search"></i> Search</button>
                 </div>
-                <div class="table-responsive">
-                    <table>
+                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                         <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Category</th>
-                                <th>Program/Block</th>
-                                <th>Uploaded By</th>
-                                <th>Date Uploaded</th>
-                                <th>Actions</th>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Title</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Category</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program/Block</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Uploaded By</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date Uploaded</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="resourcesList">
-                            <tr><td colspan="6">Loading resources...</td></tr>
+                            <tr><td colspan="6" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading resources...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
             <!-- ===== REPORTS SECTION ===== -->
-            <section id="reports-content" class="tab-content">
+            <section id="reports-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-chart-bar"></i> Academic Reports</h2>
                 
-                <form id="reportGenerationForm" class="check-in-controls">
-                    <h4>Generate New Report</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="reportType">Report Type</label>
-                            <select id="reportType" required>
+                <form id="reportGenerationForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); generateReport();">
+                    <h4 style="color: #0A3D62;">Generate New Report</h4>
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="reportType" style="font-weight: 600; font-size: 13px; color: #475569;">Report Type</label>
+                            <select id="reportType" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="">-- Select Report Type --</option>
                                 <option value="AttendanceSummary">Student Attendance Summary</option>
                                 <option value="CourseGradeBook">Course Grade Book</option>
                                 <option value="EnrollmentList">Enrollment List</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label for="reportScope">Scope</label>
-                            <select id="reportScope" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="reportScope" style="font-weight: 600; font-size: 13px; color: #475569;">Scope</label>
+                            <select id="reportScope" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                                 <option value="">-- Select Scope --</option>
                                 <option value="MyCourses">My Courses</option>
                                 <option value="MyStudents">My Students</option>
                             </select>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-action">
+                    <button type="submit" class="btn btn-action" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 15px;">
                         <i class="fas fa-chart-line"></i> Generate Report
                     </button>
                 </form>
                 
-                <h3>Generated Reports</h3>
-                <div class="table-responsive">
-                    <table>
+                <h3 style="color: #0A3D62; margin-bottom: 15px;">Generated Reports</h3>
+                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                         <thead>
-                            <tr>
-                                <th>Report Name</th>
-                                <th>Type</th>
-                                <th>Scope</th>
-                                <th>Date Generated</th>
-                                <th>Action</th>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Report Name</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Type</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Scope</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date Generated</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="reportsTable">
-                            <tr><td colspan="5">No reports generated yet.</td></tr>
+                            <tr><td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">No reports generated yet.</td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
             <!-- ===== MESSAGES SECTION ===== -->
-            <section id="messages-content" class="tab-content">
+            <section id="messages-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-envelope"></i> Send Message</h2>
                 
-                <form id="sendMessageForm" class="check-in-controls">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="msgTarget">Recipient</label>
-                            <select id="msgTarget" required></select>
+                <form id="sendMessageForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); sendMessage();">
+                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="msgTarget" style="font-weight: 600; font-size: 13px; color: #475569;">Recipient</label>
+                            <select id="msgTarget" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
                         </div>
-                        <div class="form-group">
-                            <label for="msgSubject">Subject</label>
-                            <input type="text" id="msgSubject" placeholder="Subject" required>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="msgSubject" style="font-weight: 600; font-size: 13px; color: #475569;">Subject</label>
+                            <input type="text" id="msgSubject" placeholder="Subject" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="msgBody">Message</label>
-                        <textarea id="msgBody" rows="5" placeholder="Your message content..." required></textarea>
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px;">
+                        <label for="msgBody" style="font-weight: 600; font-size: 13px; color: #475569;">Message</label>
+                        <textarea id="msgBody" rows="5" placeholder="Your message content..." required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; resize: vertical;"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-action">
+                    <button type="submit" class="btn btn-action" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-paper-plane"></i> Send Message
                     </button>
                 </form>
                 
-                <h3>Sent Messages</h3>
-                <div class="table-responsive">
-                    <table>
+                <h3 style="color: #0A3D62; margin-bottom: 15px;">Sent Messages</h3>
+                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                         <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Subject</th>
-                                <th>To</th>
-                                <th>Status</th>
-                                <th>Action</th>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Subject</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">To</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Status</th>
+                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="messagesTable">
-                            <tr><td colspan="5">Loading messages...</td></tr>
+                            <tr><td colspan="5" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading messages...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
             <!-- ===== CALENDAR SECTION ===== -->
-            <section id="calendar-content" class="tab-content">
+            <section id="calendar-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-calendar"></i> Academic Calendar</h2>
-                <div id="calendarView">
-                    <p>Academic Calendar integration placeholder.</p>
+                <div id="calendarView" style="background: white; border-radius: 12px; padding: 60px 20px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <i class="fas fa-calendar-alt" style="font-size: 48px; color: #4C1D95; margin-bottom: 20px;"></i>
+                    <h3 style="color: #0A3D62;">Academic Calendar</h3>
+                    <p style="color: #6b7280;">Your schedule and important dates will appear here.</p>
+                    <button onclick="loadCalendar()" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 15px;"><i class="fas fa-sync-alt"></i> Load Calendar</button>
                 </div>
             </section>
 
             <!-- ===== SETTINGS SECTION ===== -->
-            <section id="settings-content" class="tab-content">
+            <section id="settings-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
                 <h2><i class="fas fa-cog"></i> System Settings</h2>
                 
-                <form id="settingsForm" class="check-in-controls">
-                    <h4>Notification Preferences</h4>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>
+                <form id="settingsForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" onsubmit="event.preventDefault(); saveSettings();">
+                    <h4 style="color: #0A3D62;">Notification Preferences</h4>
+                    <div class="form-row" style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 500; font-size: 14px; color: #475569; cursor: pointer;">
                                 <input type="checkbox" id="emailNotify" checked> Email notifications
                             </label>
                         </div>
-                        <div class="form-group">
-                            <label>
+                        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 500; font-size: 14px; color: #475569; cursor: pointer;">
                                 <input type="checkbox" id="smsNotify"> SMS notifications
                             </label>
                         </div>
+                        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 500; font-size: 14px; color: #475569; cursor: pointer;">
+                                <input type="checkbox" id="pushNotify" checked> Push notifications
+                            </label>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-action">
+                    <button type="submit" class="btn btn-action" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-save"></i> Save Settings
                     </button>
                 </form>
             </section>
 
-            <!-- ===== NURSE IQ SECTION ===== -->
-            <section id="nurse-iq-content" class="tab-content">
-                <div class="panel_s">
-                    <div class="panel-body text-center" style="padding: 60px;">
-                        <i class="fas fa-stethoscope" style="font-size: 64px; color: #4C1D95; margin-bottom: 20px;"></i>
-                        <h3>Nurse IQ Assessment</h3>
-                        <p>Clinical knowledge assessment module coming soon.</p>
-                    </div>
-                </div>
-            </section>
         </main>
     </div>
 
-    <!-- ===== MODALS ===== -->
-    
-    <!-- Edit Resource Modal -->
-    <div id="editResourceModal" class="modal">
-        <div class="modal-content">
-            <span class="close" id="closeEditResourceModal">&times;</span>
-            <h3>Edit Resource</h3>
-            <form id="editResourceForm">
-                <div class="form-group">
-                    <label for="editResourceTitle">Title</label>
-                    <input type="text" id="editResourceTitle" required>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="editAllowDownload"> Allow Download
-                    </label>
-                </div>
-                <div class="modal-actions">
-                    <button type="submit" class="btn btn-action">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
-                    <button type="button" class="btn btn-delete" id="cancelEditResourceBtn">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Grade Modal -->
-    <div id="gradeModal" class="modal">
-        <div class="modal-content" style="width:95%; max-width:1200px;"></div>
-    </div>
-
-    <!-- Exam Edit Modal -->
-    <div id="examEditModal" class="modal">
-        <div class="modal-content">
-            <span class="close" id="closeExamEditModal">&times;</span>
-            <h3>Edit Exam</h3>
-            <form id="editExamForm">
-                <input type="hidden" id="editExamId">
-                <div class="form-group">
-                    <label for="editExamTitle">Title *</label>
-                    <input type="text" id="editExamTitle" required>
-                </div>
-                <div class="form-group">
-                    <label for="editExamDate">Date *</label>
-                    <input type="date" id="editExamDate" required>
-                </div>
-                <div class="form-group">
-                    <label for="editExamStatus">Status *</label>
-                    <select id="editExamStatus" required>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="InProgress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
-                </div>
-                <div class="modal-actions">
-                    <button type="submit" class="btn btn-action">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
-                    <button type="button" class="btn btn-delete" id="cancelEditExamBtn">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Student Info Modal -->
-    <div id="studentInfoModal" class="modal">
-        <div class="modal-content">
-            <span class="close" id="closeStudentInfoModal">&times;</span>
-            <h3>Student Information</h3>
-            <div id="studentInfoDetails">
-                <p><strong>Name:</strong> <span id="infoName">-</span></p>
-                <p><strong>Reg. No.:</strong> <span id="infoRegno">-</span></p>
-                <p><strong>Email:</strong> <span id="infoEmail">-</span></p>
-                <p><strong>Program:</strong> <span id="infoProgram">-</span></p>
-                <p><strong>Intake Year:</strong> <span id="infoIntake">-</span></p>
-                <p><strong>Status:</strong> <span id="infoStatus">-</span></p>
-                <p><strong>Absences:</strong> <span id="infoAbsences">-</span></p>
-            </div>
-        </div>
-    </div>
 <!-- External Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
