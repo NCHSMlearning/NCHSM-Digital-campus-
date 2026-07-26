@@ -1091,8 +1091,7 @@ function checkMarksApprovalStatus(marks) {
     }
 }
 // ============================================================
-// SAVE MARKS ENTRY - WITH PROPER APPROVAL WORKFLOW
-// APPROVED MARKS ARE PERMANENT AND CANNOT BE EDITED
+// SAVE MARKS ENTRY - FIXED FOR LECTURER APPROVAL WORKFLOW
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1204,11 +1203,13 @@ async function saveMarksEntry() {
             const total = calculateMarksEntryTotal(mark.cat1, mark.cat2, mark.exam, assessmentType);
             const gradeInfo = getMarksEntryGrade(total);
             
-            // Determine approval status
-            let newApprovalStatus = existing?.approval_status || 'draft';
+            // ============================================================
+            // ✅ FIX: Determine approval status
+            // ============================================================
+            let newApprovalStatus = 'draft'; // Default for new marks
             
-            // If marks were changed and status was pending or rejected, reset to draft
             if (existing) {
+                // Check if marks have changed
                 const oldCat1 = parseFloat(existing.cat1_score) || 0;
                 const oldCat2 = parseFloat(existing.cat2_score) || 0;
                 const oldExam = parseFloat(existing.exam_score) || 0;
@@ -1219,11 +1220,24 @@ async function saveMarksEntry() {
                     Math.abs(oldExam - mark.exam) > 0.01
                 );
                 
-                if (hasChanges && (existing.approval_status === 'pending' || existing.approval_status === 'rejected')) {
-                    newApprovalStatus = 'draft';
-                    resetToDraft++;
-                    console.log(`🔄 Reset ${mark.admission} from ${existing.approval_status} to draft due to changes`);
+                // If changes were made and status was pending or rejected, reset to draft
+                if (hasChanges) {
+                    if (existing.approval_status === 'pending' || existing.approval_status === 'rejected') {
+                        newApprovalStatus = 'draft';
+                        resetToDraft++;
+                        console.log(`🔄 Reset ${mark.admission} from ${existing.approval_status} to draft due to changes`);
+                    } else if (existing.approval_status === 'draft') {
+                        newApprovalStatus = 'draft'; // Keep as draft
+                    } else {
+                        newApprovalStatus = existing.approval_status; // Keep existing status
+                    }
+                } else {
+                    // No changes, keep existing status
+                    newApprovalStatus = existing.approval_status;
                 }
+            } else {
+                // New mark - always draft
+                newApprovalStatus = 'draft';
             }
             
             const markData = {
@@ -1257,14 +1271,13 @@ async function saveMarksEntry() {
             } else {
                 // INSERT new mark
                 markData.created_at = new Date().toISOString();
-                markData.approval_status = 'draft';
                 result = await sb
                     .from('student_marks')
                     .insert([markData]);
                 
                 if (!result.error) {
                     saved++;
-                    console.log(`✅ Inserted mark for ${mark.admission}`);
+                    console.log(`✅ Inserted mark for ${mark.admission} (status: draft)`);
                 }
             }
             
