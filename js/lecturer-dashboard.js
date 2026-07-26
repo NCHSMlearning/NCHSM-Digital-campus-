@@ -19,6 +19,12 @@ const LecturerDashboard = {
         month: 0,
         overall: 0
     },
+    chartInstances: {
+        performance: null,
+        distribution: null,
+        trend: null,
+        programBreakdown: null
+    },
     
     async init() {
         console.log('📊 Initializing Lecturer Dashboard...');
@@ -26,6 +32,7 @@ const LecturerDashboard = {
             await this.loadMetrics();
             await this.loadAttendanceMetrics();
             this.updateWelcomeBanner();
+            await this.loadCharts();
             console.log('✅ Lecturer Dashboard initialized');
         } catch (error) {
             console.error('❌ Dashboard initialization error:', error);
@@ -33,7 +40,6 @@ const LecturerDashboard = {
     },
     
     updateWelcomeBanner() {
-        // ✅ Use lecturerDB instead of db
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const welcomeHeader = document.getElementById('welcomeHeader');
         const programSubtitle = document.getElementById('programSubtitle');
@@ -44,7 +50,6 @@ const LecturerDashboard = {
         }
         
         const program = profile?.program || profile?.department || 'KRCHN';
-        // ✅ Use LecturerUtils instead of Utils
         const programDisplay = window.LecturerUtils?.getProgramDisplayName(program) || program;
         
         if (programSubtitle) {
@@ -65,7 +70,6 @@ const LecturerDashboard = {
     
     async loadMetrics() {
         try {
-            // ✅ Use lecturerDB instead of db
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
@@ -74,20 +78,16 @@ const LecturerDashboard = {
                 return;
             }
             
-            // ✅ Use lecturerDB's built-in getStudents method
             const students = await window.lecturerDB.getStudents(program);
             this.metrics.totalStudents = students.length;
             
-            // ✅ Use lecturerDB's built-in getCourses method
             const courses = await window.lecturerDB.getCourses(program);
             this.metrics.totalCourses = courses.length;
             
-            // At-risk students
             this.metrics.atRiskStudents = students.filter(s => 
                 (s.cumulative_absences || 0) > 5 || (s.status || '').toLowerCase() === 'probation'
             ).length || 0;
             
-            // ✅ Use lecturerDB's built-in getExams method
             const exams = await window.lecturerDB.getExams(program);
             this.metrics.examsDue = exams.filter(e => 
                 e.status === 'Scheduled' || e.status === 'InProgress'
@@ -123,7 +123,6 @@ const LecturerDashboard = {
     
     async loadAttendanceMetrics() {
         try {
-            // ✅ Use lecturerDB instead of db
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
             
@@ -131,11 +130,9 @@ const LecturerDashboard = {
             
             const today = new Date();
             
-            // ✅ Use lecturerDB's built-in getAttendance method
             const todayLogs = await window.lecturerDB.getAttendance(program, today);
             this.attendanceMetrics.today = todayLogs.filter(l => l.session_type !== 'Lecturer Check-in').length;
             
-            // Weekly attendance
             const weekRange = window.LecturerUtils?.getWeekRange() || this.getWeekRange();
             const weekLogs = await window.lecturerDB.getAttendance(program);
             this.attendanceMetrics.week = weekLogs.filter(l => {
@@ -143,7 +140,6 @@ const LecturerDashboard = {
                 return date >= weekRange.start && date <= weekRange.end && l.session_type !== 'Lecturer Check-in';
             }).length;
             
-            // Monthly rate
             const monthRange = window.LecturerUtils?.getMonthRange() || this.getMonthRange();
             const monthLogs = await window.lecturerDB.getAttendance(program);
             const uniqueStudents = [...new Set(monthLogs.map(l => l.student_id))];
@@ -151,7 +147,6 @@ const LecturerDashboard = {
             const rate = students.length > 0 ? Math.round((uniqueStudents.length / students.length) * 100) : 0;
             this.attendanceMetrics.month = rate;
             
-            // Overall
             const overallLogs = await window.lecturerDB.getAttendance(program);
             this.attendanceMetrics.overall = overallLogs.filter(l => l.session_type !== 'Lecturer Check-in').length;
             
@@ -207,9 +202,296 @@ const LecturerDashboard = {
         }
     },
     
+    // ============================================================
+    // CHARTS - FIXED VERSION
+    // ============================================================
+    
+    async loadCharts() {
+        console.log('📊 Loading lecturer charts...');
+        
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.log('❌ No lecturer profile found');
+                return;
+            }
+            
+            const program = profile.program || profile.department || 'KRCHN';
+            const supabase = window.lecturerDB?.supabase;
+            
+            if (!supabase) {
+                console.log('❌ Supabase not available');
+                return;
+            }
+            
+            // Get students in this program
+            const { data: students } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('role', 'student')
+                .eq('program', program);
+            
+            console.log('👨‍🎓 Students in', program, ':', students?.length || 0);
+            
+            // ============================================
+            // 1. GENDER DISTRIBUTION CHART
+            // ============================================
+            const maleCount = students?.filter(s => s.gender === 'Male' || s.gender === 'M').length || 0;
+            const femaleCount = students?.filter(s => s.gender === 'Female' || s.gender === 'F').length || 0;
+            const otherCount = students?.filter(s => s.gender && !['Male', 'M', 'Female', 'F'].includes(s.gender)).length || 0;
+            
+            const ctx2 = document.getElementById('studentDistributionChart');
+            if (ctx2) {
+                if (this.chartInstances.distribution) {
+                    this.chartInstances.distribution.destroy();
+                }
+                this.chartInstances.distribution = new Chart(ctx2, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Male', 'Female', 'Other'],
+                        datasets: [{
+                            data: [maleCount, femaleCount, otherCount],
+                            backgroundColor: ['#4C1D95', '#FDB913', '#94a3b8'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { padding: 15, font: { size: 13 } }
+                            },
+                            title: {
+                                display: true,
+                                text: `Gender Distribution - ${program}`,
+                                font: { size: 14, weight: '600' },
+                                padding: { bottom: 10 }
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Gender distribution chart updated');
+            }
+            
+            // ============================================
+            // 2. PERFORMANCE CHART (By Subject/Unit)
+            // ============================================
+            const studentIds = students?.map(s => s.user_id) || [];
+            
+            let marksData = [];
+            if (studentIds.length > 0) {
+                const { data: marks } = await supabase
+                    .from('student_marks')
+                    .select('*')
+                    .in('student_id', studentIds);
+                
+                marksData = marks || [];
+            }
+            
+            const subjectMarks = {};
+            marksData.forEach(m => {
+                const subject = m.subject_name || 'Unknown';
+                if (!subjectMarks[subject]) {
+                    subjectMarks[subject] = [];
+                }
+                subjectMarks[subject].push(m.score || 0);
+            });
+            
+            const subjectNames = Object.keys(subjectMarks);
+            const subjectAverages = subjectNames.map(name => {
+                const scores = subjectMarks[name];
+                return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+            });
+            
+            console.log('📚 Subjects:', subjectNames);
+            console.log('📊 Averages:', subjectAverages);
+            
+            const ctx1 = document.getElementById('performanceChart');
+            if (ctx1) {
+                if (this.chartInstances.performance) {
+                    this.chartInstances.performance.destroy();
+                }
+                
+                const colors = ['#4C1D95', '#667eea', '#764ba2', '#8b5cf6', '#FDB913', '#10b981', '#ef4444', '#3b82f6'];
+                
+                this.chartInstances.performance = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: subjectNames.length > 0 ? subjectNames : ['No Data'],
+                        datasets: [{
+                            label: 'Average Score (%)',
+                            data: subjectAverages.length > 0 ? subjectAverages : [0],
+                            backgroundColor: subjectNames.map((_, i) => colors[i % colors.length]),
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: `Performance by Subject - ${program}`,
+                                font: { size: 14, weight: '600' },
+                                padding: { bottom: 10 }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: 'Average Score (%)'
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Performance chart updated with', subjectNames.length, 'subjects');
+            }
+            
+            // ============================================
+            // 3. ATTENDANCE TREND CHART
+            // ============================================
+            const ctx3 = document.getElementById('attendanceTrendChart');
+            if (ctx3) {
+                if (this.chartInstances.trend) {
+                    this.chartInstances.trend.destroy();
+                }
+                
+                // Get actual attendance data for the week
+                const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                const attendanceData = [];
+                
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    
+                    const { data: dayLogs } = await supabase
+                        .from('geo_attendance_logs')
+                        .select('*')
+                        .eq('program', program)
+                        .eq('session_type', 'Class')
+                        .gte('check_in_time', `${dateStr}T00:00:00.000Z`)
+                        .lte('check_in_time', `${dateStr}T23:59:59.999Z`);
+                    
+                    attendanceData.push(dayLogs?.length || 0);
+                }
+                
+                this.chartInstances.trend = new Chart(ctx3, {
+                    type: 'line',
+                    data: {
+                        labels: weekDays,
+                        datasets: [{
+                            label: 'Attendance',
+                            data: attendanceData,
+                            borderColor: '#4C1D95',
+                            backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#4C1D95'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: `Attendance Trend - ${program}`,
+                                font: { size: 14, weight: '600' },
+                                padding: { bottom: 10 }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Students Present'
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Attendance trend chart updated');
+            }
+            
+            // ============================================
+            // 4. PROGRAM BREAKDOWN CHART
+            // ============================================
+            const ctx4 = document.getElementById('programBreakdownChart');
+            if (ctx4) {
+                const { data: allStudents } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('program')
+                    .eq('role', 'student');
+                
+                const programCounts = {};
+                allStudents?.forEach(s => {
+                    const p = s.program || 'Unknown';
+                    programCounts[p] = (programCounts[p] || 0) + 1;
+                });
+                
+                const programNames = Object.keys(programCounts);
+                const programValues = programNames.map(p => programCounts[p]);
+                
+                if (this.chartInstances.programBreakdown) {
+                    this.chartInstances.programBreakdown.destroy();
+                }
+                this.chartInstances.programBreakdown = new Chart(ctx4, {
+                    type: 'bar',
+                    data: {
+                        labels: programNames,
+                        datasets: [{
+                            label: 'Students',
+                            data: programValues,
+                            backgroundColor: ['#4C1D95', '#FDB913', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6'],
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: 'Students by Program',
+                                font: { size: 14, weight: '600' }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Students'
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('✅ Program breakdown chart updated');
+            }
+            
+            console.log('✅ All charts updated for', program);
+            
+        } catch (error) {
+            console.error('❌ Error loading charts:', error);
+        }
+    },
+    
     async refresh() {
         await this.loadMetrics();
         await this.loadAttendanceMetrics();
+        await this.loadCharts();
         if (window.LecturerUI) {
             window.LecturerUI.showNotification('Dashboard refreshed!', 'success');
         }
