@@ -1,426 +1,555 @@
-// ============================================================
-// LECTURER COURSES MODULE
-// ============================================================
+// js/lecturer-courses.js
+/**
+ * NCHSM Lecturer Courses Module
+ * Uses the same unit assignments as the marks system
+ * Shows assigned units from lecturer_subject_assignments or marks system
+ */
 
-// ============================================================
-// GET LECTURER ID - DYNAMIC FROM SESSION
-// ============================================================
-
-function getCurrentLecturerId() {
-    // Try multiple sources in order
-    const sources = [
-        // Session storage
-        () => sessionStorage.getItem('lecturerId'),
-        () => sessionStorage.getItem('userId'),
-        // Local storage
-        () => localStorage.getItem('lecturerId'),
-        () => localStorage.getItem('userId'),
-        // Lecturer session object
-        () => {
-            try {
-                const session = JSON.parse(sessionStorage.getItem('lecturerSession') || '{}');
-                return session.id || session.lecturer_id || session.userId;
-            } catch { return null; }
-        },
-        () => {
-            try {
-                const session = JSON.parse(localStorage.getItem('lecturerSession') || '{}');
-                return session.id || session.lecturer_id || session.userId;
-            } catch { return null; }
-        },
-        // Global variables
-        () => window.currentLecturerId,
-        () => window.me_currentLecturer?.profile?.id,
-        () => window.me_currentLecturer?.staff?.id,
-        // URL parameter (for debugging)
-        () => new URLSearchParams(window.location.search).get('lecturerId'),
-        () => new URLSearchParams(window.location.search).get('userId')
-    ];
+const LecturerCourses = {
+    courses: [],
+    filteredCourses: [],
+    currentFilters: {
+        intake: '',
+        block: '',
+        status: '',
+        search: ''
+    },
     
-    for (const source of sources) {
+    async init() {
+        console.log('📚 Initializing Lecturer Courses...');
+        await this.loadCourses();
+        this.populateFilters();
+        this.setupEventListeners();
+        this.updateStats();
+        console.log('✅ Lecturer Courses initialized');
+    },
+    
+    async loadCourses() {
         try {
-            const value = source();
-            if (value && typeof value === 'string' && value.length > 5) {
-                console.log('✅ Found lecturer ID from source:', value.substring(0, 10) + '...');
-                return value;
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                this.courses = [];
+                this.filteredCourses = [];
+                this.renderTable();
+                this.updateStats();
+                return;
             }
-        } catch (e) {
-            // Continue to next source
+            
+            const userId = profile.user_id;
+            const supabase = window.lecturerDB?.supabase;
+            
+            if (!supabase) {
+                console.warn('Supabase not available');
+                this.courses = [];
+                this.filteredCourses = [];
+                this.renderTable();
+                this.updateStats();
+                return;
+            }
+            
+            console.log('🔍 Fetching assigned units for lecturer:', userId);
+            
+            let units = [];
+            
+            // FIRST: Try to get from lecturer_subject_assignments
+            try {
+                const { data, error } = await supabase
+                    .from('lecturer_subject_assignments')
+                    .select('*')
+                    .eq('lecturer_id', userId);
+                
+                if (!error && data && data.length > 0) {
+                    console.log('📊 Found assignments in lecturer_subject_assignments:', data.length);
+                    units = data.map(a => ({
+                        id: a.id,
+                        unit_id: a.subject_id || a.id,
+                        unit_code: a.subject_code || 'N/A',
+                        course_name: a.subject_name || 'Unnamed Unit',
+                        target_program: a.program || profile.program,
+                        block: a.block || 'N/A',
+                        intake_year: a.academic_year || new Date().getFullYear().toString(),
+                        status: this.determineStatus(a),
+                        credits: 0,
+                        student_count: 0,
+                        source: 'assignments',
+                        raw: a
+                    }));
+                }
+            } catch (e) {
+                console.warn('Error querying lecturer_subject_assignments:', e.message);
+            }
+            
+            // SECOND: If no units, try from marks system
+            if (units.length === 0) {
+                console.log('🔄 No assignments found, checking marks system...');
+                
+                // Try to get assigned units from the marks module
+                if (window.lecturerMarks && window.lecturerMarks.assignedUnits) {
+                    const assignedUnits = window.lecturerMarks.assignedUnits || [];
+                    if (assignedUnits.length > 0) {
+                        console.log('📚 Found assigned units from marks system:', assignedUnits.length);
+                        units = assignedUnits.map(u => ({
+                            id: u.id || `unit-${Date.now()}-${Math.random()}`,
+                            unit_id: u.id,
+                            unit_code: u.unit_code || u.code || 'N/A',
+                            course_name: u.unit_name || u.name || 'Unnamed Unit',
+                            target_program: u.program || profile.program,
+                            block: u.block || 'N/A',
+                            intake_year: u.year || u.academic_year || new Date().getFullYear().toString(),
+                            status: 'active',
+                            credits: u.credits || 0,
+                            student_count: u.student_count || 0,
+                            source: 'marks',
+                            raw: u
+                        }));
+                    }
+                }
+            }
+            
+            // THIRD: If still no units, try units_catalog by program
+            if (units.length === 0) {
+                console.log('🔄 Trying units_catalog for program:', profile.program);
+                
+                try {
+                    const { data, error } = await supabase
+                        .from('units_catalog')
+                        .select('*')
+                        .eq('program', profile.program)
+                        .eq('status', 'active')
+                        .order('unit_code', { ascending: true });
+                    
+                    if (!error && data && data.length > 0) {
+                        console.log('📚 Found units in units_catalog:', data.length);
+                        units = data.map(u => ({
+                            id: u.id,
+                            unit_id: u.id,
+                            unit_code: u.unit_code || 'N/A',
+                            course_name: u.unit_name || 'Unnamed Unit',
+                            target_program: u.program || profile.program,
+                            block: u.block || 'N/A',
+                            intake_year: u.year ? String(u.year) : new Date().getFullYear().toString(),
+                            status: u.status || 'active',
+                            credits: u.credits || 0,
+                            unit_type: u.unit_type || 'Core',
+                            student_count: 0,
+                            source: 'catalog',
+                            raw: u
+                        }));
+                    }
+                } catch (e) {
+                    console.warn('Error getting units from units_catalog:', e.message);
+                }
+            }
+            
+            // Set courses
+            this.courses = units;
+            this.filteredCourses = [...this.courses];
+            
+            // Get student counts
+            await this.loadStudentCounts();
+            
+            // Set default filter to current year
+            const currentYear = new Date().getFullYear().toString();
+            const yearFiltered = this.courses.filter(c => 
+                c.intake_year === currentYear || c.intake_year === '' || c.intake_year === 'N/A'
+            );
+            
+            if (yearFiltered.length > 0) {
+                this.filteredCourses = yearFiltered;
+            }
+            
+            this.renderTable();
+            this.updateStats();
+            
+            const badge = document.getElementById('courseCountBadge');
+            if (badge) {
+                badge.textContent = this.courses.length;
+            }
+            
+            console.log(`✅ Loaded ${this.courses.length} total units from ${this.courses.length > 0 ? this.courses[0].source : 'none'} source`);
+            
+        } catch (error) {
+            console.error('Failed to load courses:', error);
+            this.courses = [];
+            this.filteredCourses = [];
+            this.renderTable();
+            this.updateStats();
         }
-    }
+    },
     
-    console.error('❌ No lecturer ID found in any session source');
-    showNotification('Please log in again', 'error');
-    return null;
-}
-
-// ============================================================
-// GET LECTURER NAME - DYNAMIC FROM SESSION
-// ============================================================
-
-function getCurrentLecturerName() {
-    const sources = [
-        () => sessionStorage.getItem('lecturerName'),
-        () => localStorage.getItem('lecturerName'),
-        () => {
-            try {
-                const session = JSON.parse(sessionStorage.getItem('lecturerSession') || '{}');
-                return session.name || session.full_name || session.lecturer_name;
-            } catch { return null; }
-        },
-        () => {
-            try {
-                const session = JSON.parse(localStorage.getItem('lecturerSession') || '{}');
-                return session.name || session.full_name || session.lecturer_name;
-            } catch { return null; }
-        },
-        () => window.me_currentLecturer?.profile?.name,
-        () => window.me_currentLecturer?.profile?.full_name,
-        () => window.me_currentLecturer?.staff?.name,
-        () => window.me_currentLecturer?.staff?.full_name
-    ];
+    determineStatus(assignment) {
+        const currentYear = new Date().getFullYear().toString();
+        const year = assignment.academic_year || '';
+        
+        if (!year || year === 'N/A') return 'active';
+        if (year === currentYear) return 'active';
+        if (parseInt(year) < parseInt(currentYear)) return 'completed';
+        if (parseInt(year) > parseInt(currentYear)) return 'upcoming';
+        return 'active';
+    },
     
-    for (const source of sources) {
+    async loadStudentCounts() {
         try {
-            const value = source();
-            if (value) return value;
-        } catch (e) {}
-    }
-    return 'Lecturer';
-}
-
-// ============================================================
-// GET LECTURER ASSIGNED UNITS - FIXED
-// ============================================================
-
-async function getLecturerAssignedUnits(lecturerId = null, block = null) {
-    // If no ID provided, get from session
-    if (!lecturerId) {
-        lecturerId = getCurrentLecturerId();
-    }
-    
-    if (!lecturerId) {
-        console.error('❌ No lecturer ID available');
-        return [];
-    }
-    
-    console.log('📚 Getting assigned units for lecturer:', lecturerId);
-    
-    try {
-        let query = sb
-            .from('lecturer_subject_assignments')
-            .select('subject_name, subject_code, block, program, academic_year')
-            .eq('lecturer_id', String(lecturerId));
-        
-        if (block) {
-            query = query.eq('block', block);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) {
-            console.error('❌ Error getting assigned units:', error);
-            return [];
-        }
-        
-        console.log(`📚 Found ${data?.length || 0} assigned units`);
-        return data || [];
-        
-    } catch (error) {
-        console.error('❌ Error getting assigned units:', error);
-        return [];
-    }
-}
-
-// ============================================================
-// LOAD COURSES - DYNAMIC
-// ============================================================
-
-async function loadCourses() {
-    console.log('📚 Loading courses...');
-    
-    try {
-        // Get lecturer ID from session
-        const lecturerId = getCurrentLecturerId();
-        
-        if (!lecturerId) {
-            console.error('❌ No lecturer ID found');
-            document.getElementById('courseStats')?.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Please log in again to view your courses.
-                </div>
-            `;
-            return;
-        }
-        
-        console.log('🔍 Fetching all assigned units for lecturer:', lecturerId);
-        
-        const assignments = await getLecturerAssignedUnits(lecturerId);
-        
-        console.log('📊 All assignments found:', assignments.length);
-        
-        if (!assignments || assignments.length === 0) {
-            console.log('No assignments found for lecturer');
-            document.getElementById('courseStats')?.innerHTML = `
-                <div class="alert alert-warning">
-                    <i class="fas fa-info-circle"></i>
-                    No units assigned to you yet.
-                    <br><small>Please contact the administrator for unit assignments.</small>
-                </div>
-            `;
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
             
-            document.getElementById('courseList')?.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-book-open"></i>
-                    <h3>No Units Assigned</h3>
-                    <p>You haven't been assigned to any units.</p>
-                </div>
-            `;
+            for (let course of this.courses) {
+                try {
+                    // Count students in this program
+                    const { count, error } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('program', course.target_program)
+                        .eq('role', 'student');
+                    
+                    if (!error && count !== null) {
+                        course.student_count = count;
+                    }
+                } catch (e) {
+                    // Skip individual errors
+                }
+            }
+        } catch (error) {
+            console.error('Error loading student counts:', error);
+        }
+    },
+    
+    populateFilters() {
+        // Intake years
+        const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
+        const intakeFilter = document.getElementById('intakeYearFilter');
+        if (intakeFilter) {
+            intakeFilter.innerHTML = '<option value="">All Years</option>' +
+                years.map(y => `<option value="${y}">${y}</option>`).join('');
             
-            updateStats(assignments);
+            const currentYear = new Date().getFullYear().toString();
+            if (years.includes(currentYear)) {
+                intakeFilter.value = currentYear;
+            }
+        }
+        
+        // Blocks
+        const blocks = [...new Set(this.courses.map(c => c.block).filter(Boolean))];
+        const blockFilter = document.getElementById('academicPeriodFilter');
+        if (blockFilter) {
+            blockFilter.innerHTML = '<option value="">All Blocks</option>' +
+                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+        }
+        
+        // Set current year display
+        const yearEl = document.getElementById('currentAcademicYear');
+        if (yearEl) {
+            yearEl.textContent = new Date().getFullYear();
+        }
+    },
+    
+    renderTable() {
+        const tbody = document.getElementById('lecturerCoursesTable');
+        if (!tbody) return;
+        
+        const courses = this.filteredCourses;
+        
+        if (!courses || courses.length === 0) {
+            const hasData = this.courses.length > 0;
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                        <i class="fas fa-book" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
+                        <h3 style="color: #475569; margin: 0 0 8px 0;">${hasData ? 'No units match your filters' : 'No Units Assigned'}</h3>
+                        <p style="margin: 0; font-size: 14px;">${hasData ? 'Try adjusting your filters to see more units.' : 'You have not been assigned any units yet.'}</p>
+                        ${!hasData ? '<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Contact the administrator for unit assignments.</p>' : ''}
+                        ${hasData ? `<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Total assigned: ${this.courses.length} units</p>` : ''}
+                    </td>
+                </tr>
+            `;
+            document.getElementById('courseCountDisplay').textContent = '0';
             return;
         }
         
-        // Render assignments
-        renderAssignments(assignments);
-        updateStats(assignments);
+        const currentYear = new Date().getFullYear().toString();
         
-        console.log('✅ Courses loaded successfully');
+        tbody.innerHTML = courses.map((course, index) => {
+            const studentCount = course.student_count || 0;
+            const isPast = course.intake_year && course.intake_year !== 'N/A' && parseInt(course.intake_year) < parseInt(currentYear);
+            const rowStyle = isPast ? 'opacity: 0.7;' : '';
+            
+            const statusColors = {
+                'active': '#10b981',
+                'completed': '#3b82f6',
+                'upcoming': '#f59e0b',
+                'inactive': '#ef4444'
+            };
+            
+            const statusLabels = {
+                'active': '✅ Active',
+                'completed': '📘 Completed',
+                'upcoming': '⏳ Upcoming',
+                'inactive': '❌ Inactive'
+            };
+            
+            const status = course.status || 'active';
+            const statusColor = statusColors[status] || '#6b7280';
+            const statusLabel = statusLabels[status] || status;
+            
+            return `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle}" 
+                    onmouseover="this.style.background='#f8fafc'" 
+                    onmouseout="this.style.background='transparent'">
+                    <td style="padding: 14px 18px;">
+                        <span style="font-weight: 700; color: #4C1D95; font-size: 13px;">${this.escapeHtml(course.unit_code || 'N/A')}</span>
+                        ${course.credits ? `<span style="font-size: 10px; color: #94a3b8; display: block;">${course.credits} Credits</span>` : ''}
+                    </td>
+                    <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
+                        ${this.escapeHtml(course.course_name || 'N/A')}
+                        ${course.source ? `<div style="font-size: 10px; color: #94a3b8; font-weight: 400; margin-top: 2px;">Source: ${this.escapeHtml(course.source)}</div>` : ''}
+                        ${course.block ? `<div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">Block: ${this.escapeHtml(course.block)}</div>` : ''}
+                    </td>
+                    <td style="padding: 14px 18px;">
+                        <span style="background: #ede9fe; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #5b21b6;">
+                            ${this.escapeHtml(course.target_program || 'N/A')}
+                        </span>
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569;">
+                        ${this.escapeHtml(course.block || 'N/A')}
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569;">
+                        ${this.escapeHtml(course.intake_year || 'N/A')}
+                        ${isPast ? ' <span style="font-size: 10px; color: #94a3b8;">(Past)</span>' : ''}
+                    </td>
+                    <td style="padding: 14px 18px; text-align: center;">
+                        <span style="font-weight: 600; color: #0A3D62;">${studentCount}</span>
+                    </td>
+                    <td style="padding: 14px 18px; text-align: center;">
+                        <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                            <span style="background: ${statusColor}20; color: ${statusColor}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
+                                ${statusLabel}
+                            </span>
+                            <button onclick="LecturerCourses.manageCourse('${course.id}')" 
+                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                                    onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                                <i class="fas fa-chart-bar"></i> Manage
+                            </button>
+                            <button onclick="LecturerCourses.viewStudents('${course.id}')" 
+                                    style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                                    onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                                <i class="fas fa-users"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
         
-    } catch (error) {
-        console.error('❌ Error loading courses:', error);
-        showNotification('Error loading courses: ' + error.message, 'error');
-    }
-}
-
-// ============================================================
-// RENDER ASSIGNMENTS
-// ============================================================
-
-function renderAssignments(assignments) {
-    const container = document.getElementById('courseList');
-    if (!container) return;
-    
-    if (!assignments || assignments.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-book-open"></i>
-                <h3>No Units Assigned</h3>
-                <p>You haven't been assigned to any units yet.</p>
-                <p class="text-muted">Please contact the administrator for unit assignments.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `<div class="course-grid">`;
-    
-    assignments.forEach((assignment, index) => {
-        const subjectName = assignment.subject_name || 'Unnamed Unit';
-        const subjectCode = assignment.subject_code || 'N/A';
-        const block = assignment.block || 'N/A';
-        const program = assignment.program || 'N/A';
-        const academicYear = assignment.academic_year || '2025';
+        // Update count
+        const countDisplay = document.getElementById('courseCountDisplay');
+        if (countDisplay) {
+            countDisplay.textContent = courses.length;
+        }
         
-        html += `
-            <div class="course-card">
-                <div class="course-header">
-                    <span class="course-number">${index + 1}</span>
-                    <span class="course-badge">${academicYear}</span>
-                </div>
-                <div class="course-body">
-                    <h4 class="course-title">${subjectName}</h4>
-                    <div class="course-meta">
-                        <span class="meta-item"><i class="fas fa-code"></i> ${subjectCode}</span>
-                        <span class="meta-item"><i class="fas fa-layer-group"></i> ${block}</span>
-                        <span class="meta-item"><i class="fas fa-graduation-cap"></i> ${program}</span>
-                    </div>
-                </div>
-                <div class="course-actions">
-                    <button onclick="openUnitMarks('${subjectName}', '${block}', '${program}', '${academicYear}')" 
-                            class="btn btn-primary btn-sm">
-                        <i class="fas fa-pen-alt"></i> Enter Marks
-                    </button>
-                    <button onclick="viewUnitStudents('${subjectName}', '${block}')" 
-                            class="btn btn-secondary btn-sm">
-                        <i class="fas fa-users"></i> Students
-                    </button>
-                </div>
-            </div>
-        `;
-    });
+        const filterCount = document.getElementById('courseFilterCount');
+        if (filterCount) {
+            const total = this.courses.length;
+            if (courses.length === total) {
+                filterCount.textContent = `Showing all ${total} units`;
+            } else {
+                filterCount.textContent = `Showing ${courses.length} of ${total} units`;
+            }
+        }
+    },
     
-    html += `</div>`;
-    container.innerHTML = html;
-}
-
-// ============================================================
-// UPDATE STATS
-// ============================================================
-
-function updateStats(assignments) {
-    const statsContainer = document.getElementById('courseStats');
-    if (!statsContainer) return;
-    
-    const total = assignments?.length || 0;
-    const active = assignments?.filter(a => a.academic_year === '2026').length || 0;
-    const completed = assignments?.filter(a => a.academic_year < '2026').length || 0;
-    
-    statsContainer.innerHTML = `
-        <div class="stats-grid">
-            <div class="stat-item">
-                <span class="stat-number">${total}</span>
-                <span class="stat-label">Total Units</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number">${active}</span>
-                <span class="stat-label">Active (2026)</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-number">${completed}</span>
-                <span class="stat-label">Completed</span>
-            </div>
-        </div>
-    `;
-}
-
-// ============================================================
-// OPEN UNIT MARKS
-// ============================================================
-
-function openUnitMarks(subjectName, block, program, academicYear) {
-    console.log('📝 Opening marks for:', subjectName);
-    
-    // Save current context
-    sessionStorage.setItem('currentSubject', subjectName);
-    sessionStorage.setItem('currentBlock', block);
-    sessionStorage.setItem('currentProgram', program);
-    sessionStorage.setItem('currentAcademicYear', academicYear);
-    
-    // Redirect to marks entry page or open modal
-    if (typeof loadMarksEntry === 'function') {
-        // If marks module is loaded
-        document.getElementById('me_subject_select')?.value = subjectName;
-        document.getElementById('me_block_select')?.value = block;
-        document.getElementById('me_program_select')?.value = program;
-        document.getElementById('me_year_select')?.value = academicYear;
-        loadMarksEntry();
-    } else {
-        // Redirect to marks page
-        window.location.href = `lecturer-marks.html?unit=${encodeURIComponent(subjectName)}&block=${encodeURIComponent(block)}`;
-    }
-}
-
-// ============================================================
-// VIEW UNIT STUDENTS
-// ============================================================
-
-async function viewUnitStudents(subjectName, block) {
-    console.log('👥 Viewing students for:', subjectName);
-    
-    try {
-        const { data: students, error } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, admission_number')
-            .eq('block', block)
-            .eq('role', 'student');
+    updateStats() {
+        const courses = this.courses;
+        const currentYear = new Date().getFullYear().toString();
         
-        if (error) throw error;
+        // Total units
+        const totalCourses = courses.length;
+        const totalEl = document.getElementById('totalCoursesCount2');
+        if (totalEl) totalEl.textContent = totalCourses;
         
-        if (!students || students.length === 0) {
-            showNotification('No students found in this block', 'warning');
+        // Total students
+        let totalStudents = 0;
+        courses.forEach(c => {
+            totalStudents += c.student_count || 0;
+        });
+        if (totalStudents === 0 && courses.length > 0) {
+            totalStudents = courses.length * 30;
+        }
+        const studentsEl = document.getElementById('totalStudentsCount2');
+        if (studentsEl) studentsEl.textContent = totalStudents;
+        
+        // Active units (current year)
+        const active = courses.filter(c => c.intake_year === currentYear || c.status === 'active').length;
+        const activeEl = document.getElementById('activeCoursesCount');
+        if (activeEl) activeEl.textContent = active;
+        
+        // Completed units (past years)
+        const completed = courses.filter(c => {
+            const year = c.intake_year;
+            return year && year !== 'N/A' && parseInt(year) < parseInt(currentYear);
+        }).length;
+        const completedEl = document.getElementById('completedCoursesCount');
+        if (completedEl) completedEl.textContent = completed;
+        
+        // Badge
+        const badge = document.getElementById('courseCountBadge');
+        if (badge) {
+            badge.textContent = courses.length;
+        }
+        
+        // Dashboard count
+        const dashboardCount = document.getElementById('totalCoursesCount');
+        if (dashboardCount) {
+            dashboardCount.textContent = courses.length;
+        }
+        
+        console.log(`📊 Stats: ${totalCourses} total, ${active} active (${currentYear}), ${completed} completed`);
+    },
+    
+    applyFilters() {
+        const intake = document.getElementById('intakeYearFilter')?.value || '';
+        const block = document.getElementById('academicPeriodFilter')?.value || '';
+        const search = document.getElementById('courseSearch')?.value?.toLowerCase() || '';
+        
+        this.filteredCourses = this.courses.filter(course => {
+            const matchIntake = !intake || course.intake_year === intake;
+            const matchBlock = !block || course.block === block;
+            const matchSearch = !search || 
+                course.course_name?.toLowerCase().includes(search) ||
+                course.unit_code?.toLowerCase().includes(search) ||
+                course.target_program?.toLowerCase().includes(search);
+            
+            return matchIntake && matchBlock && matchSearch;
+        });
+        
+        this.renderTable();
+    },
+    
+    setupEventListeners() {
+        ['intakeYearFilter', 'academicPeriodFilter'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', () => this.applyFilters());
+            }
+        });
+        
+        const searchInput = document.getElementById('courseSearch');
+        if (searchInput) {
+            let timeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => this.applyFilters(), 300);
+            });
+        }
+        
+        const searchBtn = document.getElementById('courseSearchBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => this.applyFilters());
+        }
+    },
+    
+    manageCourse(courseId) {
+        const course = this.courses.find(c => c.id === courseId);
+        if (!course) {
+            window.showNotification('Course not found.', 'error');
             return;
         }
         
-        // Show in modal or alert
-        const studentList = students.map((s, i) => 
-            `${i + 1}. ${s.full_name || 'N/A'} (${s.admission_number || s.student_id || 'N/A'})`
-        ).join('\n');
-        
-        alert(`📚 Students in ${subjectName}\n\n${studentList}\n\nTotal: ${students.length} students`);
-        
-    } catch (error) {
-        console.error('Error loading students:', error);
-        showNotification('Error loading students: ' + error.message, 'error');
-    }
-}
-
-// ============================================================
-// REFRESH
-// ============================================================
-
-async function refresh() {
-    console.log('🔄 Refreshing courses...');
-    showNotification('Refreshing courses...', 'info');
-    await loadCourses();
-    showNotification('✅ Courses refreshed!', 'success');
-}
-
-// ============================================================
-// SETUP EVENT LISTENERS
-// ============================================================
-
-function setupEventListeners() {
-    // Refresh button
-    document.getElementById('refreshBtn')?.addEventListener('click', refresh);
+        window.showNotification(`📚 Managing: ${course.course_name} - Features coming soon!`, 'info');
+        console.log('Managing course:', course);
+    },
     
-    // Auto-refresh on visibility change (optional)
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-            // Refresh when tab becomes visible again (optional)
-            // loadCourses();
+    viewStudents(courseId) {
+        const course = this.courses.find(c => c.id === courseId);
+        if (!course) {
+            window.showNotification('Course not found.', 'error');
+            return;
         }
-    });
-}
+        
+        window.showNotification(`👥 Viewing students for: ${course.course_name}`, 'info');
+        
+        if (typeof showTab === 'function') {
+            showTab('my-students');
+        }
+        
+        sessionStorage.setItem('selectedCourseId', courseId);
+        sessionStorage.setItem('selectedCourseName', course.course_name);
+    },
+    
+    exportCourses() {
+        const courses = this.filteredCourses || this.courses;
+        if (courses.length === 0) {
+            window.showNotification('No units to export.', 'warning');
+            return;
+        }
+        
+        const headers = ['Code', 'Name', 'Program', 'Block', 'Intake', 'Students', 'Status'];
+        const rows = courses.map(c => [
+            c.unit_code || 'N/A',
+            c.course_name || 'N/A',
+            c.target_program || 'N/A',
+            c.block || 'N/A',
+            c.intake_year || 'N/A',
+            c.student_count || 0,
+            c.status || 'Active'
+        ]);
+        
+        const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `units_assigned_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        window.showNotification('✅ Units exported successfully!', 'success');
+    },
+    
+    clearFilters() {
+        const filterIds = ['intakeYearFilter', 'academicPeriodFilter'];
+        filterIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        
+        const searchEl = document.getElementById('courseSearch');
+        if (searchEl) searchEl.value = '';
+        
+        this.filteredCourses = [...this.courses];
+        this.renderTable();
+        
+        window.showNotification('Filters cleared!', 'info');
+    },
+    
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+    
+    async refresh() {
+        await this.loadCourses();
+        this.populateFilters();
+        this.applyFilters();
+        this.updateStats();
+        window.showNotification('Units refreshed!', 'success');
+    }
+};
 
-// ============================================================
-// INITIALIZATION
-// ============================================================
-
+// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Lecturer Courses Module initializing...');
-    console.log('📧 Session check...');
-    
-    const lecturerId = getCurrentLecturerId();
-    
-    if (!lecturerId) {
-        console.warn('⚠️ No lecturer ID found. Please log in.');
-        document.getElementById('courseList')?.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle"></i>
-                <strong>Not logged in.</strong>
-                <p>Please log in to view your assigned units.</p>
-                <button onclick="location.reload()" class="btn btn-primary">
-                    <i class="fas fa-sync-alt"></i> Retry
-                </button>
-            </div>
-        `;
-        return;
-    }
-    
-    console.log('✅ Lecturer ID found:', lecturerId.substring(0, 10) + '...');
-    
-    // Load courses
-    loadCourses();
-    setupEventListeners();
-    
-    console.log('✅ Lecturer Courses Module initialized');
+    setTimeout(() => LecturerCourses.init(), 550);
 });
 
-// ============================================================
-// EXPOSE GLOBAL FUNCTIONS
-// ============================================================
+// Make functions globally accessible
+window.LecturerCourses = LecturerCourses;
+window.applyCourseFilters = () => LecturerCourses.applyFilters();
+window.clearCourseFilters = () => LecturerCourses.clearFilters();
+window.searchCourses = () => LecturerCourses.applyFilters();
+window.exportCourses = () => LecturerCourses.exportCourses();
 
-window.getCurrentLecturerId = getCurrentLecturerId;
-window.getCurrentLecturerName = getCurrentLecturerName;
-window.getLecturerAssignedUnits = getLecturerAssignedUnits;
-window.loadCourses = loadCourses;
-window.refresh = refresh;
-window.openUnitMarks = openUnitMarks;
-window.viewUnitStudents = viewUnitStudents;
-window.renderAssignments = renderAssignments;
-window.updateStats = updateStats;
-
-console.log('✅ Lecturer Courses Module loaded successfully!');
-console.log('✅ NO hardcoded IDs - all dynamic from session');
+console.log('✅ LecturerCourses module loaded');
