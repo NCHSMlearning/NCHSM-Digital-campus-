@@ -480,73 +480,67 @@ class ResourcesModule {
         this.currentYear = this.yearFilter?.value || 'all';
     }
     
-    // ============================================================
-    // RESOURCE LOADING
-    // ============================================================
-    async loadResources() {
-        if (this.isLoading) return;
-        this.detectUserProgram();
-        if (!this.userProfile) await this.getUserProfile();
-        
-        const supabase = this.getSupabaseClient();
-        if (!supabase) {
-            this.showError('Database connection error');
-            return;
-        }
-        if (!this.resourcesGrid) return;
-        
-        this.isLoading = true;
-        this.showSkeletonCards(6);
-        
-        try {
-            const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
-            const intakeYear = this.userIntakeYear || 2025;
-            
-            let query = supabase
-                .from('resources')
-                .select('*')
-                .eq('intake', String(intakeYear))
-                .order('created_at', { ascending: false });
-            
-            if (isTVET) {
-                const studentProgram = this.userProfile?.program || '';
-                if (studentProgram && this.TVET_PROGRAMS.includes(studentProgram)) {
-                    query = query.eq('program_type', studentProgram);
-                    console.log(`🔍 TVET Student: Showing resources for ${studentProgram}`);
-                } else {
-                    const tvetPrograms = this.TVET_PROGRAMS;
-                    query = query.in('program_type', tvetPrograms);
-                    console.log(`🔍 TVET Student: Showing ALL TVET resources`);
-                }
-            } else {
-                query = query.eq('program_type', 'KRCHN');
-                if (this.userBlock && this.userBlock !== 'General') {
-                    const blockPattern = this.userBlock.toLowerCase();
-                    query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
-                }
-            }
-            
-            const { data: resources, error } = await query;
-            if (error) throw error;
-            
-            this.allResources = resources || [];
-            console.log(`✅ Loaded ${this.allResources.length} resources for ${isTVET ? 'TVET' : 'KRCHN'}`);
-            
-            this.updatePastPaperCount();
-            this.populateFilters();
-            this.applyFilters();
-            this.updateDashboardResourceCount();
-            
-            // Load LMS data
-            this.loadLMSData();
-            
-        } catch (err) {
-            console.error('Error loading resources:', err);
-            this.showError(err.message);
-        } finally {
-            this.isLoading = false;
-        }
+   async loadResources() {
+    if (this.isLoading) return;
+    this.detectUserProgram();
+    if (!this.userProfile) await this.getUserProfile();
+    
+    const supabase = this.getSupabaseClient();
+    if (!supabase) {
+        this.showError('Database connection error');
+        return;
     }
+    if (!this.resourcesGrid) return;
+    
+    this.isLoading = true;
+    this.showSkeletonCards(6);
+    
+    try {
+        const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
+        const intakeYear = this.userIntakeYear || 2025;
+        
+        let query = supabase
+            .from('resources')
+            .select('*')
+            .eq('intake', String(intakeYear))
+            .order('created_at', { ascending: false });
+        
+        if (isTVET) {
+            const studentProgram = this.userProfile?.program || '';
+            if (studentProgram && this.TVET_PROGRAMS.includes(studentProgram)) {
+                query = query.eq('program_type', studentProgram);
+            } else {
+                query = query.in('program_type', this.TVET_PROGRAMS);
+            }
+        } else {
+            query = query.eq('program_type', 'KRCHN');
+            if (this.userBlock && this.userBlock !== 'General') {
+                const blockPattern = this.userBlock.toLowerCase();
+                query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
+            }
+        }
+        
+        const { data: resources, error } = await query;
+        if (error) throw error;
+        
+        this.allResources = resources || [];
+        console.log(`✅ Loaded ${this.allResources.length} resources`);
+        
+        this.updatePastPaperCount();
+        this.populateFilters();
+        this.applyFilters();
+        this.updateDashboardResourceCount();
+        
+        // ✅ Load LMS courses
+        await this.loadCourses();
+        
+    } catch (err) {
+        console.error('Error loading resources:', err);
+        this.showError(err.message);
+    } finally {
+        this.isLoading = false;
+    }
+}
     
     // ============================================================
     // FILTERS & RENDERING
@@ -922,31 +916,33 @@ class ResourcesModule {
         this.renderContinueLearning();
     }
     
-    async saveCoursesToDB() {
-        const supabase = this.getSupabaseClient();
-        if (!supabase) return;
-        
-        try {
-            for (const course of this.courses) {
-                const { error } = await supabase
-                    .from('lms_courses')
-                    .upsert({
-                        id: course.id,
-                        title: course.title,
-                        icon: course.icon,
-                        color: course.color,
-                        description: course.description,
-                        progress: course.progress,
-                        modules: course.modules
-                    });
-                
-                if (error) console.error('Error saving course:', error);
-            }
-        } catch (err) {
-            console.error('Error saving courses:', err);
-        }
-    }
+   async saveCoursesToDB() {
+    const supabase = this.getSupabaseClient();
+    if (!supabase) return;
     
+    try {
+        for (const course of this.courses) {
+            // ✅ Only include columns that exist in your table
+            const { error } = await supabase
+                .from('lms_courses')
+                .upsert({
+                    id: course.id,
+                    title: course.title,
+                    icon: course.icon || 'fa-book',
+                    color: course.color || '#4C1D95',
+                    description: course.description || '',
+                    progress: course.progress || 0,
+                    modules: course.modules || [],
+                    created_at: course.created_at || new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+            
+            if (error) console.error('Error saving course:', error);
+        }
+    } catch (err) {
+        console.error('Error saving courses:', err);
+    }
+}
     // ============================================================
     // LMS - RENDER COURSES SIDEBAR
     // ============================================================
