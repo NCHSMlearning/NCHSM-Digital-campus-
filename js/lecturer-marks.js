@@ -2172,7 +2172,7 @@ function downloadCSV(csv, filename) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 }
- ============================================================
+// ============================================================
 // LOAD LECTURER MARKS ENTRY - Wrapper for onclick
 // ============================================================
 
