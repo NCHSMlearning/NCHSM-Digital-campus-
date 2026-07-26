@@ -1,8 +1,8 @@
 // js/lecturer-exams.js
 /**
  * NCHSM Lecturer Exams Module
- * Uses dedicated lecturer database with correct ID resolution
- * KEEPS ORIGINAL exams TABLE QUERY
+ * Uses the exams table with correct column names
+ * Includes admin approval workflow
  */
 
 const LecturerExams = {
@@ -38,79 +38,30 @@ const LecturerExams = {
                 return;
             }
             
-            const authId = profile.user_id;
             const fullName = profile.full_name;
+            const authId = profile.user_id;
             
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // Try exact name match
+            // Use ilike for partial name matching
             const { data: nameData, error: nameError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
-                .eq('lecturer_name', fullName);
+                .ilike('lecturer_name', `%${fullName}%`);
             
             if (!nameError && nameData && nameData.length > 0) {
                 const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
                 if (nonStaff) {
                     this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Found non-STAFF ID by exact name match:', this.lecturerAssignmentId);
+                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
                     return;
                 }
                 this.lecturerAssignmentId = nameData[0].lecturer_id;
-                console.log('⚠️ Found STAFF ID by name match:', this.lecturerAssignmentId);
+                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
                 return;
             }
             
-            // Try partial name match with scoring
-            const nameParts = fullName.toLowerCase().split(' ');
-            const { data: allLecturers, error: allError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name');
-            
-            if (!allError && allLecturers && allLecturers.length > 0) {
-                let bestMatch = null;
-                let bestScore = -1;
-                
-                for (const lecturer of allLecturers) {
-                    const lecturerName = lecturer.lecturer_name || '';
-                    const lecturerId = lecturer.lecturer_id;
-                    let score = 0;
-                    
-                    const lecturerNameLower = lecturerName.toLowerCase();
-                    
-                    for (const part of nameParts) {
-                        if (part.length > 1 && lecturerNameLower.includes(part)) {
-                            score += 10;
-                        }
-                    }
-                    
-                    if (lecturerNameLower === fullName.toLowerCase()) {
-                        score += 30;
-                    }
-                    
-                    if (!lecturerId.toString().startsWith('STAFF')) {
-                        score += 50;
-                    }
-                    
-                    if (lecturerId.toString().includes('-')) {
-                        score += 30;
-                    }
-                    
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMatch = lecturerId;
-                    }
-                }
-                
-                if (bestMatch) {
-                    this.lecturerAssignmentId = bestMatch;
-                    console.log(`✅ Selected lecturer ID with score ${bestScore}:`, this.lecturerAssignmentId);
-                    return;
-                }
-            }
-            
-            // Fallback: use auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -152,7 +103,7 @@ const LecturerExams = {
     },
     
     // ============================================
-    // LOAD EXAMS - ORIGINAL TABLE QUERY (exams)
+    // LOAD EXAMS - USING exams TABLE
     // ============================================
     async loadExams() {
         try {
@@ -171,7 +122,7 @@ const LecturerExams = {
                 return;
             }
             
-            // ✅ ORIGINAL QUERY - KEEP AS IS
+            // ✅ Use exams table with correct column names
             const { data: exams, error } = await supabase
                 .from('exams')
                 .select('*')
@@ -211,11 +162,6 @@ const LecturerExams = {
                         <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
                         <h3 style="color: #475569; margin: 0 0 8px 0;">No Exams Created</h3>
                         <p style="margin: 0; font-size: 14px;">Create your first exam or CAT using the form above.</p>
-                        <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                            <span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">📝 CAT</span>
-                            <span style="background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">📊 Exam</span>
-                            <span style="background: #fef3c7; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #92400e;">🔬 Practical</span>
-                        </div>
                     </td>
                 </tr>
             `;
@@ -236,47 +182,42 @@ const LecturerExams = {
             'Cancelled': '❌'
         };
         
+        const approvalBadges = {
+            'pending': '<span style="background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 12px; font-size: 10px;">⏳ Pending</span>',
+            'approved': '<span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 10px;">✅ Approved</span>',
+            'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 12px; font-size: 10px;">❌ Rejected</span>',
+            'draft': '<span style="background: #e5e7eb; color: #6b7280; padding: 2px 10px; border-radius: 12px; font-size: 10px;">📝 Draft</span>'
+        };
+        
         tbody.innerHTML = exams.map(exam => {
-            const unit = exam.unit_name || exam.course?.course_name || 'General';
-            const dateTime = exam.exam_date ? (window.LecturerUtils?.formatDate(exam.exam_date) || exam.exam_date) + (exam.start_time ? ' ' + exam.start_time : '') : 'N/A';
+            const unit = exam.course_name || exam.course_code || 'General';
+            const dateTime = exam.exam_date ? (this.formatDate(exam.exam_date)) + (exam.exam_start_time ? ' ' + exam.exam_start_time : '') : 'N/A';
             const status = exam.status || 'Scheduled';
             const statusColor = statusColors[status] || '#6b7280';
             const statusIcon = statusIcons[status] || '📌';
             const isOwner = exam.created_by === this.lecturerAssignmentId || exam.created_by === window.lecturerDB?.getCurrentUserId();
-            const approvalStatus = exam.approval_status || 'draft';
-            
-            const approvalBadges = {
-                'pending': '<span style="background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 12px; font-size: 10px;">⏳ Pending</span>',
-                'approved': '<span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 10px;">✅ Approved</span>',
-                'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 12px; font-size: 10px;">❌ Rejected</span>',
-                'draft': '<span style="background: #e5e7eb; color: #6b7280; padding: 2px 10px; border-radius: 12px; font-size: 10px;">📝 Draft</span>',
-                'published': '<span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 10px;">📢 Published</span>'
-            };
-            
-            const approvalBadge = approvalBadges[approvalStatus] || approvalBadges.draft;
+            const approvalStatus = exam.approval_status || 'pending';
+            const approvalBadge = approvalBadges[approvalStatus] || approvalBadges.pending;
             
             let actions = '';
             
-            if (isOwner && (approvalStatus === 'draft' || approvalStatus === 'pending')) {
+            if (isOwner && (approvalStatus === 'pending' || approvalStatus === 'draft')) {
                 actions += `
                     <button onclick="LecturerExams.editExam('${exam.id}')" 
-                            style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                            onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                            style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button onclick="LecturerExams.deleteExam('${exam.id}')" 
-                            style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                            onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                            style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                         <i class="fas fa-trash"></i>
                     </button>
                 `;
             }
             
-            if (approvalStatus === 'approved' || approvalStatus === 'published' || status === 'Completed') {
+            if (approvalStatus === 'approved' || status === 'Completed') {
                 actions += `
                     <button onclick="LecturerExams.gradeExam('${exam.id}')" 
-                            style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                            onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                            style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                         <i class="fas fa-check-circle"></i> Grade
                     </button>
                 `;
@@ -292,14 +233,14 @@ const LecturerExams = {
                         </span>
                     </td>
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                        ${this.escapeHtml(exam.exam_name || 'Untitled Exam')}
+                        ${this.escapeHtml(exam.exam_name || exam.title || 'Untitled Exam')}
                         <div style="font-size: 10px; margin-top: 2px;">${approvalBadge}</div>
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
                         ${this.escapeHtml(unit)}
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
-                        ${this.escapeHtml(exam.target_program || 'N/A')}/${this.escapeHtml(exam.block_term || 'N/A')}
+                        ${this.escapeHtml(exam.target_program || exam.program_type || 'N/A')}/${this.escapeHtml(exam.block_term || exam.block || 'N/A')}
                     </td>
                     <td style="padding: 14px 18px; color: #475569; font-size: 13px;">
                         ${dateTime}
@@ -486,21 +427,25 @@ const LecturerExams = {
                 throw new Error('Database connection not available');
             }
             
-            // ✅ ORIGINAL QUERY - Keep as is
+            // ✅ Use exams table with correct column names
             const { data: result, error } = await supabase
                 .from('exams')
                 .insert({
                     exam_name: formData.title,
+                    title: formData.title,
                     exam_date: formData.date,
                     exam_type: formData.type,
                     target_program: formData.program,
-                    intake_year: formData.intake,
+                    program_type: formData.program,
+                    intake_year: parseInt(formData.intake),
                     block_term: formData.block,
-                    unit_name: formData.unit || null,
-                    start_time: formData.startTime || null,
+                    block: formData.block,
+                    course_name: formData.unit || null,
+                    exam_start_time: formData.startTime || null,
                     duration_minutes: parseInt(formData.duration),
-                    status: formData.status,
+                    status: formData.status || 'Scheduled',
                     online_link: formData.link || null,
+                    exam_link: formData.link || null,
                     venue: formData.venue || null,
                     created_by: lecturerId,
                     approval_status: 'pending',
@@ -531,8 +476,8 @@ const LecturerExams = {
             return;
         }
         
-        const newTitle = prompt('Edit Exam Title:', exam.exam_name || '');
-        if (newTitle !== null && newTitle !== exam.exam_name) {
+        const newTitle = prompt('Edit Exam Title:', exam.exam_name || exam.title || '');
+        if (newTitle !== null && newTitle !== (exam.exam_name || exam.title)) {
             try {
                 const supabase = window.lecturerDB?.supabase;
                 if (!supabase) {
@@ -541,7 +486,7 @@ const LecturerExams = {
                 
                 const { error } = await supabase
                     .from('exams')
-                    .update({ exam_name: newTitle })
+                    .update({ exam_name: newTitle, title: newTitle })
                     .eq('id', examId);
                 
                 if (error) throw error;
@@ -563,7 +508,7 @@ const LecturerExams = {
             return;
         }
         
-        if (!confirm(`Delete exam "${exam.exam_name || 'Exam'}"?`)) return;
+        if (!confirm(`Delete exam "${exam.exam_name || exam.title || 'Exam'}"?`)) return;
         
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -594,7 +539,7 @@ const LecturerExams = {
             return;
         }
         
-        window.showNotification(`📝 Grading: ${exam.exam_name || 'Exam'} - Feature coming soon!`, 'info');
+        window.showNotification(`📝 Grading: ${exam.exam_name || exam.title || 'Exam'} - Feature coming soon!`, 'info');
         console.log('Grading exam:', exam);
     },
     
@@ -608,10 +553,10 @@ const LecturerExams = {
         const headers = ['Type', 'Title', 'Unit', 'Program', 'Block', 'Date', 'Duration', 'Status'];
         const rows = exams.map(e => [
             e.exam_type || 'N/A',
-            e.exam_name || 'N/A',
-            e.unit_name || e.course?.course_name || 'N/A',
-            e.target_program || 'N/A',
-            e.block_term || 'N/A',
+            e.exam_name || e.title || 'N/A',
+            e.course_name || e.course_code || 'N/A',
+            e.target_program || e.program_type || 'N/A',
+            e.block_term || e.block || 'N/A',
             e.exam_date || 'N/A',
             e.duration_minutes ? e.duration_minutes + ' mins' : 'N/A',
             e.status || 'Scheduled'
@@ -629,6 +574,20 @@ const LecturerExams = {
         URL.revokeObjectURL(url);
         
         window.showNotification('✅ Exams exported successfully!', 'success');
+    },
+    
+    formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch {
+            return dateString;
+        }
     },
     
     escapeHtml(text) {
@@ -658,4 +617,4 @@ window.LecturerExams = LecturerExams;
 window.searchExams = () => LecturerExams.filterExams();
 window.exportExams = () => LecturerExams.exportExams();
 
-console.log('✅ LecturerExams module loaded - ORIGINAL exams table query with ID resolution');
+console.log('✅ LecturerExams module loaded - Using exams table with correct columns');
