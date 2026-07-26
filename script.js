@@ -19217,8 +19217,8 @@ window.getStarHTML = getStarHTML;
 
 console.log('✅ Reviews & Newsletter module loaded');
 // ============================================================
-// MARKS ENTRY SYSTEM - SUPER ADMIN
-// WITH LECTURER UNIT ASSIGNMENT MANAGEMENT
+// MARKS ENTRY SYSTEM - SUPER ADMIN (FULLY FIXED)
+// WITH AUTO-APPROVE ON SAVE
 // ============================================================
 
 // ============================================================
@@ -19233,6 +19233,12 @@ let me_currentProgram = '';
 let me_currentAssessmentType = 'full';
 let me_columnSettings = {};
 let me_currentAssignments = [];
+let me_studentManagerData = {
+    allStudents: [],
+    enrolledStudents: [],
+    availableStudents: [],
+    enrolledMap: {}
+};
 
 // ============================================================
 // CHECK IF USER IS ADMIN
@@ -19276,7 +19282,7 @@ function isUserAdmin() {
 }
 
 // ============================================================
-// DETECT VISIBLE COLUMNS
+// DETECT VISIBLE COLUMNS - FIXED
 // ============================================================
 
 function detectVisibleColumns() {
@@ -19293,54 +19299,50 @@ function detectVisibleColumns() {
     let hasCat2 = false;
     let hasExam = false;
     
+    // ✅ Check saved settings FIRST
     const savedColumns = me_columnSettings.columns || [];
     const savedCat1 = savedColumns.find(c => c.id === 'cat1');
     const savedCat2 = savedColumns.find(c => c.id === 'cat2');
     const savedExam = savedColumns.find(c => c.id === 'exam');
     
-    headers.forEach((th, index) => {
-        const text = th.textContent.toLowerCase().trim();
-        const computedDisplay = window.getComputedStyle(th).display;
-        const inlineDisplay = th.style.display;
-        const isVisible = inlineDisplay !== 'none' && computedDisplay !== 'none';
-        
-        console.log(`📌 Header ${index}: "${text}" - inline: ${inlineDisplay || 'default'}, computed: ${computedDisplay}, visible: ${isVisible}`);
-        
-        if (text.includes('cat1') || text.includes('cat 1') || text === '#') {
-            if (savedCat1 !== undefined) {
-                hasCat1 = savedCat1.visible !== false;
-            } else {
+    // ✅ Use saved settings if they exist
+    if (savedCat1 !== undefined) {
+        hasCat1 = savedCat1.visible !== false;
+        console.log(`📋 Saved CAT1: ${hasCat1 ? 'visible' : 'hidden'}`);
+    }
+    if (savedCat2 !== undefined) {
+        hasCat2 = savedCat2.visible !== false;
+        console.log(`📋 Saved CAT2: ${hasCat2 ? 'visible' : 'hidden'}`);
+    }
+    if (savedExam !== undefined) {
+        hasExam = savedExam.visible !== false;
+        console.log(`📋 Saved Exam: ${hasExam ? 'visible' : 'hidden'}`);
+    }
+    
+    // ✅ If not saved, check DOM
+    if (savedCat1 === undefined || savedCat2 === undefined || savedExam === undefined) {
+        headers.forEach((th, index) => {
+            const text = th.textContent.toLowerCase().trim();
+            const computedDisplay = window.getComputedStyle(th).display;
+            const inlineDisplay = th.style.display;
+            const isVisible = inlineDisplay !== 'none' && computedDisplay !== 'none';
+            
+            if (savedCat1 === undefined && (text.includes('cat1') || text.includes('cat 1'))) {
                 hasCat1 = isVisible;
             }
-        }
-        if (text.includes('cat2') || text.includes('cat 2')) {
-            if (savedCat2 !== undefined) {
-                hasCat2 = savedCat2.visible !== false;
-            } else {
+            if (savedCat2 === undefined && (text.includes('cat2') || text.includes('cat 2'))) {
                 hasCat2 = isVisible;
             }
-        }
-        if (text.includes('exam')) {
-            if (savedExam !== undefined) {
-                hasExam = savedExam.visible !== false;
-            } else {
+            if (savedExam === undefined && text.includes('exam')) {
                 hasExam = isVisible;
             }
-        }
-    });
-    
-    if (!hasCat1 && !hasCat2 && !hasExam) {
-        console.log('⚠️ No columns detected from DOM, using saved settings...');
-        if (savedCat1 !== undefined) hasCat1 = savedCat1.visible !== false;
-        if (savedCat2 !== undefined) hasCat2 = savedCat2.visible !== false;
-        if (savedExam !== undefined) hasExam = savedExam.visible !== false;
-        
-        if (!hasCat1 && !hasCat2 && !hasExam) {
-            hasCat1 = true;
-            hasCat2 = true;
-            hasExam = true;
-        }
+        });
     }
+    
+    // ✅ Default to true if still not set
+    if (savedCat1 === undefined && !hasCat1) hasCat1 = true;
+    if (savedCat2 === undefined && !hasCat2) hasCat2 = true;
+    if (savedExam === undefined && !hasExam) hasExam = true;
     
     const result = { hasCat1, hasCat2, hasExam };
     console.log('📊 Final detection result:', result);
@@ -19607,7 +19609,7 @@ async function loadMEUnits() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY
+// LOAD MARKS ENTRY - WITH DYNAMIC CONTENT TOGGLE
 // ============================================================
 
 async function loadMarksEntry() {
@@ -19620,7 +19622,7 @@ async function loadMarksEntry() {
     const assessmentType = selectedOption?.dataset?.assessment || 'full';
     const unitCode = selectedOption?.dataset?.code || '';
     
-    // Show dynamic content when unit is selected
+    // Show/hide dynamic content
     const dynamicContent = document.getElementById('marksEntryDynamicContent');
     const placeholder = document.getElementById('marksEntryPlaceholder');
     
@@ -19727,7 +19729,7 @@ async function loadMarksEntry() {
 }
 
 // ============================================================
-// RENDER MARKS TABLE - WITH MANAGE STUDENTS BUTTON
+// RENDER MARKS TABLE - WITH AUTO DETECTION AND MANAGE STUDENTS
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType) {
@@ -19758,7 +19760,6 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 </span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <!-- ✅ MANAGE STUDENTS BUTTON -->
                 <button onclick="openMarksStudentManager()" class="btn-action" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-users"></i> Manage Students
                 </button>
@@ -19844,13 +19845,8 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         </div>
         <div style="text-align: center; margin-top: 16px;">
             <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
-                <i class="fas fa-save"></i> 💾 Save All Marks
+                <i class="fas fa-save"></i> 💾 Save All Marks (Auto-Approved)
             </button>
-            ${isUserAdmin() ? `
-            <button onclick="submitMarksForApproval()" class="btn-action" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
-                <i class="fas fa-paper-plane"></i> Submit for Approval
-            </button>
-            ` : ''}
         </div>
     `;
     
@@ -19975,126 +19971,200 @@ function updateMarksEntryStats(marks, assessmentType) {
 }
 
 // ============================================================
-// SAVE MARKS - SINGLE UPSERT BATCH
+// SAVE MARKS - WITH AUTO-APPROVE FOR ADMIN
 // ============================================================
 
 async function saveMarksEntry() {
-    const program = me_currentProgram;
+    console.log('💾 Saving marks with auto-approve...');
+    
     const block = me_currentBlock;
     const unit = me_currentUnit;
     const year = me_currentYear;
-    const assessmentType = me_currentAssessmentType;
+    const assessmentType = me_currentAssessmentType || 'full';
     
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    // Collect all marks data
     const marksData = [];
     const rows = document.querySelectorAll('#me_marks_container table tbody tr');
+    
+    if (rows.length === 0) {
+        showNotification('No students found to save', 'warning');
+        return;
+    }
     
     rows.forEach((row, index) => {
         const cat1Input = document.getElementById(`me_cat1_${index}`);
         const cat2Input = document.getElementById(`me_cat2_${index}`);
         const examInput = document.getElementById(`me_exam_${index}`);
         
-        if (cat1Input || cat2Input || examInput) {
-            const admission = row.cells[1]?.textContent?.trim() || '';
-            const name = row.cells[2]?.textContent?.trim() || '';
+        const cells = row.querySelectorAll('td');
+        const admission = cells[1]?.textContent?.trim() || '';
+        const name = cells[2]?.textContent?.trim() || '';
+        
+        if (admission) {
             const cat1 = parseFloat(cat1Input?.value) || 0;
             const cat2 = parseFloat(cat2Input?.value) || 0;
             const exam = parseFloat(examInput?.value) || 0;
             
-            if (admission) {
-                const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-                const gradeInfo = getMarksEntryGrade(total);
-                
-                marksData.push({
-                    admission_number: admission,
-                    student_name: name || 'Unknown',
-                    block: block,
-                    subject_name: unit,
-                    assessment_type: assessmentType,
-                    cat1_score: cat1,
-                    cat2_score: cat2,
-                    exam_score: exam,
-                    final_score: total,
-                    grade: gradeInfo.grade,
-                    academic_year: year,
-                    updated_at: new Date().toISOString()
-                });
+            let total = 0;
+            if (assessmentType === 'full') {
+                total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+            } else if (assessmentType === 'single_cat') {
+                total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+            } else if (assessmentType === 'exam_only') {
+                total = Math.round(Math.min(exam,100) * 10) / 10;
+            } else {
+                total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
             }
+            
+            const gradeInfo = getMarksEntryGrade(total);
+            
+            marksData.push({
+                admission_number: admission,
+                student_name: name || 'Unknown',
+                block: block,
+                subject_name: unit,
+                assessment_type: assessmentType,
+                cat1_score: cat1,
+                cat2_score: cat2,
+                exam_score: exam,
+                final_score: total,
+                grade: gradeInfo.grade,
+                academic_year: year,
+                // ✅ AUTO-APPROVE for admin
+                approval_status: 'approved',
+                approved_at: new Date().toISOString(),
+                approved_by: window.currentUser?.id || null,
+                updated_at: new Date().toISOString()
+            });
         }
     });
     
     if (marksData.length === 0) {
-        if (typeof showNotification === 'function') showNotification('No marks to save', 'warning');
+        showNotification('No marks to save', 'warning');
         return;
     }
     
-    if (typeof showLoading === 'function') showLoading(`Saving ${marksData.length} marks...`);
+    console.log(`📋 Saving ${marksData.length} marks with auto-approve...`);
+    showLoading(`Saving ${marksData.length} marks...`);
     
     try {
-        const { error } = await sb
-            .from('student_marks')
-            .upsert(marksData, { 
-                onConflict: 'admission_number,subject_name,block,academic_year'
-            });
+        let saved = 0;
+        let errors = 0;
         
-        if (error) throw error;
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        if (typeof showNotification === 'function') {
-            showNotification(`✅ Saved ${marksData.length} marks successfully!`, 'success');
+        // Process each mark individually
+        for (const mark of marksData) {
+            try {
+                // Check if record exists
+                const { data: existing, error: fetchError } = await sb
+                    .from('student_marks')
+                    .select('id')
+                    .eq('admission_number', mark.admission_number)
+                    .eq('subject_name', mark.subject_name)
+                    .eq('block', mark.block)
+                    .eq('academic_year', mark.academic_year)
+                    .maybeSingle();
+                
+                if (fetchError) {
+                    console.error('❌ Fetch error:', fetchError);
+                    errors++;
+                    continue;
+                }
+                
+                // ✅ Always set to approved for admin
+                const updateData = {
+                    student_name: mark.student_name,
+                    assessment_type: mark.assessment_type,
+                    cat1_score: mark.cat1_score,
+                    cat2_score: mark.cat2_score,
+                    exam_score: mark.exam_score,
+                    final_score: mark.final_score,
+                    grade: mark.grade,
+                    approval_status: 'approved',
+                    approved_at: new Date().toISOString(),
+                    approved_by: window.currentUser?.id || null,
+                    updated_at: new Date().toISOString()
+                };
+                
+                let result;
+                if (existing) {
+                    // ✅ UPDATE with auto-approve
+                    const { error: updateError } = await sb
+                        .from('student_marks')
+                        .update(updateData)
+                        .eq('id', existing.id);
+                    
+                    if (updateError) {
+                        console.error('❌ Update error:', updateError);
+                        errors++;
+                        continue;
+                    }
+                } else {
+                    // ✅ INSERT with auto-approve
+                    const { error: insertError } = await sb
+                        .from('student_marks')
+                        .insert({
+                            admission_number: mark.admission_number,
+                            student_name: mark.student_name,
+                            block: mark.block,
+                            subject_name: mark.subject_name,
+                            assessment_type: mark.assessment_type,
+                            cat1_score: mark.cat1_score,
+                            cat2_score: mark.cat2_score,
+                            exam_score: mark.exam_score,
+                            final_score: mark.final_score,
+                            grade: mark.grade,
+                            academic_year: mark.academic_year,
+                            approval_status: 'approved',
+                            approved_at: new Date().toISOString(),
+                            approved_by: window.currentUser?.id || null,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        });
+                    
+                    if (insertError) {
+                        console.error('❌ Insert error:', insertError);
+                        errors++;
+                        continue;
+                    }
+                }
+                saved++;
+            } catch (err) {
+                console.error('❌ Error:', err);
+                errors++;
+            }
         }
         
+        hideLoading();
+        
+        if (errors > 0) {
+            showNotification(`⚠️ Saved ${saved} marks with ${errors} errors`, 'warning');
+        } else {
+            showNotification(`✅ ${saved} marks saved and auto-approved!`, 'success');
+        }
+        
+        // ✅ Refresh the table
         setTimeout(() => loadMarksEntry(), 500);
         
     } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        if (typeof showNotification === 'function') showNotification('❌ Error saving marks: ' + error.message, 'error');
+        hideLoading();
+        console.error('❌ Error saving marks:', error);
+        showNotification('❌ Error saving marks: ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// SUBMIT FOR APPROVAL
+// REFRESH MARKS DATA
 // ============================================================
 
-async function submitMarksForApproval() {
-    if (!isUserAdmin()) {
-        if (typeof showNotification === 'function') showNotification('Only admins can submit for approval', 'error');
-        return;
-    }
-    
-    const block = me_currentBlock;
-    const unit = me_currentUnit;
-    const year = me_currentYear;
-    
-    if (!block || !unit) {
-        if (typeof showNotification === 'function') showNotification('Please load marks first', 'warning');
-        return;
-    }
-    
-    if (!confirm(`Submit "${unit}" marks for admin approval?`)) return;
-    
-    if (typeof showLoading === 'function') showLoading('Submitting for approval...');
-    
-    try {
-        const { error } = await sb
-            .from('student_marks')
-            .update({
-                approval_status: 'pending',
-                submitted_at: new Date().toISOString(),
-                submitted_by: window.currentUser?.id || null
-            })
-            .eq('block', block)
-            .eq('subject_name', unit)
-            .eq('academic_year', year);
-        
-        if (error) throw error;
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        if (typeof showNotification === 'function') showNotification('✅ Marks submitted for approval!', 'success');
-        loadMarksEntry();
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        if (typeof showNotification === 'function') showNotification('❌ Error: ' + error.message, 'error');
+function refreshMarksData() {
+    loadMarksEntry();
+    if (typeof showNotification === 'function') {
+        showNotification('🔄 Data refreshed!', 'success');
     }
 }
 
@@ -20139,13 +20209,16 @@ function exportMarksEntry() {
     if (typeof showNotification === 'function') showNotification('✅ Marks exported!', 'success');
 }
 
-// ============================================================
-// REFRESH MARKS DATA
-// ============================================================
-
-function refreshMarksData() {
-    loadMarksEntry();
-    if (typeof showNotification === 'function') showNotification('🔄 Data refreshed!', 'success');
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 // ============================================================
@@ -20213,10 +20286,6 @@ async function loadUnitColumnSettings() {
     }
 }
 
-// ============================================================
-// RENDER COLUMN CHECKBOXES - ADMIN ONLY
-// ============================================================
-
 function renderUnitColumns() {
     const container = document.getElementById('me_column_settings');
     if (!container) return;
@@ -20249,7 +20318,7 @@ function renderUnitColumns() {
     container.innerHTML = `
         <div style="grid-column: 1 / -1; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <span style="font-size: 12px; color: #6b7280;">
-                <i class="fas fa-globe"></i> These settings apply to ALL users (Lecturers & Students)
+                <i class="fas fa-globe"></i> These settings apply to ALL users
             </span>
             <span style="background: #4C1D95; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
                 <i class="fas fa-shield-alt"></i> ADMIN
@@ -20280,16 +20349,10 @@ function renderUnitColumns() {
     `;
 }
 
-// ============================================================
-// SAVE COLUMN SETTING
-// ============================================================
-
 async function saveUnitColumnSetting(columnId, visible) {
     const unit = me_currentUnit;
     const block = me_currentBlock;
     const year = me_currentYear || '2025';
-    
-    console.log('💾 Saving column setting:', { columnId, visible, unit, block, year });
     
     if (!unit || !block) {
         if (typeof showNotification === 'function') {
@@ -20306,11 +20369,7 @@ async function saveUnitColumnSetting(columnId, visible) {
     }
     
     try {
-        let columns = [];
-        if (me_columnSettings && me_columnSettings.columns) {
-            columns = me_columnSettings.columns || [];
-        }
-        
+        let columns = me_columnSettings.columns || [];
         const colIndex = columns.findIndex(c => c.id === columnId);
         if (colIndex !== -1) {
             columns[colIndex].visible = visible;
@@ -20318,9 +20377,7 @@ async function saveUnitColumnSetting(columnId, visible) {
             columns.push({ id: columnId, visible: visible });
         }
         
-        console.log('📋 Updated columns:', columns);
-        
-        const { data: existing, error: fetchError } = await sb
+        const { data: existing } = await sb
             .from('column_settings')
             .select('id')
             .eq('block', block)
@@ -20328,46 +20385,26 @@ async function saveUnitColumnSetting(columnId, visible) {
             .eq('year', year)
             .maybeSingle();
         
-        if (fetchError) {
-            console.error('❌ Fetch error:', fetchError);
-            throw fetchError;
-        }
-        
         let error;
         if (existing) {
-            console.log('📝 Updating existing record:', existing.id);
             const { error: updateError } = await sb
                 .from('column_settings')
-                .update({
-                    columns: columns,
-                    updated_at: new Date().toISOString()
-                })
+                .update({ columns, updated_at: new Date().toISOString() })
                 .eq('id', existing.id);
             error = updateError;
-            if (!error) console.log('✅ Update successful');
         } else {
-            console.log('📝 Inserting new record');
             const { error: insertError } = await sb
                 .from('column_settings')
-                .insert({
-                    block: block,
-                    subject: unit,
-                    year: year,
-                    columns: columns,
-                    updated_at: new Date().toISOString()
-                });
+                .insert({ block, subject: unit, year, columns, updated_at: new Date().toISOString() });
             error = insertError;
-            if (!error) console.log('✅ Insert successful');
         }
         
         if (error) throw error;
         
-        me_columnSettings = { columns: columns };
-        
+        me_columnSettings = { columns };
         if (typeof showNotification === 'function') {
-            showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'} for ${unit}`, 'success');
+            showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'}`, 'success');
         }
-        
         applyColumnVisibility();
         
     } catch (error) {
@@ -20379,11 +20416,6 @@ async function saveUnitColumnSetting(columnId, visible) {
 }
 
 window.saveUnitColumnSetting = saveUnitColumnSetting;
-console.log('✅ saveUnitColumnSetting has been replaced with the fixed version!');
-
-// ============================================================
-// APPLY COLUMN VISIBILITY
-// ============================================================
 
 function applyColumnVisibility() {
     console.log('📋 Applying column visibility...');
@@ -20395,7 +20427,6 @@ function applyColumnVisibility() {
     }
     
     const savedColumns = me_columnSettings.columns || [];
-    console.log('📋 Saved columns:', savedColumns);
     
     const headers = table.querySelectorAll('thead th');
     const rows = table.querySelectorAll('tbody tr');
@@ -20403,39 +20434,23 @@ function applyColumnVisibility() {
     const columnIndexMap = {};
     headers.forEach((th, index) => {
         const text = th.textContent.toLowerCase().trim();
-        if (text.includes('cat1') || text.includes('cat 1')) {
-            columnIndexMap['cat1'] = index;
-        } else if (text.includes('cat2') || text.includes('cat 2')) {
-            columnIndexMap['cat2'] = index;
-        } else if (text.includes('exam')) {
-            columnIndexMap['exam'] = index;
-        } else if (text.includes('total')) {
-            columnIndexMap['total'] = index;
-        } else if (text.includes('grade')) {
-            columnIndexMap['grade'] = index;
-        } else if (text.includes('points')) {
-            columnIndexMap['points'] = index;
-        } else if (text.includes('rating')) {
-            columnIndexMap['rating'] = index;
-        } else if (text.includes('graded by')) {
-            columnIndexMap['gradedBy'] = index;
-        } else if (text.includes('#')) {
-            columnIndexMap['sno'] = index;
-        } else if (text.includes('admission')) {
-            columnIndexMap['admission'] = index;
-        } else if (text.includes('name')) {
-            columnIndexMap['name'] = index;
-        } else if (text.includes('approval')) {
-            columnIndexMap['approval'] = index;
-        }
+        if (text.includes('cat1') || text.includes('cat 1')) columnIndexMap['cat1'] = index;
+        else if (text.includes('cat2') || text.includes('cat 2')) columnIndexMap['cat2'] = index;
+        else if (text.includes('exam')) columnIndexMap['exam'] = index;
+        else if (text.includes('total')) columnIndexMap['total'] = index;
+        else if (text.includes('grade')) columnIndexMap['grade'] = index;
+        else if (text.includes('points')) columnIndexMap['points'] = index;
+        else if (text.includes('rating')) columnIndexMap['rating'] = index;
+        else if (text.includes('graded by')) columnIndexMap['gradedBy'] = index;
+        else if (text.includes('#')) columnIndexMap['sno'] = index;
+        else if (text.includes('admission')) columnIndexMap['admission'] = index;
+        else if (text.includes('name')) columnIndexMap['name'] = index;
+        else if (text.includes('approval')) columnIndexMap['approval'] = index;
     });
-    
-    console.log('📋 Column index map:', columnIndexMap);
     
     headers.forEach((th) => {
         const text = th.textContent.toLowerCase().trim();
         let colId = null;
-        
         if (text.includes('cat1') || text.includes('cat 1')) colId = 'cat1';
         else if (text.includes('cat2') || text.includes('cat 2')) colId = 'cat2';
         else if (text.includes('exam')) colId = 'exam';
@@ -20454,7 +20469,6 @@ function applyColumnVisibility() {
             const setting = savedColumns.find(c => c.id === colId);
             const visible = isRequired ? true : (setting !== undefined ? setting.visible : true);
             th.style.display = visible ? '' : 'none';
-            console.log(`📌 ${colId}: ${visible ? '✅ visible' : '❌ hidden'}`);
         }
     });
     
@@ -20463,12 +20477,8 @@ function applyColumnVisibility() {
         cells.forEach((td, index) => {
             let colId = null;
             for (const [id, idx] of Object.entries(columnIndexMap)) {
-                if (idx === index) {
-                    colId = id;
-                    break;
-                }
+                if (idx === index) { colId = id; break; }
             }
-            
             if (colId) {
                 const isRequired = ['sno', 'admission', 'name'].includes(colId);
                 const setting = savedColumns.find(c => c.id === colId);
@@ -20478,29 +20488,16 @@ function applyColumnVisibility() {
         });
     });
     
-    console.log('🔄 Forcing auto-detection after applying visibility...');
     const autoAssessmentType = getAutoAssessmentType();
-    console.log(`🔄 Auto-detected assessment type: ${autoAssessmentType}`);
-    
     if (autoAssessmentType !== me_currentAssessmentType) {
-        console.log(`🔄 Assessment type changed: ${me_currentAssessmentType} → ${autoAssessmentType}`);
         me_currentAssessmentType = autoAssessmentType;
-        
         const assessmentSelect = document.getElementById('me_assessment_type');
-        if (assessmentSelect) {
-            assessmentSelect.value = autoAssessmentType;
-        }
-        
+        if (assessmentSelect) assessmentSelect.value = autoAssessmentType;
         recalculateAllTotals();
     } else {
-        console.log('✅ Assessment type unchanged:', autoAssessmentType);
         updateAssessmentTypeDisplay();
     }
 }
-
-// ============================================================
-// RESET COLUMNS FOR CURRENT UNIT
-// ============================================================
 
 async function resetUnitColumns() {
     const unit = me_currentUnit;
@@ -20535,14 +20532,10 @@ async function resetUnitColumns() {
         
         me_columnSettings = { columns: [] };
         renderUnitColumns();
-        
         if (typeof showNotification === 'function') {
             showNotification(`✅ Columns reset to default for ${unit}`, 'success');
         }
-        
-        if (typeof loadMarksEntry === 'function') {
-            loadMarksEntry();
-        }
+        loadMarksEntry();
         
     } catch (error) {
         console.error('Error resetting columns:', error);
@@ -20554,10 +20547,6 @@ async function resetUnitColumns() {
 
 // ============================================================
 // LECTURER UNIT ASSIGNMENT MANAGEMENT
-// ============================================================
-
-// ============================================================
-// LOAD LECTURER ASSIGNMENTS
 // ============================================================
 
 async function loadLecturerAssignments() {
@@ -20584,17 +20573,15 @@ async function loadLecturerAssignments() {
     }
     
     try {
-        // ✅ Get ALL active lecturers (filtered by program)
         const { data: lecturers, error: lecturerError } = await sb
             .from('staff_records')
             .select('*')
             .eq('program', program)
-           .in('status', ['active', 'approved'])
+            .in('status', ['active', 'approved'])
             .order('first_name', { ascending: true });
         
         if (lecturerError) throw lecturerError;
         
-        // Get assignments for this unit
         const { data: assignments, error: assignError } = await sb
             .from('lecturer_subject_assignments')
             .select('*')
@@ -20606,11 +20593,8 @@ async function loadLecturerAssignments() {
         if (assignError) throw assignError;
         
         me_currentAssignments = assignments || [];
-        
         const assignedMap = {};
-        assignments?.forEach(a => {
-            assignedMap[a.lecturer_id] = a;
-        });
+        assignments?.forEach(a => { assignedMap[a.lecturer_id] = a; });
         
         if (!lecturers || lecturers.length === 0) {
             container.innerHTML = `
@@ -20659,8 +20643,6 @@ async function loadLecturerAssignments() {
         });
         
         container.innerHTML = html;
-        
-        // ✅ Also load assignment history
         await loadAssignmentHistory();
         
     } catch (error) {
@@ -20672,10 +20654,6 @@ async function loadLecturerAssignments() {
         `;
     }
 }
-
-// ============================================================
-// ASSIGN LECTURER TO UNIT
-// ============================================================
 
 async function assignLecturerToUnit(lecturerId, lecturerName, unit, block) {
     const program = document.getElementById('me_program_select')?.value;
@@ -20719,10 +20697,6 @@ async function assignLecturerToUnit(lecturerId, lecturerName, unit, block) {
 
 window.assignLecturerToUnit = assignLecturerToUnit;
 
-// ============================================================
-// REMOVE LECTURER ASSIGNMENT
-// ============================================================
-
 async function removeLecturerAssignment(lecturerId, unit, block) {
     const program = document.getElementById('me_program_select')?.value;
     const year = document.getElementById('me_year_select')?.value || '2025';
@@ -20734,7 +20708,6 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
         return;
     }
     
-    // Get lecturer name for confirmation
     let lecturerName = 'this lecturer';
     try {
         const { data: lecturer } = await sb
@@ -20742,13 +20715,10 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
             .select('first_name, other_names')
             .eq('id', lecturerId)
             .maybeSingle();
-        
         if (lecturer) {
             lecturerName = lecturer.other_names ? `${lecturer.first_name} ${lecturer.other_names}` : lecturer.first_name;
         }
-    } catch (e) {
-        console.warn('Could not fetch lecturer name:', e);
-    }
+    } catch (e) {}
     
     if (!confirm(`⚠️ Remove "${lecturerName}" from "${unit}"?\n\nThis will remove their access to enter marks for this unit.`)) {
         return;
@@ -20772,7 +20742,6 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
         if (typeof showNotification === 'function') {
             showNotification(`✅ "${lecturerName}" removed from "${unit}"`, 'success');
         }
-        
         await loadLecturerAssignments();
         await loadAssignmentHistory();
         
@@ -20786,10 +20755,6 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
 }
 
 window.removeLecturerAssignment = removeLecturerAssignment;
-
-// ============================================================
-// SHOW LECTURER ASSIGNMENT MODAL - FIXED
-// ============================================================
 
 async function showLecturerAssignmentModal() {
     const block = document.getElementById('me_block_select')?.value;
@@ -20814,17 +20779,14 @@ async function showLecturerAssignmentModal() {
         lecturerSelect.innerHTML = '<option value="">Loading lecturers...</option>';
         
         try {
-            // ✅ FIXED: Get ALL active/approved lecturers for this program
             const { data: lecturers, error } = await sb
                 .from('staff_records')
                 .select('*')
                 .eq('program', program)
-                .in('status', ['active', 'approved'])  // ← FIXED HERE
+                .in('status', ['active', 'approved'])
                 .order('first_name', { ascending: true });
             
             if (error) throw error;
-            
-            console.log('📋 Lecturers for program', program, ':', lecturers?.length || 0);
             
             if (lecturerSelect) {
                 if (!lecturers || lecturers.length === 0) {
@@ -20838,7 +20800,6 @@ async function showLecturerAssignmentModal() {
                         option.textContent = `${fullName} (${l.email || 'no email'})`;
                         lecturerSelect.appendChild(option);
                     });
-                    console.log(`✅ Loaded ${lecturers.length} lecturers for program ${program}`);
                 }
             }
             
@@ -20853,11 +20814,9 @@ async function showLecturerAssignmentModal() {
         }
     }
     
-    // Load units for assignment
     const assignUnitSelect = document.getElementById('me_assign_subject_select');
     if (assignUnitSelect) {
         assignUnitSelect.innerHTML = '<option value="">Loading units...</option>';
-        
         try {
             const { data: units, error } = await sb
                 .from('units_catalog')
@@ -20890,21 +20849,12 @@ async function showLecturerAssignmentModal() {
 }
 
 window.showLecturerAssignmentModal = showLecturerAssignmentModal;
-console.log('✅ showLecturerAssignmentModal fixed with status filter!');
-
-// ============================================================
-// CLOSE LECTURER ASSIGNMENT MODAL
-// ============================================================
 
 function closeLecturerAssignmentModal() {
     document.getElementById('lecturerAssignmentModal').style.display = 'none';
 }
 
 window.closeLecturerAssignmentModal = closeLecturerAssignmentModal;
-
-// ============================================================
-// SAVE LECTURER ASSIGNMENT
-// ============================================================
 
 async function saveLecturerAssignment() {
     const lecturerId = document.getElementById('me_lecturer_select')?.value;
@@ -20937,7 +20887,7 @@ async function saveLecturerAssignment() {
 window.saveLecturerAssignment = saveLecturerAssignment;
 
 // ============================================================
-// ASSIGNMENT HISTORY - LOAD AND DISPLAY
+// ASSIGNMENT HISTORY
 // ============================================================
 
 async function loadAssignmentHistory() {
@@ -21071,10 +21021,6 @@ async function loadAssignmentHistory() {
 
 window.loadAssignmentHistory = loadAssignmentHistory;
 
-// ============================================================
-// REFRESH ASSIGNMENT HISTORY
-// ============================================================
-
 function refreshAssignmentHistory() {
     loadAssignmentHistory();
     if (typeof showNotification === 'function') {
@@ -21083,10 +21029,6 @@ function refreshAssignmentHistory() {
 }
 
 window.refreshAssignmentHistory = refreshAssignmentHistory;
-
-// ============================================================
-// CLEAR ALL ASSIGNMENTS FOR A UNIT
-// ============================================================
 
 async function clearAllAssignments() {
     const block = document.getElementById('me_block_select')?.value;
@@ -21122,7 +21064,6 @@ async function clearAllAssignments() {
         if (typeof showNotification === 'function') {
             showNotification(`✅ All assignments removed from "${unit}"`, 'success');
         }
-        
         await loadLecturerAssignments();
         await loadAssignmentHistory();
         
@@ -21138,29 +21079,20 @@ async function clearAllAssignments() {
 window.clearAllAssignments = clearAllAssignments;
 
 // ============================================================
-// GET LECTURER DEPARTMENT - HELPER FUNCTION
+// GET LECTURER DEPARTMENT
 // ============================================================
 
 function getLecturerDepartment(lecturer) {
-    if (lecturer.program === 'KRCHN') {
-        return 'Nursing';
-    } else if (lecturer.program === 'TVET') {
-        return 'TVET Department';
-    } else if (lecturer.department) {
-        return lecturer.department;
-    } else {
-        return 'General';
-    }
+    if (lecturer.program === 'KRCHN') return 'Nursing';
+    else if (lecturer.program === 'TVET') return 'TVET Department';
+    else if (lecturer.department) return lecturer.department;
+    else return 'General';
 }
 
 window.getLecturerDepartment = getLecturerDepartment;
 
 // ============================================================
-// MARKS STUDENT MANAGER - ADD/DROP STUDENTS
-// ============================================================
-
-// ============================================================
-// OPEN MARKS STUDENT MANAGER
+// STUDENT MANAGER FUNCTIONS
 // ============================================================
 
 async function openMarksStudentManager() {
@@ -21174,8 +21106,6 @@ async function openMarksStudentManager() {
         return;
     }
     
-    console.log('📋 Opening marks student manager for:', { block, unit, program, year });
-    
     const modal = document.getElementById('marksStudentManagerModal');
     if (!modal) {
         console.error('❌ marksStudentManagerModal not found');
@@ -21186,13 +21116,9 @@ async function openMarksStudentManager() {
     await loadMarksStudentManagerData(block, unit, program, year);
 }
 
-// ============================================================
-// LOAD MARKS STUDENT MANAGER DATA
-// ============================================================
+window.openMarksStudentManager = openMarksStudentManager;
 
 async function loadMarksStudentManagerData(block, unit, program, year) {
-    console.log('📋 Loading marks student data...');
-    
     const container = document.getElementById('marksStudentManagerBody');
     if (!container) return;
     
@@ -21204,44 +21130,43 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
     `;
     
     try {
-        // Get all students for this block and program
         let query = sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, email, program, block, admission_number, status')
             .eq('role', 'student')
             .eq('status', 'active');
         
-        if (program) {
-            query = query.eq('program', program);
-        }
-        if (block) {
-            query = query.eq('block', block);
-        }
+        if (program) query = query.eq('program', program);
+        if (block) query = query.eq('block', block);
         
         const { data: allStudents, error: allError } = await query;
         if (allError) throw allError;
         
-        // Get students already enrolled in this unit
         const { data: enrolledStudents, error: enrolledError } = await sb
             .from('student_marks')
-            .select('admission_number, student_name')
+            .select('*')
             .eq('block', block)
             .eq('subject_name', unit)
             .eq('academic_year', year);
         
         if (enrolledError) throw enrolledError;
         
-        // Build maps
         const enrolledMap = {};
-        enrolledStudents?.forEach(s => {
-            enrolledMap[s.admission_number] = true;
-        });
-        
-        // Filter available students
+        enrolledStudents?.forEach(s => { enrolledMap[s.admission_number] = true; });
         const availableStudents = allStudents?.filter(s => !enrolledMap[s.student_id]) || [];
         
-        // Render
-        renderMarksStudentManager(block, unit, program, year, allStudents, enrolledStudents, availableStudents, enrolledMap);
+        me_studentManagerData = {
+            allStudents: allStudents || [],
+            enrolledStudents: enrolledStudents || [],
+            availableStudents: availableStudents,
+            enrolledMap: enrolledMap,
+            block: block,
+            unit: unit,
+            program: program,
+            year: year
+        };
+        
+        renderMarksStudentManager();
         
     } catch (error) {
         console.error('❌ Error loading marks student data:', error);
@@ -21254,13 +21179,13 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
     }
 }
 
-// ============================================================
-// RENDER MARKS STUDENT MANAGER
-// ============================================================
+window.loadMarksStudentManagerData = loadMarksStudentManagerData;
 
-function renderMarksStudentManager(block, unit, program, year, allStudents, enrolledStudents, availableStudents, enrolledMap) {
+function renderMarksStudentManager() {
     const container = document.getElementById('marksStudentManagerBody');
     if (!container) return;
+    
+    const { allStudents, enrolledStudents, availableStudents, block, unit, program, year } = me_studentManagerData;
     
     const totalEnrolled = enrolledStudents?.length || 0;
     const totalAvailable = availableStudents?.length || 0;
@@ -21287,7 +21212,6 @@ function renderMarksStudentManager(block, unit, program, year, allStudents, enro
             </div>
         </div>
         
-        <!-- Add Students Section -->
         <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #86efac;">
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                 <select id="studentToAddMarks" style="flex: 1; min-width: 200px; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
@@ -21310,17 +21234,40 @@ function renderMarksStudentManager(block, unit, program, year, allStudents, enro
             ` : ''}
         </div>
         
-        <!-- Enrolled Students Table -->
-        <div style="overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; padding: 10px 14px; background: #f1f5f9; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">
+                    <input type="checkbox" id="selectAllStudents" onchange="toggleAllStudents()" style="width: 16px; height: 16px; cursor: pointer;">
+                    Select All
+                </label>
+                <span style="font-size: 12px; color: #64748b;">
+                    <span id="selectedStudentCount">0</span> selected
+                </span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="dropSelectedStudents()" id="dropSelectedBtn" style="display: none; background: #dc2626; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                    <i class="fas fa-user-minus"></i> Drop Selected (<span id="dropSelectedCount">0</span>)
+                </button>
+            </div>
+        </div>
+        
+        <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                <thead>
+                <thead style="position: sticky; top: 0; z-index: 10;">
                     <tr style="background: #1e293b; color: white;">
+                        <th style="padding: 8px; text-align: center; width: 35px;">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllStudentsCheckbox()" style="width: 14px; height: 14px; cursor: pointer;">
+                        </th>
                         <th style="padding: 8px; text-align: center;">#</th>
                         <th style="padding: 8px; text-align: left;">Student Name</th>
                         <th style="padding: 8px; text-align: left;">Admission</th>
                         <th style="padding: 8px; text-align: left;">Program</th>
                         <th style="padding: 8px; text-align: left;">Block</th>
-                        <th style="padding: 8px; text-align: center;">Marks</th>
+                        <th style="padding: 8px; text-align: center;">CAT1</th>
+                        <th style="padding: 8px; text-align: center;">CAT2</th>
+                        <th style="padding: 8px; text-align: center;">Exam</th>
+                        <th style="padding: 8px; text-align: center;">Total</th>
+                        <th style="padding: 8px; text-align: center;">Grade</th>
                         <th style="padding: 8px; text-align: center;">Actions</th>
                     </tr>
                 </thead>
@@ -21330,7 +21277,7 @@ function renderMarksStudentManager(block, unit, program, year, allStudents, enro
     if (!enrolledStudents || enrolledStudents.length === 0) {
         html += `
             <tr>
-                <td colspan="7" style="padding: 30px; text-align: center; color: #94a3b8;">
+                <td colspan="12" style="padding: 30px; text-align: center; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
                     No students enrolled in this unit yet
                 </td>
@@ -21340,21 +21287,29 @@ function renderMarksStudentManager(block, unit, program, year, allStudents, enro
         enrolledStudents.forEach((s, i) => {
             const admission = s.admission_number || 'N/A';
             const name = s.student_name || 'Unknown';
-            const hasMarks = s.cat1_score > 0 || s.cat2_score > 0 || s.exam_score > 0;
+            const cat1 = s.cat1_score || 0;
+            const cat2 = s.cat2_score || 0;
+            const exam = s.exam_score || 0;
+            const total = s.final_score || 0;
+            const grade = s.grade || '-';
+            const hasMarks = cat1 > 0 || cat2 > 0 || exam > 0;
+            const isPassing = total >= 60;
             
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                    <td style="padding: 8px; text-align: center;">
+                        <input type="checkbox" class="student-checkbox" data-admission="${admission}" onchange="updateSelectedCount()" style="width: 14px; height: 14px; cursor: pointer;">
+                    </td>
                     <td style="padding: 8px; text-align: center;">${i + 1}</td>
                     <td style="padding: 8px; font-weight: 500;">${escapeHtml(name)}</td>
                     <td style="padding: 8px;">${escapeHtml(admission)}</td>
                     <td style="padding: 8px;">${escapeHtml(program)}</td>
                     <td style="padding: 8px;">${escapeHtml(block)}</td>
-                    <td style="padding: 8px; text-align: center;">
-                        ${hasMarks ? 
-                            '<span style="color: #10b981;">✅ Has Marks</span>' : 
-                            '<span style="color: #94a3b8;">📝 No Marks</span>'
-                        }
-                    </td>
+                    <td style="padding: 8px; text-align: center;">${cat1 || '-'}</td>
+                    <td style="padding: 8px; text-align: center;">${cat2 || '-'}</td>
+                    <td style="padding: 8px; text-align: center;">${exam || '-'}</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : (hasMarks ? '#991b1b' : '#94a3b8')};">${hasMarks ? total : '-'}</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : (hasMarks ? '#991b1b' : '#94a3b8')};">${hasMarks ? grade : '-'}</td>
                     <td style="padding: 8px; text-align: center;">
                         <button onclick="removeStudentFromMarksUnit('${admission}')" 
                                 style="background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
@@ -21371,9 +21326,11 @@ function renderMarksStudentManager(block, unit, program, year, allStudents, enro
             </table>
         </div>
         
-        <!-- Bulk Actions -->
         ${enrolledStudents && enrolledStudents.length > 0 ? `
         <div style="display: flex; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
+            <button onclick="dropSelectedStudents()" id="dropSelectedBtnBottom" style="display: none; background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-user-minus"></i> Drop Selected (<span id="dropSelectedCountBottom">0</span>)
+            </button>
             <button onclick="clearAllStudentsFromMarksUnit()" style="background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
                 <i class="fas fa-trash"></i> Remove All Students
             </button>
@@ -21387,9 +21344,110 @@ function renderMarksStudentManager(block, unit, program, year, allStudents, enro
     container.innerHTML = html;
 }
 
-// ============================================================
-// ADD STUDENT TO MARKS UNIT
-// ============================================================
+window.renderMarksStudentManager = renderMarksStudentManager;
+
+function toggleAllStudents() {
+    const selectAll = document.getElementById('selectAllStudents');
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const isChecked = selectAll?.checked || false;
+    checkboxes.forEach(cb => cb.checked = isChecked);
+    updateSelectedCount();
+}
+
+function toggleAllStudentsCheckbox() {
+    const selectAll = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const isChecked = selectAll?.checked || false;
+    checkboxes.forEach(cb => cb.checked = isChecked);
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+    const count = checkboxes.length;
+    
+    document.querySelectorAll('#selectedStudentCount, #selectedStudentCountBottom').forEach(el => {
+        if (el) el.textContent = count;
+    });
+    document.querySelectorAll('#dropSelectedCount, #dropSelectedCountBottom').forEach(el => {
+        if (el) el.textContent = count;
+    });
+    
+    const btns = document.querySelectorAll('#dropSelectedBtn, #dropSelectedBtnBottom');
+    btns.forEach(btn => {
+        if (btn) btn.style.display = count > 0 ? 'inline-block' : 'none';
+    });
+    
+    const allCheckboxes = document.querySelectorAll('.student-checkbox');
+    const allChecked = document.querySelectorAll('.student-checkbox:checked');
+    const selectAll = document.getElementById('selectAllStudents');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    
+    if (selectAll && allCheckboxes.length > 0) {
+        selectAll.checked = allChecked.length === allCheckboxes.length;
+    }
+    if (selectAllCheckbox && allCheckboxes.length > 0) {
+        selectAllCheckbox.checked = allChecked.length === allCheckboxes.length;
+    }
+}
+
+window.toggleAllStudents = toggleAllStudents;
+window.toggleAllStudentsCheckbox = toggleAllStudentsCheckbox;
+window.updateSelectedCount = updateSelectedCount;
+
+async function dropSelectedStudents() {
+    const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+    const selected = Array.from(checkboxes).map(cb => cb.dataset.admission);
+    
+    if (selected.length === 0) {
+        showNotification('No students selected', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ${selected.length} selected students from "${me_studentManagerData.unit}"?\n\nTheir marks will be permanently deleted.`)) return;
+    
+    if (typeof showLoading === 'function') showLoading(`Removing ${selected.length} students...`);
+    
+    try {
+        let removed = 0;
+        let errors = 0;
+        
+        for (const admission of selected) {
+            const { error } = await sb
+                .from('student_marks')
+                .delete()
+                .eq('admission_number', admission)
+                .eq('block', me_studentManagerData.block)
+                .eq('subject_name', me_studentManagerData.unit)
+                .eq('academic_year', me_studentManagerData.year);
+            
+            if (error) {
+                console.error('❌ Error removing:', admission, error);
+                errors++;
+            } else {
+                removed++;
+            }
+        }
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        
+        if (errors > 0) {
+            showNotification(`⚠️ Removed ${removed} students, ${errors} errors`, 'warning');
+        } else {
+            showNotification(`✅ ${removed} students removed from "${me_studentManagerData.unit}"`, 'success');
+        }
+        
+        await reloadMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('❌ Error removing students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+window.dropSelectedStudents = dropSelectedStudents;
 
 async function addStudentToMarksUnit() {
     const select = document.getElementById('studentToAddMarks');
@@ -21400,17 +21458,13 @@ async function addStudentToMarksUnit() {
         return;
     }
     
-    const block = document.getElementById('me_block_select')?.value;
-    const unit = document.getElementById('me_subject_select')?.value;
-    const program = document.getElementById('me_program_select')?.value;
-    const year = document.getElementById('me_year_select')?.value || '2025';
+    const { block, unit, program, year } = me_studentManagerData;
     
     if (!block || !unit) {
         showNotification('Please select a block and unit first', 'warning');
         return;
     }
     
-    // Get student details
     const { data: student, error: studentError } = await sb
         .from('consolidated_user_profiles_table')
         .select('full_name, admission_number')
@@ -21437,6 +21491,7 @@ async function addStudentToMarksUnit() {
             final_score: 0,
             grade: null,
             academic_year: year,
+            approval_status: 'approved',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -21449,6 +21504,7 @@ async function addStudentToMarksUnit() {
         
         showNotification(`✅ ${student.full_name} added to "${unit}"!`, 'success');
         await reloadMarksStudentManager();
+        loadMarksEntry();
         
     } catch (error) {
         console.error('❌ Error adding student:', error);
@@ -21456,66 +21512,20 @@ async function addStudentToMarksUnit() {
     }
 }
 
-// ============================================================
-// ADD ALL AVAILABLE STUDENTS TO MARKS UNIT
-// ============================================================
+window.addStudentToMarksUnit = addStudentToMarksUnit;
 
 async function addAllAvailableStudentsToMarksUnit() {
-    const block = document.getElementById('me_block_select')?.value;
-    const unit = document.getElementById('me_subject_select')?.value;
-    const program = document.getElementById('me_program_select')?.value;
-    const year = document.getElementById('me_year_select')?.value || '2025';
+    const { availableStudents, block, unit, program, year } = me_studentManagerData;
     
-    if (!block || !unit) {
-        showNotification('Please select a block and unit first', 'warning');
+    if (availableStudents.length === 0) {
+        showNotification('No available students to add', 'info');
         return;
     }
     
-    // Get all students for this block
-    let query = sb
-        .from('consolidated_user_profiles_table')
-        .select('student_id, full_name, admission_number')
-        .eq('role', 'student')
-        .eq('status', 'active');
-    
-    if (program) query = query.eq('program', program);
-    if (block) query = query.eq('block', block);
-    
-    const { data: allStudents, error: allError } = await query;
-    if (allError) {
-        showNotification('Error fetching students', 'error');
-        return;
-    }
-    
-    // Get already enrolled students
-    const { data: enrolled, error: enrolledError } = await sb
-        .from('student_marks')
-        .select('admission_number')
-        .eq('block', block)
-        .eq('subject_name', unit)
-        .eq('academic_year', year);
-    
-    if (enrolledError) {
-        showNotification('Error fetching enrolled students', 'error');
-        return;
-    }
-    
-    const enrolledMap = {};
-    enrolled?.forEach(s => {
-        enrolledMap[s.admission_number] = true;
-    });
-    
-    const studentsToAdd = allStudents.filter(s => !enrolledMap[s.student_id]);
-    
-    if (studentsToAdd.length === 0) {
-        showNotification('All students are already enrolled', 'info');
-        return;
-    }
-    
-    if (!confirm(`Add ${studentsToAdd.length} students to "${unit}"?`)) return;
+    if (!confirm(`Add ${availableStudents.length} students to "${unit}"?`)) return;
     
     try {
-        const inserts = studentsToAdd.map(s => ({
+        const inserts = availableStudents.map(s => ({
             admission_number: s.student_id,
             student_name: s.full_name || 'Unknown',
             block: block,
@@ -21527,6 +21537,7 @@ async function addAllAvailableStudentsToMarksUnit() {
             final_score: 0,
             grade: null,
             academic_year: year,
+            approval_status: 'approved',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         }));
@@ -21537,8 +21548,9 @@ async function addAllAvailableStudentsToMarksUnit() {
         
         if (error) throw error;
         
-        showNotification(`✅ ${studentsToAdd.length} students added to "${unit}"!`, 'success');
+        showNotification(`✅ ${availableStudents.length} students added to "${unit}"!`, 'success');
         await reloadMarksStudentManager();
+        loadMarksEntry();
         
     } catch (error) {
         console.error('❌ Error adding students:', error);
@@ -21546,21 +21558,27 @@ async function addAllAvailableStudentsToMarksUnit() {
     }
 }
 
-// ============================================================
-// REMOVE STUDENT FROM MARKS UNIT
-// ============================================================
+window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
 
 async function removeStudentFromMarksUnit(admission) {
-    const block = document.getElementById('me_block_select')?.value;
-    const unit = document.getElementById('me_subject_select')?.value;
-    const year = document.getElementById('me_year_select')?.value || '2025';
+    const { block, unit, year } = me_studentManagerData;
     
     if (!block || !unit) {
         showNotification('Please select a block and unit first', 'warning');
         return;
     }
     
-    if (!confirm(`Remove this student from "${unit}"?\n\nTheir marks will be permanently deleted.`)) return;
+    const { data: student } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('full_name')
+        .eq('student_id', admission)
+        .single();
+    
+    const studentName = student?.full_name || 'this student';
+    
+    if (!confirm(`⚠️ Remove "${studentName}" from "${unit}"?\n\nTheir marks will be permanently deleted.`)) return;
+    
+    if (typeof showLoading === 'function') showLoading('Removing student...');
     
     try {
         const { error } = await sb
@@ -21573,23 +21591,22 @@ async function removeStudentFromMarksUnit(admission) {
         
         if (error) throw error;
         
-        showNotification('✅ Student removed from unit', 'success');
+        if (typeof hideLoading === 'function') hideLoading();
+        showNotification(`✅ ${studentName} removed from "${unit}"`, 'success');
         await reloadMarksStudentManager();
+        loadMarksEntry();
         
     } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
         console.error('❌ Error removing student:', error);
         showNotification('❌ Error: ' + error.message, 'error');
     }
 }
 
-// ============================================================
-// CLEAR ALL STUDENTS FROM MARKS UNIT
-// ============================================================
+window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
 
 async function clearAllStudentsFromMarksUnit() {
-    const block = document.getElementById('me_block_select')?.value;
-    const unit = document.getElementById('me_subject_select')?.value;
-    const year = document.getElementById('me_year_select')?.value || '2025';
+    const { block, unit, year } = me_studentManagerData;
     
     if (!block || !unit) {
         showNotification('Please select a block and unit first', 'warning');
@@ -21597,6 +21614,8 @@ async function clearAllStudentsFromMarksUnit() {
     }
     
     if (!confirm(`⚠️ Remove ALL students from "${unit}"?\n\nThis will delete ALL marks for this unit.`)) return;
+    
+    if (typeof showLoading === 'function') showLoading('Removing all students...');
     
     try {
         const { error } = await sb
@@ -21608,87 +21627,89 @@ async function clearAllStudentsFromMarksUnit() {
         
         if (error) throw error;
         
+        if (typeof hideLoading === 'function') hideLoading();
         showNotification(`✅ All students removed from "${unit}"`, 'success');
         await reloadMarksStudentManager();
-        loadMarksEntry(); // Refresh the marks table
+        loadMarksEntry();
         
     } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
         console.error('❌ Error clearing students:', error);
         showNotification('❌ Error: ' + error.message, 'error');
     }
 }
 
-// ============================================================
-// RELOAD MARKS STUDENT MANAGER
-// ============================================================
+window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
 
 async function reloadMarksStudentManager() {
-    const block = document.getElementById('me_block_select')?.value;
-    const unit = document.getElementById('me_subject_select')?.value;
-    const program = document.getElementById('me_program_select')?.value;
-    const year = document.getElementById('me_year_select')?.value || '2025';
-    
+    const { block, unit, program, year } = me_studentManagerData;
     await loadMarksStudentManagerData(block, unit, program, year);
 }
 
-// ============================================================
-// GLOBAL EXPOSURE
-// ============================================================
-
-window.openMarksStudentManager = openMarksStudentManager;
-window.loadMarksStudentManagerData = loadMarksStudentManagerData;
 window.reloadMarksStudentManager = reloadMarksStudentManager;
-window.addStudentToMarksUnit = addStudentToMarksUnit;
-window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
-window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
-window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
 
 // ============================================================
-// DEBUG FUNCTION
+// ESCAPE HTML HELPER
 // ============================================================
 
-function debugColumnState() {
-    console.log('🔍 ===== COLUMN STATE DEBUG =====');
-    console.log('📋 Saved column settings:', me_columnSettings.columns || []);
-    const visible = detectVisibleColumns();
-    console.log('📊 Visible columns from DOM:', visible);
-    console.log('📋 Current assessment type:', me_currentAssessmentType);
-    const autoType = getAutoAssessmentType();
-    console.log('📋 Auto-detected type:', autoType);
-    
-    const table = document.querySelector('#me_marks_table');
-    if (table) {
-        const headers = table.querySelectorAll('thead th');
-        console.log('📊 Headers with computed styles:');
-        headers.forEach((th, i) => {
-            const text = th.textContent.trim();
-            const computed = window.getComputedStyle(th);
-            console.log(`  ${i}: "${text}" - display: ${computed.display}, inline: ${th.style.display || 'default'}`);
-        });
-    }
-    
-    console.log('🔍 ===== END DEBUG =====');
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
-window.debugColumnState = debugColumnState;
+window.escapeHtml = escapeHtml;
 
 // ============================================================
-// FORCE REFRESH ASSESSMENT
+// SHOW/HIDE NOTIFICATION/LOADING FUNCTIONS
 // ============================================================
 
-window.forceRefreshAssessment = function() {
-    console.log('🔄 Manually refreshing assessment...');
-    const autoType = getAutoAssessmentType();
-    me_currentAssessmentType = autoType;
-    const assessmentSelect = document.getElementById('me_assessment_type');
-    if (assessmentSelect) {
-        assessmentSelect.value = autoType;
-    }
-    recalculateAllTotals();
-    updateAssessmentTypeDisplay();
-    console.log(`✅ Refreshed to: ${getAssessmentTypeLabel(autoType)}`);
-};
+if (typeof showNotification === 'undefined') {
+    window.showNotification = function(message, type) {
+        console.log(`[${type || 'info'}] ${message}`);
+        const toast = document.createElement('div');
+        const colors = {
+            success: '#059669',
+            error: '#dc2626',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        toast.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
+            background: ${colors[type] || '#3b82f6'}; color: white;
+            border-radius: 8px; font-weight: 500; z-index: 100000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            max-width: 400px;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    };
+}
 
+if (typeof showLoading === 'undefined') {
+    window.showLoading = function(message) {
+        console.log(`⏳ ${message}`);
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            const msg = document.getElementById('loadingMessage');
+            if (msg) msg.textContent = message;
+            overlay.style.display = 'flex';
+        }
+    };
+}
+
+if (typeof hideLoading === 'undefined') {
+    window.hideLoading = function() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.display = 'none';
+    };
+}
 
 // ============================================================
 // GLOBAL REGISTRATION
@@ -21706,7 +21727,6 @@ window.refreshMarksData = refreshMarksData;
 window.calculateMarksEntryTotal = calculateMarksEntryTotal;
 window.getMarksEntryGrade = getMarksEntryGrade;
 window.updateMarksEntryStats = updateMarksEntryStats;
-window.submitMarksForApproval = submitMarksForApproval;
 window.downloadCSV = downloadCSV;
 
 // Column management
@@ -21735,10 +21755,15 @@ window.getLecturerDepartment = getLecturerDepartment;
 window.openMarksStudentManager = openMarksStudentManager;
 window.loadMarksStudentManagerData = loadMarksStudentManagerData;
 window.reloadMarksStudentManager = reloadMarksStudentManager;
+window.renderMarksStudentManager = renderMarksStudentManager;
 window.addStudentToMarksUnit = addStudentToMarksUnit;
 window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
 window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
 window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
+window.dropSelectedStudents = dropSelectedStudents;
+window.toggleAllStudents = toggleAllStudents;
+window.toggleAllStudentsCheckbox = toggleAllStudentsCheckbox;
+window.updateSelectedCount = updateSelectedCount;
 
 // Auto-detect functions
 window.detectVisibleColumns = detectVisibleColumns;
@@ -21747,24 +21772,18 @@ window.updateAssessmentTypeDisplay = updateAssessmentTypeDisplay;
 window.recalculateAllTotals = recalculateAllTotals;
 
 // Debug
-window.debugColumnState = debugColumnState;
-window.forceRefreshAssessment = forceRefreshAssessment;
+window.escapeHtml = escapeHtml;
 
-console.log('✅ Marks Entry functions loaded!');
-console.log('✅ Column Management loaded (Admin only)');
-console.log('✅ Auto-assessment type detection loaded');
-console.log('✅ Lecturer Unit Assignment Management loaded');
-console.log('✅ Assignment History loaded');
-console.log('✅ Student Management loaded');
-console.log('✅ loadMEBlocks:', typeof loadMEBlocks);
-console.log('✅ loadMEUnits:', typeof loadMEUnits);
-console.log('✅ loadMarksEntry:', typeof loadMarksEntry);
-console.log('✅ loadUnitColumnSettings:', typeof loadUnitColumnSettings);
-console.log('✅ saveUnitColumnSetting:', typeof saveUnitColumnSetting);
-console.log('✅ getAutoAssessmentType:', typeof getAutoAssessmentType);
-console.log('✅ loadLecturerAssignments:', typeof loadLecturerAssignments);
-console.log('✅ loadAssignmentHistory:', typeof loadAssignmentHistory);
-console.log('✅ openMarksStudentManager:', typeof openMarksStudentManager);
+console.log('✅ Marks Entry System Fully Loaded!');
+console.log('📋 Features:');
+console.log('   - ✅ Auto-assessment type detection');
+console.log('   - ✅ Column management (Admin only)');
+console.log('   - ✅ Lecturer assignment management');
+console.log('   - ✅ Assignment history');
+console.log('   - ✅ Student management with select all');
+console.log('   - ✅ Auto-approve on save for Admin');
+console.log('   - ✅ Export to CSV');
+console.log('   - ✅ Dynamic content toggle');
 // ============================================================
 // ENTRY CONTROL - COMPLETE SINGLE VERSION
 // ============================================================
