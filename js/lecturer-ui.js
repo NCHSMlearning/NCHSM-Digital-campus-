@@ -6,26 +6,140 @@
 // GLOBAL FUNCTIONS (NO toggleDropdown - using Super Admin style)
 // ============================================================
 
-// Define logout function
-if (typeof window.logout === 'undefined') {
-    window.logout = function() {
+// ============================================================
+// LOGOUT WITH NICE MODAL
+// ============================================================
+
+// Open logout modal
+window.openLogoutModal = function() {
+    const modal = document.getElementById('logoutModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    } else {
+        // Fallback if modal doesn't exist
         if (confirm('Are you sure you want to logout?')) {
-            if (window.lecturerDB && typeof window.lecturerDB.logout === 'function') {
-                window.lecturerDB.logout();
-            } else {
-                window.location.href = 'login.html';
+            performLogout();
+        }
+    }
+};
+
+// Close logout modal
+window.closeLogoutModal = function() {
+    const modal = document.getElementById('logoutModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+};
+
+// Perform actual logout
+window.performLogout = function() {
+    // Show loading
+    if (typeof window.showLoading === 'function') {
+        window.showLoading('Logging out...');
+    }
+    
+    // Clear storage
+    localStorage.removeItem('lecturerEmail');
+    sessionStorage.removeItem('lecturerEmail');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('supabase.auth.token');
+    
+    // Use lecturerDB if available
+    if (window.lecturerDB && typeof window.lecturerDB.logout === 'function') {
+        window.lecturerDB.logout();
+    } else {
+        if (typeof window.hideLoading === 'function') {
+            window.hideLoading();
+        }
+        window.location.href = 'login.html';
+    }
+};
+
+// Confirm logout (called from modal button)
+window.confirmLogout = function() {
+    // Close modal first
+    if (typeof window.closeLogoutModal === 'function') {
+        window.closeLogoutModal();
+    }
+    
+    // Perform logout after a tiny delay for smooth transition
+    setTimeout(function() {
+        performLogout();
+    }, 200);
+};
+
+// Main logout function - overrides the old one
+window.logout = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    // Try to open the nice modal
+    if (document.getElementById('logoutModal')) {
+        if (typeof window.openLogoutModal === 'function') {
+            window.openLogoutModal();
+            return;
+        }
+    }
+    
+    // Fallback to old confirm
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+};
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('logoutModal');
+        if (modal && modal.style.display === 'flex') {
+            if (typeof window.closeLogoutModal === 'function') {
+                window.closeLogoutModal();
             }
         }
-    };
-}
+    }
+});
+
+// Close modal on outside click
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('logoutModal');
+    if (modal && modal.style.display === 'flex') {
+        const content = modal.querySelector('.modal-content');
+        if (content && !content.contains(e.target)) {
+            if (typeof window.closeLogoutModal === 'function') {
+                window.closeLogoutModal();
+            }
+        }
+    }
+});
+
+console.log('✅ Logout modal functions loaded');
+
+// ============================================================
+// CLOSE MODAL FUNCTION
+// ============================================================
 
 // Define closeModal function
 if (typeof window.closeModal === 'undefined') {
     window.closeModal = function(modalId) {
         const modal = document.getElementById(modalId);
-        if (modal) modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
     };
 }
+
+// ============================================================
+// NOTIFICATION FUNCTIONS
+// ============================================================
 
 // Define showNotification function
 if (typeof window.showNotification === 'undefined') {
@@ -354,18 +468,26 @@ const LecturerUI = {
         });
         
         // ============================================
-        // Logout
+        // Logout - UPDATED to use nice modal
         // ============================================
         
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', async (e) => {
+            logoutBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                if (confirm('Are you sure you want to logout?')) {
-                    if (window.lecturerDB && typeof window.lecturerDB.logout === 'function') {
-                        await window.lecturerDB.logout();
-                    } else {
-                        window.location.href = 'login.html';
+                e.stopPropagation();
+                
+                // Use the nice logout modal
+                if (typeof window.openLogoutModal === 'function') {
+                    window.openLogoutModal();
+                } else {
+                    // Fallback
+                    if (confirm('Are you sure you want to logout?')) {
+                        if (window.lecturerDB && typeof window.lecturerDB.logout === 'function') {
+                            window.lecturerDB.logout();
+                        } else {
+                            window.location.href = 'login.html';
+                        }
                     }
                 }
             });
@@ -934,7 +1056,7 @@ window.LecturerUI = LecturerUI;
 
 console.log('✅ Lecturer UI module loaded');
 console.log('✅ toggleDropdown: REMOVED (using Super Admin style)');
-console.log('✅ logout:', typeof window.logout);
+console.log('✅ logout modal functions loaded');
 console.log('✅ showNotification:', typeof window.showNotification);
 console.log('✅ showLoading:', typeof window.showLoading);
 console.log('✅ hideLoading:', typeof window.hideLoading);
