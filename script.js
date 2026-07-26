@@ -14538,72 +14538,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
 console.log('✅ Grade functions registered globally');
 // =====================================================
-// STAFF MANAGEMENT - CONNECTED TO Supabase
-// Staff register here, Students in separate table
+// STAFF MANAGEMENT - Connected to Supabase
+// Uses ONLY staff_records table
 // =====================================================
 
 let staffRecords = [];
 
 // ============================================
-// HELPER: Create auth user in Supabase
-// ============================================
-async function createAuthUser(email, password, fullName, role, staffId) {
-    try {
-        // Check if auth user already exists
-        const { data: existing } = await sb.auth.admin.listUsers();
-        const userExists = existing?.users?.find(u => u.email === email);
-        
-        if (userExists) {
-            console.log('⚠️ Auth user already exists for:', email);
-            return userExists.id;
-        }
-        
-        // Create auth user
-        const { data, error } = await sb.auth.admin.createUser({
-            email: email,
-            password: password,
-            email_confirm: true,
-            user_metadata: {
-                full_name: fullName,
-                role: role,
-                staff_id: staffId
-            }
-        });
-        
-        if (error) throw error;
-        console.log('✅ Auth user created:', data.user.id);
-        return data.user.id;
-        
-    } catch (error) {
-        console.error('❌ Error creating auth user:', error);
-        // Fallback: Try using the regular signup
-        try {
-            const { data, error } = await sb.auth.signUp({
-                email: email,
-                password: password,
-                options: {
-                    data: {
-                        full_name: fullName,
-                        role: role,
-                        staff_id: staffId
-                    }
-                }
-            });
-            if (error) throw error;
-            console.log('✅ Auth user created via signup:', data.user.id);
-            return data.user.id;
-        } catch (e) {
-            console.error('❌ Signup fallback failed:', e);
-            return null;
-        }
-    }
-}
-
-// ============================================
 // HELPER: Create consolidated profile
 // ============================================
-async function createConsolidatedProfile(userId, staffData) {
+async function createConsolidatedProfile(staffData) {
     try {
+        // Check if profile already exists
+        const { data: existing } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id')
+            .eq('email', staffData.email)
+            .maybeSingle();
+        
+        if (existing) {
+            console.log('✅ Consolidated profile already exists for:', staffData.email);
+            return true;
+        }
+        
+        // Generate a UUID for the user
+        const userId = crypto.randomUUID ? crypto.randomUUID() : 
+                       'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                           const r = Math.random() * 16 | 0;
+                           const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                           return v.toString(16);
+                       });
+        
         const profileData = {
             user_id: userId,
             email: staffData.email,
@@ -14629,50 +14594,44 @@ async function createConsolidatedProfile(userId, staffData) {
         return true;
         
     } catch (error) {
-        console.error('❌ Error creating consolidated profile:', error);
+        console.warn('⚠️ Error creating consolidated profile:', error.message);
         return false;
     }
 }
 
 // ============================================
-// HELPER: Insert into staffs table (legacy)
+// HELPER: Create auth user (optional, skip if fails)
 // ============================================
-async function createStaffsRecord(staffData, passwordHash) {
+async function createAuthUser(email, password, fullName, role, staffId) {
     try {
-        const data = {
-            id: staffData.id,
-            title: staffData.title || '',
-            first_name: staffData.first_name,
-            other_names: staffData.other_names || '',
-            department: staffData.department,
-            designation: staffData.designation || 'Staff',
-            email: staffData.email,
-            phone: staffData.phone,
-            national_id: staffData.national_id || '',
-            gender: staffData.gender || '',
-            bank_name: staffData.bank_name || '',
-            bank_account: staffData.bank_account || '',
-            shif_number: staffData.shif_number || '',
-            nsrf_number: staffData.nsrf_number || '',
-            tax_pin: staffData.tax_pin || '',
-            guardian_phone: staffData.guardian_phone || '',
-            login_enabled: staffData.login_enabled || false,
-            password_hash: passwordHash || '',
-            status: staffData.status || 'active',
-            program: staffData.program || 'KRCHN',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
+        // Try to sign up
+        const { data, error } = await sb.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    full_name: fullName,
+                    role: role,
+                    staff_id: staffId
+                }
+            }
+        });
         
-        const { error } = await sb
-            .from('staffs')
-            .upsert([data], { onConflict: 'id' });
+        if (error) {
+            console.warn('⚠️ Auth signup skipped:', error.message);
+            return null;
+        }
         
-        if (error) console.warn('⚠️ Error saving to staffs (legacy):', error.message);
-        else console.log('✅ Saved to staffs table');
+        if (data?.user) {
+            console.log('✅ Auth user created:', data.user.id);
+            return data.user.id;
+        }
+        
+        return null;
         
     } catch (error) {
-        console.warn('⚠️ Staffs table error:', error.message);
+        console.warn('⚠️ Auth creation skipped:', error.message);
+        return null;
     }
 }
 
@@ -14865,16 +14824,15 @@ function toggleStaffPasswordField() {
 }
 
 // ============================================
-// SAVE STAFF - UPDATED WITH FULL INTEGRATION
+// SAVE STAFF - SIMPLIFIED (uses ONLY staff_records)
 // ============================================
 async function saveStaff() {
-    console.log('🔧 Saving staff with full integration...');
+    console.log('🔧 Saving staff...');
     
     const loginEnabled = document.getElementById('staffEnableLogin').checked;
     const password = document.getElementById('staffPassword')?.value;
     const confirmPassword = document.getElementById('staffConfirmPassword')?.value;
     
-    // Validate password if login is enabled
     if (loginEnabled) {
         if (!password) {
             alert('Please enter a password');
@@ -14890,7 +14848,6 @@ async function saveStaff() {
         }
     }
     
-    // Collect staff data
     const staffData = {
         title: document.getElementById('staffTitle').value,
         first_name: document.getElementById('staffFirstName').value.trim(),
@@ -14912,7 +14869,6 @@ async function saveStaff() {
         status: document.getElementById('staffStatus').value || 'active'
     };
     
-    // Validate required fields
     if (!staffData.first_name || !staffData.department || !staffData.email || !staffData.phone) {
         alert('Please fill all required fields (First Name, Department, Email, Phone)');
         return;
@@ -14923,56 +14879,48 @@ async function saveStaff() {
         const staffId = 'STAFF' + String(Date.now()).slice(-6);
         staffData.id = staffId;
         
-        // Base64 encode password
-        const passwordHash = loginEnabled && password ? btoa(password) : '';
-        staffData.password_hash = passwordHash;
+        if (loginEnabled && password) {
+            staffData.password_hash = btoa(password);
+        }
         staffData.created_at = new Date().toISOString();
         staffData.updated_at = new Date().toISOString();
         
         // ============================================
-        // STEP 1: INSERT INTO staff_records
+        // INSERT INTO staff_records ONLY
         // ============================================
-        const { error: staffError, data: staffResult } = await sb
+        const { error, data } = await sb
             .from('staff_records')
             .insert([staffData])
             .select();
         
-        if (staffError) throw staffError;
-        console.log('✅ Staff saved to staff_records:', staffResult);
+        if (error) throw error;
+        
+        console.log('✅ Staff saved to staff_records:', data);
         
         // ============================================
-        // STEP 2: INSERT INTO staffs (legacy)
+        // OPTIONAL: Create consolidated profile
         // ============================================
-        await createStaffsRecord(staffData, passwordHash);
+        if (loginEnabled) {
+            await createConsolidatedProfile(staffData);
+        }
         
         // ============================================
-        // STEP 3: CREATE AUTH USER (if login enabled)
+        // OPTIONAL: Create auth user (skip if fails)
         // ============================================
-        let userId = null;
         if (loginEnabled && password) {
             const fullName = `${staffData.first_name} ${staffData.other_names || ''}`.trim();
             const role = staffData.designation === 'Lecturer' || staffData.designation === 'Senior Lecturer' ? 'lecturer' : 'staff';
             
-            userId = await createAuthUser(
+            await createAuthUser(
                 staffData.email,
                 password,
                 fullName,
                 role,
                 staffData.id
             );
-            
-            if (userId) {
-                console.log('✅ Auth user created with ID:', userId);
-                
-                // ============================================
-                // STEP 4: CREATE CONSOLIDATED PROFILE
-                // ============================================
-                await createConsolidatedProfile(userId, staffData);
-            }
         }
         
-        console.log('✅ Staff fully registered with all integrations!');
-        alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}\n${userId ? '✅ Login enabled with Auth' : '⚠️ Login disabled'}`);
+        alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`);
         
         closeAddStaffModal();
         loadAllStaff();
@@ -15047,7 +14995,6 @@ async function resetStaffPassword(staffId, staffName) {
     }
     
     try {
-        // Update staff_records
         const { error } = await sb
             .from('staff_records')
             .update({ 
@@ -15057,15 +15004,6 @@ async function resetStaffPassword(staffId, staffName) {
             .eq('id', staffId);
         
         if (error) throw error;
-        
-        // Also update staffs table
-        await sb
-            .from('staffs')
-            .update({ 
-                password_hash: btoa(newPassword),
-                login_enabled: true
-            })
-            .eq('id', staffId);
         
         alert(`✅ Password for ${staffName} reset successfully!`);
         loadAllStaff();
@@ -15080,12 +15018,8 @@ async function deleteStaff(staffId, staffName) {
     if (!confirm(`⚠️ Delete staff "${staffName}"? This cannot be undone.`)) return;
     
     try {
-        // Delete from staff_records
         const { error } = await sb.from('staff_records').delete().eq('id', staffId);
         if (error) throw error;
-        
-        // Also delete from staffs
-        await sb.from('staffs').delete().eq('id', staffId);
         
         // Try to delete from consolidated profile
         await sb.from('consolidated_user_profiles_table').delete().eq('staff_id', staffId);
@@ -15210,28 +15144,11 @@ function importStaffFromCSV() {
                     };
                     
                     try {
-                        // Insert into staff_records
                         const { error } = await sb.from('staff_records').insert([staffData]);
                         if (error) throw error;
                         
-                        // Also create auth user if login is enabled
-                        if (staffData.login_enabled) {
-                            const password = row.password || row.first_name + '@2026';
-                            const fullName = `${staffData.first_name} ${staffData.other_names || ''}`.trim();
-                            const role = staffData.designation === 'Lecturer' || staffData.designation === 'Senior Lecturer' ? 'lecturer' : 'staff';
-                            
-                            const userId = await createAuthUser(
-                                staffData.email,
-                                password,
-                                fullName,
-                                role,
-                                staffData.id
-                            );
-                            
-                            if (userId) {
-                                await createConsolidatedProfile(userId, staffData);
-                            }
-                        }
+                        // Create consolidated profile
+                        await createConsolidatedProfile(staffData);
                         
                         imported++;
                     } catch (err) {
@@ -15331,7 +15248,7 @@ window.initStaffManagement = initStaffManagement;
 window.toggleStaffPasswordField = toggleStaffPasswordField;
 window.staffLogin = staffLogin;
 
-console.log('✅ Staff Management module ready (with full integration)');
+console.log('✅ Staff Management module ready (simplified - uses only staff_records)');
 /*******************************************************
  * SUPER ADMIN APPROVAL SYSTEM
  * All admin actions require Super Admin approval
