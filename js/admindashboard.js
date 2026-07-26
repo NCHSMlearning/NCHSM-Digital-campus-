@@ -4870,12 +4870,7 @@ window.batchResendReleaseEmails = async function(examId) {
 };
   
 
-  // ============================================
-// 📧 SEND RESULT RELEASE EMAIL (NO SCORES!)
-// PROFESSIONAL TEMPLATE WITH NCHSM BRANDING
-// ============================================
-
-async function sendResultReleaseEmail(studentId, examId, grade) {
+ async function sendResultReleaseEmail(studentId, examId, grade) {
     try {
         // Get student details
         const { data: student, error: studentError } = await sb
@@ -4892,7 +4887,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
         // Get exam details
         const { data: exam, error: examError } = await sb
             .from('exams')
-            .select('exam_name, exam_type, exam_date')
+            .select('exam_name, exam_type, exam_date, total_marks, pass_mark')
             .eq('id', parseInt(examId))
             .single();
         
@@ -4909,10 +4904,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
             year: 'numeric'
         }) : 'N/A';
         
-        // ✅ FROM ADDRESS
-        const fromAddress = 'NCHSM Exam Office <admin@nchsm.co.ke>';
-        
-        // ✅ PROFESSIONAL EMAIL HTML
+        // ✅ EMAIL WITH NO SCORES - Just notification
         const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -4921,315 +4913,101 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Exam Results Released</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f4f8;
-            -webkit-font-smoothing: antialiased;
-        }
-        .container {
-            max-width: 580px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .card {
-            background: #ffffff;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 10px 40px rgba(10, 61, 98, 0.12);
-        }
-        .header {
-            background: linear-gradient(135deg, #0A3D62 0%, #1a5276 100%);
-            padding: 35px 35px 30px;
-            text-align: center;
-            position: relative;
-        }
-        .header::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #f1c40f, #f39c12, #f1c40f);
-        }
-        .header-logo {
-            width: 75px;
-            height: 75px;
-            border-radius: 50%;
-            background: white;
-            padding: 6px;
-            margin-bottom: 14px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-        .header-title {
-            color: #ffffff;
-            font-size: 26px;
-            font-weight: 700;
-            margin: 0 0 4px;
-            letter-spacing: -0.5px;
-        }
-        .header-subtitle {
-            color: rgba(255,255,255,0.85);
-            font-size: 14px;
-            margin: 0;
-            font-weight: 300;
-            letter-spacing: 0.5px;
-        }
-        .body {
-            padding: 32px 35px 28px;
-        }
-        .greeting {
-            font-size: 20px;
-            font-weight: 700;
-            color: #0A3D62;
-            margin: 0 0 4px;
-        }
-        .greeting-sub {
-            color: #5a6c7d;
-            font-size: 15px;
-            margin: 0 0 22px;
-        }
-        .divider {
-            border: none;
-            border-top: 2px solid #eef2f7;
-            margin: 18px 0 22px;
-        }
-        .info-grid {
-            background: #f8fafc;
-            border-radius: 14px;
-            padding: 20px 24px;
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background-color: #f0f4f8; }
+        .container { max-width: 580px; margin: 0 auto; padding: 20px; }
+        .card { background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(10, 61, 98, 0.12); }
+        .header { background: linear-gradient(135deg, #0A3D62 0%, #1a5276 100%); padding: 35px 35px 30px; text-align: center; }
+        .header-logo { width: 75px; height: 75px; border-radius: 50%; background: white; padding: 6px; margin-bottom: 14px; }
+        .header-title { color: #ffffff; font-size: 26px; font-weight: 700; margin: 0; }
+        .header-subtitle { color: rgba(255,255,255,0.85); font-size: 14px; margin: 4px 0 0; }
+        .body { padding: 32px 35px 28px; }
+        .greeting { font-size: 20px; font-weight: 700; color: #0A3D62; margin: 0 0 4px; }
+        .greeting-sub { color: #5a6c7d; font-size: 15px; margin: 0 0 22px; }
+        .divider { border: none; border-top: 2px solid #eef2f7; margin: 18px 0 22px; }
+        
+        /* ✅ REMOVED SCORE BOX - replaced with notification box */
+        .notification-box { 
+            background: #EFF6FF; 
+            padding: 24px; 
+            border-radius: 16px; 
+            text-align: center; 
             margin: 16px 0;
-            border-left: 4px solid #0A3D62;
+            border: 2px solid #3B82F6;
         }
-        .info-grid p {
-            margin: 6px 0;
-            font-size: 14px;
-            color: #2c3e50;
-            display: flex;
-            justify-content: space-between;
-            padding: 2px 0;
-        }
-        .info-grid .label {
-            color: #5a6c7d;
-            font-weight: 500;
-        }
-        .info-grid .value {
-            color: #0A3D62;
-            font-weight: 600;
-            text-align: right;
-        }
-        .info-grid .value-name {
-            color: #0A3D62;
-            font-weight: 700;
-        }
-        .badge-exam {
-            display: inline-block;
-            background: #eaf4ea;
-            color: #1a7a3a;
-            padding: 2px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .badge-cat {
-            display: inline-block;
-            background: #fef3c7;
-            color: #92400e;
-            padding: 2px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .callout {
-            background: linear-gradient(135deg, #eaf4ff, #dbeafe);
-            border-radius: 14px;
-            padding: 24px 28px;
-            margin: 24px 0;
-            text-align: center;
-            border: 1px solid #bfdbfe;
-        }
-        .callout-icon {
-            font-size: 40px;
-            display: block;
-            margin-bottom: 8px;
-        }
-        .callout-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: #0A3D62;
-            margin: 0 0 4px;
-        }
-        .callout-text {
-            font-size: 14px;
-            color: #2c3e50;
-            margin: 0;
-        }
-        .btn-primary {
-            display: inline-block;
-            background: linear-gradient(135deg, #0A3D62, #1a5276);
-            color: white !important;
-            padding: 15px 36px;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 16px;
-            margin: 8px 0 4px;
-            transition: all 0.3s ease;
-            box-shadow: 0 6px 20px rgba(10, 61, 98, 0.3);
-            text-align: center;
-        }
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(10, 61, 98, 0.4);
-        }
-        .btn-secondary {
-            display: inline-block;
-            color: #0A3D62 !important;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 500;
-            margin-top: 6px;
-        }
-        .btn-secondary:hover {
-            text-decoration: underline;
-        }
-        .tip-box {
-            background: #fef9e7;
-            border-radius: 12px;
-            padding: 14px 18px;
-            margin: 18px 0 6px;
-            border-left: 4px solid #f39c12;
-        }
-        .tip-box p {
-            margin: 0;
-            font-size: 13px;
-            color: #7d6608;
-        }
-        .footer {
-            background: #f8fafc;
-            padding: 22px 35px;
-            text-align: center;
-            border-top: 1px solid #eef2f7;
-        }
-        .footer-text {
-            font-size: 12px;
-            color: #8a9aa8;
-            margin: 4px 0;
-            line-height: 1.6;
-        }
-        .footer-text strong {
-            color: #5a6c7d;
-        }
-        .footer-links {
-            margin-top: 10px;
-        }
-        .footer-links a {
-            color: #0A3D62;
-            text-decoration: none;
-            font-size: 12px;
-            margin: 0 12px;
-            font-weight: 500;
-        }
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        .secure-badge {
-            display: inline-block;
-            background: #10b981;
-            color: white;
-            font-size: 11px;
-            padding: 4px 16px;
-            border-radius: 20px;
-            font-weight: 600;
-            margin-top: 8px;
-        }
-        @media (max-width: 480px) {
-            .header { padding: 20px; }
-            .body { padding: 20px; }
-            .footer { padding: 15px 20px; }
-            .info-grid { padding: 14px 16px; }
-            .info-grid p { flex-direction: column; align-items: flex-start; }
-            .info-grid .value { text-align: left; margin-top: 2px; }
-            .btn-primary { padding: 12px 24px; font-size: 14px; display: block; }
-        }
+        .notification-box .icon { font-size: 3rem; display: block; margin-bottom: 8px; }
+        .notification-box .message { font-size: 1.1rem; color: #0A3D62; font-weight: 600; }
+        .notification-box .sub-message { color: #5a6c7d; font-size: 0.95rem; margin-top: 4px; }
+        
+        .info-grid { background: #f8fafc; border-radius: 14px; padding: 20px 24px; margin: 16px 0; border-left: 4px solid #0A3D62; }
+        .info-grid p { margin: 6px 0; font-size: 14px; color: #2c3e50; display: flex; justify-content: space-between; }
+        .info-grid .label { color: #5a6c7d; font-weight: 500; }
+        .info-grid .value { color: #0A3D62; font-weight: 600; text-align: right; }
+        
+        .btn-primary { display: inline-block; background: linear-gradient(135deg, #0A3D62, #1a5276); color: white !important; padding: 15px 36px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 8px 0; box-shadow: 0 6px 20px rgba(10, 61, 98, 0.3); text-align: center; }
+        .footer { background: #f8fafc; padding: 22px 35px; text-align: center; border-top: 1px solid #eef2f7; }
+        .footer-text { font-size: 12px; color: #8a9aa8; margin: 4px 0; }
+        .secure-badge { display: inline-block; background: #10b981; color: white; font-size: 11px; padding: 4px 16px; border-radius: 20px; font-weight: 600; margin-top: 8px; }
+        @media (max-width: 480px) { .header { padding: 20px; } .body { padding: 20px; } .info-grid p { flex-direction: column; } .info-grid .value { text-align: left; margin-top: 2px; } }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <!-- Header -->
             <div class="header">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-                     alt="NCHSM Logo" class="header-logo">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="header-logo">
                 <h1 class="header-title">📊 Results Released</h1>
                 <p class="header-subtitle">Nakuru College of Health Sciences and Management</p>
             </div>
             
-            <!-- Body -->
             <div class="body">
                 <p class="greeting">Dear ${student.full_name},</p>
-                <p class="greeting-sub">We are pleased to inform you that your exam results have been released.</p>
+                <p class="greeting-sub">Your results for <strong>${exam.exam_name}</strong> have been released.</p>
                 
                 <hr class="divider">
+                
+                <!-- ✅ NOTIFICATION BOX - NO SCORES -->
+                <div class="notification-box">
+                    <span class="icon">🔐</span>
+                    <div class="message">Your Results Are Ready</div>
+                    <div class="sub-message">Log in to the student portal to view your grades securely.</div>
+                    <div style="margin-top: 12px; font-size: 0.8rem; color: #5a6c7d;">
+                        <span style="background: #d1fae5; padding: 3px 12px; border-radius: 20px; color: #065f46; font-weight: 600;">🔒 Private & Secure</span>
+                    </div>
+                </div>
                 
                 <!-- Exam Details -->
                 <div class="info-grid">
                     <p><span class="label">📋 Exam</span> <span class="value">${exam.exam_name}</span></p>
                     <p><span class="label">📅 Date</span> <span class="value">${examDate}</span></p>
-                    <p><span class="label">📊 Type</span> 
-                        <span class="value"><span class="${isCatExam ? 'badge-cat' : 'badge-exam'}">${examTypeLabel}</span></span>
-                    </p>
-                    <p><span class="label">👤 Student</span> <span class="value value-name">${student.full_name}</span></p>
+                    <p><span class="label">📊 Type</span> <span class="value">${examTypeLabel}</span></p>
+                    <p><span class="label">👤 Student</span> <span class="value">${student.full_name}</span></p>
                     <p><span class="label">🆔 ID</span> <span class="value">${student.student_id || 'N/A'}</span></p>
                     <p><span class="label">📚 Program</span> <span class="value">${student.program || 'N/A'}</span></p>
-                    <p><span class="label">📌 Block</span> <span class="value">${student.block || 'N/A'}</span></p>
                 </div>
                 
                 <!-- Call to Action -->
-                <div class="callout">
-                    <span class="callout-icon">🔐</span>
-                    <p class="callout-title">Your Results Are Ready</p>
-                    <p class="callout-text">Log in to the student portal to view your grades securely.</p>
-                    <p style="font-size: 12px; color: #5a6c7d; margin: 8px 0 0;">
-                        <span style="background: #d1fae5; padding: 3px 12px; border-radius: 20px; font-size: 11px; color: #065f46; font-weight: 600;">🔒 Secure & Private</span>
-                    </p>
-                </div>
-                
-                <!-- Button -->
                 <div style="text-align: center; margin: 24px 0 16px;">
                     <a href="https://nchsm.co.ke/exams" class="btn-primary">
                         🔑 Go to Exam Portal
                     </a>
                     <br>
-                    <a href="https://nchsm.co.ke" class="btn-secondary">
+                    <a href="https://nchsm.co.ke" style="color: #0A3D62; text-decoration: none; font-size: 13px; font-weight: 500; margin-top: 6px; display: inline-block;">
                         🌐 Visit NCHSM Digital Campus
                     </a>
                 </div>
                 
-                <!-- Tip Box -->
-                <div class="tip-box">
-                    <p>💡 <strong>Tip:</strong> If you have any questions about your results, please contact your lecturer or the academic office.</p>
+                <!-- Privacy Notice -->
+                <div style="background: #fef9e7; border-radius: 12px; padding: 14px 18px; margin: 18px 0 6px; border-left: 4px solid #f39c12;">
+                    <p style="margin: 0; font-size: 13px; color: #7d6608;">
+                        💡 <strong>Note:</strong> This is a notification only. Your actual scores are available on the student portal for privacy and security.
+                    </p>
                 </div>
             </div>
             
-            <!-- Footer -->
             <div class="footer">
-                <p class="footer-text">
-                    <strong>Nakuru College of Health Sciences and Management</strong>
-                </p>
-                <p class="footer-text">
-                    📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke
-                </p>
-                <p class="footer-text" style="font-size: 11px; color: #aab7c5;">
-                    This is an automated notification. Please do not reply to this email.
-                </p>
-                <div class="footer-links">
-                   <a href="https://nchsm.co.ke">🏠 Home</a>
-<a href="https://nchsm.co.ke/exams">📝 Exams</a>
-<a href="https://nchsm.co.ke/contact">📞 Contact</a>
-                </div>
+                <p class="footer-text"><strong>Nakuru College of Health Sciences and Management</strong></p>
+                <p class="footer-text">📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
+                <p class="footer-text" style="font-size: 11px; color: #aab7c5;">This is an automated notification. Please do not reply to this email.</p>
                 <span class="secure-badge">🔒 Secure Notification</span>
             </div>
         </div>
@@ -5248,7 +5026,7 @@ async function sendResultReleaseEmail(studentId, examId, grade) {
                 to: student.email,
                 subject: `📊 Exam Results Released - ${exam.exam_name}`,
                 html: html,
-                from: fromAddress
+                from: 'NCHSM Exam Office <admin@nchsm.co.ke>'
             })
         });
         
