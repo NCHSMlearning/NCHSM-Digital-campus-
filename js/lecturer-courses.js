@@ -3,6 +3,7 @@
  * NCHSM Lecturer Courses Module
  * Uses the same unit assignments as the marks system
  * Dynamically finds the correct lecturer ID from assignments
+ * Uses ilike for partial name matching
  */
 
 const LecturerCourses = {
@@ -26,13 +27,22 @@ const LecturerCourses = {
         console.log('✅ Lecturer Courses initialized');
     },
     
+    // ============================================
+    // RESOLVE THE CORRECT LECTURER ID - FIXED WITH ilike
+    // ============================================
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
             
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
+            }
             
             const fullName = profile.full_name;
             const authId = profile.user_id;
@@ -40,23 +50,30 @@ const LecturerCourses = {
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
+            // ✅ Use ilike for partial name matching (matches "Kevin" with "Kevin Kevin")
             const { data: nameData, error: nameError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
-                .eq('lecturer_name', fullName);
+                .ilike('lecturer_name', `%${fullName}%`);
             
             if (!nameError && nameData && nameData.length > 0) {
+                console.log('📋 Found matches:', nameData);
+                
+                // First priority: non-STAFF ID (UUID format)
                 const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
                 if (nonStaff) {
                     this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Found non-STAFF ID:', this.lecturerAssignmentId);
+                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
                     return;
                 }
+                
+                // Second priority: STAFF ID
                 this.lecturerAssignmentId = nameData[0].lecturer_id;
-                console.log('⚠️ Found STAFF ID:', this.lecturerAssignmentId);
+                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
                 return;
             }
             
+            // Fallback to auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -70,6 +87,7 @@ const LecturerCourses = {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (!profile) {
+                console.warn('No lecturer profile found');
                 this.courses = [];
                 this.filteredCourses = [];
                 this.renderTable();
@@ -79,6 +97,7 @@ const LecturerCourses = {
             
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
+                console.warn('Supabase not available');
                 this.courses = [];
                 this.filteredCourses = [];
                 this.renderTable();
@@ -87,8 +106,11 @@ const LecturerCourses = {
             }
             
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            console.log('🔍 Using lecturer ID:', lecturerId);
+            console.log('🔍 Using lecturer ID for courses:', lecturerId);
             
+            let units = [];
+            
+            // Get assignments from lecturer_subject_assignments
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('*')
@@ -106,7 +128,9 @@ const LecturerCourses = {
             console.log('📊 Found assignments:', assignments?.length || 0);
             
             if (assignments && assignments.length > 0) {
-                this.courses = assignments.map(a => ({
+                console.log('📋 Assignment details:', assignments);
+                
+                units = assignments.map(a => ({
                     id: a.id,
                     unit_id: a.id,
                     unit_code: a.subject_code || 'N/A',
@@ -120,18 +144,53 @@ const LecturerCourses = {
                     source: 'assignments',
                     raw: a
                 }));
-                console.log('✅ Processed units:', this.courses.length);
-            } else {
-                this.courses = [];
-                this.filteredCourses = [];
-                this.renderTable();
-                this.updateStats();
-                return;
+                
+                console.log('✅ Processed units from assignments:', units.length);
             }
             
+            // If no units, try units_catalog by program (fallback)
+            if (units.length === 0) {
+                console.log('🔄 No assignments found, trying units_catalog for program:', profile.program);
+                
+                try {
+                    const { data, error } = await supabase
+                        .from('units_catalog')
+                        .select('*')
+                        .eq('program', profile.program)
+                        .eq('status', 'active')
+                        .order('unit_code', { ascending: true });
+                    
+                    if (!error && data && data.length > 0) {
+                        console.log('📚 Found units in units_catalog:', data.length);
+                        units = data.map(u => ({
+                            id: u.id,
+                            unit_id: u.id,
+                            unit_code: u.unit_code || 'N/A',
+                            course_name: u.unit_name || 'Unnamed Unit',
+                            target_program: u.program || profile.program,
+                            block: u.block || 'N/A',
+                            intake_year: u.year ? String(u.year) : new Date().getFullYear().toString(),
+                            status: 'active',
+                            credits: u.credits || 0,
+                            unit_type: u.unit_type || 'Core',
+                            student_count: 0,
+                            source: 'catalog',
+                            raw: u
+                        }));
+                    }
+                } catch (e) {
+                    console.warn('Error getting units from units_catalog:', e.message);
+                }
+            }
+            
+            // Set courses
+            this.courses = units;
             this.filteredCourses = [...this.courses];
+            
+            // Get student counts
             await this.loadStudentCounts();
             
+            // Filter by current year
             const currentYear = new Date().getFullYear().toString();
             const yearFiltered = this.courses.filter(c => {
                 const year = c.intake_year;
@@ -164,6 +223,7 @@ const LecturerCourses = {
     determineStatus(assignment) {
         const currentYear = new Date().getFullYear().toString();
         const year = assignment.academic_year || '';
+        
         if (!year || year === 'N/A') return 'active';
         if (year === currentYear) return 'active';
         if (parseInt(year) < parseInt(currentYear)) return 'completed';
@@ -233,12 +293,15 @@ const LecturerCourses = {
         const courses = this.filteredCourses;
         
         if (!courses || courses.length === 0) {
+            const hasData = this.courses.length > 0;
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                         <i class="fas fa-book" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Units Assigned</h3>
-                        <p style="margin: 0; font-size: 14px;">You have not been assigned any units yet.</p>
+                        <h3 style="color: #475569; margin: 0 0 8px 0;">${hasData ? 'No units match your filters' : 'No Units Assigned'}</h3>
+                        <p style="margin: 0; font-size: 14px;">${hasData ? 'Try adjusting your filters to see more units.' : 'You have not been assigned any units yet.'}</p>
+                        ${!hasData ? '<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Contact the administrator for unit assignments.</p>' : ''}
+                        ${hasData ? `<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Total assigned: ${this.courses.length} units</p>` : ''}
                     </td>
                 </tr>
             `;
@@ -248,7 +311,7 @@ const LecturerCourses = {
         
         const currentYear = new Date().getFullYear().toString();
         
-        tbody.innerHTML = courses.map((course) => {
+        tbody.innerHTML = courses.map((course, index) => {
             const studentCount = course.student_count || 0;
             const isPast = course.intake_year && course.intake_year !== 'N/A' && parseInt(course.intake_year) < parseInt(currentYear);
             const rowStyle = isPast ? 'opacity: 0.7;' : '';
@@ -279,13 +342,12 @@ const LecturerCourses = {
                     onmouseout="this.style.background='transparent'">
                     <td style="padding: 14px 18px;">
                         <span style="font-weight: 700; color: #4C1D95; font-size: 13px;">${this.escapeHtml(course.unit_code || 'N/A')}</span>
+                        ${course.credits ? `<span style="font-size: 10px; color: #94a3b8; display: block;">${course.credits} Credits</span>` : ''}
                     </td>
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
                         ${this.escapeHtml(course.course_name || 'N/A')}
-                        <div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">
-                            ${course.block ? `Block: ${this.escapeHtml(course.block)}` : ''}
-                            ${course.source ? ` | Source: ${this.escapeHtml(course.source)}` : ''}
-                        </div>
+                        ${course.source ? `<div style="font-size: 10px; color: #94a3b8; font-weight: 400; margin-top: 2px;">Source: ${this.escapeHtml(course.source)}</div>` : ''}
+                        ${course.block ? `<div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">Block: ${this.escapeHtml(course.block)}</div>` : ''}
                     </td>
                     <td style="padding: 14px 18px;">
                         <span style="background: #ede9fe; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #5b21b6;">
@@ -308,11 +370,13 @@ const LecturerCourses = {
                                 ${statusLabel}
                             </span>
                             <button onclick="LecturerCourses.manageCourse('${course.id}')" 
-                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                                    onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
                                 <i class="fas fa-chart-bar"></i> Manage
                             </button>
                             <button onclick="LecturerCourses.viewStudents('${course.id}')" 
-                                    style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                    style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                                    onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
                                 <i class="fas fa-users"></i>
                             </button>
                         </div>
@@ -341,10 +405,12 @@ const LecturerCourses = {
         const courses = this.courses;
         const currentYear = new Date().getFullYear().toString();
         
+        // Total units
         const totalCourses = courses.length;
         const totalEl = document.getElementById('totalCoursesCount2');
         if (totalEl) totalEl.textContent = totalCourses;
         
+        // Total students
         let totalStudents = 0;
         courses.forEach(c => {
             totalStudents += c.student_count || 0;
@@ -355,6 +421,7 @@ const LecturerCourses = {
         const studentsEl = document.getElementById('totalStudentsCount2');
         if (studentsEl) studentsEl.textContent = totalStudents;
         
+        // Active units (current year)
         const active = courses.filter(c => {
             const year = c.intake_year;
             return year === currentYear || year === 'N/A' || year === '' || c.status === 'active';
@@ -362,6 +429,7 @@ const LecturerCourses = {
         const activeEl = document.getElementById('activeCoursesCount');
         if (activeEl) activeEl.textContent = active;
         
+        // Completed units (past years)
         const completed = courses.filter(c => {
             const year = c.intake_year;
             return year && year !== 'N/A' && parseInt(year) < parseInt(currentYear);
@@ -369,11 +437,13 @@ const LecturerCourses = {
         const completedEl = document.getElementById('completedCoursesCount');
         if (completedEl) completedEl.textContent = completed;
         
+        // Badge
         const badge = document.getElementById('courseCountBadge');
         if (badge) {
             badge.textContent = courses.length;
         }
         
+        // Dashboard count
         const dashboardCount = document.getElementById('totalCoursesCount');
         if (dashboardCount) {
             dashboardCount.textContent = courses.length;
@@ -430,7 +500,9 @@ const LecturerCourses = {
             window.showNotification('Course not found.', 'error');
             return;
         }
+        
         window.showNotification(`📚 Managing: ${course.course_name} - Features coming soon!`, 'info');
+        console.log('Managing course:', course);
     },
     
     viewStudents(courseId) {
@@ -439,11 +511,15 @@ const LecturerCourses = {
             window.showNotification('Course not found.', 'error');
             return;
         }
+        
         window.showNotification(`👥 Viewing students for: ${course.course_name}`, 'info');
+        
         if (typeof showTab === 'function') {
             showTab('my-students');
         }
+        
         sessionStorage.setItem('selectedCourseId', courseId);
+        sessionStorage.setItem('selectedCourseName', course.course_name);
     },
     
     exportCourses() {
@@ -523,4 +599,4 @@ window.clearCourseFilters = () => LecturerCourses.clearFilters();
 window.searchCourses = () => LecturerCourses.applyFilters();
 window.exportCourses = () => LecturerCourses.exportCourses();
 
-console.log('✅ LecturerCourses module loaded - Complete fix with ID resolution');
+console.log('✅ LecturerCourses module loaded - Complete fix with ilike name matching');
