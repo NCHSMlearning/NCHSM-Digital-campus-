@@ -1441,35 +1441,64 @@ window.NCHSMLogin = {
         return Math.abs(hash).toString(16);
     },
     
-    // ============================================
-    // STAFF LOGIN
-    // ============================================
-    verifyStaffLogin: async function(identifier, password) {
-        try {
-            const staff = this.staffRecords.find(s => 
-                s.email === identifier || s.id === identifier
-            );
-            
-            if (!staff) return null;
-            
-            const storedPassword = atob(staff.password_hash);
-            if (storedPassword !== password) return null;
-            
-            return {
-                user_id: staff.id,
-                email: staff.email,
-                full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
-                role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
-                program: staff.department,
-                is_staff: true,
-                staff_record: staff
-            };
-        } catch (error) {
-            console.error('Staff verification error');
+ // ============================================
+// STAFF LOGIN - FIXED (returns UUID)
+// ============================================
+verifyStaffLogin: async function(identifier, password) {
+    try {
+        const staff = this.staffRecords.find(s => 
+            s.email === identifier || s.id === identifier
+        );
+        
+        if (!staff) {
+            console.log('❌ Staff not found:', identifier);
             return null;
         }
-    },
-    
+        
+        const storedPassword = atob(staff.password_hash);
+        if (storedPassword !== password) {
+            console.log('❌ Password mismatch for:', identifier);
+            return null;
+        }
+        
+        // ✅ GET THE UUID FROM consolidated_user_profiles_table
+        let uuid = staff.id; // fallback
+        try {
+            const { data: profile } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id')
+                .eq('email', staff.email)
+                .single();
+            
+            if (profile?.user_id) {
+                uuid = profile.user_id;
+                console.log('✅ Found UUID for staff:', uuid);
+            } else {
+                console.log('⚠️ No UUID found in consolidated profile for:', staff.email);
+            }
+        } catch (e) {
+            console.log('⚠️ Could not get UUID, using staff ID:', staff.id);
+        }
+        
+        console.log('✅ Staff verified - returning UUID:', uuid);
+        
+        return {
+            user_id: uuid,  // ✅ UUID here!
+            staff_id: staff.id,
+            id: staff.id,
+            email: staff.email,
+            full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
+            role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
+            program: staff.department,
+            is_staff: true,
+            staff_record: staff
+        };
+        
+    } catch (error) {
+        console.error('❌ Staff verification error:', error);
+        return null;
+    }
+},
     // ============================================
     // EXECUTE LOGIN
     // ============================================
@@ -2125,9 +2154,8 @@ handleGoogleCredential: function(response) {
         this.showError('Invalid Google response');
     }
 },
-    
-   // ============================================
-// PROCESS GOOGLE LOGIN
+  // ============================================
+// PROCESS GOOGLE LOGIN - FIXED (Handles both Students & Staff)
 // ============================================
 processGoogleLogin: async function(payload) {
     if (!this.supabase) {
@@ -2149,7 +2177,9 @@ processGoogleLogin: async function(payload) {
     }
     
     try {
-        // Check if user exists in our system
+        // ============================================
+        // STEP 1: Check if user exists in consolidated_user_profiles_table
+        // ============================================
         const { data: profile, error: profileError } = await this.supabase
             .from('consolidated_user_profiles_table')
             .select('*')
@@ -2178,39 +2208,93 @@ processGoogleLogin: async function(payload) {
             return;
         }
         
-        // Create a session for this user
+        // ============================================
+        // STEP 2: Check if user is staff (has staff_id)
+        // ============================================
+        const isStaff = profile.staff_id ? true : false;
+        const userId = profile.user_id;
+        
+        console.log('👤 User found:', {
+            email: email,
+            role: profile.role,
+            isStaff: isStaff,
+            staff_id: profile.staff_id,
+            user_id: userId
+        });
+        
+        // ============================================
+        // STEP 3: If staff, check if auth user exists
+        // ============================================
+        if (isStaff) {
+            // Check if auth user exists
+            const { data: authUser } = await this.supabase
+                .from('auth.users')
+                .select('id')
+                .eq('email', email)
+                .maybeSingle();
+            
+            if (!authUser) {
+                // Create auth user for staff
+                const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+                const { error: signUpError } = await this.supabase.auth.signUp({
+                    email: email,
+                    password: tempPassword,
+                    options: {
+                        data: {
+                            full_name: profile.full_name || name,
+                            role: profile.role || 'staff',
+                            staff_id: profile.staff_id
+                        }
+                    }
+                });
+                
+                if (signUpError) {
+                    console.warn('⚠️ Could not create auth user:', signUpError.message);
+                    // Continue anyway - staff can still login via staff_records
+                } else {
+                    console.log('✅ Auth user created for staff Google login');
+                }
+            }
+        }
+        
+        // ============================================
+        // STEP 4: Create session
+        // ============================================
         const sessionToken = this.generateSecureToken();
         
         // Track session
         const sessionResult = await this.trackUserSession(
-            profile.user_id,
+            userId,
             email,
             sessionToken,
             navigator.userAgent,
-            false
+            isStaff
         );
         
         if (!sessionResult) {
             console.warn('⚠️ Session tracking failed but continuing');
         }
         
-        // Update last login
-        await this.updateLastLogin(profile.user_id, email);
-        
-        // Store profile
+        // ============================================
+        // STEP 5: Store profile
+        // ============================================
         const safeProfile = {
-            user_id: profile.user_id,
+            user_id: userId,
             email: email,
             full_name: profile.full_name || name,
             role: profile.role || 'student',
             program: profile.program || profile.department,
-            is_staff: false,
+            staff_id: profile.staff_id || null,
+            is_staff: isStaff,
             auth_provider: 'google'
         };
         localStorage.setItem('userProfile', JSON.stringify(safeProfile));
         
-        // Send login notification (optional)
-        if (profile.role === 'student') {
+        // Update last login
+        await this.updateLastLogin(userId, email);
+        
+        // Send login notification (for students only)
+        if (!isStaff && profile.role === 'student') {
             this.sendLoginNotification({
                 ...profile,
                 full_name: profile.full_name || name,
