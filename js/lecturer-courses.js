@@ -308,32 +308,115 @@ const LecturerCourses = {
         return 'active';
     },
     
-    async loadStudentCounts() {
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || 'KRCHN';
-            
-            const { count: totalStudents, error } = await supabase
+   // js/lecturer-courses.js - UPDATED loadStudentCounts function with actual counts
+
+async loadStudentCounts() {
+    try {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) {
+            console.warn('Supabase not available for student counts');
+            return;
+        }
+        
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const program = profile?.program || 'KRCHN';
+        
+        console.log('📊 Loading actual student counts per unit from student_unit_registrations...');
+        
+        // Get all unit names from courses
+        const unitNames = this.courses.map(c => c.course_name);
+        const blocks = [...new Set(this.courses.map(c => c.block))];
+        
+        if (unitNames.length === 0) {
+            console.warn('No units to get student counts for');
+            return;
+        }
+        
+        console.log('📋 Units:', unitNames);
+        console.log('📋 Blocks:', blocks);
+        
+        // Query all registrations at once
+        const { data: registrations, error } = await supabase
+            .from('student_unit_registrations')
+            .select('unit_name, student_id, block, status')
+            .eq('program', program)
+            .eq('status', 'approved')
+            .in('block', blocks)
+            .in('unit_name', unitNames);
+        
+        if (error) {
+            console.error('Error loading registrations:', error);
+            // Fallback: use total program students
+            const { count: totalStudents } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('*', { count: 'exact', head: true })
                 .eq('program', program)
                 .eq('role', 'student');
             
-            const studentCount = (error || !totalStudents) ? 0 : totalStudents;
+            for (let course of this.courses) {
+                course.student_count = totalStudents || 0;
+            }
+            console.log(`📊 Fallback: Using total program students (${totalStudents || 0}) for all units`);
+            return;
+        }
+        
+        console.log(`📊 Found ${registrations?.length || 0} registration records`);
+        
+        // Count unique students per unit
+        const countMap = {};
+        registrations?.forEach(reg => {
+            const key = `${reg.unit_name}|${reg.block}`;
+            if (!countMap[key]) {
+                countMap[key] = new Set();
+            }
+            countMap[key].add(reg.student_id);
+        });
+        
+        // Assign counts to courses
+        let totalEnrolled = 0;
+        for (let course of this.courses) {
+            const key = `${course.course_name}|${course.block}`;
+            const count = countMap[key]?.size || 0;
+            course.student_count = count;
+            totalEnrolled += count;
+            console.log(`📊 ${course.course_name}: ${count} students enrolled`);
+        }
+        
+        // Calculate unique students across all units
+        const allStudentIds = new Set();
+        registrations?.forEach(reg => {
+            allStudentIds.add(reg.student_id);
+        });
+        console.log(`📊 Total unique students across all units: ${allStudentIds.size}`);
+        console.log(`📊 Total enrolled students across all units (sum): ${totalEnrolled}`);
+        
+        // Re-render table after counts are loaded
+        this.renderTable();
+        this.updateStats();
+        
+    } catch (error) {
+        console.error('Error loading student counts:', error);
+        // Fallback: use total program students
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const program = profile?.program || 'KRCHN';
+            
+            const { count: totalStudents } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*', { count: 'exact', head: true })
+                .eq('program', program)
+                .eq('role', 'student');
             
             for (let course of this.courses) {
-                course.student_count = studentCount;
+                course.student_count = totalStudents || 0;
             }
-            
-            console.log(`📊 Student count for ${program}: ${studentCount}`);
-            
-        } catch (error) {
-            console.error('Error loading student counts:', error);
+            console.log(`📊 Fallback: Using total program students (${totalStudents || 0})`);
+        } catch (fallbackError) {
+            console.error('Fallback also failed:', fallbackError);
         }
-    },
+    }
+}
     
     populateFilters() {
         const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
