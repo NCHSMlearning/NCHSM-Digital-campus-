@@ -1222,7 +1222,7 @@ function checkMarksApprovalStatus(marks) {
 
 
 // ============================================================
-// SAVE MARKS ENTRY - WITH EDIT LOGGING
+// SAVE MARKS ENTRY - FAST WITH LOADING SCREEN & PERCENTAGE
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1292,7 +1292,11 @@ async function saveMarksEntry() {
         return;
     }
     
-    showLoading(`💾 Saving ${marksData.length} marks to Supabase...`);
+    // ============================================================
+    // SHOW LOADING SCREEN WITH PERCENTAGE
+    // ============================================================
+    showLoadingScreen(`Saving ${marksData.length} marks...`, '💾 Saving Marks');
+    updateLoadingProgress(5, 1, 'Preparing data...');
     
     let saved = 0;
     let updated = 0;
@@ -1301,30 +1305,55 @@ async function saveMarksEntry() {
     let resetToDraft = 0;
     const errorDetails = [];
     const approvedEdits = [];
+    let processed = 0;
+    const totalStudents = marksData.length;
     
     try {
+        // ============================================================
+        // BULK FETCH - Get all existing marks in one query
+        // ============================================================
+        updateLoadingProgress(10, 1, 'Fetching existing marks...');
+        
+        const admissions = marksData.map(m => m.admission);
+        const { data: existingMarks, error: fetchError } = await sb
+            .from('student_marks')
+            .select('id, admission_number, approval_status, cat1_score, cat2_score, exam_score, final_score')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year)
+            .in('admission_number', admissions);
+        
+        if (fetchError) {
+            throw new Error('Error fetching existing marks: ' + fetchError.message);
+        }
+        
+        // Create a map for quick lookup
+        const existingMap = {};
+        existingMarks?.forEach(m => {
+            existingMap[m.admission_number] = m;
+        });
+        
+        updateLoadingProgress(20, 2, 'Processing marks...');
+        
+        // ============================================================
+        // BULK UPDATE/INSERT - Prepare all operations
+        // ============================================================
+        const updates = [];
+        const inserts = [];
+        let processedCount = 0;
+        
         for (const mark of marksData) {
-            // Check if mark already exists
-            const { data: existing, error: findError } = await sb
-                .from('student_marks')
-                .select('id, approval_status, cat1_score, cat2_score, exam_score, final_score')
-                .eq('admission_number', mark.admission)
-                .eq('subject_name', unit)
-                .eq('block', block)
-                .eq('academic_year', year)
-                .maybeSingle();
+            const existing = existingMap[mark.admission] || null;
+            processedCount++;
             
-            if (findError && findError.code !== 'PGRST116') {
-                errors++;
-                errorDetails.push(`Student ${mark.admission}: ${findError.message}`);
-                continue;
-            }
+            // Update progress
+            const progress = 20 + (processedCount / totalStudents) * 60;
+            updateLoadingProgress(progress, 2, `Processing ${processedCount}/${totalStudents} students...`);
             
             // Calculate totals
             const total = calculateMarksEntryTotal(mark.cat1, mark.cat2, mark.exam, assessmentType);
             const gradeInfo = getMarksEntryGrade(total);
             
-            // Determine approval status
             let newApprovalStatus = existing?.approval_status || 'draft';
             let isApprovedEdit = false;
             
@@ -1341,14 +1370,12 @@ async function saveMarksEntry() {
                     Math.abs(oldExam - mark.exam) > 0.01
                 );
                 
-                // ✅ ALLOW editing approved marks - just log it
+                // ✅ ALLOW editing approved marks - keep as approved, log it
                 if (hasChanges && existing.approval_status === 'approved') {
-                    // Keep as approved, just log the change
                     newApprovalStatus = 'approved';
                     isApprovedEdit = true;
                     approvedEdited++;
                     
-                    // Store change details for logging
                     approvedEdits.push({
                         admission: mark.admission,
                         name: mark.name,
@@ -1370,95 +1397,142 @@ async function saveMarksEntry() {
                     if (existing.approval_status === 'pending' || existing.approval_status === 'rejected') {
                         newApprovalStatus = 'draft';
                         resetToDraft++;
-                        console.log(`🔄 Reset ${mark.admission} from ${existing.approval_status} to draft due to changes`);
+                        console.log(`🔄 Reset ${mark.admission} to draft`);
                     } else if (existing.approval_status === 'draft') {
                         newApprovalStatus = 'draft';
                     }
                 }
-            }
-            
-            const markData = {
-                admission_number: mark.admission,
-                student_name: mark.name || 'Unknown',
-                block: block,
-                subject_name: unit,
-                assessment_type: assessmentType,
-                cat1_score: mark.cat1 || null,
-                cat2_score: mark.cat2 || null,
-                exam_score: mark.exam || null,
-                final_score: total || null,
-                grade: gradeInfo.grade || null,
-                academic_year: year,
-                updated_at: new Date().toISOString(),
-                approval_status: newApprovalStatus
-            };
-            
-            let result;
-            if (existing) {
-                // UPDATE existing mark
-                result = await sb
-                    .from('student_marks')
-                    .update(markData)
-                    .eq('id', existing.id);
                 
-                if (!result.error) {
-                    updated++;
-                    console.log(`✅ Updated mark for ${mark.admission} (status: ${newApprovalStatus})`);
-                }
+                // Prepare update
+                updates.push({
+                    id: existing.id,
+                    data: {
+                        student_name: mark.name || 'Unknown',
+                        assessment_type: assessmentType,
+                        cat1_score: mark.cat1 || null,
+                        cat2_score: mark.cat2 || null,
+                        exam_score: mark.exam || null,
+                        final_score: total || null,
+                        grade: gradeInfo.grade || null,
+                        approval_status: newApprovalStatus,
+                        updated_at: new Date().toISOString()
+                    }
+                });
+                
             } else {
-                // INSERT new mark
-                markData.created_at = new Date().toISOString();
-                markData.approval_status = 'draft';
-                result = await sb
-                    .from('student_marks')
-                    .insert([markData]);
-                
-                if (!result.error) {
-                    saved++;
-                    console.log(`✅ Inserted mark for ${mark.admission} (status: draft)`);
-                }
-            }
-            
-            if (result.error) {
-                errors++;
-                errorDetails.push(`Student ${mark.admission}: ${result.error.message}`);
-                console.error('Error saving mark:', result.error);
+                // Prepare insert
+                inserts.push({
+                    admission_number: mark.admission,
+                    student_name: mark.name || 'Unknown',
+                    block: block,
+                    subject_name: unit,
+                    assessment_type: assessmentType,
+                    cat1_score: mark.cat1 || null,
+                    cat2_score: mark.cat2 || null,
+                    exam_score: mark.exam || null,
+                    final_score: total || null,
+                    grade: gradeInfo.grade || null,
+                    academic_year: year,
+                    approval_status: 'draft',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
             }
         }
         
-        // ✅ Log approved edits to a separate table
+        // ============================================================
+        // EXECUTE BULK OPERATIONS
+        // ============================================================
+        updateLoadingProgress(80, 3, 'Saving to database...');
+        
+        // Bulk update
+        if (updates.length > 0) {
+            // Process updates in batches of 50 for performance
+            const batchSize = 50;
+            for (let i = 0; i < updates.length; i += batchSize) {
+                const batch = updates.slice(i, i + batchSize);
+                const promises = batch.map(u => 
+                    sb
+                        .from('student_marks')
+                        .update(u.data)
+                        .eq('id', u.id)
+                );
+                await Promise.all(promises);
+                updated += batch.length;
+                
+                // Update progress
+                const progress = 80 + (i + batch.length) / updates.length * 15;
+                updateLoadingProgress(progress, 3, `Saving ${Math.min(i + batch.length, updates.length)}/${updates.length} updates...`);
+            }
+        }
+        
+        // Bulk insert
+        if (inserts.length > 0) {
+            // Insert in batches of 50
+            const batchSize = 50;
+            for (let i = 0; i < inserts.length; i += batchSize) {
+                const batch = inserts.slice(i, i + batchSize);
+                const { error } = await sb
+                    .from('student_marks')
+                    .insert(batch);
+                
+                if (error) {
+                    errors += batch.length;
+                    console.error('Insert error:', error);
+                } else {
+                    saved += batch.length;
+                }
+                
+                // Update progress
+                const progress = 80 + (i + batch.length) / inserts.length * 15;
+                updateLoadingProgress(progress, 3, `Inserting ${Math.min(i + batch.length, inserts.length)}/${inserts.length} new...`);
+            }
+        }
+        
+        // ============================================================
+        // LOG APPROVED EDITS (if any)
+        // ============================================================
         if (approvedEdits.length > 0) {
+            updateLoadingProgress(95, 4, 'Logging edits...');
+            
             try {
-                // Check if table exists, create if not
-                const { data: tableCheck, error: tableError } = await sb
+                // Check if table exists
+                const { error: tableError } = await sb
                     .from('approved_edit_logs')
                     .select('id')
                     .limit(1);
                 
-                // If table doesn't exist, we'll just log to console
                 if (!tableError) {
-                    // Insert logs
-                    for (const edit of approvedEdits) {
-                        await sb
+                    // Insert logs in batches
+                    const batchSize = 20;
+                    for (let i = 0; i < approvedEdits.length; i += batchSize) {
+                        const batch = approvedEdits.slice(i, i + batchSize);
+                        const logs = batch.map(edit => ({
+                            block: block,
+                            unit: unit,
+                            academic_year: year,
+                            admission: edit.admission,
+                            student_name: edit.name,
+                            lecturer_id: me_currentLecturer?.profile?.id || null,
+                            lecturer_name: me_currentLecturer?.profile?.full_name || 'Unknown',
+                            old_cat1: edit.old_cat1,
+                            old_cat2: edit.old_cat2,
+                            old_exam: edit.old_exam,
+                            old_total: edit.old_total,
+                            new_cat1: edit.new_cat1,
+                            new_cat2: edit.new_cat2,
+                            new_exam: edit.new_exam,
+                            new_total: edit.new_total,
+                            edited_at: new Date().toISOString()
+                        }));
+                        
+                        const { error } = await sb
                             .from('approved_edit_logs')
-                            .insert({
-                                block: block,
-                                unit: unit,
-                                academic_year: year,
-                                admission: edit.admission,
-                                student_name: edit.name,
-                                lecturer_id: me_currentLecturer?.profile?.id || null,
-                                lecturer_name: me_currentLecturer?.profile?.full_name || 'Unknown',
-                                old_cat1: edit.old_cat1,
-                                old_cat2: edit.old_cat2,
-                                old_exam: edit.old_exam,
-                                old_total: edit.old_total,
-                                new_cat1: edit.new_cat1,
-                                new_cat2: edit.new_cat2,
-                                new_exam: edit.new_exam,
-                                new_total: edit.new_total,
-                                edited_at: new Date().toISOString()
-                            });
+                            .insert(logs);
+                        
+                        if (error) {
+                            console.warn('⚠️ Error logging approved edits:', error);
+                        }
                     }
                     console.log(`📝 Logged ${approvedEdits.length} approved mark edits`);
                 } else {
@@ -1469,7 +1543,12 @@ async function saveMarksEntry() {
             }
         }
         
-        hideLoading();
+        // ============================================================
+        // COMPLETE
+        // ============================================================
+        updateLoadingProgress(100, 4, '✅ Complete!');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        hideLoadingScreen();
         
         // ============================================================
         // SHOW DETAILED RESULTS
@@ -1490,34 +1569,22 @@ async function saveMarksEntry() {
             showNotification(message, 'error');
         }
         
-        // ============================================================
-        // SHOW WARNINGS
-        // ============================================================
-        
-        // Warn about approved marks that were edited
+        // Show warnings
         if (approvedEdited > 0) {
             showNotification(`✏️ ${approvedEdited} approved marks were edited. Admin has been notified.`, 'warning');
         }
         
-        // Warn about marks reset to draft
         if (resetToDraft > 0) {
             showNotification(`🔄 ${resetToDraft} marks were reset to DRAFT due to changes. Re-submit for approval.`, 'warning');
         }
         
-        // Show summary of all errors
-        if (errorDetails.length > 0 && errorDetails.length <= 5) {
-            console.log('📋 Error details:', errorDetails);
-        } else if (errorDetails.length > 5) {
-            console.log(`📋 ${errorDetails.length} errors occurred. Check individual logs.`);
-        }
-        
-        // Reload marks to show updated data
+        // Reload marks
         if (errors === 0 || saved > 0 || updated > 0) {
-            setTimeout(() => loadMarksEntry(), 1000);
+            setTimeout(() => loadMarksEntry(), 500);
         }
         
     } catch (error) {
-        hideLoading();
+        hideLoadingScreen();
         showNotification('❌ Error saving marks: ' + error.message, 'error');
         console.error('Save error:', error);
     }
