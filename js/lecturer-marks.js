@@ -1141,143 +1141,90 @@ function getMarksEntryGrade(score) {
 // ============================================================
 
 function updateMarksEntryStats(marks, assessmentType) {
-    // ✅ Count ALL enrolled students (including those with 0 marks)
+    if (!marks) marks = [];
+    if (!assessmentType) assessmentType = me_currentAssessmentType || 'full';
+    
+    console.log('📊 Updating stats for', marks.length, 'marks');
+    
+    // Count statuses
     const totalEnrolled = marks.length;
-    
-    // ✅ Students with scores (any score > 0)
-    const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
-    
-    // ✅ Students passing
-    const passing = marks.filter(m => {
-        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total >= 60;
-    });
-    
-    // ✅ Average score (only students with scores)
-    const avg = withScores.length > 0 ? 
-        withScores.reduce((sum, m) => sum + calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType), 0) / withScores.length : 0;
-    
-    // ✅ At risk: students with total < 60 (only those with scores)
-    const atRisk = marks.filter(m => {
-        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total > 0 && total < 60;
-    });
-    
-    const totalEl = document.getElementById('me_total_students');
-    const subjectsEl = document.getElementById('me_total_subjects');
-    const passEl = document.getElementById('me_pass_rate');
-    const avgEl = document.getElementById('me_class_avg');
-    const atRiskEl = document.getElementById('me_at_risk');
-    
-    if (totalEl) totalEl.textContent = totalEnrolled;
-    if (subjectsEl) subjectsEl.textContent = marks.length > 0 ? 1 : 0;
-    if (passEl) passEl.textContent = totalEnrolled > 0 ? Math.round((passing.length / totalEnrolled) * 100) + '%' : '0%';
-    if (avgEl) avgEl.textContent = Math.round(avg) + '%';
-    if (atRiskEl) atRiskEl.textContent = atRisk.length;
-}
-
-// ============================================================
-// CHECK MARKS APPROVAL STATUS - FOR LECTURER VIEW
-// ============================================================
-
-function checkMarksApprovalStatus(marks) {
-    console.log('📋 Checking marks approval status...');
-    
-    if (!marks || marks.length === 0) {
-        console.log('📋 No marks to check');
-        return;
-    }
-    
     const pendingCount = marks.filter(m => m.approval_status === 'pending').length;
     const approvedCount = marks.filter(m => m.approval_status === 'approved').length;
-    const rejectedCount = marks.filter(m => m.approval_status === 'rejected').length;
     const draftCount = marks.filter(m => m.approval_status === 'draft' || !m.approval_status).length;
+    const rejectedCount = marks.filter(m => m.approval_status === 'rejected').length;
     
-    console.log(`📊 Approval Status: Draft: ${draftCount}, Pending: ${pendingCount}, Approved: ${approvedCount}, Rejected: ${rejectedCount}`);
+    // Calculate scores
+    let totalScore = 0;
+    let withScores = 0;
+    marks.forEach(m => {
+        const score = calculateMarksEntryTotal(m.cat1 || 0, m.cat2 || 0, m.exam || 0, assessmentType);
+        if (score > 0) {
+            totalScore += score;
+            withScores++;
+        }
+    });
+    const avg = withScores > 0 ? Math.round(totalScore / withScores) : 0;
     
-    // Update UI elements if they exist
-    const banner = document.getElementById('approvalStatusBanner');
-    const statusText = document.getElementById('approvalStatusText');
-    const statusBadge = document.getElementById('approvalStatusBadge');
-    const submitBtn = document.getElementById('submitForApprovalBtn');
-    const withdrawBtn = document.getElementById('withdrawApprovalBtn');
-    const details = document.getElementById('approvalDetails');
-    const rejectionReason = document.getElementById('rejectionReason');
+    // Count passing
+    const passing = marks.filter(m => {
+        const total = calculateMarksEntryTotal(m.cat1 || 0, m.cat2 || 0, m.exam || 0, assessmentType);
+        return total >= 60;
+    }).length;
     
-    if (!banner) {
-        // Create banner if it doesn't exist
-        createApprovalStatusBanner();
-        return;
+    // Count at risk
+    const atRisk = marks.filter(m => {
+        const total = calculateMarksEntryTotal(m.cat1 || 0, m.cat2 || 0, m.exam || 0, assessmentType);
+        return total > 0 && total < 60;
+    }).length;
+    
+    // Update ALL stats elements
+    const statsMap = {
+        'lecTotalStudents': totalEnrolled,
+        'lecPendingApproval': pendingCount,
+        'lecApprovedMarks': approvedCount,
+        'lecAvgScore': avg + '%',
+        'studentsAtRiskCount': atRisk,
+        'avgPerformance': avg + '%',
+        'totalStudentsCount': totalEnrolled,
+        'me_total_students': totalEnrolled,
+        'me_total_subjects': marks.length > 0 ? 1 : 0,
+        'me_pass_rate': totalEnrolled > 0 ? Math.round((passing / totalEnrolled) * 100) + '%' : '0%',
+        'me_class_avg': avg + '%',
+        'me_at_risk': atRisk
+    };
+    
+    let updated = 0;
+    let notFound = 0;
+    for (const [id, value] of Object.entries(statsMap)) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = value;
+            updated++;
+        } else {
+            notFound++;
+        }
     }
     
-    // Show banner if there are any marks
-    if (marks.length > 0) {
-        banner.style.display = 'block';
-    } else {
-        banner.style.display = 'none';
-        return;
+    // Also update the approval status banner
+    if (typeof checkMarksApprovalStatus === 'function') {
+        checkMarksApprovalStatus(marks);
     }
     
-    if (pendingCount > 0) {
-        banner.style.borderLeftColor = '#f59e0b';
-        banner.style.background = '#fef3c7';
-        if (statusText) statusText.textContent = `${pendingCount} marks pending Admin Approval`;
-        if (statusBadge) {
-            statusBadge.textContent = '⏳ Pending';
-            statusBadge.className = 'badge badge-warning';
-            statusBadge.style.cssText = 'background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
-        }
-        if (submitBtn) submitBtn.style.display = 'none';
-        if (withdrawBtn) withdrawBtn.style.display = 'inline-block';
-        if (details) details.style.display = 'block';
-        if (rejectionReason) rejectionReason.style.display = 'none';
-        
-    } else if (approvedCount > 0 && pendingCount === 0) {
-        banner.style.borderLeftColor = '#10b981';
-        banner.style.background = '#d1fae5';
-        if (statusText) statusText.textContent = `✅ ${approvedCount} marks Approved by Admin`;
-        if (statusBadge) {
-            statusBadge.textContent = '✅ Approved';
-            statusBadge.className = 'badge badge-success';
-            statusBadge.style.cssText = 'background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
-        }
-        if (submitBtn) submitBtn.style.display = 'none';
-        if (withdrawBtn) withdrawBtn.style.display = 'none';
-        if (details) details.style.display = 'block';
-        if (rejectionReason) rejectionReason.style.display = 'none';
-        
-    } else if (rejectedCount > 0 && pendingCount === 0 && approvedCount === 0) {
-        banner.style.borderLeftColor = '#dc2626';
-        banner.style.background = '#fee2e2';
-        if (statusText) statusText.textContent = `❌ ${rejectedCount} marks Rejected by Admin`;
-        if (statusBadge) {
-            statusBadge.textContent = '❌ Rejected';
-            statusBadge.className = 'badge badge-danger';
-            statusBadge.style.cssText = 'background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
-        }
-        if (submitBtn) submitBtn.style.display = 'inline-block';
-        if (withdrawBtn) withdrawBtn.style.display = 'none';
-        if (details) details.style.display = 'block';
-        if (rejectionReason) rejectionReason.style.display = 'block';
-        
-    } else if (draftCount > 0 && pendingCount === 0 && approvedCount === 0 && rejectedCount === 0) {
-        banner.style.borderLeftColor = '#6b7280';
-        banner.style.background = '#f3f4f6';
-        if (statusText) statusText.textContent = `📝 ${draftCount} marks in Draft - Ready to submit`;
-        if (statusBadge) {
-            statusBadge.textContent = '📝 Draft';
-            statusBadge.className = 'badge badge-secondary';
-            statusBadge.style.cssText = 'background: #e5e7eb; color: #6b7280; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
-        }
-        if (submitBtn) submitBtn.style.display = 'inline-block';
-        if (withdrawBtn) withdrawBtn.style.display = 'none';
-        if (details) details.style.display = 'none';
-        if (rejectionReason) rejectionReason.style.display = 'none';
-    } else {
-        banner.style.display = 'none';
-        if (submitBtn) submitBtn.style.display = 'inline-block';
-        if (withdrawBtn) withdrawBtn.style.display = 'none';
-    }
+    // Store for debugging
+    window.currentMarks = marks;
+    window.currentStats = {
+        totalEnrolled,
+        pendingCount,
+        approvedCount,
+        draftCount,
+        rejectedCount,
+        avg,
+        passing,
+        atRisk
+    };
+    
+    console.log(`✅ Updated ${updated} stats elements (${notFound} not found)`);
+    console.log('📊 Stats:', window.currentStats);
 }
 
 // ============================================================
@@ -2121,7 +2068,14 @@ function downloadCSV(csv, filename) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 }
+ ============================================================
+// LOAD LECTURER MARKS ENTRY - Wrapper for onclick
+// ============================================================
 
+function loadLecturerMarksEntry() {
+    console.log('📊 loadLecturerMarksEntry called - loading marks...');
+    loadMarksEntry();
+}
 // ============================================================
 // LECTURER MARKS CLASS
 // ============================================================
@@ -3031,6 +2985,7 @@ window.getLecturerAssignedUnits = getLecturerAssignedUnits;
 window.loadMEBlocks = loadMEBlocks;
 window.loadMEUnits = loadMEUnits;
 window.loadMarksEntry = loadMarksEntry;
+window.loadLecturerMarksEntry = loadLecturerMarksEntry;  // ← ADD THIS LINE
 window.renderMarksEntryTable = renderMarksEntryTable;
 window.updateMarksEntryRow = updateMarksEntryRow;
 window.calculateMarksEntryTotal = calculateMarksEntryTotal;
