@@ -1375,123 +1375,358 @@
                 </div>
             </section>
 
-            <!-- ===== RESOURCES SECTION ===== -->
-            <section id="resources-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
-                <h2><i class="fas fa-file-upload"></i> Upload New Resource</h2>
-                
-                <form id="uploadResourceForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); uploadResource();">
-                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="resourceTitle" style="font-weight: 600; font-size: 13px; color: #475569;">Resource Title *</label>
-                            <input type="text" id="resourceTitle" placeholder="Resource Title" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        </div>
-                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="resourceCategory" style="font-weight: 600; font-size: 13px; color: #475569;">Category *</label>
-                            <select id="resourceCategory" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                                <option value="">Select Category</option>
-                                <option value="Academic">Academic</option>
-                                <option value="Mental Health">Mental Health</option>
-                                <option value="General">General</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="resourceProgram" style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
-                            <select id="resourceProgram" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
-                        </div>
-                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="resourceIntake" style="font-weight: 600; font-size: 13px; color: #475569;">Intake *</label>
-                            <select id="resourceIntake" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
-                        </div>
-                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="resourceBlock" style="font-weight: 600; font-size: 13px; color: #475569;">Block *</label>
-                            <select id="resourceBlock" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
-                        </div>
-                    </div>
-                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="resourceFile" style="font-weight: 600; font-size: 13px; color: #475569;">File *</label>
-                            <input type="file" id="resourceFile" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-action" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-upload"></i> Upload Resource
-                    </button>
-                </form>
-                
-                <h3 style="color: #0A3D62; margin-bottom: 15px;">My Uploaded Resources</h3>
-                <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <input type="text" id="resourceSearch" placeholder="Search resources..." style="flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                    <button class="btn btn-action" id="resourceSearchBtn" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-search"></i> Search</button>
-                </div>
-                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                        <thead>
-                            <tr style="background: #f8fafc;">
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Title</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Category</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program/Block</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Uploaded By</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date Uploaded</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="resourcesList">
-                            <tr><td colspan="6" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading resources...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+          <!-- ============================================ -->
+<!-- RESOURCES SECTION - UPDATED (No Admin Approval) -->
+<!-- ============================================ -->
+<section id="resources-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    <h2><i class="fas fa-file-upload"></i> Upload New Resource</h2>
+    
+    <!-- Success Banner for Resource Upload -->
+    <div id="resourceUploadSuccess" style="display: none; background: #d1fae5; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-check-circle" style="color: #10b981; font-size: 24px;"></i>
+            <div>
+                <strong style="color: #065f46;">Resource Uploaded Successfully!</strong>
+                <p style="margin: 4px 0 0 0; color: #065f46; font-size: 14px;">Your resource is now available to students immediately. No approval required.</p>
+            </div>
+            <button onclick="document.getElementById('resourceUploadSuccess').style.display='none'" style="margin-left: auto; background: none; border: none; color: #065f46; cursor: pointer; font-size: 18px;">&times;</button>
+        </div>
+    </div>
+    
+    <form id="uploadResourceForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); uploadResource();">
+        <!-- Auto-publish indicator -->
+        <div style="background: #f0fdf4; border-radius: 8px; padding: 10px 16px; margin-bottom: 15px; border: 1px solid #bbf7d0; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-globe" style="color: #10b981;"></i>
+            <span style="font-size: 13px; color: #065f46;">
+                <strong>Auto-Publish:</strong> Resources are published immediately to students. No admin approval required.
+            </span>
+        </div>
+        
+        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="resourceTitle" style="font-weight: 600; font-size: 13px; color: #475569;">Resource Title *</label>
+                <input type="text" id="resourceTitle" placeholder="Resource Title" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+            </div>
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="resourceCategory" style="font-weight: 600; font-size: 13px; color: #475569;">Category *</label>
+                <select id="resourceCategory" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                    <option value="">Select Category</option>
+                    <option value="Academic">Academic</option>
+                    <option value="Mental Health">Mental Health</option>
+                    <option value="General">General</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="resourceProgram" style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
+                <select id="resourceProgram" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
+            </div>
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="resourceIntake" style="font-weight: 600; font-size: 13px; color: #475569;">Intake *</label>
+                <select id="resourceIntake" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
+            </div>
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="resourceBlock" style="font-weight: 600; font-size: 13px; color: #475569;">Block *</label>
+                <select id="resourceBlock" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
+            </div>
+        </div>
+        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="resourceFile" style="font-weight: 600; font-size: 13px; color: #475569;">File *</label>
+                <input type="file" id="resourceFile" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+            </div>
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="resourceDescription" style="font-weight: 600; font-size: 13px; color: #475569;">Description (Optional)</label>
+                <input type="text" id="resourceDescription" placeholder="Brief description of the resource" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-action" style="background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <i class="fas fa-upload"></i> Publish Resource (No Approval Needed)
+        </button>
+    </form>
+    
+    <h3 style="color: #0A3D62; margin-bottom: 15px;">My Published Resources</h3>
+    <div style="background: #f0fdf4; border-radius: 8px; padding: 10px 16px; margin-bottom: 20px; border: 1px solid #bbf7d0; display: flex; align-items: center; gap: 10px;">
+        <i class="fas fa-check-circle" style="color: #10b981;"></i>
+        <span style="font-size: 13px; color: #065f46;">
+            All resources listed below are <strong>published</strong> and available to students immediately.
+        </span>
+    </div>
+    
+    <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <input type="text" id="resourceSearch" placeholder="Search resources..." style="flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+        <button class="btn btn-action" id="resourceSearchBtn" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-search"></i> Search</button>
+        <button class="btn btn-action" onclick="loadResources()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;"><i class="fas fa-sync-alt"></i> Refresh</button>
+    </div>
+    
+    <!-- Published Resources Table -->
+    <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <thead>
+                <tr style="background: #f8fafc;">
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Title</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Description</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Category</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program/Block</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Uploaded By</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date Uploaded</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Status</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="resourcesList">
+                <tr><td colspan="8" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading resources...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
 
-            <!-- ===== REPORTS SECTION ===== -->
-            <section id="reports-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
-                <h2><i class="fas fa-chart-bar"></i> Academic Reports</h2>
-                
-                <form id="reportGenerationForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); generateReport();">
-                    <h4 style="color: #0A3D62;">Generate New Report</h4>
-                    <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="reportType" style="font-weight: 600; font-size: 13px; color: #475569;">Report Type</label>
-                            <select id="reportType" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                                <option value="">-- Select Report Type --</option>
-                                <option value="AttendanceSummary">Student Attendance Summary</option>
-                                <option value="CourseGradeBook">Course Grade Book</option>
-                                <option value="EnrollmentList">Enrollment List</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                            <label for="reportScope" style="font-weight: 600; font-size: 13px; color: #475569;">Scope</label>
-                            <select id="reportScope" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                                <option value="">-- Select Scope --</option>
-                                <option value="MyCourses">My Courses</option>
-                                <option value="MyStudents">My Students</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-action" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 15px;">
-                        <i class="fas fa-chart-line"></i> Generate Report
-                    </button>
-                </form>
-                
-                <h3 style="color: #0A3D62; margin-bottom: 15px;">Generated Reports</h3>
-                <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                        <thead>
-                            <tr style="background: #f8fafc;">
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Report Name</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Type</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Scope</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date Generated</th>
-                                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reportsTable">
-                            <tr><td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">No reports generated yet.</td></tr>
-                        </tbody>
-                    </table>
+          <!-- ===== REPORTS SECTION - ENHANCED WITH UNIT SELECTION ===== -->
+<section id="reports-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+        <div>
+            <h2 style="margin: 0;"><i class="fas fa-chart-bar" style="color: #FDB913;"></i> Academic Reports</h2>
+            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Generate comprehensive reports for your assigned units, courses, and students</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <span style="background: #dbeafe; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-file-pdf"></i> PDF
+            </span>
+            <span style="background: #d1fae5; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #065f46; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-file-excel"></i> Excel
+            </span>
+            <span style="background: #fef3c7; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #92400e; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-print"></i> Print
+            </span>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #4C1D95;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-file-alt" style="color: #4C1D95; font-size: 20px;"></i>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="totalReportsCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Total Reports</div>
                 </div>
-            </section>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #10b981;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-users" style="color: #10b981; font-size: 20px;"></i>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="studentReportsCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Student Reports</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-chart-line" style="color: #f59e0b; font-size: 20px;"></i>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="performanceReportsCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Performance Reports</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #8b5cf6;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-book" style="color: #8b5cf6; font-size: 20px;"></i>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="unitReportsCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Unit Reports</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Report Generation Form -->
+    <form id="reportGenerationForm" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 25px; border: 1px solid #e5e7eb;" onsubmit="event.preventDefault(); generateReport();">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+            <i class="fas fa-plus-circle" style="color: #4C1D95; font-size: 22px;"></i>
+            <h4 style="margin: 0; color: #0A3D62; font-size: 18px;">Generate New Report</h4>
+            <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">
+                <i class="fas fa-info-circle"></i> Select unit to generate unit-specific reports
+            </span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="reportUnit" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-book" style="color: #4C1D95; width: 18px;"></i> Select Unit
+                </label>
+                <select id="reportUnit" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">-- Select Unit --</option>
+                </select>
+                <small style="color: #94a3b8; font-size: 11px;">Units you are currently teaching</small>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="reportType" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-tag" style="color: #4C1D95; width: 18px;"></i> Report Type
+                </label>
+                <select id="reportType" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">-- Select Report Type --</option>
+                    <option value="AttendanceSummary">📋 Attendance Summary</option>
+                    <option value="CourseGradeBook">📊 Unit Grade Book</option>
+                    <option value="EnrollmentList">👥 Enrollment List</option>
+                    <option value="PerformanceAnalysis">📈 Performance Analysis</option>
+                    <option value="ClassRoster">📝 Class Roster</option>
+                    <option value="UnitProgress">🎯 Unit Progress Report</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="reportScope" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-bullseye" style="color: #4C1D95; width: 18px;"></i> Scope
+                </label>
+                <select id="reportScope" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">-- Select Scope --</option>
+                    <option value="MyCourses">📚 All My Units</option>
+                    <option value="MyStudents">👨‍🎓 My Students</option>
+                    <option value="UnitOnly">📖 Selected Unit Only</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="reportFormat" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-file" style="color: #4C1D95; width: 18px;"></i> Output Format
+                </label>
+                <select id="reportFormat" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="PDF">📄 PDF Document</option>
+                    <option value="Excel">📊 Excel Spreadsheet</option>
+                    <option value="CSV">📋 CSV File</option>
+                    <option value="HTML">🌐 HTML Preview</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Additional Options -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="includeAttendance" checked style="width: 18px; height: 18px; accent-color: #4C1D95;">
+                <label for="includeAttendance" style="font-size: 13px; color: #475569;">Include Attendance</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="includeGrades" checked style="width: 18px; height: 18px; accent-color: #4C1D95;">
+                <label for="includeGrades" style="font-size: 13px; color: #475569;">Include Grades</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="includeComments" style="width: 18px; height: 18px; accent-color: #4C1D95;">
+                <label for="includeComments" style="font-size: 13px; color: #475569;">Include Comments</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="includeRanking" style="width: 18px; height: 18px; accent-color: #4C1D95;">
+                <label for="includeRanking" style="font-size: 13px; color: #475569;">Include Ranking</label>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+            <button type="submit" class="btn btn-action" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s; display: flex; align-items: center; gap: 10px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-chart-line"></i> Generate Report
+            </button>
+            <button type="reset" style="background: transparent; color: #64748b; border: 2px solid #e2e8f0; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+        </div>
+    </form>
+    
+    <!-- Report Filters -->
+    <div style="background: white; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; border: 1px solid #e5e7eb;">
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px;">
+            <i class="fas fa-search" style="color: #94a3b8;"></i>
+            <input type="text" id="reportSearch" placeholder="Search reports by name, type, or unit..." style="flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; min-width: 150px;" onkeyup="filterReports()">
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <select id="reportTypeFilter" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white;" onchange="filterReports()">
+                <option value="all">All Types</option>
+                <option value="AttendanceSummary">Attendance</option>
+                <option value="CourseGradeBook">Grade Book</option>
+                <option value="EnrollmentList">Enrollment</option>
+                <option value="PerformanceAnalysis">Performance</option>
+                <option value="ClassRoster">Roster</option>
+                <option value="UnitProgress">Unit Progress</option>
+            </select>
+            <select id="reportUnitFilter" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white;" onchange="filterReports()">
+                <option value="all">All Units</option>
+            </select>
+            <button onclick="filterReports()" style="background: #4C1D95; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+            <button onclick="clearReportFilters()" style="background: transparent; color: #64748b; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                <i class="fas fa-times"></i> Clear
+            </button>
+            <button onclick="refreshReports()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+    
+    <!-- Reports Table -->
+    <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-file-alt" style="margin-right: 8px; color: #4C1D95;"></i> Report Name
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-book" style="margin-right: 8px; color: #4C1D95;"></i> Unit
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-tag" style="margin-right: 8px; color: #4C1D95;"></i> Type
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-bullseye" style="margin-right: 8px; color: #4C1D95;"></i> Scope
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-calendar" style="margin-right: 8px; color: #4C1D95;"></i> Date Generated
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-file" style="margin-right: 8px; color: #4C1D95;"></i> Format
+                        </th>
+                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-cog" style="margin-right: 8px; color: #4C1D95;"></i> Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="reportsTable">
+                    <tr>
+                        <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                            <i class="fas fa-chart-bar" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
+                            <h3 style="color: #475569; margin: 0 0 8px 0;">No Reports Generated Yet</h3>
+                            <p style="margin: 0; font-size: 14px;">Select a unit and report type above to generate your first report</p>
+                            <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                                <span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">📋 Attendance</span>
+                                <span style="background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">📊 Grades</span>
+                                <span style="background: #fef3c7; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #92400e;">👥 Enrollment</span>
+                                <span style="background: #ede9fe; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #5b21b6;">🎯 Progress</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Table Footer -->
+        <div style="padding: 12px 18px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <span style="font-size: 13px; color: #64748b;">
+                <i class="fas fa-database"></i> <span id="reportCountDisplay">0</span> reports available
+            </span>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="exportAllReports()" style="background: transparent; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #475569; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-file-export"></i> Export All
+                </button>
+                <button onclick="printReportTable()" style="background: transparent; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #475569; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
 
             <!-- ===== MESSAGES SECTION ===== -->
             <section id="messages-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
@@ -1536,46 +1771,250 @@
                 </div>
             </section>
 
-            <!-- ===== CALENDAR SECTION ===== -->
-            <section id="calendar-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
-                <h2><i class="fas fa-calendar"></i> Academic Calendar</h2>
-                <div id="calendarView" style="background: white; border-radius: 12px; padding: 60px 20px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <i class="fas fa-calendar-alt" style="font-size: 48px; color: #4C1D95; margin-bottom: 20px;"></i>
-                    <h3 style="color: #0A3D62;">Academic Calendar</h3>
-                    <p style="color: #6b7280;">Your schedule and important dates will appear here.</p>
-                    <button onclick="loadCalendar()" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 15px;"><i class="fas fa-sync-alt"></i> Load Calendar</button>
+           <!-- ===== CALENDAR SECTION - FULLY FUNCTIONAL ===== -->
+<section id="calendar-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+        <div>
+            <h2 style="margin: 0;"><i class="fas fa-calendar" style="color: #FDB913;"></i> Academic Calendar</h2>
+            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Your schedule, sessions, exams, and important academic dates</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="window.LecturerCalendar?.changeMonth(-1)" style="background: white; border: 1px solid #e2e8f0; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                <i class="fas fa-chevron-left"></i> Prev
+            </button>
+            <button onclick="window.LecturerCalendar?.changeMonth(1)" style="background: white; border: 1px solid #e2e8f0; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+            <button onclick="window.LecturerCalendar?.goToToday()" style="background: #4C1D95; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-calendar-check"></i> Today
+            </button>
+        </div>
+    </div>
+    
+    <!-- Calendar Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #4C1D95;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-calendar-day" style="color: #4C1D95; font-size: 18px;"></i>
+                <div>
+                    <div style="font-size: 20px; font-weight: 800; color: #0A3D62;" id="todaySessions">0</div>
+                    <div style="font-size: 11px; color: #6b7280;">Today's Sessions</div>
                 </div>
-            </section>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #10b981;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-calendar-week" style="color: #10b981; font-size: 18px;"></i>
+                <div>
+                    <div style="font-size: 20px; font-weight: 800; color: #0A3D62;" id="weekSessions">0</div>
+                    <div style="font-size: 11px; color: #6b7280;">This Week</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-file-signature" style="color: #f59e0b; font-size: 18px;"></i>
+                <div>
+                    <div style="font-size: 20px; font-weight: 800; color: #0A3D62;" id="upcomingExams">0</div>
+                    <div style="font-size: 11px; color: #6b7280;">Upcoming Exams</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #8b5cf6;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-tasks" style="color: #8b5cf6; font-size: 18px;"></i>
+                <div>
+                    <div style="font-size: 20px; font-weight: 800; color: #0A3D62;" id="totalEvents">0</div>
+                    <div style="font-size: 11px; color: #6b7280;">Total Events</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Calendar View -->
+    <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <!-- Month/Year Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 id="calendarMonthYear" style="margin: 0; color: #0A3D62; font-size: 22px;">Loading...</h3>
+        </div>
+        
+        <!-- Calendar Grid -->
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 10px;">
+            <div style="text-align: center; font-weight: 700; color: #475569; padding: 8px; font-size: 13px; background: #f8fafc; border-radius: 6px;">Sun</div>
+            <div style="text-align: center; font-weight: 700; color: #475569; padding: 8px; font-size: 13px; background: #f8fafc; border-radius: 6px;">Mon</div>
+            <div style="text-align: center; font-weight: 700; color: #475569; padding: 8px; font-size: 13px; background: #f8fafc; border-radius: 6px;">Tue</div>
+            <div style="text-align: center; font-weight: 700; color: #475569; padding: 8px; font-size: 13px; background: #f8fafc; border-radius: 6px;">Wed</div>
+            <div style="text-align: center; font-weight: 700; color: #475569; padding: 8px; font-size: 13px; background: #f8fafc; border-radius: 6px;">Thu</div>
+            <div style="text-align: center; font-weight: 700; color: #475569; padding: 8px; font-size: 13px; background: #f8fafc; border-radius: 6px;">Fri</div>
+            <div style="text-align: center; font-weight: 700; color: #475569; padding: 8px; font-size: 13px; background: #f8fafc; border-radius: 6px;">Sat</div>
+        </div>
+        
+        <div id="calendarDays" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
+            <!-- Calendar days populated by JavaScript -->
+        </div>
+        
+        <!-- Legend -->
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569;">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #dbeafe; border-radius: 4px;"></span> Session
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569;">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #d1fae5; border-radius: 4px;"></span> Exam
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569;">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #fef3c7; border-radius: 4px;"></span> Deadline
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569;">
+                <span style="display: inline-block; width: 12px; height: 12px; background: #4C1D95; border-radius: 4px;"></span> Today
+            </div>
+        </div>
+    </div>
+    
+    <!-- Upcoming Events List -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-top: 20px; border: 1px solid #e5e7eb;">
+        <h4 style="color: #0A3D62; margin: 0 0 15px 0; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-list" style="color: #FDB913;"></i> Upcoming Events
+            <span style="margin-left: auto; font-size: 12px; color: #94a3b8; font-weight: 400;">
+                <span id="upcomingEventCount">0</span> events
+            </span>
+        </h4>
+        <div id="upcomingEventsList" style="max-height: 300px; overflow-y: auto;">
+            <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                <i class="fas fa-calendar-plus" style="font-size: 32px; display: block; margin-bottom: 10px; color: #e2e8f0;"></i>
+                <p style="margin: 0;">No upcoming events</p>
+            </div>
+        </div>
+    </div>
+</section>
 
-                       <!-- ===== SETTINGS SECTION ===== -->
-            <section id="settings-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
-                <h2><i class="fas fa-cog"></i> System Settings</h2>
-                
-                <form id="settingsForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" onsubmit="event.preventDefault(); saveSettings();">
-                    <h4 style="color: #0A3D62;">Notification Preferences</h4>
-                    <div class="form-row" style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
-                        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-                            <label style="font-weight: 500; font-size: 14px; color: #475569; cursor: pointer;">
-                                <input type="checkbox" id="emailNotify" checked> Email notifications
-                            </label>
-                        </div>
-                        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-                            <label style="font-weight: 500; font-size: 14px; color: #475569; cursor: pointer;">
-                                <input type="checkbox" id="smsNotify"> SMS notifications
-                            </label>
-                        </div>
-                        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-                            <label style="font-weight: 500; font-size: 14px; color: #475569; cursor: pointer;">
-                                <input type="checkbox" id="pushNotify" checked> Push notifications
-                            </label>
-                        </div>
+<!-- ===== SETTINGS SECTION - FULLY FUNCTIONAL ===== -->
+<section id="settings-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+        <div>
+            <h2 style="margin: 0;"><i class="fas fa-cog" style="color: #FDB913;"></i> System Settings</h2>
+            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Customize your preferences and account settings</p>
+        </div>
+    </div>
+    
+    <!-- Settings Tabs -->
+    <div style="display: flex; gap: 4px; background: #f8fafc; border-radius: 12px; padding: 4px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
+        <button onclick="window.switchSettingsTab('notifications')" id="settingsTabNotifications" class="settings-tab active" style="flex: 1; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: #4C1D95; color: white;">
+            <i class="fas fa-bell"></i> Notifications
+        </button>
+        <button onclick="window.switchSettingsTab('account')" id="settingsTabAccount" class="settings-tab" style="flex: 1; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-user-cog"></i> Account
+        </button>
+        <button onclick="window.switchSettingsTab('appearance')" id="settingsTabAppearance" class="settings-tab" style="flex: 1; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-palette"></i> Appearance
+        </button>
+    </div>
+    
+    <!-- Notifications Settings -->
+    <div id="settingsNotifications" class="settings-panel" style="display: block;">
+        <form id="settingsForm" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;" onsubmit="event.preventDefault(); window.saveSettings();">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <i class="fas fa-bell" style="color: #4C1D95; font-size: 20px;"></i>
+                <h4 style="margin: 0; color: #0A3D62; font-size: 17px;">Notification Preferences</h4>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <i class="fas fa-envelope" style="color: #3b82f6; font-size: 18px;"></i>
+                    <label style="font-weight: 500; font-size: 14px; color: #1e293b; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="emailNotify" checked style="width: 18px; height: 18px; accent-color: #4C1D95;"> Email
+                    </label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <i class="fas fa-sms" style="color: #10b981; font-size: 18px;"></i>
+                    <label style="font-weight: 500; font-size: 14px; color: #1e293b; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="smsNotify" style="width: 18px; height: 18px; accent-color: #4C1D95;"> SMS
+                    </label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <i class="fas fa-bell" style="color: #f59e0b; font-size: 18px;"></i>
+                    <label style="font-weight: 500; font-size: 14px; color: #1e293b; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="pushNotify" checked style="width: 18px; height: 18px; accent-color: #4C1D95;"> Push
+                    </label>
+                </div>
+            </div>
+            
+            <button type="submit" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+        </form>
+    </div>
+    
+    <!-- Account Settings -->
+    <div id="settingsAccount" class="settings-panel" style="display: none;">
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <i class="fas fa-user-cog" style="color: #4C1D95; font-size: 20px;"></i>
+                <h4 style="margin: 0; color: #0A3D62; font-size: 17px;">Account Information</h4>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <label style="font-size: 12px; color: #94a3b8; display: block; margin-bottom: 4px;">Full Name</label>
+                    <div style="padding: 10px 14px; background: #f8fafc; border-radius: 6px; color: #1e293b; font-weight: 500;" id="settingsFullName">-</div>
+                </div>
+                <div>
+                    <label style="font-size: 12px; color: #94a3b8; display: block; margin-bottom: 4px;">Email</label>
+                    <div style="padding: 10px 14px; background: #f8fafc; border-radius: 6px; color: #1e293b; font-weight: 500;" id="settingsEmail">-</div>
+                </div>
+                <div>
+                    <label style="font-size: 12px; color: #94a3b8; display: block; margin-bottom: 4px;">Program</label>
+                    <div style="padding: 10px 14px; background: #f8fafc; border-radius: 6px; color: #1e293b; font-weight: 500;" id="settingsProgram">-</div>
+                </div>
+                <div>
+                    <label style="font-size: 12px; color: #94a3b8; display: block; margin-bottom: 4px;">Role</label>
+                    <div style="padding: 10px 14px; background: #f8fafc; border-radius: 6px; color: #1e293b; font-weight: 500;" id="settingsRole">Lecturer</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                <button onclick="window.loadAccountSettings()" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Appearance Settings -->
+    <div id="settingsAppearance" class="settings-panel" style="display: none;">
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <i class="fas fa-palette" style="color: #4C1D95; font-size: 20px;"></i>
+                <h4 style="margin: 0; color: #0A3D62; font-size: 17px;">Appearance Preferences</h4>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div>
+                    <label style="font-size: 13px; color: #475569; display: block; margin-bottom: 8px;">Theme Mode</label>
+                    <select id="themeSelect" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
+                        <option value="light">☀️ Light</option>
+                        <option value="dark">🌙 Dark</option>
+                        <option value="system">🔄 System</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 13px; color: #475569; display: block; margin-bottom: 8px;">Accent Color</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; padding: 5px 0;">
+                        <button onclick="window.changeAccentColor('#4C1D95')" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid #4C1D95; background: #4C1D95; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+                        <button onclick="window.changeAccentColor('#10b981')" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; background: #10b981; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+                        <button onclick="window.changeAccentColor('#3b82f6')" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; background: #3b82f6; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+                        <button onclick="window.changeAccentColor('#f59e0b')" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; background: #f59e0b; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+                        <button onclick="window.changeAccentColor('#ef4444')" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; background: #ef4444; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+                        <button onclick="window.changeAccentColor('#8b5cf6')" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; background: #8b5cf6; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
                     </div>
-                    <button type="submit" class="btn btn-action" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-save"></i> Save Settings
-                    </button>
-                </form>
-            </section>
-
+                </div>
+            </div>
+            
+            <button onclick="window.saveAppearanceSettings()" style="margin-top: 20px; background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 8px;">
+                <i class="fas fa-save"></i> Save Appearance
+            </button>
+        </div>
+    </div>
+</section>
                </main>
     </div>
 
