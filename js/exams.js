@@ -1641,7 +1641,7 @@
                 this.showToast('Error loading exam results', 'error');
             }
         }
-       // ============================================
+      // ============================================
 // 📊 VIEW DETAILED EXAM RESULTS - WITH ALL OPTIONS
 // ✅ Shows ALL options (A, B, C, D) for each question
 // ============================================
@@ -1759,7 +1759,7 @@ async viewDetailedResults(examId) {
         
         console.log(`📊 Score: ${score}/${totalMarks}, ${percentage}%, ${passed ? 'PASS' : 'FAIL'}`);
         
-        // ✅ 6. Build questions HTML with ALL options
+        // ✅ 6. Build questions HTML with ALL options - CLEANER VERSION
         let questionsHtml = '';
         if (questionReview.length === 0) {
             questionsHtml = `
@@ -1774,33 +1774,34 @@ async viewDetailedResults(examId) {
                 const icon = isCorrect ? '✅' : '❌';
                 const bgColor = isCorrect ? '#F0FDF4' : '#FEF2F2';
                 const borderColor = isCorrect ? '#D1FAE5' : '#FEE2E2';
-                const answerColor = isCorrect ? '#38A169' : '#DC2626';
                 
-                // Build options HTML
+                // Build options HTML with proper styling
                 let optionsHtml = '';
                 if (q.options && q.options.length > 0) {
-                    optionsHtml = '<div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 0.9rem;">';
+                    optionsHtml = '<div style="margin-top: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem;">';
                     q.options.forEach(opt => {
                         const isStudentAnswer = opt.label === q.student_answer;
                         const isCorrectAnswer = opt.label === q.correct_answer;
-                        let style = 'padding: 4px 8px; border-radius: 4px;';
+                        let style = 'padding: 6px 12px; border-radius: 6px; border: 1px solid #E2E8F0;';
+                        let indicator = '';
                         
                         if (isStudentAnswer && isCorrectAnswer) {
-                            style += ' background: #D1FAE5; color: #065F46; font-weight: 700; border: 2px solid #38A169;';
+                            style += ' background: #D1FAE5; border-color: #38A169; font-weight: 600;';
+                            indicator = ' ✅ Your answer (Correct!)';
                         } else if (isStudentAnswer && !isCorrectAnswer) {
-                            style += ' background: #FEE2E2; color: #991B1B; font-weight: 700; border: 2px solid #DC2626;';
+                            style += ' background: #FEE2E2; border-color: #DC2626; font-weight: 600;';
+                            indicator = ' ❌ Your answer (Wrong)';
                         } else if (isCorrectAnswer) {
-                            style += ' background: #D1FAE5; color: #065F46; font-weight: 600; border: 1px solid #38A169;';
+                            style += ' background: #D1FAE5; border-color: #38A169;';
+                            indicator = ' ✅ Correct answer';
                         } else {
-                            style += ' background: #F8FAFC; color: #475569;';
+                            style += ' background: #F8FAFC; border-color: #E2E8F0;';
                         }
                         
                         optionsHtml += `
                             <div style="${style}">
                                 <strong>${opt.label}.</strong> ${this.escapeHtml(opt.value)}
-                                ${isStudentAnswer && isCorrectAnswer ? ' ✅ (Your answer - Correct!)' : ''}
-                                ${isStudentAnswer && !isCorrectAnswer ? ' ❌ (Your answer - Wrong)' : ''}
-                                ${!isStudentAnswer && isCorrectAnswer ? ' ✅ (Correct answer)' : ''}
+                                ${indicator}
                             </div>
                         `;
                     });
@@ -1817,6 +1818,8 @@ async viewDetailedResults(examId) {
                             <span style="color: ${isCorrect ? '#38A169' : '#DC2626'}; font-weight: 600;">
                                 ${isCorrect ? '✓ Correct' : '✗ Wrong'}
                             </span>
+                            <span>Your answer: <strong style="color: ${isCorrect ? '#38A169' : '#DC2626'};">${q.student_answer}</strong></span>
+                            <span>Correct answer: <strong style="color: #38A169;">${q.correct_answer}</strong></span>
                         </div>
                         ${optionsHtml}
                         ${q.explanation ? `<div style="margin-top: 8px; font-size: 0.85rem; color: #64748B; background: white; padding: 8px; border-radius: 4px; border-left: 3px solid #3B82F6;">💡 ${this.escapeHtml(q.explanation)}</div>` : ''}
@@ -1889,7 +1892,6 @@ async viewDetailedResults(examId) {
         this.showToast('Error loading exam details: ' + error.message, 'error');
     }
 }
-        
         showProfessionalTranscript() {
             const completedReleased = this.completedExams.filter(e => e.isReleased && e.totalPercentage !== null);
             if (completedReleased.length === 0) {
