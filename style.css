@@ -2457,3 +2457,67 @@ a:focus-visible {
         z-index: 10 !important;
     }
 }
+/* ============================================================
+   DROPDOWN FIX - PERMANENT (Matches Superadmin)
+   ============================================================ */
+
+.nav-dropdown {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+.nav-dropdown .dropdown-menu {
+    display: none !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    margin-left: 20px !important;
+    margin-top: 5px !important;
+    width: calc(100% - 25px) !important;
+    background: #1e1b4b !important;
+    border-radius: 8px !important;
+    padding: 8px 0 !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-left: 3px solid #FDB913 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+    z-index: 999 !important;
+}
+
+.nav-dropdown.open .dropdown-menu {
+    display: block !important;
+}
+
+.nav-dropdown .dropdown-menu li a {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 8px 14px 8px 24px !important;
+    color: rgba(255,255,255,0.9) !important;
+    text-decoration: none !important;
+    font-size: 13px !important;
+    transition: all 0.2s !important;
+}
+
+.nav-dropdown .dropdown-menu li a:hover {
+    background: rgba(255,255,255,0.1) !important;
+    color: #FDB913 !important;
+}
+
+.nav-dropdown .dropdown-menu li a i {
+    width: 18px !important;
+    text-align: center !important;
+    font-size: 12px !important;
+}
+
+.nav-dropdown.open > a {
+    background: rgba(255,255,255,0.1) !important;
+    border-left: 3px solid #FDB913 !important;
+}
+
+.nav-dropdown.open > a i.fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.nav-dropdown > a i.fa-chevron-down {
+    transition: transform 0.3s ease;
+}
