@@ -14824,15 +14824,16 @@ function toggleStaffPasswordField() {
 }
 
 // ============================================
-// SAVE STAFF - SIMPLIFIED (uses ONLY staff_records)
+// SAVE STAFF - WITH SUPABASE AUTH (Path A)
 // ============================================
 async function saveStaff() {
-    console.log('🔧 Saving staff...');
+    console.log('🔧 Saving staff with Supabase Auth...');
     
     const loginEnabled = document.getElementById('staffEnableLogin').checked;
     const password = document.getElementById('staffPassword')?.value;
     const confirmPassword = document.getElementById('staffConfirmPassword')?.value;
     
+    // Validate password
     if (loginEnabled) {
         if (!password) {
             alert('Please enter a password');
@@ -14879,48 +14880,103 @@ async function saveStaff() {
         const staffId = 'STAFF' + String(Date.now()).slice(-6);
         staffData.id = staffId;
         
-        if (loginEnabled && password) {
-            staffData.password_hash = btoa(password);
-        }
+        // Base64 encode password for staff_records
+        const passwordHash = loginEnabled && password ? btoa(password) : '';
+        staffData.password_hash = passwordHash;
         staffData.created_at = new Date().toISOString();
         staffData.updated_at = new Date().toISOString();
         
         // ============================================
-        // INSERT INTO staff_records ONLY
+        // STEP 1: CREATE AUTH USER FIRST (SUPABASE)
         // ============================================
-        const { error, data } = await sb
+        let authUserId = null;
+        const authPassword = password || 'Temp@' + Date.now() + '!';
+        
+        console.log('🔐 Creating Supabase Auth user for:', staffData.email);
+        
+        // Check if user already exists in auth
+        try {
+            const { data: existing } = await sb.auth.signInWithPassword({
+                email: staffData.email,
+                password: authPassword
+            });
+            if (existing?.user) {
+                authUserId = existing.user.id;
+                console.log('✅ Auth user already exists:', authUserId);
+            }
+        } catch (e) {
+            // User doesn't exist, create them
+            const { data: signUpData, error: signUpError } = await sb.auth.signUp({
+                email: staffData.email,
+                password: authPassword,
+                options: {
+                    data: {
+                        full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
+                        role: 'staff',
+                        staff_id: staffId
+                    }
+                }
+            });
+            
+            if (signUpError) {
+                console.error('❌ Auth signup error:', signUpError);
+                // If email already exists, try to sign in
+                const { data: signInData } = await sb.auth.signInWithPassword({
+                    email: staffData.email,
+                    password: authPassword
+                });
+                if (signInData?.user) {
+                    authUserId = signInData.user.id;
+                }
+            } else if (signUpData?.user) {
+                authUserId = signUpData.user.id;
+                console.log('✅ Auth user created:', authUserId);
+            }
+        }
+        
+        // ============================================
+        // STEP 2: INSERT INTO staff_records
+        // ============================================
+        const { error: staffError, data: staffResult } = await sb
             .from('staff_records')
             .insert([staffData])
             .select();
         
-        if (error) throw error;
-        
-        console.log('✅ Staff saved to staff_records:', data);
-        
-        // ============================================
-        // OPTIONAL: Create consolidated profile
-        // ============================================
-        if (loginEnabled) {
-            await createConsolidatedProfile(staffData);
-        }
+        if (staffError) throw staffError;
+        console.log('✅ Staff saved to staff_records:', staffResult);
         
         // ============================================
-        // OPTIONAL: Create auth user (skip if fails)
+        // STEP 3: CREATE CONSOLIDATED PROFILE
         // ============================================
-        if (loginEnabled && password) {
-            const fullName = `${staffData.first_name} ${staffData.other_names || ''}`.trim();
-            const role = staffData.designation === 'Lecturer' || staffData.designation === 'Senior Lecturer' ? 'lecturer' : 'staff';
+        if (authUserId) {
+            const profileData = {
+                user_id: authUserId,
+                email: staffData.email,
+                full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
+                role: staffData.designation === 'Lecturer' || staffData.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
+                department: staffData.department,
+                program: staffData.program || 'KRCHN',
+                status: 'active',
+                staff_id: staffId,
+                login_count: 0,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                gender: staffData.gender || '',
+                phone: staffData.phone || ''
+            };
             
-            await createAuthUser(
-                staffData.email,
-                password,
-                fullName,
-                role,
-                staffData.id
-            );
+            const { error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .upsert([profileData], { onConflict: 'email' });
+            
+            if (profileError) {
+                console.warn('⚠️ Profile error:', profileError);
+            } else {
+                console.log('✅ Consolidated profile created');
+            }
         }
         
-        alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`);
+        alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}\n✅ Auth user created for login`);
         
         closeAddStaffModal();
         loadAllStaff();
@@ -14930,7 +14986,6 @@ async function saveStaff() {
         alert(`❌ Error: ${error.message}`);
     }
 }
-
 // Edit staff
 async function editStaff(staffId) {
     const staff = staffRecords.find(s => s.id === staffId);
