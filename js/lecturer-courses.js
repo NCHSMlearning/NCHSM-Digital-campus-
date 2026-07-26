@@ -2,7 +2,7 @@
 /**
  * NCHSM Lecturer Courses Module
  * Uses the same unit assignments as the marks system
- * Dynamically finds the correct lecturer ID
+ * Dynamically finds the correct lecturer ID from assignments
  */
 
 const LecturerCourses = {
@@ -14,9 +14,14 @@ const LecturerCourses = {
         status: '',
         search: ''
     },
+    // Store the resolved lecturer ID
+    lecturerAssignmentId: null,
     
     async init() {
         console.log('📚 Initializing Lecturer Courses...');
+        // First, resolve the correct lecturer ID
+        await this.resolveLecturerId();
+        // Then load courses
         await this.loadCourses();
         this.populateFilters();
         this.setupEventListeners();
@@ -25,91 +30,75 @@ const LecturerCourses = {
     },
     
     // ============================================
-    // GET THE CORRECT LECTURER ID DYNAMICALLY
+    // RESOLVE THE CORRECT LECTURER ID - SAME AS MARKS MODULE
     // ============================================
-    async getLecturerAssignmentId() {
+    async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return null;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
             
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return null;
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
+            }
             
-            // Get the email from profile
-            const email = profile.email;
+            const authId = profile.user_id;
             const fullName = profile.full_name;
+            const email = profile.email;
             
-            console.log('🔍 Looking for lecturer with email:', email);
+            console.log('🔍 Auth ID:', authId);
+            console.log('🔍 Lecturer name:', fullName);
+            console.log('🔍 Lecturer email:', email);
             
-            // First: Try to find by email in lecturer_subject_assignments
-            let { data, error } = await supabase
+            // FIRST: Try to find by name in lecturer_subject_assignments
+            const { data, error } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .eq('lecturer_name', fullName)
                 .limit(1);
             
             if (!error && data && data.length > 0) {
-                console.log('✅ Found lecturer ID by name:', data[0].lecturer_id);
-                return data[0].lecturer_id;
+                this.lecturerAssignmentId = data[0].lecturer_id;
+                console.log('✅ Found lecturer ID by name:', this.lecturerAssignmentId);
+                return;
             }
             
-            // Second: Try to find by email in consolidated_user_profiles
-            // Check if the assignment ID exists as a user
-            const { data: userData, error: userError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id')
-                .eq('email', email)
-                .limit(1);
-            
-            if (!userError && userData && userData.length > 0) {
-                const userId = userData[0].user_id;
-                console.log('✅ Found user ID by email:', userId);
-                
-                // Check if this user has assignments
-                const { data: assignData, error: assignError } = await supabase
-                    .from('lecturer_subject_assignments')
-                    .select('lecturer_id')
-                    .eq('lecturer_id', userId)
-                    .limit(1);
-                
-                if (!assignError && assignData && assignData.length > 0) {
-                    console.log('✅ Found assignments for user ID:', userId);
-                    return userId;
-                }
-            }
-            
-            // Third: Get all lecturer IDs and find by name match
+            // SECOND: Try partial name match
+            const nameParts = fullName.split(' ');
             const { data: allLecturers, error: allError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .order('created_at', { ascending: false });
             
             if (!allError && allLecturers && allLecturers.length > 0) {
-                // Try to find by partial name match
-                const nameParts = fullName.split(' ');
                 for (const lecturer of allLecturers) {
                     const lecturerName = lecturer.lecturer_name || '';
-                    // Check if any part of the name matches
                     for (const part of nameParts) {
                         if (part.length > 2 && lecturerName.toLowerCase().includes(part.toLowerCase())) {
-                            console.log('✅ Found lecturer by partial name match:', lecturer.lecturer_id);
-                            return lecturer.lecturer_id;
+                            this.lecturerAssignmentId = lecturer.lecturer_id;
+                            console.log('✅ Found lecturer by partial name match:', this.lecturerAssignmentId);
+                            return;
                         }
                     }
                 }
                 
-                // If still not found, use the most recent lecturer
-                console.log('⚠️ Using most recent lecturer ID:', allLecturers[0].lecturer_id);
-                return allLecturers[0].lecturer_id;
+                // If no match, use the most recent lecturer
+                this.lecturerAssignmentId = allLecturers[0].lecturer_id;
+                console.log('⚠️ Using most recent lecturer ID:', this.lecturerAssignmentId);
+                return;
             }
             
-            // Fallback: use the auth user ID
-            console.log('⚠️ Falling back to auth user ID:', profile.user_id);
-            return profile.user_id;
+            // Fallback: use auth ID
+            this.lecturerAssignmentId = authId;
+            console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
         } catch (error) {
-            console.error('Error finding lecturer ID:', error);
-            return null;
+            console.error('Error resolving lecturer ID:', error);
+            this.lecturerAssignmentId = null;
         }
     },
     
@@ -135,23 +124,13 @@ const LecturerCourses = {
                 return;
             }
             
-            // Get the correct lecturer ID dynamically
-            const lecturerId = await this.getLecturerAssignmentId();
-            
-            if (!lecturerId) {
-                console.warn('No lecturer ID found');
-                this.courses = [];
-                this.filteredCourses = [];
-                this.renderTable();
-                this.updateStats();
-                return;
-            }
-            
-            console.log('🔍 Using lecturer ID:', lecturerId);
+            // Use the resolved lecturer ID (same as marks module)
+            const lecturerId = this.lecturerAssignmentId || profile.user_id;
+            console.log('🔍 Using lecturer ID for courses:', lecturerId);
             
             let units = [];
             
-            // Get from lecturer_subject_assignments using the found ID
+            // Get from lecturer_subject_assignments using the resolved ID
             try {
                 const { data, error } = await supabase
                     .from('lecturer_subject_assignments')
@@ -160,6 +139,8 @@ const LecturerCourses = {
                 
                 if (!error && data && data.length > 0) {
                     console.log('📊 Found assignments:', data.length);
+                    console.log('📋 Assignment details:', data);
+                    
                     units = data.map(a => ({
                         id: a.id,
                         unit_id: a.id,
@@ -174,6 +155,10 @@ const LecturerCourses = {
                         source: 'assignments',
                         raw: a
                     }));
+                    
+                    console.log('✅ Processed units from assignments:', units.length);
+                } else {
+                    console.log('📊 No assignments found for lecturer ID:', lecturerId);
                 }
             } catch (e) {
                 console.warn('Error querying lecturer_subject_assignments:', e.message);
@@ -210,7 +195,7 @@ const LecturerCourses = {
                 }
             }
             
-            // If still no units, try units_catalog by program
+            // If still no units, try units_catalog by program (fallback)
             if (units.length === 0) {
                 console.log('🔄 Trying units_catalog for program:', profile.program);
                 
@@ -256,7 +241,7 @@ const LecturerCourses = {
             const currentYear = new Date().getFullYear().toString();
             const yearFiltered = this.courses.filter(c => {
                 const year = c.intake_year;
-                return year === currentYear || year === '' || year === 'N/A' || year === '2026';
+                return year === currentYear || year === '' || year === 'N/A' || year === '2025' || year === '2026';
             });
             
             if (yearFiltered.length > 0) {
@@ -269,6 +254,8 @@ const LecturerCourses = {
                 const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
                 if (years.includes(currentYear)) {
                     intakeFilter.value = currentYear;
+                } else if (years.length > 0) {
+                    intakeFilter.value = years[0];
                 }
             }
             
@@ -657,6 +644,7 @@ const LecturerCourses = {
     },
     
     async refresh() {
+        await this.resolveLecturerId();
         await this.loadCourses();
         this.populateFilters();
         this.applyFilters();
@@ -677,4 +665,4 @@ window.clearCourseFilters = () => LecturerCourses.clearFilters();
 window.searchCourses = () => LecturerCourses.applyFilters();
 window.exportCourses = () => LecturerCourses.exportCourses();
 
-console.log('✅ LecturerCourses module loaded - Dynamic ID resolution');
+console.log('✅ LecturerCourses module loaded - Same ID resolution as marks module');
