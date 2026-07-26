@@ -19653,7 +19653,7 @@ async function loadMEUnits() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY - WITH DYNAMIC CONTENT TOGGLE
+// LOAD MARKS ENTRY - SHOW ALL ENROLLED STUDENTS (Even with 0 marks)
 // ============================================================
 
 async function loadMarksEntry() {
@@ -19666,7 +19666,6 @@ async function loadMarksEntry() {
     const assessmentType = selectedOption?.dataset?.assessment || 'full';
     const unitCode = selectedOption?.dataset?.code || '';
     
-    // Show/hide dynamic content
     const dynamicContent = document.getElementById('marksEntryDynamicContent');
     const placeholder = document.getElementById('marksEntryPlaceholder');
     
@@ -19683,7 +19682,6 @@ async function loadMarksEntry() {
         return;
     }
     
-    // Show dynamic content
     if (dynamicContent) dynamicContent.style.display = 'block';
     if (placeholder) placeholder.style.display = 'none';
     
@@ -19701,57 +19699,77 @@ async function loadMarksEntry() {
     `;
     
     try {
-        const { data: marks, error } = await sb
+        // ✅ SOURCE OF TRUTH: Get ALL enrolled students from student_marks
+        const { data: marks, error: marksError } = await sb
             .from('student_marks')
             .select('*')
             .eq('block', block)
             .eq('subject_name', unit)
             .eq('academic_year', year);
         
-        if (error) throw error;
+        if (marksError) throw marksError;
         
+        console.log(`📊 Found ${marks?.length || 0} enrolled students for ${unit}`);
+        
+        if (!marks || marks.length === 0) {
+            document.getElementById('me_marks_container').innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
+                    <p style="color: #94a3b8;">Use "Manage Students" to add students to this unit</p>
+                    <button onclick="openMarksStudentManager()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-users"></i> Manage Students
+                    </button>
+                </div>
+            `;
+            // ✅ Update stats to 0
+            updateMarksEntryStats([], assessmentType);
+            return;
+        }
+        
+        // ✅ Get student names from profile (for display)
+        const admissions = marks.map(m => m.admission_number);
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, block, intake_year, program')
             .eq('role', 'student')
-            .eq('program', program)
-            .eq('block', block);
+            .in('student_id', admissions);
         
-        if (studentError) throw studentError;
+        if (studentError) {
+            console.warn('⚠️ Could not fetch student names:', studentError);
+        }
         
-        console.log('📊 Students found:', students?.length || 0);
-        
-        const marksMap = {};
-        marks.forEach(m => {
-            marksMap[m.admission_number] = m;
+        const studentMap = {};
+        students?.forEach(s => {
+            studentMap[s.student_id] = s.full_name || 'Unknown';
         });
         
-        const fullMarks = students.map(s => {
-            const studentId = s.student_id || '';
-            const existing = marksMap[studentId];
-            
+        // ✅ Build full marks data - SHOW ALL STUDENTS even with 0 scores
+        const fullMarks = marks.map(m => {
+            const admission = m.admission_number || '';
             return {
-                admission: studentId,
-                name: s.full_name || 'Unknown',
-                program: s.program || program,
-                cat1: existing?.cat1_score || '',
-                cat2: existing?.cat2_score || '',
-                exam: existing?.exam_score || '',
-                final: existing?.final_score || '',
-                grade: existing?.grade || '',
-                gradedBy: existing?.graded_by || '',
-                assessmentType: existing?.assessment_type || assessmentType,
-                id: existing?.id || null,
-                approval_status: existing?.approval_status || 'draft'
+                admission: admission,
+                name: studentMap[admission] || m.student_name || 'Unknown',
+                program: program,
+                cat1: m.cat1_score || 0,
+                cat2: m.cat2_score || 0,
+                exam: m.exam_score || 0,
+                final: m.final_score || 0,
+                grade: m.grade || '',
+                gradedBy: m.graded_by || '',
+                assessmentType: m.assessment_type || assessmentType,
+                id: m.id || null,
+                approval_status: m.approval_status || 'draft'
             };
         });
+        
+        console.log(`📊 Displaying ${fullMarks.length} enrolled students (including those with 0 marks)`);
         
         me_currentMarks = fullMarks;
         renderMarksEntryTable(fullMarks, unitCode, assessmentType);
         updateMarksEntryStats(fullMarks, assessmentType);
         
         await loadUnitColumnSettings();
-        
         updateAssessmentTypeDisplay();
         
     } catch (error) {
@@ -19991,15 +20009,23 @@ function getMarksEntryGrade(score) {
 }
 
 // ============================================================
-// UPDATE STATS
+// UPDATE STATS - SHOW ALL ENROLLED STUDENTS
 // ============================================================
 
 function updateMarksEntryStats(marks, assessmentType) {
+    // ✅ Count ALL enrolled students (including those with 0 marks)
+    const totalEnrolled = marks.length;
+    
+    // ✅ Students with scores (any score > 0)
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
+    
+    // ✅ Students passing
     const passing = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
         return total >= 60;
     });
+    
+    // ✅ Average score (only students with scores)
     const avg = withScores.length > 0 ? 
         withScores.reduce((sum, m) => sum + calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType), 0) / withScores.length : 0;
     
@@ -20007,13 +20033,20 @@ function updateMarksEntryStats(marks, assessmentType) {
     const subjectsEl = document.getElementById('me_total_subjects');
     const passEl = document.getElementById('me_pass_rate');
     const avgEl = document.getElementById('me_class_avg');
+    const atRiskEl = document.getElementById('me_at_risk');
     
-    if (totalEl) totalEl.textContent = marks.length;
+    if (totalEl) totalEl.textContent = totalEnrolled;
     if (subjectsEl) subjectsEl.textContent = marks.length > 0 ? 1 : 0;
-    if (passEl) passEl.textContent = marks.length > 0 ? Math.round((passing.length / marks.length) * 100) + '%' : '0%';
+    if (passEl) passEl.textContent = totalEnrolled > 0 ? Math.round((passing.length / totalEnrolled) * 100) + '%' : '0%';
     if (avgEl) avgEl.textContent = Math.round(avg) + '%';
+    
+    // ✅ At risk: students with total < 60 (only those with scores)
+    const atRisk = marks.filter(m => {
+        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
+        return total > 0 && total < 60;
+    });
+    if (atRiskEl) atRiskEl.textContent = atRisk.length;
 }
-
 // ============================================================
 // SAVE MARKS - WITH AUTO-APPROVE FOR ADMIN
 // ============================================================
@@ -21151,6 +21184,10 @@ async function openMarksStudentManager() {
 
 window.openMarksStudentManager = openMarksStudentManager;
 
+// ============================================================
+// LOAD MARKS STUDENT MANAGER DATA - SYNCED WITH MARKS TABLE
+// ============================================================
+
 async function loadMarksStudentManagerData(block, unit, program, year) {
     const container = document.getElementById('marksStudentManagerBody');
     if (!container) return;
@@ -21163,6 +21200,19 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
     `;
     
     try {
+        // ✅ SOURCE OF TRUTH: Get ALL marks from student_marks (same as loadMarksEntry)
+        const { data: enrolledStudents, error: enrolledError } = await sb
+            .from('student_marks')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (enrolledError) throw enrolledError;
+        
+        console.log(`📊 Student Manager: Found ${enrolledStudents?.length || 0} enrolled students`);
+        
+        // ✅ Get available students (not yet enrolled)
         let query = sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, email, program, block, admission_number, status')
@@ -21175,18 +21225,16 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
         const { data: allStudents, error: allError } = await query;
         if (allError) throw allError;
         
-        const { data: enrolledStudents, error: enrolledError } = await sb
-            .from('student_marks')
-            .select('*')
-            .eq('block', block)
-            .eq('subject_name', unit)
-            .eq('academic_year', year);
-        
-        if (enrolledError) throw enrolledError;
-        
+        // ✅ Build enrolled map from student_marks
         const enrolledMap = {};
-        enrolledStudents?.forEach(s => { enrolledMap[s.admission_number] = true; });
+        enrolledStudents?.forEach(s => {
+            enrolledMap[s.admission_number] = true;
+        });
+        
+        // ✅ Available = not in enrolled map
         const availableStudents = allStudents?.filter(s => !enrolledMap[s.student_id]) || [];
+        
+        console.log(`📊 Student Manager: ${enrolledStudents?.length || 0} enrolled, ${availableStudents.length} available`);
         
         me_studentManagerData = {
             allStudents: allStudents || [],
