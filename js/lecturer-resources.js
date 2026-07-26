@@ -4,7 +4,7 @@
  * AUTO-PUBLISH - No admin approval required
  * Resources are published immediately for students
  */
-
+ 
 const LecturerResources = {
     resources: [],
     lecturerAssignmentId: null,
