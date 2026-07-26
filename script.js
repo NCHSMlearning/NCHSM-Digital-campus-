@@ -14544,6 +14544,138 @@ console.log('✅ Grade functions registered globally');
 
 let staffRecords = [];
 
+// ============================================
+// HELPER: Create auth user in Supabase
+// ============================================
+async function createAuthUser(email, password, fullName, role, staffId) {
+    try {
+        // Check if auth user already exists
+        const { data: existing } = await sb.auth.admin.listUsers();
+        const userExists = existing?.users?.find(u => u.email === email);
+        
+        if (userExists) {
+            console.log('⚠️ Auth user already exists for:', email);
+            return userExists.id;
+        }
+        
+        // Create auth user
+        const { data, error } = await sb.auth.admin.createUser({
+            email: email,
+            password: password,
+            email_confirm: true,
+            user_metadata: {
+                full_name: fullName,
+                role: role,
+                staff_id: staffId
+            }
+        });
+        
+        if (error) throw error;
+        console.log('✅ Auth user created:', data.user.id);
+        return data.user.id;
+        
+    } catch (error) {
+        console.error('❌ Error creating auth user:', error);
+        // Fallback: Try using the regular signup
+        try {
+            const { data, error } = await sb.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                        role: role,
+                        staff_id: staffId
+                    }
+                }
+            });
+            if (error) throw error;
+            console.log('✅ Auth user created via signup:', data.user.id);
+            return data.user.id;
+        } catch (e) {
+            console.error('❌ Signup fallback failed:', e);
+            return null;
+        }
+    }
+}
+
+// ============================================
+// HELPER: Create consolidated profile
+// ============================================
+async function createConsolidatedProfile(userId, staffData) {
+    try {
+        const profileData = {
+            user_id: userId,
+            email: staffData.email,
+            full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
+            role: staffData.designation === 'Lecturer' || staffData.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
+            department: staffData.department,
+            program: staffData.program || 'KRCHN',
+            status: staffData.status || 'active',
+            staff_id: staffData.id,
+            login_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            gender: staffData.gender || '',
+            phone: staffData.phone || ''
+        };
+        
+        const { error } = await sb
+            .from('consolidated_user_profiles_table')
+            .upsert([profileData], { onConflict: 'email' });
+        
+        if (error) throw error;
+        console.log('✅ Consolidated profile created for:', staffData.email);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error creating consolidated profile:', error);
+        return false;
+    }
+}
+
+// ============================================
+// HELPER: Insert into staffs table (legacy)
+// ============================================
+async function createStaffsRecord(staffData, passwordHash) {
+    try {
+        const data = {
+            id: staffData.id,
+            title: staffData.title || '',
+            first_name: staffData.first_name,
+            other_names: staffData.other_names || '',
+            department: staffData.department,
+            designation: staffData.designation || 'Staff',
+            email: staffData.email,
+            phone: staffData.phone,
+            national_id: staffData.national_id || '',
+            gender: staffData.gender || '',
+            bank_name: staffData.bank_name || '',
+            bank_account: staffData.bank_account || '',
+            shif_number: staffData.shif_number || '',
+            nsrf_number: staffData.nsrf_number || '',
+            tax_pin: staffData.tax_pin || '',
+            guardian_phone: staffData.guardian_phone || '',
+            login_enabled: staffData.login_enabled || false,
+            password_hash: passwordHash || '',
+            status: staffData.status || 'active',
+            program: staffData.program || 'KRCHN',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        const { error } = await sb
+            .from('staffs')
+            .upsert([data], { onConflict: 'id' });
+        
+        if (error) console.warn('⚠️ Error saving to staffs (legacy):', error.message);
+        else console.log('✅ Saved to staffs table');
+        
+    } catch (error) {
+        console.warn('⚠️ Staffs table error:', error.message);
+    }
+}
+
 // Load staff from database
 async function loadAllStaff() {
     console.log('👥 Loading staff records...');
@@ -14560,7 +14692,6 @@ async function loadAllStaff() {
             .order('created_at', { ascending: false });
         
         if (error) {
-            // Check if table exists
             if (error.code === '42P01') {
                 throw new Error('Table "staff_records" does not exist. Please create it in Supabase.');
             }
@@ -14707,10 +14838,11 @@ function openAddStaffModal() {
     document.getElementById('staffTaxPin').value = '';
     document.getElementById('staffGuardianPhone').value = '';
     document.getElementById('staffStatus').value = 'active';
+    document.getElementById('staffEnableLogin').checked = true;
     
-    // Hide password section
+    // Show password section
     const passwordSection = document.getElementById('staffPasswordSection');
-    if (passwordSection) passwordSection.style.display = 'none';
+    if (passwordSection) passwordSection.style.display = 'block';
     
     modal.style.display = 'flex';
     console.log('✅ Modal opened successfully');
@@ -14732,14 +14864,17 @@ function toggleStaffPasswordField() {
     }
 }
 
-// Save staff to database
+// ============================================
+// SAVE STAFF - UPDATED WITH FULL INTEGRATION
+// ============================================
 async function saveStaff() {
-    console.log('🔧 Saving staff...');
+    console.log('🔧 Saving staff with full integration...');
     
     const loginEnabled = document.getElementById('staffEnableLogin').checked;
     const password = document.getElementById('staffPassword')?.value;
     const confirmPassword = document.getElementById('staffConfirmPassword')?.value;
     
+    // Validate password if login is enabled
     if (loginEnabled) {
         if (!password) {
             alert('Please enter a password');
@@ -14755,6 +14890,7 @@ async function saveStaff() {
         }
     }
     
+    // Collect staff data
     const staffData = {
         title: document.getElementById('staffTitle').value,
         first_name: document.getElementById('staffFirstName').value.trim(),
@@ -14776,6 +14912,7 @@ async function saveStaff() {
         status: document.getElementById('staffStatus').value || 'active'
     };
     
+    // Validate required fields
     if (!staffData.first_name || !staffData.department || !staffData.email || !staffData.phone) {
         alert('Please fill all required fields (First Name, Department, Email, Phone)');
         return;
@@ -14786,20 +14923,56 @@ async function saveStaff() {
         const staffId = 'STAFF' + String(Date.now()).slice(-6);
         staffData.id = staffId;
         
-        if (loginEnabled && password) {
-            staffData.password_hash = btoa(password);
-        }
+        // Base64 encode password
+        const passwordHash = loginEnabled && password ? btoa(password) : '';
+        staffData.password_hash = passwordHash;
         staffData.created_at = new Date().toISOString();
+        staffData.updated_at = new Date().toISOString();
         
-        const { error, data } = await sb
+        // ============================================
+        // STEP 1: INSERT INTO staff_records
+        // ============================================
+        const { error: staffError, data: staffResult } = await sb
             .from('staff_records')
             .insert([staffData])
             .select();
         
-        if (error) throw error;
+        if (staffError) throw staffError;
+        console.log('✅ Staff saved to staff_records:', staffResult);
         
-        console.log('✅ Staff saved:', data);
-        alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`);
+        // ============================================
+        // STEP 2: INSERT INTO staffs (legacy)
+        // ============================================
+        await createStaffsRecord(staffData, passwordHash);
+        
+        // ============================================
+        // STEP 3: CREATE AUTH USER (if login enabled)
+        // ============================================
+        let userId = null;
+        if (loginEnabled && password) {
+            const fullName = `${staffData.first_name} ${staffData.other_names || ''}`.trim();
+            const role = staffData.designation === 'Lecturer' || staffData.designation === 'Senior Lecturer' ? 'lecturer' : 'staff';
+            
+            userId = await createAuthUser(
+                staffData.email,
+                password,
+                fullName,
+                role,
+                staffData.id
+            );
+            
+            if (userId) {
+                console.log('✅ Auth user created with ID:', userId);
+                
+                // ============================================
+                // STEP 4: CREATE CONSOLIDATED PROFILE
+                // ============================================
+                await createConsolidatedProfile(userId, staffData);
+            }
+        }
+        
+        console.log('✅ Staff fully registered with all integrations!');
+        alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}\n${userId ? '✅ Login enabled with Auth' : '⚠️ Login disabled'}`);
         
         closeAddStaffModal();
         loadAllStaff();
@@ -14874,6 +15047,7 @@ async function resetStaffPassword(staffId, staffName) {
     }
     
     try {
+        // Update staff_records
         const { error } = await sb
             .from('staff_records')
             .update({ 
@@ -14883,6 +15057,15 @@ async function resetStaffPassword(staffId, staffName) {
             .eq('id', staffId);
         
         if (error) throw error;
+        
+        // Also update staffs table
+        await sb
+            .from('staffs')
+            .update({ 
+                password_hash: btoa(newPassword),
+                login_enabled: true
+            })
+            .eq('id', staffId);
         
         alert(`✅ Password for ${staffName} reset successfully!`);
         loadAllStaff();
@@ -14897,8 +15080,15 @@ async function deleteStaff(staffId, staffName) {
     if (!confirm(`⚠️ Delete staff "${staffName}"? This cannot be undone.`)) return;
     
     try {
+        // Delete from staff_records
         const { error } = await sb.from('staff_records').delete().eq('id', staffId);
         if (error) throw error;
+        
+        // Also delete from staffs
+        await sb.from('staffs').delete().eq('id', staffId);
+        
+        // Try to delete from consolidated profile
+        await sb.from('consolidated_user_profiles_table').delete().eq('staff_id', staffId);
         
         alert(`✅ Staff ${staffName} deleted!`);
         loadAllStaff();
@@ -14945,7 +15135,7 @@ function importStaffFromCSV() {
     fileInput.accept = '.csv';
     fileInput.style.display = 'none';
     
-    fileInput.onchange = function(event) {
+    fileInput.onchange = async function(event) {
         const file = event.target.files[0];
         if (!file) return;
         
@@ -14955,10 +15145,7 @@ function importStaffFromCSV() {
                 const text = e.target.result;
                 const lines = text.split('\n');
                 
-                // Get headers
                 const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-                
-                // Validate required fields
                 const required = ['first_name', 'email', 'phone', 'department', 'program'];
                 const missing = required.filter(f => !headers.includes(f));
                 
@@ -15018,16 +15205,35 @@ function importStaffFromCSV() {
                         guardian_phone: row.guardian_phone || '',
                         login_enabled: row.login_enabled === 'true' || row.login_enabled === 'TRUE' || false,
                         status: row.status || 'active',
-                        created_at: new Date().toISOString()
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
                     };
                     
                     try {
+                        // Insert into staff_records
                         const { error } = await sb.from('staff_records').insert([staffData]);
-                        if (error) {
-                            errors.push(`${staffData.first_name}: ${error.message}`);
-                        } else {
-                            imported++;
+                        if (error) throw error;
+                        
+                        // Also create auth user if login is enabled
+                        if (staffData.login_enabled) {
+                            const password = row.password || row.first_name + '@2026';
+                            const fullName = `${staffData.first_name} ${staffData.other_names || ''}`.trim();
+                            const role = staffData.designation === 'Lecturer' || staffData.designation === 'Senior Lecturer' ? 'lecturer' : 'staff';
+                            
+                            const userId = await createAuthUser(
+                                staffData.email,
+                                password,
+                                fullName,
+                                role,
+                                staffData.id
+                            );
+                            
+                            if (userId) {
+                                await createConsolidatedProfile(userId, staffData);
+                            }
                         }
+                        
+                        imported++;
                     } catch (err) {
                         errors.push(`${staffData.first_name}: ${err.message}`);
                     }
@@ -15125,7 +15331,7 @@ window.initStaffManagement = initStaffManagement;
 window.toggleStaffPasswordField = toggleStaffPasswordField;
 window.staffLogin = staffLogin;
 
-console.log('✅ Staff Management module ready');
+console.log('✅ Staff Management module ready (with full integration)');
 /*******************************************************
  * SUPER ADMIN APPROVAL SYSTEM
  * All admin actions require Super Admin approval
