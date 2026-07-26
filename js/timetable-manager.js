@@ -1,6 +1,27 @@
 // =====================================================
-// STUDENT TIMETABLE MODULE - SUPER COMPACT VERSION
-// Displays next class + compact timetable by week
+// STUDENT TIMETABLE MODULE - COMPLETE FIXED VERSION
+// =====================================================
+
+// =====================================================
+// 🔧 SUPABASE CLIENT HELPER
+// =====================================================
+
+function getSupabase() {
+    // Try multiple sources
+    if (window.supabase && typeof window.supabase.from === 'function') {
+        return window.supabase;
+    }
+    if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
+        return window.db.supabase;
+    }
+    if (window.NCHSMLogin?.supabase && typeof window.NCHSMLogin.supabase.from === 'function') {
+        return window.NCHSMLogin.supabase;
+    }
+    return null;
+}
+
+// =====================================================
+// 📅 STUDENT TIMETABLE MODULE
 // =====================================================
 
 let studentTimetableData = [];
@@ -10,11 +31,28 @@ let currentStudentBlock = null;
 async function initStudentTimetable() {
     console.log('📅 Loading student timetable...');
     
+    // Get fresh supabase client
+    const supabaseClient = getSupabase();
+    if (!supabaseClient) {
+        console.error('❌ Supabase client not available. Retrying...');
+        setTimeout(initStudentTimetable, 1000);
+        return;
+    }
+    
     const container = document.getElementById('timetable-container');
     const loadingDiv = document.getElementById('timetable-loading');
     const emptyDiv = document.getElementById('timetable-empty');
     
-    if (!container) return;
+    if (!container) {
+        console.log('⏳ Timetable container not found, waiting...');
+        setTimeout(initStudentTimetable, 500);
+        return;
+    }
+    
+    // Show loading
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (container) container.style.display = 'none';
+    if (emptyDiv) emptyDiv.style.display = 'none';
     
     try {
         // Get student's block from profile
@@ -37,24 +75,35 @@ async function initStudentTimetable() {
                 break;
             }
             
+            // Check profileModule
+            if (window.profileModule?.userProfile?.block) {
+                studentBlock = window.profileModule.userProfile.block;
+                console.log(`📌 Block from profileModule: ${studentBlock}`);
+                break;
+            }
+            
             // Direct database query
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const { data: { user } } = await supabaseClient.auth.getUser();
                 if (user) {
-                    const { data: profile } = await supabase
+                    const { data: profile, error } = await supabaseClient
                         .from('consolidated_user_profiles_table')
-                        .select('block, program, full_name')
+                        .select('block, program, full_name, intake_year')
                         .eq('user_id', user.id)
                         .single();
                     
                     if (profile?.block) {
                         studentBlock = profile.block;
                         console.log(`📌 Block from direct DB: ${studentBlock}`);
+                        // Also update window.currentUserProfile for future use
+                        if (!window.currentUserProfile) {
+                            window.currentUserProfile = profile;
+                        }
                         break;
                     }
                 }
             } catch (e) {
-                console.log('DB not ready, retrying...');
+                console.log('⏳ DB not ready, retrying...');
             }
             
             retryCount++;
@@ -80,7 +129,7 @@ async function initStudentTimetable() {
         if (blockTitleSpan) blockTitleSpan.textContent = studentBlock;
         
         // Fetch timetable from database
-        const { data: timetable, error } = await supabase
+        const { data: timetable, error } = await supabaseClient
             .from('timetables')
             .select('*')
             .eq('block', studentBlock)
@@ -89,7 +138,7 @@ async function initStudentTimetable() {
             .order('start_time', { ascending: true });
         
         if (error) {
-            console.error('Timetable fetch error:', error);
+            console.error('❌ Timetable fetch error:', error);
             if (loadingDiv) loadingDiv.style.display = 'none';
             if (emptyDiv) {
                 const msgElement = emptyDiv.querySelector('#empty-message-text') || emptyDiv.querySelector('p');
@@ -132,13 +181,20 @@ async function initStudentTimetable() {
         if (emptyDiv) emptyDiv.style.display = 'none';
         
     } catch (error) {
-        console.error('Error loading timetable:', error);
+        console.error('❌ Error loading timetable:', error);
         if (loadingDiv) loadingDiv.style.display = 'none';
-        if (emptyDiv) emptyDiv.style.display = 'block';
+        if (emptyDiv) {
+            const msgElement = emptyDiv.querySelector('#empty-message-text') || emptyDiv.querySelector('p');
+            if (msgElement) msgElement.innerHTML = 'Error loading schedule. Please refresh the page.';
+            emptyDiv.style.display = 'block';
+        }
     }
 }
 
-// Show next class widget
+// =====================================================
+// 🎯 NEXT CLASS WIDGET
+// =====================================================
+
 function showNextClassWidget(timetable) {
     const nextClass = findNextClass(timetable);
     const snapWidget = document.getElementById('next-class-snap');
@@ -155,19 +211,34 @@ function showNextClassWidget(timetable) {
     const startTime = nextClass.start_time ? nextClass.start_time.substring(0, 5) : 'TBA';
     const endTime = nextClass.end_time ? nextClass.end_time.substring(0, 5) : 'TBA';
     
-    document.getElementById('next-class-name').innerHTML = escapeHtml(nextClass.session_name || nextClass.course_name);
-    document.getElementById('next-class-lecturer').innerHTML = escapeHtml(nextClass.lecturer_name || 'TBA');
-    document.getElementById('next-class-time').innerHTML = `${startTime} - ${endTime}`;
-    document.getElementById('next-class-venue').innerHTML = escapeHtml(nextClass.venue || 'TBD');
+    const nameEl = document.getElementById('next-class-name');
+    const lecturerEl = document.getElementById('next-class-lecturer');
+    const timeEl = document.getElementById('next-class-time');
+    const venueEl = document.getElementById('next-class-venue');
+    const dayEl = document.getElementById('next-class-day');
     
-    const dayNames = { monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday' };
+    if (nameEl) nameEl.innerHTML = escapeHtml(nextClass.session_name || nextClass.course_name || 'Class');
+    if (lecturerEl) lecturerEl.innerHTML = escapeHtml(nextClass.lecturer_name || 'TBA');
+    if (timeEl) timeEl.innerHTML = `${startTime} - ${endTime}`;
+    if (venueEl) venueEl.innerHTML = escapeHtml(nextClass.venue || 'TBD');
+    
+    const dayNames = { 
+        monday: 'Monday', 
+        tuesday: 'Tuesday', 
+        wednesday: 'Wednesday', 
+        thursday: 'Thursday', 
+        friday: 'Friday' 
+    };
+    
     const today = new Date();
     const todayDay = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][today.getDay()];
     
-    if (nextClass.day_of_week === todayDay) {
-        document.getElementById('next-class-day').innerHTML = '🟢 Today';
-    } else {
-        document.getElementById('next-class-day').innerHTML = `📅 ${dayNames[nextClass.day_of_week] || nextClass.day_of_week}`;
+    if (dayEl) {
+        if (nextClass.day_of_week === todayDay) {
+            dayEl.innerHTML = '🟢 Today';
+        } else {
+            dayEl.innerHTML = `📅 ${dayNames[nextClass.day_of_week] || nextClass.day_of_week}`;
+        }
     }
 }
 
@@ -212,7 +283,10 @@ function findNextClass(timetable) {
     return null;
 }
 
-// Update week dropdown with available weeks
+// =====================================================
+// 📊 WEEK DROPDOWN
+// =====================================================
+
 function updateWeekDropdown(timetable) {
     const dropdown = document.getElementById('week-filter-select');
     if (!dropdown) return;
@@ -227,17 +301,18 @@ function updateWeekDropdown(timetable) {
     dropdown.innerHTML = options;
     
     // Remove old listener and add new one
-    dropdown.removeEventListener('change', handleWeekChange);
-    dropdown.addEventListener('change', handleWeekChange);
+    const newDropdown = dropdown.cloneNode(true);
+    dropdown.parentNode.replaceChild(newDropdown, dropdown);
+    newDropdown.addEventListener('change', function(e) {
+        const weekValue = e.target.value;
+        renderTimetable(weekValue);
+    });
 }
 
-// Handle week dropdown change
-function handleWeekChange(e) {
-    const weekValue = e.target.value;
-    renderTimetable(weekValue);
-}
+// =====================================================
+// 🗓️ RENDER TIMETABLE
+// =====================================================
 
-// Render compact timetable
 function renderTimetable(weekFilter) {
     const container = document.getElementById('timetable-container');
     if (!container) return;
@@ -391,7 +466,7 @@ function renderTimetable(weekFilter) {
                         ${idx === 0 ? `<td class="timetable-day" rowspan="${classes.length}">${dayNames[day]}</td>` : ''}
                         <td class="timetable-time">${startTime}-${endTime}</td>
                         <td class="timetable-course">
-                            <strong>${escapeHtml(cls.session_name || cls.course_name)}</strong>${badges}
+                            <strong>${escapeHtml(cls.session_name || cls.course_name || 'Class')}</strong>${badges}
                         </td>
                         <td class="timetable-lecturer">${escapeHtml(lecturerName)}</td>
                         <td class="timetable-venue">${escapeHtml(cls.venue || 'TBD')}</td>
@@ -409,7 +484,10 @@ function renderTimetable(weekFilter) {
     container.innerHTML = html;
 }
 
-// Helper: escape HTML
+// =====================================================
+// 🔧 HELPER FUNCTIONS
+// =====================================================
+
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -417,79 +495,113 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Manual override for testing
+// =====================================================
+// 🔄 FORCE REFRESH (for manual testing)
+// =====================================================
+
 window.forceRefreshTimetable = async function(blockName = null) {
+    const supabaseClient = getSupabase();
+    if (!supabaseClient) {
+        console.error('❌ Supabase client not available');
+        return false;
+    }
+    
     const block = blockName || window.currentUserProfile?.block;
     
     if (!block) {
-        console.error('No block specified');
+        console.error('❌ No block specified');
         return false;
     }
     
     console.log(`🔄 Force refreshing timetable for ${block}`);
     
-    const { data: timetable, error } = await supabase
-        .from('timetables')
-        .select('*')
-        .eq('block', block);
-    
-    if (error) {
-        console.error('Fetch error:', error);
-        return false;
-    }
-    
-    if (timetable && timetable.length > 0) {
-        studentTimetableData = timetable;
-        currentStudentBlock = block;
+    try {
+        const { data: timetable, error } = await supabaseClient
+            .from('timetables')
+            .select('*')
+            .eq('block', block)
+            .order('week_number', { ascending: true })
+            .order('day_of_week', { ascending: true })
+            .order('start_time', { ascending: true });
         
-        // Update UI
-        const blockTitleSpan = document.getElementById('timetable-block-title');
-        if (blockTitleSpan) blockTitleSpan.textContent = block;
+        if (error) {
+            console.error('❌ Fetch error:', error);
+            return false;
+        }
         
-        const countDisplay = document.getElementById('class-count-display');
-        if (countDisplay) countDisplay.textContent = `${timetable.length} classes`;
-        
-        showNextClassWidget(timetable);
-        updateWeekDropdown(timetable);
-        renderTimetable('all');
-        
-        // Hide loading/empty
-        const loadingDiv = document.getElementById('timetable-loading');
-        const container = document.getElementById('timetable-container');
-        const emptyDiv = document.getElementById('timetable-empty');
-        
-        if (loadingDiv) loadingDiv.style.display = 'none';
-        if (container) container.style.display = 'block';
-        if (emptyDiv) emptyDiv.style.display = 'none';
-        
-        console.log(`✅ Rendered ${timetable.length} entries for ${block}`);
-        return true;
-    } else {
-        console.log(`❌ No timetable found for ${block}`);
+        if (timetable && timetable.length > 0) {
+            studentTimetableData = timetable;
+            currentStudentBlock = block;
+            
+            // Update UI
+            const blockTitleSpan = document.getElementById('timetable-block-title');
+            if (blockTitleSpan) blockTitleSpan.textContent = block;
+            
+            const countDisplay = document.getElementById('class-count-display');
+            if (countDisplay) countDisplay.textContent = `${timetable.length} classes`;
+            
+            showNextClassWidget(timetable);
+            updateWeekDropdown(timetable);
+            renderTimetable('all');
+            
+            // Hide loading/empty
+            const loadingDiv = document.getElementById('timetable-loading');
+            const container = document.getElementById('timetable-container');
+            const emptyDiv = document.getElementById('timetable-empty');
+            
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (container) container.style.display = 'block';
+            if (emptyDiv) emptyDiv.style.display = 'none';
+            
+            console.log(`✅ Rendered ${timetable.length} entries for ${block}`);
+            return true;
+        } else {
+            console.log(`ℹ️ No timetable found for ${block}`);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Error refreshing timetable:', error);
         return false;
     }
 };
 
+// =====================================================
+// 🚀 AUTO-INITIALIZATION
+// =====================================================
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('timetable-container')) {
-        // Wait for profile to load
+        console.log('📅 Timetable container found, initializing...');
         setTimeout(() => {
             initStudentTimetable();
         }, 1500);
     }
 });
 
+// Re-initialize when app is ready
+document.addEventListener('appReady', function() {
+    console.log('📅 App ready, initializing timetable...');
+    setTimeout(() => {
+        initStudentTimetable();
+    }, 500);
+});
+
 // Also refresh when profile tab is clicked
-const profileTab = document.querySelector('[data-tab="profile"]');
-if (profileTab) {
-    profileTab.addEventListener('click', function() {
+document.addEventListener('click', function(e) {
+    const target = e.target.closest('[data-tab="profile"]');
+    if (target) {
         setTimeout(() => {
             if (window.currentUserProfile?.block) {
-                forceRefreshTimetable(window.currentUserProfile.block);
+                console.log('🔄 Profile tab clicked, refreshing timetable...');
+                window.forceRefreshTimetable(window.currentUserProfile.block);
             }
         }, 500);
-    });
-}
+    }
+});
 
-console.log('✅ Student timetable module loaded (compact version)');
+// Export for debugging
+window.initStudentTimetable = initStudentTimetable;
+window.getSupabase = getSupabase;
+
+console.log('✅ Student timetable module loaded (fixed version)');
