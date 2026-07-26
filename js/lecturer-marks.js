@@ -1228,6 +1228,110 @@ function updateMarksEntryStats(marks, assessmentType) {
 }
 
 // ============================================================
+// CHECK MARKS APPROVAL STATUS - FOR LECTURER VIEW
+// ============================================================
+
+function checkMarksApprovalStatus(marks) {
+    console.log('📋 Checking marks approval status...');
+    
+    if (!marks || marks.length === 0) {
+        console.log('📋 No marks to check');
+        return;
+    }
+    
+    const pendingCount = marks.filter(m => m.approval_status === 'pending').length;
+    const approvedCount = marks.filter(m => m.approval_status === 'approved').length;
+    const rejectedCount = marks.filter(m => m.approval_status === 'rejected').length;
+    const draftCount = marks.filter(m => m.approval_status === 'draft' || !m.approval_status).length;
+    
+    console.log(`📊 Approval Status: Draft: ${draftCount}, Pending: ${pendingCount}, Approved: ${approvedCount}, Rejected: ${rejectedCount}`);
+    
+    // Update UI elements if they exist
+    const banner = document.getElementById('approvalStatusBanner');
+    const statusText = document.getElementById('approvalStatusText');
+    const statusBadge = document.getElementById('approvalStatusBadge');
+    const submitBtn = document.getElementById('submitForApprovalBtn');
+    const withdrawBtn = document.getElementById('withdrawApprovalBtn');
+    const details = document.getElementById('approvalDetails');
+    const rejectionReason = document.getElementById('rejectionReason');
+    
+    if (!banner) {
+        // Create banner if it doesn't exist
+        createApprovalStatusBanner();
+        return;
+    }
+    
+    // Show banner if there are any marks
+    if (marks.length > 0) {
+        banner.style.display = 'block';
+    } else {
+        banner.style.display = 'none';
+        return;
+    }
+    
+    if (pendingCount > 0) {
+        banner.style.borderLeftColor = '#f59e0b';
+        banner.style.background = '#fef3c7';
+        if (statusText) statusText.textContent = `${pendingCount} marks pending Admin Approval`;
+        if (statusBadge) {
+            statusBadge.textContent = '⏳ Pending';
+            statusBadge.className = 'badge badge-warning';
+            statusBadge.style.cssText = 'background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
+        }
+        if (submitBtn) submitBtn.style.display = 'none';
+        if (withdrawBtn) withdrawBtn.style.display = 'inline-block';
+        if (details) details.style.display = 'block';
+        if (rejectionReason) rejectionReason.style.display = 'none';
+        
+    } else if (approvedCount > 0 && pendingCount === 0) {
+        banner.style.borderLeftColor = '#10b981';
+        banner.style.background = '#d1fae5';
+        if (statusText) statusText.textContent = `✅ ${approvedCount} marks Approved by Admin`;
+        if (statusBadge) {
+            statusBadge.textContent = '✅ Approved';
+            statusBadge.className = 'badge badge-success';
+            statusBadge.style.cssText = 'background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
+        }
+        if (submitBtn) submitBtn.style.display = 'none';
+        if (withdrawBtn) withdrawBtn.style.display = 'none';
+        if (details) details.style.display = 'block';
+        if (rejectionReason) rejectionReason.style.display = 'none';
+        
+    } else if (rejectedCount > 0 && pendingCount === 0 && approvedCount === 0) {
+        banner.style.borderLeftColor = '#dc2626';
+        banner.style.background = '#fee2e2';
+        if (statusText) statusText.textContent = `❌ ${rejectedCount} marks Rejected by Admin`;
+        if (statusBadge) {
+            statusBadge.textContent = '❌ Rejected';
+            statusBadge.className = 'badge badge-danger';
+            statusBadge.style.cssText = 'background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
+        }
+        if (submitBtn) submitBtn.style.display = 'inline-block';
+        if (withdrawBtn) withdrawBtn.style.display = 'none';
+        if (details) details.style.display = 'block';
+        if (rejectionReason) rejectionReason.style.display = 'block';
+        
+    } else if (draftCount > 0 && pendingCount === 0 && approvedCount === 0 && rejectedCount === 0) {
+        banner.style.borderLeftColor = '#6b7280';
+        banner.style.background = '#f3f4f6';
+        if (statusText) statusText.textContent = `📝 ${draftCount} marks in Draft - Ready to submit`;
+        if (statusBadge) {
+            statusBadge.textContent = '📝 Draft';
+            statusBadge.className = 'badge badge-secondary';
+            statusBadge.style.cssText = 'background: #e5e7eb; color: #6b7280; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
+        }
+        if (submitBtn) submitBtn.style.display = 'inline-block';
+        if (withdrawBtn) withdrawBtn.style.display = 'none';
+        if (details) details.style.display = 'none';
+        if (rejectionReason) rejectionReason.style.display = 'none';
+    } else {
+        banner.style.display = 'none';
+        if (submitBtn) submitBtn.style.display = 'inline-block';
+        if (withdrawBtn) withdrawBtn.style.display = 'none';
+    }
+}
+
+// ============================================================
 // CREATE APPROVAL STATUS BANNER (if missing)
 // ============================================================
 
