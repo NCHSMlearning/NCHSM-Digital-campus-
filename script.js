@@ -21653,18 +21653,6 @@ async function reloadMarksStudentManager() {
 
 window.reloadMarksStudentManager = reloadMarksStudentManager;
 
-// ============================================================
-// ESCAPE HTML HELPER
-// ============================================================
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-window.escapeHtml = escapeHtml;
 
 // ============================================================
 // SHOW/HIDE NOTIFICATION/LOADING FUNCTIONS
