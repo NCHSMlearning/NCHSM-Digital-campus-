@@ -2961,9 +2961,6 @@
 </section>
 <!-- ============================================ -->
 <!-- MARKS ENTRY SYSTEM - SUPER ADMIN -->
-<!-- WITH LECTURER ASSIGNMENT MANAGEMENT -->
-<!-- WITH ASSIGNMENT HISTORY TABLE -->
-<!-- STAFF FILTERED BY PROGRAM -->
 <!-- ============================================ -->
 <section id="marks-entry" class="tab-content">
     <!-- Header -->
@@ -3015,7 +3012,9 @@
         </div>
     </div>
 
-    <!-- Selectors -->
+    <!-- ============================================ -->
+    <!-- SELECTORS - Always Visible -->
+    <!-- ============================================ -->
     <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
             <div>
@@ -3105,99 +3104,15 @@
     </div>
 
     <!-- ============================================ -->
-    <!-- LECTURER ASSIGNMENT MANAGEMENT - ADMIN ONLY -->
+    <!-- GRADING SYSTEM REFERENCE - Small bar -->
     <!-- ============================================ -->
-    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
-            <div>
-                <h3 style="margin: 0; color: #1e293b;">
-                    <i class="fas fa-user-tie" style="color: #4C1D95;"></i> Lecturer Unit Assignments
-                </h3>
-                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
-                    <i class="fas fa-info-circle"></i> Assign lecturers to units for the current block
-                </p>
-            </div>
-            <button onclick="showLecturerAssignmentModal()" class="btn-action" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer;">
-                <i class="fas fa-user-plus"></i> Assign Lecturer
-            </button>
-        </div>
-        <div id="me_lecturer_assignments" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
-            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
-                <i class="fas fa-info-circle"></i> Select a unit to manage lecturer assignments
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================ -->
-    <!-- ASSIGNMENT HISTORY TABLE - WITH DROP/DELETE -->
-    <!-- ============================================ -->
-    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
-            <div>
-                <h4 style="margin: 0; color: #1e293b;">
-                    <i class="fas fa-history" style="color: #4C1D95;"></i> Assignment History
-                </h4>
-                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
-                    <i class="fas fa-info-circle"></i> All lecturers assigned to this unit — click <strong>"Drop"</strong> to remove assignment
-                </p>
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <button onclick="refreshAssignmentHistory()" class="btn-action" style="background: #6b7280; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-                <button onclick="clearAllAssignments()" class="btn-action" style="background: #dc2626; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-trash"></i> Clear All
-                </button>
-            </div>
-        </div>
-        <div id="me_assignment_history" style="overflow-x: auto;">
-            <div style="text-align: center; padding: 30px; color: #94a3b8; font-size: 13px;">
-                <i class="fas fa-info-circle"></i> Select a unit to view assignment history
-            </div>
-        </div>
-    </div>
-
-    <!-- ============================================ -->
-    <!-- COLUMN MANAGEMENT - ADMIN ONLY -->
-    <!-- ============================================ -->
-    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
-            <div>
-                <h3 style="margin: 0; color: #1e293b;">
-                    <i class="fas fa-columns" style="color: #059669;"></i> Column Settings for <span id="me_column_subject_name">Current Unit</span>
-                </h3>
-                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
-                    <i class="fas fa-info-circle"></i> Show/hide columns for this unit only
-                </p>
-            </div>
-            <button onclick="resetSubjectColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer;">
-                <i class="fas fa-undo"></i> Reset for This Unit
-            </button>
-        </div>
-        <div id="me_column_settings" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
-            <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
-                <i class="fas fa-info-circle"></i> Select a unit to manage columns
-            </div>
-        </div>
-    </div>
-
-    <!-- Marks Table Container -->
-    <div id="me_marks_container" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
-        <div style="text-align: center; padding: 60px 20px;">
-            <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-            <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
-            <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for any program</p>
-        </div>
-    </div>
-
-    <!-- Grading System Reference -->
-    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-top: 20px; border: 1px solid #e5e7eb;">
-        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+    <div style="background: white; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
             <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading System:</span>
-            <span style="background: #d1fae5; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 12px;">A (75-100%) → 4.0</span>
-            <span style="background: #dbeafe; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 12px;">B (65-74%) → 3.0</span>
-            <span style="background: #fef3c7; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 12px;">C (60-64%) → 2.0</span>
-            <span style="background: #fee2e2; padding: 4px 12px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 12px;">D (Below 60%) → 0.0</span>
+            <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 11px;">A (75-100%) → 4.0</span>
+            <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 11px;">B (65-74%) → 3.0</span>
+            <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 11px;">C (60-64%) → 2.0</span>
+            <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 11px;">D (Below 60%) → 0.0</span>
             <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
                 <i class="fas fa-info-circle"></i> Applicable to all programs
             </span>
@@ -3206,11 +3121,104 @@
             </span>
         </div>
     </div>
+
+    <!-- ============================================ -->
+    <!-- PLACEHOLDER - Shown when no unit selected -->
+    <!-- ============================================ -->
+    <div id="marksEntryPlaceholder" style="text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
+        <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+        <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
+        <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for any program</p>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- DYNAMIC CONTENT - All tables at the bottom -->
+    <!-- ============================================ -->
+    <div id="marksEntryDynamicContent" style="display: none;">
+        
+        <!-- 1. LECTURER ASSIGNMENT MANAGEMENT -->
+        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h3 style="margin: 0; color: #1e293b;">
+                        <i class="fas fa-user-tie" style="color: #4C1D95;"></i> Lecturer Unit Assignments
+                    </h3>
+                    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                        <i class="fas fa-info-circle"></i> Assign lecturers to this unit
+                    </p>
+                </div>
+                <button onclick="showLecturerAssignmentModal()" class="btn-action" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer;">
+                    <i class="fas fa-user-plus"></i> Assign Lecturer
+                </button>
+            </div>
+            <div id="me_lecturer_assignments" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">
+                <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                    <i class="fas fa-info-circle"></i> Loading lecturer assignments...
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. ASSIGNMENT HISTORY -->
+        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h4 style="margin: 0; color: #1e293b;">
+                        <i class="fas fa-history" style="color: #4C1D95;"></i> Assignment History
+                    </h4>
+                    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                        <i class="fas fa-info-circle"></i> All lecturers assigned to this unit — click <strong>"Drop"</strong> to remove assignment
+                    </p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="refreshAssignmentHistory()" class="btn-action" style="background: #6b7280; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button onclick="clearAllAssignments()" class="btn-action" style="background: #dc2626; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-trash"></i> Clear All
+                    </button>
+                </div>
+            </div>
+            <div id="me_assignment_history" style="overflow-x: auto;">
+                <div style="text-align: center; padding: 30px; color: #94a3b8; font-size: 13px;">
+                    <i class="fas fa-info-circle"></i> Loading assignment history...
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. COLUMN MANAGEMENT -->
+        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h3 style="margin: 0; color: #1e293b;">
+                        <i class="fas fa-columns" style="color: #059669;"></i> Column Settings for <span id="me_column_subject_name">Current Unit</span>
+                    </h3>
+                    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                        <i class="fas fa-info-circle"></i> Show/hide columns for this unit only
+                    </p>
+                </div>
+                <button onclick="resetSubjectColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer;">
+                    <i class="fas fa-undo"></i> Reset for This Unit
+                </button>
+            </div>
+            <div id="me_column_settings" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
+                <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
+                    <i class="fas fa-info-circle"></i> Loading column settings...
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. MARKS TABLE (with Manage Students button inside) -->
+        <div id="me_marks_container" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
+            <div style="text-align: center; padding: 40px;">
+                <div class="loading-spinner"></div>
+                <p style="color: #6b7280; margin-top: 10px;">Loading marks...</p>
+            </div>
+        </div>
+    </div>
 </section>
 
 <!-- ============================================ -->
 <!-- LECTURER ASSIGNMENT MODAL -->
-<!-- STAFF FILTERED BY PROGRAM -->
 <!-- ============================================ -->
 <div id="lecturerAssignmentModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
     <div style="background: white; border-radius: 16px; padding: 30px; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto;">
@@ -3270,6 +3278,31 @@
             </button>
             <button onclick="saveLecturerAssignment()" class="btn-action" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-save"></i> Assign
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MARKS STUDENT MANAGER MODAL -->
+<!-- ============================================ -->
+<div id="marksStudentManagerModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb;">
+            <h3 style="margin: 0; color: #1e293b;">
+                <i class="fas fa-users" style="color: #4C1D95;"></i> Manage Unit Students
+            </h3>
+            <span class="close" onclick="document.getElementById('marksStudentManagerModal').style.display='none'" style="cursor: pointer; font-size: 24px;">&times;</span>
+        </div>
+        <div class="modal-body" id="marksStudentManagerBody" style="padding: 20px;">
+            <div style="text-align: center; padding: 40px;">
+                <div class="loading-spinner"></div>
+                <p style="color: #6b7280; margin-top: 10px;">Loading...</p>
+            </div>
+        </div>
+        <div class="modal-actions" style="padding: 15px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 10px;">
+            <button onclick="document.getElementById('marksStudentManagerModal').style.display='none'" style="background: #6b7280; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
+                Close
             </button>
         </div>
     </div>
