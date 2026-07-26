@@ -84,9 +84,10 @@ const LecturerExams = {
             
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
             
+            // ✅ Use correct column names - check if 'program' or 'program_type' exists
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
-                .select('subject_name, subject_code, block, program, academic_year')
+                .select('subject_name, subject_code, block, program, program_type, target_program, academic_year')
                 .eq('lecturer_id', lecturerId);
             
             if (error) {
@@ -103,7 +104,7 @@ const LecturerExams = {
     },
     
     // ============================================
-    // LOAD EXAMS - USING exams TABLE
+    // LOAD EXAMS - USING exams TABLE (FIXED)
     // ============================================
     async loadExams() {
         try {
@@ -122,20 +123,49 @@ const LecturerExams = {
                 return;
             }
             
-            // ✅ Use exams table with correct column names
-            const { data: exams, error } = await supabase
+            console.log('🔍 Loading exams for program:', program);
+            console.log('🔍 Lecturer ID:', lecturerId);
+            
+            // ✅ FIXED: Use target_program instead of program
+            // ✅ Also use created_by to filter by lecturer
+            let { data: exams, error } = await supabase
                 .from('exams')
                 .select('*')
-                .eq('target_program', program)
+                .eq('target_program', program)  // ✅ FIXED: target_program
                 .eq('created_by', lecturerId)
                 .order('exam_date', { ascending: false });
             
-            if (error) {
-                console.error('Error loading exams:', error);
-                return;
+            // ✅ If no exams found with created_by, try without it
+            if (error || !exams || exams.length === 0) {
+                console.log('⚠️ No exams with created_by filter, trying without...');
+                const { data: allExams, error: allError } = await supabase
+                    .from('exams')
+                    .select('*')
+                    .eq('target_program', program)  // ✅ FIXED: target_program
+                    .order('exam_date', { ascending: false });
+                
+                if (allError) {
+                    // ✅ Try program_type as fallback
+                    console.log('⚠️ Trying program_type as fallback...');
+                    const { data: typeExams, error: typeError } = await supabase
+                        .from('exams')
+                        .select('*')
+                        .eq('program_type', program)  // ✅ FIXED: program_type
+                        .order('exam_date', { ascending: false });
+                    
+                    if (typeError) {
+                        console.error('❌ All queries failed:', typeError);
+                        this.exams = [];
+                    } else {
+                        this.exams = typeExams || [];
+                    }
+                } else {
+                    this.exams = allExams || [];
+                }
+            } else {
+                this.exams = exams || [];
             }
             
-            this.exams = exams || [];
             this.renderExams();
             this.updateStats();
             
@@ -143,6 +173,9 @@ const LecturerExams = {
             
         } catch (error) {
             console.error('Failed to load exams:', error);
+            this.exams = [];
+            this.renderExams();
+            this.updateStats();
             if (window.LecturerUI) {
                 window.LecturerUI.showNotification('Failed to load exams: ' + error.message, 'error');
             }
@@ -172,14 +205,20 @@ const LecturerExams = {
             'Scheduled': '#f59e0b',
             'InProgress': '#3b82f6',
             'Completed': '#10b981',
-            'Cancelled': '#ef4444'
+            'Cancelled': '#ef4444',
+            'upcoming': '#f59e0b',
+            'active': '#3b82f6',
+            'finished': '#10b981'
         };
         
         const statusIcons = {
             'Scheduled': '📅',
             'InProgress': '🔄',
             'Completed': '✅',
-            'Cancelled': '❌'
+            'Cancelled': '❌',
+            'upcoming': '📅',
+            'active': '🔄',
+            'finished': '✅'
         };
         
         const approvalBadges = {
@@ -214,7 +253,7 @@ const LecturerExams = {
                 `;
             }
             
-            if (approvalStatus === 'approved' || status === 'Completed') {
+            if (approvalStatus === 'approved' || status === 'Completed' || status === 'finished') {
                 actions += `
                     <button onclick="LecturerExams.gradeExam('${exam.id}')" 
                             style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
@@ -222,6 +261,15 @@ const LecturerExams = {
                     </button>
                 `;
             }
+            
+            // ✅ Show exam link if available
+            const examLink = exam.online_link || exam.exam_link;
+            const linkHtml = examLink ? `
+                <a href="${examLink}" target="_blank" 
+                   style="background: #0A3D62; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-external-link-alt"></i> Link
+                </a>
+            ` : '';
             
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
@@ -252,6 +300,7 @@ const LecturerExams = {
                         <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500;">
                             ${statusIcon} ${status}
                         </span>
+                        ${linkHtml}
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
                         <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
@@ -266,9 +315,9 @@ const LecturerExams = {
     updateStats() {
         const exams = this.exams;
         const total = exams.length;
-        const scheduled = exams.filter(e => e.status === 'Scheduled' || e.status === 'pending').length;
-        const completed = exams.filter(e => e.status === 'Completed').length;
-        const pending = exams.filter(e => e.status === 'InProgress' || e.status === 'Pending').length;
+        const scheduled = exams.filter(e => e.status === 'Scheduled' || e.status === 'upcoming' || e.status === 'pending').length;
+        const completed = exams.filter(e => e.status === 'Completed' || e.status === 'finished').length;
+        const pending = exams.filter(e => e.status === 'InProgress' || e.status === 'active' || e.status === 'Pending').length;
         
         const totalEl = document.getElementById('totalExamsStat');
         if (totalEl) totalEl.textContent = total;
@@ -435,19 +484,20 @@ const LecturerExams = {
                     title: formData.title,
                     exam_date: formData.date,
                     exam_type: formData.type,
-                    target_program: formData.program,
-                    program_type: formData.program,
+                    target_program: formData.program,  // ✅ FIXED: target_program
+                    program_type: formData.program,     // ✅ FIXED: program_type
                     intake_year: parseInt(formData.intake),
-                    block_term: formData.block,
+                    block_term: formData.block,         // ✅ FIXED: block_term
                     block: formData.block,
                     course_name: formData.unit || null,
+                    course_code: formData.unit || null,
                     exam_start_time: formData.startTime || null,
                     duration_minutes: parseInt(formData.duration),
                     status: formData.status || 'Scheduled',
                     online_link: formData.link || null,
                     exam_link: formData.link || null,
                     venue: formData.venue || null,
-                    created_by: lecturerId,
+                    created_by: lecturerId,             // ✅ FIXED: created_by
                     approval_status: 'pending',
                     created_at: new Date().toISOString()
                 })
