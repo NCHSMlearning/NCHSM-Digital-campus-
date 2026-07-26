@@ -21753,7 +21753,7 @@ console.log('✅ Entry Control functions loaded successfully!');
 console.log('✅ renderECSubjects:', typeof renderECSubjects);
 console.log('✅ toggleSubjectEntry:', typeof toggleSubjectEntry);
 // ============================================================
-// MARKS APPROVAL SYSTEM - COMPLETE
+// MARKS APPROVAL SYSTEM - COMPLETE (USING "UNITS")
 // ============================================================
 
 // ============================================================
@@ -21763,9 +21763,20 @@ console.log('✅ toggleSubjectEntry:', typeof toggleSubjectEntry);
 let marksApprovalData = [];
 let marksApprovalFilters = {
     search: '',
-    subject: 'all',
+    unit: 'all',
     block: 'all'
 };
+
+// ============================================================
+// ESCAPE HTML HELPER
+// ============================================================
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 // ============================================================
 // LOAD MARKS APPROVALS
@@ -21781,6 +21792,14 @@ async function loadMarksApprovals() {
     }
     
     try {
+        // Show loading
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="margin-top: 10px;">Loading pending marks...</p>
+            </div>
+        `;
+        
         // Get pending marks with lecturer info
         const { data: pending, error } = await sb
             .from('student_marks')
@@ -21799,8 +21818,8 @@ async function loadMarksApprovals() {
         // Populate filters
         populateMarksApprovalFilters();
         
-        // Render table
-        renderMarksApprovalTable();
+        // Render grouped by unit
+        renderGroupedApprovalTable();
         
     } catch (error) {
         console.error('❌ Error loading marks:', error);
@@ -21835,43 +21854,10 @@ function updateMarksApprovalStats() {
     const filterCount = document.getElementById('marksFilterCount');
     if (filterCount) filterCount.textContent = pending.length;
     
-    // Count unique subjects
-    const subjects = new Set(pending.map(m => m.subject_name).filter(Boolean));
-    const subjectsCount = document.getElementById('pendingSubjectsCount');
-    if (subjectsCount) subjectsCount.textContent = subjects.size || 0;
-    
-    // Calculate approved today
-    const today = new Date().toDateString();
-    const approvedToday = pending.filter(m => {
-        if (!m.approved_at) return false;
-        return new Date(m.approved_at).toDateString() === today;
-    });
-    const approvedTodayEl = document.getElementById('approvedMarksToday');
-    if (approvedTodayEl) approvedTodayEl.textContent = approvedToday.length;
-    
-    // Count rejected
-    // We need to query rejected marks separately
-    countRejectedMarks();
-}
-
-// ============================================================
-// COUNT REJECTED MARKS
-// ============================================================
-
-async function countRejectedMarks() {
-    try {
-        const { count, error } = await sb
-            .from('student_marks')
-            .select('id', { count: 'exact', head: true })
-            .eq('approval_status', 'rejected');
-        
-        if (error) throw error;
-        
-        const rejectedEl = document.getElementById('rejectedMarksCount');
-        if (rejectedEl) rejectedEl.textContent = count || 0;
-    } catch (error) {
-        console.error('Error counting rejected marks:', error);
-    }
+    // Count unique units
+    const units = new Set(pending.map(m => m.subject_name).filter(Boolean));
+    const unitsCount = document.getElementById('pendingSubjectsCount');
+    if (unitsCount) unitsCount.textContent = units.size || 0;
 }
 
 // ============================================================
@@ -21881,19 +21867,19 @@ async function countRejectedMarks() {
 function populateMarksApprovalFilters() {
     const pending = marksApprovalData;
     
-    // Populate subject filter
-    const subjectFilter = document.getElementById('marksApprovalSubjectFilter');
-    if (subjectFilter) {
-        const currentValue = subjectFilter.value;
-        const subjects = [...new Set(pending.map(m => m.subject_name).filter(Boolean))];
-        subjectFilter.innerHTML = '<option value="all">All Subjects</option>';
-        subjects.forEach(s => {
+    // Populate unit filter
+    const unitFilter = document.getElementById('marksApprovalSubjectFilter');
+    if (unitFilter) {
+        const currentValue = unitFilter.value;
+        const units = [...new Set(pending.map(m => m.subject_name).filter(Boolean))];
+        unitFilter.innerHTML = '<option value="all">All Units</option>';
+        units.forEach(u => {
             const opt = document.createElement('option');
-            opt.value = s;
-            opt.textContent = s;
-            subjectFilter.appendChild(opt);
+            opt.value = u;
+            opt.textContent = u;
+            unitFilter.appendChild(opt);
         });
-        subjectFilter.value = currentValue;
+        unitFilter.value = currentValue;
     }
     
     // Populate block filter
@@ -21913,10 +21899,10 @@ function populateMarksApprovalFilters() {
 }
 
 // ============================================================
-// RENDER MARKS APPROVAL TABLE
+// RENDER GROUPED APPROVAL TABLE (BY UNIT)
 // ============================================================
 
-function renderMarksApprovalTable() {
+function renderGroupedApprovalTable() {
     const container = document.getElementById('marksApprovalTableContainer');
     if (!container) return;
     
@@ -21924,7 +21910,7 @@ function renderMarksApprovalTable() {
     let filtered = [...marksApprovalData];
     
     const search = document.getElementById('marksApprovalSearch')?.value?.toLowerCase() || '';
-    const subject = document.getElementById('marksApprovalSubjectFilter')?.value || 'all';
+    const unit = document.getElementById('marksApprovalSubjectFilter')?.value || 'all';
     const block = document.getElementById('marksApprovalBlockFilter')?.value || 'all';
     
     if (search) {
@@ -21935,8 +21921,8 @@ function renderMarksApprovalTable() {
         );
     }
     
-    if (subject !== 'all') {
-        filtered = filtered.filter(m => m.subject_name === subject);
+    if (unit !== 'all') {
+        filtered = filtered.filter(m => m.subject_name === unit);
     }
     
     if (block !== 'all') {
@@ -21957,113 +21943,151 @@ function renderMarksApprovalTable() {
         return;
     }
     
-    // Build table
+    // Group by unit (subject_name)
+    const units = {};
+    filtered.forEach(m => {
+        const key = m.subject_name || 'Unknown Unit';
+        if (!units[key]) units[key] = [];
+        units[key].push(m);
+    });
+    
+    const unitNames = Object.keys(units);
+    
     let html = `
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                <thead>
-                    <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white;">
-                        <th style="padding: 10px; text-align: center; width: 40px;">#</th>
-                        <th style="padding: 10px; text-align: left;">Student</th>
-                        <th style="padding: 10px; text-align: left;">Admission</th>
-                        <th style="padding: 10px; text-align: left;">Subject</th>
-                        <th style="padding: 10px; text-align: left;">Block</th>
-                        <th style="padding: 10px; text-align: center;">CAT1</th>
-                        <th style="padding: 10px; text-align: center;">CAT2</th>
-                        <th style="padding: 10px; text-align: center;">Exam</th>
-                        <th style="padding: 10px; text-align: center;">Total</th>
-                        <th style="padding: 10px; text-align: center;">Grade</th>
-                        <th style="padding: 10px; text-align: left;">Submitted By</th>
-                        <th style="padding: 10px; text-align: center;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <span style="font-size: 14px; font-weight: 600; color: #1e293b;">
+                    📚 ${unitNames.length} Unit(s) with pending marks
+                </span>
+                <span style="font-size: 12px; color: #64748b; margin-left: 10px;">
+                    (${filtered.length} total students)
+                </span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button onclick="approveAllPendingMarks()" class="btn-action" style="background: #10b981; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-check-double"></i> Approve All Units
+                </button>
+                <button onclick="rejectAllPendingMarks()" class="btn-action" style="background: #dc2626; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-times"></i> Reject All Units
+                </button>
+                <button onclick="loadMarksApprovals()" class="btn-action" style="background: #6b7280; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
     `;
     
-    filtered.forEach((m, i) => {
-        const rowStyle = i % 2 === 0 ? 'background: #f8fafc;' : '';
-        const total = m.final_score || 0;
-        const isPassing = total >= 60;
+    unitNames.forEach((unitName, index) => {
+        const marks = units[unitName];
+        const count = marks.length;
+        const blockNames = [...new Set(marks.map(m => m.block).filter(Boolean))];
+        const avgScore = Math.round(marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / count);
+        const passCount = marks.filter(m => (m.final_score || 0) >= 60).length;
+        const passRate = Math.round((passCount / count) * 100);
+        const safeUnitName = escapeHtml(unitName);
         
-        // Safe escape
-        const safeName = (m.student_name || 'Unknown').replace(/[&<>"]/g, function(match) {
-            if (match === '&') return '&amp;';
-            if (match === '<') return '&lt;';
-            if (match === '>') return '&gt;';
-            if (match === '"') return '&quot;';
-            return match;
-        });
-        const safeAdmission = (m.admission_number || 'N/A').replace(/[&<>"]/g, function(match) {
-            if (match === '&') return '&amp;';
-            if (match === '<') return '&lt;';
-            if (match === '>') return '&gt;';
-            if (match === '"') return '&quot;';
-            return match;
-        });
-        const safeSubject = (m.subject_name || '').replace(/[&<>"]/g, function(match) {
-            if (match === '&') return '&amp;';
-            if (match === '<') return '&lt;';
-            if (match === '>') return '&gt;';
-            if (match === '"') return '&quot;';
-            return match;
-        });
-        const safeBlock = (m.block || '').replace(/[&<>"]/g, function(match) {
-            if (match === '&') return '&amp;';
-            if (match === '<') return '&lt;';
-            if (match === '>') return '&gt;';
-            if (match === '"') return '&quot;';
-            return match;
-        });
-        const safeSubmittedBy = (m.submitted_by_name || 'Unknown').replace(/[&<>"]/g, function(match) {
-            if (match === '&') return '&amp;';
-            if (match === '<') return '&lt;';
-            if (match === '>') return '&gt;';
-            if (match === '"') return '&quot;';
-            return match;
+        html += `
+            <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden;">
+                <!-- UNIT HEADER -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: ${index % 2 === 0 ? '#f8fafc' : '#ffffff'}; border-bottom: 1px solid #e5e7eb; cursor: pointer;" onclick="toggleUnitDetails('${safeUnitName}')">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <i class="fas fa-chevron-right" id="chevron_${safeUnitName}" style="color: #94a3b8; transition: transform 0.3s;"></i>
+                        <div>
+                            <strong style="font-size: 15px; color: #1e293b;">${safeUnitName}</strong>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 2px; display: flex; gap: 15px; flex-wrap: wrap;">
+                                <span>📦 ${blockNames.join(', ')}</span>
+                                <span>👥 ${count} students</span>
+                                <span>📊 Avg: ${avgScore}%</span>
+                                <span style="color: ${passRate >= 60 ? '#10b981' : '#f59e0b'};">✅ ${passRate}% passing</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        <button onclick="event.stopPropagation(); approveByUnit('${safeUnitName}')" 
+                                style="background: #10b981; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                            <i class="fas fa-check"></i> Approve Unit (${count})
+                        </button>
+                        <button onclick="event.stopPropagation(); rejectByUnit('${safeUnitName}')" 
+                                style="background: #dc2626; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                            <i class="fas fa-times"></i> Reject Unit
+                        </button>
+                        <button onclick="event.stopPropagation(); toggleUnitDetails('${safeUnitName}')" 
+                                style="background: #6b7280; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-eye"></i> <span id="viewText_${safeUnitName}">View Students</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- STUDENT DETAILS (HIDDEN BY DEFAULT) -->
+                <div id="details_${safeUnitName}" style="display: none;">
+                    <div style="padding: 16px 20px; background: #fafafa; overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background: #e5e7eb;">
+                                    <th style="padding: 8px; text-align: center; width: 40px;">#</th>
+                                    <th style="padding: 8px; text-align: left;">Student</th>
+                                    <th style="padding: 8px; text-align: left;">Admission</th>
+                                    <th style="padding: 8px; text-align: center;">Block</th>
+                                    <th style="padding: 8px; text-align: center;">CAT1</th>
+                                    <th style="padding: 8px; text-align: center;">CAT2</th>
+                                    <th style="padding: 8px; text-align: center;">Exam</th>
+                                    <th style="padding: 8px; text-align: center;">Total</th>
+                                    <th style="padding: 8px; text-align: center;">Grade</th>
+                                    <th style="padding: 8px; text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+        `;
+        
+        marks.forEach((m, i) => {
+            const total = m.final_score || 0;
+            const isPassing = total >= 60;
+            const safeName = escapeHtml(m.student_name || 'Unknown');
+            const safeAdmission = escapeHtml(m.admission_number || 'N/A');
+            const safeBlock = escapeHtml(m.block || '');
+            
+            html += `
+                <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #ffffff;' : 'background: #f8fafc;'}">
+                    <td style="padding: 8px; text-align: center;">${i + 1}</td>
+                    <td style="padding: 8px; font-weight: 500;">${safeName}</td>
+                    <td style="padding: 8px;">${safeAdmission}</td>
+                    <td style="padding: 8px; text-align: center;">${safeBlock}</td>
+                    <td style="padding: 8px; text-align: center;">${m.cat1_score || '-'}</td>
+                    <td style="padding: 8px; text-align: center;">${m.cat2_score || '-'}</td>
+                    <td style="padding: 8px; text-align: center;">${m.exam_score || '-'}</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : '#991b1b'};">${total || '-'}</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold; font-size: 15px; color: ${m.grade === 'A' || m.grade === 'B' ? '#065f46' : '#991b1b'};">${m.grade || '-'}</td>
+                    <td style="padding: 8px; text-align: center; white-space: nowrap;">
+                        <button onclick="approveMark('${m.id}')" style="background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 3px;">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button onclick="rejectMark('${m.id}')" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
         });
         
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb; ${rowStyle}">
-                <td style="padding: 10px; text-align: center;">${i + 1}</td>
-                <td style="padding: 10px; font-weight: 500;">${safeName}</td>
-                <td style="padding: 10px;">${safeAdmission}</td>
-                <td style="padding: 10px; font-size: 11px;">${safeSubject}</td>
-                <td style="padding: 10px;">${safeBlock}</td>
-                <td style="padding: 10px; text-align: center;">${m.cat1_score || '-'}</td>
-                <td style="padding: 10px; text-align: center;">${m.cat2_score || '-'}</td>
-                <td style="padding: 10px; text-align: center;">${m.exam_score || '-'}</td>
-                <td style="padding: 10px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : '#991b1b'};">${total || '-'}</td>
-                <td style="padding: 10px; text-align: center; font-weight: bold; font-size: 16px; color: ${m.grade === 'A' || m.grade === 'B' ? '#065f46' : '#991b1b'};">${m.grade || '-'}</td>
-                <td style="padding: 10px;">${safeSubmittedBy}</td>
-                <td style="padding: 10px; text-align: center; white-space: nowrap;">
-                    <button onclick="approveMark('${m.id}')" style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; margin-right: 4px; font-size: 11px;">
-                        <i class="fas fa-check"></i> Approve
-                    </button>
-                    <button onclick="rejectMark('${m.id}')" style="background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                        <i class="fas fa-times"></i> Reject
-                    </button>
-                </td>
-            </tr>
+                            </tbody>
+                        </table>
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                            <button onclick="approveByUnit('${safeUnitName}')" style="background: #10b981; color: white; border: none; padding: 6px 20px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                <i class="fas fa-check"></i> Approve All in Unit (${marks.length})
+                            </button>
+                            <button onclick="rejectByUnit('${safeUnitName}')" style="background: #dc2626; color: white; border: none; padding: 6px 20px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                <i class="fas fa-times"></i> Reject All in Unit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
     });
     
     html += `
-                </tbody>
-            </table>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; margin-top: 10px; font-size: 12px; color: #64748b; border-top: 1px solid #e5e7eb; flex-wrap: wrap; gap: 10px;">
-            <span>📊 Total: ${filtered.length} pending approval(s)</span>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="approveAllPendingMarks()" style="background: #10b981; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-check-double"></i> Approve All
-                </button>
-                <button onclick="rejectAllPendingMarks()" style="background: #dc2626; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-times"></i> Reject All
-                </button>
-                <button onclick="loadMarksApprovals()" style="background: #6b7280; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-            </div>
         </div>
     `;
     
@@ -22071,11 +22095,103 @@ function renderMarksApprovalTable() {
 }
 
 // ============================================================
-// FILTER MARKS APPROVALS
+// TOGGLE UNIT DETAILS (SHOW/HIDE STUDENTS)
 // ============================================================
 
-function filterMarksApprovals() {
-    renderMarksApprovalTable();
+function toggleUnitDetails(unitName) {
+    const detailsDiv = document.getElementById(`details_${unitName}`);
+    const chevron = document.getElementById(`chevron_${unitName}`);
+    const viewText = document.getElementById(`viewText_${unitName}`);
+    
+    if (!detailsDiv) return;
+    
+    if (detailsDiv.style.display === 'none') {
+        detailsDiv.style.display = 'block';
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+        if (viewText) viewText.textContent = 'Hide Students';
+    } else {
+        detailsDiv.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+        if (viewText) viewText.textContent = 'View Students';
+    }
+}
+
+// ============================================================
+// APPROVE BY UNIT
+// ============================================================
+
+async function approveByUnit(unitName) {
+    const count = marksApprovalData.filter(m => m.subject_name === unitName).length;
+    
+    if (count === 0) {
+        showNotification('No pending marks for this unit', 'warning');
+        return;
+    }
+    
+    if (!confirm(`✅ Approve ALL ${count} pending marks for unit "${unitName}"?`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({
+                approval_status: 'approved',
+                approved_at: new Date().toISOString(),
+                approved_by: window.currentUser?.id || null
+            })
+            .eq('subject_name', unitName)
+            .eq('approval_status', 'pending');
+        
+        if (error) throw error;
+        
+        showNotification(`✅ All ${count} marks for "${unitName}" approved!`, 'success');
+        await logBulkApprovalAction('approved_by_unit', count, unitName);
+        await loadMarksApprovals();
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// REJECT BY UNIT
+// ============================================================
+
+async function rejectByUnit(unitName) {
+    const count = marksApprovalData.filter(m => m.subject_name === unitName).length;
+    
+    if (count === 0) {
+        showNotification('No pending marks for this unit', 'warning');
+        return;
+    }
+    
+    const reason = prompt(`❌ Enter rejection reason for ALL ${count} marks in unit "${unitName}":`);
+    if (reason === null) return;
+    
+    if (!confirm(`❌ Reject ALL ${count} pending marks for unit "${unitName}"?`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .update({
+                approval_status: 'rejected',
+                rejection_reason: reason || 'Rejected by unit',
+                approved_at: new Date().toISOString(),
+                approved_by: window.currentUser?.id || null
+            })
+            .eq('subject_name', unitName)
+            .eq('approval_status', 'pending');
+        
+        if (error) throw error;
+        
+        showNotification(`❌ All ${count} marks for "${unitName}" rejected`, 'info');
+        await logBulkApprovalAction('rejected_by_unit', count, unitName);
+        await loadMarksApprovals();
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
 }
 
 // ============================================================
@@ -22098,11 +22214,7 @@ async function approveMark(id) {
         if (error) throw error;
         
         showNotification('✅ Mark approved successfully!', 'success');
-        
-        // Log the approval
         await logApprovalAction(id, 'approved');
-        
-        // Reload
         await loadMarksApprovals();
         
     } catch (error) {
@@ -22117,7 +22229,7 @@ async function approveMark(id) {
 
 async function rejectMark(id) {
     const reason = prompt('❌ Enter rejection reason (optional):');
-    if (reason === null) return; // User cancelled
+    if (reason === null) return;
     
     try {
         const { error } = await sb
@@ -22133,11 +22245,7 @@ async function rejectMark(id) {
         if (error) throw error;
         
         showNotification('❌ Mark rejected', 'info');
-        
-        // Log the rejection
         await logApprovalAction(id, 'rejected', reason);
-        
-        // Reload
         await loadMarksApprovals();
         
     } catch (error) {
@@ -22157,7 +22265,7 @@ async function approveAllPendingMarks() {
         return;
     }
     
-    if (!confirm(`✅ Approve ALL ${count} pending marks?`)) return;
+    if (!confirm(`✅ Approve ALL ${count} pending marks across all units?`)) return;
     
     try {
         const { error } = await sb
@@ -22172,11 +22280,7 @@ async function approveAllPendingMarks() {
         if (error) throw error;
         
         showNotification(`✅ All ${count} marks approved!`, 'success');
-        
-        // Log bulk approval
-        await logBulkApprovalAction('approved', count);
-        
-        // Reload
+        await logBulkApprovalAction('approved_all', count);
         await loadMarksApprovals();
         
     } catch (error) {
@@ -22196,8 +22300,8 @@ async function rejectAllPendingMarks() {
         return;
     }
     
-    const reason = prompt(`❌ Enter rejection reason for ALL ${count} marks (optional):`);
-    if (reason === null) return; // User cancelled
+    const reason = prompt(`❌ Enter rejection reason for ALL ${count} marks:`, 'Bulk rejection');
+    if (reason === null) return;
     
     if (!confirm(`❌ Reject ALL ${count} pending marks?`)) return;
     
@@ -22215,11 +22319,7 @@ async function rejectAllPendingMarks() {
         if (error) throw error;
         
         showNotification(`❌ All ${count} marks rejected`, 'info');
-        
-        // Log bulk rejection
-        await logBulkApprovalAction('rejected', count, reason);
-        
-        // Reload
+        await logBulkApprovalAction('rejected_all', count, reason);
         await loadMarksApprovals();
         
     } catch (error) {
@@ -22264,23 +22364,31 @@ async function logApprovalAction(markId, action, reason = null) {
 // LOG BULK APPROVAL ACTION
 // ============================================================
 
-async function logBulkApprovalAction(action, count, reason = null) {
+async function logBulkApprovalAction(action, count, target = null) {
     try {
         await sb
             .from('mark_approval_logs')
             .insert({
                 mark_id: null,
-                action: `${action}_bulk`,
+                action: action,
                 action_by: window.currentUser?.id || null,
                 action_by_name: window.currentUser?.full_name || 'Super Admin',
-                reason: reason || null,
-                details: `${action} ${count} marks in bulk`,
+                reason: target || null,
+                details: `${action} ${count} marks${target ? ' for ' + target : ''}`,
                 created_at: new Date().toISOString()
             });
         
     } catch (error) {
         console.warn('Error logging bulk action:', error);
     }
+}
+
+// ============================================================
+// FILTER MARKS APPROVALS
+// ============================================================
+
+function filterMarksApprovals() {
+    renderGroupedApprovalTable();
 }
 
 // ============================================================
@@ -22318,7 +22426,7 @@ function exportMarksApprovalsToCSV() {
         return;
     }
     
-    const headers = ['Student', 'Admission', 'Subject', 'Block', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Submitted By', 'Submitted At'];
+    const headers = ['Student', 'Admission', 'Unit', 'Block', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Submitted By', 'Submitted At'];
     const rows = pending.map(m => [
         m.student_name || 'Unknown',
         m.admission_number || 'N/A',
@@ -22356,13 +22464,22 @@ window.loadMarksApprovals = loadMarksApprovals;
 window.filterMarksApprovals = filterMarksApprovals;
 window.approveMark = approveMark;
 window.rejectMark = rejectMark;
+window.approveByUnit = approveByUnit;
+window.rejectByUnit = rejectByUnit;
 window.approveAllPendingMarks = approveAllPendingMarks;
 window.rejectAllPendingMarks = rejectAllPendingMarks;
+window.toggleUnitDetails = toggleUnitDetails;
 window.initMarksApproval = initMarksApproval;
 window.exportMarksApprovalsToCSV = exportMarksApprovalsToCSV;
+window.escapeHtml = escapeHtml;
 
 console.log('✅ Marks Approval functions loaded!');
 console.log('📋 Run: initMarksApproval() to initialize');
+console.log('📋 Features:');
+console.log('   - View units with pending marks');
+console.log('   - Approve/Reject entire units');
+console.log('   - Expand to see individual students');
+console.log('   - Approve/Reject individual students');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
