@@ -15,66 +15,44 @@ class ProfileModule {
         this.profileForm = document.getElementById('profile-form');
         this.profileStatus = document.getElementById('profile-status');
         
-        // Profile photo section (RIGHT COLUMN)
+        // Profile photo section
         this.passportPreview = document.getElementById('passport-preview');
         this.passportFileInput = document.getElementById('passport-file-input');
         
-        // Upload buttons (photo controls in right column)
-        this.choosePhotoButton = document.querySelector('#profile .photo-controls label[for="passport-file-input"]');
-        this.savePhotoButton = document.getElementById('save-photo-button');
-        this.cancelPhotoButton = document.getElementById('cancel-photo-button');
-        
         // ==================== FORM FIELDS (LEFT COLUMN) ====================
         
-        // Personal Information
+        // Personal Information - DISPLAY fields (readonly view)
         this.profileName = document.getElementById('profile-name');
         this.profileStudentId = document.getElementById('profile-student-id');
         this.profileEmail = document.getElementById('profile-email');
         this.profilePhone = document.getElementById('profile-phone');
         this.profileAltPhone = document.getElementById('profile-alt-phone');
-        this.profileDob = document.getElementById('profile-dob');
-        this.profileGender = document.getElementById('profile-gender');
-        this.profileNationalId = document.getElementById('profile-national-id');
-        this.profileAddress = document.getElementById('profile-address');
+        this.profileDob = document.getElementById('profile-dob-input');
+        this.profileGender = document.getElementById('profile-gender-input');
+        this.profileNationalId = document.getElementById('profile-national-id-input');
+        this.profileAddress = document.getElementById('profile-address-input');
         
         // Guardian Information
-        this.profileGuardianName = document.getElementById('profile-guardian-name');
-        this.profileGuardianPhone = document.getElementById('profile-guardian-phone');
+        this.profileGuardianName = document.getElementById('profile-guardian-name-input');
+        this.profileGuardianPhone = document.getElementById('profile-guardian-phone-input');
         
         // Academic Information
-        this.profileProgram = document.getElementById('profile-program');
-        this.profileBlock = document.getElementById('profile-block');
-        this.profileIntakeYear = document.getElementById('profile-intake-year');
-        this.profileIntakeMonth = document.getElementById('profile-intake-month'); // NEW
-        this.profileAdmissionDate = document.getElementById('profile-admission-date');
-        this.profileAdmissionYear = document.getElementById('profile-admission-year');
-        this.profileRole = document.getElementById('profile-role'); // NEW
+        this.profileProgram = document.getElementById('profile-program-input');
+        this.profileBlock = document.getElementById('profile-block-input');
+        this.profileIntakeYear = document.getElementById('profile-intake-year-input');
+        this.profileIntakeMonth = document.getElementById('profile-intake-month-input');
         
-        // Document Status
-        this.profileDocKcse = document.getElementById('profile-doc-kcse'); // NEW
-        this.profileDocId = document.getElementById('profile-doc-id'); // NEW
+        // Quick Stats
+        this.profileBlockNumber = document.getElementById('profile-block-number');
+        this.profileCompletedBlocks = document.getElementById('profile-completed-blocks');
+        this.profileProgress = document.getElementById('profile-progress');
         
         // Block Progress elements
         this.blockProgressFill = document.getElementById('block-progress-fill');
         this.blockProgressText = document.getElementById('block-progress-text');
         this.currentBlockStatus = document.getElementById('current-block-status');
         this.completedBlocksContainer = document.getElementById('completed-blocks');
-        this.blockTimeline = document.getElementById('block-timeline-profile') || document.getElementById('block-timeline');
-        
-        // ==================== PASSWORD RESET ELEMENTS ====================
-        this.currentPassword = document.getElementById('current-password');
-        this.newPassword = document.getElementById('new-password');
-        this.confirmPassword = document.getElementById('confirm-password');
-        this.changePasswordBtn = document.getElementById('change-password-btn');
-        this.passwordStrengthBar = document.getElementById('strength-bar');
-        this.passwordStrengthText = document.getElementById('strength-text');
-        this.passwordRequirements = document.getElementById('password-requirements');
-        this.passwordFeedback = document.getElementById('password-feedback');
-        
-        // Action buttons
-        this.editProfileButton = document.getElementById('edit-profile-button');
-        this.saveProfileButton = document.getElementById('save-profile-button');
-        this.cancelEditButton = document.getElementById('cancel-edit-button');
+        this.blockTimeline = document.getElementById('block-timeline-profile');
         
         // ==================== DOCUMENT UPLOAD ELEMENTS ====================
         this.docKcseInput = document.getElementById('doc-kcse-input');
@@ -83,6 +61,18 @@ class ProfileModule {
         this.docIdFilename = document.getElementById('doc-id-filename');
         this.docKcseBadge = document.getElementById('doc-kcse-badge');
         this.docIdBadge = document.getElementById('doc-id-badge');
+        
+        // ==================== PASSWORD RESET ELEMENTS ====================
+        this.currentPassword = document.getElementById('current-password');
+        this.newPassword = document.getElementById('new-password');
+        this.confirmPassword = document.getElementById('confirm-password');
+        this.changePasswordBtn = document.getElementById('change-password-btn');
+        this.passwordFeedback = document.getElementById('password-feedback');
+        
+        // Action buttons
+        this.editProfileButton = document.getElementById('edit-profile-button');
+        this.saveProfileButton = document.getElementById('save-profile-button');
+        this.cancelEditButton = document.getElementById('cancel-edit-button');
         
         this.setupEventListeners();
         this.setupPasswordResetListeners();
@@ -122,37 +112,6 @@ class ProfileModule {
             });
         }
         
-        // Choose photo button
-        if (this.choosePhotoButton && this.passportFileInput) {
-            this.choosePhotoButton.addEventListener('click', () => {
-                if (!this.isEditing) {
-                    this.enableEditing();
-                }
-                this.passportFileInput.click();
-            });
-        }
-        
-        // Passport file input change
-        if (this.passportFileInput) {
-            this.passportFileInput.addEventListener('change', (e) => this.handlePassportFileSelect(e));
-        }
-        
-        // Save photo button
-        if (this.savePhotoButton) {
-            this.savePhotoButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.savePhotoOnly();
-            });
-        }
-        
-        // Cancel photo button
-        if (this.cancelPhotoButton) {
-            this.cancelPhotoButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.cancelPhotoUpload();
-            });
-        }
-        
         // Click on passport preview to upload
         if (this.passportPreview) {
             this.passportPreview.addEventListener('click', () => {
@@ -163,6 +122,11 @@ class ProfileModule {
                     this.passportFileInput.click();
                 }
             });
+        }
+        
+        // Passport file input change
+        if (this.passportFileInput) {
+            this.passportFileInput.addEventListener('change', (e) => this.handlePassportFileSelect(e));
         }
     }
     
@@ -250,10 +214,6 @@ class ProfileModule {
                 badgeEl.style.color = 'white';
             }
             
-            // Update profile display field
-            const displayField = docType === 'kcse' ? this.profileDocKcse : this.profileDocId;
-            if (displayField) displayField.value = 'Uploaded';
-            
             this.showStatus(`✅ ${docType.toUpperCase()} document uploaded successfully!`, 'success');
             
             // Update user profile
@@ -283,7 +243,6 @@ class ProfileModule {
         if (!this.newPassword) return;
         
         this.newPassword.addEventListener('input', () => {
-            this.checkPasswordStrength(this.newPassword.value);
             this.validatePasswordRequirements(this.newPassword.value);
         });
         
@@ -292,20 +251,6 @@ class ProfileModule {
                 this.validateConfirmPassword();
             });
         }
-        
-        this.newPassword.addEventListener('focus', () => {
-            if (this.passwordRequirements) {
-                this.passwordRequirements.classList.add('show');
-            }
-        });
-        
-        this.newPassword.addEventListener('blur', () => {
-            setTimeout(() => {
-                if (this.passwordRequirements && !this.passwordRequirements.querySelector('.valid')) {
-                    this.passwordRequirements.classList.remove('show');
-                }
-            }, 2000);
-        });
         
         if (this.changePasswordBtn) {
             this.changePasswordBtn.addEventListener('click', (e) => {
@@ -318,53 +263,6 @@ class ProfileModule {
     // ============================================
     // PASSWORD STRENGTH FUNCTIONS
     // ============================================
-    checkPasswordStrength(password) {
-        if (!this.passwordStrengthBar || !this.passwordStrengthText) return;
-        
-        let strength = 0;
-        
-        if (password.length >= 8) strength++;
-        if (password.length >= 12) strength++;
-        if (/[A-Z]/.test(password)) strength++;
-        if (/[a-z]/.test(password)) strength++;
-        if (/[0-9]/.test(password)) strength++;
-        if (/[!@#$%^&*]/.test(password)) strength++;
-        
-        let strengthClass = '';
-        let strengthLabel = '';
-        
-        if (strength <= 2) {
-            strengthClass = 'weak';
-            strengthLabel = 'Weak';
-        } else if (strength <= 4) {
-            strengthClass = 'medium';
-            strengthLabel = 'Medium';
-        } else if (strength <= 6) {
-            strengthClass = 'strong';
-            strengthLabel = 'Strong';
-        } else {
-            strengthClass = 'very-strong';
-            strengthLabel = 'Very Strong';
-        }
-        
-        this.passwordStrengthBar.className = 'strength-bar ' + strengthClass;
-        this.passwordStrengthText.textContent = strengthLabel;
-        this.passwordStrengthText.style.color = this.getStrengthColor(strengthClass);
-        
-        const widthPercent = (strength / 7) * 100;
-        this.passwordStrengthBar.style.width = `${widthPercent}%`;
-    }
-    
-    getStrengthColor(strength) {
-        switch(strength) {
-            case 'weak': return '#dc2626';
-            case 'medium': return '#f59e0b';
-            case 'strong': return '#10b981';
-            case 'very-strong': return '#059669';
-            default: return '#6b7280';
-        }
-    }
-    
     validatePasswordRequirements(password) {
         const requirements = {
             length: password.length >= 8,
@@ -374,31 +272,7 @@ class ProfileModule {
             special: /[!@#$%^&*]/.test(password)
         };
         
-        const reqLength = document.getElementById('req-length');
-        const reqUppercase = document.getElementById('req-uppercase');
-        const reqLowercase = document.getElementById('req-lowercase');
-        const reqNumber = document.getElementById('req-number');
-        const reqSpecial = document.getElementById('req-special');
-        
-        if (reqLength) this.updateRequirement(reqLength, requirements.length);
-        if (reqUppercase) this.updateRequirement(reqUppercase, requirements.uppercase);
-        if (reqLowercase) this.updateRequirement(reqLowercase, requirements.lowercase);
-        if (reqNumber) this.updateRequirement(reqNumber, requirements.number);
-        if (reqSpecial) this.updateRequirement(reqSpecial, requirements.special);
-        
         return Object.values(requirements).every(v => v === true);
-    }
-    
-    updateRequirement(element, isValid) {
-        if (isValid) {
-            element.classList.add('valid');
-            element.style.color = '#10b981';
-            element.style.textDecoration = 'line-through';
-        } else {
-            element.classList.remove('valid');
-            element.style.color = '#dc2626';
-            element.style.textDecoration = 'none';
-        }
     }
     
     validateConfirmPassword() {
@@ -422,13 +296,16 @@ class ProfileModule {
         if (!this.passwordFeedback) return;
         
         this.passwordFeedback.textContent = message;
-        this.passwordFeedback.classList.add('show', type);
-        this.passwordFeedback.classList.remove(type === 'success' ? 'error' : 'success');
+        this.passwordFeedback.style.display = 'block';
+        this.passwordFeedback.style.background = type === 'success' ? '#d1fae5' : '#fee2e2';
+        this.passwordFeedback.style.color = type === 'success' ? '#065f46' : '#991b1b';
+        this.passwordFeedback.style.border = `1px solid ${type === 'success' ? '#10b981' : '#dc2626'}`;
     }
     
     clearPasswordFeedback() {
         if (this.passwordFeedback) {
-            this.passwordFeedback.classList.remove('show');
+            this.passwordFeedback.style.display = 'none';
+            this.passwordFeedback.textContent = '';
         }
     }
     
@@ -453,8 +330,7 @@ class ProfileModule {
         }
         
         if (!this.validatePasswordRequirements(newPassword)) {
-            this.showPasswordFeedback('❌ Password does not meet requirements!', 'error');
-            if (this.passwordRequirements) this.passwordRequirements.classList.add('show');
+            this.showPasswordFeedback('❌ Password must be at least 8 characters with uppercase, lowercase, number, and special character!', 'error');
             return;
         }
         
@@ -492,13 +368,6 @@ class ProfileModule {
             if (this.newPassword) this.newPassword.value = '';
             if (this.confirmPassword) this.confirmPassword.value = '';
             
-            if (this.passwordStrengthBar) {
-                this.passwordStrengthBar.className = 'strength-bar';
-                this.passwordStrengthBar.style.width = '0%';
-            }
-            if (this.passwordStrengthText) this.passwordStrengthText.textContent = 'Not set';
-            if (this.passwordRequirements) this.passwordRequirements.classList.remove('show');
-            
             await this.logAudit('PASSWORD_CHANGE', 'User changed their password', null, 'SUCCESS');
             
             setTimeout(() => {
@@ -516,7 +385,7 @@ class ProfileModule {
         } finally {
             if (this.changePasswordBtn) {
                 this.changePasswordBtn.disabled = false;
-                this.changePasswordBtn.innerHTML = 'Change Password';
+                this.changePasswordBtn.innerHTML = '<i class="fas fa-key"></i> Change Password';
             }
         }
     }
@@ -631,11 +500,11 @@ class ProfileModule {
         if (!this.userProfile) return;
         
         // Personal Information
-        if (this.profileName) this.profileName.value = this.userProfile.full_name || '';
-        if (this.profileStudentId) this.profileStudentId.value = this.userProfile.student_id || this.userProfile.reg_no || '';
-        if (this.profileEmail) this.profileEmail.value = this.userProfile.email || '';
-        if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
-        if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';
+        if (this.profileName) this.profileName.textContent = this.userProfile.full_name || 'Loading...';
+        if (this.profileStudentId) this.profileStudentId.textContent = this.userProfile.student_id || this.userProfile.reg_no || '-';
+        if (this.profileEmail) this.profileEmail.textContent = this.userProfile.email || '-';
+        if (this.profilePhone) this.profilePhone.textContent = this.userProfile.phone || this.userProfile.phone_number || '-';
+        if (this.profileAltPhone) this.profileAltPhone.textContent = this.userProfile.alt_phone || '-';
         
         // Date of Birth
         if (this.profileDob && this.userProfile.date_of_birth) {
@@ -648,10 +517,8 @@ class ProfileModule {
         }
         
         // Gender
-        if (this.profileGender && this.userProfile.gender) {
-            this.profileGender.value = this.userProfile.gender;
-        } else if (this.profileGender) {
-            this.profileGender.value = '';
+        if (this.profileGender) {
+            this.profileGender.value = this.userProfile.gender || '';
         }
         
         // National ID
@@ -665,7 +532,6 @@ class ProfileModule {
         if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';
         
         // Academic Information
-        if (this.profileRole) this.profileRole.value = this.userProfile.role || 'student';
         if (this.profileProgram) this.profileProgram.value = this.userProfile.program || this.userProfile.department || '';
         if (this.profileBlock) {
             const isTVET = this.isTVETStudent();
@@ -675,37 +541,8 @@ class ProfileModule {
         if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
         if (this.profileIntakeMonth) this.profileIntakeMonth.value = this.userProfile.intake_month || '';
         
-        // Admission Date
-        if (this.profileAdmissionDate && this.userProfile.admission_date) {
-            const admissionDate = new Date(this.userProfile.admission_date);
-            if (!isNaN(admissionDate)) {
-                this.profileAdmissionDate.value = admissionDate.toISOString().split('T')[0];
-            }
-        } else if (this.profileAdmissionDate) {
-            this.profileAdmissionDate.value = '';
-        }
-        
-        // Admission Year
-        if (this.profileAdmissionYear) {
-            if (this.userProfile.admission_year) {
-                this.profileAdmissionYear.value = this.userProfile.admission_year;
-            } else if (this.userProfile.admission_date) {
-                const year = new Date(this.userProfile.admission_date).getFullYear();
-                this.profileAdmissionYear.value = year;
-            } else {
-                this.profileAdmissionYear.value = '';
-            }
-        }
-        
-        // Document Status
-        if (this.profileDocKcse) {
-            const status = this.userProfile.doc_kcse || 'pending';
-            this.profileDocKcse.value = this.getDocumentStatusText(status);
-        }
-        if (this.profileDocId) {
-            const status = this.userProfile.doc_id || 'pending';
-            this.profileDocId.value = this.getDocumentStatusText(status);
-        }
+        // Update quick stats
+        this.updateQuickStats();
     }
     
     isTVETStudent() {
@@ -732,21 +569,18 @@ class ProfileModule {
         if (!this.userProfile) return;
         
         // Update badges
-        const docKcseBadge = document.getElementById('doc-kcse-badge');
-        const docIdBadge = document.getElementById('doc-id-badge');
-        
-        if (docKcseBadge) {
+        if (this.docKcseBadge) {
             const status = this.userProfile.doc_kcse || 'pending';
-            docKcseBadge.textContent = this.getDocumentStatusText(status);
-            docKcseBadge.style.background = this.getStatusColor(status);
-            docKcseBadge.style.color = 'white';
+            this.docKcseBadge.textContent = this.getDocumentStatusText(status);
+            this.docKcseBadge.style.background = this.getStatusColor(status);
+            this.docKcseBadge.style.color = 'white';
         }
         
-        if (docIdBadge) {
+        if (this.docIdBadge) {
             const status = this.userProfile.doc_id || 'pending';
-            docIdBadge.textContent = this.getDocumentStatusText(status);
-            docIdBadge.style.background = this.getStatusColor(status);
-            docIdBadge.style.color = 'white';
+            this.docIdBadge.textContent = this.getDocumentStatusText(status);
+            this.docIdBadge.style.background = this.getStatusColor(status);
+            this.docIdBadge.style.color = 'white';
         }
         
         // Update filename displays
@@ -777,14 +611,14 @@ class ProfileModule {
         let blockOrder;
         if (isTVET) {
             blockOrder = {
+                'Introductory': 1,
                 'Term 1': 1,
                 'Term 2': 2,
                 'Term 3': 3,
                 'Term 4': 4,
                 'Term 5': 5,
                 'Term 6': 6,
-                'Final': 7,
-                'Introductory': 1
+                'Final': 7
             };
         } else {
             blockOrder = {
@@ -801,23 +635,62 @@ class ProfileModule {
         const totalBlocks = 7;
         const currentBlockNumber = blockOrder[currentBlock] || 1;
         const completedBlocksCount = currentBlockNumber - 1;
-        const progressPercent = (completedBlocksCount / totalBlocks) * 100;
+        const progressPercent = Math.round((completedBlocksCount / totalBlocks) * 100);
         
         if (this.blockProgressFill) {
             this.blockProgressFill.style.width = `${progressPercent}%`;
         }
         
         if (this.blockProgressText) {
-            this.blockProgressText.textContent = `${Math.round(progressPercent)}% Complete`;
+            this.blockProgressText.textContent = `${progressPercent}% Complete`;
         }
         
         if (this.currentBlockStatus) {
-            const label = isTVET ? 'Term' : 'Block';
             this.currentBlockStatus.textContent = `Current: ${currentBlock}`;
         }
         
+        // Update quick stats
+        this.updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent);
         this.updateBlockTimeline(currentBlock, isTVET);
         this.updateCompletedBlocks(completedBlocksCount, isTVET);
+    }
+    
+    updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent) {
+        if (this.profileBlockNumber) {
+            const blockNum = currentBlockNumber || this.getCurrentBlockNumber();
+            this.profileBlockNumber.textContent = blockNum;
+        }
+        if (this.profileCompletedBlocks) {
+            const completed = completedBlocksCount !== undefined ? completedBlocksCount : this.getCompletedBlocksCount();
+            this.profileCompletedBlocks.textContent = completed;
+        }
+        if (this.profileProgress) {
+            const progress = progressPercent !== undefined ? progressPercent : this.getProgressPercent();
+            this.profileProgress.textContent = `${progress}%`;
+        }
+    }
+    
+    getCurrentBlockNumber() {
+        const isTVET = this.isTVETStudent();
+        const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Term 1' : 'Introductory');
+        
+        const blockOrder = isTVET ? {
+            'Introductory': 1, 'Term 1': 1, 'Term 2': 2, 'Term 3': 3,
+            'Term 4': 4, 'Term 5': 5, 'Term 6': 6, 'Final': 7
+        } : {
+            'Introductory': 1, 'Block 1': 2, 'Block 2': 3, 'Block 3': 4,
+            'Block 4': 5, 'Block 5': 6, 'Final': 7
+        };
+        
+        return blockOrder[currentBlock] || 1;
+    }
+    
+    getCompletedBlocksCount() {
+        return this.getCurrentBlockNumber() - 1;
+    }
+    
+    getProgressPercent() {
+        return Math.round((this.getCompletedBlocksCount() / 7) * 100);
     }
     
     updateBlockTimeline(currentBlock, isTVET) {
@@ -832,28 +705,32 @@ class ProfileModule {
         
         const currentIndex = blocks.indexOf(currentBlock);
         
-        const blockSteps = this.blockTimeline.querySelectorAll('.block-step');
-        const connectors = this.blockTimeline.querySelectorAll('.block-connector');
-        
-        blockSteps.forEach((step, index) => {
-            step.classList.remove('completed', 'current', 'upcoming');
-            
+        let html = '';
+        blocks.forEach((block, index) => {
+            let statusClass = 'upcoming';
+            let icon = '⏳';
             if (index < currentIndex) {
-                step.classList.add('completed');
+                statusClass = 'completed';
+                icon = '✅';
             } else if (index === currentIndex) {
-                step.classList.add('current');
-            } else {
-                step.classList.add('upcoming');
+                statusClass = 'current';
+                icon = '📌';
+            }
+            
+            html += `<span class="block-step ${statusClass}" style="padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; 
+                ${statusClass === 'completed' ? 'background: #d1fae5; color: #065f46;' : 
+                  statusClass === 'current' ? 'background: #4C1D95; color: white;' : 
+                  'background: #e2e8f0; color: #94a3b8;'}">
+                ${icon} ${block}
+            </span>`;
+            
+            if (index < blocks.length - 1) {
+                html += `<span class="block-connector ${index < currentIndex ? 'completed' : ''}" 
+                    style="color: ${index < currentIndex ? '#10b981' : '#d1d5db'}; font-size: 12px;">➜</span>`;
             }
         });
         
-        connectors.forEach((connector, index) => {
-            if (index < currentIndex) {
-                connector.classList.add('completed');
-            } else {
-                connector.classList.remove('completed');
-            }
-        });
+        this.blockTimeline.innerHTML = html;
     }
     
     updateCompletedBlocks(completedCount, isTVET) {
@@ -869,13 +746,15 @@ class ProfileModule {
         const completedBlocksList = blocks.slice(0, completedCount);
         
         if (completedBlocksList.length === 0) {
-            this.completedBlocksContainer.innerHTML = '<span class="completed-badge">None yet</span>';
+            this.completedBlocksContainer.innerHTML = '<span style="background: #e2e8f0; color: #64748b; padding: 4px 12px; border-radius: 12px; font-size: 12px;">None yet</span>';
             return;
         }
         
         let html = '';
         completedBlocksList.forEach(block => {
-            html += `<span class="completed-badge">✓ ${block}</span>`;
+            html += `<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                ✅ ${block}
+            </span>`;
         });
         
         this.completedBlocksContainer.innerHTML = html;
@@ -885,7 +764,7 @@ class ProfileModule {
         if (!this.userProfile) return;
         
         const photoUrl = this.userProfile.passport_url;
-        let finalPhotoSrc = 'https://dummyimage.com/160x160/cccccc/000000.png&text=Photo';
+        let finalPhotoSrc = 'https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=120';
         
         if (photoUrl) {
             try {
@@ -905,7 +784,7 @@ class ProfileModule {
                 
             } catch (error) {
                 console.warn('Photo load error:', error);
-                finalPhotoSrc = 'https://dummyimage.com/160x160/cccccc/000000.png&text=No+Photo';
+                finalPhotoSrc = 'https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=120';
             }
         }
         
@@ -935,9 +814,6 @@ class ProfileModule {
         if (this.editProfileButton) this.editProfileButton.style.display = 'inline-flex';
         if (this.saveProfileButton) this.saveProfileButton.style.display = 'none';
         if (this.cancelEditButton) this.cancelEditButton.style.display = 'none';
-        if (this.choosePhotoButton) this.choosePhotoButton.style.display = 'inline-flex';
-        if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
-        if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
         if (this.profileForm) this.profileForm.classList.remove('editing');
         this.setFieldsReadonly(true);
@@ -957,9 +833,6 @@ class ProfileModule {
         if (this.editProfileButton) this.editProfileButton.style.display = 'none';
         if (this.saveProfileButton) this.saveProfileButton.style.display = 'inline-flex';
         if (this.cancelEditButton) this.cancelEditButton.style.display = 'inline-flex';
-        if (this.choosePhotoButton) this.choosePhotoButton.style.display = 'inline-flex';
-        if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
-        if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
         if (this.profileForm) this.profileForm.classList.add('editing');
         this.setFieldsReadonly(false);
@@ -974,18 +847,16 @@ class ProfileModule {
     updateSavingMode() {
         if (this.saveProfileButton) {
             this.saveProfileButton.disabled = true;
-            this.saveProfileButton.innerHTML = '<span class="button-icon">⏳</span> Saving...';
+            this.saveProfileButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
         }
     }
     
     setFieldsReadonly(readonly) {
-        // Editable fields
+        // Editable fields (input elements)
         const editableFields = [
-            this.profileName, 
-            this.profilePhone, 
-            this.profileAltPhone,
-            this.profileGender,
             this.profileDob,
+            this.profileGender,
+            this.profileNationalId,
             this.profileAddress,
             this.profileGuardianName,
             this.profileGuardianPhone
@@ -1000,8 +871,12 @@ class ProfileModule {
                 }
                 if (!readonly) {
                     field.classList.add('editable');
+                    field.style.background = '#fffbeb';
+                    field.style.borderColor = '#f59e0b';
                 } else {
                     field.classList.remove('editable');
+                    field.style.background = '#f8fafc';
+                    field.style.borderColor = '#e2e8f0';
                 }
             }
         });
@@ -1011,39 +886,31 @@ class ProfileModule {
             if (!readonly) {
                 this.profileDob.removeAttribute('readonly');
                 this.profileDob.disabled = false;
-                this.profileDob.classList.add('editable');
-                this.profileDob.style.backgroundColor = '#fffbeb';
                 this.profileDob.style.cursor = 'pointer';
             } else {
                 this.profileDob.setAttribute('readonly', 'readonly');
                 this.profileDob.disabled = false;
-                this.profileDob.classList.remove('editable');
-                this.profileDob.style.backgroundColor = '#f8fafc';
             }
         }
         
-        // Readonly fields
+        // Readonly fields (display text elements)
         const readonlyFields = [
+            this.profileName,
             this.profileStudentId,
             this.profileEmail,
+            this.profilePhone,
+            this.profileAltPhone,
             this.profileProgram,
             this.profileBlock,
             this.profileIntakeYear,
-            this.profileIntakeMonth,
-            this.profileAdmissionDate,
-            this.profileAdmissionYear,
-            this.profileNationalId,
-            this.profileRole,
-            this.profileDocKcse,
-            this.profileDocId
+            this.profileIntakeMonth
         ];
         
         readonlyFields.forEach(field => {
             if (field) {
-                if (field.tagName === 'SELECT') {
-                    field.disabled = true;
-                } else {
+                if (field.tagName === 'INPUT' || field.tagName === 'SELECT') {
                     field.readOnly = true;
+                    field.disabled = true;
                 }
                 field.classList.remove('editable');
             }
@@ -1063,8 +930,6 @@ class ProfileModule {
         }
         
         if (this.passportFileInput) this.passportFileInput.value = '';
-        if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
-        if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
         this.updateUIState('view');
     }
@@ -1078,11 +943,9 @@ class ProfileModule {
         
         try {
             const updates = {
-                full_name: this.profileName ? this.profileName.value.trim() : '',
-                phone: this.profilePhone ? this.profilePhone.value.trim() : '',
-                alt_phone: this.profileAltPhone ? this.profileAltPhone.value.trim() : '',
                 date_of_birth: this.profileDob ? this.profileDob.value : null,
                 gender: this.profileGender ? this.profileGender.value : null,
+                national_id: this.profileNationalId ? this.profileNationalId.value.trim() : '',
                 address: this.profileAddress ? this.profileAddress.value.trim() : '',
                 guardian_name: this.profileGuardianName ? this.profileGuardianName.value.trim() : '',
                 guardian_phone: this.profileGuardianPhone ? this.profileGuardianPhone.value.trim() : '',
@@ -1126,31 +989,28 @@ class ProfileModule {
             }
         }
         
-        const emailValue = updates.email || existingProfile?.email || this.userProfile?.email || (this.profileEmail?.value);
+        const emailValue = updates.email || existingProfile?.email || this.userProfile?.email;
         const fullNameValue = updates.full_name || existingProfile?.full_name || this.userProfile?.full_name || '';
         const roleValue = existingProfile?.role || 'student';
         const statusValue = existingProfile?.status || 'active';
-        
-        let idValue = existingProfile?.id;
-        if (!idValue) idValue = this.userId;
         
         if (!emailValue) throw new Error('Email is required but not available');
         if (!fullNameValue) throw new Error('Full name is required');
         
         const upsertData = {
             user_id: this.userId,
-            id: idValue,
             email: emailValue,
             full_name: fullNameValue,
             role: roleValue,
             status: statusValue,
-            phone: updates.phone !== undefined ? updates.phone : (existingProfile?.phone || null),
-            alt_phone: updates.alt_phone !== undefined ? updates.alt_phone : (existingProfile?.alt_phone || null),
+            phone: existingProfile?.phone || this.userProfile?.phone || null,
+            alt_phone: existingProfile?.alt_phone || this.userProfile?.alt_phone || null,
             date_of_birth: dobValue,
             gender: updates.gender !== undefined ? updates.gender : (existingProfile?.gender || null),
             address: updates.address !== undefined ? updates.address : (existingProfile?.address || null),
             guardian_name: updates.guardian_name !== undefined ? updates.guardian_name : (existingProfile?.guardian_name || null),
             guardian_phone: updates.guardian_phone !== undefined ? updates.guardian_phone : (existingProfile?.guardian_phone || null),
+            national_id: updates.national_id !== undefined ? updates.national_id : (existingProfile?.national_id || null),
             updated_at: new Date().toISOString(),
             student_id: existingProfile?.student_id || this.userProfile?.student_id || null,
             program: existingProfile?.program || this.userProfile?.program || null,
@@ -1158,18 +1018,7 @@ class ProfileModule {
             current_block: existingProfile?.current_block || this.userProfile?.current_block || null,
             intake_year: existingProfile?.intake_year || this.userProfile?.intake_year || null,
             intake_month: existingProfile?.intake_month || this.userProfile?.intake_month || null,
-            admission_date: existingProfile?.admission_date || this.userProfile?.admission_date || null,
-            admission_year: existingProfile?.admission_year || this.userProfile?.admission_year || null,
             passport_url: existingProfile?.passport_url || this.userProfile?.passport_url || null,
-            national_id: existingProfile?.national_id || this.userProfile?.national_id || null,
-            department: existingProfile?.department || this.userProfile?.department || null,
-            block_program_year: existingProfile?.block_program_year || null,
-            student_uuid: existingProfile?.student_uuid || this.userId,
-            two_factor_enabled: existingProfile?.two_factor_enabled || false,
-            block_progress: existingProfile?.block_progress || null,
-            role_id: existingProfile?.role_id || null,
-            last_login: existingProfile?.last_login || null,
-            created_at: existingProfile?.created_at || new Date().toISOString(),
             doc_kcse: existingProfile?.doc_kcse || 'pending',
             doc_id: existingProfile?.doc_id || 'pending'
         };
@@ -1185,30 +1034,6 @@ class ProfileModule {
         if (error) throw error;
     }
     
-    async savePhotoOnly() {
-        if (!this.pendingPhotoFile) {
-            this.showStatus('No photo selected', 'error');
-            return;
-        }
-        
-        this.showStatus('Uploading photo...', 'info');
-        
-        try {
-            await this.uploadPassportPhoto();
-        } catch (error) {
-            this.showStatus(`Upload failed: ${error.message}`, 'error');
-        }
-    }
-    
-    cancelPhotoUpload() {
-        this.pendingPhotoFile = null;
-        if (this.passportFileInput) this.passportFileInput.value = '';
-        this.loadProfilePhoto();
-        if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
-        if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
-        this.showStatus('Photo upload cancelled', 'info');
-    }
-    
     onSaveSuccess() {
         if (this.photoObjectURL) {
             URL.revokeObjectURL(this.photoObjectURL);
@@ -1217,8 +1042,6 @@ class ProfileModule {
         
         this.pendingPhotoFile = null;
         if (this.passportFileInput) this.passportFileInput.value = '';
-        if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
-        if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
         
         this.loadProfile();
         this.showStatus('Profile updated successfully!', 'success');
@@ -1231,26 +1054,13 @@ class ProfileModule {
         
         if (this.saveProfileButton) {
             this.saveProfileButton.disabled = false;
-            this.saveProfileButton.innerHTML = '<span class="button-icon">💾</span> Save Changes';
+            this.saveProfileButton.innerHTML = '<i class="fas fa-save"></i> Save Changes';
         }
     }
     
     validateForm() {
         let isValid = true;
         this.clearAllErrors();
-        
-        if (this.profileName && !this.profileName.value.trim()) {
-            this.showFieldError(this.profileName, 'Name is required');
-            isValid = false;
-        }
-        
-        if (this.profilePhone && this.profilePhone.value.trim()) {
-            const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
-            if (!phoneRegex.test(this.profilePhone.value.trim())) {
-                this.showFieldError(this.profilePhone, 'Please enter a valid phone number');
-                isValid = false;
-            }
-        }
         
         if (this.profileDob && this.profileDob.value) {
             const dobValue = this.profileDob.value;
@@ -1275,11 +1085,20 @@ class ProfileModule {
             }
         }
         
+        if (this.profileGuardianPhone && this.profileGuardianPhone.value.trim()) {
+            const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
+            if (!phoneRegex.test(this.profileGuardianPhone.value.trim())) {
+                this.showFieldError(this.profileGuardianPhone, 'Please enter a valid phone number');
+                isValid = false;
+            }
+        }
+        
         return isValid;
     }
     
     showFieldError(field, message) {
         field.classList.add('error');
+        field.style.borderColor = '#dc2626';
         
         let errorElement = field.parentElement.querySelector('.field-error');
         if (!errorElement) {
@@ -1297,7 +1116,10 @@ class ProfileModule {
         const errorElements = document.querySelectorAll('.field-error');
         errorElements.forEach(element => element.remove());
         const errorInputs = document.querySelectorAll('.form-field input.error, .form-field select.error');
-        errorInputs.forEach(input => input.classList.remove('error'));
+        errorInputs.forEach(input => {
+            input.classList.remove('error');
+            input.style.borderColor = '#e2e8f0';
+        });
     }
     
     handlePassportFileSelect(event) {
@@ -1316,9 +1138,6 @@ class ProfileModule {
         if (this.photoObjectURL) URL.revokeObjectURL(this.photoObjectURL);
         this.photoObjectURL = URL.createObjectURL(file);
         if (this.passportPreview) this.passportPreview.src = this.photoObjectURL;
-        
-        if (this.savePhotoButton) this.savePhotoButton.style.display = 'inline-flex';
-        if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'inline-flex';
         
         const fileSize = (file.size / 1024 / 1024).toFixed(2);
         this.showStatus(`Ready to upload: ${file.name} (${fileSize} MB)`, 'info');
@@ -1374,8 +1193,6 @@ class ProfileModule {
             
             this.showStatus('Photo uploaded successfully!', 'success');
             this.pendingPhotoFile = null;
-            if (this.savePhotoButton) this.savePhotoButton.style.display = 'none';
-            if (this.cancelPhotoButton) this.cancelPhotoButton.style.display = 'none';
             await this.loadProfile();
             
             setTimeout(() => {
@@ -1394,8 +1211,19 @@ class ProfileModule {
     showStatus(message, type = 'info') {
         if (!this.profileStatus) return;
         
+        this.profileStatus.style.display = 'block';
         this.profileStatus.textContent = message;
         this.profileStatus.className = `form-status form-status-${type}`;
+        
+        // Style based on type
+        const styles = {
+            'info': { background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' },
+            'success': { background: '#d1fae5', color: '#065f46', border: '1px solid #10b981' },
+            'error': { background: '#fee2e2', color: '#991b1b', border: '1px solid #dc2626' }
+        };
+        
+        const style = styles[type] || styles.info;
+        Object.assign(this.profileStatus.style, style);
         
         if (type === 'success') {
             setTimeout(() => {
@@ -1408,9 +1236,19 @@ class ProfileModule {
     
     clearStatus() {
         if (this.profileStatus) {
+            this.profileStatus.style.display = 'none';
             this.profileStatus.textContent = '';
             this.profileStatus.className = '';
+            this.profileStatus.style.background = '';
+            this.profileStatus.style.color = '';
+            this.profileStatus.style.border = '';
         }
+    }
+    
+    // Refresh method
+    refresh() {
+        this.loadProfile();
+        this.showStatus('Profile refreshed!', 'success');
     }
 }
 
@@ -1460,10 +1298,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Expose to global scope
 window.ProfileModule = ProfileModule;
 window.initProfileModule = initProfileModule;
-window.loadProfile = () => {
-    if (profileModule) return profileModule.loadProfile();
+window.StudentProfile = {
+    refresh: () => {
+        if (profileModule) {
+            profileModule.refresh();
+        } else {
+            const instance = initProfileModule();
+            if (instance) {
+                setTimeout(() => instance.refresh(), 500);
+            }
+        }
+    }
 };
 
-console.log('✅ Profile module loaded with ALL fields (Phone, Alt Phone, DOB, Gender, National ID, Address, Guardian Name, Guardian Phone, Intake Month, Document Status, and Document Upload)');
+console.log('✅ Profile module loaded with enhanced UI support');
