@@ -1661,14 +1661,14 @@
         </div>
     </div>
 
-    <!-- ============================================ -->
-    <!-- EXTERNAL SCRIPTS -->
-    <!-- ============================================ -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-        crossorigin=""></script>
+ <!-- ============================================ -->
+<!-- EXTERNAL SCRIPTS -->
+<!-- ============================================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
 
 <!-- ============================================ -->
 <!-- GLOBAL FUNCTIONS FOR LECTURER HTML - FIXED -->
@@ -1769,6 +1769,173 @@ setTimeout(initDropdowns, 500);
 
 console.log('✅ toggleDropdown function updated');
 
+// ============================================================
+// GLOBAL SHOWTAB FUNCTION - FIXES ALL "showTab is not defined" ERRORS
+// ============================================================
+
+/**
+ * Global showTab function for lecturer dashboard
+ * Handles tab switching with proper UI updates
+ */
+function showTab(tabId) {
+    console.log('🔄 Switching to tab:', tabId);
+    
+    // Get all tab content sections and navigation links
+    const tabContents = document.querySelectorAll('.tab-content');
+    const navLinks = document.querySelectorAll('#mainNav a[data-tab], #mainNav .dropdown-menu a[data-tab]');
+    
+    // Hide all tab contents
+    tabContents.forEach(tab => {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all nav links
+    navLinks.forEach(link => {
+        link.classList.remove('active');
+        link.style.background = 'transparent';
+        link.style.borderLeft = 'none';
+    });
+    
+    // Show the selected tab content
+    const targetTab = document.getElementById(tabId + '-content');
+    if (targetTab) {
+        targetTab.style.display = 'block';
+        targetTab.classList.add('active');
+        // Add a small animation
+        targetTab.style.animation = 'fadeIn 0.3s ease';
+    } else {
+        console.warn('⚠️ Tab content not found:', tabId + '-content');
+        // Try fallback - maybe the tab ID is the content ID directly
+        const fallbackTab = document.getElementById(tabId);
+        if (fallbackTab && fallbackTab.classList.contains('tab-content')) {
+            fallbackTab.style.display = 'block';
+            fallbackTab.classList.add('active');
+        }
+    }
+    
+    // Highlight the active nav link
+    const activeLink = document.querySelector(`#mainNav a[data-tab="${tabId}"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+        activeLink.style.background = 'rgba(255,255,255,0.15)';
+        activeLink.style.borderLeft = '3px solid #FDB913';
+    } else {
+        // Check dropdown items
+        const dropdownLink = document.querySelector(`#mainNav .dropdown-menu a[data-tab="${tabId}"]`);
+        if (dropdownLink) {
+            dropdownLink.classList.add('active');
+            dropdownLink.style.background = 'rgba(255,255,255,0.15)';
+            dropdownLink.style.borderLeft = '3px solid #FDB913';
+            // Also open the parent dropdown
+            const parentDropdown = dropdownLink.closest('.nav-dropdown');
+            if (parentDropdown) {
+                parentDropdown.classList.add('open');
+                const menu = parentDropdown.querySelector('.dropdown-menu');
+                if (menu) {
+                    menu.style.display = 'block';
+                }
+            }
+        }
+    }
+    
+    // Save the active tab to localStorage for persistence
+    try {
+        localStorage.setItem('lecturerActiveTab', tabId);
+    } catch (e) {
+        // Ignore localStorage errors
+    }
+    
+    // Trigger any tab-specific loading
+    if (tabId === 'dashboard') {
+        if (window.LecturerDashboard && typeof window.LecturerDashboard.refresh === 'function') {
+            window.LecturerDashboard.refresh();
+        }
+    } else if (tabId === 'my-students') {
+        if (window.LecturerStudents && typeof window.LecturerStudents.loadStudents === 'function') {
+            window.LecturerStudents.loadStudents();
+        }
+    } else if (tabId === 'my-courses') {
+        if (window.LecturerCourses && typeof window.LecturerCourses.loadCourses === 'function') {
+            window.LecturerCourses.loadCourses();
+        }
+    } else if (tabId === 'attendance') {
+        if (window.LecturerAttendance && typeof window.LecturerAttendance.loadAttendance === 'function') {
+            window.LecturerAttendance.loadAttendance();
+        }
+    } else if (tabId === 'cats') {
+        if (window.LecturerExams && typeof window.LecturerExams.loadExams === 'function') {
+            window.LecturerExams.loadExams();
+        }
+    } else if (tabId === 'marks-management') {
+        if (window.LecturerMarks && typeof window.LecturerMarks.init === 'function') {
+            window.LecturerMarks.init();
+        }
+    } else if (tabId === 'sessions') {
+        if (window.LecturerSessions && typeof window.LecturerSessions.loadSessions === 'function') {
+            window.LecturerSessions.loadSessions();
+        }
+    } else if (tabId === 'resources') {
+        if (window.LecturerResources && typeof window.LecturerResources.loadResources === 'function') {
+            window.LecturerResources.loadResources();
+        }
+    } else if (tabId === 'messages') {
+        if (window.LecturerMessages && typeof window.LecturerMessages.loadMessages === 'function') {
+            window.LecturerMessages.loadMessages();
+        }
+    } else if (tabId === 'profile') {
+        if (window.LecturerProfile && typeof window.LecturerProfile.loadProfile === 'function') {
+            window.LecturerProfile.loadProfile();
+        }
+    }
+}
+
+// Also make it available on window
+window.showTab = showTab;
+
+// Restore last active tab on page load
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const lastTab = localStorage.getItem('lecturerActiveTab');
+        if (lastTab) {
+            // Check if the tab exists
+            const tabExists = document.querySelector(`#mainNav a[data-tab="${lastTab}"]`);
+            if (tabExists) {
+                setTimeout(() => showTab(lastTab), 300);
+            } else {
+                // If tab doesn't exist, show dashboard
+                showTab('dashboard');
+            }
+        } else {
+            // Default to dashboard
+            setTimeout(() => showTab('dashboard'), 300);
+        }
+    } catch (e) {
+        showTab('dashboard');
+    }
+});
+
+// Also handle tab clicks from navigation links (non-onclick)
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('#mainNav a[data-tab]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const tabId = this.dataset.tab;
+            showTab(tabId);
+        });
+    });
+    
+    // Handle dropdown links
+    document.querySelectorAll('.dropdown-menu a[data-tab]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const tabId = this.dataset.tab;
+            showTab(tabId);
+        });
+    });
+});
+
+console.log('✅ showTab function registered globally');
 
 // ============================================================
 // GLOBAL CLOSE MODAL FUNCTION
@@ -1958,6 +2125,18 @@ window.hideLoading = function() {
         
         .nav a:hover {
             background: rgba(255,255,255,0.1) !important;
+        }
+        
+        /* ============================================
+           FADE IN ANIMATION FOR TABS
+           ============================================ */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .tab-content {
+            animation: fadeIn 0.3s ease;
         }
     `;
     document.head.appendChild(style);
