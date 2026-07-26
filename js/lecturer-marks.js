@@ -1220,9 +1220,9 @@ function checkMarksApprovalStatus(marks) {
     }
 }
 
+
 // ============================================================
-// SAVE MARKS ENTRY - WITH PROPER APPROVAL WORKFLOW
-// APPROVED MARKS ARE PERMANENT AND CANNOT BE EDITED
+// SAVE MARKS ENTRY - WITH EDIT LOGGING
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1297,16 +1297,17 @@ async function saveMarksEntry() {
     let saved = 0;
     let updated = 0;
     let errors = 0;
-    let approvedBlocked = 0;
+    let approvedEdited = 0;
     let resetToDraft = 0;
     const errorDetails = [];
+    const approvedEdits = [];
     
     try {
         for (const mark of marksData) {
             // Check if mark already exists
             const { data: existing, error: findError } = await sb
                 .from('student_marks')
-                .select('id, approval_status, cat1_score, cat2_score, exam_score')
+                .select('id, approval_status, cat1_score, cat2_score, exam_score, final_score')
                 .eq('admission_number', mark.admission)
                 .eq('subject_name', unit)
                 .eq('block', block)
@@ -1319,31 +1320,20 @@ async function saveMarksEntry() {
                 continue;
             }
             
-            // ============================================================
-            // CRITICAL: Check if marks are already APPROVED
-            // APPROVED marks are PERMANENT and CANNOT be edited by lecturers
-            // ============================================================
-            if (existing && existing.approval_status === 'approved') {
-                approvedBlocked++;
-                errorDetails.push(`Student ${mark.admission}: 🔒 APPROVED - Cannot edit (contact admin)`);
-                console.log(`🔒 Blocked editing approved marks for ${mark.admission}`);
-                continue; // Skip this student entirely
-            }
-            
             // Calculate totals
             const total = calculateMarksEntryTotal(mark.cat1, mark.cat2, mark.exam, assessmentType);
             const gradeInfo = getMarksEntryGrade(total);
             
-            // ============================================================
             // Determine approval status
-            // ============================================================
-            let newApprovalStatus = 'draft'; // Default for new marks
+            let newApprovalStatus = existing?.approval_status || 'draft';
+            let isApprovedEdit = false;
             
             if (existing) {
                 // Check if marks have changed
                 const oldCat1 = parseFloat(existing.cat1_score) || 0;
                 const oldCat2 = parseFloat(existing.cat2_score) || 0;
                 const oldExam = parseFloat(existing.exam_score) || 0;
+                const oldTotal = parseFloat(existing.final_score) || 0;
                 
                 const hasChanges = (
                     Math.abs(oldCat1 - mark.cat1) > 0.01 ||
@@ -1351,24 +1341,40 @@ async function saveMarksEntry() {
                     Math.abs(oldExam - mark.exam) > 0.01
                 );
                 
+                // ✅ ALLOW editing approved marks - just log it
+                if (hasChanges && existing.approval_status === 'approved') {
+                    // Keep as approved, just log the change
+                    newApprovalStatus = 'approved';
+                    isApprovedEdit = true;
+                    approvedEdited++;
+                    
+                    // Store change details for logging
+                    approvedEdits.push({
+                        admission: mark.admission,
+                        name: mark.name,
+                        old_cat1: oldCat1,
+                        old_cat2: oldCat2,
+                        old_exam: oldExam,
+                        old_total: oldTotal,
+                        new_cat1: mark.cat1,
+                        new_cat2: mark.cat2,
+                        new_exam: mark.exam,
+                        new_total: total
+                    });
+                    
+                    console.log(`✏️ Approved mark edited: ${mark.admission}`);
+                }
+                
                 // If changes were made and status was pending or rejected, reset to draft
-                if (hasChanges) {
+                if (hasChanges && !isApprovedEdit) {
                     if (existing.approval_status === 'pending' || existing.approval_status === 'rejected') {
                         newApprovalStatus = 'draft';
                         resetToDraft++;
                         console.log(`🔄 Reset ${mark.admission} from ${existing.approval_status} to draft due to changes`);
                     } else if (existing.approval_status === 'draft') {
-                        newApprovalStatus = 'draft'; // Keep as draft
-                    } else {
-                        newApprovalStatus = existing.approval_status; // Keep existing status
+                        newApprovalStatus = 'draft';
                     }
-                } else {
-                    // No changes, keep existing status
-                    newApprovalStatus = existing.approval_status;
                 }
-            } else {
-                // New mark - always draft
-                newApprovalStatus = 'draft';
             }
             
             const markData = {
@@ -1389,7 +1395,7 @@ async function saveMarksEntry() {
             
             let result;
             if (existing) {
-                // UPDATE existing mark (only if not approved)
+                // UPDATE existing mark
                 result = await sb
                     .from('student_marks')
                     .update(markData)
@@ -1402,6 +1408,7 @@ async function saveMarksEntry() {
             } else {
                 // INSERT new mark
                 markData.created_at = new Date().toISOString();
+                markData.approval_status = 'draft';
                 result = await sb
                     .from('student_marks')
                     .insert([markData]);
@@ -1419,6 +1426,49 @@ async function saveMarksEntry() {
             }
         }
         
+        // ✅ Log approved edits to a separate table
+        if (approvedEdits.length > 0) {
+            try {
+                // Check if table exists, create if not
+                const { data: tableCheck, error: tableError } = await sb
+                    .from('approved_edit_logs')
+                    .select('id')
+                    .limit(1);
+                
+                // If table doesn't exist, we'll just log to console
+                if (!tableError) {
+                    // Insert logs
+                    for (const edit of approvedEdits) {
+                        await sb
+                            .from('approved_edit_logs')
+                            .insert({
+                                block: block,
+                                unit: unit,
+                                academic_year: year,
+                                admission: edit.admission,
+                                student_name: edit.name,
+                                lecturer_id: me_currentLecturer?.profile?.id || null,
+                                lecturer_name: me_currentLecturer?.profile?.full_name || 'Unknown',
+                                old_cat1: edit.old_cat1,
+                                old_cat2: edit.old_cat2,
+                                old_exam: edit.old_exam,
+                                old_total: edit.old_total,
+                                new_cat1: edit.new_cat1,
+                                new_cat2: edit.new_cat2,
+                                new_exam: edit.new_exam,
+                                new_total: edit.new_total,
+                                edited_at: new Date().toISOString()
+                            });
+                    }
+                    console.log(`📝 Logged ${approvedEdits.length} approved mark edits`);
+                } else {
+                    console.warn('⚠️ approved_edit_logs table not found, skipping logging');
+                }
+            } catch (logError) {
+                console.warn('⚠️ Could not log approved edits:', logError.message);
+            }
+        }
+        
         hideLoading();
         
         // ============================================================
@@ -1426,16 +1476,16 @@ async function saveMarksEntry() {
         // ============================================================
         let message = '';
         
-        if (saved > 0 && updated > 0 && errors === 0 && approvedBlocked === 0) {
+        if (saved > 0 && updated > 0 && errors === 0) {
             message = `✅ Saved ${saved} new and updated ${updated} marks successfully!`;
             showNotification(message, 'success');
         } else if (saved > 0 || updated > 0) {
             message = `✅ ${saved > 0 ? saved + ' new saved, ' : ''}${updated > 0 ? updated + ' updated' : ''}`;
             if (errors > 0) message += `, ${errors} errors`;
-            if (approvedBlocked > 0) message += `, ${approvedBlocked} approved (blocked)`;
+            if (approvedEdited > 0) message += `, ${approvedEdited} approved (edited)`;
             if (resetToDraft > 0) message += `, ${resetToDraft} reset to draft`;
-            showNotification(message, (errors > 0 || approvedBlocked > 0) ? 'warning' : 'success');
-        } else if (errors > 0 && approvedBlocked === 0) {
+            showNotification(message, (errors > 0) ? 'warning' : 'success');
+        } else if (errors > 0) {
             message = `❌ Failed to save ${errors} marks. Check console for details.`;
             showNotification(message, 'error');
         }
@@ -1444,9 +1494,9 @@ async function saveMarksEntry() {
         // SHOW WARNINGS
         // ============================================================
         
-        // Warn about approved marks that were blocked
-        if (approvedBlocked > 0) {
-            showNotification(`🔒 ${approvedBlocked} marks are APPROVED and cannot be edited. Contact admin to modify.`, 'error');
+        // Warn about approved marks that were edited
+        if (approvedEdited > 0) {
+            showNotification(`✏️ ${approvedEdited} approved marks were edited. Admin has been notified.`, 'warning');
         }
         
         // Warn about marks reset to draft
@@ -1470,96 +1520,6 @@ async function saveMarksEntry() {
         hideLoading();
         showNotification('❌ Error saving marks: ' + error.message, 'error');
         console.error('Save error:', error);
-    }
-}
-
-// ============================================================
-// SUBMIT FOR APPROVAL
-// ============================================================
-
-async function submitMarksForApproval() {
-    const block = me_currentBlock;
-    const unit = me_currentUnit;
-    const year = me_currentYear;
-    
-    if (!block || !unit) {
-        showNotification('Please load marks first', 'warning');
-        return;
-    }
-    
-    const { data: existing, error } = await sb
-        .from('student_marks')
-        .select('id, approval_status')
-        .eq('block', block)
-        .eq('subject_name', unit)
-        .eq('academic_year', year);
-    
-    if (error) {
-        showNotification('Error checking marks: ' + error.message, 'error');
-        return;
-    }
-    
-    if (!existing || existing.length === 0) {
-        showNotification('No marks to submit for approval', 'warning');
-        return;
-    }
-    
-    const alreadyPending = existing.filter(m => m.approval_status === 'pending');
-    if (alreadyPending.length > 0) {
-        showNotification(`${alreadyPending.length} marks already pending approval`, 'warning');
-        return;
-    }
-    
-    // Check if marks have scores
-    const draftMarks = existing.filter(m => m.approval_status === 'draft' || m.approval_status === 'rejected');
-    if (draftMarks.length === 0) {
-        showNotification('No draft or rejected marks to submit', 'warning');
-        return;
-    }
-    
-    if (!confirm(`Submit ${draftMarks.length} marks for "${unit}" in ${block.replace('_', ' ')} for admin approval?`)) {
-        return;
-    }
-    
-    showLoading('Submitting for approval...');
-    
-    try {
-        const { error: updateError } = await sb
-            .from('student_marks')
-            .update({
-                approval_status: 'pending',
-                submitted_at: new Date().toISOString(),
-                submitted_by: me_currentLecturer?.profile?.id || null
-            })
-            .eq('block', block)
-            .eq('subject_name', unit)
-            .eq('academic_year', year)
-            .in('approval_status', ['draft', 'rejected']);
-        
-        if (updateError) throw updateError;
-        
-        // Log the submission
-        try {
-            await sb
-                .from('mark_approval_logs')
-                .insert({
-                    action: 'submitted',
-                    action_by: me_currentLecturer?.profile?.id || null,
-                    action_by_name: me_currentLecturer?.profile?.full_name || 'Lecturer',
-                    reason: `Submitted ${draftMarks.length} marks for "${unit}" in ${block}`,
-                    created_at: new Date().toISOString()
-                });
-        } catch (logError) {
-            console.warn('Could not save approval log:', logError);
-        }
-        
-        hideLoading();
-        showNotification(`✅ ${draftMarks.length} marks submitted for approval!`, 'success');
-        await loadMarksEntry();
-        
-    } catch (error) {
-        hideLoading();
-        showNotification('❌ Error submitting for approval: ' + error.message, 'error');
     }
 }
 
