@@ -1641,27 +1641,33 @@
                 this.showToast('Error loading exam results', 'error');
             }
         }
-        
        // ============================================
-// 📊 VIEW DETAILED EXAM RESULTS - NO JOIN VERSION
-// ✅ Uses separate queries - NO foreign key required
+// 📊 VIEW DETAILED EXAM RESULTS - WITH ALL OPTIONS
+// ✅ Shows ALL options (A, B, C, D) for each question
 // ============================================
 
 async viewDetailedResults(examId) {
+    console.log('🔍 viewDetailedResults called with examId:', examId);
+    
     try {
         const supabase = window.db?.supabase;
         if (!supabase) {
+            console.error('❌ Supabase not available');
             this.showToast('Database connection not available', 'warning');
             return;
         }
         
         const userId = this.userId || window.db?.currentUserId;
+        console.log('👤 User ID:', userId);
+        
         if (!userId) {
+            console.error('❌ No user ID found');
             this.showToast('Please log in to view results', 'warning');
             return;
         }
         
-        // ✅ 1. Get exam details (separate query)
+        // ✅ 1. Get exam details
+        console.log('📥 Fetching exam details for ID:', examId);
         const { data: exam, error: examError } = await supabase
             .from('exams')
             .select('*')
@@ -1669,11 +1675,13 @@ async viewDetailedResults(examId) {
             .single();
         
         if (examError) {
-            console.error('Exam error:', examError);
+            console.error('❌ Exam error:', examError);
             throw examError;
         }
+        console.log('✅ Exam found:', exam?.exam_name);
         
-        // ✅ 2. Get ALL exam questions (separate query - NO JOIN)
+        // ✅ 2. Get ALL exam questions
+        console.log('📥 Fetching questions for exam:', examId);
         const { data: questions, error: questionsError } = await supabase
             .from('exam_questions')
             .select('*')
@@ -1681,11 +1689,13 @@ async viewDetailedResults(examId) {
             .order('question_number', { ascending: true });
         
         if (questionsError) {
-            console.error('Questions error:', questionsError);
+            console.error('❌ Questions error:', questionsError);
             throw questionsError;
         }
+        console.log('✅ Questions found:', questions?.length || 0);
         
-        // ✅ 3. Get student answers (separate query - NO JOIN)
+        // ✅ 3. Get student answers
+        console.log('📥 Fetching answers for student:', userId);
         const { data: answers, error: answersError } = await supabase
             .from('exam_grades')
             .select('*')
@@ -1694,11 +1704,13 @@ async viewDetailedResults(examId) {
             .neq('question_id', '00000000-0000-0000-0000-000000000000');
         
         if (answersError) {
-            console.error('Answers error:', answersError);
+            console.error('❌ Answers error:', answersError);
             throw answersError;
         }
+        console.log('✅ Answers found:', answers?.length || 0);
         
-        // ✅ 4. Get overall grade (separate query)
+        // ✅ 4. Get overall grade
+        console.log('📥 Fetching overall grade');
         const { data: grade, error: gradeError } = await supabase
             .from('exam_grades')
             .select('*')
@@ -1708,15 +1720,25 @@ async viewDetailedResults(examId) {
             .single();
         
         if (gradeError) {
-            console.error('Grade error:', gradeError);
+            console.error('❌ Grade error:', gradeError);
             throw gradeError;
         }
+        console.log('✅ Grade found:', grade);
         
-        // ✅ 5. Build question review by matching in JavaScript (NO DATABASE JOIN)
+        // ✅ 5. Build question review with ALL options
         const questionReview = (questions || []).map(q => {
             const answer = answers?.find(a => a.question_id === q.id);
+            
+            // Build options array with labels
+            const options = [];
+            if (q.option_a) options.push({ label: 'A', value: q.option_a });
+            if (q.option_b) options.push({ label: 'B', value: q.option_b });
+            if (q.option_c) options.push({ label: 'C', value: q.option_c });
+            if (q.option_d) options.push({ label: 'D', value: q.option_d });
+            
             return {
                 question_text: q.question_text || 'Question ' + q.id,
+                options: options,
                 student_answer: answer?.selected_answer || 'Not answered',
                 correct_answer: q.correct_answer || 'N/A',
                 is_correct: answer?.selected_answer === q.correct_answer,
@@ -1726,6 +1748,8 @@ async viewDetailedResults(examId) {
             };
         });
         
+        console.log('✅ Built question review:', questionReview.length, 'questions');
+        
         const totalCorrect = questionReview.filter(q => q.is_correct).length;
         const totalQuestions = questionReview.length;
         const score = grade?.marks || 0;
@@ -1733,7 +1757,9 @@ async viewDetailedResults(examId) {
         const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
         const passed = parseFloat(percentage) >= (exam?.pass_mark || 60);
         
-        // ✅ 6. Build questions HTML
+        console.log(`📊 Score: ${score}/${totalMarks}, ${percentage}%, ${passed ? 'PASS' : 'FAIL'}`);
+        
+        // ✅ 6. Build questions HTML with ALL options
         let questionsHtml = '';
         if (questionReview.length === 0) {
             questionsHtml = `
@@ -1750,33 +1776,67 @@ async viewDetailedResults(examId) {
                 const borderColor = isCorrect ? '#D1FAE5' : '#FEE2E2';
                 const answerColor = isCorrect ? '#38A169' : '#DC2626';
                 
+                // Build options HTML
+                let optionsHtml = '';
+                if (q.options && q.options.length > 0) {
+                    optionsHtml = '<div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 0.9rem;">';
+                    q.options.forEach(opt => {
+                        const isStudentAnswer = opt.label === q.student_answer;
+                        const isCorrectAnswer = opt.label === q.correct_answer;
+                        let style = 'padding: 4px 8px; border-radius: 4px;';
+                        
+                        if (isStudentAnswer && isCorrectAnswer) {
+                            style += ' background: #D1FAE5; color: #065F46; font-weight: 700; border: 2px solid #38A169;';
+                        } else if (isStudentAnswer && !isCorrectAnswer) {
+                            style += ' background: #FEE2E2; color: #991B1B; font-weight: 700; border: 2px solid #DC2626;';
+                        } else if (isCorrectAnswer) {
+                            style += ' background: #D1FAE5; color: #065F46; font-weight: 600; border: 1px solid #38A169;';
+                        } else {
+                            style += ' background: #F8FAFC; color: #475569;';
+                        }
+                        
+                        optionsHtml += `
+                            <div style="${style}">
+                                <strong>${opt.label}.</strong> ${this.escapeHtml(opt.value)}
+                                ${isStudentAnswer && isCorrectAnswer ? ' ✅ (Your answer - Correct!)' : ''}
+                                ${isStudentAnswer && !isCorrectAnswer ? ' ❌ (Your answer - Wrong)' : ''}
+                                ${!isStudentAnswer && isCorrectAnswer ? ' ✅ (Correct answer)' : ''}
+                            </div>
+                        `;
+                    });
+                    optionsHtml += '</div>';
+                }
+                
                 questionsHtml += `
                     <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;">
-                        <div style="font-weight: 600; color: #0A3D62; margin-bottom: 6px;">
+                        <div style="font-weight: 600; color: #0A3D62; margin-bottom: 4px;">
                             ${icon} Q${index + 1}: ${this.escapeHtml(q.question_text)}
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.9rem;">
-                            <div>Your answer: <strong style="color: ${answerColor};">${this.escapeHtml(q.student_answer)}</strong></div>
-                            <div>Correct answer: <strong style="color: #38A169;">${this.escapeHtml(q.correct_answer)}</strong></div>
-                            <div style="color: ${isCorrect ? '#38A169' : '#DC2626'}; font-weight: 600;">${isCorrect ? '✓ Correct' : '✗ Wrong'}</div>
-                            <div>Marks: ${isCorrect ? q.marks_obtained : 0}/${q.total_marks}</div>
+                        <div style="display: flex; gap: 16px; font-size: 0.85rem; color: #64748B; margin-bottom: 6px;">
+                            <span>Marks: ${q.marks_obtained}/${q.total_marks}</span>
+                            <span style="color: ${isCorrect ? '#38A169' : '#DC2626'}; font-weight: 600;">
+                                ${isCorrect ? '✓ Correct' : '✗ Wrong'}
+                            </span>
                         </div>
-                        ${q.explanation ? `<div style="margin-top: 6px; font-size: 0.85rem; color: #64748B; background: white; padding: 8px; border-radius: 4px;">💡 ${this.escapeHtml(q.explanation)}</div>` : ''}
+                        ${optionsHtml}
+                        ${q.explanation ? `<div style="margin-top: 8px; font-size: 0.85rem; color: #64748B; background: white; padding: 8px; border-radius: 4px; border-left: 3px solid #3B82F6;">💡 ${this.escapeHtml(q.explanation)}</div>` : ''}
                     </div>
                 `;
             });
         }
         
-        // ✅ 7. Build the modal
+        // ✅ 7. Build and show the modal
+        console.log('📱 Building modal...');
+        
         const modalHtml = `
             <div id="detailedResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
-                <div style="background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px;">
+                <div style="background: white; border-radius: 16px; max-width: 750px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                         <h2 style="margin: 0; color: #0A3D62;">
                             <i class="fas fa-clipboard-list"></i> Detailed Exam Review
                         </h2>
                         <button onclick="document.getElementById('detailedResultsModal').remove()" 
-                                style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #94A3B8;">
+                                style="background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #94A3B8; padding: 0 8px;">
                             &times;
                         </button>
                     </div>
@@ -1789,7 +1849,7 @@ async viewDetailedResults(examId) {
                         <div style="font-weight: 600; color: ${passed ? '#38A169' : '#DC2626'};">
                             ${passed ? '✅ PASS' : '❌ FAIL'}
                         </div>
-                        <div style="display: flex; justify-content: center; gap: 24px; margin-top: 12px;">
+                        <div style="display: flex; justify-content: center; gap: 24px; margin-top: 12px; flex-wrap: wrap;">
                             <div><span style="color: #64748B;">Score:</span> <strong>${score}/${totalMarks}</strong></div>
                             <div><span style="color: #64748B;">Correct:</span> <strong style="color: #38A169;">${totalCorrect}/${totalQuestions}</strong></div>
                             <div><span style="color: #64748B;">Wrong:</span> <strong style="color: #DC2626;">${totalQuestions - totalCorrect}</strong></div>
@@ -1809,15 +1869,23 @@ async viewDetailedResults(examId) {
             </div>
         `;
         
+        // Remove existing modal if any
         const existing = document.getElementById('detailedResultsModal');
         if (existing) existing.remove();
+        
+        // Add the modal to the page
         document.body.insertAdjacentHTML('beforeend', modalHtml);
+        console.log('✅ Modal added to DOM');
+        
+        // Add click listener to close on backdrop click
         document.getElementById('detailedResultsModal').addEventListener('click', function(e) {
             if (e.target === this) this.remove();
         });
         
+        console.log('✅ Modal should be visible now');
+        
     } catch (error) {
-        console.error('Error loading detailed results:', error);
+        console.error('❌ Error loading detailed results:', error);
         this.showToast('Error loading exam details: ' + error.message, 'error');
     }
 }
