@@ -1,7 +1,7 @@
 // js/lecturer-dashboard.js
 /**
  * NCHSM Lecturer Dashboard Module
- * Uses dedicated lecturer database
+ * Uses dedicated lecturer database with correct ID resolution
  */
 
 const LecturerDashboard = {
@@ -25,10 +25,12 @@ const LecturerDashboard = {
         trend: null,
         programBreakdown: null
     },
+    lecturerAssignmentId: null,
     
     async init() {
         console.log('📊 Initializing Lecturer Dashboard...');
         try {
+            await this.resolveLecturerId();
             await this.loadMetrics();
             await this.loadAttendanceMetrics();
             this.updateWelcomeBanner();
@@ -36,6 +38,81 @@ const LecturerDashboard = {
             console.log('✅ Lecturer Dashboard initialized');
         } catch (error) {
             console.error('❌ Dashboard initialization error:', error);
+        }
+    },
+    
+    // ============================================
+    // RESOLVE LECTURER ID - SAME AS OTHER MODULES
+    // ============================================
+    async resolveLecturerId() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) return;
+            
+            const fullName = profile.full_name;
+            const authId = profile.user_id;
+            
+            console.log('🔍 Dashboard - Auth ID:', authId);
+            console.log('🔍 Dashboard - Lecturer name:', fullName);
+            
+            // Get ALL lecturers with similar names
+            const nameParts = fullName.toLowerCase().split(' ');
+            const { data: allLecturers, error: allError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .order('created_at', { ascending: false });
+            
+            if (!allError && allLecturers && allLecturers.length > 0) {
+                let bestMatch = null;
+                let bestScore = -1;
+                
+                for (const lecturer of allLecturers) {
+                    const lecturerName = lecturer.lecturer_name || '';
+                    const lecturerId = lecturer.lecturer_id;
+                    let score = 0;
+                    
+                    const lecturerNameLower = lecturerName.toLowerCase();
+                    for (const part of nameParts) {
+                        if (part.length > 1 && lecturerNameLower.includes(part)) {
+                            score += 5;
+                        }
+                    }
+                    
+                    if (lecturerNameLower === fullName.toLowerCase()) {
+                        score += 20;
+                    }
+                    
+                    // BIG BONUS for non-STAFF IDs
+                    if (!lecturerId.toString().startsWith('STAFF')) {
+                        score += 50;
+                    }
+                    
+                    if (lecturerId.toString().includes('-')) {
+                        score += 30;
+                    }
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = lecturerId;
+                    }
+                }
+                
+                if (bestMatch) {
+                    this.lecturerAssignmentId = bestMatch;
+                    console.log('✅ Dashboard using lecturer ID:', this.lecturerAssignmentId);
+                    return;
+                }
+            }
+            
+            this.lecturerAssignmentId = authId;
+            console.log('⚠️ Dashboard falling back to auth ID:', this.lecturerAssignmentId);
+            
+        } catch (error) {
+            console.error('Error resolving lecturer ID:', error);
+            this.lecturerAssignmentId = null;
         }
     },
     
@@ -78,20 +155,43 @@ const LecturerDashboard = {
                 return;
             }
             
-            const students = await window.lecturerDB.getStudents(program);
-            this.metrics.totalStudents = students.length;
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
             
-            const courses = await window.lecturerDB.getCourses(program);
-            this.metrics.totalCourses = courses.length;
+            // Get students in this program
+            const { data: students } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('role', 'student')
+                .eq('program', program);
             
-            this.metrics.atRiskStudents = students.filter(s => 
+            this.metrics.totalStudents = students?.length || 0;
+            
+            // Get courses assigned to this lecturer using the resolved ID
+            const lecturerId = this.lecturerAssignmentId || profile.user_id;
+            const { data: assignments } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('*')
+                .eq('lecturer_id', lecturerId);
+            
+            this.metrics.totalCourses = assignments?.length || 0;
+            
+            // At risk students (simplified)
+            this.metrics.atRiskStudents = students?.filter(s => 
                 (s.cumulative_absences || 0) > 5 || (s.status || '').toLowerCase() === 'probation'
             ).length || 0;
             
-            const exams = await window.lecturerDB.getExams(program);
-            this.metrics.examsDue = exams.filter(e => 
-                e.status === 'Scheduled' || e.status === 'InProgress'
-            ).length || 0;
+            // Exams due
+            const { data: exams } = await supabase
+                .from('cats_exams')
+                .select('*')
+                .eq('program', program)
+                .eq('status', 'Scheduled');
+            
+            this.metrics.examsDue = exams?.length || 0;
             
             this.updateMetricCards();
             
@@ -128,27 +228,53 @@ const LecturerDashboard = {
             
             if (!program) return;
             
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
             const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
             
-            const todayLogs = await window.lecturerDB.getAttendance(program, today);
-            this.attendanceMetrics.today = todayLogs.filter(l => l.session_type !== 'Lecturer Check-in').length;
+            // Today's attendance
+            const { data: todayLogs } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('program', program)
+                .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
+                .lte('check_in_time', `${todayStr}T23:59:59.999Z`);
             
+            this.attendanceMetrics.today = todayLogs?.length || 0;
+            
+            // Weekly attendance
             const weekRange = window.LecturerUtils?.getWeekRange() || this.getWeekRange();
-            const weekLogs = await window.lecturerDB.getAttendance(program);
-            this.attendanceMetrics.week = weekLogs.filter(l => {
+            const { data: weekLogs } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('program', program);
+            
+            this.attendanceMetrics.week = weekLogs?.filter(l => {
                 const date = new Date(l.check_in_time);
-                return date >= weekRange.start && date <= weekRange.end && l.session_type !== 'Lecturer Check-in';
-            }).length;
+                return date >= weekRange.start && date <= weekRange.end;
+            }).length || 0;
             
+            // Monthly rate
             const monthRange = window.LecturerUtils?.getMonthRange() || this.getMonthRange();
-            const monthLogs = await window.lecturerDB.getAttendance(program);
-            const uniqueStudents = [...new Set(monthLogs.map(l => l.student_id))];
-            const students = await window.lecturerDB.getStudents(program);
-            const rate = students.length > 0 ? Math.round((uniqueStudents.length / students.length) * 100) : 0;
-            this.attendanceMetrics.month = rate;
+            const { data: monthLogs } = await supabase
+                .from('geo_attendance_logs')
+                .select('student_id')
+                .eq('program', program);
             
-            const overallLogs = await window.lecturerDB.getAttendance(program);
-            this.attendanceMetrics.overall = overallLogs.filter(l => l.session_type !== 'Lecturer Check-in').length;
+            const uniqueStudents = [...new Set(monthLogs?.map(l => l.student_id) || [])];
+            const { data: allStudents } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id')
+                .eq('role', 'student')
+                .eq('program', program);
+            
+            const totalStudents = allStudents?.length || 1;
+            this.attendanceMetrics.month = Math.round((uniqueStudents.length / totalStudents) * 100);
+            
+            // Overall
+            this.attendanceMetrics.overall = monthLogs?.length || 0;
             
             this.updateAttendanceMetricsUI();
             
@@ -203,7 +329,7 @@ const LecturerDashboard = {
     },
     
     // ============================================================
-    // CHARTS - FIXED VERSION
+    // CHARTS - FIXED WITH CORRECT DATA
     // ============================================================
     
     async loadCharts() {
@@ -296,13 +422,15 @@ const LecturerDashboard = {
                 if (!subjectMarks[subject]) {
                     subjectMarks[subject] = [];
                 }
-                subjectMarks[subject].push(m.score || 0);
+                subjectMarks[subject].push(m.final_score || m.score || 0);
             });
             
             const subjectNames = Object.keys(subjectMarks);
             const subjectAverages = subjectNames.map(name => {
                 const scores = subjectMarks[name];
-                return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+                const validScores = scores.filter(s => s > 0);
+                if (validScores.length === 0) return 0;
+                return Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length);
             });
             
             console.log('📚 Subjects:', subjectNames);
@@ -376,7 +504,6 @@ const LecturerDashboard = {
                         .from('geo_attendance_logs')
                         .select('*')
                         .eq('program', program)
-                        .eq('session_type', 'Class')
                         .gte('check_in_time', `${dateStr}T00:00:00.000Z`)
                         .lte('check_in_time', `${dateStr}T23:59:59.999Z`);
                     
@@ -489,6 +616,7 @@ const LecturerDashboard = {
     },
     
     async refresh() {
+        await this.resolveLecturerId();
         await this.loadMetrics();
         await this.loadAttendanceMetrics();
         await this.loadCharts();
@@ -504,3 +632,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.LecturerDashboard = LecturerDashboard;
+
+console.log('✅ LecturerDashboard module loaded - Uses correct ID resolution');
