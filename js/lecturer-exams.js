@@ -2,7 +2,7 @@
 /**
  * NCHSM Lecturer Exams Module
  * Uses dedicated lecturer database with correct ID resolution
- * Includes admin approval workflow
+ * KEEPS ORIGINAL exams TABLE QUERY
  */
 
 const LecturerExams = {
@@ -44,16 +44,21 @@ const LecturerExams = {
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // Try to find by name in lecturer_subject_assignments
-            const { data, error } = await supabase
+            // Try exact name match
+            const { data: nameData, error: nameError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
-                .eq('lecturer_name', fullName)
-                .limit(1);
+                .eq('lecturer_name', fullName);
             
-            if (!error && data && data.length > 0) {
-                this.lecturerAssignmentId = data[0].lecturer_id;
-                console.log('✅ Found lecturer ID by name:', this.lecturerAssignmentId);
+            if (!nameError && nameData && nameData.length > 0) {
+                const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
+                if (nonStaff) {
+                    this.lecturerAssignmentId = nonStaff.lecturer_id;
+                    console.log('✅ Found non-STAFF ID by exact name match:', this.lecturerAssignmentId);
+                    return;
+                }
+                this.lecturerAssignmentId = nameData[0].lecturer_id;
+                console.log('⚠️ Found STAFF ID by name match:', this.lecturerAssignmentId);
                 return;
             }
             
@@ -61,8 +66,7 @@ const LecturerExams = {
             const nameParts = fullName.toLowerCase().split(' ');
             const { data: allLecturers, error: allError } = await supabase
                 .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .order('created_at', { ascending: false });
+                .select('lecturer_id, lecturer_name');
             
             if (!allError && allLecturers && allLecturers.length > 0) {
                 let bestMatch = null;
@@ -74,17 +78,17 @@ const LecturerExams = {
                     let score = 0;
                     
                     const lecturerNameLower = lecturerName.toLowerCase();
+                    
                     for (const part of nameParts) {
                         if (part.length > 1 && lecturerNameLower.includes(part)) {
-                            score += 5;
+                            score += 10;
                         }
                     }
                     
                     if (lecturerNameLower === fullName.toLowerCase()) {
-                        score += 20;
+                        score += 30;
                     }
                     
-                    // BIG BONUS for non-STAFF IDs
                     if (!lecturerId.toString().startsWith('STAFF')) {
                         score += 50;
                     }
@@ -117,7 +121,7 @@ const LecturerExams = {
     },
     
     // ============================================
-    // LOAD ASSIGNED UNITS
+    // LOAD ASSIGNED UNITS (for form dropdown)
     // ============================================
     async loadAssignedUnits() {
         try {
@@ -147,6 +151,9 @@ const LecturerExams = {
         }
     },
     
+    // ============================================
+    // LOAD EXAMS - ORIGINAL TABLE QUERY (exams)
+    // ============================================
     async loadExams() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -164,33 +171,20 @@ const LecturerExams = {
                 return;
             }
             
-            // Get exams from cats_exams or exams table
+            // ✅ ORIGINAL QUERY - KEEP AS IS
             const { data: exams, error } = await supabase
-                .from('cats_exams')
+                .from('exams')
                 .select('*')
-                .eq('program', program)
+                .eq('target_program', program)
                 .eq('created_by', lecturerId)
                 .order('exam_date', { ascending: false });
             
             if (error) {
-                // Fallback to exams table
-                const { data: fallbackExams, error: fallbackError } = await supabase
-                    .from('exams')
-                    .select('*')
-                    .eq('target_program', program)
-                    .eq('created_by', lecturerId)
-                    .order('exam_date', { ascending: false });
-                
-                if (fallbackError) {
-                    console.error('Error loading exams:', fallbackError);
-                    return;
-                }
-                
-                this.exams = fallbackExams || [];
-            } else {
-                this.exams = exams || [];
+                console.error('Error loading exams:', error);
+                return;
             }
             
+            this.exams = exams || [];
             this.renderExams();
             this.updateStats();
             
@@ -248,21 +242,22 @@ const LecturerExams = {
             const status = exam.status || 'Scheduled';
             const statusColor = statusColors[status] || '#6b7280';
             const statusIcon = statusIcons[status] || '📌';
-            const isOwner = exam.created_by === window.lecturerDB?.getCurrentUserId() || exam.created_by === this.lecturerAssignmentId;
-            const approvalStatus = exam.approval_status || 'pending';
+            const isOwner = exam.created_by === this.lecturerAssignmentId || exam.created_by === window.lecturerDB?.getCurrentUserId();
+            const approvalStatus = exam.approval_status || 'draft';
             
             const approvalBadges = {
                 'pending': '<span style="background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 12px; font-size: 10px;">⏳ Pending</span>',
                 'approved': '<span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 10px;">✅ Approved</span>',
                 'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 12px; font-size: 10px;">❌ Rejected</span>',
-                'draft': '<span style="background: #e5e7eb; color: #6b7280; padding: 2px 10px; border-radius: 12px; font-size: 10px;">📝 Draft</span>'
+                'draft': '<span style="background: #e5e7eb; color: #6b7280; padding: 2px 10px; border-radius: 12px; font-size: 10px;">📝 Draft</span>',
+                'published': '<span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 10px;">📢 Published</span>'
             };
             
-            const approvalBadge = approvalBadges[approvalStatus] || approvalBadges.pending;
+            const approvalBadge = approvalBadges[approvalStatus] || approvalBadges.draft;
             
             let actions = '';
             
-            if (isOwner && approvalStatus === 'draft') {
+            if (isOwner && (approvalStatus === 'draft' || approvalStatus === 'pending')) {
                 actions += `
                     <button onclick="LecturerExams.editExam('${exam.id}')" 
                             style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
@@ -277,7 +272,7 @@ const LecturerExams = {
                 `;
             }
             
-            if (approvalStatus === 'approved' || status === 'Completed') {
+            if (approvalStatus === 'approved' || approvalStatus === 'published' || status === 'Completed') {
                 actions += `
                     <button onclick="LecturerExams.gradeExam('${exam.id}')" 
                             style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
@@ -297,14 +292,14 @@ const LecturerExams = {
                         </span>
                     </td>
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                        ${this.escapeHtml(exam.exam_title || exam.exam_name || 'Untitled Exam')}
+                        ${this.escapeHtml(exam.exam_name || 'Untitled Exam')}
                         <div style="font-size: 10px; margin-top: 2px;">${approvalBadge}</div>
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
                         ${this.escapeHtml(unit)}
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
-                        ${this.escapeHtml(exam.program || exam.target_program || 'N/A')}/${this.escapeHtml(exam.block_term || exam.block || 'N/A')}
+                        ${this.escapeHtml(exam.target_program || 'N/A')}/${this.escapeHtml(exam.block_term || 'N/A')}
                     </td>
                     <td style="padding: 14px 18px; color: #475569; font-size: 13px;">
                         ${dateTime}
@@ -330,7 +325,7 @@ const LecturerExams = {
     updateStats() {
         const exams = this.exams;
         const total = exams.length;
-        const scheduled = exams.filter(e => e.status === 'Scheduled').length;
+        const scheduled = exams.filter(e => e.status === 'Scheduled' || e.status === 'pending').length;
         const completed = exams.filter(e => e.status === 'Completed').length;
         const pending = exams.filter(e => e.status === 'InProgress' || e.status === 'Pending').length;
         
@@ -491,14 +486,14 @@ const LecturerExams = {
                 throw new Error('Database connection not available');
             }
             
-            // Save exam
+            // ✅ ORIGINAL QUERY - Keep as is
             const { data: result, error } = await supabase
-                .from('cats_exams')
+                .from('exams')
                 .insert({
-                    exam_title: formData.title,
+                    exam_name: formData.title,
                     exam_date: formData.date,
                     exam_type: formData.type,
-                    program: formData.program,
+                    target_program: formData.program,
                     intake_year: formData.intake,
                     block_term: formData.block,
                     unit_name: formData.unit || null,
@@ -513,39 +508,7 @@ const LecturerExams = {
                 })
                 .select();
             
-            if (error) {
-                // Fallback to exams table
-                const { data: fallbackResult, error: fallbackError } = await supabase
-                    .from('exams')
-                    .insert({
-                        exam_name: formData.title,
-                        exam_date: formData.date,
-                        exam_type: formData.type,
-                        target_program: formData.program,
-                        intake_year: formData.intake,
-                        block_term: formData.block,
-                        unit_name: formData.unit || null,
-                        start_time: formData.startTime || null,
-                        duration_minutes: parseInt(formData.duration),
-                        status: formData.status,
-                        online_link: formData.link || null,
-                        venue: formData.venue || null,
-                        created_by: lecturerId,
-                        approval_status: 'pending',
-                        created_at: new Date().toISOString()
-                    })
-                    .select();
-                
-                if (fallbackError) throw fallbackError;
-                
-                window.showNotification('✅ Exam created! Waiting for admin approval.', 'success');
-                e.target.reset();
-                this.populateExamForm();
-                await this.loadExams();
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-                return;
-            }
+            if (error) throw error;
             
             window.showNotification('✅ Exam created! Waiting for admin approval.', 'success');
             e.target.reset();
@@ -568,19 +531,17 @@ const LecturerExams = {
             return;
         }
         
-        // Simple edit - show prompt
-        const newTitle = prompt('Edit Exam Title:', exam.exam_title || exam.exam_name || '');
-        if (newTitle !== null && newTitle !== exam.exam_title) {
+        const newTitle = prompt('Edit Exam Title:', exam.exam_name || '');
+        if (newTitle !== null && newTitle !== exam.exam_name) {
             try {
                 const supabase = window.lecturerDB?.supabase;
                 if (!supabase) {
                     throw new Error('Database connection not available');
                 }
                 
-                const table = exam.exam_title ? 'cats_exams' : 'exams';
                 const { error } = await supabase
-                    .from(table)
-                    .update({ exam_title: newTitle, exam_name: newTitle })
+                    .from('exams')
+                    .update({ exam_name: newTitle })
                     .eq('id', examId);
                 
                 if (error) throw error;
@@ -602,7 +563,7 @@ const LecturerExams = {
             return;
         }
         
-        if (!confirm(`Delete exam "${exam.exam_title || exam.exam_name || 'Exam'}"?`)) return;
+        if (!confirm(`Delete exam "${exam.exam_name || 'Exam'}"?`)) return;
         
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -610,9 +571,8 @@ const LecturerExams = {
                 throw new Error('Database connection not available');
             }
             
-            const table = exam.exam_title ? 'cats_exams' : 'exams';
             const { error } = await supabase
-                .from(table)
+                .from('exams')
                 .delete()
                 .eq('id', examId);
             
@@ -634,7 +594,7 @@ const LecturerExams = {
             return;
         }
         
-        window.showNotification(`📝 Grading: ${exam.exam_title || exam.exam_name || 'Exam'} - Feature coming soon!`, 'info');
+        window.showNotification(`📝 Grading: ${exam.exam_name || 'Exam'} - Feature coming soon!`, 'info');
         console.log('Grading exam:', exam);
     },
     
@@ -648,10 +608,10 @@ const LecturerExams = {
         const headers = ['Type', 'Title', 'Unit', 'Program', 'Block', 'Date', 'Duration', 'Status'];
         const rows = exams.map(e => [
             e.exam_type || 'N/A',
-            e.exam_title || e.exam_name || 'N/A',
+            e.exam_name || 'N/A',
             e.unit_name || e.course?.course_name || 'N/A',
-            e.program || e.target_program || 'N/A',
-            e.block_term || e.block || 'N/A',
+            e.target_program || 'N/A',
+            e.block_term || 'N/A',
             e.exam_date || 'N/A',
             e.duration_minutes ? e.duration_minutes + ' mins' : 'N/A',
             e.status || 'Scheduled'
@@ -698,4 +658,4 @@ window.LecturerExams = LecturerExams;
 window.searchExams = () => LecturerExams.filterExams();
 window.exportExams = () => LecturerExams.exportExams();
 
-console.log('✅ LecturerExams module loaded - Same ID resolution as other modules');
+console.log('✅ LecturerExams module loaded - ORIGINAL exams table query with ID resolution');
