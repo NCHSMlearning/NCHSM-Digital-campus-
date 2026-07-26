@@ -1,4 +1,4 @@
-// js/lecturer-courses.js
+// js/lecturer-courses.js - Updated Stats Function
 /**
  * NCHSM Lecturer Courses Module
  * Uses dedicated lecturer database
@@ -273,24 +273,38 @@ const LecturerCourses = {
     updateStats() {
         const courses = this.courses;
         
-        // Total courses
+        // Calculate total courses
+        const totalCourses = courses.length;
         const totalEl = document.getElementById('totalCoursesCount2');
-        if (totalEl) totalEl.textContent = courses.length;
+        if (totalEl) totalEl.textContent = totalCourses;
         
-        // Total students (approximate from mock data)
+        // Calculate total students (sum of student counts)
         let totalStudents = 0;
         courses.forEach(c => {
-            totalStudents += c.student_count || 0;
+            // If student_count is available use it, otherwise estimate
+            const count = c.student_count || 0;
+            totalStudents += count;
         });
+        // If no student_count, estimate based on course count
+        if (totalStudents === 0 && courses.length > 0) {
+            // Try to get actual student counts from LecturerStudents
+            const allStudents = window.LecturerStudents?.students || [];
+            if (allStudents.length > 0) {
+                // Count unique students per course
+                totalStudents = allStudents.length;
+            } else {
+                totalStudents = courses.length * 35; // Average class size
+            }
+        }
         const studentsEl = document.getElementById('totalStudentsCount2');
-        if (studentsEl) studentsEl.textContent = totalStudents || courses.length * 30;
+        if (studentsEl) studentsEl.textContent = totalStudents;
         
-        // Active courses
+        // Calculate active courses
         const active = courses.filter(c => c.status === 'active' || !c.status).length;
         const activeEl = document.getElementById('activeCoursesCount');
         if (activeEl) activeEl.textContent = active;
         
-        // Completed courses
+        // Calculate completed courses
         const completed = courses.filter(c => c.status === 'completed').length;
         const completedEl = document.getElementById('completedCoursesCount');
         if (completedEl) completedEl.textContent = completed;
@@ -300,6 +314,14 @@ const LecturerCourses = {
         if (badge) {
             badge.textContent = courses.length;
         }
+        
+        // Update the main total courses count on dashboard if exists
+        const dashboardCount = document.getElementById('totalCoursesCount');
+        if (dashboardCount) {
+            dashboardCount.textContent = courses.length;
+        }
+        
+        console.log(`📊 Stats updated: ${totalCourses} courses, ${totalStudents} students, ${active} active, ${completed} completed`);
     },
     
     applyFilters() {
