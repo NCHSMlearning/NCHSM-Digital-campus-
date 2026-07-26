@@ -1471,28 +1471,41 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // EXECUTE LOGIN
+// EXECUTE LOGIN
+// ============================================
+executeLogin: async function(identifier, password) {
+    if (!this.supabase) {
+        throw new Error('Authentication service not available');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
+    
+    let profileData = null;
+    let isStaff = false;
+    
     // ============================================
-    executeLogin: async function(identifier, password) {
-        if (!this.supabase) {
-            throw new Error('Authentication service not available');
+    // 👇 STEP 1: CHECK STAFF LOGIN FIRST
+    // ============================================
+    const isStaffId = !identifier.includes('@');
+    if (isStaffId || identifier.includes('@')) {
+        const staffProfile = await this.verifyStaffLogin(identifier, password);
+        if (staffProfile) {
+            // ✅ Staff found - return immediately
+            profileData = staffProfile;
+            isStaff = true;
+            return { profileData, isStaff };
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
-        
-        let profileData = null;
-        let isStaff = false;
-        
-        const isStaffId = !identifier.includes('@');
-        if (isStaffId || identifier.includes('@')) {
-            const staffProfile = await this.verifyStaffLogin(identifier, password);
-            if (staffProfile) {
-                profileData = staffProfile;
-                isStaff = true;
-                return { profileData, isStaff };
-            }
-        }
-        
+        // ❌ Staff not found - THROW ERROR, don't fall back to student login
+        this.recordFailedAttempt();
+        throw new Error('Invalid staff credentials');
+    }
+    
+    // ============================================
+    // 👇 STEP 2: STUDENT LOGIN (ONLY IF NOT STAFF)
+    // ============================================
+    // Only reach here if identifier is an email AND staff login failed
+    // or if we want to specifically check student login
+    try {
         const { data: authData, error: authError } = await this.supabase.auth
             .signInWithPassword({ 
                 email: identifier, 
@@ -1528,8 +1541,16 @@ window.NCHSMLogin = {
         }
         
         return { profileData: profile, isStaff: false };
-    },
-    
+        
+    } catch (error) {
+        // If it's a staff error, rethrow it
+        if (error.message === 'Invalid staff credentials') {
+            throw error;
+        }
+        // Otherwise, it's a student login error
+        throw error;
+    }
+},
     // ============================================
     // LOGIN HANDLER
     // ============================================
