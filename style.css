@@ -2094,3 +2094,293 @@ a:focus-visible {
     background: #ede9fe;
     color: #4f46e5;
 }
+/* ============================================
+   MOBILE RESPONSIVE FIXES - PERMANENT
+   ============================================ */
+
+/* Mobile Navigation Toggle */
+.mobile-nav-toggle {
+    display: none !important;
+    flex-direction: column !important;
+    gap: 5px !important;
+    background: none !important;
+    border: none !important;
+    cursor: pointer !important;
+    padding: 12px !important;
+    position: fixed !important;
+    top: 16px !important;
+    left: 16px !important;
+    z-index: 1000 !important;
+}
+
+.mobile-nav-toggle span {
+    display: block !important;
+    width: 25px !important;
+    height: 3px !important;
+    background: #333 !important;
+    border-radius: 3px !important;
+    transition: all 0.3s ease !important;
+}
+
+.mobile-nav-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px) !important;
+}
+
+.mobile-nav-toggle.active span:nth-child(2) {
+    opacity: 0 !important;
+}
+
+.mobile-nav-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px) !important;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    /* Sidebar */
+    .sidebar {
+        left: -280px !important;
+        width: 280px !important;
+        transition: left 0.3s ease !important;
+        padding-top: 60px !important;
+    }
+    
+    .sidebar.active {
+        left: 0 !important;
+    }
+    
+    /* Main content */
+    .main {
+        margin-left: 0 !important;
+        padding: 15px !important;
+        padding-top: 70px !important;
+    }
+    
+    /* Mobile nav toggle */
+    .mobile-nav-toggle {
+        display: flex !important;
+    }
+    
+    /* Header */
+    header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+        margin-bottom: 15px !important;
+    }
+    
+    header h1 {
+        font-size: 20px !important;
+    }
+    
+    .header-right {
+        width: 100% !important;
+        justify-content: space-between !important;
+    }
+    
+    .header-date {
+        font-size: 12px !important;
+    }
+    
+    /* Cards */
+    .cards {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+    
+    .card {
+        padding: 12px 15px !important;
+    }
+    
+    .card h3 {
+        font-size: 11px !important;
+    }
+    
+    .card .data {
+        font-size: 22px !important;
+    }
+    
+    .card .minor-data {
+        font-size: 10px !important;
+    }
+    
+    /* Quick Actions */
+    .quick-actions {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+        margin: 15px 0 !important;
+    }
+    
+    .quick-actions button {
+        padding: 10px !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .quick-actions button i {
+        font-size: 14px !important;
+    }
+    
+    /* Charts */
+    .charts-grid {
+        grid-template-columns: 1fr !important;
+        gap: 15px !important;
+    }
+    
+    .chart-card {
+        padding: 15px !important;
+    }
+    
+    .chart-card canvas {
+        max-height: 180px !important;
+    }
+    
+    /* Attendance Metrics */
+    .metric-cards {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+    
+    .metric-card {
+        padding: 10px !important;
+    }
+    
+    .metric-value {
+        font-size: 20px !important;
+    }
+    
+    /* Forms */
+    .form-row {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px !important;
+    }
+    
+    /* Tables */
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    table {
+        font-size: 12px !important;
+        min-width: 600px !important;
+    }
+    
+    table th,
+    table td {
+        padding: 8px 10px !important;
+        white-space: nowrap !important;
+    }
+    
+    /* Filters */
+    .filter-row {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+    
+    /* Welcome Banner */
+    .welcome-banner {
+        padding: 12px 15px !important;
+        font-size: 13px !important;
+    }
+    
+    .welcome-banner .info-icon {
+        font-size: 18px !important;
+    }
+    
+    /* Program Banner */
+    .program-indicator-banner {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 12px 15px !important;
+        font-size: 13px !important;
+    }
+    
+    /* Attendance Stats */
+    .attendance-stats {
+        grid-template-columns: 1fr 1fr 1fr !important;
+    }
+    
+    .stat-card {
+        padding: 10px !important;
+    }
+    
+    .stat-number {
+        font-size: 18px !important;
+    }
+    
+    /* Profile */
+    .profile-card {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+    }
+    
+    .profile-details-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .main {
+        padding: 10px !important;
+        padding-top: 60px !important;
+    }
+    
+    .cards {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+    }
+    
+    .quick-actions {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+    
+    .quick-actions button {
+        padding: 8px !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .metric-cards {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+    
+    .attendance-stats {
+        grid-template-columns: 1fr 1fr !important;
+    }
+    
+    .filter-row {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .filter-group.action-group {
+        flex-wrap: wrap !important;
+    }
+    
+    .filter-group.action-group button {
+        flex: 1 !important;
+        min-width: 60px !important;
+        font-size: 11px !important;
+        padding: 8px !important;
+    }
+    
+    .header-date {
+        display: none !important;
+    }
+    
+    header h1 {
+        font-size: 18px !important;
+    }
+    
+    .card .data {
+        font-size: 18px !important;
+    }
+}
