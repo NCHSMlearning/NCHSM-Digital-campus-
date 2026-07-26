@@ -8673,6 +8673,93 @@ async function adminForceResetPassword(email, newPassword) {
 }
 
 // ============================================================
+// ✅ MAIN PASSWORD RESET HANDLER - FIXES THE ERROR
+// ============================================================
+
+/**
+ * Global Password Reset Handler - Called when form is submitted
+ * This is the function that was missing and causing the error
+ */
+async function handleGlobalPasswordReset(e) {
+    if (e) e.preventDefault();
+    
+    const form = document.getElementById('global-password-reset-form');
+    if (!form) {
+        console.error('Password reset form not found');
+        return;
+    }
+    
+    const emailInput = document.getElementById('reset_user_email');
+    const newPasswordInput = document.getElementById('new_password');
+    const feedbackEl = document.getElementById('resetFeedback');
+    
+    const email = emailInput?.value?.trim();
+    const newPassword = newPasswordInput?.value?.trim();
+    
+    // Validate
+    if (!email) {
+        if (feedbackEl) {
+            feedbackEl.innerHTML = '❌ Please enter an email address.';
+            feedbackEl.style.color = '#dc2626';
+        }
+        return;
+    }
+    
+    if (!newPassword || newPassword.length < 6) {
+        if (feedbackEl) {
+            feedbackEl.innerHTML = '❌ Password must be at least 6 characters.';
+            feedbackEl.style.color = '#dc2626';
+        }
+        return;
+    }
+    
+    // Confirm with admin
+    if (!confirm(`⚠️ Force reset password for ${email}?\n\nThis will bypass the user's email verification.`)) {
+        return;
+    }
+    
+    // Show loading
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn?.textContent || 'Reset Password';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+    }
+    
+    try {
+        const result = await adminForceResetPassword(email, newPassword);
+        
+        if (feedbackEl) {
+            feedbackEl.innerHTML = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
+            feedbackEl.style.color = result.success ? '#059669' : '#dc2626';
+        }
+        
+        if (result.success) {
+            // Clear form
+            if (emailInput) emailInput.value = '';
+            if (newPasswordInput) newPasswordInput.value = '';
+            
+            // Clear lookup result
+            clearLookupResult();
+            
+            showFeedback('Password reset successful!', 'success');
+        }
+        
+    } catch (error) {
+        if (feedbackEl) {
+            feedbackEl.innerHTML = `❌ Error: ${error.message}`;
+            feedbackEl.style.color = '#dc2626';
+        }
+        console.error('Password reset error:', error);
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+}
+
+// ============================================================
 // USER LOOKUP - FOR PASSWORD RESET (ADMIN VIEW)
 // ============================================================
 
@@ -9165,6 +9252,7 @@ window.sendPasswordResetEmail = sendPasswordResetEmail;
 window.adminForceResetPassword = adminForceResetPassword;
 window.handleSendResetEmail = handleSendResetEmail;
 window.handleAdminForceReset = handleAdminForceReset;
+window.handleGlobalPasswordReset = handleGlobalPasswordReset; // ✅ ADDED THIS
 
 // User Lookup Functions
 window.lookupUser = lookupUser;
@@ -9180,7 +9268,6 @@ window.saveSystemMessage = saveSystemMessage;
 window.handleAccountDeactivation = handleAccountDeactivation;
 
 console.log('✅ Security & System Status module loaded with proper password reset flow!');
-
 /*******************************************************
  * 17. BACKUP & RESTORE - UPDATED WITH REAL DATA
  *******************************************************/
