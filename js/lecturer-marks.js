@@ -1200,6 +1200,161 @@ function updateMarksEntryStats(marks, assessmentType) {
     if (avgEl) avgEl.textContent = Math.round(avg) + '%';
     if (atRiskEl) atRiskEl.textContent = atRisk.length;
 }
+
+// ============================================================
+// CHECK MARKS APPROVAL STATUS - FOR LECTURER VIEW
+// ============================================================
+
+function checkMarksApprovalStatus(marks) {
+    console.log('📋 Checking marks approval status...');
+    
+    if (!marks || marks.length === 0) {
+        console.log('📋 No marks to check');
+        return;
+    }
+    
+    const pendingCount = marks.filter(m => m.approval_status === 'pending').length;
+    const approvedCount = marks.filter(m => m.approval_status === 'approved').length;
+    const rejectedCount = marks.filter(m => m.approval_status === 'rejected').length;
+    const draftCount = marks.filter(m => m.approval_status === 'draft' || !m.approval_status).length;
+    
+    console.log(`📊 Approval Status: Draft: ${draftCount}, Pending: ${pendingCount}, Approved: ${approvedCount}, Rejected: ${rejectedCount}`);
+    
+    // Update UI elements if they exist
+    const banner = document.getElementById('approvalStatusBanner');
+    const statusText = document.getElementById('approvalStatusText');
+    const statusBadge = document.getElementById('approvalStatusBadge');
+    const submitBtn = document.getElementById('submitForApprovalBtn');
+    const withdrawBtn = document.getElementById('withdrawApprovalBtn');
+    const details = document.getElementById('approvalDetails');
+    const rejectionReason = document.getElementById('rejectionReason');
+    
+    if (!banner) {
+        // Create banner if it doesn't exist
+        createApprovalStatusBanner();
+        return;
+    }
+    
+    // Show banner if there are any marks
+    if (marks.length > 0) {
+        banner.style.display = 'block';
+    } else {
+        banner.style.display = 'none';
+        return;
+    }
+    
+    if (pendingCount > 0) {
+        banner.style.borderLeftColor = '#f59e0b';
+        banner.style.background = '#fef3c7';
+        if (statusText) statusText.textContent = `${pendingCount} marks pending Admin Approval`;
+        if (statusBadge) {
+            statusBadge.textContent = '⏳ Pending';
+            statusBadge.className = 'badge badge-warning';
+            statusBadge.style.cssText = 'background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
+        }
+        if (submitBtn) submitBtn.style.display = 'none';
+        if (withdrawBtn) withdrawBtn.style.display = 'inline-block';
+        if (details) details.style.display = 'block';
+        if (rejectionReason) rejectionReason.style.display = 'none';
+        
+    } else if (approvedCount > 0 && pendingCount === 0) {
+        banner.style.borderLeftColor = '#10b981';
+        banner.style.background = '#d1fae5';
+        if (statusText) statusText.textContent = `✅ ${approvedCount} marks Approved by Admin`;
+        if (statusBadge) {
+            statusBadge.textContent = '✅ Approved';
+            statusBadge.className = 'badge badge-success';
+            statusBadge.style.cssText = 'background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
+        }
+        if (submitBtn) submitBtn.style.display = 'none';
+        if (withdrawBtn) withdrawBtn.style.display = 'none';
+        if (details) details.style.display = 'block';
+        if (rejectionReason) rejectionReason.style.display = 'none';
+        
+    } else if (rejectedCount > 0 && pendingCount === 0 && approvedCount === 0) {
+        banner.style.borderLeftColor = '#dc2626';
+        banner.style.background = '#fee2e2';
+        if (statusText) statusText.textContent = `❌ ${rejectedCount} marks Rejected by Admin`;
+        if (statusBadge) {
+            statusBadge.textContent = '❌ Rejected';
+            statusBadge.className = 'badge badge-danger';
+            statusBadge.style.cssText = 'background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
+        }
+        if (submitBtn) submitBtn.style.display = 'inline-block';
+        if (withdrawBtn) withdrawBtn.style.display = 'none';
+        if (details) details.style.display = 'block';
+        if (rejectionReason) rejectionReason.style.display = 'block';
+        
+    } else if (draftCount > 0 && pendingCount === 0 && approvedCount === 0 && rejectedCount === 0) {
+        banner.style.borderLeftColor = '#6b7280';
+        banner.style.background = '#f3f4f6';
+        if (statusText) statusText.textContent = `📝 ${draftCount} marks in Draft - Ready to submit`;
+        if (statusBadge) {
+            statusBadge.textContent = '📝 Draft';
+            statusBadge.className = 'badge badge-secondary';
+            statusBadge.style.cssText = 'background: #e5e7eb; color: #6b7280; padding: 4px 12px; border-radius: 12px; font-size: 12px;';
+        }
+        if (submitBtn) submitBtn.style.display = 'inline-block';
+        if (withdrawBtn) withdrawBtn.style.display = 'none';
+        if (details) details.style.display = 'none';
+        if (rejectionReason) rejectionReason.style.display = 'none';
+    } else {
+        banner.style.display = 'none';
+        if (submitBtn) submitBtn.style.display = 'inline-block';
+        if (withdrawBtn) withdrawBtn.style.display = 'none';
+    }
+}
+
+// ============================================================
+// CREATE APPROVAL STATUS BANNER (if missing)
+// ============================================================
+
+function createApprovalStatusBanner() {
+    console.log('📋 Creating approval status banner...');
+    
+    const container = document.querySelector('.marks-system-header') || document.querySelector('#me_marks_container');
+    if (!container) return;
+    
+    const banner = document.createElement('div');
+    banner.id = 'approvalStatusBanner';
+    banner.style.cssText = `
+        display: none; 
+        background: #fef3c7; 
+        border-radius: 12px; 
+        padding: 15px 20px; 
+        margin: 20px 0; 
+        border-left: 4px solid #f59e0b;
+    `;
+    
+    banner.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <i class="fas fa-clock" style="color: #d97706;"></i>
+                <strong>Approval Status:</strong>
+                <span id="approvalStatusText">Checking...</span>
+                <span id="approvalStatusBadge" style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 12px; margin-left: 10px;">⏳ Pending</span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="submitForApprovalBtn" class="btn btn-action" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;" onclick="submitMarksForApproval()">
+                    <i class="fas fa-paper-plane"></i> Submit for Approval
+                </button>
+                <button id="withdrawApprovalBtn" class="btn btn-action" style="background: #dc2626; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; display: none;" onclick="withdrawMarksFromApproval()">
+                    <i class="fas fa-undo"></i> Withdraw
+                </button>
+            </div>
+        </div>
+        <div id="approvalDetails" style="margin-top: 10px; font-size: 13px; color: #92400e; display: none;">
+            <p><strong>Submitted:</strong> <span id="submittedDate">-</span></p>
+            <p><strong>Submitted By:</strong> <span id="submittedBy">-</span></p>
+            <p id="rejectionReason" style="color: #dc2626; display: none;"><strong>Rejection Reason:</strong> <span id="rejectionReasonText">-</span></p>
+        </div>
+    `;
+    
+    // Insert at the top of the container
+    container.parentNode.insertBefore(banner, container);
+    console.log('✅ Approval status banner created');
+}
+
 // ============================================================
 // SAVE MARKS ENTRY - WITH PROPER APPROVAL STATUS HANDLING
 // ============================================================
@@ -1351,6 +1506,9 @@ async function saveMarksEntry() {
                     Math.abs(oldExam - mark.exam) > 0.01 ||
                     oldTotal !== total
                 );
+                
+                // Debug log
+                console.log(`📝 ${mark.admission}: Old status: ${existing.approval_status}, New status: ${newApprovalStatus}, Has changes: ${hasChanges}`);
                 
                 if (hasChanges) {
                     // ✅ If it was approved, reset to draft
@@ -1679,6 +1837,7 @@ async function saveMarksEntry() {
         console.error('Save error:', error);
     }
 }
+
 // ============================================================
 // SUBMIT MARKS FOR APPROVAL - WITH LOADING SCREEN
 // ============================================================
@@ -1933,6 +2092,7 @@ async function withdrawMarksFromApproval() {
         console.error('Withdraw error:', error);
     }
 }
+
 // ============================================================
 // EXPORT MARKS
 // ============================================================
@@ -2907,6 +3067,7 @@ window.withdrawMarksFromApproval = withdrawMarksFromApproval;
 window.exportMarksEntry = exportMarksEntry;
 window.switchLecturerMarksTab = switchLecturerMarksTab;
 window.checkMarksApprovalStatus = checkMarksApprovalStatus;
+window.createApprovalStatusBanner = createApprovalStatusBanner;
 window.showNotification = showNotification;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
