@@ -259,120 +259,125 @@ const LecturerResources = {
     },
     
     async handleUpload(e) {
-        e.preventDefault();
-        const btn = e.submitter || e.target.querySelector('button[type="submit"]');
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
-        
-        const program = document.getElementById('resourceProgram')?.value;
-        const intake = document.getElementById('resourceIntake')?.value;
-        const block = document.getElementById('resourceBlock')?.value;
-        const fileInput = document.getElementById('resourceFile');
-        const title = document.getElementById('resourceTitle')?.value.trim();
-        const category = document.getElementById('resourceCategory')?.value;
-        const description = document.getElementById('resourceDescription')?.value?.trim();
-        
-        if (!fileInput?.files.length || !program || !intake || !block || !title || !category) {
-            window.showNotification('Please fill all required fields.', 'error');
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-            return;
-        }
-        
-        const file = fileInput.files[0];
-        
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const userId = this.lecturerAssignmentId || profile?.user_id;
-            const supabase = window.lecturerDB?.supabase;
-            
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
-            
-            // Upload file to storage
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-            const filePath = `resources/${program}/${intake}/${block}/${fileName}`;
-            
-            const { error: uploadError } = await supabase.storage
-                .from('resources')
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
-            
-            if (uploadError) {
-                console.error('Upload error:', uploadError);
-                throw new Error('Failed to upload file: ' + uploadError.message);
-            }
-            
-            // Get public URL
-            const { data: urlData } = supabase.storage
-                .from('resources')
-                .getPublicUrl(filePath);
-            
-            const fileUrl = urlData?.publicUrl || '';
-            
-            // ✅ Save to database - IMMEDIATELY PUBLISHED (NO APPROVAL NEEDED)
-            const { data: result, error: dbError } = await supabase
-                .from('resources')
-                .insert({
-                    title: title,
-                    description: description || '',
-                    category: category,
-                    program: program,
-                    intake: intake,
-                    block: block,
-                    block_term: block,
-                    target_program: program,
-                    file_url: fileUrl,
-                    file_path: filePath,
-                    file_name: file.name,
-                    file_size: file.size,
-                    file_type: file.type || file.name.split('.').pop(),
-                    uploaded_by: userId,
-                    uploaded_by_name: profile?.full_name || 'Lecturer',
-                    approval_status: 'approved', // ✅ Auto-approved
-                    created_at: new Date().toISOString()
-                })
-                .select();
-            
-            if (dbError) {
-                console.error('DB Error:', dbError);
-                throw new Error('Failed to save resource: ' + dbError.message);
-            }
-            
-            // Add to local list
-            if (result && result.length > 0) {
-                this.resources.unshift(result[0]);
-                this.renderResources();
-            }
-            
-            window.showNotification('✅ Resource published successfully! Students can now access it.', 'success');
-            
-            // Show success banner
-            const successBanner = document.getElementById('resourceUploadSuccess');
-            if (successBanner) {
-                successBanner.style.display = 'block';
-                setTimeout(() => {
-                    successBanner.style.display = 'none';
-                }, 6000);
-            }
-            
-            e.target.reset();
-            await this.loadResources();
-            
-        } catch (error) {
-            console.error('Upload error:', error);
-            window.showNotification('Upload failed: ' + error.message, 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
-    },
+    e.preventDefault();
+    const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
     
+    const program = document.getElementById('resourceProgram')?.value;
+    const intake = document.getElementById('resourceIntake')?.value;
+    const block = document.getElementById('resourceBlock')?.value;
+    const fileInput = document.getElementById('resourceFile');
+    const title = document.getElementById('resourceTitle')?.value.trim();
+    const category = document.getElementById('resourceCategory')?.value;
+    const description = document.getElementById('resourceDescription')?.value?.trim();
+    
+    if (!fileInput?.files.length || !program || !intake || !block || !title || !category) {
+        window.showNotification('Please fill all required fields.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    
+    try {
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const userId = this.lecturerAssignmentId || profile?.user_id;
+        const supabase = window.lecturerDB?.supabase;
+        
+        if (!supabase) {
+            throw new Error('Database connection not available');
+        }
+        
+        // Upload file to storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `resources/${program}/${intake}/${block}/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('resources')
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+        
+        if (uploadError) {
+            console.error('Upload error:', uploadError);
+            throw new Error('Failed to upload file: ' + uploadError.message);
+        }
+        
+        // Get public URL
+        const { data: urlData } = supabase.storage
+            .from('resources')
+            .getPublicUrl(filePath);
+        
+        const fileUrl = urlData?.publicUrl || '';
+        
+        // ✅ FIXED: Use correct column names that exist in the table
+        const { data: result, error: dbError } = await supabase
+            .from('resources')
+            .insert({
+                title: title,
+                description: description || '',
+                category: category,
+                // ✅ USE THESE COLUMN NAMES (they exist in your table)
+                program_type: program,        // ✅ This exists
+                target_program: program,      // ✅ This exists
+                intake: intake,
+                block: block,
+                block_term: block,
+                file_url: fileUrl,
+                file_path: filePath,
+                file_name: file.name,
+                file_size: file.size,
+                file_type: file.type || file.name.split('.').pop(),
+                uploaded_by: userId,
+                uploaded_by_name: profile?.full_name || 'Lecturer',
+                approval_status: 'approved', // ✅ Auto-approved
+                created_at: new Date().toISOString()
+                // ❌ REMOVED: 'program' - this column doesn't exist
+            })
+            .select();
+        
+        if (dbError) {
+            console.error('DB Error:', dbError);
+            // Delete the uploaded file if DB insert fails
+            await supabase.storage
+                .from('resources')
+                .remove([filePath]);
+            throw new Error('Failed to save resource: ' + dbError.message);
+        }
+        
+        // Add to local list
+        if (result && result.length > 0) {
+            this.resources.unshift(result[0]);
+            this.renderResources();
+        }
+        
+        window.showNotification('✅ Resource published successfully! Students can now access it.', 'success');
+        
+        // Show success banner
+        const successBanner = document.getElementById('resourceUploadSuccess');
+        if (successBanner) {
+            successBanner.style.display = 'block';
+            setTimeout(() => {
+                successBanner.style.display = 'none';
+            }, 6000);
+        }
+        
+        e.target.reset();
+        await this.loadResources();
+        
+    } catch (error) {
+        console.error('Upload error:', error);
+        window.showNotification('Upload failed: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
     async deleteResource(resourceId) {
         const resource = this.resources.find(r => r.id === resourceId);
         if (!resource) {
