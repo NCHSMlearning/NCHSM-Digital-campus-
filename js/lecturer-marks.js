@@ -3,6 +3,7 @@
 // SYNCED WITH ADMIN SETTINGS
 // TERMINOLOGY: "Unit" instead of "Subject"
 // STRICT UNIT ASSIGNMENT FILTERING
+// PERMANENT SUPABASE STORAGE
 // ============================================================
 
 // ============================================================
@@ -111,11 +112,10 @@ async function getLecturerAssignedUnits(lecturerId, block = null) {
     console.log('📚 Getting assigned units for lecturer:', lecturerId);
     
     try {
-        // Use correct column names from your table
         let query = sb
             .from('lecturer_subject_assignments')
             .select('subject_name, subject_code, block, program, academic_year')
-            .eq('lecturer_id', lecturerId);
+            .eq('lecturer_id', String(lecturerId));
         
         if (block) {
             query = query.eq('block', block);
@@ -129,7 +129,6 @@ async function getLecturerAssignedUnits(lecturerId, block = null) {
         }
         
         console.log('📚 Assigned units found:', data?.length || 0);
-        console.log('📚 Assigned units:', data);
         return data || [];
         
     } catch (error) {
@@ -157,7 +156,7 @@ async function loadLecturerByEmail(email) {
             me_currentProgram = profile.program || 'KRCHN';
             console.log('✅ Lecturer loaded from profile:', profile);
             updateLecturerUI(profile);
-            me_assignedUnits = await getLecturerAssignedUnits(profile.id);
+            me_assignedUnits = await getLecturerAssignedUnits(String(profile.id));
             return profile;
         }
         
@@ -172,7 +171,7 @@ async function loadLecturerByEmail(email) {
             me_currentProgram = staff.program || 'KRCHN';
             console.log('✅ Lecturer loaded from staff_records:', staff);
             updateLecturerUI(staff);
-            me_assignedUnits = await getLecturerAssignedUnits(staff.id);
+            me_assignedUnits = await getLecturerAssignedUnits(String(staff.id));
             return staff;
         }
         
@@ -186,7 +185,7 @@ async function loadLecturerByEmail(email) {
 }
 
 // ============================================================
-// DETECT LECTURER PROGRAM - PERMANENT FIX
+// DETECT LECTURER PROGRAM
 // ============================================================
 
 async function detectLecturerProgram() {
@@ -200,19 +199,14 @@ async function detectLecturerProgram() {
             console.warn('No session found');
         }
         
-        console.log('📋 Session data:', session);
-        
         const { data: { user }, error: userError } = await sb.auth.getUser();
         if (userError) {
             console.error('❌ Auth error:', userError);
             if (session && session.email) {
-                console.log('📧 Using session email:', session.email);
                 return await loadLecturerByEmail(session.email);
             }
             throw userError;
         }
-        
-        console.log('👤 Current user:', user?.email);
         
         const userEmail = session?.email || user?.email;
         
@@ -289,9 +283,10 @@ async function detectLecturerProgram() {
         let assignedCount = 0;
         const lecturerId = staff?.id || profile?.id;
         if (lecturerId) {
-            me_assignedUnits = await getLecturerAssignedUnits(lecturerId);
+            me_assignedUnits = await getLecturerAssignedUnits(String(lecturerId));
             assignedCount = me_assignedUnits.length;
             console.log('📋 Assigned units:', assignedCount);
+            console.log('📋 Assigned units details:', me_assignedUnits);
         }
         
         if (unitCountEl) {
@@ -329,7 +324,6 @@ async function detectLecturerProgram() {
         
     } catch (error) {
         console.error('❌ Error detecting lecturer program:', error);
-        console.error('Error details:', error.message);
         
         const programNameEl = document.getElementById('lecturerProgramName');
         if (programNameEl) {
@@ -386,7 +380,7 @@ function updateLecturerUI(data) {
 }
 
 // ============================================================
-// LOAD BLOCKS - FIXED FOR YOUR TABLE STRUCTURE
+// LOAD BLOCKS - ONLY SHOW BLOCKS WITH ASSIGNED UNITS
 // ============================================================
 
 async function loadMEBlocks() {
@@ -409,24 +403,12 @@ async function loadMEBlocks() {
     }
     
     try {
-        // Get all blocks from units_catalog
-        const { data: allBlocks, error: blocksError } = await sb
-            .from('units_catalog')
-            .select('block')
-            .eq('program', program)
-            .eq('status', 'active')
-            .order('block', { ascending: true });
-        
-        if (blocksError) throw blocksError;
-        
-        // Get assigned subject names and codes from lecturer_subject_assignments
         const assignedUnitNames = me_assignedUnits.map(u => u.subject_name).filter(Boolean);
         const assignedUnitCodes = me_assignedUnits.map(u => u.subject_code).filter(Boolean);
         
         console.log('📚 Assigned subject names:', assignedUnitNames);
         console.log('📚 Assigned subject codes:', assignedUnitCodes);
         
-        // Get units in blocks to match against
         const { data: unitsInBlocks, error: unitsError } = await sb
             .from('units_catalog')
             .select('block, unit_name, unit_code')
@@ -435,7 +417,6 @@ async function loadMEBlocks() {
         
         if (unitsError) throw unitsError;
         
-        // Find which blocks have assigned units
         const blocksWithAssignedUnits = new Set();
         unitsInBlocks.forEach(unit => {
             if (assignedUnitNames.includes(unit.unit_name) || 
@@ -444,15 +425,7 @@ async function loadMEBlocks() {
             }
         });
         
-        // If no assignments found, show all blocks (fallback)
-        let blocks = [...blocksWithAssignedUnits].filter(Boolean);
-        
-        if (blocks.length === 0 && allBlocks) {
-            // If no assigned units, show all blocks (or you can show none)
-            // Uncomment the line below to show all blocks when no assignments exist
-            // blocks = [...new Set(allBlocks.map(d => d.block))];
-            console.log('No assigned units found, showing no blocks');
-        }
+        const blocks = [...blocksWithAssignedUnits].filter(Boolean);
         
         if (blockSelect) {
             blockSelect.innerHTML = '<option value="">-- Select Block --</option>';
@@ -483,8 +456,9 @@ async function loadMEBlocks() {
         showNotification('Error loading blocks: ' + error.message, 'error');
     }
 }
+
 // ============================================================
-// LOAD UNITS - FIXED FOR YOUR TABLE STRUCTURE
+// LOAD UNITS - STRICT FILTERING (ONLY ASSIGNED UNITS)
 // ============================================================
 
 async function loadMEUnits() {
@@ -507,7 +481,6 @@ async function loadMEUnits() {
     }
     
     try {
-        // Get all units for this block
         const { data: allUnits, error } = await sb
             .from('units_catalog')
             .select('unit_code, unit_name, assessment_type, id')
@@ -518,7 +491,6 @@ async function loadMEUnits() {
         
         if (error) throw error;
         
-        // Get assigned units for this lecturer and block
         const assignedUnitNames = me_assignedUnits
             .filter(u => u.block === block || !u.block)
             .map(u => u.subject_name)
@@ -532,7 +504,6 @@ async function loadMEUnits() {
         console.log('📚 Assigned names for block:', assignedUnitNames);
         console.log('📚 Assigned codes for block:', assignedUnitCodes);
         
-        // Filter units - match by name OR code
         const filteredUnits = allUnits.filter(unit => {
             const matchByName = assignedUnitNames.includes(unit.unit_name);
             const matchByCode = assignedUnitCodes.includes(unit.unit_code);
@@ -561,7 +532,6 @@ async function loadMEUnits() {
                     unitSelect.appendChild(option);
                 });
                 
-                // Auto-select if only one unit
                 if (filteredUnits.length === 1) {
                     unitSelect.value = filteredUnits[0].unit_name;
                     setTimeout(() => loadMarksEntry(), 300);
@@ -569,11 +539,9 @@ async function loadMEUnits() {
             }
         }
         
-        // Update unit count
         const countEl = document.getElementById('lecturerUnitCount');
         if (countEl) countEl.textContent = filteredUnits.length;
         
-        // Show message if no assigned units
         if (filteredUnits.length === 0) {
             const container = document.getElementById('me_marks_container');
             if (container) {
@@ -596,6 +564,7 @@ async function loadMEUnits() {
         showNotification('Error loading units: ' + error.message, 'error');
     }
 }
+
 // ============================================================
 // LOAD ADMIN COLUMN SETTINGS
 // ============================================================
@@ -690,7 +659,7 @@ async function loadMarksEntry() {
     }
     
     const isAssigned = me_assignedUnits.some(u => 
-        u.subject_name === unit || u.subject_id === unit
+        u.subject_name === unit || u.subject_code === unit
     );
     
     if (!isAssigned) {
@@ -1123,7 +1092,7 @@ function checkMarksApprovalStatus(marks) {
 }
 
 // ============================================================
-// SAVE MARKS
+// SAVE MARKS ENTRY - COMPLETE WITH PERMANENT SUPABASE STORAGE
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1133,8 +1102,30 @@ async function saveMarksEntry() {
     const year = me_currentYear;
     const assessmentType = me_currentAssessmentType || 'full';
     
+    // Validate required fields
+    if (!block || !unit) {
+        showNotification('❌ Please select a block and unit first', 'error');
+        return;
+    }
+    
+    // Verify lecturer is assigned to this unit
+    const isAssigned = me_assignedUnits.some(u => 
+        u.subject_name === unit || u.subject_code === unit
+    );
+    
+    if (!isAssigned) {
+        showNotification('⛔ You are not assigned to this unit!', 'error');
+        return;
+    }
+    
+    // Collect marks from table
     const marksData = [];
     const rows = document.querySelectorAll('#me_marks_container table tbody tr');
+    
+    if (!rows || rows.length === 0) {
+        showNotification('⚠️ No marks to save', 'warning');
+        return;
+    }
     
     rows.forEach((row, index) => {
         const cat1Input = document.getElementById(`me_cat1_${index}`);
@@ -1155,26 +1146,33 @@ async function saveMarksEntry() {
                     name: name,
                     cat1: cat1,
                     cat2: cat2,
-                    exam: exam,
-                    assessmentType: assessmentType
+                    exam: exam
                 });
             }
         }
     });
     
     if (marksData.length === 0) {
-        showNotification('No marks to save', 'warning');
+        showNotification('⚠️ No marks data to save', 'warning');
         return;
     }
     
-    showLoading('Saving marks...');
+    // Confirm before saving
+    if (!confirm(`💾 Save marks for ${marksData.length} students in "${unit}"?`)) {
+        return;
+    }
+    
+    showLoading(`💾 Saving ${marksData.length} marks to Supabase...`);
+    
+    let saved = 0;
+    let updated = 0;
+    let errors = 0;
+    const errorDetails = [];
     
     try {
-        let saved = 0;
-        let errors = 0;
-        
         for (const mark of marksData) {
-            const { data: existing } = await sb
+            // Check if mark already exists
+            const { data: existing, error: findError } = await sb
                 .from('student_marks')
                 .select('id')
                 .eq('admission_number', mark.admission)
@@ -1183,6 +1181,13 @@ async function saveMarksEntry() {
                 .eq('academic_year', year)
                 .maybeSingle();
             
+            if (findError && findError.code !== 'PGRST116') {
+                errors++;
+                errorDetails.push(`Student ${mark.admission}: ${findError.message}`);
+                continue;
+            }
+            
+            // Calculate totals
             const total = calculateMarksEntryTotal(mark.cat1, mark.cat2, mark.exam, assessmentType);
             const gradeInfo = getMarksEntryGrade(total);
             
@@ -1192,43 +1197,72 @@ async function saveMarksEntry() {
                 block: block,
                 subject_name: unit,
                 assessment_type: assessmentType,
-                cat1_score: mark.cat1,
-                cat2_score: mark.cat2,
-                exam_score: mark.exam,
-                final_score: total,
-                grade: gradeInfo.grade,
+                cat1_score: mark.cat1 || null,
+                cat2_score: mark.cat2 || null,
+                exam_score: mark.exam || null,
+                final_score: total || null,
+                grade: gradeInfo.grade || null,
                 academic_year: year,
                 updated_at: new Date().toISOString()
             };
             
             let result;
             if (existing) {
+                // UPDATE existing mark
                 result = await sb
                     .from('student_marks')
                     .update(markData)
                     .eq('id', existing.id);
+                
+                if (!result.error) {
+                    updated++;
+                    console.log(`✅ Updated mark for ${mark.admission}`);
+                }
             } else {
+                // INSERT new mark
                 markData.created_at = new Date().toISOString();
+                markData.approval_status = 'draft';
                 result = await sb
                     .from('student_marks')
                     .insert([markData]);
+                
+                if (!result.error) {
+                    saved++;
+                    console.log(`✅ Inserted mark for ${mark.admission}`);
+                }
             }
             
             if (result.error) {
                 errors++;
+                errorDetails.push(`Student ${mark.admission}: ${result.error.message}`);
                 console.error('Error saving mark:', result.error);
-            } else {
-                saved++;
             }
         }
         
         hideLoading();
-        showNotification(`✅ Saved ${saved} marks${errors > 0 ? `, ${errors} errors` : ''}`, errors > 0 ? 'warning' : 'success');
-        setTimeout(() => loadMarksEntry(), 500);
+        
+        // Show detailed results
+        let message = '';
+        if (saved > 0 && updated > 0 && errors === 0) {
+            message = `✅ Saved ${saved} new and updated ${updated} marks successfully!`;
+            showNotification(message, 'success');
+        } else if (saved > 0 || updated > 0) {
+            message = `✅ ${saved > 0 ? saved + ' new saved, ' : ''}${updated > 0 ? updated + ' updated' : ''}${errors > 0 ? ', ' + errors + ' errors' : ''}`;
+            showNotification(message, errors > 0 ? 'warning' : 'success');
+        } else if (errors > 0) {
+            message = `❌ Failed to save ${errors} marks. Check console for details.`;
+            showNotification(message, 'error');
+        }
+        
+        // Reload marks to show updated data
+        if (errors === 0 || saved > 0 || updated > 0) {
+            setTimeout(() => loadMarksEntry(), 1000);
+        }
         
     } catch (error) {
         hideLoading();
         showNotification('❌ Error saving marks: ' + error.message, 'error');
+        console.error('Save error:', error);
     }
 }
 
@@ -1246,12 +1280,17 @@ async function submitMarksForApproval() {
         return;
     }
     
-    const { data: existing } = await sb
+    const { data: existing, error } = await sb
         .from('student_marks')
         .select('id, approval_status')
         .eq('block', block)
         .eq('subject_name', unit)
         .eq('academic_year', year);
+    
+    if (error) {
+        showNotification('Error checking marks: ' + error.message, 'error');
+        return;
+    }
     
     if (!existing || existing.length === 0) {
         showNotification('No marks to submit for approval', 'warning');
@@ -1264,12 +1303,14 @@ async function submitMarksForApproval() {
         return;
     }
     
-    if (!confirm(`Submit ${existing.length} marks for "${unit}" in ${block.replace('_', ' ')} for admin approval?`)) return;
+    if (!confirm(`Submit ${existing.length} marks for "${unit}" in ${block.replace('_', ' ')} for admin approval?`)) {
+        return;
+    }
     
     showLoading('Submitting for approval...');
     
     try {
-        const { error } = await sb
+        const { error: updateError } = await sb
             .from('student_marks')
             .update({
                 approval_status: 'pending',
@@ -1280,18 +1321,22 @@ async function submitMarksForApproval() {
             .eq('subject_name', unit)
             .eq('academic_year', year);
         
-        if (error) throw error;
+        if (updateError) throw updateError;
         
-        await sb
-            .from('mark_approval_logs')
-            .insert({
-                mark_id: null,
-                action: 'submitted',
-                action_by: me_currentLecturer?.profile?.id || null,
-                action_by_name: me_currentLecturer?.profile?.full_name || 'Lecturer',
-                reason: `Submitted ${existing.length} marks for "${unit}" in ${block}`,
-                created_at: new Date().toISOString()
-            });
+        // Log the submission
+        try {
+            await sb
+                .from('mark_approval_logs')
+                .insert({
+                    action: 'submitted',
+                    action_by: me_currentLecturer?.profile?.id || null,
+                    action_by_name: me_currentLecturer?.profile?.full_name || 'Lecturer',
+                    reason: `Submitted ${existing.length} marks for "${unit}" in ${block}`,
+                    created_at: new Date().toISOString()
+                });
+        } catch (logError) {
+            console.warn('Could not save approval log:', logError);
+        }
         
         hideLoading();
         showNotification(`✅ ${existing.length} marks submitted for approval!`, 'success');
@@ -1484,7 +1529,7 @@ const LecturerMarks = {
                 const { data: assignments, error: assignError } = await sb
                     .from('lecturer_subject_assignments')
                     .select('subject_name')
-                    .eq('lecturer_id', lecturerId)
+                    .eq('lecturer_id', String(lecturerId))
                     .eq('block', block);
                 
                 if (!assignError && assignments) {
@@ -1761,11 +1806,6 @@ const LecturerMarks = {
                 'cat_only': 'CAT Only'
             };
             displayEl.textContent = labels[type] || type;
-        }
-        
-        const hiddenEl = document.getElementById('me_assessment_type');
-        if (hiddenEl) {
-            hiddenEl.value = type;
         }
     },
     
@@ -2351,3 +2391,4 @@ console.log('✅ Assessment type auto-detected from admin');
 console.log('✅ Terminology: Units instead of Subjects');
 console.log('✅ Strict unit assignment filtering enabled!');
 console.log('🔒 Lecturers only see assigned units');
+console.log('💾 Marks are permanently saved to Supabase!');
