@@ -1685,18 +1685,6 @@ setTimeout(initDropdowns, 500);
 
 console.log('✅ toggleDropdown function updated');
 
-// ============================================================
-// GLOBAL LOGOUT FUNCTION
-// ============================================================
-window.logout = function() {
-    if (confirm('Are you sure you want to logout?')) {
-        if (window.lecturerDB && typeof window.lecturerDB.logout === 'function') {
-            window.lecturerDB.logout();
-        } else {
-            window.location.href = 'login.html';
-        }
-    }
-};
 
 // ============================================================
 // GLOBAL CLOSE MODAL FUNCTION
