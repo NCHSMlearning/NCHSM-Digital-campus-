@@ -1,4 +1,4 @@
-// js/lecturer-courses.js
+// js/lecturer-courses.js - FIXED to show all 3 units
 /**
  * NCHSM Lecturer Courses Module
  * Uses the same unit assignments as the marks system
@@ -14,14 +14,11 @@ const LecturerCourses = {
         status: '',
         search: ''
     },
-    // Store the resolved lecturer ID
     lecturerAssignmentId: null,
     
     async init() {
         console.log('📚 Initializing Lecturer Courses...');
-        // First, resolve the correct lecturer ID
         await this.resolveLecturerId();
-        // Then load courses
         await this.loadCourses();
         this.populateFilters();
         this.setupEventListeners();
@@ -29,35 +26,21 @@ const LecturerCourses = {
         console.log('✅ Lecturer Courses initialized');
     },
     
-    // ============================================
-    // RESOLVE THE CORRECT LECTURER ID - SAME AS MARKS MODULE
-    // ============================================
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                return;
-            }
+            if (!supabase) return;
             
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                return;
-            }
+            if (!profile) return;
             
-            const authId = profile.user_id;
             const fullName = profile.full_name;
-            const email = profile.email;
-            
-            console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
-            console.log('🔍 Lecturer email:', email);
             
-            // FIRST: Try to find by name in lecturer_subject_assignments
+            // Find by name in lecturer_subject_assignments
             const { data, error } = await supabase
                 .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
+                .select('lecturer_id')
                 .eq('lecturer_name', fullName)
                 .limit(1);
             
@@ -67,33 +50,8 @@ const LecturerCourses = {
                 return;
             }
             
-            // SECOND: Try partial name match
-            const nameParts = fullName.split(' ');
-            const { data: allLecturers, error: allError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .order('created_at', { ascending: false });
-            
-            if (!allError && allLecturers && allLecturers.length > 0) {
-                for (const lecturer of allLecturers) {
-                    const lecturerName = lecturer.lecturer_name || '';
-                    for (const part of nameParts) {
-                        if (part.length > 2 && lecturerName.toLowerCase().includes(part.toLowerCase())) {
-                            this.lecturerAssignmentId = lecturer.lecturer_id;
-                            console.log('✅ Found lecturer by partial name match:', this.lecturerAssignmentId);
-                            return;
-                        }
-                    }
-                }
-                
-                // If no match, use the most recent lecturer
-                this.lecturerAssignmentId = allLecturers[0].lecturer_id;
-                console.log('⚠️ Using most recent lecturer ID:', this.lecturerAssignmentId);
-                return;
-            }
-            
             // Fallback: use auth ID
-            this.lecturerAssignmentId = authId;
+            this.lecturerAssignmentId = profile.user_id;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
         } catch (error) {
@@ -124,140 +82,60 @@ const LecturerCourses = {
                 return;
             }
             
-            // Use the resolved lecturer ID (same as marks module)
+            // Use the resolved lecturer ID
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
             console.log('🔍 Using lecturer ID for courses:', lecturerId);
             
-            let units = [];
+            // Get ALL assignments from lecturer_subject_assignments
+            const { data: assignments, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('*')
+                .eq('lecturer_id', lecturerId);
             
-            // Get from lecturer_subject_assignments using the resolved ID
-            try {
-                const { data, error } = await supabase
-                    .from('lecturer_subject_assignments')
-                    .select('*')
-                    .eq('lecturer_id', lecturerId);
-                
-                if (!error && data && data.length > 0) {
-                    console.log('📊 Found assignments:', data.length);
-                    console.log('📋 Assignment details:', data);
-                    
-                    units = data.map(a => ({
-                        id: a.id,
-                        unit_id: a.id,
-                        unit_code: a.subject_code || 'N/A',
-                        course_name: a.subject_name || 'Unnamed Unit',
-                        target_program: a.program || profile.program,
-                        block: a.block || 'N/A',
-                        intake_year: a.academic_year || new Date().getFullYear().toString(),
-                        status: this.determineStatus(a),
-                        credits: 0,
-                        student_count: 0,
-                        source: 'assignments',
-                        raw: a
-                    }));
-                    
-                    console.log('✅ Processed units from assignments:', units.length);
-                } else {
-                    console.log('📊 No assignments found for lecturer ID:', lecturerId);
-                }
-            } catch (e) {
-                console.warn('Error querying lecturer_subject_assignments:', e.message);
+            if (error) {
+                console.error('Error loading assignments:', error);
+                this.courses = [];
+                this.filteredCourses = [];
+                this.renderTable();
+                this.updateStats();
+                return;
             }
             
-            // If no units, try to get from marks system
-            if (units.length === 0) {
-                console.log('🔄 No assignments found, checking marks system...');
-                
-                try {
-                    // Try to get assigned units from the marks module
-                    if (window.lecturerMarks && window.lecturerMarks.assignedUnits) {
-                        const assignedUnits = window.lecturerMarks.assignedUnits || [];
-                        if (assignedUnits.length > 0) {
-                            console.log('📚 Found assigned units from marks system:', assignedUnits.length);
-                            units = assignedUnits.map(u => ({
-                                id: u.id || `unit-${Date.now()}-${Math.random()}`,
-                                unit_id: u.id,
-                                unit_code: u.unit_code || u.code || 'N/A',
-                                course_name: u.unit_name || u.name || 'Unnamed Unit',
-                                target_program: u.program || profile.program,
-                                block: u.block || 'N/A',
-                                intake_year: u.year || u.academic_year || new Date().getFullYear().toString(),
-                                status: 'active',
-                                credits: u.credits || 0,
-                                student_count: 0,
-                                source: 'marks',
-                                raw: u
-                            }));
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Error getting units from marks system:', e.message);
-                }
+            console.log('📊 Found assignments:', assignments?.length || 0);
+            console.log('📋 Assignment details:', assignments);
+            
+            if (!assignments || assignments.length === 0) {
+                console.warn('No assignments found');
+                this.courses = [];
+                this.filteredCourses = [];
+                this.renderTable();
+                this.updateStats();
+                return;
             }
             
-            // If still no units, try units_catalog by program (fallback)
-            if (units.length === 0) {
-                console.log('🔄 Trying units_catalog for program:', profile.program);
-                
-                try {
-                    const { data, error } = await supabase
-                        .from('units_catalog')
-                        .select('*')
-                        .eq('program', profile.program)
-                        .eq('status', 'active')
-                        .order('unit_code', { ascending: true });
-                    
-                    if (!error && data && data.length > 0) {
-                        console.log('📚 Found units in units_catalog:', data.length);
-                        units = data.map(u => ({
-                            id: u.id,
-                            unit_id: u.id,
-                            unit_code: u.unit_code || 'N/A',
-                            course_name: u.unit_name || 'Unnamed Unit',
-                            target_program: u.program || profile.program,
-                            block: u.block || 'N/A',
-                            intake_year: u.year ? String(u.year) : new Date().getFullYear().toString(),
-                            status: 'active',
-                            credits: u.credits || 0,
-                            unit_type: u.unit_type || 'Core',
-                            student_count: 0,
-                            source: 'catalog',
-                            raw: u
-                        }));
-                    }
-                } catch (e) {
-                    console.warn('Error getting units from units_catalog:', e.message);
-                }
-            }
+            // Process ALL assignments into courses
+            this.courses = assignments.map(a => ({
+                id: a.id,
+                unit_id: a.id,
+                unit_code: a.subject_code || 'N/A',
+                course_name: a.subject_name || 'Unnamed Unit',
+                target_program: a.program || profile.program,
+                block: a.block || 'N/A',
+                intake_year: a.academic_year || new Date().getFullYear().toString(),
+                status: this.determineStatus(a),
+                credits: 0,
+                student_count: 0,
+                source: 'assignments',
+                raw: a
+            }));
             
-            // Set courses
-            this.courses = units;
-            this.filteredCourses = [...this.courses];
+            console.log(`✅ Processed ${this.courses.length} units from assignments`);
             
             // Get student counts
             await this.loadStudentCounts();
             
-            // Filter by current year
-            const currentYear = new Date().getFullYear().toString();
-            const yearFiltered = this.courses.filter(c => {
-                const year = c.intake_year;
-                return year === currentYear || year === '' || year === 'N/A' || year === '2025' || year === '2026';
-            });
-            
-            if (yearFiltered.length > 0) {
-                this.filteredCourses = yearFiltered;
-            }
-            
-            // Update the intake filter
-            const intakeFilter = document.getElementById('intakeYearFilter');
-            if (intakeFilter) {
-                const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
-                if (years.includes(currentYear)) {
-                    intakeFilter.value = currentYear;
-                } else if (years.length > 0) {
-                    intakeFilter.value = years[0];
-                }
-            }
+            // Set filtered courses to ALL courses (don't filter by year)
+            this.filteredCourses = [...this.courses];
             
             this.renderTable();
             this.updateStats();
@@ -323,10 +201,8 @@ const LecturerCourses = {
             intakeFilter.innerHTML = '<option value="">All Years</option>' +
                 years.map(y => `<option value="${y}">${y}</option>`).join('');
             
-            const currentYear = new Date().getFullYear().toString();
-            if (years.includes(currentYear)) {
-                intakeFilter.value = currentYear;
-            } else if (years.length > 0) {
+            // Set default to first year or current year
+            if (years.length > 0) {
                 intakeFilter.value = years[0];
             }
         }
@@ -351,15 +227,12 @@ const LecturerCourses = {
         const courses = this.filteredCourses;
         
         if (!courses || courses.length === 0) {
-            const hasData = this.courses.length > 0;
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                         <i class="fas fa-book" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-                        <h3 style="color: #475569; margin: 0 0 8px 0;">${hasData ? 'No units match your filters' : 'No Units Assigned'}</h3>
-                        <p style="margin: 0; font-size: 14px;">${hasData ? 'Try adjusting your filters to see more units.' : 'You have not been assigned any units yet.'}</p>
-                        ${!hasData ? '<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Contact the administrator for unit assignments.</p>' : ''}
-                        ${hasData ? `<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Total assigned: ${this.courses.length} units</p>` : ''}
+                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Units Assigned</h3>
+                        <p style="margin: 0; font-size: 14px;">You have not been assigned any units yet.</p>
                     </td>
                 </tr>
             `;
@@ -372,12 +245,10 @@ const LecturerCourses = {
         tbody.innerHTML = courses.map((course, index) => {
             const studentCount = course.student_count || 0;
             const isPast = course.intake_year && course.intake_year !== 'N/A' && parseInt(course.intake_year) < parseInt(currentYear);
-            const isFuture = course.intake_year && course.intake_year !== 'N/A' && parseInt(course.intake_year) > parseInt(currentYear);
             const rowStyle = isPast ? 'opacity: 0.7;' : '';
             
             let status = course.status || 'active';
             if (isPast) status = 'completed';
-            else if (isFuture) status = 'upcoming';
             
             const statusColors = {
                 'active': '#10b981',
@@ -402,12 +273,13 @@ const LecturerCourses = {
                     onmouseout="this.style.background='transparent'">
                     <td style="padding: 14px 18px;">
                         <span style="font-weight: 700; color: #4C1D95; font-size: 13px;">${this.escapeHtml(course.unit_code || 'N/A')}</span>
-                        ${course.credits ? `<span style="font-size: 10px; color: #94a3b8; display: block;">${course.credits} Credits</span>` : ''}
                     </td>
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
                         ${this.escapeHtml(course.course_name || 'N/A')}
-                        ${course.source ? `<div style="font-size: 10px; color: #94a3b8; font-weight: 400; margin-top: 2px;">Source: ${this.escapeHtml(course.source)}</div>` : ''}
-                        ${course.block ? `<div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">Block: ${this.escapeHtml(course.block)}</div>` : ''}
+                        <div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">
+                            ${course.block ? `Block: ${this.escapeHtml(course.block)}` : ''}
+                            ${course.source ? ` | Source: ${this.escapeHtml(course.source)}` : ''}
+                        </div>
                     </td>
                     <td style="padding: 14px 18px;">
                         <span style="background: #ede9fe; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #5b21b6;">
@@ -465,12 +337,10 @@ const LecturerCourses = {
         const courses = this.courses;
         const currentYear = new Date().getFullYear().toString();
         
-        // Total units
         const totalCourses = courses.length;
         const totalEl = document.getElementById('totalCoursesCount2');
         if (totalEl) totalEl.textContent = totalCourses;
         
-        // Total students
         let totalStudents = 0;
         courses.forEach(c => {
             totalStudents += c.student_count || 0;
@@ -481,7 +351,6 @@ const LecturerCourses = {
         const studentsEl = document.getElementById('totalStudentsCount2');
         if (studentsEl) studentsEl.textContent = totalStudents;
         
-        // Active units (current year)
         const active = courses.filter(c => {
             const year = c.intake_year;
             return year === currentYear || year === 'N/A' || year === '' || c.status === 'active';
@@ -489,7 +358,6 @@ const LecturerCourses = {
         const activeEl = document.getElementById('activeCoursesCount');
         if (activeEl) activeEl.textContent = active;
         
-        // Completed units (past years)
         const completed = courses.filter(c => {
             const year = c.intake_year;
             return year && year !== 'N/A' && parseInt(year) < parseInt(currentYear);
@@ -497,25 +365,17 @@ const LecturerCourses = {
         const completedEl = document.getElementById('completedCoursesCount');
         if (completedEl) completedEl.textContent = completed;
         
-        // Upcoming units (future years)
-        const upcoming = courses.filter(c => {
-            const year = c.intake_year;
-            return year && year !== 'N/A' && parseInt(year) > parseInt(currentYear);
-        }).length;
-        
-        // Badge
         const badge = document.getElementById('courseCountBadge');
         if (badge) {
             badge.textContent = courses.length;
         }
         
-        // Dashboard count
         const dashboardCount = document.getElementById('totalCoursesCount');
         if (dashboardCount) {
             dashboardCount.textContent = courses.length;
         }
         
-        console.log(`📊 Stats: ${totalCourses} total, ${active} active (${currentYear}), ${completed} completed, ${upcoming} upcoming`);
+        console.log(`📊 Stats: ${totalCourses} total, ${active} active, ${completed} completed`);
     },
     
     applyFilters() {
@@ -665,4 +525,4 @@ window.clearCourseFilters = () => LecturerCourses.clearFilters();
 window.searchCourses = () => LecturerCourses.applyFilters();
 window.exportCourses = () => LecturerCourses.exportCourses();
 
-console.log('✅ LecturerCourses module loaded - Same ID resolution as marks module');
+console.log('✅ LecturerCourses module loaded - Shows ALL assigned units');
