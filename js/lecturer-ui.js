@@ -338,18 +338,19 @@ console.log('✅ Global functions registered for lecturer');
 })();
 
 // ============================================================
-// LECTURER UI CLASS
+// LECTURER UI CLASS - UPDATED WITH UNITS ASSIGNED
 // ============================================================
 
 const LecturerUI = {
     currentTab: 'dashboard',
     sidebarOpen: false,
     
-    // Tab ID mapping
+    // Tab ID mapping - UPDATED with Units Assigned
     tabMapping: {
         'dashboard': 'dashboard-content',
         'profile': 'profile-content',
-        'my-courses': 'my-courses-content',
+        'my-courses': 'my-courses-content',        // Units Assigned (kept for backward compatibility)
+        'units-assigned': 'my-courses-content',    // Alias for Units Assigned
         'my-students': 'my-students-content',
         'sessions': 'sessions-content',
         'attendance': 'attendance-content',
@@ -701,6 +702,9 @@ const LecturerUI = {
                     if (typeof window.LecturerDashboard.loadAttendanceMetrics === 'function') {
                         window.LecturerDashboard.loadAttendanceMetrics();
                     }
+                    if (typeof window.LecturerDashboard.loadCharts === 'function') {
+                        window.LecturerDashboard.loadCharts();
+                    }
                 } else {
                     console.warn('⚠️ LecturerDashboard not found');
                     this.updateDashboardStats();
@@ -715,7 +719,8 @@ const LecturerUI = {
                 break;
                 
             case 'my-courses':
-                console.log('📚 Loading courses...');
+            case 'units-assigned':
+                console.log('📚 Loading units assigned...');
                 if (window.LecturerCourses && typeof window.LecturerCourses.loadCourses === 'function') {
                     window.LecturerCourses.loadCourses();
                 }
@@ -749,20 +754,18 @@ const LecturerUI = {
                 }
                 break;
        
-case 'marks-management':
-    console.log('📊 Loading marks management...');
-    
-    // ✅ Call the standalone functions directly - THEY WORK!
-    if (typeof detectLecturerProgram === 'function') {
-        detectLecturerProgram().then(() => {
-            if (typeof loadMEBlocks === 'function') loadMEBlocks();
-            if (typeof loadMESubjects === 'function') loadMESubjects();
-            if (typeof loadMarksEntry === 'function') loadMarksEntry();
-        });
-    } else {
-        console.warn('⚠️ detectLecturerProgram not found');
-    }
-    break;
+            case 'marks-management':
+                console.log('📊 Loading marks management...');
+                if (typeof detectLecturerProgram === 'function') {
+                    detectLecturerProgram().then(() => {
+                        if (typeof loadMEBlocks === 'function') loadMEBlocks();
+                        if (typeof loadMESubjects === 'function') loadMESubjects();
+                        if (typeof loadMarksEntry === 'function') loadMarksEntry();
+                    });
+                } else {
+                    console.warn('⚠️ detectLecturerProgram not found');
+                }
+                break;
                 
             case 'resources':
                 console.log('📎 Loading resources...');
@@ -771,10 +774,31 @@ case 'marks-management':
                 }
                 break;
                 
+            case 'reports':
+                console.log('📊 Loading reports...');
+                if (window.LecturerReports && typeof window.LecturerReports.loadReports === 'function') {
+                    window.LecturerReports.loadReports();
+                }
+                break;
+                
             case 'messages':
                 console.log('💬 Loading messages...');
                 if (window.LecturerMessages && typeof window.LecturerMessages.loadMessages === 'function') {
                     window.LecturerMessages.loadMessages();
+                }
+                break;
+                
+            case 'calendar':
+                console.log('📅 Loading calendar...');
+                if (window.LecturerCalendar && typeof window.LecturerCalendar.loadEvents === 'function') {
+                    window.LecturerCalendar.loadEvents();
+                }
+                break;
+                
+            case 'settings':
+                console.log('⚙️ Loading settings...');
+                if (window.LecturerProfile && typeof window.LecturerProfile.loadSettings === 'function') {
+                    window.LecturerProfile.loadSettings();
                 }
                 break;
                 
