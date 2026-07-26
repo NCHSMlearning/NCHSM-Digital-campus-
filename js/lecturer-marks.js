@@ -129,12 +129,29 @@ function hideLoadingScreen() {
     }
     console.log('✅ Loading complete');
 }
+// ============================================================
+// NOTIFICATION FUNCTIONS - WITH DEDUPLICATION
+// ============================================================
 
-// ============================================================
-// NOTIFICATION FUNCTIONS - FIXED (NO RECURSION)
-// ============================================================
+let _lastNotification = '';
+let _notificationTimeout = null;
 
 function showNotification(message, type) {
+    // Prevent duplicate notifications
+    const key = message + type;
+    if (_lastNotification === key) {
+        // Same notification already shown, skip
+        return;
+    }
+    _lastNotification = key;
+    
+    if (_notificationTimeout) {
+        clearTimeout(_notificationTimeout);
+    }
+    _notificationTimeout = setTimeout(() => {
+        _lastNotification = '';
+    }, 1000);
+    
     console.log(`[${type || 'info'}] ${message}`);
     
     try {
@@ -168,48 +185,6 @@ function showNotification(message, type) {
             setTimeout(() => toast.remove(), 500);
         }, 3000);
     } catch (e) { /* silent */ }
-}
-
-function showLoading(message) {
-    if (_loadingActive) {
-        console.log(`⏳ [already loading] ${message}`);
-        return;
-    }
-    
-    _loadingActive = true;
-    console.log(`⏳ ${message}`);
-    
-    try {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            const msg = document.getElementById('loadingMessage');
-            if (msg) msg.textContent = message;
-            overlay.style.display = 'flex';
-        }
-    } catch (e) { /* silent */ }
-}
-
-function hideLoading() {
-    _loadingActive = false;
-    console.log('✅ Done');
-    
-    try {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            overlay.style.display = 'none';
-        }
-    } catch (e) { /* silent */ }
-}
-
-// EXPOSE - Only if not already defined
-if (typeof window.showNotification === 'undefined') {
-    window.showNotification = showNotification;
-}
-if (typeof window.showLoading === 'undefined') {
-    window.showLoading = showLoading;
-}
-if (typeof window.hideLoading === 'undefined') {
-    window.hideLoading = hideLoading;
 }
 
 // ============================================================
