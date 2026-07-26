@@ -14,6 +14,8 @@ class LecturerDatabase {
         this.cachedData = {
             students: [],
             courses: [],
+            units: [],
+            assignments: [],
             exams: [],
             sessions: [],
             resources: [],
@@ -120,7 +122,6 @@ class LecturerDatabase {
         try {
             console.log('👤 Loading lecturer profile...');
             
-            // Get user profile with lecturer role check
             const { data: profile, error } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
@@ -194,21 +195,89 @@ class LecturerDatabase {
         }
     }
     
-    // Get courses by program
+    // Get units assigned to lecturer (from lecturer_subject_assignments)
+    async getAssignedUnits(lecturerId) {
+        if (this.cachedData.assignments.length > 0) {
+            return this.cachedData.assignments;
+        }
+        
+        try {
+            const { data, error } = await this.supabase
+                .from('lecturer_subject_assignments')
+                .select('*')
+                .eq('lecturer_id', lecturerId)
+                .order('academic_year', { ascending: false });
+            
+            if (error) throw error;
+            
+            this.cachedData.assignments = data || [];
+            return this.cachedData.assignments;
+            
+        } catch (error) {
+            console.error('Failed to get assigned units:', error);
+            return [];
+        }
+    }
+    
+    // Get units catalog
+    async getUnitsCatalog(program = null) {
+        if (this.cachedData.units.length > 0) {
+            return this.cachedData.units;
+        }
+        
+        try {
+            let query = this.supabase
+                .from('units_catalog')
+                .select('*')
+                .eq('status', 'active')
+                .order('unit_code', { ascending: true });
+            
+            if (program) {
+                query = query.eq('program', program);
+            }
+            
+            const { data, error } = await query;
+            
+            if (error) throw error;
+            
+            this.cachedData.units = data || [];
+            return this.cachedData.units;
+            
+        } catch (error) {
+            console.error('Failed to get units catalog:', error);
+            return [];
+        }
+    }
+    
+    // Get courses by program (from program_courses or courses table)
     async getCourses(program) {
         if (this.cachedData.courses.length > 0) {
             return this.cachedData.courses;
         }
         
         try {
+            // Try program_courses first
             const { data, error } = await this.supabase
-                .from('courses')
+                .from('program_courses')
                 .select('*')
-                .eq('target_program', program)
-                .eq('status', 'Active')
+                .eq('program', program)
+                .eq('status', 'active')
                 .order('course_name', { ascending: true });
             
-            if (error) throw error;
+            if (error) {
+                // Fallback to courses table
+                const { data: coursesData, error: coursesError } = await this.supabase
+                    .from('courses')
+                    .select('*')
+                    .eq('target_program', program)
+                    .eq('status', 'Active')
+                    .order('course_name', { ascending: true });
+                
+                if (coursesError) throw coursesError;
+                
+                this.cachedData.courses = coursesData || [];
+                return this.cachedData.courses;
+            }
             
             this.cachedData.courses = data || [];
             return this.cachedData.courses;
@@ -219,20 +288,33 @@ class LecturerDatabase {
         }
     }
     
-    // Get exams by program
+    // Get exams by program (from cats_exams or exams table)
     async getExams(program) {
         if (this.cachedData.exams.length > 0) {
             return this.cachedData.exams;
         }
         
         try {
+            // Try cats_exams first
             const { data, error } = await this.supabase
-                .from('exams')
-                .select('*, course:course_id(course_name, unit_code)')
-                .eq('target_program', program)
+                .from('cats_exams')
+                .select('*')
+                .eq('program', program)
                 .order('exam_date', { ascending: false });
             
-            if (error) throw error;
+            if (error) {
+                // Fallback to exams table
+                const { data: examsData, error: examsError } = await this.supabase
+                    .from('exams')
+                    .select('*, course:course_id(course_name, unit_code)')
+                    .eq('target_program', program)
+                    .order('exam_date', { ascending: false });
+                
+                if (examsError) throw examsError;
+                
+                this.cachedData.exams = examsData || [];
+                return this.cachedData.exams;
+            }
             
             this.cachedData.exams = data || [];
             return this.cachedData.exams;
@@ -243,19 +325,24 @@ class LecturerDatabase {
         }
     }
     
-    // Get sessions by lecturer
-    async getSessions(lecturerId, program) {
+    // Get sessions by lecturer (from scheduled_sessions)
+    async getSessions(lecturerId, program = null) {
         if (this.cachedData.sessions.length > 0) {
             return this.cachedData.sessions;
         }
         
         try {
-            const { data, error } = await this.supabase
+            let query = this.supabase
                 .from('scheduled_sessions')
                 .select('*')
                 .eq('lecturer_id', lecturerId)
-                .eq('target_program', program)
                 .order('session_date', { ascending: true });
+            
+            if (program) {
+                query = query.eq('target_program', program);
+            }
+            
+            const { data, error } = await query;
             
             if (error) throw error;
             
@@ -268,7 +355,7 @@ class LecturerDatabase {
         }
     }
     
-    // Get attendance logs for program
+    // Get attendance logs for program (from geo_attendance_logs)
     async getAttendance(program, date = null) {
         try {
             let query = this.supabase
@@ -306,7 +393,7 @@ class LecturerDatabase {
         }
     }
     
-    // Get resources by program
+    // Get resources by program (from resources table)
     async getResources(program) {
         if (this.cachedData.resources.length > 0) {
             return this.cachedData.resources;
@@ -317,6 +404,7 @@ class LecturerDatabase {
                 .from('resources')
                 .select('*')
                 .eq('target_program', program)
+                .eq('status', 'published')
                 .order('created_at', { ascending: false });
             
             if (error) throw error;
@@ -330,7 +418,7 @@ class LecturerDatabase {
         }
     }
     
-    // Get messages sent by lecturer
+    // Get messages sent by lecturer (from messages table)
     async getMessages(lecturerId) {
         if (this.cachedData.messages.length > 0) {
             return this.cachedData.messages;
@@ -354,7 +442,7 @@ class LecturerDatabase {
         }
     }
     
-    // Get marks for a block/subject
+    // Get marks for a block/subject (from student_marks)
     async getMarks(block, subject) {
         try {
             const { data, error } = await this.supabase
@@ -373,7 +461,7 @@ class LecturerDatabase {
         }
     }
     
-    // Get NCK marks for a block
+    // Get NCK marks for a block (from nck_marks)
     async getNCKMarks(block, sheet) {
         try {
             const { data, error } = await this.supabase
@@ -388,6 +476,35 @@ class LecturerDatabase {
             
         } catch (error) {
             console.error('Failed to get NCK marks:', error);
+            return [];
+        }
+    }
+    
+    // Get students for a specific unit (from student_unit_registrations)
+    async getStudentsByUnit(unitId) {
+        try {
+            const { data, error } = await this.supabase
+                .from('student_unit_registrations')
+                .select(`
+                    *,
+                    student:student_id (
+                        full_name,
+                        student_id,
+                        email,
+                        phone,
+                        program,
+                        intake_year
+                    )
+                `)
+                .eq('unit_id', unitId)
+                .eq('status', 'active');
+            
+            if (error) throw error;
+            
+            return data || [];
+            
+        } catch (error) {
+            console.error('Failed to get students by unit:', error);
             return [];
         }
     }
@@ -430,26 +547,50 @@ class LecturerDatabase {
     async createExam(data) {
         try {
             const { data: result, error } = await this.supabase
-                .from('exams')
+                .from('cats_exams')
                 .insert({
-                    exam_name: data.title,
+                    exam_title: data.title,
                     exam_date: data.date,
-                    exam_start_time: data.startTime || null,
+                    start_time: data.startTime || null,
                     exam_type: data.type,
                     online_link: data.link || null,
                     duration_minutes: parseInt(data.duration),
-                    target_program: data.program,
+                    program: data.program,
                     course_id: data.course || null,
                     intake_year: data.intake,
                     block_term: data.block,
                     status: data.status,
-                    approval_status: 'draft',
                     created_by: this.currentUserId,
                     created_at: new Date().toISOString()
                 })
                 .select();
             
-            if (error) throw error;
+            if (error) {
+                // Fallback to exams table
+                const { data: fallbackResult, error: fallbackError } = await this.supabase
+                    .from('exams')
+                    .insert({
+                        exam_name: data.title,
+                        exam_date: data.date,
+                        exam_start_time: data.startTime || null,
+                        exam_type: data.type,
+                        online_link: data.link || null,
+                        duration_minutes: parseInt(data.duration),
+                        target_program: data.program,
+                        course_id: data.course || null,
+                        intake_year: data.intake,
+                        block_term: data.block,
+                        status: data.status,
+                        created_by: this.currentUserId,
+                        created_at: new Date().toISOString()
+                    })
+                    .select();
+                
+                if (fallbackError) throw fallbackError;
+                
+                this.clearCache('exams');
+                return { success: true, data: fallbackResult };
+            }
             
             this.clearCache('exams');
             return { success: true, data: result };
@@ -460,7 +601,7 @@ class LecturerDatabase {
         }
     }
     
-    // Upload a resource
+    // Upload a resource (from resources table)
     async uploadResource(file, data) {
         try {
             const filePath = `${data.program}/${data.intake}/${data.block}/${file.name}`;
@@ -482,20 +623,24 @@ class LecturerDatabase {
                 .from('resources')
                 .insert({
                     title: data.title,
+                    description: data.description || '',
                     file_name: file.name,
                     file_path: filePath,
                     file_url: urlData.publicUrl,
                     file_size: file.size,
                     file_type: file.type || file.name.split('.').pop(),
-                    program_type: data.program,
+                    program: data.program,
                     target_program: data.program,
                     intake: data.intake,
                     block: data.block,
                     block_term: data.block,
                     category: data.category || 'General',
+                    created_by: this.currentUserId,
                     uploaded_by: this.currentUserId,
                     uploaded_by_name: this.currentUserProfile?.full_name || 'Lecturer',
-                    approval_status: 'pending',
+                    status: 'published',
+                    approval_status: 'approved',
+                    published_at: new Date().toISOString(),
                     created_at: new Date().toISOString()
                 })
                 .select();
@@ -511,7 +656,7 @@ class LecturerDatabase {
         }
     }
     
-    // Send a message
+    // Send a message (from messages table)
     async sendMessage(data) {
         try {
             const { data: result, error } = await this.supabase
@@ -519,6 +664,7 @@ class LecturerDatabase {
                 .insert({
                     sender_id: this.currentUserId,
                     sender_role: 'lecturer',
+                    sender_name: this.currentUserProfile?.full_name || 'Lecturer',
                     topic: data.subject,
                     body: data.message,
                     message: data.message,
@@ -526,7 +672,8 @@ class LecturerDatabase {
                     target_program: this.currentUserProfile?.program,
                     target_group: data.target === 'all-students' ? 'all-students' : 'specific-user',
                     receiver_id: data.target === 'all-students' ? null : data.target,
-                    approval_status: 'pending',
+                    approval_status: 'sent',
+                    status: 'sent',
                     created_at: new Date().toISOString(),
                     inserted_at: new Date().toISOString()
                 })
@@ -543,7 +690,7 @@ class LecturerDatabase {
         }
     }
     
-    // Save internal marks
+    // Save internal marks (from student_marks)
     async saveMarks(markData) {
         try {
             const { error } = await this.supabase
@@ -561,7 +708,7 @@ class LecturerDatabase {
         }
     }
     
-    // Save NCK marks
+    // Save NCK marks (from nck_marks)
     async saveNCKMarks(markData) {
         try {
             const { error } = await this.supabase
@@ -579,13 +726,75 @@ class LecturerDatabase {
         }
     }
     
+    // Update profile
+    async updateProfile(updates) {
+        try {
+            const { error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update(updates)
+                .eq('user_id', this.currentUserId);
+            
+            if (error) throw error;
+            
+            // Update local profile
+            if (this.currentUserProfile) {
+                this.currentUserProfile = { ...this.currentUserProfile, ...updates };
+            }
+            
+            return { success: true };
+            
+        } catch (error) {
+            console.error('Failed to update profile:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    // Upload passport photo
+    async uploadPassportPhoto(file) {
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `avatar-${this.currentUserId}-${Date.now()}.${fileExt}`;
+            const filePath = `avatars/${fileName}`;
+            
+            const { error: uploadError } = await this.supabase.storage
+                .from('avatars')
+                .upload(filePath, file, { upsert: true });
+            
+            if (uploadError) throw uploadError;
+            
+            const { data: urlData } = this.supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+            
+            // Update profile
+            const { error: updateError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .update({ avatar_url: urlData.publicUrl })
+                .eq('user_id', this.currentUserId);
+            
+            if (updateError) throw updateError;
+            
+            if (this.currentUserProfile) {
+                this.currentUserProfile.avatar_url = urlData.publicUrl;
+            }
+            
+            return { success: true, filePath: urlData.publicUrl };
+            
+        } catch (error) {
+            console.error('Failed to upload photo:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
     // ==========================================
     // CACHE MANAGEMENT
     // ==========================================
     
     clearCache(type = null) {
         if (type) {
-            this.cachedData[type] = [];
+            if (this.cachedData[type] !== undefined) {
+                this.cachedData[type] = [];
+            }
         } else {
             Object.keys(this.cachedData).forEach(key => {
                 this.cachedData[key] = [];
