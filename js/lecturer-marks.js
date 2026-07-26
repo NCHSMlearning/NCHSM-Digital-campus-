@@ -1090,9 +1090,9 @@ function checkMarksApprovalStatus(marks) {
         if (withdrawBtn) withdrawBtn.style.display = 'none';
     }
 }
-
 // ============================================================
-// SAVE MARKS ENTRY - COMPLETE WITH PERMANENT SUPABASE STORAGE
+// SAVE MARKS ENTRY - WITH PROPER APPROVAL WORKFLOW
+// APPROVED MARKS ARE PERMANENT AND CANNOT BE EDITED
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1167,6 +1167,8 @@ async function saveMarksEntry() {
     let saved = 0;
     let updated = 0;
     let errors = 0;
+    let approvedBlocked = 0;
+    let resetToDraft = 0;
     const errorDetails = [];
     
     try {
@@ -1174,7 +1176,7 @@ async function saveMarksEntry() {
             // Check if mark already exists
             const { data: existing, error: findError } = await sb
                 .from('student_marks')
-                .select('id')
+                .select('id, approval_status, cat1_score, cat2_score, exam_score')
                 .eq('admission_number', mark.admission)
                 .eq('subject_name', unit)
                 .eq('block', block)
@@ -1187,9 +1189,42 @@ async function saveMarksEntry() {
                 continue;
             }
             
+            // ============================================================
+            // CRITICAL: Check if marks are already APPROVED
+            // APPROVED marks are PERMANENT and CANNOT be edited by lecturers
+            // ============================================================
+            if (existing && existing.approval_status === 'approved') {
+                approvedBlocked++;
+                errorDetails.push(`Student ${mark.admission}: 🔒 APPROVED - Cannot edit (contact admin)`);
+                console.log(`🔒 Blocked editing approved marks for ${mark.admission}`);
+                continue; // Skip this student entirely
+            }
+            
             // Calculate totals
             const total = calculateMarksEntryTotal(mark.cat1, mark.cat2, mark.exam, assessmentType);
             const gradeInfo = getMarksEntryGrade(total);
+            
+            // Determine approval status
+            let newApprovalStatus = existing?.approval_status || 'draft';
+            
+            // If marks were changed and status was pending or rejected, reset to draft
+            if (existing) {
+                const oldCat1 = parseFloat(existing.cat1_score) || 0;
+                const oldCat2 = parseFloat(existing.cat2_score) || 0;
+                const oldExam = parseFloat(existing.exam_score) || 0;
+                
+                const hasChanges = (
+                    Math.abs(oldCat1 - mark.cat1) > 0.01 ||
+                    Math.abs(oldCat2 - mark.cat2) > 0.01 ||
+                    Math.abs(oldExam - mark.exam) > 0.01
+                );
+                
+                if (hasChanges && (existing.approval_status === 'pending' || existing.approval_status === 'rejected')) {
+                    newApprovalStatus = 'draft';
+                    resetToDraft++;
+                    console.log(`🔄 Reset ${mark.admission} from ${existing.approval_status} to draft due to changes`);
+                }
+            }
             
             const markData = {
                 admission_number: mark.admission,
@@ -1203,12 +1238,13 @@ async function saveMarksEntry() {
                 final_score: total || null,
                 grade: gradeInfo.grade || null,
                 academic_year: year,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                approval_status: newApprovalStatus
             };
             
             let result;
             if (existing) {
-                // UPDATE existing mark
+                // UPDATE existing mark (only if not approved)
                 result = await sb
                     .from('student_marks')
                     .update(markData)
@@ -1216,7 +1252,7 @@ async function saveMarksEntry() {
                 
                 if (!result.error) {
                     updated++;
-                    console.log(`✅ Updated mark for ${mark.admission}`);
+                    console.log(`✅ Updated mark for ${mark.admission} (status: ${newApprovalStatus})`);
                 }
             } else {
                 // INSERT new mark
@@ -1241,17 +1277,44 @@ async function saveMarksEntry() {
         
         hideLoading();
         
-        // Show detailed results
+        // ============================================================
+        // SHOW DETAILED RESULTS
+        // ============================================================
         let message = '';
-        if (saved > 0 && updated > 0 && errors === 0) {
+        
+        if (saved > 0 && updated > 0 && errors === 0 && approvedBlocked === 0) {
             message = `✅ Saved ${saved} new and updated ${updated} marks successfully!`;
             showNotification(message, 'success');
         } else if (saved > 0 || updated > 0) {
-            message = `✅ ${saved > 0 ? saved + ' new saved, ' : ''}${updated > 0 ? updated + ' updated' : ''}${errors > 0 ? ', ' + errors + ' errors' : ''}`;
-            showNotification(message, errors > 0 ? 'warning' : 'success');
-        } else if (errors > 0) {
+            message = `✅ ${saved > 0 ? saved + ' new saved, ' : ''}${updated > 0 ? updated + ' updated' : ''}`;
+            if (errors > 0) message += `, ${errors} errors`;
+            if (approvedBlocked > 0) message += `, ${approvedBlocked} approved (blocked)`;
+            if (resetToDraft > 0) message += `, ${resetToDraft} reset to draft`;
+            showNotification(message, (errors > 0 || approvedBlocked > 0) ? 'warning' : 'success');
+        } else if (errors > 0 && approvedBlocked === 0) {
             message = `❌ Failed to save ${errors} marks. Check console for details.`;
             showNotification(message, 'error');
+        }
+        
+        // ============================================================
+        // SHOW WARNINGS
+        // ============================================================
+        
+        // Warn about approved marks that were blocked
+        if (approvedBlocked > 0) {
+            showNotification(`🔒 ${approvedBlocked} marks are APPROVED and cannot be edited. Contact admin to modify.`, 'error');
+        }
+        
+        // Warn about marks reset to draft
+        if (resetToDraft > 0) {
+            showNotification(`🔄 ${resetToDraft} marks were reset to DRAFT due to changes. Re-submit for approval.`, 'warning');
+        }
+        
+        // Show summary of all errors
+        if (errorDetails.length > 0 && errorDetails.length <= 5) {
+            console.log('📋 Error details:', errorDetails);
+        } else if (errorDetails.length > 5) {
+            console.log(`📋 ${errorDetails.length} errors occurred. Check individual logs.`);
         }
         
         // Reload marks to show updated data
