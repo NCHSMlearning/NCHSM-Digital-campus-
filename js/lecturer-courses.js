@@ -124,101 +124,100 @@ const LecturerCourses = {
         }
     },
     
-    async loadCourses() {
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                this.courses = [];
-                this.filteredCourses = [];
-                this.renderTable();
-                this.updateStats();
-                return;
-            }
-            
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                this.courses = [];
-                this.filteredCourses = [];
-                this.renderTable();
-                this.updateStats();
-                return;
-            }
-            
-            // Use the resolved lecturer ID
-            const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            console.log('🔍 Using lecturer ID for courses:', lecturerId);
-            
-            // Get ALL assignments from lecturer_subject_assignments
-            const { data: assignments, error } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('*')
-                .eq('lecturer_id', lecturerId);
-            
-            if (error) {
-                console.error('Error loading assignments:', error);
-                this.courses = [];
-                this.filteredCourses = [];
-                this.renderTable();
-                this.updateStats();
-                return;
-            }
-            
-            console.log('📊 Found assignments:', assignments?.length || 0);
-            
-            if (!assignments || assignments.length === 0) {
-                console.warn('No assignments found for ID:', lecturerId);
-                this.courses = [];
-                this.filteredCourses = [];
-                this.renderTable();
-                this.updateStats();
-                return;
-            }
-            
-            // Process ALL assignments into courses
-            this.courses = assignments.map(a => ({
-                id: a.id,
-                unit_id: a.id,
-                unit_code: a.subject_code || 'N/A',
-                course_name: a.subject_name || 'Unnamed Unit',
-                target_program: a.program || profile.program,
-                block: a.block || 'N/A',
-                intake_year: a.academic_year || new Date().getFullYear().toString(),
-                status: this.determineStatus(a),
-                credits: 0,
-                student_count: 0,
-                source: 'assignments',
-                raw: a
-            }));
-            
-            console.log(`✅ Processed ${this.courses.length} units from assignments`);
-            console.log('📋 Units:', this.courses.map(c => c.course_name));
-            
-            // Get student counts
-            await this.loadStudentCounts();
-            
-            // Set filtered courses to ALL courses
-            this.filteredCourses = [...this.courses];
-            
-            this.renderTable();
-            this.updateStats();
-            
-            const badge = document.getElementById('courseCountBadge');
-            if (badge) {
-                badge.textContent = this.courses.length;
-            }
-            
-            console.log(`✅ Loaded ${this.courses.length} total units`);
-            
-        } catch (error) {
-            console.error('Failed to load courses:', error);
+   async loadCourses() {
+    try {
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        if (!profile) {
+            console.warn('No lecturer profile found');
             this.courses = [];
             this.filteredCourses = [];
             this.renderTable();
             this.updateStats();
+            return;
         }
-    },
+        
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) {
+            console.warn('Supabase not available');
+            this.courses = [];
+            this.filteredCourses = [];
+            this.renderTable();
+            this.updateStats();
+            return;
+        }
+        
+        // Use the resolved lecturer ID
+        const lecturerId = this.lecturerAssignmentId || profile.user_id;
+        console.log('🔍 Using lecturer ID for courses:', lecturerId);
+        
+        // Get ALL assignments from lecturer_subject_assignments
+        const { data: assignments, error } = await supabase
+            .from('lecturer_subject_assignments')
+            .select('*')
+            .eq('lecturer_id', lecturerId);
+        
+        if (error) {
+            console.error('Error loading assignments:', error);
+            this.courses = [];
+            this.filteredCourses = [];
+            this.renderTable();
+            this.updateStats();
+            return;
+        }
+        
+        console.log('📊 Found assignments:', assignments?.length || 0);
+        
+        if (!assignments || assignments.length === 0) {
+            console.warn('No assignments found for ID:', lecturerId);
+            this.courses = [];
+            this.filteredCourses = [];
+            this.renderTable();
+            this.updateStats();
+            return;
+        }
+        
+        // Process ALL assignments into courses
+        this.courses = assignments.map(a => ({
+            id: a.id,
+            unit_id: a.id,
+            unit_code: a.subject_code || 'N/A',
+            course_name: a.subject_name || 'Unnamed Unit',
+            target_program: a.program || profile.program,
+            block: a.block || 'N/A',
+            intake_year: a.academic_year || new Date().getFullYear().toString(),
+            status: this.determineStatus(a),
+            credits: 0,
+            student_count: 0,
+            source: 'assignments',
+            raw: a
+        }));
+        
+        console.log(`✅ Processed ${this.courses.length} units from assignments`);
+        
+        // Get student counts from student_unit_registrations
+        await this.loadStudentCounts();
+        
+        // Set filtered courses to ALL courses
+        this.filteredCourses = [...this.courses];
+        
+        this.renderTable();
+        this.updateStats();
+        
+        const badge = document.getElementById('courseCountBadge');
+        if (badge) {
+            badge.textContent = this.courses.length;
+        }
+        
+        console.log(`✅ Loaded ${this.courses.length} total units`);
+        
+    } catch (error) {
+        console.error('Failed to load courses:', error);
+        this.courses = [];
+        this.filteredCourses = [];
+        this.renderTable();
+        this.updateStats();
+    }
+}
     
     determineStatus(assignment) {
         const currentYear = new Date().getFullYear().toString();
