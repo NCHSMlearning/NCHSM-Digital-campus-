@@ -8591,84 +8591,60 @@ async function sendPasswordResetEmail(email) {
     }
 }
 
-/**
- * Admin Force Password Reset - FOR EMERGENCY USE ONLY
- * Requires Service Role Key to work (may fail without it)
- */
+// ============================================================
+// 🔐 ADMIN FORCE RESET PASSWORD - VIA EDGE FUNCTION
+// ============================================================
+
 async function adminForceResetPassword(email, newPassword) {
     try {
-        // First verify user exists
-        const { data: profile, error: profileError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, email, role')
-            .eq('email', email)
-            .single();
-
-        if (profileError || !profile) {
-            return { success: false, message: 'User not found' };
-        }
-
-        // Method 1: Try Supabase Auth Admin (requires Service Role)
-        let authSuccess = false;
-        let authErrorMsg = '';
+        // Get the current admin's session token
+        const { data: { session }, error: sessionError } = await sb.auth.getSession();
         
-        try {
-            const { error: authError } = await sb.auth.admin.updateUserById(profile.user_id, { 
-                password: newPassword 
-            });
-            
-            if (authError) {
-                authErrorMsg = authError.message;
-                console.warn('Auth admin failed:', authError);
-            } else {
-                authSuccess = true;
-                console.log('✅ Auth password reset successful!');
-            }
-        } catch (authErr) {
-            authErrorMsg = authErr.message;
-            console.warn('Auth admin exception:', authErr);
+        if (sessionError || !session) {
+            return { 
+                success: false, 
+                message: 'You must be logged in as an admin' 
+            };
         }
 
-        // Method 2: Fallback - Update profiles table (if auth fails)
-        if (!authSuccess) {
-            console.log('🔄 Falling back to profile table update...');
-            
-            try {
-                const { error: updateError } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .update({ 
-                        password_hash: btoa(newPassword), // Base64 encode
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('user_id', profile.user_id);
-                
-                if (updateError) {
-                    throw new Error(`Profile update failed: ${updateError.message}`);
-                }
-                
-                console.log('✅ Profile password updated!');
-            } catch (fallbackError) {
-                console.error('❌ Fallback also failed:', fallbackError);
-                return { 
-                    success: false, 
-                    message: `Both methods failed. Auth: ${authErrorMsg}, Profile: ${fallbackError.message}` 
-                };
+        console.log('🔐 Calling admin-reset-password edge function...');
+        console.log('📧 Email:', email);
+
+        // Call the edge function
+        const response = await fetch(
+            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-reset-password',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ 
+                    email: email, 
+                    newPassword: newPassword 
+                })
             }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Reset failed');
         }
 
-        // Log success
-        await logAudit('ADMIN_FORCE_PASSWORD_RESET', 
-            `Admin forced password reset for: ${email}. Method: ${authSuccess ? 'Auth Admin' : 'Profile Fallback'}`, 
-            profile.user_id, 'SUCCESS');
-        
-        return { success: true, message: `Password for ${email} has been reset successfully!${authSuccess ? '' : ' (Using fallback method)'}` };
+        console.log('✅ Reset successful:', result);
+
+        return { 
+            success: true, 
+            message: result.message || 'Password reset successful!' 
+        };
 
     } catch (error) {
-        console.error('Admin force reset error:', error);
-        await logAudit('ADMIN_FORCE_PASSWORD_RESET', 
-            `Failed to force reset password for: ${email}. Error: ${error.message}`, 
-            null, 'FAILURE');
-        return { success: false, message: error.message };
+        console.error('❌ Admin force reset error:', error);
+        return { 
+            success: false, 
+            message: error.message || 'Failed to reset password' 
+        };
     }
 }
 
