@@ -1,4 +1,4 @@
-// js/lecturer-courses.js - COMPLETE FIX
+// js/lecturer-courses.js - COMPLETE FIXED VERSION
 /**
  * NCHSM Lecturer Courses Module
  * Uses the same unit assignments as the marks system
@@ -18,9 +18,7 @@ const LecturerCourses = {
     
     async init() {
         console.log('📚 Initializing Lecturer Courses...');
-        // First, try to get ID from marks module
         await this.resolveLecturerId();
-        // Then load courses
         await this.loadCourses();
         this.populateFilters();
         this.setupEventListeners();
@@ -28,128 +26,43 @@ const LecturerCourses = {
         console.log('✅ Lecturer Courses initialized');
     },
     
-    // ============================================
-    // RESOLVE THE CORRECT LECTURER ID - SIMPLIFIED
-    // ============================================
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                return;
-            }
+            if (!supabase) return;
             
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                return;
-            }
+            if (!profile) return;
             
-            const authId = profile.user_id;
             const fullName = profile.full_name;
+            const authId = profile.user_id;
             
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // FIRST: Try exact name match for "Kevin Kevin"
             const { data: nameData, error: nameError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .eq('lecturer_name', fullName);
             
             if (!nameError && nameData && nameData.length > 0) {
-                // Find non-STAFF ID first
                 const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
                 if (nonStaff) {
                     this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Found non-STAFF ID by exact name match:', this.lecturerAssignmentId);
+                    console.log('✅ Found non-STAFF ID:', this.lecturerAssignmentId);
                     return;
                 }
-                // If only STAFF IDs, use the first one
                 this.lecturerAssignmentId = nameData[0].lecturer_id;
-                console.log('⚠️ Found STAFF ID by name match:', this.lecturerAssignmentId);
+                console.log('⚠️ Found STAFF ID:', this.lecturerAssignmentId);
                 return;
             }
             
-            // SECOND: Try partial name match
-            const nameParts = fullName.toLowerCase().split(' ');
-            const { data: allLecturers, error: allError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name');
-            
-            if (!allError && allLecturers && allLecturers.length > 0) {
-                // Find best match
-                let bestMatch = null;
-                let bestScore = -1;
-                
-                for (const lecturer of allLecturers) {
-                    const lecturerName = lecturer.lecturer_name || '';
-                    const lecturerId = lecturer.lecturer_id;
-                    let score = 0;
-                    
-                    const lecturerNameLower = lecturerName.toLowerCase();
-                    
-                    // Check each part of the name
-                    for (const part of nameParts) {
-                        if (part.length > 1 && lecturerNameLower.includes(part)) {
-                            score += 10;
-                        }
-                    }
-                    
-                    // Bonus for exact match
-                    if (lecturerNameLower === fullName.toLowerCase()) {
-                        score += 30;
-                    }
-                    
-                    // BIG BONUS for non-STAFF IDs (UUID format)
-                    if (!lecturerId.toString().startsWith('STAFF')) {
-                        score += 50;
-                    }
-                    
-                    // Bonus for UUID format (contains hyphens)
-                    if (lecturerId.toString().includes('-')) {
-                        score += 30;
-                    }
-                    
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMatch = lecturerId;
-                    }
-                }
-                
-                if (bestMatch) {
-                    this.lecturerAssignmentId = bestMatch;
-                    console.log(`✅ Selected lecturer ID with score ${bestScore}:`, this.lecturerAssignmentId);
-                    return;
-                }
-            }
-            
-            // THIRD: Check if auth ID has assignments
-            const { data: authAssignments, error: authError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('id')
-                .eq('lecturer_id', authId)
-                .limit(1);
-            
-            if (!authError && authAssignments && authAssignments.length > 0) {
-                this.lecturerAssignmentId = authId;
-                console.log('✅ Using auth ID with assignments:', this.lecturerAssignmentId);
-                return;
-            }
-            
-            // FINAL: Use auth ID as last resort
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
         } catch (error) {
             console.error('Error resolving lecturer ID:', error);
-            // Try to get from marks module as fallback
-            if (window.lecturerMarks && window.lecturerMarks.lecturerAssignmentId) {
-                this.lecturerAssignmentId = window.lecturerMarks.lecturerAssignmentId;
-                console.log('✅ Using ID from marks module:', this.lecturerAssignmentId);
-            } else {
-                this.lecturerAssignmentId = null;
-            }
+            this.lecturerAssignmentId = null;
         }
     },
     
@@ -157,7 +70,6 @@ const LecturerCourses = {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (!profile) {
-                console.warn('No lecturer profile found');
                 this.courses = [];
                 this.filteredCourses = [];
                 this.renderTable();
@@ -167,7 +79,6 @@ const LecturerCourses = {
             
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
-                console.warn('Supabase not available');
                 this.courses = [];
                 this.filteredCourses = [];
                 this.renderTable();
@@ -175,13 +86,9 @@ const LecturerCourses = {
                 return;
             }
             
-            // Use the resolved lecturer ID
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            console.log('🔍 Using lecturer ID for courses:', lecturerId);
+            console.log('🔍 Using lecturer ID:', lecturerId);
             
-            let units = [];
-            
-            // Get assignments from lecturer_subject_assignments
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('*')
@@ -189,14 +96,17 @@ const LecturerCourses = {
             
             if (error) {
                 console.error('Error loading assignments:', error);
+                this.courses = [];
+                this.filteredCourses = [];
+                this.renderTable();
+                this.updateStats();
+                return;
             }
             
             console.log('📊 Found assignments:', assignments?.length || 0);
             
             if (assignments && assignments.length > 0) {
-                console.log('📋 Assignment details:', assignments);
-                
-                units = assignments.map(a => ({
+                this.courses = assignments.map(a => ({
                     id: a.id,
                     unit_id: a.id,
                     unit_code: a.subject_code || 'N/A',
@@ -210,53 +120,18 @@ const LecturerCourses = {
                     source: 'assignments',
                     raw: a
                 }));
-                
-                console.log('✅ Processed units from assignments:', units.length);
+                console.log('✅ Processed units:', this.courses.length);
+            } else {
+                this.courses = [];
+                this.filteredCourses = [];
+                this.renderTable();
+                this.updateStats();
+                return;
             }
             
-            // If no units, try units_catalog by program (fallback)
-            if (units.length === 0) {
-                console.log('🔄 No assignments found, trying units_catalog for program:', profile.program);
-                
-                try {
-                    const { data, error } = await supabase
-                        .from('units_catalog')
-                        .select('*')
-                        .eq('program', profile.program)
-                        .eq('status', 'active')
-                        .order('unit_code', { ascending: true });
-                    
-                    if (!error && data && data.length > 0) {
-                        console.log('📚 Found units in units_catalog:', data.length);
-                        units = data.map(u => ({
-                            id: u.id,
-                            unit_id: u.id,
-                            unit_code: u.unit_code || 'N/A',
-                            course_name: u.unit_name || 'Unnamed Unit',
-                            target_program: u.program || profile.program,
-                            block: u.block || 'N/A',
-                            intake_year: u.year ? String(u.year) : new Date().getFullYear().toString(),
-                            status: 'active',
-                            credits: u.credits || 0,
-                            unit_type: u.unit_type || 'Core',
-                            student_count: 0,
-                            source: 'catalog',
-                            raw: u
-                        }));
-                    }
-                } catch (e) {
-                    console.warn('Error getting units from units_catalog:', e.message);
-                }
-            }
-            
-            // Set courses
-            this.courses = units;
             this.filteredCourses = [...this.courses];
-            
-            // Get student counts
             await this.loadStudentCounts();
             
-            // Filter by current year
             const currentYear = new Date().getFullYear().toString();
             const yearFiltered = this.courses.filter(c => {
                 const year = c.intake_year;
@@ -265,17 +140,6 @@ const LecturerCourses = {
             
             if (yearFiltered.length > 0) {
                 this.filteredCourses = yearFiltered;
-            }
-            
-            // Update the intake filter
-            const intakeFilter = document.getElementById('intakeYearFilter');
-            if (intakeFilter) {
-                const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
-                if (years.includes(currentYear)) {
-                    intakeFilter.value = currentYear;
-                } else if (years.length > 0) {
-                    intakeFilter.value = years[0];
-                }
             }
             
             this.renderTable();
@@ -300,7 +164,6 @@ const LecturerCourses = {
     determineStatus(assignment) {
         const currentYear = new Date().getFullYear().toString();
         const year = assignment.academic_year || '';
-        
         if (!year || year === 'N/A') return 'active';
         if (year === currentYear) return 'active';
         if (parseInt(year) < parseInt(currentYear)) return 'completed';
@@ -308,115 +171,32 @@ const LecturerCourses = {
         return 'active';
     },
     
-   // js/lecturer-courses.js - UPDATED loadStudentCounts function with actual counts
-
-async loadStudentCounts() {
-    try {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase) {
-            console.warn('Supabase not available for student counts');
-            return;
-        }
-        
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const program = profile?.program || 'KRCHN';
-        
-        console.log('📊 Loading actual student counts per unit from student_unit_registrations...');
-        
-        // Get all unit names from courses
-        const unitNames = this.courses.map(c => c.course_name);
-        const blocks = [...new Set(this.courses.map(c => c.block))];
-        
-        if (unitNames.length === 0) {
-            console.warn('No units to get student counts for');
-            return;
-        }
-        
-        console.log('📋 Units:', unitNames);
-        console.log('📋 Blocks:', blocks);
-        
-        // Query all registrations at once
-        const { data: registrations, error } = await supabase
-            .from('student_unit_registrations')
-            .select('unit_name, student_id, block, status')
-            .eq('program', program)
-            .eq('status', 'approved')
-            .in('block', blocks)
-            .in('unit_name', unitNames);
-        
-        if (error) {
-            console.error('Error loading registrations:', error);
-            // Fallback: use total program students
-            const { count: totalStudents } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('*', { count: 'exact', head: true })
-                .eq('program', program)
-                .eq('role', 'student');
-            
-            for (let course of this.courses) {
-                course.student_count = totalStudents || 0;
-            }
-            console.log(`📊 Fallback: Using total program students (${totalStudents || 0}) for all units`);
-            return;
-        }
-        
-        console.log(`📊 Found ${registrations?.length || 0} registration records`);
-        
-        // Count unique students per unit
-        const countMap = {};
-        registrations?.forEach(reg => {
-            const key = `${reg.unit_name}|${reg.block}`;
-            if (!countMap[key]) {
-                countMap[key] = new Set();
-            }
-            countMap[key].add(reg.student_id);
-        });
-        
-        // Assign counts to courses
-        let totalEnrolled = 0;
-        for (let course of this.courses) {
-            const key = `${course.course_name}|${course.block}`;
-            const count = countMap[key]?.size || 0;
-            course.student_count = count;
-            totalEnrolled += count;
-            console.log(`📊 ${course.course_name}: ${count} students enrolled`);
-        }
-        
-        // Calculate unique students across all units
-        const allStudentIds = new Set();
-        registrations?.forEach(reg => {
-            allStudentIds.add(reg.student_id);
-        });
-        console.log(`📊 Total unique students across all units: ${allStudentIds.size}`);
-        console.log(`📊 Total enrolled students across all units (sum): ${totalEnrolled}`);
-        
-        // Re-render table after counts are loaded
-        this.renderTable();
-        this.updateStats();
-        
-    } catch (error) {
-        console.error('Error loading student counts:', error);
-        // Fallback: use total program students
+    async loadStudentCounts() {
         try {
             const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || 'KRCHN';
             
-            const { count: totalStudents } = await supabase
+            const { count: totalStudents, error } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('*', { count: 'exact', head: true })
                 .eq('program', program)
                 .eq('role', 'student');
             
+            const studentCount = (error || !totalStudents) ? 0 : totalStudents;
+            
             for (let course of this.courses) {
-                course.student_count = totalStudents || 0;
+                course.student_count = studentCount;
             }
-            console.log(`📊 Fallback: Using total program students (${totalStudents || 0})`);
-        } catch (fallbackError) {
-            console.error('Fallback also failed:', fallbackError);
+            
+            console.log(`📊 Student count for ${program}: ${studentCount}`);
+            
+        } catch (error) {
+            console.error('Error loading student counts:', error);
         }
-    }
-}
+    },
     
     populateFilters() {
         const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
@@ -453,15 +233,12 @@ async loadStudentCounts() {
         const courses = this.filteredCourses;
         
         if (!courses || courses.length === 0) {
-            const hasData = this.courses.length > 0;
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                         <i class="fas fa-book" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-                        <h3 style="color: #475569; margin: 0 0 8px 0;">${hasData ? 'No units match your filters' : 'No Units Assigned'}</h3>
-                        <p style="margin: 0; font-size: 14px;">${hasData ? 'Try adjusting your filters to see more units.' : 'You have not been assigned any units yet.'}</p>
-                        ${!hasData ? '<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Contact the administrator for unit assignments.</p>' : ''}
-                        ${hasData ? `<p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Total assigned: ${this.courses.length} units</p>` : ''}
+                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Units Assigned</h3>
+                        <p style="margin: 0; font-size: 14px;">You have not been assigned any units yet.</p>
                     </td>
                 </tr>
             `;
@@ -471,7 +248,7 @@ async loadStudentCounts() {
         
         const currentYear = new Date().getFullYear().toString();
         
-        tbody.innerHTML = courses.map((course, index) => {
+        tbody.innerHTML = courses.map((course) => {
             const studentCount = course.student_count || 0;
             const isPast = course.intake_year && course.intake_year !== 'N/A' && parseInt(course.intake_year) < parseInt(currentYear);
             const rowStyle = isPast ? 'opacity: 0.7;' : '';
@@ -502,12 +279,13 @@ async loadStudentCounts() {
                     onmouseout="this.style.background='transparent'">
                     <td style="padding: 14px 18px;">
                         <span style="font-weight: 700; color: #4C1D95; font-size: 13px;">${this.escapeHtml(course.unit_code || 'N/A')}</span>
-                        ${course.credits ? `<span style="font-size: 10px; color: #94a3b8; display: block;">${course.credits} Credits</span>` : ''}
                     </td>
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
                         ${this.escapeHtml(course.course_name || 'N/A')}
-                        ${course.source ? `<div style="font-size: 10px; color: #94a3b8; font-weight: 400; margin-top: 2px;">Source: ${this.escapeHtml(course.source)}</div>` : ''}
-                        ${course.block ? `<div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">Block: ${this.escapeHtml(course.block)}</div>` : ''}
+                        <div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">
+                            ${course.block ? `Block: ${this.escapeHtml(course.block)}` : ''}
+                            ${course.source ? ` | Source: ${this.escapeHtml(course.source)}` : ''}
+                        </div>
                     </td>
                     <td style="padding: 14px 18px;">
                         <span style="background: #ede9fe; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #5b21b6;">
@@ -530,13 +308,11 @@ async loadStudentCounts() {
                                 ${statusLabel}
                             </span>
                             <button onclick="LecturerCourses.manageCourse('${course.id}')" 
-                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                    onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
                                 <i class="fas fa-chart-bar"></i> Manage
                             </button>
                             <button onclick="LecturerCourses.viewStudents('${course.id}')" 
-                                    style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                    onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                                    style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
                                 <i class="fas fa-users"></i>
                             </button>
                         </div>
@@ -565,12 +341,10 @@ async loadStudentCounts() {
         const courses = this.courses;
         const currentYear = new Date().getFullYear().toString();
         
-        // Total units
         const totalCourses = courses.length;
         const totalEl = document.getElementById('totalCoursesCount2');
         if (totalEl) totalEl.textContent = totalCourses;
         
-        // Total students
         let totalStudents = 0;
         courses.forEach(c => {
             totalStudents += c.student_count || 0;
@@ -581,7 +355,6 @@ async loadStudentCounts() {
         const studentsEl = document.getElementById('totalStudentsCount2');
         if (studentsEl) studentsEl.textContent = totalStudents;
         
-        // Active units (current year)
         const active = courses.filter(c => {
             const year = c.intake_year;
             return year === currentYear || year === 'N/A' || year === '' || c.status === 'active';
@@ -589,7 +362,6 @@ async loadStudentCounts() {
         const activeEl = document.getElementById('activeCoursesCount');
         if (activeEl) activeEl.textContent = active;
         
-        // Completed units (past years)
         const completed = courses.filter(c => {
             const year = c.intake_year;
             return year && year !== 'N/A' && parseInt(year) < parseInt(currentYear);
@@ -597,19 +369,17 @@ async loadStudentCounts() {
         const completedEl = document.getElementById('completedCoursesCount');
         if (completedEl) completedEl.textContent = completed;
         
-        // Badge
         const badge = document.getElementById('courseCountBadge');
         if (badge) {
             badge.textContent = courses.length;
         }
         
-        // Dashboard count
         const dashboardCount = document.getElementById('totalCoursesCount');
         if (dashboardCount) {
             dashboardCount.textContent = courses.length;
         }
         
-        console.log(`📊 Stats: ${totalCourses} total, ${active} active (${currentYear}), ${completed} completed`);
+        console.log(`📊 Stats: ${totalCourses} total, ${active} active, ${completed} completed`);
     },
     
     applyFilters() {
@@ -660,9 +430,7 @@ async loadStudentCounts() {
             window.showNotification('Course not found.', 'error');
             return;
         }
-        
         window.showNotification(`📚 Managing: ${course.course_name} - Features coming soon!`, 'info');
-        console.log('Managing course:', course);
     },
     
     viewStudents(courseId) {
@@ -671,15 +439,11 @@ async loadStudentCounts() {
             window.showNotification('Course not found.', 'error');
             return;
         }
-        
         window.showNotification(`👥 Viewing students for: ${course.course_name}`, 'info');
-        
         if (typeof showTab === 'function') {
             showTab('my-students');
         }
-        
         sessionStorage.setItem('selectedCourseId', courseId);
-        sessionStorage.setItem('selectedCourseName', course.course_name);
     },
     
     exportCourses() {
