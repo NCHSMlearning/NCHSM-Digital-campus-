@@ -2,11 +2,13 @@
 /**
  * NCHSM Lecturer Reports Module
  * Generate and manage academic reports for assigned units and students
+ * Uses the same lecturer ID resolution as marks and courses modules
  */
 
 const LecturerReports = {
     reports: [],
     assignedUnits: [],
+    lecturerAssignmentId: null,
     currentFilters: {
         search: '',
         type: 'all',
@@ -15,12 +17,84 @@ const LecturerReports = {
     
     async init() {
         console.log('📊 Initializing Lecturer Reports...');
+        await this.resolveLecturerId();
         await this.loadAssignedUnits();
         await this.loadReports();
         this.populateReportForm();
         this.setupEventListeners();
         this.updateStats();
         console.log('✅ Lecturer Reports initialized');
+    },
+    
+    // ============================================
+    // RESOLVE THE CORRECT LECTURER ID - SAME AS MARKS MODULE
+    // ============================================
+    async resolveLecturerId() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
+            }
+            
+            const authId = profile.user_id;
+            const fullName = profile.full_name;
+            
+            console.log('🔍 Auth ID:', authId);
+            console.log('🔍 Lecturer name:', fullName);
+            
+            // Try to find by name in lecturer_subject_assignments
+            const { data, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .eq('lecturer_name', fullName)
+                .limit(1);
+            
+            if (!error && data && data.length > 0) {
+                this.lecturerAssignmentId = data[0].lecturer_id;
+                console.log('✅ Found lecturer ID by name:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            // Try partial name match
+            const nameParts = fullName.split(' ');
+            const { data: allLecturers, error: allError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .order('created_at', { ascending: false });
+            
+            if (!allError && allLecturers && allLecturers.length > 0) {
+                for (const lecturer of allLecturers) {
+                    const lecturerName = lecturer.lecturer_name || '';
+                    for (const part of nameParts) {
+                        if (part.length > 2 && lecturerName.toLowerCase().includes(part.toLowerCase())) {
+                            this.lecturerAssignmentId = lecturer.lecturer_id;
+                            console.log('✅ Found lecturer by partial name match:', this.lecturerAssignmentId);
+                            return;
+                        }
+                    }
+                }
+                
+                // If no match, use the most recent lecturer
+                this.lecturerAssignmentId = allLecturers[0].lecturer_id;
+                console.log('⚠️ Using most recent lecturer ID:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            // Fallback: use auth ID
+            this.lecturerAssignmentId = authId;
+            console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
+            
+        } catch (error) {
+            console.error('Error resolving lecturer ID:', error);
+            this.lecturerAssignmentId = null;
+        }
     },
     
     async loadAssignedUnits() {
@@ -32,31 +106,60 @@ const LecturerReports = {
             }
             
             const supabase = window.lecturerDB?.supabase;
-            if (supabase) {
-                // Get units assigned to this lecturer
-                const { data: units, error } = await supabase
-                    .from('unit_assignments')
-                    .select(`
-                        unit_id,
-                        units:unit_id (
-                            id,
-                            name,
-                            code,
-                            program,
-                            block,
-                            intake
-                        )
-                    `)
-                    .eq('lecturer_id', profile.user_id);
-                
-                if (!error) {
-                    this.assignedUnits = units?.map(u => u.units).filter(Boolean) || [];
-                } else {
-                    console.error('Error loading assigned units:', error);
-                    this.assignedUnits = this.getMockUnits();
-                }
-            } else {
+            if (!supabase) {
+                console.warn('Supabase not available');
                 this.assignedUnits = this.getMockUnits();
+                this.populateUnitSelectors();
+                return;
+            }
+            
+            // Use the resolved lecturer ID (same as marks module)
+            const lecturerId = this.lecturerAssignmentId || profile.user_id;
+            console.log('🔍 Using lecturer ID for reports:', lecturerId);
+            
+            // Get units from lecturer_subject_assignments
+            const { data: assignments, error: assignError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('subject_name, subject_code, block, program, academic_year')
+                .eq('lecturer_id', lecturerId);
+            
+            if (assignError) {
+                console.error('Error loading assignments:', assignError);
+                this.assignedUnits = this.getMockUnits();
+                this.populateUnitSelectors();
+                return;
+            }
+            
+            console.log(`📚 Found ${assignments?.length || 0} assigned units`);
+            
+            // Convert to unit format
+            this.assignedUnits = (assignments || []).map(a => ({
+                id: a.id || `unit-${Date.now()}`,
+                name: a.subject_name || 'Unnamed Unit',
+                code: a.subject_code || 'N/A',
+                program: a.program || 'N/A',
+                block: a.block || 'N/A',
+                academic_year: a.academic_year || 'N/A'
+            }));
+            
+            // If no assignments found, try to get from marks system
+            if (this.assignedUnits.length === 0) {
+                console.log('🔄 No assignments found, checking marks system...');
+                
+                if (window.lecturerMarks && window.lecturerMarks.assignedUnits) {
+                    const marksUnits = window.lecturerMarks.assignedUnits || [];
+                    if (marksUnits.length > 0) {
+                        this.assignedUnits = marksUnits.map(u => ({
+                            id: u.id || `unit-${Date.now()}`,
+                            name: u.unit_name || u.name || 'Unnamed Unit',
+                            code: u.unit_code || u.code || 'N/A',
+                            program: u.program || 'N/A',
+                            block: u.block || 'N/A',
+                            academic_year: u.year || u.academic_year || 'N/A'
+                        }));
+                        console.log('📚 Using units from marks system:', this.assignedUnits.length);
+                    }
+                }
             }
             
             this.populateUnitSelectors();
@@ -304,7 +407,6 @@ const LecturerReports = {
     },
     
     populateReportForm() {
-        // Set default date
         const dateInput = document.getElementById('reportDate');
         if (dateInput) {
             dateInput.value = new Date().toISOString().split('T')[0];
@@ -312,13 +414,11 @@ const LecturerReports = {
     },
     
     setupEventListeners() {
-        // Generate report form
         const form = document.getElementById('reportGenerationForm');
         if (form) {
             form.addEventListener('submit', (e) => this.generateReport(e));
         }
         
-        // Search input
         const searchInput = document.getElementById('reportSearch');
         if (searchInput) {
             searchInput.addEventListener('keyup', (e) => {
@@ -327,7 +427,6 @@ const LecturerReports = {
             });
         }
         
-        // Type filter
         const typeFilter = document.getElementById('reportTypeFilter');
         if (typeFilter) {
             typeFilter.addEventListener('change', (e) => {
@@ -336,7 +435,6 @@ const LecturerReports = {
             });
         }
         
-        // Unit filter
         const unitFilter = document.getElementById('reportUnitFilter');
         if (unitFilter) {
             unitFilter.addEventListener('change', (e) => {
@@ -378,7 +476,6 @@ const LecturerReports = {
             const unit = this.assignedUnits.find(u => u.id === unitId || u.unit_id === unitId);
             const unitName = unit ? (unit.name || unit.code || 'Selected Unit') : 'Selected Unit';
             
-            // Generate report name
             const typeNames = {
                 'AttendanceSummary': 'Attendance Summary',
                 'CourseGradeBook': 'Grade Book',
@@ -390,7 +487,6 @@ const LecturerReports = {
             
             const reportName = `${unitName} - ${typeNames[reportType] || reportType}`;
             
-            // Create report object
             const newReport = {
                 id: `report-${Date.now()}`,
                 name: reportName,
@@ -410,7 +506,6 @@ const LecturerReports = {
                 }
             };
             
-            // Save to database
             const supabase = window.lecturerDB?.supabase;
             if (supabase) {
                 const { error: dbError } = await supabase
@@ -422,14 +517,12 @@ const LecturerReports = {
                 }
             }
             
-            // Add to local list
             this.reports.unshift(newReport);
             this.renderReports(this.reports);
             this.updateStats();
             
             window.showNotification('✅ Report generated successfully!', 'success');
             
-            // Reset form
             form.reset();
             this.populateReportForm();
             
@@ -449,7 +542,6 @@ const LecturerReports = {
             return;
         }
         
-        // Confirm deletion
         const confirmed = await new Promise((resolve) => {
             const modal = document.getElementById('customConfirmModal');
             if (modal) {
@@ -487,7 +579,6 @@ const LecturerReports = {
                 }
             }
             
-            // Remove from local list
             this.reports = this.reports.filter(r => r.id !== reportId);
             this.renderReports(this.reports);
             this.updateStats();
@@ -503,7 +594,6 @@ const LecturerReports = {
     updateStats() {
         const total = this.reports?.length || 0;
         
-        // Update stat cards
         const totalEl = document.getElementById('totalReportsCount');
         if (totalEl) totalEl.textContent = total;
         
@@ -519,7 +609,6 @@ const LecturerReports = {
         const unitEl = document.getElementById('unitReportsCount');
         if (unitEl) unitEl.textContent = unitReports;
         
-        // Update count display
         const countDisplay = document.getElementById('reportCountDisplay');
         if (countDisplay) countDisplay.textContent = total;
     },
@@ -589,6 +678,7 @@ const LecturerReports = {
     },
     
     async refresh() {
+        await this.resolveLecturerId();
         await this.loadAssignedUnits();
         await this.loadReports();
         window.showNotification('Reports refreshed!', 'success');
@@ -600,7 +690,6 @@ const LecturerReports = {
             return;
         }
         
-        // Create CSV export
         const headers = ['Name', 'Unit', 'Type', 'Scope', 'Format', 'Date'];
         const rows = this.reports.map(r => [
             r.name || 'Untitled',
@@ -640,3 +729,5 @@ window.clearReportFilters = () => LecturerReports.clearFilters();
 window.refreshReports = () => LecturerReports.refresh();
 window.exportAllReports = () => LecturerReports.exportAllReports();
 window.printReportTable = () => LecturerReports.printReportTable();
+
+console.log('✅ LecturerReports module loaded - Same ID resolution as marks module');
