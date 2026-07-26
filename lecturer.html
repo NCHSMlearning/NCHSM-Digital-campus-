@@ -1597,81 +1597,91 @@ if (window.location.pathname.endsWith('.html')) {
 }
 
 // ============================================================
-// GLOBAL DROPDOWN TOGGLE FUNCTION - PERMANENT FIX
+// GLOBAL DROPDOWN TOGGLE FUNCTION - UPDATED (WORKS)
 // ============================================================
-window.toggleDropdown = function(event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    
-    // Find the clicked toggle
-    let toggle = event?.currentTarget;
-    if (!toggle) {
-        const target = event?.target;
-        if (target) {
-            toggle = target.closest('.dropdown-toggle');
-        }
-    }
-    
-    if (!toggle) {
-        toggle = document.querySelector('.dropdown-toggle');
-        if (!toggle) {
-            console.warn('⚠️ No toggle found');
-            return false;
-        }
-    }
-    
-    // Find parent dropdown
-    const parentLi = toggle.closest('.nav-dropdown');
-    if (!parentLi) {
-        console.warn('⚠️ No parent .nav-dropdown found');
-        return false;
-    }
-    
-    // Find menu
-    const menu = parentLi.querySelector('.dropdown-menu');
-    if (!menu) {
-        console.warn('⚠️ No dropdown-menu found');
-        return false;
-    }
-    
-    // Close all other dropdowns
+
+// Close all dropdowns
+function closeAllDropdowns() {
     document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
-        if (dropdown !== parentLi) {
-            dropdown.classList.remove('open');
-            const m = dropdown.querySelector('.dropdown-menu');
-            if (m) {
-                m.style.display = 'none';
-            }
+        dropdown.classList.remove('open');
+        const menu = dropdown.querySelector('.dropdown-menu');
+        if (menu) {
+            menu.style.display = 'none';
         }
     });
-    
-    // Toggle this dropdown
-    const isOpen = parentLi.classList.contains('open');
-    
-    if (isOpen) {
-        parentLi.classList.remove('open');
-        menu.style.display = 'none';
-        console.log('📂 Dropdown CLOSED');
-    } else {
-        parentLi.classList.add('open');
-        menu.style.display = 'block';
-        // Force menu position
-        menu.style.position = 'fixed';
-        menu.style.top = '70px';
-        menu.style.left = '220px';
-        menu.style.zIndex = '999999';
-        menu.style.background = '#1e1b4b';
-        menu.style.borderRadius = '8px';
-        menu.style.padding = '8px 0';
-        menu.style.minWidth = '220px';
-        menu.style.boxShadow = '0 10px 40px rgba(0,0,0,0.5)';
-        console.log('📂 Dropdown OPENED');
+}
+
+// Toggle a single dropdown
+function toggleDropdown(dropdown) {
+    if (!dropdown) return;
+    const isOpen = dropdown.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+        dropdown.classList.add('open');
+        const menu = dropdown.querySelector('.dropdown-menu');
+        if (menu) {
+            menu.style.display = 'block';
+            menu.style.position = 'relative';
+            menu.style.top = 'auto';
+            menu.style.left = 'auto';
+            menu.style.marginLeft = '20px';
+            menu.style.marginTop = '5px';
+            menu.style.width = 'calc(100% - 25px)';
+            menu.style.zIndex = '999';
+            menu.style.background = '#1e1b4b';
+            menu.style.borderRadius = '8px';
+            menu.style.padding = '8px 0';
+            menu.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+            menu.style.border = '1px solid rgba(255,255,255,0.1)';
+            menu.style.borderLeft = '3px solid #FDB913';
+        }
     }
+}
+
+// Handle dropdown click
+function handleDropdownClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const parentLi = this.closest('.nav-dropdown');
+    if (parentLi) {
+        toggleDropdown(parentLi);
+    }
+}
+
+// Handle outside click
+function handleOutsideClick(e) {
+    if (!e.target.closest('.nav-dropdown')) {
+        closeAllDropdowns();
+    }
+}
+
+// Initialize dropdowns
+function initDropdowns() {
+    // Remove old event listeners by cloning
+    document.querySelectorAll('.nav-dropdown > a').forEach(toggle => {
+        const newToggle = toggle.cloneNode(true);
+        toggle.parentNode.replaceChild(newToggle, toggle);
+    });
     
-    return false;
-};
+    // Add new click listeners
+    document.querySelectorAll('.nav-dropdown > a').forEach(toggle => {
+        toggle.addEventListener('click', handleDropdownClick);
+    });
+    
+    // Close on outside click
+    document.removeEventListener('click', handleOutsideClick);
+    document.addEventListener('click', handleOutsideClick);
+    
+    console.log('✅ Dropdowns initialized (Superadmin style)');
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initDropdowns();
+});
+
+// Also run after dynamic content
+setTimeout(initDropdowns, 500);
 
 console.log('✅ toggleDropdown function updated');
 
@@ -1812,22 +1822,23 @@ window.hideLoading = function() {
         
         .nav-dropdown .dropdown-menu {
             display: none !important;
-            position: fixed !important;
-            top: 70px !important;
-            left: 220px !important;
-            min-width: 220px !important;
-            z-index: 999999 !important;
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            margin-left: 20px !important;
+            margin-top: 5px !important;
+            width: calc(100% - 25px) !important;
             background: #1e1b4b !important;
             border-radius: 8px !important;
             padding: 8px 0 !important;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
             border: 1px solid rgba(255,255,255,0.1) !important;
+            border-left: 3px solid #FDB913 !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+            z-index: 999 !important;
         }
         
         .nav-dropdown.open .dropdown-menu {
             display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
         }
         
         .nav-dropdown .dropdown-menu li a {
@@ -1880,7 +1891,74 @@ window.hideLoading = function() {
     document.head.appendChild(style);
     console.log('✅ Styles added with dropdown support');
 })();
+
+// ============================================================
+// SIDEBAR SCROLL FIX - ON PAGE LOAD
+// ============================================================
+
+function fixSidebarOnLoad() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    
+    // Ensure height is 100vh
+    sidebar.style.height = '100vh';
+    sidebar.style.maxHeight = '100vh';
+    sidebar.style.overflow = 'auto';
+    sidebar.style.overflowY = 'auto';
+    sidebar.style.overflowX = 'hidden';
+    sidebar.style.display = 'flex';
+    sidebar.style.flexDirection = 'column';
+    sidebar.style.position = 'fixed';
+    sidebar.style.top = '0';
+    sidebar.style.left = '0';
+    sidebar.style.width = '280px';
+    sidebar.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    sidebar.style.zIndex = '999';
+    sidebar.style.padding = '24px 16px';
+    sidebar.style.boxShadow = '4px 0 20px rgba(0,0,0,0.1)';
+    
+    // Fix navigation
+    const nav = sidebar.querySelector('ul');
+    if (nav) {
+        nav.style.flex = '1';
+        nav.style.overflowY = 'auto';
+        nav.style.overflowX = 'hidden';
+        nav.style.paddingBottom = '30px';
+        nav.style.margin = '0';
+        nav.style.listStyle = 'none';
+        nav.style.webkitOverflowScrolling = 'touch';
+        nav.style.maxHeight = 'calc(100vh - 180px)';
+    }
+    
+    // Fix logout section
+    let logoutSection = sidebar.querySelector('.logout-section') || 
+                       sidebar.querySelector('div:last-child');
+    if (logoutSection) {
+        logoutSection.style.flexShrink = '0';
+        logoutSection.style.marginTop = 'auto';
+        logoutSection.style.position = 'sticky';
+        logoutSection.style.bottom = '0';
+        logoutSection.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        logoutSection.style.zIndex = '10';
+        logoutSection.style.borderTop = '1px solid rgba(255,255,255,0.2)';
+        logoutSection.style.paddingTop = '16px';
+        logoutSection.style.width = '100%';
+    }
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', function() {
+    fixSidebarOnLoad();
+    initDropdowns();
+});
+
+// Also run after a slight delay to catch any dynamic changes
+setTimeout(function() {
+    fixSidebarOnLoad();
+    initDropdowns();
+}, 500);
 </script>
+
 <!-- ============================================ -->
 <!-- REST OF SCRIPTS -->
 <!-- ============================================ -->
@@ -1909,5 +1987,6 @@ window.hideLoading = function() {
 
 <!-- Main Entry Point -->
 <script src="js/lecturer-main.js"></script>
+
 </body>
 </html>
