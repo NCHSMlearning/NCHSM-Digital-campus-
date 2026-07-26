@@ -10344,13 +10344,57 @@ function clearSelection() {
     updateSelectedCount();
 }
 
+// ============================================================
+// UPDATE SELECTED COUNT - COMBINED VERSION
+// ============================================================
+
 function updateSelectedCount() {
-    const selected = document.querySelectorAll('.user-checkbox:checked').length;
-    const countElement = $('selected-count');
-    if (countElement) {
-        countElement.textContent = selected;
+    // 1. Handle user checkboxes (for bulk operations)
+    const userCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+    const userCount = userCheckboxes.length;
+    const userCountElement = document.getElementById('selected-count');
+    if (userCountElement) {
+        userCountElement.textContent = userCount;
     }
+    
+    // 2. Handle student checkboxes (for marks student manager)
+    const studentCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+    const studentCount = studentCheckboxes.length;
+    
+    document.querySelectorAll('#selectedStudentCount, #selectedStudentCountBottom').forEach(el => {
+        if (el) el.textContent = studentCount;
+    });
+    document.querySelectorAll('#dropSelectedCount, #dropSelectedCountBottom').forEach(el => {
+        if (el) el.textContent = studentCount;
+    });
+    
+    const btns = document.querySelectorAll('#dropSelectedBtn, #dropSelectedBtnBottom');
+    btns.forEach(btn => {
+        if (btn) btn.style.display = studentCount > 0 ? 'inline-block' : 'none';
+    });
+    
+    // Update select all checkboxes for students
+    const allStudentCheckboxes = document.querySelectorAll('.student-checkbox');
+    const allChecked = document.querySelectorAll('.student-checkbox:checked');
+    const selectAll = document.getElementById('selectAllStudents');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    
+    if (selectAll && allStudentCheckboxes.length > 0) {
+        selectAll.checked = allChecked.length === allStudentCheckboxes.length;
+    }
+    if (selectAllCheckbox && allStudentCheckboxes.length > 0) {
+        selectAllCheckbox.checked = allChecked.length === allStudentCheckboxes.length;
+    }
+    
+    // Show/hide user bulk action buttons
+    const userBtns = document.querySelectorAll('#bulkDeleteBtn, #bulkActionBtn');
+    userBtns.forEach(btn => {
+        if (btn) btn.style.display = userCount > 0 ? 'inline-block' : 'none';
+    });
 }
+
+// Make sure it's global
+window.updateSelectedCount = updateSelectedCount;
 
 function executeBulkAction() {
     const action = $('bulk-action')?.value;
@@ -21351,34 +21395,6 @@ function toggleAllStudentsCheckbox() {
     updateSelectedCount();
 }
 
-function updateSelectedCount() {
-    const checkboxes = document.querySelectorAll('.student-checkbox:checked');
-    const count = checkboxes.length;
-    
-    document.querySelectorAll('#selectedStudentCount, #selectedStudentCountBottom').forEach(el => {
-        if (el) el.textContent = count;
-    });
-    document.querySelectorAll('#dropSelectedCount, #dropSelectedCountBottom').forEach(el => {
-        if (el) el.textContent = count;
-    });
-    
-    const btns = document.querySelectorAll('#dropSelectedBtn, #dropSelectedBtnBottom');
-    btns.forEach(btn => {
-        if (btn) btn.style.display = count > 0 ? 'inline-block' : 'none';
-    });
-    
-    const allCheckboxes = document.querySelectorAll('.student-checkbox');
-    const allChecked = document.querySelectorAll('.student-checkbox:checked');
-    const selectAll = document.getElementById('selectAllStudents');
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    
-    if (selectAll && allCheckboxes.length > 0) {
-        selectAll.checked = allChecked.length === allCheckboxes.length;
-    }
-    if (selectAllCheckbox && allCheckboxes.length > 0) {
-        selectAllCheckbox.checked = allChecked.length === allCheckboxes.length;
-    }
-}
 
 window.toggleAllStudents = toggleAllStudents;
 window.toggleAllStudentsCheckbox = toggleAllStudentsCheckbox;
