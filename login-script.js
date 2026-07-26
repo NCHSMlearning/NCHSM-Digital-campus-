@@ -408,93 +408,118 @@ window.NCHSMLogin = {
         }
     },
 
-    // ============================================
-    // COMPLETE LOGIN - WITH NOTIFICATIONS
-    // ============================================
-    completeLogin: async function(profileData, sessionToken, isStaff = false) {
-        console.log('🎉 COMPLETE LOGIN STARTED');
-        console.log('📊 Profile Data:', profileData);
-        console.log('🔑 Session Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
-        console.log('👔 Is Staff:', isStaff);
+  // ============================================
+// COMPLETE LOGIN - WITH UUID FIX FOR STAFF
+// ============================================
+completeLogin: async function(profileData, sessionToken, isStaff = false) {
+    console.log('🎉 COMPLETE LOGIN STARTED');
+    console.log('📊 Profile Data:', profileData);
+    console.log('🔑 Session Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
+    console.log('👔 Is Staff:', isStaff);
+    
+    try {
+        // ✅ FIX: Get the correct UUID for staff users
+        let userIdForSession = profileData.user_id;
         
-        try {
-            // ✅ FIX: WAIT for updateLastLogin to complete
-            if (!isStaff) {
-                console.log('📝 Updating last login...');
-                const updateResult = await this.updateLastLogin(profileData.user_id, profileData.email);
-                console.log('📝 Update result:', updateResult ? '✅ SUCCESS' : '❌ FAILED');
+        // If this is staff and user_id is a staff ID (starts with STAFF)
+        if (isStaff && typeof profileData.user_id === 'string' && profileData.user_id.startsWith('STAFF')) {
+            console.log('🔄 Converting staff ID to UUID for session...');
+            try {
+                const { data: profile, error } = await this.supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id')
+                    .eq('email', profileData.email)
+                    .single();
                 
-                // If update failed, try force update
-                if (!updateResult) {
-                    console.log('⚠️ updateLastLogin failed, trying force update...');
-                    await this.forceUpdateLoginCount(profileData.user_id);
+                if (error) {
+                    console.error('❌ Error getting UUID:', error);
+                } else if (profile?.user_id) {
+                    userIdForSession = profile.user_id;
+                    console.log('✅ Using UUID for session:', userIdForSession);
+                } else {
+                    console.warn('⚠️ No UUID found, using staff ID:', profileData.user_id);
                 }
+            } catch (e) {
+                console.warn('⚠️ Could not fetch UUID, using staff ID:', profileData.user_id);
             }
-            
-            // 2. TRACK SESSION - THIS IS THE IMPORTANT PART
-            console.log('🔍 Attempting to track session...');
-            const sessionResult = await this.trackUserSession(
-                profileData.user_id, 
-                profileData.email, 
-                sessionToken, 
-                navigator.userAgent, 
-                isStaff
-            );
-            
-            if (sessionResult) {
-                console.log('✅ Session tracked successfully!');
-            } else {
-                console.warn('⚠️ Session tracking returned null/undefined');
-            }
-            
-            // 3. Store profile (minimal)
-            const safeProfile = {
-                user_id: profileData.user_id,
-                email: profileData.email,
-                full_name: profileData.full_name,
-                role: profileData.role,
-                program: profileData.program || profileData.department,
-                is_staff: isStaff || false
-            };
-            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-            console.log('💾 Profile stored in localStorage');
-            
-            // 4. Store session expiry
-            if (!isStaff && this.supabase) {
-                try {
-                    const { data: { session } } = await this.supabase.auth.getSession();
-                    if (session) {
-                        localStorage.setItem('session_expires', session.expires_at);
-                        console.log('⏰ Session expiry stored:', session.expires_at);
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Could not get session expiry:', err);
-                }
-            }
-            
-            // 5. Update last login info on page
-            this.updateLastLoginInfo();
-            
-            // 🆕 5b. Send login notification (for students only)
-            if (profileData.role === 'student' && !isStaff) {
-                console.log('📧 Sending login notification...');
-                this.sendLoginNotification(profileData).catch(err => {
-                    console.warn('⚠️ Login notification failed:', err);
-                });
-            }
-            
-            // 6. Redirect
-            console.log('🚀 Redirecting to dashboard...');
-            this.redirectToDashboard(profileData);
-            
-        } catch (error) {
-            console.error('❌ Complete login error:', error);
-            console.error('❌ Error stack:', error.stack);
-            // Still redirect even if tracking fails
-            this.redirectToDashboard(profileData);
         }
-    },
-
+        
+        // ✅ FIX: WAIT for updateLastLogin to complete (skip for staff)
+        if (!isStaff) {
+            console.log('📝 Updating last login...');
+            const updateResult = await this.updateLastLogin(profileData.user_id, profileData.email);
+            console.log('📝 Update result:', updateResult ? '✅ SUCCESS' : '❌ FAILED');
+            
+            if (!updateResult) {
+                console.log('⚠️ updateLastLogin failed, trying force update...');
+                await this.forceUpdateLoginCount(profileData.user_id);
+            }
+        }
+        
+        // 2. TRACK SESSION - Using the UUID for staff
+        console.log('🔍 Attempting to track session with user_id:', userIdForSession);
+        const sessionResult = await this.trackUserSession(
+            userIdForSession,  // ✅ Using UUID for staff!
+            profileData.email, 
+            sessionToken, 
+            navigator.userAgent, 
+            isStaff
+        );
+        
+        if (sessionResult) {
+            console.log('✅ Session tracked successfully!');
+        } else {
+            console.warn('⚠️ Session tracking returned null/undefined');
+        }
+        
+        // 3. Store profile with the correct UUID
+        const safeProfile = {
+            user_id: userIdForSession,  // ✅ Store UUID, not staff ID
+            staff_id: profileData.staff_id || profileData.id,  // Store staff ID for reference
+            email: profileData.email,
+            full_name: profileData.full_name,
+            role: profileData.role,
+            program: profileData.program || profileData.department,
+            is_staff: isStaff || false
+        };
+        localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+        console.log('💾 Profile stored with UUID:', safeProfile);
+        
+        // 4. Store session expiry (only for students)
+        if (!isStaff && this.supabase) {
+            try {
+                const { data: { session } } = await this.supabase.auth.getSession();
+                if (session) {
+                    localStorage.setItem('session_expires', session.expires_at);
+                    console.log('⏰ Session expiry stored:', session.expires_at);
+                }
+            } catch (err) {
+                console.warn('⚠️ Could not get session expiry:', err);
+            }
+        }
+        
+        // 5. Update last login info on page
+        this.updateLastLoginInfo();
+        
+        // 6. Send login notification (for students only)
+        if (profileData.role === 'student' && !isStaff) {
+            console.log('📧 Sending login notification...');
+            this.sendLoginNotification(profileData).catch(err => {
+                console.warn('⚠️ Login notification failed:', err);
+            });
+        }
+        
+        // 7. Redirect
+        console.log('🚀 Redirecting to dashboard...');
+        this.redirectToDashboard(profileData);
+        
+    } catch (error) {
+        console.error('❌ Complete login error:', error);
+        console.error('❌ Error stack:', error.stack);
+        // Still redirect even if tracking fails
+        this.redirectToDashboard(profileData);
+    }
+},
     // ============================================
     // FORCE UPDATE LOGIN COUNT - NEW FUNCTION
     // ============================================
@@ -1499,29 +1524,36 @@ verifyStaffLogin: async function(identifier, password) {
         return null;
     }
 },
+// ============================================
+// EXECUTE LOGIN - FINAL WORKING VERSION
+// ============================================
+executeLogin: async function(identifier, password) {
+    if (!this.supabase) {
+        throw new Error('Authentication service not available');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
+    
+    let profileData = null;
+    let isStaff = false;
+    
     // ============================================
-    // EXECUTE LOGIN
+    // STEP 1: CHECK STAFF LOGIN (staff_records)
     // ============================================
-    executeLogin: async function(identifier, password) {
-        if (!this.supabase) {
-            throw new Error('Authentication service not available');
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
-        
-        let profileData = null;
-        let isStaff = false;
-        
-        const isStaffId = !identifier.includes('@');
-        if (isStaffId || identifier.includes('@')) {
-            const staffProfile = await this.verifyStaffLogin(identifier, password);
-            if (staffProfile) {
-                profileData = staffProfile;
-                isStaff = true;
-                return { profileData, isStaff };
-            }
-        }
-        
+    const staffProfile = await this.verifyStaffLogin(identifier, password);
+    if (staffProfile) {
+        console.log('✅ Staff login successful:', staffProfile.email);
+        profileData = staffProfile;
+        isStaff = true;
+        return { profileData, isStaff };
+    }
+    
+    // ============================================
+    // STEP 2: STUDENT LOGIN (Supabase Auth)
+    // ============================================
+    console.log('🔐 Checking student login for:', identifier);
+    
+    try {
         const { data: authData, error: authError } = await this.supabase.auth
             .signInWithPassword({ 
                 email: identifier, 
@@ -1539,26 +1571,56 @@ verifyStaffLogin: async function(identifier, password) {
             }
         }
         
+        if (!authData.user) {
+            throw new Error('No user found');
+        }
+        
+        console.log('✅ Supabase Auth successful for:', identifier);
+        
+        // Get profile
         const { data: profile, error: profileError } = await this.supabase
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('email', identifier)
             .maybeSingle();
         
-        if (!profile || profileError) {
+        if (profileError) {
+            console.error('❌ Profile error:', profileError);
             await this.supabase.auth.signOut();
-            throw new Error('Account not found');
+            throw new Error('Error loading profile');
+        }
+        
+        if (!profile) {
+            console.error('❌ No profile found for:', identifier);
+            await this.supabase.auth.signOut();
+            throw new Error('Account not found. Please contact support.');
         }
         
         const validStatuses = ['approved', 'active'];
         if (!validStatuses.includes(profile.status?.toLowerCase())) {
             await this.supabase.auth.signOut();
-            throw new Error('Account pending approval');
+            throw new Error('Account pending approval. Please wait.');
         }
         
-        return { profileData: profile, isStaff: false };
-    },
-    
+        return { 
+            profileData: {
+                user_id: profile.user_id,
+                email: profile.email,
+                full_name: profile.full_name || 'Student',
+                role: profile.role || 'student',
+                program: profile.program || profile.department,
+                staff_id: profile.staff_id || null,
+                is_staff: false,
+                ...profile
+            }, 
+            isStaff: false 
+        };
+        
+    } catch (error) {
+        console.error('❌ Student login error:', error);
+        throw error;
+    }
+},
     // ============================================
     // LOGIN HANDLER
     // ============================================
