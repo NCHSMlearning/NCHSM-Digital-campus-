@@ -308,193 +308,227 @@ window.NCHSMLogin = {
         }
     },
 
-    // ============================================
-    // SESSION TRACKING - FIXED VERSION
-    // ============================================
-    trackUserSession: async function(userId, email, sessionToken, userAgent, isStaff = false) {
-        console.log('🔍 TRACKING SESSION STARTED');
-        console.log('👤 User ID:', userId);
-        console.log('📧 Email:', email);
-        console.log('📝 Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
-        console.log('👔 Is Staff:', isStaff);
+   // ============================================
+// SESSION TRACKING - WITH UUID FIX
+// ============================================
+trackUserSession: async function(userId, email, sessionToken, userAgent, isStaff = false) {
+    console.log('🔍 TRACKING SESSION STARTED');
+    console.log('👤 User ID:', userId);
+    console.log('📧 Email:', email);
+    console.log('👔 Is Staff:', isStaff);
+    
+    try {
+        // ✅ FIX: If userId is a staff ID (starts with STAFF), convert to UUID
+        let actualUserId = userId;
+        if (typeof userId === 'string' && userId.startsWith('STAFF')) {
+            console.log('🔄 Converting staff ID to UUID...');
+            const { data: profile } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id')
+                .eq('email', email)
+                .single();
+            
+            if (profile?.user_id) {
+                actualUserId = profile.user_id;
+                console.log('✅ Using UUID:', actualUserId);
+            } else {
+                console.warn('⚠️ No UUID found, using staff ID:', userId);
+            }
+        }
         
-        try {
-            // Check if supabase is available
-            if (!this.supabase) {
-                console.error('❌ Supabase not initialized!');
-                return null;
-            }
-            
-            // Get IP address
-            let ipAddress = 'unknown';
-            try {
-                const ipResponse = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipResponse.json();
-                ipAddress = ipData.ip;
-                console.log('🌐 IP Address:', ipAddress);
-            } catch (ipError) {
-                console.warn('⚠️ Could not get IP, using "unknown"');
-            }
-            
-            // Parse device info
-            const deviceInfo = this.parseUserAgent(userAgent);
-            console.log('📱 Device Info:', deviceInfo);
-            
-            // Set expiry (24 hours from now)
-            const expiresAt = new Date();
-            expiresAt.setHours(expiresAt.getHours() + 24);
-            console.log('⏰ Expires At:', expiresAt.toISOString());
-            
-            // Hash the token (for security)
-            const hashedToken = await this.hashToken(sessionToken);
-            console.log('🔐 Token hashed successfully');
-            
-            // Prepare session data
-            const sessionData = {
-                user_id: userId,
-                session_token: hashedToken,
-                ip_address: ipAddress,
-                user_agent: userAgent || 'Unknown',
-                device_info: deviceInfo,
-                login_time: new Date().toISOString(),
-                last_activity: new Date().toISOString(),
-                expires_at: expiresAt.toISOString(),
-                is_active: true,
-                login_type: isStaff ? 'staff' : 'user',
-                created_at: new Date().toISOString()
-            };
-            
-            console.log('📦 Inserting session data...');
-            
-            // Insert session
-            const { data, error } = await this.supabase
-                .from('user_sessions')
-                .insert(sessionData)
-                .select();
-            
-            if (error) {
-                console.error('❌ Session insert ERROR:', error);
-                console.error('❌ Error details:', JSON.stringify(error, null, 2));
-                
-                // Try insert without select
-                console.log('🔄 Retrying without .select()...');
-                const { error: insertError } = await this.supabase
-                    .from('user_sessions')
-                    .insert(sessionData);
-                
-                if (insertError) {
-                    console.error('❌ Second attempt failed:', insertError);
-                    return null;
-                }
-                console.log('✅ Session inserted successfully (without select)');
-                return { id: 'inserted' };
-            }
-            
-            console.log('✅ Session tracked successfully!');
-            console.log('📊 Session ID:', data?.[0]?.id);
-            
-            // Store session ID in local storage
-            if (data && data[0]) {
-                localStorage.setItem('session_id', data[0].id);
-            }
-            
-            return data?.[0];
-            
-        } catch (error) {
-            console.error('❌ Session tracking ERROR:', error);
-            console.error('❌ Error stack:', error.stack);
-            // Don't block login if session tracking fails
+        // Check if supabase is available
+        if (!this.supabase) {
+            console.error('❌ Supabase not initialized!');
             return null;
         }
-    },
-
-    // ============================================
-    // COMPLETE LOGIN - WITH NOTIFICATIONS
-    // ============================================
-    completeLogin: async function(profileData, sessionToken, isStaff = false) {
-        console.log('🎉 COMPLETE LOGIN STARTED');
-        console.log('📊 Profile Data:', profileData);
-        console.log('🔑 Session Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
-        console.log('👔 Is Staff:', isStaff);
         
+        // Get IP address
+        let ipAddress = 'unknown';
         try {
-            // ✅ FIX: WAIT for updateLastLogin to complete
-            if (!isStaff) {
-                console.log('📝 Updating last login...');
-                const updateResult = await this.updateLastLogin(profileData.user_id, profileData.email);
-                console.log('📝 Update result:', updateResult ? '✅ SUCCESS' : '❌ FAILED');
-                
-                // If update failed, try force update
-                if (!updateResult) {
-                    console.log('⚠️ updateLastLogin failed, trying force update...');
-                    await this.forceUpdateLoginCount(profileData.user_id);
-                }
-            }
-            
-            // 2. TRACK SESSION - THIS IS THE IMPORTANT PART
-            console.log('🔍 Attempting to track session...');
-            const sessionResult = await this.trackUserSession(
-                profileData.user_id, 
-                profileData.email, 
-                sessionToken, 
-                navigator.userAgent, 
-                isStaff
-            );
-            
-            if (sessionResult) {
-                console.log('✅ Session tracked successfully!');
-            } else {
-                console.warn('⚠️ Session tracking returned null/undefined');
-            }
-            
-            // 3. Store profile (minimal)
-            const safeProfile = {
-                user_id: profileData.user_id,
-                email: profileData.email,
-                full_name: profileData.full_name,
-                role: profileData.role,
-                program: profileData.program || profileData.department,
-                is_staff: isStaff || false
-            };
-            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-            console.log('💾 Profile stored in localStorage');
-            
-            // 4. Store session expiry
-            if (!isStaff && this.supabase) {
-                try {
-                    const { data: { session } } = await this.supabase.auth.getSession();
-                    if (session) {
-                        localStorage.setItem('session_expires', session.expires_at);
-                        console.log('⏰ Session expiry stored:', session.expires_at);
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Could not get session expiry:', err);
-                }
-            }
-            
-            // 5. Update last login info on page
-            this.updateLastLoginInfo();
-            
-            // 🆕 5b. Send login notification (for students only)
-            if (profileData.role === 'student' && !isStaff) {
-                console.log('📧 Sending login notification...');
-                this.sendLoginNotification(profileData).catch(err => {
-                    console.warn('⚠️ Login notification failed:', err);
-                });
-            }
-            
-            // 6. Redirect
-            console.log('🚀 Redirecting to dashboard...');
-            this.redirectToDashboard(profileData);
-            
-        } catch (error) {
-            console.error('❌ Complete login error:', error);
-            console.error('❌ Error stack:', error.stack);
-            // Still redirect even if tracking fails
-            this.redirectToDashboard(profileData);
+            const ipResponse = await fetch('https://api.ipify.org?format=json');
+            const ipData = await ipResponse.json();
+            ipAddress = ipData.ip;
+            console.log('🌐 IP Address:', ipAddress);
+        } catch (ipError) {
+            console.warn('⚠️ Could not get IP, using "unknown"');
         }
-    },
-
+        
+        // Parse device info
+        const deviceInfo = this.parseUserAgent(userAgent);
+        console.log('📱 Device Info:', deviceInfo);
+        
+        // Set expiry (24 hours from now)
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+        console.log('⏰ Expires At:', expiresAt.toISOString());
+        
+        // Hash the token (for security)
+        const hashedToken = await this.hashToken(sessionToken);
+        console.log('🔐 Token hashed successfully');
+        
+        // Prepare session data with the actual UUID
+        const sessionData = {
+            user_id: actualUserId,  // ✅ Using UUID here!
+            session_token: hashedToken,
+            ip_address: ipAddress,
+            user_agent: userAgent || 'Unknown',
+            device_info: deviceInfo,
+            login_time: new Date().toISOString(),
+            last_activity: new Date().toISOString(),
+            expires_at: expiresAt.toISOString(),
+            is_active: true,
+            login_type: isStaff ? 'staff' : 'user',
+            created_at: new Date().toISOString()
+        };
+        
+        console.log('📦 Inserting session data with user_id:', actualUserId);
+        
+        // Insert session
+        const { data, error } = await this.supabase
+            .from('user_sessions')
+            .insert(sessionData)
+            .select();
+        
+        if (error) {
+            console.error('❌ Session insert ERROR:', error);
+            console.error('❌ Error details:', JSON.stringify(error, null, 2));
+            
+            // Try insert without select
+            console.log('🔄 Retrying without .select()...');
+            const { error: insertError } = await this.supabase
+                .from('user_sessions')
+                .insert(sessionData);
+            
+            if (insertError) {
+                console.error('❌ Second attempt failed:', insertError);
+                return null;
+            }
+            console.log('✅ Session inserted successfully (without select)');
+            return { id: 'inserted' };
+        }
+        
+        console.log('✅ Session tracked successfully!');
+        console.log('📊 Session ID:', data?.[0]?.id);
+        
+        // Store session ID in local storage
+        if (data && data[0]) {
+            localStorage.setItem('session_id', data[0].id);
+        }
+        
+        return data?.[0];
+        
+    } catch (error) {
+        console.error('❌ Session tracking ERROR:', error);
+        console.error('❌ Error stack:', error.stack);
+        return null;
+    }
+},
+   // ============================================
+// COMPLETE LOGIN - WITH NOTIFICATIONS & UUID FIX
+// ============================================
+completeLogin: async function(profileData, sessionToken, isStaff = false) {
+    console.log('🎉 COMPLETE LOGIN STARTED');
+    console.log('📊 Profile Data:', profileData);
+    console.log('🔑 Session Token:', sessionToken ? sessionToken.substring(0, 15) + '...' : 'NO TOKEN');
+    console.log('👔 Is Staff:', isStaff);
+    
+    try {
+        // ✅ FIX: Get the UUID from consolidated_user_profiles_table for staff
+        let userIdForSession = profileData.user_id;
+        
+        // If this is a staff login and user_id is a staff ID (starts with STAFF)
+        if (isStaff && typeof profileData.user_id === 'string' && profileData.user_id.startsWith('STAFF')) {
+            console.log('🔄 Converting staff ID to UUID for session...');
+            const { data: profile, error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id')
+                .eq('email', profileData.email)
+                .single();
+            
+            if (error) {
+                console.error('❌ Error getting UUID:', error);
+            } else if (profile?.user_id) {
+                userIdForSession = profile.user_id;
+                console.log('✅ Using UUID for session:', userIdForSession);
+            }
+        }
+        
+        // ✅ FIX: WAIT for updateLastLogin to complete (skip for staff)
+        if (!isStaff) {
+            console.log('📝 Updating last login...');
+            const updateResult = await this.updateLastLogin(profileData.user_id, profileData.email);
+            console.log('📝 Update result:', updateResult ? '✅ SUCCESS' : '❌ FAILED');
+            
+            if (!updateResult) {
+                console.log('⚠️ updateLastLogin failed, trying force update...');
+                await this.forceUpdateLoginCount(profileData.user_id);
+            }
+        }
+        
+        // 2. TRACK SESSION - Using UUID if available
+        console.log('🔍 Attempting to track session with user_id:', userIdForSession);
+        const sessionResult = await this.trackUserSession(
+            userIdForSession,  // ✅ Using UUID for staff now!
+            profileData.email, 
+            sessionToken, 
+            navigator.userAgent, 
+            isStaff
+        );
+        
+        if (sessionResult) {
+            console.log('✅ Session tracked successfully!');
+        } else {
+            console.warn('⚠️ Session tracking returned null/undefined');
+        }
+        
+        // 3. Store profile with the correct UUID
+        const safeProfile = {
+            user_id: userIdForSession,  // ✅ Store UUID, not staff ID
+            staff_id: profileData.user_id, // Store staff ID separately for reference
+            email: profileData.email,
+            full_name: profileData.full_name,
+            role: profileData.role || 'staff',
+            program: profileData.program || profileData.department,
+            is_staff: isStaff || false
+        };
+        localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+        console.log('💾 Profile stored in localStorage with UUID:', safeProfile);
+        
+        // 4. Store session expiry
+        if (!isStaff && this.supabase) {
+            try {
+                const { data: { session } } = await this.supabase.auth.getSession();
+                if (session) {
+                    localStorage.setItem('session_expires', session.expires_at);
+                    console.log('⏰ Session expiry stored:', session.expires_at);
+                }
+            } catch (err) {
+                console.warn('⚠️ Could not get session expiry:', err);
+            }
+        }
+        
+        // 5. Update last login info on page
+        this.updateLastLoginInfo();
+        
+        // 6. Send login notification (for students only)
+        if (profileData.role === 'student' && !isStaff) {
+            console.log('📧 Sending login notification...');
+            this.sendLoginNotification(profileData).catch(err => {
+                console.warn('⚠️ Login notification failed:', err);
+            });
+        }
+        
+        // 7. Redirect
+        console.log('🚀 Redirecting to dashboard...');
+        this.redirectToDashboard(profileData);
+        
+    } catch (error) {
+        console.error('❌ Complete login error:', error);
+        console.error('❌ Error stack:', error.stack);
+        // Still redirect even if tracking fails
+        this.redirectToDashboard(profileData);
+    }
+},
     // ============================================
     // FORCE UPDATE LOGIN COUNT - NEW FUNCTION
     // ============================================
@@ -1442,34 +1476,50 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // STAFF LOGIN
-    // ============================================
-    verifyStaffLogin: async function(identifier, password) {
-        try {
-            const staff = this.staffRecords.find(s => 
-                s.email === identifier || s.id === identifier
-            );
-            
-            if (!staff) return null;
-            
-            const storedPassword = atob(staff.password_hash);
-            if (storedPassword !== password) return null;
-            
-            return {
-                user_id: staff.id,
-                email: staff.email,
-                full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
-                role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
-                program: staff.department,
-                is_staff: true,
-                staff_record: staff
-            };
-        } catch (error) {
-            console.error('Staff verification error');
-            return null;
-        }
-    },
-    
+// STAFF LOGIN - WITH UUID
+// ============================================
+verifyStaffLogin: async function(identifier, password) {
+    try {
+        const staff = this.staffRecords.find(s => 
+            s.email === identifier || s.id === identifier
+        );
+        
+        if (!staff) return null;
+        
+        const storedPassword = atob(staff.password_hash);
+        if (storedPassword !== password) return null;
+        
+        // ✅ Get the UUID from consolidated_user_profiles_table
+        const { data: profile } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id')
+            .eq('email', staff.email)
+            .single();
+        
+        const uuid = profile?.user_id || staff.id;
+        
+        console.log('✅ Staff verified:', {
+            staff_id: staff.id,
+            uuid: uuid,
+            email: staff.email
+        });
+        
+        return {
+            user_id: uuid,              // ✅ UUID for session tracking
+            staff_id: staff.id,         // ✅ Staff ID for reference
+            id: staff.id,               // ✅ Original ID for backward compatibility
+            email: staff.email,
+            full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
+            role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
+            program: staff.department,
+            is_staff: true,
+            staff_record: staff
+        };
+    } catch (error) {
+        console.error('Staff verification error:', error);
+        return null;
+    }
+},
     // ============================================
 // EXECUTE LOGIN
 // ============================================
