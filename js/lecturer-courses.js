@@ -230,33 +230,65 @@ const LecturerCourses = {
         if (parseInt(year) > parseInt(currentYear)) return 'upcoming';
         return 'active';
     },
-    
-    async loadStudentCounts() {
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || 'KRCHN';
-            
-            const { count: totalStudents, error } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('*', { count: 'exact', head: true })
-                .eq('program', program)
-                .eq('role', 'student');
-            
-            const studentCount = (error || !totalStudents) ? 0 : totalStudents;
-            
-            for (let course of this.courses) {
-                course.student_count = studentCount;
-            }
-            
-            console.log(`📊 Student count for ${program}: ${studentCount}`);
-            
-        } catch (error) {
-            console.error('Error loading student counts:', error);
+    // js/lecturer-courses.js - Updated loadStudentCounts function
+
+// js/lecturer-courses.js - Optimized loadStudentCounts function
+
+async loadStudentCounts() {
+    try {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) return;
+        
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const program = profile?.program || 'KRCHN';
+        
+        console.log('📊 Loading student counts per unit...');
+        
+        // Get all registrations for this program and block
+        const unitNames = this.courses.map(c => c.course_name);
+        const blocks = [...new Set(this.courses.map(c => c.block))];
+        
+        // Query all registrations at once
+        const { data: registrations, error } = await supabase
+            .from('student_unit_registrations')
+            .select('unit_name, student_id, block')
+            .eq('program', program)
+            .eq('status', 'approved')
+            .in('block', blocks)
+            .in('unit_name', unitNames);
+        
+        if (error) {
+            console.error('Error loading registrations:', error);
+            return;
         }
-    },
+        
+        // Count students per unit
+        const countMap = {};
+        registrations?.forEach(reg => {
+            const key = `${reg.unit_name}|${reg.block}`;
+            if (!countMap[key]) {
+                countMap[key] = new Set();
+            }
+            countMap[key].add(reg.student_id);
+        });
+        
+        // Assign counts to courses
+        for (let course of this.courses) {
+            const key = `${course.course_name}|${course.block}`;
+            course.student_count = countMap[key]?.size || 0;
+            console.log(`📊 ${course.course_name}: ${course.student_count} students enrolled`);
+        }
+        
+        console.log('📊 Student counts loaded for all units');
+        
+        // Re-render table after counts are loaded
+        this.renderTable();
+        this.updateStats();
+        
+    } catch (error) {
+        console.error('Error loading student counts:', error);
+    }
+}
     
     populateFilters() {
         const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
