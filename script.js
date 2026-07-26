@@ -19557,7 +19557,13 @@ async function loadMarksEntry() {
     const assessmentType = selectedOption?.dataset?.assessment || 'full';
     const unitCode = selectedOption?.dataset?.code || '';
     
+    // Show dynamic content when unit is selected
+    const dynamicContent = document.getElementById('marksEntryDynamicContent');
+    const placeholder = document.getElementById('marksEntryPlaceholder');
+    
     if (!program || !block || !unit) {
+        if (dynamicContent) dynamicContent.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'block';
         document.getElementById('me_marks_container').innerHTML = `
             <div style="text-align: center; padding: 60px 20px;">
                 <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
@@ -19567,6 +19573,10 @@ async function loadMarksEntry() {
         `;
         return;
     }
+    
+    // Show dynamic content
+    if (dynamicContent) dynamicContent.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
     
     me_currentProgram = program;
     me_currentBlock = block;
@@ -19654,7 +19664,7 @@ async function loadMarksEntry() {
 }
 
 // ============================================================
-// RENDER MARKS TABLE - WITH AUTO DETECTION
+// RENDER MARKS TABLE - WITH MANAGE STUDENTS BUTTON
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType) {
@@ -19685,6 +19695,10 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 </span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <!-- ✅ MANAGE STUDENTS BUTTON -->
+                <button onclick="openMarksStudentManager()" class="btn-action" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-users"></i> Manage Students
+                </button>
                 <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-save"></i> Save All
                 </button>
@@ -21079,6 +21093,494 @@ function getLecturerDepartment(lecturer) {
 window.getLecturerDepartment = getLecturerDepartment;
 
 // ============================================================
+// MARKS STUDENT MANAGER - ADD/DROP STUDENTS
+// ============================================================
+
+// ============================================================
+// OPEN MARKS STUDENT MANAGER
+// ============================================================
+
+async function openMarksStudentManager() {
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    console.log('📋 Opening marks student manager for:', { block, unit, program, year });
+    
+    const modal = document.getElementById('marksStudentManagerModal');
+    if (!modal) {
+        console.error('❌ marksStudentManagerModal not found');
+        return;
+    }
+    
+    modal.style.display = 'flex';
+    await loadMarksStudentManagerData(block, unit, program, year);
+}
+
+// ============================================================
+// LOAD MARKS STUDENT MANAGER DATA
+// ============================================================
+
+async function loadMarksStudentManagerData(block, unit, program, year) {
+    console.log('📋 Loading marks student data...');
+    
+    const container = document.getElementById('marksStudentManagerBody');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div class="loading-spinner"></div>
+            <p style="color: #6b7280; margin-top: 10px;">Loading student data...</p>
+        </div>
+    `;
+    
+    try {
+        // Get all students for this block and program
+        let query = sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name, email, program, block, admission_number, status')
+            .eq('role', 'student')
+            .eq('status', 'active');
+        
+        if (program) {
+            query = query.eq('program', program);
+        }
+        if (block) {
+            query = query.eq('block', block);
+        }
+        
+        const { data: allStudents, error: allError } = await query;
+        if (allError) throw allError;
+        
+        // Get students already enrolled in this unit
+        const { data: enrolledStudents, error: enrolledError } = await sb
+            .from('student_marks')
+            .select('admission_number, student_name')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (enrolledError) throw enrolledError;
+        
+        // Build maps
+        const enrolledMap = {};
+        enrolledStudents?.forEach(s => {
+            enrolledMap[s.admission_number] = true;
+        });
+        
+        // Filter available students
+        const availableStudents = allStudents?.filter(s => !enrolledMap[s.student_id]) || [];
+        
+        // Render
+        renderMarksStudentManager(block, unit, program, year, allStudents, enrolledStudents, availableStudents, enrolledMap);
+        
+    } catch (error) {
+        console.error('❌ Error loading marks student data:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #ef4444;">
+                <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
+                Error: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// ============================================================
+// RENDER MARKS STUDENT MANAGER
+// ============================================================
+
+function renderMarksStudentManager(block, unit, program, year, allStudents, enrolledStudents, availableStudents, enrolledMap) {
+    const container = document.getElementById('marksStudentManagerBody');
+    if (!container) return;
+    
+    const totalEnrolled = enrolledStudents?.length || 0;
+    const totalAvailable = availableStudents?.length || 0;
+    const totalStudents = allStudents?.length || 0;
+    
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+            <div>
+                <h4 style="margin: 0; color: #1e293b;">${escapeHtml(unit)}</h4>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    ${program} | ${block} | ${year}
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                    📚 ${totalEnrolled} Enrolled
+                </span>
+                <span style="background: #f3f4f6; color: #6b7280; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                    👥 ${totalAvailable} Available
+                </span>
+                <span style="background: #e5e7eb; color: #475569; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                    📊 ${totalStudents} Total
+                </span>
+            </div>
+        </div>
+        
+        <!-- Add Students Section -->
+        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #86efac;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <select id="studentToAddMarks" style="flex: 1; min-width: 200px; padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
+                    <option value="">-- Select Student to Add --</option>
+                    ${availableStudents.map(s => `
+                        <option value="${s.student_id}">${escapeHtml(s.full_name)} (${s.admission_number || s.student_id})</option>
+                    `).join('')}
+                </select>
+                <button onclick="addStudentToMarksUnit()" style="background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                    <i class="fas fa-plus"></i> Add Student
+                </button>
+                <button onclick="addAllAvailableStudentsToMarksUnit()" style="background: #059669; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                    <i class="fas fa-users"></i> Add All
+                </button>
+            </div>
+            ${totalAvailable === 0 ? `
+            <div style="margin-top: 10px; padding: 8px 12px; background: #fef3c7; border-radius: 6px; color: #92400e; font-size: 12px;">
+                <i class="fas fa-info-circle"></i> All available students are already enrolled in this unit.
+            </div>
+            ` : ''}
+        </div>
+        
+        <!-- Enrolled Students Table -->
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #1e293b; color: white;">
+                        <th style="padding: 8px; text-align: center;">#</th>
+                        <th style="padding: 8px; text-align: left;">Student Name</th>
+                        <th style="padding: 8px; text-align: left;">Admission</th>
+                        <th style="padding: 8px; text-align: left;">Program</th>
+                        <th style="padding: 8px; text-align: left;">Block</th>
+                        <th style="padding: 8px; text-align: center;">Marks</th>
+                        <th style="padding: 8px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+    
+    if (!enrolledStudents || enrolledStudents.length === 0) {
+        html += `
+            <tr>
+                <td colspan="7" style="padding: 30px; text-align: center; color: #94a3b8;">
+                    <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                    No students enrolled in this unit yet
+                </td>
+            </tr>
+        `;
+    } else {
+        enrolledStudents.forEach((s, i) => {
+            const admission = s.admission_number || 'N/A';
+            const name = s.student_name || 'Unknown';
+            const hasMarks = s.cat1_score > 0 || s.cat2_score > 0 || s.exam_score > 0;
+            
+            html += `
+                <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                    <td style="padding: 8px; text-align: center;">${i + 1}</td>
+                    <td style="padding: 8px; font-weight: 500;">${escapeHtml(name)}</td>
+                    <td style="padding: 8px;">${escapeHtml(admission)}</td>
+                    <td style="padding: 8px;">${escapeHtml(program)}</td>
+                    <td style="padding: 8px;">${escapeHtml(block)}</td>
+                    <td style="padding: 8px; text-align: center;">
+                        ${hasMarks ? 
+                            '<span style="color: #10b981;">✅ Has Marks</span>' : 
+                            '<span style="color: #94a3b8;">📝 No Marks</span>'
+                        }
+                    </td>
+                    <td style="padding: 8px; text-align: center;">
+                        <button onclick="removeStudentFromMarksUnit('${admission}')" 
+                                style="background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-user-minus"></i> Drop
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Bulk Actions -->
+        ${enrolledStudents && enrolledStudents.length > 0 ? `
+        <div style="display: flex; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
+            <button onclick="clearAllStudentsFromMarksUnit()" style="background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-trash"></i> Remove All Students
+            </button>
+            <button onclick="reloadMarksStudentManager()" style="background: #6b7280; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        ` : ''}
+    `;
+    
+    container.innerHTML = html;
+}
+
+// ============================================================
+// ADD STUDENT TO MARKS UNIT
+// ============================================================
+
+async function addStudentToMarksUnit() {
+    const select = document.getElementById('studentToAddMarks');
+    const studentId = select?.value;
+    
+    if (!studentId) {
+        showNotification('Please select a student to add', 'warning');
+        return;
+    }
+    
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    // Get student details
+    const { data: student, error: studentError } = await sb
+        .from('consolidated_user_profiles_table')
+        .select('full_name, admission_number')
+        .eq('student_id', studentId)
+        .single();
+    
+    if (studentError) {
+        showNotification('Error fetching student details', 'error');
+        return;
+    }
+    
+    if (!confirm(`Add ${student.full_name} to "${unit}"?`)) return;
+    
+    try {
+        const markData = {
+            admission_number: studentId,
+            student_name: student.full_name || 'Unknown',
+            block: block,
+            subject_name: unit,
+            assessment_type: 'full',
+            cat1_score: 0,
+            cat2_score: 0,
+            exam_score: 0,
+            final_score: 0,
+            grade: null,
+            academic_year: year,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        const { error } = await sb
+            .from('student_marks')
+            .insert(markData);
+        
+        if (error) throw error;
+        
+        showNotification(`✅ ${student.full_name} added to "${unit}"!`, 'success');
+        await reloadMarksStudentManager();
+        
+    } catch (error) {
+        console.error('❌ Error adding student:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// ADD ALL AVAILABLE STUDENTS TO MARKS UNIT
+// ============================================================
+
+async function addAllAvailableStudentsToMarksUnit() {
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    // Get all students for this block
+    let query = sb
+        .from('consolidated_user_profiles_table')
+        .select('student_id, full_name, admission_number')
+        .eq('role', 'student')
+        .eq('status', 'active');
+    
+    if (program) query = query.eq('program', program);
+    if (block) query = query.eq('block', block);
+    
+    const { data: allStudents, error: allError } = await query;
+    if (allError) {
+        showNotification('Error fetching students', 'error');
+        return;
+    }
+    
+    // Get already enrolled students
+    const { data: enrolled, error: enrolledError } = await sb
+        .from('student_marks')
+        .select('admission_number')
+        .eq('block', block)
+        .eq('subject_name', unit)
+        .eq('academic_year', year);
+    
+    if (enrolledError) {
+        showNotification('Error fetching enrolled students', 'error');
+        return;
+    }
+    
+    const enrolledMap = {};
+    enrolled?.forEach(s => {
+        enrolledMap[s.admission_number] = true;
+    });
+    
+    const studentsToAdd = allStudents.filter(s => !enrolledMap[s.student_id]);
+    
+    if (studentsToAdd.length === 0) {
+        showNotification('All students are already enrolled', 'info');
+        return;
+    }
+    
+    if (!confirm(`Add ${studentsToAdd.length} students to "${unit}"?`)) return;
+    
+    try {
+        const inserts = studentsToAdd.map(s => ({
+            admission_number: s.student_id,
+            student_name: s.full_name || 'Unknown',
+            block: block,
+            subject_name: unit,
+            assessment_type: 'full',
+            cat1_score: 0,
+            cat2_score: 0,
+            exam_score: 0,
+            final_score: 0,
+            grade: null,
+            academic_year: year,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        }));
+        
+        const { error } = await sb
+            .from('student_marks')
+            .insert(inserts);
+        
+        if (error) throw error;
+        
+        showNotification(`✅ ${studentsToAdd.length} students added to "${unit}"!`, 'success');
+        await reloadMarksStudentManager();
+        
+    } catch (error) {
+        console.error('❌ Error adding students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// REMOVE STUDENT FROM MARKS UNIT
+// ============================================================
+
+async function removeStudentFromMarksUnit(admission) {
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Remove this student from "${unit}"?\n\nTheir marks will be permanently deleted.`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .delete()
+            .eq('admission_number', admission)
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        showNotification('✅ Student removed from unit', 'success');
+        await reloadMarksStudentManager();
+        
+    } catch (error) {
+        console.error('❌ Error removing student:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// CLEAR ALL STUDENTS FROM MARKS UNIT
+// ============================================================
+
+async function clearAllStudentsFromMarksUnit() {
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ALL students from "${unit}"?\n\nThis will delete ALL marks for this unit.`)) return;
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .delete()
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        showNotification(`✅ All students removed from "${unit}"`, 'success');
+        await reloadMarksStudentManager();
+        loadMarksEntry(); // Refresh the marks table
+        
+    } catch (error) {
+        console.error('❌ Error clearing students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// RELOAD MARKS STUDENT MANAGER
+// ============================================================
+
+async function reloadMarksStudentManager() {
+    const block = document.getElementById('me_block_select')?.value;
+    const unit = document.getElementById('me_subject_select')?.value;
+    const program = document.getElementById('me_program_select')?.value;
+    const year = document.getElementById('me_year_select')?.value || '2025';
+    
+    await loadMarksStudentManagerData(block, unit, program, year);
+}
+
+// ============================================================
+// GLOBAL EXPOSURE
+// ============================================================
+
+window.openMarksStudentManager = openMarksStudentManager;
+window.loadMarksStudentManagerData = loadMarksStudentManagerData;
+window.reloadMarksStudentManager = reloadMarksStudentManager;
+window.addStudentToMarksUnit = addStudentToMarksUnit;
+window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
+window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
+window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
+
+// ============================================================
 // DEBUG FUNCTION
 // ============================================================
 
@@ -21166,6 +21668,15 @@ window.refreshAssignmentHistory = refreshAssignmentHistory;
 window.clearAllAssignments = clearAllAssignments;
 window.getLecturerDepartment = getLecturerDepartment;
 
+// Student management
+window.openMarksStudentManager = openMarksStudentManager;
+window.loadMarksStudentManagerData = loadMarksStudentManagerData;
+window.reloadMarksStudentManager = reloadMarksStudentManager;
+window.addStudentToMarksUnit = addStudentToMarksUnit;
+window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
+window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
+window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
+
 // Auto-detect functions
 window.detectVisibleColumns = detectVisibleColumns;
 window.getAutoAssessmentType = getAutoAssessmentType;
@@ -21181,6 +21692,7 @@ console.log('✅ Column Management loaded (Admin only)');
 console.log('✅ Auto-assessment type detection loaded');
 console.log('✅ Lecturer Unit Assignment Management loaded');
 console.log('✅ Assignment History loaded');
+console.log('✅ Student Management loaded');
 console.log('✅ loadMEBlocks:', typeof loadMEBlocks);
 console.log('✅ loadMEUnits:', typeof loadMEUnits);
 console.log('✅ loadMarksEntry:', typeof loadMarksEntry);
@@ -21189,6 +21701,7 @@ console.log('✅ saveUnitColumnSetting:', typeof saveUnitColumnSetting);
 console.log('✅ getAutoAssessmentType:', typeof getAutoAssessmentType);
 console.log('✅ loadLecturerAssignments:', typeof loadLecturerAssignments);
 console.log('✅ loadAssignmentHistory:', typeof loadAssignmentHistory);
+console.log('✅ openMarksStudentManager:', typeof openMarksStudentManager);
 // ============================================================
 // ENTRY CONTROL - COMPLETE SINGLE VERSION
 // ============================================================
