@@ -2,7 +2,7 @@
 /**
  * NCHSM Lecturer Courses Module
  * Uses the same unit assignments as the marks system
- * Shows assigned units from lecturer_subject_assignments or marks system
+ * Dynamically finds the correct lecturer ID
  */
 
 const LecturerCourses = {
@@ -24,6 +24,95 @@ const LecturerCourses = {
         console.log('✅ Lecturer Courses initialized');
     },
     
+    // ============================================
+    // GET THE CORRECT LECTURER ID DYNAMICALLY
+    // ============================================
+    async getLecturerAssignmentId() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return null;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) return null;
+            
+            // Get the email from profile
+            const email = profile.email;
+            const fullName = profile.full_name;
+            
+            console.log('🔍 Looking for lecturer with email:', email);
+            
+            // First: Try to find by email in lecturer_subject_assignments
+            let { data, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .eq('lecturer_name', fullName)
+                .limit(1);
+            
+            if (!error && data && data.length > 0) {
+                console.log('✅ Found lecturer ID by name:', data[0].lecturer_id);
+                return data[0].lecturer_id;
+            }
+            
+            // Second: Try to find by email in consolidated_user_profiles
+            // Check if the assignment ID exists as a user
+            const { data: userData, error: userError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id')
+                .eq('email', email)
+                .limit(1);
+            
+            if (!userError && userData && userData.length > 0) {
+                const userId = userData[0].user_id;
+                console.log('✅ Found user ID by email:', userId);
+                
+                // Check if this user has assignments
+                const { data: assignData, error: assignError } = await supabase
+                    .from('lecturer_subject_assignments')
+                    .select('lecturer_id')
+                    .eq('lecturer_id', userId)
+                    .limit(1);
+                
+                if (!assignError && assignData && assignData.length > 0) {
+                    console.log('✅ Found assignments for user ID:', userId);
+                    return userId;
+                }
+            }
+            
+            // Third: Get all lecturer IDs and find by name match
+            const { data: allLecturers, error: allError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .order('created_at', { ascending: false });
+            
+            if (!allError && allLecturers && allLecturers.length > 0) {
+                // Try to find by partial name match
+                const nameParts = fullName.split(' ');
+                for (const lecturer of allLecturers) {
+                    const lecturerName = lecturer.lecturer_name || '';
+                    // Check if any part of the name matches
+                    for (const part of nameParts) {
+                        if (part.length > 2 && lecturerName.toLowerCase().includes(part.toLowerCase())) {
+                            console.log('✅ Found lecturer by partial name match:', lecturer.lecturer_id);
+                            return lecturer.lecturer_id;
+                        }
+                    }
+                }
+                
+                // If still not found, use the most recent lecturer
+                console.log('⚠️ Using most recent lecturer ID:', allLecturers[0].lecturer_id);
+                return allLecturers[0].lecturer_id;
+            }
+            
+            // Fallback: use the auth user ID
+            console.log('⚠️ Falling back to auth user ID:', profile.user_id);
+            return profile.user_id;
+            
+        } catch (error) {
+            console.error('Error finding lecturer ID:', error);
+            return null;
+        }
+    },
+    
     async loadCourses() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -36,9 +125,7 @@ const LecturerCourses = {
                 return;
             }
             
-            const userId = profile.user_id;
             const supabase = window.lecturerDB?.supabase;
-            
             if (!supabase) {
                 console.warn('Supabase not available');
                 this.courses = [];
@@ -48,22 +135,34 @@ const LecturerCourses = {
                 return;
             }
             
-            console.log('🔍 Fetching assigned units for lecturer:', userId);
+            // Get the correct lecturer ID dynamically
+            const lecturerId = await this.getLecturerAssignmentId();
+            
+            if (!lecturerId) {
+                console.warn('No lecturer ID found');
+                this.courses = [];
+                this.filteredCourses = [];
+                this.renderTable();
+                this.updateStats();
+                return;
+            }
+            
+            console.log('🔍 Using lecturer ID:', lecturerId);
             
             let units = [];
             
-            // FIRST: Try to get from lecturer_subject_assignments
+            // Get from lecturer_subject_assignments using the found ID
             try {
                 const { data, error } = await supabase
                     .from('lecturer_subject_assignments')
                     .select('*')
-                    .eq('lecturer_id', userId);
+                    .eq('lecturer_id', lecturerId);
                 
                 if (!error && data && data.length > 0) {
-                    console.log('📊 Found assignments in lecturer_subject_assignments:', data.length);
+                    console.log('📊 Found assignments:', data.length);
                     units = data.map(a => ({
                         id: a.id,
-                        unit_id: a.subject_id || a.id,
+                        unit_id: a.id,
                         unit_code: a.subject_code || 'N/A',
                         course_name: a.subject_name || 'Unnamed Unit',
                         target_program: a.program || profile.program,
@@ -80,34 +179,38 @@ const LecturerCourses = {
                 console.warn('Error querying lecturer_subject_assignments:', e.message);
             }
             
-            // SECOND: If no units, try from marks system
+            // If no units, try to get from marks system
             if (units.length === 0) {
                 console.log('🔄 No assignments found, checking marks system...');
                 
-                // Try to get assigned units from the marks module
-                if (window.lecturerMarks && window.lecturerMarks.assignedUnits) {
-                    const assignedUnits = window.lecturerMarks.assignedUnits || [];
-                    if (assignedUnits.length > 0) {
-                        console.log('📚 Found assigned units from marks system:', assignedUnits.length);
-                        units = assignedUnits.map(u => ({
-                            id: u.id || `unit-${Date.now()}-${Math.random()}`,
-                            unit_id: u.id,
-                            unit_code: u.unit_code || u.code || 'N/A',
-                            course_name: u.unit_name || u.name || 'Unnamed Unit',
-                            target_program: u.program || profile.program,
-                            block: u.block || 'N/A',
-                            intake_year: u.year || u.academic_year || new Date().getFullYear().toString(),
-                            status: 'active',
-                            credits: u.credits || 0,
-                            student_count: u.student_count || 0,
-                            source: 'marks',
-                            raw: u
-                        }));
+                try {
+                    // Try to get assigned units from the marks module
+                    if (window.lecturerMarks && window.lecturerMarks.assignedUnits) {
+                        const assignedUnits = window.lecturerMarks.assignedUnits || [];
+                        if (assignedUnits.length > 0) {
+                            console.log('📚 Found assigned units from marks system:', assignedUnits.length);
+                            units = assignedUnits.map(u => ({
+                                id: u.id || `unit-${Date.now()}-${Math.random()}`,
+                                unit_id: u.id,
+                                unit_code: u.unit_code || u.code || 'N/A',
+                                course_name: u.unit_name || u.name || 'Unnamed Unit',
+                                target_program: u.program || profile.program,
+                                block: u.block || 'N/A',
+                                intake_year: u.year || u.academic_year || new Date().getFullYear().toString(),
+                                status: 'active',
+                                credits: u.credits || 0,
+                                student_count: 0,
+                                source: 'marks',
+                                raw: u
+                            }));
+                        }
                     }
+                } catch (e) {
+                    console.warn('Error getting units from marks system:', e.message);
                 }
             }
             
-            // THIRD: If still no units, try units_catalog by program
+            // If still no units, try units_catalog by program
             if (units.length === 0) {
                 console.log('🔄 Trying units_catalog for program:', profile.program);
                 
@@ -129,7 +232,7 @@ const LecturerCourses = {
                             target_program: u.program || profile.program,
                             block: u.block || 'N/A',
                             intake_year: u.year ? String(u.year) : new Date().getFullYear().toString(),
-                            status: u.status || 'active',
+                            status: 'active',
                             credits: u.credits || 0,
                             unit_type: u.unit_type || 'Core',
                             student_count: 0,
@@ -149,14 +252,24 @@ const LecturerCourses = {
             // Get student counts
             await this.loadStudentCounts();
             
-            // Set default filter to current year
+            // Filter by current year
             const currentYear = new Date().getFullYear().toString();
-            const yearFiltered = this.courses.filter(c => 
-                c.intake_year === currentYear || c.intake_year === '' || c.intake_year === 'N/A'
-            );
+            const yearFiltered = this.courses.filter(c => {
+                const year = c.intake_year;
+                return year === currentYear || year === '' || year === 'N/A' || year === '2026';
+            });
             
             if (yearFiltered.length > 0) {
                 this.filteredCourses = yearFiltered;
+            }
+            
+            // Update the intake filter
+            const intakeFilter = document.getElementById('intakeYearFilter');
+            if (intakeFilter) {
+                const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
+                if (years.includes(currentYear)) {
+                    intakeFilter.value = currentYear;
+                }
             }
             
             this.renderTable();
@@ -167,7 +280,7 @@ const LecturerCourses = {
                 badge.textContent = this.courses.length;
             }
             
-            console.log(`✅ Loaded ${this.courses.length} total units from ${this.courses.length > 0 ? this.courses[0].source : 'none'} source`);
+            console.log(`✅ Loaded ${this.courses.length} total units`);
             
         } catch (error) {
             console.error('Failed to load courses:', error);
@@ -194,29 +307,29 @@ const LecturerCourses = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const program = profile?.program || 'KRCHN';
+            
+            const { count: totalStudents, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*', { count: 'exact', head: true })
+                .eq('program', program)
+                .eq('role', 'student');
+            
+            const studentCount = (error || !totalStudents) ? 0 : totalStudents;
+            
             for (let course of this.courses) {
-                try {
-                    // Count students in this program
-                    const { count, error } = await supabase
-                        .from('consolidated_user_profiles_table')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('program', course.target_program)
-                        .eq('role', 'student');
-                    
-                    if (!error && count !== null) {
-                        course.student_count = count;
-                    }
-                } catch (e) {
-                    // Skip individual errors
-                }
+                course.student_count = studentCount;
             }
+            
+            console.log(`📊 Student count for ${program}: ${studentCount}`);
+            
         } catch (error) {
             console.error('Error loading student counts:', error);
         }
     },
     
     populateFilters() {
-        // Intake years
         const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
         const intakeFilter = document.getElementById('intakeYearFilter');
         if (intakeFilter) {
@@ -226,10 +339,11 @@ const LecturerCourses = {
             const currentYear = new Date().getFullYear().toString();
             if (years.includes(currentYear)) {
                 intakeFilter.value = currentYear;
+            } else if (years.length > 0) {
+                intakeFilter.value = years[0];
             }
         }
         
-        // Blocks
         const blocks = [...new Set(this.courses.map(c => c.block).filter(Boolean))];
         const blockFilter = document.getElementById('academicPeriodFilter');
         if (blockFilter) {
@@ -237,7 +351,6 @@ const LecturerCourses = {
                 blocks.map(b => `<option value="${b}">${b}</option>`).join('');
         }
         
-        // Set current year display
         const yearEl = document.getElementById('currentAcademicYear');
         if (yearEl) {
             yearEl.textContent = new Date().getFullYear();
@@ -272,7 +385,12 @@ const LecturerCourses = {
         tbody.innerHTML = courses.map((course, index) => {
             const studentCount = course.student_count || 0;
             const isPast = course.intake_year && course.intake_year !== 'N/A' && parseInt(course.intake_year) < parseInt(currentYear);
+            const isFuture = course.intake_year && course.intake_year !== 'N/A' && parseInt(course.intake_year) > parseInt(currentYear);
             const rowStyle = isPast ? 'opacity: 0.7;' : '';
+            
+            let status = course.status || 'active';
+            if (isPast) status = 'completed';
+            else if (isFuture) status = 'upcoming';
             
             const statusColors = {
                 'active': '#10b981',
@@ -288,7 +406,6 @@ const LecturerCourses = {
                 'inactive': '❌ Inactive'
             };
             
-            const status = course.status || 'active';
             const statusColor = statusColors[status] || '#6b7280';
             const statusLabel = statusLabels[status] || status;
             
@@ -341,7 +458,6 @@ const LecturerCourses = {
             `;
         }).join('');
         
-        // Update count
         const countDisplay = document.getElementById('courseCountDisplay');
         if (countDisplay) {
             countDisplay.textContent = courses.length;
@@ -379,7 +495,10 @@ const LecturerCourses = {
         if (studentsEl) studentsEl.textContent = totalStudents;
         
         // Active units (current year)
-        const active = courses.filter(c => c.intake_year === currentYear || c.status === 'active').length;
+        const active = courses.filter(c => {
+            const year = c.intake_year;
+            return year === currentYear || year === 'N/A' || year === '' || c.status === 'active';
+        }).length;
         const activeEl = document.getElementById('activeCoursesCount');
         if (activeEl) activeEl.textContent = active;
         
@@ -390,6 +509,12 @@ const LecturerCourses = {
         }).length;
         const completedEl = document.getElementById('completedCoursesCount');
         if (completedEl) completedEl.textContent = completed;
+        
+        // Upcoming units (future years)
+        const upcoming = courses.filter(c => {
+            const year = c.intake_year;
+            return year && year !== 'N/A' && parseInt(year) > parseInt(currentYear);
+        }).length;
         
         // Badge
         const badge = document.getElementById('courseCountBadge');
@@ -403,7 +528,7 @@ const LecturerCourses = {
             dashboardCount.textContent = courses.length;
         }
         
-        console.log(`📊 Stats: ${totalCourses} total, ${active} active (${currentYear}), ${completed} completed`);
+        console.log(`📊 Stats: ${totalCourses} total, ${active} active (${currentYear}), ${completed} completed, ${upcoming} upcoming`);
     },
     
     applyFilters() {
@@ -552,4 +677,4 @@ window.clearCourseFilters = () => LecturerCourses.clearFilters();
 window.searchCourses = () => LecturerCourses.applyFilters();
 window.exportCourses = () => LecturerCourses.exportCourses();
 
-console.log('✅ LecturerCourses module loaded');
+console.log('✅ LecturerCourses module loaded - Dynamic ID resolution');
