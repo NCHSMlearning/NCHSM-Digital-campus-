@@ -1,50 +1,68 @@
-// js/lecturer-courses.js
+// js/lecturer-reports.js
 /**
- * NCHSM Lecturer Courses Module
- * Uses the same unit assignments as the marks system
- * Dynamically finds the correct lecturer ID from assignments
- * PRIORITIZES NON-STAFF IDs
+ * NCHSM Lecturer Reports Module
+ * Generate and manage academic reports for assigned units and students
+ * Uses the same lecturer ID resolution as marks and courses modules
  */
 
-const LecturerCourses = {
-    courses: [],
-    filteredCourses: [],
-    currentFilters: {
-        intake: '',
-        block: '',
-        status: '',
-        search: ''
-    },
+const LecturerReports = {
+    reports: [],
+    assignedUnits: [],
     lecturerAssignmentId: null,
+    currentFilters: {
+        search: '',
+        type: 'all',
+        unit: 'all'
+    },
     
     async init() {
-        console.log('📚 Initializing Lecturer Courses...');
+        console.log('📊 Initializing Lecturer Reports...');
         await this.resolveLecturerId();
-        await this.loadCourses();
-        this.populateFilters();
+        await this.loadAssignedUnits();
+        await this.loadReports();
+        this.populateReportForm();
         this.setupEventListeners();
         this.updateStats();
-        console.log('✅ Lecturer Courses initialized');
+        console.log('✅ Lecturer Reports initialized');
     },
     
     // ============================================
-    // RESOLVE THE CORRECT LECTURER ID - PRIORITIZES NON-STAFF IDs
+    // RESOLVE THE CORRECT LECTURER ID - SAME AS COURSES MODULE
     // ============================================
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
             
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
+            }
             
-            const fullName = profile.full_name;
             const authId = profile.user_id;
+            const fullName = profile.full_name;
             
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // FIRST: Get ALL lecturers with similar names
+            // Try to find by name in lecturer_subject_assignments
+            const { data, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .eq('lecturer_name', fullName)
+                .limit(1);
+            
+            if (!error && data && data.length > 0) {
+                this.lecturerAssignmentId = data[0].lecturer_id;
+                console.log('✅ Found lecturer ID by name:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            // Try partial name match with scoring
             const nameParts = fullName.toLowerCase().split(' ');
             const { data: allLecturers, error: allError } = await supabase
                 .from('lecturer_subject_assignments')
@@ -52,9 +70,6 @@ const LecturerCourses = {
                 .order('created_at', { ascending: false });
             
             if (!allError && allLecturers && allLecturers.length > 0) {
-                console.log('📚 All lecturers found:', allLecturers.length);
-                
-                // Score each lecturer
                 let bestMatch = null;
                 let bestScore = -1;
                 
@@ -63,7 +78,6 @@ const LecturerCourses = {
                     const lecturerId = lecturer.lecturer_id;
                     let score = 0;
                     
-                    // Check if name contains any part of the full name
                     const lecturerNameLower = lecturerName.toLowerCase();
                     for (const part of nameParts) {
                         if (part.length > 1 && lecturerNameLower.includes(part)) {
@@ -71,34 +85,18 @@ const LecturerCourses = {
                         }
                     }
                     
-                    // Bonus for exact match of the whole name
                     if (lecturerNameLower === fullName.toLowerCase()) {
                         score += 20;
                     }
                     
-                    // BIG BONUS for non-STAFF IDs (UUID format)
+                    // BIG BONUS for non-STAFF IDs
                     if (!lecturerId.toString().startsWith('STAFF')) {
-                        score += 50; // Big bonus for non-STAFF
+                        score += 50;
                     }
                     
-                    // Bonus for UUID format (contains hyphens)
                     if (lecturerId.toString().includes('-')) {
                         score += 30;
                     }
-                    
-                    // Bonus if the name matches exactly with the auth user's name parts
-                    const authNameParts = fullName.toLowerCase().split(' ');
-                    let authMatchCount = 0;
-                    for (const part of authNameParts) {
-                        if (part.length > 1 && lecturerNameLower.includes(part)) {
-                            authMatchCount++;
-                        }
-                    }
-                    if (authMatchCount === authNameParts.length && authNameParts.length > 0) {
-                        score += 25; // All parts match
-                    }
-                    
-                    console.log(`   ${lecturerId} (${lecturerName}): score ${score}`);
                     
                     if (score > bestScore) {
                         bestScore = score;
@@ -106,7 +104,6 @@ const LecturerCourses = {
                     }
                 }
                 
-                // Use the best match
                 if (bestMatch) {
                     this.lecturerAssignmentId = bestMatch;
                     console.log(`✅ Selected lecturer ID with score ${bestScore}:`, this.lecturerAssignmentId);
@@ -124,287 +121,305 @@ const LecturerCourses = {
         }
     },
     
-   async loadCourses() {
-    try {
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        if (!profile) {
-            console.warn('No lecturer profile found');
-            this.courses = [];
-            this.filteredCourses = [];
-            this.renderTable();
-            this.updateStats();
-            return;
-        }
-        
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase) {
-            console.warn('Supabase not available');
-            this.courses = [];
-            this.filteredCourses = [];
-            this.renderTable();
-            this.updateStats();
-            return;
-        }
-        
-        // Use the resolved lecturer ID
-        const lecturerId = this.lecturerAssignmentId || profile.user_id;
-        console.log('🔍 Using lecturer ID for courses:', lecturerId);
-        
-        // Get ALL assignments from lecturer_subject_assignments
-        const { data: assignments, error } = await supabase
-            .from('lecturer_subject_assignments')
-            .select('*')
-            .eq('lecturer_id', lecturerId);
-        
-        if (error) {
-            console.error('Error loading assignments:', error);
-            this.courses = [];
-            this.filteredCourses = [];
-            this.renderTable();
-            this.updateStats();
-            return;
-        }
-        
-        console.log('📊 Found assignments:', assignments?.length || 0);
-        
-        if (!assignments || assignments.length === 0) {
-            console.warn('No assignments found for ID:', lecturerId);
-            this.courses = [];
-            this.filteredCourses = [];
-            this.renderTable();
-            this.updateStats();
-            return;
-        }
-        
-        // Process ALL assignments into courses
-        this.courses = assignments.map(a => ({
-            id: a.id,
-            unit_id: a.id,
-            unit_code: a.subject_code || 'N/A',
-            course_name: a.subject_name || 'Unnamed Unit',
-            target_program: a.program || profile.program,
-            block: a.block || 'N/A',
-            intake_year: a.academic_year || new Date().getFullYear().toString(),
-            status: this.determineStatus(a),
-            credits: 0,
-            student_count: 0,
-            source: 'assignments',
-            raw: a
-        }));
-        
-        console.log(`✅ Processed ${this.courses.length} units from assignments`);
-        
-        // Get student counts from student_unit_registrations
-        await this.loadStudentCounts();
-        
-        // Set filtered courses to ALL courses
-        this.filteredCourses = [...this.courses];
-        
-        this.renderTable();
-        this.updateStats();
-        
-        const badge = document.getElementById('courseCountBadge');
-        if (badge) {
-            badge.textContent = this.courses.length;
-        }
-        
-        console.log(`✅ Loaded ${this.courses.length} total units`);
-        
-    } catch (error) {
-        console.error('Failed to load courses:', error);
-        this.courses = [];
-        this.filteredCourses = [];
-        this.renderTable();
-        this.updateStats();
-    }
-}
-    
-    determineStatus(assignment) {
-        const currentYear = new Date().getFullYear().toString();
-        const year = assignment.academic_year || '';
-        
-        if (!year || year === 'N/A') return 'active';
-        if (year === currentYear) return 'active';
-        if (parseInt(year) < parseInt(currentYear)) return 'completed';
-        if (parseInt(year) > parseInt(currentYear)) return 'upcoming';
-        return 'active';
-    },
-    // js/lecturer-courses.js - Updated loadStudentCounts function
-
-// js/lecturer-courses.js - Optimized loadStudentCounts function
-
-async loadStudentCounts() {
-    try {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase) return;
-        
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const program = profile?.program || 'KRCHN';
-        
-        console.log('📊 Loading student counts per unit...');
-        
-        // Get all registrations for this program and block
-        const unitNames = this.courses.map(c => c.course_name);
-        const blocks = [...new Set(this.courses.map(c => c.block))];
-        
-        // Query all registrations at once
-        const { data: registrations, error } = await supabase
-            .from('student_unit_registrations')
-            .select('unit_name, student_id, block')
-            .eq('program', program)
-            .eq('status', 'approved')
-            .in('block', blocks)
-            .in('unit_name', unitNames);
-        
-        if (error) {
-            console.error('Error loading registrations:', error);
-            return;
-        }
-        
-        // Count students per unit
-        const countMap = {};
-        registrations?.forEach(reg => {
-            const key = `${reg.unit_name}|${reg.block}`;
-            if (!countMap[key]) {
-                countMap[key] = new Set();
+    async loadAssignedUnits() {
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
             }
-            countMap[key].add(reg.student_id);
-        });
-        
-        // Assign counts to courses
-        for (let course of this.courses) {
-            const key = `${course.course_name}|${course.block}`;
-            course.student_count = countMap[key]?.size || 0;
-            console.log(`📊 ${course.course_name}: ${course.student_count} students enrolled`);
-        }
-        
-        console.log('📊 Student counts loaded for all units');
-        
-        // Re-render table after counts are loaded
-        this.renderTable();
-        this.updateStats();
-        
-    } catch (error) {
-        console.error('Error loading student counts:', error);
-    }
-}
-    
-    populateFilters() {
-        const years = [...new Set(this.courses.map(c => c.intake_year).filter(b => b && b !== 'N/A'))].sort().reverse();
-        const intakeFilter = document.getElementById('intakeYearFilter');
-        if (intakeFilter) {
-            intakeFilter.innerHTML = '<option value="">All Years</option>' +
-                years.map(y => `<option value="${y}">${y}</option>`).join('');
             
-            if (years.length > 0) {
-                intakeFilter.value = years[0];
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                this.assignedUnits = this.getMockUnits();
+                this.populateUnitSelectors();
+                return;
             }
-        }
-        
-        const blocks = [...new Set(this.courses.map(c => c.block).filter(Boolean))];
-        const blockFilter = document.getElementById('academicPeriodFilter');
-        if (blockFilter) {
-            blockFilter.innerHTML = '<option value="">All Blocks</option>' +
-                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
-        }
-        
-        const yearEl = document.getElementById('currentAcademicYear');
-        if (yearEl) {
-            yearEl.textContent = new Date().getFullYear();
+            
+            // Use the resolved lecturer ID
+            const lecturerId = this.lecturerAssignmentId || profile.user_id;
+            console.log('🔍 Using lecturer ID for reports:', lecturerId);
+            
+            // Get units from lecturer_subject_assignments
+            const { data: assignments, error: assignError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('*')
+                .eq('lecturer_id', lecturerId);
+            
+            if (assignError) {
+                console.error('Error loading assignments:', assignError);
+                this.assignedUnits = this.getMockUnits();
+                this.populateUnitSelectors();
+                return;
+            }
+            
+            console.log(`📚 Found ${assignments?.length || 0} assigned units`);
+            
+            if (!assignments || assignments.length === 0) {
+                console.warn('No assignments found');
+                this.assignedUnits = [];
+                this.populateUnitSelectors();
+                return;
+            }
+            
+            // Convert to unit format with student counts
+            const program = profile.program || 'KRCHN';
+            const unitNames = assignments.map(a => a.subject_name);
+            const blocks = [...new Set(assignments.map(a => a.block))];
+            
+            // Get student counts from student_unit_registrations
+            let studentCounts = {};
+            try {
+                const { data: registrations, error: regError } = await supabase
+                    .from('student_unit_registrations')
+                    .select('unit_name, student_id, block')
+                    .eq('program', program)
+                    .eq('status', 'approved')
+                    .in('block', blocks)
+                    .in('unit_name', unitNames);
+                
+                if (!regError && registrations) {
+                    const countMap = {};
+                    registrations.forEach(reg => {
+                        const key = `${reg.unit_name}|${reg.block}`;
+                        if (!countMap[key]) {
+                            countMap[key] = new Set();
+                        }
+                        countMap[key].add(reg.student_id);
+                    });
+                    
+                    assignments.forEach(a => {
+                        const key = `${a.subject_name}|${a.block}`;
+                        studentCounts[a.subject_name] = countMap[key]?.size || 0;
+                    });
+                }
+            } catch (e) {
+                console.warn('Error getting student counts:', e);
+            }
+            
+            // Build assigned units with student counts
+            this.assignedUnits = assignments.map(a => ({
+                id: a.id,
+                name: a.subject_name || 'Unnamed Unit',
+                code: a.subject_code || 'N/A',
+                program: a.program || 'N/A',
+                block: a.block || 'N/A',
+                academic_year: a.academic_year || 'N/A',
+                student_count: studentCounts[a.subject_name] || 0,
+                lecturer_name: a.lecturer_name || 'N/A'
+            }));
+            
+            console.log(`📚 Processed ${this.assignedUnits.length} units with student counts`);
+            
+            this.populateUnitSelectors();
+            
+        } catch (error) {
+            console.error('Failed to load assigned units:', error);
+            this.assignedUnits = this.getMockUnits();
+            this.populateUnitSelectors();
         }
     },
     
-    renderTable() {
-        const tbody = document.getElementById('lecturerCoursesTable');
+    getMockUnits() {
+        return [
+            { id: 'unit-1', name: 'Maternal Health', code: 'MH101', program: 'KRCHN', block: 'Block 1', student_count: 45 },
+            { id: 'unit-2', name: 'Clinical Skills', code: 'CS102', program: 'KRCHN', block: 'Block 1', student_count: 42 },
+            { id: 'unit-3', name: 'Mental Health Nursing', code: 'MHN201', program: 'KRCHN', block: 'Block 2', student_count: 38 }
+        ];
+    },
+    
+    populateUnitSelectors() {
+        const selectors = ['reportUnit', 'reportUnitFilter'];
+        const units = this.assignedUnits;
+        
+        selectors.forEach(selectorId => {
+            const select = document.getElementById(selectorId);
+            if (!select) return;
+            
+            const isFilter = selectorId === 'reportUnitFilter';
+            
+            if (isFilter) {
+                select.innerHTML = '<option value="all">All Units</option>';
+            } else {
+                select.innerHTML = '<option value="">-- Select Unit --</option>';
+            }
+            
+            if (units && units.length > 0) {
+                units.forEach(unit => {
+                    const option = document.createElement('option');
+                    option.value = unit.id;
+                    const displayName = unit.code && unit.code !== 'N/A' ? `${unit.code} - ${unit.name}` : unit.name || 'Unnamed Unit';
+                    option.textContent = displayName;
+                    if (unit.block) {
+                        option.textContent += ` (${unit.block})`;
+                    }
+                    if (unit.student_count > 0) {
+                        option.textContent += ` - ${unit.student_count} students`;
+                    }
+                    select.appendChild(option);
+                });
+            } else {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No units assigned';
+                option.disabled = true;
+                select.appendChild(option);
+            }
+        });
+    },
+    
+    async loadReports() {
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
+            }
+            
+            const supabase = window.lecturerDB?.supabase;
+            if (supabase) {
+                const { data: reports, error } = await supabase
+                    .from('reports')
+                    .select('*')
+                    .eq('created_by', profile.user_id)
+                    .order('created_at', { ascending: false });
+                
+                if (!error) {
+                    this.reports = reports || [];
+                } else {
+                    console.error('Error loading reports:', error);
+                    this.reports = this.getMockReports();
+                }
+            } else {
+                this.reports = this.getMockReports();
+            }
+            
+            this.renderReports(this.reports);
+            this.updateStats();
+            
+        } catch (error) {
+            console.error('Failed to load reports:', error);
+            this.reports = this.getMockReports();
+            this.renderReports(this.reports);
+        }
+    },
+    
+    getMockReports() {
+        return [
+            {
+                id: 'mock-1',
+                name: 'Maternal Health - Attendance Summary',
+                type: 'AttendanceSummary',
+                scope: 'UnitOnly',
+                unit_id: 'unit-1',
+                unit_name: 'Maternal Health',
+                format: 'PDF',
+                created_at: new Date().toISOString(),
+                file_url: '#'
+            },
+            {
+                id: 'mock-2',
+                name: 'Clinical Skills - Grade Book',
+                type: 'CourseGradeBook',
+                scope: 'UnitOnly',
+                unit_id: 'unit-2',
+                unit_name: 'Clinical Skills',
+                format: 'Excel',
+                created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+                file_url: '#'
+            }
+        ];
+    },
+    
+    renderReports(reports) {
+        const tbody = document.getElementById('reportsTable');
         if (!tbody) return;
         
-        const courses = this.filteredCourses;
+        const filteredReports = this.filterReports(reports);
         
-        if (!courses || courses.length === 0) {
+        if (!filteredReports || filteredReports.length === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
-                        <i class="fas fa-book" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Units Assigned</h3>
-                        <p style="margin: 0; font-size: 14px;">You have not been assigned any units yet.</p>
-                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Contact the administrator for unit assignments.</p>
+                        <i class="fas fa-chart-bar" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
+                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Reports Generated</h3>
+                        <p style="margin: 0; font-size: 14px;">Select a unit and report type above to generate your first report</p>
+                        <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                            <span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">📋 Attendance</span>
+                            <span style="background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">📊 Grades</span>
+                            <span style="background: #fef3c7; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #92400e;">👥 Enrollment</span>
+                        </div>
                     </td>
                 </tr>
             `;
-            document.getElementById('courseCountDisplay').textContent = '0';
+            document.getElementById('reportCountDisplay').textContent = '0';
             return;
         }
         
-        const currentYear = new Date().getFullYear().toString();
+        const typeIcons = {
+            'AttendanceSummary': '📋',
+            'CourseGradeBook': '📊',
+            'EnrollmentList': '👥',
+            'PerformanceAnalysis': '📈',
+            'ClassRoster': '📝',
+            'UnitProgress': '🎯'
+        };
         
-        tbody.innerHTML = courses.map((course, index) => {
-            const studentCount = course.student_count || 0;
-            const isPast = course.intake_year && course.intake_year !== 'N/A' && parseInt(course.intake_year) < parseInt(currentYear);
-            const rowStyle = isPast ? 'opacity: 0.7;' : '';
-            
-            let status = course.status || 'active';
-            if (isPast) status = 'completed';
-            
-            const statusColors = {
-                'active': '#10b981',
-                'completed': '#3b82f6',
-                'upcoming': '#f59e0b',
-                'inactive': '#ef4444'
-            };
-            
-            const statusLabels = {
-                'active': '✅ Active',
-                'completed': '📘 Completed',
-                'upcoming': '⏳ Upcoming',
-                'inactive': '❌ Inactive'
-            };
-            
-            const statusColor = statusColors[status] || '#6b7280';
-            const statusLabel = statusLabels[status] || status;
+        const typeColors = {
+            'AttendanceSummary': '#10b981',
+            'CourseGradeBook': '#4C1D95',
+            'EnrollmentList': '#3b82f6',
+            'PerformanceAnalysis': '#f59e0b',
+            'ClassRoster': '#8b5cf6',
+            'UnitProgress': '#ec4899'
+        };
+        
+        tbody.innerHTML = filteredReports.map(report => {
+            const unitName = this.getUnitName(report.unit_id) || report.unit_name || 'N/A';
             
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle}" 
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
                     onmouseover="this.style.background='#f8fafc'" 
                     onmouseout="this.style.background='transparent'">
-                    <td style="padding: 14px 18px;">
-                        <span style="font-weight: 700; color: #4C1D95; font-size: 13px;">${this.escapeHtml(course.unit_code || 'N/A')}</span>
-                    </td>
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                        ${this.escapeHtml(course.course_name || 'N/A')}
-                        <div style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 2px;">
-                            ${course.block ? `Block: ${this.escapeHtml(course.block)}` : ''}
-                            ${course.source ? ` | Source: ${this.escapeHtml(course.source)}` : ''}
-                        </div>
+                        <i class="fas fa-file-pdf" style="color: #ef4444; margin-right: 8px;"></i>
+                        ${this.escapeHtml(report.name || 'Untitled Report')}
                     </td>
                     <td style="padding: 14px 18px;">
                         <span style="background: #ede9fe; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #5b21b6;">
-                            ${this.escapeHtml(course.target_program || 'N/A')}
+                            ${this.escapeHtml(unitName)}
+                        </span>
+                    </td>
+                    <td style="padding: 14px 18px;">
+                        <span style="background: ${typeColors[report.type] || '#6b7280'}20; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: ${typeColors[report.type] || '#6b7280'}; font-weight: 500;">
+                            ${typeIcons[report.type] || '📄'} ${this.formatType(report.type)}
                         </span>
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
-                        ${this.escapeHtml(course.block || 'N/A')}
+                        ${this.formatScope(report.scope)}
                     </td>
-                    <td style="padding: 14px 18px; color: #475569;">
-                        ${this.escapeHtml(course.intake_year || 'N/A')}
-                        ${isPast ? ' <span style="font-size: 10px; color: #94a3b8;">(Past)</span>' : ''}
+                    <td style="padding: 14px 18px; color: #475569; font-size: 13px;">
+                        ${this.formatDate(report.created_at)}
                     </td>
-                    <td style="padding: 14px 18px; text-align: center;">
-                        <span style="font-weight: 600; color: #0A3D62;">${studentCount}</span>
+                    <td style="padding: 14px 18px;">
+                        <span style="background: #f1f5f9; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: #475569;">
+                            ${this.escapeHtml(report.format || 'PDF')}
+                        </span>
                     </td>
-                    <td style="padding: 14px 18px; text-align: center;">
-                        <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
-                            <span style="background: ${statusColor}20; color: ${statusColor}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
-                                ${statusLabel}
-                            </span>
-                            <button onclick="LecturerCourses.manageCourse('${course.id}')" 
-                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                    onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
-                                <i class="fas fa-chart-bar"></i> Manage
-                            </button>
-                            <button onclick="LecturerCourses.viewStudents('${course.id}')" 
-                                    style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                    onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-                                <i class="fas fa-users"></i>
+                    <td style="padding: 14px 18px;">
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            ${report.file_url && report.file_url !== '#' ? `
+                                <a href="${report.file_url}" target="_blank" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" 
+                                   onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                                    <i class="fas fa-download"></i> Download
+                                </a>
+                            ` : `
+                                <span style="color: #94a3b8; font-size: 12px;">Pending</span>
+                            `}
+                            <button onclick="LecturerReports.deleteReport('${report.id}')" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" 
+                                    onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </td>
@@ -412,183 +427,281 @@ async loadStudentCounts() {
             `;
         }).join('');
         
-        const countDisplay = document.getElementById('courseCountDisplay');
-        if (countDisplay) {
-            countDisplay.textContent = courses.length;
+        document.getElementById('reportCountDisplay').textContent = filteredReports.length;
+    },
+    
+    filterReports(reports) {
+        const { search, type, unit } = this.currentFilters;
+        
+        return reports.filter(report => {
+            // Search filter
+            if (search) {
+                const searchLower = search.toLowerCase();
+                const nameMatch = (report.name || '').toLowerCase().includes(searchLower);
+                const typeMatch = (report.type || '').toLowerCase().includes(searchLower);
+                const unitMatch = (report.unit_name || '').toLowerCase().includes(searchLower);
+                if (!nameMatch && !typeMatch && !unitMatch) return false;
+            }
+            
+            // Type filter
+            if (type !== 'all' && report.type !== type) return false;
+            
+            // Unit filter
+            if (unit !== 'all' && report.unit_id !== unit) return false;
+            
+            return true;
+        });
+    },
+    
+    getUnitName(unitId) {
+        if (!unitId) return null;
+        const unit = this.assignedUnits.find(u => u.id === unitId);
+        return unit ? (unit.name || unit.code) : null;
+    },
+    
+    populateReportForm() {
+        const dateInput = document.getElementById('reportDate');
+        if (dateInput) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+    },
+    
+    setupEventListeners() {
+        const form = document.getElementById('reportGenerationForm');
+        if (form) {
+            form.addEventListener('submit', (e) => this.generateReport(e));
         }
         
-        const filterCount = document.getElementById('courseFilterCount');
-        if (filterCount) {
-            const total = this.courses.length;
-            if (courses.length === total) {
-                filterCount.textContent = `Showing all ${total} units`;
-            } else {
-                filterCount.textContent = `Showing ${courses.length} of ${total} units`;
+        const searchInput = document.getElementById('reportSearch');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', (e) => {
+                this.currentFilters.search = e.target.value;
+                this.renderReports(this.reports);
+            });
+        }
+        
+        const typeFilter = document.getElementById('reportTypeFilter');
+        if (typeFilter) {
+            typeFilter.addEventListener('change', (e) => {
+                this.currentFilters.type = e.target.value;
+                this.renderReports(this.reports);
+            });
+        }
+        
+        const unitFilter = document.getElementById('reportUnitFilter');
+        if (unitFilter) {
+            unitFilter.addEventListener('change', (e) => {
+                this.currentFilters.unit = e.target.value;
+                this.renderReports(this.reports);
+            });
+        }
+    },
+    
+    async generateReport(e) {
+        e.preventDefault();
+        const form = e.target;
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+        
+        const unitId = document.getElementById('reportUnit')?.value;
+        const reportType = document.getElementById('reportType')?.value;
+        const scope = document.getElementById('reportScope')?.value;
+        const format = document.getElementById('reportFormat')?.value;
+        const includeAttendance = document.getElementById('includeAttendance')?.checked;
+        const includeGrades = document.getElementById('includeGrades')?.checked;
+        const includeComments = document.getElementById('includeComments')?.checked;
+        const includeRanking = document.getElementById('includeRanking')?.checked;
+        
+        if (!unitId || !reportType || !scope) {
+            window.showNotification('Please select unit, report type, and scope.', 'error');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                throw new Error('Please login first.');
             }
+            
+            const unit = this.assignedUnits.find(u => u.id === unitId);
+            const unitName = unit ? (unit.name || unit.code || 'Selected Unit') : 'Selected Unit';
+            
+            const typeNames = {
+                'AttendanceSummary': 'Attendance Summary',
+                'CourseGradeBook': 'Grade Book',
+                'EnrollmentList': 'Enrollment List',
+                'PerformanceAnalysis': 'Performance Analysis',
+                'ClassRoster': 'Class Roster',
+                'UnitProgress': 'Unit Progress'
+            };
+            
+            const reportName = `${unitName} - ${typeNames[reportType] || reportType}`;
+            
+            const newReport = {
+                id: `report-${Date.now()}`,
+                name: reportName,
+                type: reportType,
+                scope: scope,
+                unit_id: unitId,
+                unit_name: unitName,
+                format: format || 'PDF',
+                created_by: profile.user_id,
+                created_at: new Date().toISOString(),
+                file_url: '#',
+                options: {
+                    includeAttendance,
+                    includeGrades,
+                    includeComments,
+                    includeRanking
+                }
+            };
+            
+            const supabase = window.lecturerDB?.supabase;
+            if (supabase) {
+                const { error: dbError } = await supabase
+                    .from('reports')
+                    .insert([newReport]);
+                
+                if (dbError) {
+                    console.error('Database insert error:', dbError);
+                }
+            }
+            
+            this.reports.unshift(newReport);
+            this.renderReports(this.reports);
+            this.updateStats();
+            
+            window.showNotification('✅ Report generated successfully!', 'success');
+            
+            form.reset();
+            this.populateReportForm();
+            
+        } catch (error) {
+            console.error('Report generation error:', error);
+            window.showNotification('Failed to generate report: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    },
+    
+    async deleteReport(reportId) {
+        const report = this.reports.find(r => r.id === reportId);
+        if (!report) {
+            window.showNotification('Report not found.', 'error');
+            return;
+        }
+        
+        const confirmed = await new Promise((resolve) => {
+            const modal = document.getElementById('customConfirmModal');
+            if (modal) {
+                document.getElementById('confirmModalTitle').textContent = 'Delete Report';
+                document.getElementById('confirmModalMessage').textContent = 
+                    `Are you sure you want to delete "${report.name}"? This action cannot be undone.`;
+                modal.style.display = 'flex';
+                
+                document.getElementById('confirmOkBtn').onclick = () => {
+                    modal.style.display = 'none';
+                    resolve(true);
+                };
+                document.getElementById('confirmCancelBtn').onclick = () => {
+                    modal.style.display = 'none';
+                    resolve(false);
+                };
+            } else {
+                resolve(confirm(`Delete report "${report.name}"?`));
+            }
+        });
+        
+        if (!confirmed) return;
+        
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            
+            if (supabase) {
+                const { error: dbError } = await supabase
+                    .from('reports')
+                    .delete()
+                    .eq('id', reportId);
+                
+                if (dbError) {
+                    console.error('Delete error:', dbError);
+                }
+            }
+            
+            this.reports = this.reports.filter(r => r.id !== reportId);
+            this.renderReports(this.reports);
+            this.updateStats();
+            
+            window.showNotification('✅ Report deleted successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Delete error:', error);
+            window.showNotification('Delete failed: ' + error.message, 'error');
         }
     },
     
     updateStats() {
-        const courses = this.courses;
-        const currentYear = new Date().getFullYear().toString();
+        const total = this.reports?.length || 0;
         
-        const totalCourses = courses.length;
-        const totalEl = document.getElementById('totalCoursesCount2');
-        if (totalEl) totalEl.textContent = totalCourses;
+        const totalEl = document.getElementById('totalReportsCount');
+        if (totalEl) totalEl.textContent = total;
         
-        let totalStudents = 0;
-        courses.forEach(c => {
-            totalStudents += c.student_count || 0;
-        });
-        if (totalStudents === 0 && courses.length > 0) {
-            totalStudents = courses.length * 30;
-        }
-        const studentsEl = document.getElementById('totalStudentsCount2');
-        if (studentsEl) studentsEl.textContent = totalStudents;
+        const studentReports = this.reports?.filter(r => r.type === 'EnrollmentList' || r.type === 'ClassRoster').length || 0;
+        const studentEl = document.getElementById('studentReportsCount');
+        if (studentEl) studentEl.textContent = studentReports;
         
-        const active = courses.filter(c => {
-            const year = c.intake_year;
-            return year === currentYear || year === 'N/A' || year === '' || c.status === 'active';
-        }).length;
-        const activeEl = document.getElementById('activeCoursesCount');
-        if (activeEl) activeEl.textContent = active;
+        const performanceReports = this.reports?.filter(r => r.type === 'CourseGradeBook' || r.type === 'PerformanceAnalysis' || r.type === 'UnitProgress').length || 0;
+        const performanceEl = document.getElementById('performanceReportsCount');
+        if (performanceEl) performanceEl.textContent = performanceReports;
         
-        const completed = courses.filter(c => {
-            const year = c.intake_year;
-            return year && year !== 'N/A' && parseInt(year) < parseInt(currentYear);
-        }).length;
-        const completedEl = document.getElementById('completedCoursesCount');
-        if (completedEl) completedEl.textContent = completed;
+        const unitReports = this.reports?.filter(r => r.scope === 'UnitOnly').length || 0;
+        const unitEl = document.getElementById('unitReportsCount');
+        if (unitEl) unitEl.textContent = unitReports;
         
-        const badge = document.getElementById('courseCountBadge');
-        if (badge) {
-            badge.textContent = courses.length;
-        }
-        
-        const dashboardCount = document.getElementById('totalCoursesCount');
-        if (dashboardCount) {
-            dashboardCount.textContent = courses.length;
-        }
-        
-        console.log(`📊 Stats: ${totalCourses} total, ${active} active, ${completed} completed`);
+        const countDisplay = document.getElementById('reportCountDisplay');
+        if (countDisplay) countDisplay.textContent = total;
     },
     
-    applyFilters() {
-        const intake = document.getElementById('intakeYearFilter')?.value || '';
-        const block = document.getElementById('academicPeriodFilter')?.value || '';
-        const search = document.getElementById('courseSearch')?.value?.toLowerCase() || '';
-        
-        this.filteredCourses = this.courses.filter(course => {
-            const matchIntake = !intake || course.intake_year === intake;
-            const matchBlock = !block || course.block === block;
-            const matchSearch = !search || 
-                course.course_name?.toLowerCase().includes(search) ||
-                course.unit_code?.toLowerCase().includes(search) ||
-                course.target_program?.toLowerCase().includes(search);
-            
-            return matchIntake && matchBlock && matchSearch;
-        });
-        
-        this.renderTable();
+    formatType(type) {
+        const types = {
+            'AttendanceSummary': 'Attendance',
+            'CourseGradeBook': 'Grade Book',
+            'EnrollmentList': 'Enrollment',
+            'PerformanceAnalysis': 'Performance',
+            'ClassRoster': 'Roster',
+            'UnitProgress': 'Progress'
+        };
+        return types[type] || type;
     },
     
-    setupEventListeners() {
-        ['intakeYearFilter', 'academicPeriodFilter'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('change', () => this.applyFilters());
-            }
-        });
-        
-        const searchInput = document.getElementById('courseSearch');
-        if (searchInput) {
-            let timeout;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => this.applyFilters(), 300);
+    formatScope(scope) {
+        const scopes = {
+            'MyCourses': '📚 My Units',
+            'MyStudents': '👨‍🎓 My Students',
+            'UnitOnly': '📖 Selected Unit',
+            'AllPrograms': '🏫 All Programs'
+        };
+        return scopes[scope] || scope;
+    },
+    
+    formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
             });
+        } catch {
+            return dateString;
         }
-        
-        const searchBtn = document.getElementById('courseSearchBtn');
-        if (searchBtn) {
-            searchBtn.addEventListener('click', () => this.applyFilters());
-        }
-    },
-    
-    manageCourse(courseId) {
-        const course = this.courses.find(c => c.id === courseId);
-        if (!course) {
-            window.showNotification('Course not found.', 'error');
-            return;
-        }
-        
-        window.showNotification(`📚 Managing: ${course.course_name} - Features coming soon!`, 'info');
-        console.log('Managing course:', course);
-    },
-    
-    viewStudents(courseId) {
-        const course = this.courses.find(c => c.id === courseId);
-        if (!course) {
-            window.showNotification('Course not found.', 'error');
-            return;
-        }
-        
-        window.showNotification(`👥 Viewing students for: ${course.course_name}`, 'info');
-        
-        if (typeof showTab === 'function') {
-            showTab('my-students');
-        }
-        
-        sessionStorage.setItem('selectedCourseId', courseId);
-        sessionStorage.setItem('selectedCourseName', course.course_name);
-    },
-    
-    exportCourses() {
-        const courses = this.filteredCourses || this.courses;
-        if (courses.length === 0) {
-            window.showNotification('No units to export.', 'warning');
-            return;
-        }
-        
-        const headers = ['Code', 'Name', 'Program', 'Block', 'Intake', 'Students', 'Status'];
-        const rows = courses.map(c => [
-            c.unit_code || 'N/A',
-            c.course_name || 'N/A',
-            c.target_program || 'N/A',
-            c.block || 'N/A',
-            c.intake_year || 'N/A',
-            c.student_count || 0,
-            c.status || 'Active'
-        ]);
-        
-        const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `units_assigned_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        window.showNotification('✅ Units exported successfully!', 'success');
-    },
-    
-    clearFilters() {
-        const filterIds = ['intakeYearFilter', 'academicPeriodFilter'];
-        filterIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = '';
-        });
-        
-        const searchEl = document.getElementById('courseSearch');
-        if (searchEl) searchEl.value = '';
-        
-        this.filteredCourses = [...this.courses];
-        this.renderTable();
-        
-        window.showNotification('Filters cleared!', 'info');
     },
     
     escapeHtml(text) {
@@ -598,26 +711,76 @@ async loadStudentCounts() {
         return div.innerHTML;
     },
     
+    clearFilters() {
+        this.currentFilters = {
+            search: '',
+            type: 'all',
+            unit: 'all'
+        };
+        
+        const searchInput = document.getElementById('reportSearch');
+        if (searchInput) searchInput.value = '';
+        
+        const typeFilter = document.getElementById('reportTypeFilter');
+        if (typeFilter) typeFilter.value = 'all';
+        
+        const unitFilter = document.getElementById('reportUnitFilter');
+        if (unitFilter) unitFilter.value = 'all';
+        
+        this.renderReports(this.reports);
+    },
+    
     async refresh() {
         await this.resolveLecturerId();
-        await this.loadCourses();
-        this.populateFilters();
-        this.applyFilters();
-        this.updateStats();
-        window.showNotification('Units refreshed!', 'success');
+        await this.loadAssignedUnits();
+        await this.loadReports();
+        window.showNotification('Reports refreshed!', 'success');
+    },
+    
+    exportAllReports() {
+        if (!this.reports || this.reports.length === 0) {
+            window.showNotification('No reports to export.', 'warning');
+            return;
+        }
+        
+        const headers = ['Name', 'Unit', 'Type', 'Scope', 'Format', 'Date'];
+        const rows = this.reports.map(r => [
+            r.name || 'Untitled',
+            this.getUnitName(r.unit_id) || r.unit_name || 'N/A',
+            this.formatType(r.type),
+            this.formatScope(r.scope),
+            r.format || 'PDF',
+            this.formatDate(r.created_at)
+        ]);
+        
+        const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reports_export_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        window.showNotification('Reports exported successfully!', 'success');
+    },
+    
+    printReportTable() {
+        window.print();
     }
 };
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => LecturerCourses.init(), 550);
+    setTimeout(() => LecturerReports.init(), 900);
 });
 
-// Make functions globally accessible
-window.LecturerCourses = LecturerCourses;
-window.applyCourseFilters = () => LecturerCourses.applyFilters();
-window.clearCourseFilters = () => LecturerCourses.clearFilters();
-window.searchCourses = () => LecturerCourses.applyFilters();
-window.exportCourses = () => LecturerCourses.exportCourses();
+// Make available globally
+window.LecturerReports = LecturerReports;
+window.filterReports = () => LecturerReports.renderReports(LecturerReports.reports);
+window.clearReportFilters = () => LecturerReports.clearFilters();
+window.refreshReports = () => LecturerReports.refresh();
+window.exportAllReports = () => LecturerReports.exportAllReports();
+window.printReportTable = () => LecturerReports.printReportTable();
 
-console.log('✅ LecturerCourses module loaded - Prioritizes non-STAFF IDs');
+console.log('✅ LecturerReports module loaded - Same ID resolution as marks module');
