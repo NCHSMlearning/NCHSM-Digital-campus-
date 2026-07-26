@@ -3438,6 +3438,56 @@ function initResourcesModule() {
     }
 }
 
+// ============================================================
+// GLOBAL FUNCTIONS FOR RESOURCES MODULE
+// ============================================================
+
+// Filter resources by type (called from HTML onclick)
+window.filterStudentResourceType = function(type) {
+    if (window.resourcesModule) {
+        window.resourcesModule.filterResourcesByType(type);
+    } else {
+        console.warn('Resources module not initialized yet');
+    }
+};
+
+// Open resource inline
+window.openResourceInline = function(id) {
+    if (window.resourcesModule) {
+        window.resourcesModule.openResource(id);
+    }
+};
+
+// Reset filters
+window.resetResourceFilters = function() {
+    if (window.resourcesModule) {
+        window.resourcesModule.resetFilters();
+    }
+};
+
+// Open LMS course
+window.openLMSCourse = function(courseId) {
+    if (window.resourcesModule) {
+        window.resourcesModule.openCourse(courseId);
+    }
+};
+
+// Mark lesson complete
+window.markLessonComplete = function(courseId, moduleId, lessonId) {
+    if (window.resourcesModule) {
+        window.resourcesModule.markLessonComplete(courseId, moduleId, lessonId);
+    }
+};
+
+// Refresh resources
+window.refreshResources = function() {
+    if (window.resourcesModule) {
+        window.resourcesModule.loadResources();
+    }
+};
+
+// Export for debugging
+console.log('✅ Resources global functions registered');
 // Auto-initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
