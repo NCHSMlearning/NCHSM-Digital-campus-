@@ -1,8 +1,8 @@
-// js/lecturer-sessions.js - COMPLETE WITH ALL FUNCTIONS
+// js/lecturer-sessions.js - COMPLETE WITH OWNER-ONLY ACCESS
 /**
  * NCHSM Lecturer Sessions Module
  * Uses scheduled_sessions table with correct column names
- * Includes session open/close for student attendance sign-in
+ * Lecturers can only see and manage their OWN sessions
  */
 
 const LecturerSessions = {
@@ -131,14 +131,16 @@ const LecturerSessions = {
         }
     },
     
+    // ============================================
+    // LOAD SESSIONS - ONLY THIS LECTURER'S SESSIONS
+    // ============================================
     async loadSessions() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department;
             const userId = this.lecturerUuid || profile?.user_id;
             
-            if (!program || !userId) {
-                console.warn('No program or user ID found');
+            if (!userId) {
+                console.warn('No user ID found');
                 return;
             }
             
@@ -148,7 +150,7 @@ const LecturerSessions = {
                 return;
             }
             
-            // ✅ Use correct column: created_by (UUID)
+            // ✅ ONLY fetch sessions created by this lecturer
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
                 .select('*')
@@ -164,7 +166,7 @@ const LecturerSessions = {
             this.renderSessions();
             this.updateStats();
             
-            console.log(`✅ Loaded ${this.sessions.length} sessions`);
+            console.log(`✅ Loaded ${this.sessions.length} sessions (only your sessions)`);
             
         } catch (error) {
             console.error('Failed to load sessions:', error);
@@ -232,7 +234,7 @@ const LecturerSessions = {
             const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
             const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
             
-            // Session control buttons
+            // Session control buttons - only for this lecturer's sessions
             let sessionControls = '';
             if (sessionDate && sessionDate >= today) {
                 if (!isActive) {
@@ -300,6 +302,9 @@ const LecturerSessions = {
         }).join('');
     },
     
+    // ============================================
+    // GENERATE ATTENDANCE LINK
+    // ============================================
     generateAttendanceLink(sessionId) {
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
@@ -317,12 +322,19 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // OPEN SESSION
+    // OPEN SESSION - OWNER ONLY
     // ============================================
     async openSession(sessionId) {
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
             window.showNotification('Session not found.', 'error');
+            return;
+        }
+        
+        // ✅ Verify ownership
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
+            window.showNotification('You can only manage your own sessions.', 'warning');
             return;
         }
         
@@ -341,7 +353,8 @@ const LecturerSessions = {
                     is_active: true,
                     opened_at: new Date().toISOString()
                 })
-                .eq('id', sessionId);
+                .eq('id', sessionId)
+                .eq('created_by', this.lecturerUuid); // ✅ Extra safety - only if owner
             
             if (error) throw error;
             
@@ -355,12 +368,19 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // CLOSE SESSION
+    // CLOSE SESSION - OWNER ONLY
     // ============================================
     async closeSession(sessionId) {
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
             window.showNotification('Session not found.', 'error');
+            return;
+        }
+        
+        // ✅ Verify ownership
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
+            window.showNotification('You can only manage your own sessions.', 'warning');
             return;
         }
         
@@ -379,7 +399,8 @@ const LecturerSessions = {
                     is_active: false,
                     closed_at: new Date().toISOString()
                 })
-                .eq('id', sessionId);
+                .eq('id', sessionId)
+                .eq('created_by', this.lecturerUuid); // ✅ Extra safety - only if owner
             
             if (error) throw error;
             
@@ -393,12 +414,19 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // VIEW ATTENDEES
+    // VIEW ATTENDEES - OWNER ONLY
     // ============================================
     async viewAttendees(sessionId) {
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
             window.showNotification('Session not found.', 'error');
+            return;
+        }
+        
+        // ✅ Verify ownership
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
+            window.showNotification('You can only view attendees for your own sessions.', 'warning');
             return;
         }
         
@@ -436,7 +464,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // OPEN TODAY'S SESSION
+    // OPEN TODAY'S SESSION - OWNER ONLY
     // ============================================
     async openTodaySession() {
         try {
@@ -451,6 +479,7 @@ const LecturerSessions = {
             
             const today = new Date().toISOString().split('T')[0];
             
+            // ✅ Only fetch this lecturer's sessions
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
                 .select('*')
@@ -477,7 +506,8 @@ const LecturerSessions = {
                     is_active: true,
                     opened_at: new Date().toISOString()
                 })
-                .eq('id', session.id);
+                .eq('id', session.id)
+                .eq('created_by', lecturerId); // ✅ Extra safety - only if owner
             
             if (updateError) throw updateError;
             
@@ -491,7 +521,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // CLOSE ALL SESSIONS
+    // CLOSE ALL SESSIONS - OWNER ONLY
     // ============================================
     async closeAllSessions() {
         try {
@@ -503,8 +533,9 @@ const LecturerSessions = {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerId = this.lecturerUuid || profile?.user_id;
             
-            if (!confirm('Close all active sessions and stop attendance?')) return;
+            if (!confirm('Close all your active sessions and stop attendance?')) return;
             
+            // ✅ Only close sessions owned by this lecturer
             const { error } = await supabase
                 .from('scheduled_sessions')
                 .update({
@@ -517,12 +548,60 @@ const LecturerSessions = {
             
             if (error) throw error;
             
-            window.showNotification('✅ All sessions closed.', 'success');
+            window.showNotification('✅ All your sessions closed.', 'success');
             await this.loadSessions();
             
         } catch (error) {
             console.error('Error closing all sessions:', error);
             window.showNotification('Failed to close sessions: ' + error.message, 'error');
+        }
+    },
+    
+    // ============================================
+    // CANCEL SESSION - OWNER ONLY
+    // ============================================
+    async cancelSession(sessionId) {
+        const session = this.sessions.find(s => s.id === sessionId);
+        if (!session) {
+            window.showNotification('Session not found.', 'error');
+            return;
+        }
+        
+        // ✅ Verify ownership
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
+            window.showNotification('You can only cancel your own sessions.', 'warning');
+            return;
+        }
+        
+        if (session.approval_status === 'approved') {
+            window.showNotification('Approved sessions cannot be cancelled.', 'warning');
+            return;
+        }
+        
+        if (!confirm(`Cancel session "${session.session_title || session.title}"?`)) return;
+        
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database connection not available');
+            }
+            
+            // ✅ Only delete if owner
+            const { error } = await supabase
+                .from('scheduled_sessions')
+                .delete()
+                .eq('id', sessionId)
+                .eq('created_by', this.lecturerUuid);
+            
+            if (error) throw error;
+            
+            window.showNotification('✅ Session cancelled!', 'success');
+            await this.loadSessions();
+            
+        } catch (error) {
+            console.error('Error cancelling session:', error);
+            window.showNotification('Failed to cancel session: ' + error.message, 'error');
         }
     },
     
@@ -605,7 +684,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // HANDLE ADD SESSION
+    // HANDLE ADD SESSION - Creates session for this lecturer
     // ============================================
     async handleAddSession(e) {
         e.preventDefault();
@@ -642,6 +721,7 @@ const LecturerSessions = {
                 throw new Error('Database connection not available');
             }
             
+            // ✅ Session is created with this lecturer as owner
             const sessionData = {
                 session_title: formData.title,
                 title: formData.title,
@@ -652,7 +732,7 @@ const LecturerSessions = {
                 block_term: formData.block,
                 session_type: formData.type,
                 location_name: formData.location,
-                created_by: lecturerUuid,
+                created_by: lecturerUuid, // ✅ Owner is set
                 approval_status: 'pending',
                 created_at: new Date().toISOString(),
                 status: 'scheduled',
@@ -677,45 +757,6 @@ const LecturerSessions = {
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;
-        }
-    },
-    
-    // ============================================
-    // CANCEL SESSION
-    // ============================================
-    async cancelSession(sessionId) {
-        const session = this.sessions.find(s => s.id === sessionId);
-        if (!session) {
-            window.showNotification('Session not found.', 'error');
-            return;
-        }
-        
-        if (session.approval_status === 'approved') {
-            window.showNotification('Approved sessions cannot be cancelled.', 'warning');
-            return;
-        }
-        
-        if (!confirm(`Cancel session "${session.session_title || session.title}"?`)) return;
-        
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
-            
-            const { error } = await supabase
-                .from('scheduled_sessions')
-                .delete()
-                .eq('id', sessionId);
-            
-            if (error) throw error;
-            
-            window.showNotification('✅ Session cancelled!', 'success');
-            await this.loadSessions();
-            
-        } catch (error) {
-            console.error('Error cancelling session:', error);
-            window.showNotification('Failed to cancel session: ' + error.message, 'error');
         }
     },
     
@@ -767,30 +808,6 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // UTILITY FUNCTIONS
-    // ============================================
-    formatDate(dateString) {
-        if (!dateString) return 'N/A';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-            });
-        } catch {
-            return dateString;
-        }
-    },
-    
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    },
-    
-    // ============================================
     // EXPORT SESSIONS
     // ============================================
     exportSessions() {
@@ -827,6 +844,30 @@ const LecturerSessions = {
     },
     
     // ============================================
+    // UTILITY FUNCTIONS
+    // ============================================
+    formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch {
+            return dateString;
+        }
+    },
+    
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+    
+    // ============================================
     // REFRESH
     // ============================================
     async refresh() {
@@ -855,4 +896,4 @@ window.openTodaySession = () => LecturerSessions.openTodaySession();
 window.closeAllSessions = () => LecturerSessions.closeAllSessions();
 window.exportSessions = () => LecturerSessions.exportSessions();
 
-console.log('✅ LecturerSessions module loaded - Complete with all functions');
+console.log('✅ LecturerSessions module loaded - Owner-only access');
