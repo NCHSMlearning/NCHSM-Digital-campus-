@@ -1,4 +1,4 @@
-// js/lecturer-reports.js
+// js/lecturer-reports.js - FIXED with correct column names
 /**
  * NCHSM Lecturer Reports Module
  * Generate and manage academic reports for assigned units and students
@@ -27,7 +27,7 @@ const LecturerReports = {
     },
     
     // ============================================
-    // RESOLVE THE CORRECT LECTURER ID - SAME AS MARKS MODULE
+    // RESOLVE THE CORRECT LECTURER ID
     // ============================================
     async resolveLecturerId() {
         try {
@@ -43,51 +43,29 @@ const LecturerReports = {
                 return;
             }
             
-            const authId = profile.user_id;
             const fullName = profile.full_name;
+            const authId = profile.user_id;
             
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // Try to find by name in lecturer_subject_assignments
-            const { data, error } = await supabase
+            const { data: nameData, error: nameError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
-                .eq('lecturer_name', fullName)
-                .limit(1);
+                .ilike('lecturer_name', `%${fullName}%`);
             
-            if (!error && data && data.length > 0) {
-                this.lecturerAssignmentId = data[0].lecturer_id;
-                console.log('✅ Found lecturer ID by name:', this.lecturerAssignmentId);
-                return;
-            }
-            
-            // Try partial name match
-            const nameParts = fullName.split(' ');
-            const { data: allLecturers, error: allError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .order('created_at', { ascending: false });
-            
-            if (!allError && allLecturers && allLecturers.length > 0) {
-                for (const lecturer of allLecturers) {
-                    const lecturerName = lecturer.lecturer_name || '';
-                    for (const part of nameParts) {
-                        if (part.length > 2 && lecturerName.toLowerCase().includes(part.toLowerCase())) {
-                            this.lecturerAssignmentId = lecturer.lecturer_id;
-                            console.log('✅ Found lecturer by partial name match:', this.lecturerAssignmentId);
-                            return;
-                        }
-                    }
+            if (!nameError && nameData && nameData.length > 0) {
+                const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
+                if (nonStaff) {
+                    this.lecturerAssignmentId = nonStaff.lecturer_id;
+                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
+                    return;
                 }
-                
-                // If no match, use the most recent lecturer
-                this.lecturerAssignmentId = allLecturers[0].lecturer_id;
-                console.log('⚠️ Using most recent lecturer ID:', this.lecturerAssignmentId);
+                this.lecturerAssignmentId = nameData[0].lecturer_id;
+                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
                 return;
             }
             
-            // Fallback: use auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -113,7 +91,6 @@ const LecturerReports = {
                 return;
             }
             
-            // Use the resolved lecturer ID (same as marks module)
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
             console.log('🔍 Using lecturer ID for reports:', lecturerId);
             
@@ -132,35 +109,61 @@ const LecturerReports = {
             
             console.log(`📚 Found ${assignments?.length || 0} assigned units`);
             
-            // Convert to unit format
-            this.assignedUnits = (assignments || []).map(a => ({
-                id: a.id || `unit-${Date.now()}`,
+            if (!assignments || assignments.length === 0) {
+                console.warn('No assignments found');
+                this.assignedUnits = [];
+                this.populateUnitSelectors();
+                return;
+            }
+            
+            // Convert to unit format with student counts
+            const program = profile.program || 'KRCHN';
+            const unitNames = assignments.map(a => a.subject_name);
+            const blocks = [...new Set(assignments.map(a => a.block))];
+            
+            // Get student counts from student_unit_registrations
+            let studentCounts = {};
+            try {
+                const { data: registrations, error: regError } = await supabase
+                    .from('student_unit_registrations')
+                    .select('unit_name, student_id, block')
+                    .eq('program', program)
+                    .eq('status', 'approved')
+                    .in('block', blocks)
+                    .in('unit_name', unitNames);
+                
+                if (!regError && registrations) {
+                    const countMap = {};
+                    registrations.forEach(reg => {
+                        const key = `${reg.unit_name}|${reg.block}`;
+                        if (!countMap[key]) {
+                            countMap[key] = new Set();
+                        }
+                        countMap[key].add(reg.student_id);
+                    });
+                    
+                    assignments.forEach(a => {
+                        const key = `${a.subject_name}|${a.block}`;
+                        studentCounts[a.subject_name] = countMap[key]?.size || 0;
+                    });
+                }
+            } catch (e) {
+                console.warn('Error getting student counts:', e);
+            }
+            
+            // Build assigned units with student counts
+            this.assignedUnits = assignments.map(a => ({
+                id: a.id,
                 name: a.subject_name || 'Unnamed Unit',
                 code: a.subject_code || 'N/A',
                 program: a.program || 'N/A',
                 block: a.block || 'N/A',
-                academic_year: a.academic_year || 'N/A'
+                academic_year: a.academic_year || 'N/A',
+                student_count: studentCounts[a.subject_name] || 0,
+                lecturer_name: a.lecturer_name || 'N/A'
             }));
             
-            // If no assignments found, try to get from marks system
-            if (this.assignedUnits.length === 0) {
-                console.log('🔄 No assignments found, checking marks system...');
-                
-                if (window.lecturerMarks && window.lecturerMarks.assignedUnits) {
-                    const marksUnits = window.lecturerMarks.assignedUnits || [];
-                    if (marksUnits.length > 0) {
-                        this.assignedUnits = marksUnits.map(u => ({
-                            id: u.id || `unit-${Date.now()}`,
-                            name: u.unit_name || u.name || 'Unnamed Unit',
-                            code: u.unit_code || u.code || 'N/A',
-                            program: u.program || 'N/A',
-                            block: u.block || 'N/A',
-                            academic_year: u.year || u.academic_year || 'N/A'
-                        }));
-                        console.log('📚 Using units from marks system:', this.assignedUnits.length);
-                    }
-                }
-            }
+            console.log(`📚 Processed ${this.assignedUnits.length} units with student counts`);
             
             this.populateUnitSelectors();
             
@@ -173,9 +176,9 @@ const LecturerReports = {
     
     getMockUnits() {
         return [
-            { id: 'unit-1', name: 'Maternal Health', code: 'MH101', program: 'KRCHN', block: 'Block 1' },
-            { id: 'unit-2', name: 'Clinical Skills', code: 'CS102', program: 'KRCHN', block: 'Block 1' },
-            { id: 'unit-3', name: 'Mental Health Nursing', code: 'MHN201', program: 'KRCHN', block: 'Block 2' }
+            { id: 'unit-1', name: 'Maternal Health', code: 'MH101', program: 'KRCHN', block: 'Block 1', student_count: 45 },
+            { id: 'unit-2', name: 'Clinical Skills', code: 'CS102', program: 'KRCHN', block: 'Block 1', student_count: 42 },
+            { id: 'unit-3', name: 'Mental Health Nursing', code: 'MHN201', program: 'KRCHN', block: 'Block 2', student_count: 38 }
         ];
     },
     
@@ -198,11 +201,14 @@ const LecturerReports = {
             if (units && units.length > 0) {
                 units.forEach(unit => {
                     const option = document.createElement('option');
-                    option.value = unit.id || unit.unit_id;
-                    const displayName = unit.code ? `${unit.code} - ${unit.name}` : unit.name || 'Unnamed Unit';
+                    option.value = unit.id;
+                    const displayName = unit.code && unit.code !== 'N/A' ? `${unit.code} - ${unit.name}` : unit.name || 'Unnamed Unit';
                     option.textContent = displayName;
-                    if (unit.program) {
-                        option.textContent += ` (${unit.program})`;
+                    if (unit.block) {
+                        option.textContent += ` (${unit.block})`;
+                    }
+                    if (unit.student_count > 0) {
+                        option.textContent += ` - ${unit.student_count} students`;
                     }
                     select.appendChild(option);
                 });
@@ -225,20 +231,25 @@ const LecturerReports = {
             }
             
             const supabase = window.lecturerDB?.supabase;
-            if (supabase) {
-                const { data: reports, error } = await supabase
-                    .from('reports')
-                    .select('*')
-                    .eq('created_by', profile.user_id)
-                    .order('created_at', { ascending: false });
-                
-                if (!error) {
-                    this.reports = reports || [];
-                } else {
-                    console.error('Error loading reports:', error);
-                    this.reports = this.getMockReports();
-                }
+            if (!supabase) {
+                console.warn('Supabase not available');
+                this.reports = this.getMockReports();
+                this.renderReports(this.reports);
+                this.updateStats();
+                return;
+            }
+            
+            // ✅ FIX: Use 'submitted_by' instead of 'created_by'
+            const { data: reports, error } = await supabase
+                .from('reports')
+                .select('*')
+                .eq('submitted_by', profile.user_id)
+                .order('created_at', { ascending: false });
+            
+            if (!error) {
+                this.reports = reports || [];
             } else {
+                console.error('Error loading reports:', error);
                 this.reports = this.getMockReports();
             }
             
@@ -256,25 +267,23 @@ const LecturerReports = {
         return [
             {
                 id: 'mock-1',
-                name: 'Maternal Health - Attendance Summary',
+                title: 'Maternal Health - Attendance Summary',
                 type: 'AttendanceSummary',
-                scope: 'UnitOnly',
-                unit_id: 'unit-1',
-                unit_name: 'Maternal Health',
-                format: 'PDF',
-                created_at: new Date().toISOString(),
-                file_url: '#'
+                department: 'Nursing',
+                status: 'completed',
+                file_url: '#',
+                file_name: 'attendance_report.pdf',
+                created_at: new Date().toISOString()
             },
             {
                 id: 'mock-2',
-                name: 'Clinical Skills - Grade Book',
+                title: 'Clinical Skills - Grade Book',
                 type: 'CourseGradeBook',
-                scope: 'UnitOnly',
-                unit_id: 'unit-2',
-                unit_name: 'Clinical Skills',
-                format: 'Excel',
-                created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-                file_url: '#'
+                department: 'Nursing',
+                status: 'pending',
+                file_url: '#',
+                file_name: 'grade_book.xlsx',
+                created_at: new Date(Date.now() - 86400000 * 2).toISOString()
             }
         ];
     },
@@ -322,8 +331,15 @@ const LecturerReports = {
             'UnitProgress': '#ec4899'
         };
         
+        const statusBadges = {
+            'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
+            'completed': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Completed</span>',
+            'failed': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Failed</span>'
+        };
+        
         tbody.innerHTML = filteredReports.map(report => {
             const unitName = this.getUnitName(report.unit_id) || report.unit_name || 'N/A';
+            const status = report.status || 'pending';
             
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
@@ -331,7 +347,7 @@ const LecturerReports = {
                     onmouseout="this.style.background='transparent'">
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
                         <i class="fas fa-file-pdf" style="color: #ef4444; margin-right: 8px;"></i>
-                        ${this.escapeHtml(report.name || 'Untitled Report')}
+                        ${this.escapeHtml(report.title || 'Untitled Report')}
                     </td>
                     <td style="padding: 14px 18px;">
                         <span style="background: #ede9fe; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #5b21b6;">
@@ -344,29 +360,26 @@ const LecturerReports = {
                         </span>
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
-                        ${this.formatScope(report.scope)}
+                        ${this.escapeHtml(report.department || 'N/A')}
                     </td>
                     <td style="padding: 14px 18px; color: #475569; font-size: 13px;">
                         ${this.formatDate(report.created_at)}
                     </td>
                     <td style="padding: 14px 18px;">
-                        <span style="background: #f1f5f9; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: #475569;">
-                            ${this.escapeHtml(report.format || 'PDF')}
-                        </span>
+                        ${statusBadges[status] || statusBadges.pending}
                     </td>
                     <td style="padding: 14px 18px;">
                         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                             ${report.file_url && report.file_url !== '#' ? `
-                                <a href="${report.file_url}" target="_blank" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" 
-                                   onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                                <a href="${report.file_url}" target="_blank" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
                                     <i class="fas fa-download"></i> Download
                                 </a>
                             ` : `
                                 <span style="color: #94a3b8; font-size: 12px;">Pending</span>
                             `}
-                            <button onclick="LecturerReports.deleteReport('${report.id}')" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" 
-                                    onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                                <i class="fas fa-trash"></i>
+                            <button onclick="LecturerReports.deleteReport('${report.id}')" 
+                                    style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-trash"></i> Delete
                             </button>
                         </div>
                     </td>
@@ -381,19 +394,15 @@ const LecturerReports = {
         const { search, type, unit } = this.currentFilters;
         
         return reports.filter(report => {
-            // Search filter
             if (search) {
                 const searchLower = search.toLowerCase();
-                const nameMatch = (report.name || '').toLowerCase().includes(searchLower);
+                const titleMatch = (report.title || '').toLowerCase().includes(searchLower);
                 const typeMatch = (report.type || '').toLowerCase().includes(searchLower);
                 const unitMatch = (report.unit_name || '').toLowerCase().includes(searchLower);
-                if (!nameMatch && !typeMatch && !unitMatch) return false;
+                if (!titleMatch && !typeMatch && !unitMatch) return false;
             }
             
-            // Type filter
             if (type !== 'all' && report.type !== type) return false;
-            
-            // Unit filter
             if (unit !== 'all' && report.unit_id !== unit) return false;
             
             return true;
@@ -402,7 +411,7 @@ const LecturerReports = {
     
     getUnitName(unitId) {
         if (!unitId) return null;
-        const unit = this.assignedUnits.find(u => u.id === unitId || u.unit_id === unitId);
+        const unit = this.assignedUnits.find(u => u.id === unitId);
         return unit ? (unit.name || unit.code) : null;
     },
     
@@ -449,23 +458,19 @@ const LecturerReports = {
         const form = e.target;
         const btn = form.querySelector('button[type="submit"]');
         const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
         
         const unitId = document.getElementById('reportUnit')?.value;
         const reportType = document.getElementById('reportType')?.value;
-        const scope = document.getElementById('reportScope')?.value;
-        const format = document.getElementById('reportFormat')?.value;
-        const includeAttendance = document.getElementById('includeAttendance')?.checked;
-        const includeGrades = document.getElementById('includeGrades')?.checked;
-        const includeComments = document.getElementById('includeComments')?.checked;
-        const includeRanking = document.getElementById('includeRanking')?.checked;
+        const department = document.getElementById('reportScope')?.value || 'Nursing';
         
-        if (!unitId || !reportType || !scope) {
-            window.showNotification('Please select unit, report type, and scope.', 'error');
+        if (!unitId || !reportType) {
+            window.showNotification('Please select unit and report type.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
             return;
         }
-        
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
         
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -473,7 +478,7 @@ const LecturerReports = {
                 throw new Error('Please login first.');
             }
             
-            const unit = this.assignedUnits.find(u => u.id === unitId || u.unit_id === unitId);
+            const unit = this.assignedUnits.find(u => u.id === unitId);
             const unitName = unit ? (unit.name || unit.code || 'Selected Unit') : 'Selected Unit';
             
             const typeNames = {
@@ -485,25 +490,21 @@ const LecturerReports = {
                 'UnitProgress': 'Unit Progress'
             };
             
-            const reportName = `${unitName} - ${typeNames[reportType] || reportType}`;
+            const reportTitle = `${unitName} - ${typeNames[reportType] || reportType}`;
             
+            // ✅ FIX: Use 'submitted_by' instead of 'created_by'
             const newReport = {
                 id: `report-${Date.now()}`,
-                name: reportName,
+                title: reportTitle,
                 type: reportType,
-                scope: scope,
+                department: department,
+                status: 'pending',
                 unit_id: unitId,
                 unit_name: unitName,
-                format: format || 'PDF',
-                created_by: profile.user_id,
-                created_at: new Date().toISOString(),
+                submitted_by: profile.user_id,
                 file_url: '#',
-                options: {
-                    includeAttendance,
-                    includeGrades,
-                    includeComments,
-                    includeRanking
-                }
+                file_name: `${reportTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+                created_at: new Date().toISOString()
             };
             
             const supabase = window.lecturerDB?.supabase;
@@ -547,7 +548,7 @@ const LecturerReports = {
             if (modal) {
                 document.getElementById('confirmModalTitle').textContent = 'Delete Report';
                 document.getElementById('confirmModalMessage').textContent = 
-                    `Are you sure you want to delete "${report.name}"? This action cannot be undone.`;
+                    `Are you sure you want to delete "${report.title}"? This action cannot be undone.`;
                 modal.style.display = 'flex';
                 
                 document.getElementById('confirmOkBtn').onclick = () => {
@@ -559,7 +560,7 @@ const LecturerReports = {
                     resolve(false);
                 };
             } else {
-                resolve(confirm(`Delete report "${report.name}"?`));
+                resolve(confirm(`Delete report "${report.title}"?`));
             }
         });
         
@@ -597,18 +598,6 @@ const LecturerReports = {
         const totalEl = document.getElementById('totalReportsCount');
         if (totalEl) totalEl.textContent = total;
         
-        const studentReports = this.reports?.filter(r => r.type === 'EnrollmentList' || r.type === 'ClassRoster').length || 0;
-        const studentEl = document.getElementById('studentReportsCount');
-        if (studentEl) studentEl.textContent = studentReports;
-        
-        const performanceReports = this.reports?.filter(r => r.type === 'CourseGradeBook' || r.type === 'PerformanceAnalysis' || r.type === 'UnitProgress').length || 0;
-        const performanceEl = document.getElementById('performanceReportsCount');
-        if (performanceEl) performanceEl.textContent = performanceReports;
-        
-        const unitReports = this.reports?.filter(r => r.scope === 'UnitOnly').length || 0;
-        const unitEl = document.getElementById('unitReportsCount');
-        if (unitEl) unitEl.textContent = unitReports;
-        
         const countDisplay = document.getElementById('reportCountDisplay');
         if (countDisplay) countDisplay.textContent = total;
     },
@@ -623,16 +612,6 @@ const LecturerReports = {
             'UnitProgress': 'Progress'
         };
         return types[type] || type;
-    },
-    
-    formatScope(scope) {
-        const scopes = {
-            'MyCourses': '📚 My Units',
-            'MyStudents': '👨‍🎓 My Students',
-            'UnitOnly': '📖 Selected Unit',
-            'AllPrograms': '🏫 All Programs'
-        };
-        return scopes[scope] || scope;
     },
     
     formatDate(dateString) {
@@ -690,13 +669,13 @@ const LecturerReports = {
             return;
         }
         
-        const headers = ['Name', 'Unit', 'Type', 'Scope', 'Format', 'Date'];
+        const headers = ['Title', 'Unit', 'Type', 'Department', 'Status', 'Date'];
         const rows = this.reports.map(r => [
-            r.name || 'Untitled',
+            r.title || 'Untitled',
             this.getUnitName(r.unit_id) || r.unit_name || 'N/A',
             this.formatType(r.type),
-            this.formatScope(r.scope),
-            r.format || 'PDF',
+            r.department || 'N/A',
+            r.status || 'pending',
             this.formatDate(r.created_at)
         ]);
         
@@ -730,4 +709,4 @@ window.refreshReports = () => LecturerReports.refresh();
 window.exportAllReports = () => LecturerReports.exportAllReports();
 window.printReportTable = () => LecturerReports.printReportTable();
 
-console.log('✅ LecturerReports module loaded - Same ID resolution as marks module');
+console.log('✅ LecturerReports module loaded - Using reports table with correct columns');
