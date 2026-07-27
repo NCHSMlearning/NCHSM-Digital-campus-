@@ -1502,155 +1502,198 @@ if (window.location.pathname.endsWith('.html')) {
             console.warn('⚠️ Welcome email error:', e);
         }
     }
-// ============================================
-// ADD STAFF TO STAFF_RECORDS (Auto-Generated Staff ID)
-// ============================================
-async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender) {
-    try {
-        // Check if staff already exists
-        const { data: existing } = await sb
-            .from('staff_records')
-            .select('id')
-            .eq('email', email)
-            .maybeSingle();
-        
-        if (existing) {
-            console.log('⚠️ Staff already exists in staff_records:', email);
-            return true;
-        }
-        
-        // ============================================
-        // 🆕 AUTO-GENERATE STAFF ID IF NOT PROVIDED
-        // ============================================
-       // ============================================
-// 🆕 AUTO-GENERATE STAFF ID WITH NCHSM PREFIX
-// ============================================
-let finalStaffId = staffId;
 
-if (!finalStaffId || finalStaffId.trim() === '') {
-    // Department code mapping
-    const deptCodes = {
-        'Nursing': 'NUR',
-        'TVET': 'TVT',
-        'Community Health': 'COM',
-        'Health Records': 'HRT',
-        'ICT': 'ICT',
-        'Administration': 'ADM',
-        'Clinical Medicine': 'CLN',
-        'Tutors': 'TUT'
-    };
-    
-    const deptCode = deptCodes[department] || 'STA';
-    
-    // Get count of staff in this department
-    const { data: deptStaff } = await sb
-        .from('staff_records')
-        .select('id')
-        .ilike('id', 'NCHSM' + deptCode + '-%')
-        .order('created_at', { ascending: false });
-    
-    let nextNumber = 1;
-    if (deptStaff && deptStaff.length > 0) {
-        const lastId = deptStaff[0].id;
-        const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
-        if (match) {
-            nextNumber = parseInt(match[1]) + 1;
-        } else {
-            nextNumber = deptStaff.length + 1;
+    // ============================================
+    // ADD STAFF TO STAFF_RECORDS (Auto-Generated Staff ID)
+    // ============================================
+    async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender) {
+        try {
+            // Check if staff already exists
+            const { data: existing } = await sb
+                .from('staff_records')
+                .select('id')
+                .eq('email', email)
+                .maybeSingle();
+            
+            if (existing) {
+                console.log('⚠️ Staff already exists in staff_records:', email);
+                return true;
+            }
+            
+            // ============================================
+            // AUTO-GENERATE STAFF ID WITH NCHSM PREFIX
+            // ============================================
+            let finalStaffId = staffId;
+
+            if (!finalStaffId || finalStaffId.trim() === '') {
+                // Department code mapping
+                const deptCodes = {
+                    'Nursing': 'NUR',
+                    'TVET': 'TVT',
+                    'Community Health': 'COM',
+                    'Health Records': 'HRT',
+                    'ICT': 'ICT',
+                    'Administration': 'ADM',
+                    'Clinical Medicine': 'CLN',
+                    'Tutors': 'TUT'
+                };
+                
+                const deptCode = deptCodes[department] || 'STA';
+                
+                // Get count of staff in this department
+                const { data: deptStaff } = await sb
+                    .from('staff_records')
+                    .select('id')
+                    .ilike('id', 'NCHSM' + deptCode + '-%')
+                    .order('created_at', { ascending: false });
+                
+                let nextNumber = 1;
+                if (deptStaff && deptStaff.length > 0) {
+                    const lastId = deptStaff[0].id;
+                    const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
+                    if (match) {
+                        nextNumber = parseInt(match[1]) + 1;
+                    } else {
+                        nextNumber = deptStaff.length + 1;
+                    }
+                }
+                
+                // Format: NCHSMNUR-001, NCHSMTVT-001, etc.
+                finalStaffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
+                console.log('🆕 Auto-generated Staff ID:', finalStaffId);
+            }
+            
+            // Split name
+            const nameParts = fullName.trim().split(' ');
+            const firstName = nameParts[0] || '';
+            const otherNames = nameParts.slice(1).join(' ') || '';
+            
+            // Prepare staff data
+            const staffData = {
+                id: finalStaffId,
+                title: 'Mr.',
+                first_name: firstName,
+                other_names: otherNames,
+                department: department || 'Nursing',
+                designation: 'lecturer',
+                email: email,
+                phone: phone || '',
+                gender: gender || 'Male',
+                login_enabled: true,
+                password_hash: btoa(password),
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                program: 'KRCHN'
+            };
+            
+            // Insert into staff_records
+            const { error } = await sb
+                .from('staff_records')
+                .insert([staffData]);
+            
+            if (error) {
+                console.error('❌ Failed to add staff to staff_records:', error);
+                return false;
+            }
+            
+            console.log('✅ Staff added to staff_records with ID:', finalStaffId);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error adding staff to staff_records:', error);
+            return false;
         }
     }
-    
-    // Format: NCHSMNUR-001, NCHSMTVT-001, etc.
-    finalStaffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
-    console.log('🆕 Auto-generated Staff ID:', finalStaffId);
-}
- // ============================================
-// BUILD WELCOME EMAIL - UPDATED CONTACTS
-// ============================================
-function buildWelcomeEmail(name, email, studentId, program, intake, time) {
-    const year = new Date().getFullYear();
-    
-    // Contact details
-    const CONTACT_EMAIL = 'portal.nchsm@gmail.com';
-    const PHONE1 = '0790969743';
-    const PHONE2 = '0702432987';
-    
-    return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
-    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-        <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
-            <div style="display: inline-block; background: #0A3D62; border-radius: 50%; padding: 12px;">
-                <span style="font-size: 32px;">🎓</span>
+
+    // ============================================
+    // BUILD WELCOME EMAIL - UPDATED CONTACTS
+    // ============================================
+    function buildWelcomeEmail(name, email, studentId, program, intake, time) {
+        const year = new Date().getFullYear();
+        
+        // Contact details
+        const CONTACT_EMAIL = 'portal.nchsm@gmail.com';
+        const PHONE1 = '0790969743';
+        const PHONE2 = '0702432987';
+        
+        return `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
+        <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+            <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
+                <div style="display: inline-block; background: #0A3D62; border-radius: 50%; padding: 12px;">
+                    <span style="font-size: 32px;">🎓</span>
+                </div>
+                <h2 style="color: #0A3D62; margin: 10px 0 5px;">Welcome to NCHSM!</h2>
+                <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
             </div>
-            <h2 style="color: #0A3D62; margin: 10px 0 5px;">Welcome to NCHSM!</h2>
-            <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
-        </div>
-        
-        <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
-            <p style="margin: 0; font-size: 16px; color: #0A3D62;">
-                👋 <strong>Dear ${name}</strong>
+            
+            <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
+                <p style="margin: 0; font-size: 16px; color: #0A3D62;">
+                    👋 <strong>Dear ${name}</strong>
+                </p>
+                <p style="margin: 8px 0 0; color: #1e293b;">
+                    Your NCHSM Digital Portal account has been successfully created! 
+                    We're excited to have you join our learning community.
+                </p>
+            </div>
+            
+            <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Account Details</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr><td style="padding: 6px 0; color: #64748B;">👤 Name</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${name}</td></tr>
+                    <tr><td style="padding: 6px 0; color: #64748B;">📧 Email</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${email}</td></tr>
+                    <tr><td style="padding: 6px 0; color: #64748B;">🆔 Student ID</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${studentId || 'Pending'}</td></tr>
+                    <tr><td style="padding: 6px 0; color: #64748B;">📚 Program</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${program || 'N/A'}</td></tr>
+                    <tr><td style="padding: 6px 0; color: #64748B;">📅 Intake</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${intake || 'N/A'}</td></tr>
+                    <tr><td style="padding: 6px 0; color: #64748B;">🕐 Registered</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${time}</td></tr>
+                </table>
+            </div>
+            
+            <div style="background: #dbeafe; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+                <h5 style="margin: 0 0 8px 0; color: #1E40AF;">📌 Next Steps</h5>
+                <ul style="margin: 0; padding-left: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;">
+                    <li>✅ Your account is pending admin approval</li>
+                    <li>📧 You will receive a confirmation email once approved</li>
+                    <li>🔑 Use your email and password to login</li>
+                    <li>📚 Access course materials after approval</li>
+                </ul>
+            </div>
+            
+            <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
+                <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Support</h5>
+                <p style="margin: 0; color: #78350F; font-size: 13px;">
+                    If you have any questions or need assistance, contact NCHSM ICT Support:
+                    <br>📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a>
+                    <br>📞 <a href="tel:+254790969743" style="color: #0A3D62; text-decoration: none;">${PHONE1}</a> | 
+                    📞 <a href="tel:+254702432987" style="color: #0A3D62; text-decoration: none;">${PHONE2}</a>
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="https://nakurucollegeofhealthelearning.site/login.html" 
+                   style="background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
+                    🚪 Go to Login
+                </a>
+            </div>
+            
+            <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
+            <p style="font-size: 12px; color: #94a3b8; text-align: center;">
+                NCHSM ICT Support<br>
+                📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a><br>
+                📞 ${PHONE1} | ${PHONE2}<br>
+                🔗 <a href="https://mail.nakurucollegeofhealthelearning.site" style="color: #0A3D62; text-decoration: none;">mail.nakurucollegeofhealthelearning.site</a><br>
+                © ${year} Nakuru College of Health Sciences and Management
             </p>
-            <p style="margin: 8px 0 0; color: #1e293b;">
-                Your NCHSM Digital Portal account has been successfully created! 
-                We're excited to have you join our learning community.
-            </p>
         </div>
-        
-        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-            <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Account Details</h4>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                <tr><td style="padding: 6px 0; color: #64748B;">👤 Name</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${name}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">📧 Email</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${email}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">🆔 Student ID</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${studentId || 'Pending'}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">📚 Program</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${program || 'N/A'}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">📅 Intake</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${intake || 'N/A'}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">🕐 Registered</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${time}</td></tr>
-            </table>
-        </div>
-        
-        <div style="background: #dbeafe; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
-            <h5 style="margin: 0 0 8px 0; color: #1E40AF;">📌 Next Steps</h5>
-            <ul style="margin: 0; padding-left: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;">
-                <li>✅ Your account is pending admin approval</li>
-                <li>📧 You will receive a confirmation email once approved</li>
-                <li>🔑 Use your email and password to login</li>
-                <li>📚 Access course materials after approval</li>
-            </ul>
-        </div>
-        
-        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
-            <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Support</h5>
-            <p style="margin: 0; color: #78350F; font-size: 13px;">
-                If you have any questions or need assistance, contact NCHSM ICT Support:
-                <br>📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a>
-                <br>📞 <a href="tel:+254790969743" style="color: #0A3D62; text-decoration: none;">${PHONE1}</a> | 
-                📞 <a href="tel:+254702432987" style="color: #0A3D62; text-decoration: none;">${PHONE2}</a>
-            </p>
-        </div>
-        
-        <div style="text-align: center; margin: 20px 0;">
-            <a href="https://nakurucollegeofhealthelearning.site/login.html" 
-               style="background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
-                🚪 Go to Login
-            </a>
-        </div>
-        
-        <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">
-            NCHSM ICT Support<br>
-            📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a><br>
-            📞 ${PHONE1} | ${PHONE2}<br>
-            🔗 <a href="https://mail.nakurucollegeofhealthelearning.site" style="color: #0A3D62; text-decoration: none;">mail.nakurucollegeofhealthelearning.site</a><br>
-            © ${year} Nakuru College of Health Sciences and Management
-        </p>
-    </div>
-</body>
-</html>
-    `;
-}
+    </body>
+    </html>
+        `;
+    }
+
     // ============================================
     // STORED DOCUMENTS DATA
     // ============================================
