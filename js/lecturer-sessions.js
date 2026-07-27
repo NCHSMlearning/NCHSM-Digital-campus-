@@ -102,59 +102,124 @@ const LecturerSessions = {
         }
     },
     
-    // ============================================
-    // LOAD ASSIGNED UNITS - SAME AS RESOURCES & MARKS
-    // ============================================
-    async loadAssignedUnits() {
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
-            
-            const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            
-            const { data: assignments, error } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('subject_name, subject_code, block, program, academic_year, id')
-                .eq('lecturer_id', String(lecturerId));
-            
-            if (error) {
-                console.error('Error loading assigned units:', error);
-                return;
-            }
-            
-            this.assignedUnits = assignments || [];
-            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for sessions`);
-            
-            // Populate unit dropdowns
+   // ============================================================
+// LOAD ASSIGNED UNITS - GET ALL UNITS FOR THE LECTURER
+// ============================================================
+async loadAssignedUnits() {
+    try {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) {
+            console.warn('⚠️ Supabase not available');
+            return;
+        }
+        
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        if (!profile) {
+            console.warn('⚠️ No lecturer profile found');
+            return;
+        }
+        
+        const fullName = profile.full_name;
+        console.log('🔍 Loading assigned units for lecturer:', fullName);
+        
+        // ✅ Get ALL assignments for this lecturer by name (covers all IDs)
+        const { data: assignments, error } = await supabase
+            .from('lecturer_subject_assignments')
+            .select('subject_name, subject_code, block, program, academic_year, lecturer_id')
+            .ilike('lecturer_name', `%${fullName}%`);
+        
+        if (error) {
+            console.error('❌ Error loading assigned units:', error);
+            this.assignedUnits = [];
             this.populateUnitDropdowns();
-            
-        } catch (error) {
-            console.error('Failed to load assigned units:', error);
+            return;
         }
-    },
-    
-    // ============================================
-    // POPULATE UNIT DROPDOWNS - SAME AS RESOURCES
-    // ============================================
-    populateUnitDropdowns() {
-        const unitSelect = document.getElementById('sessionUnit');
-        if (!unitSelect) return;
         
-        const units = this.assignedUnits;
+        // ✅ Filter to only KRCHN program (or show all if needed)
+        const krchnUnits = assignments?.filter(u => u.program === 'KRCHN') || [];
+        const allUnits = assignments || [];
         
-        if (units && units.length > 0) {
-            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
-                units.map(u => 
-                    `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
-                ).join('');
-        } else {
-            unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
+        // ✅ Use KRCHN units, but if none, use all
+        this.assignedUnits = krchnUnits.length > 0 ? krchnUnits : allUnits;
+        
+        console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for KRCHN:`);
+        console.log('📚 Units:', this.assignedUnits.map(u => `${u.subject_name} (${u.lecturer_id})`));
+        
+        // ✅ Store all lecturer IDs found for this lecturer
+        const lecturerIds = [...new Set(this.assignedUnits.map(u => u.lecturer_id))];
+        console.log('📚 Lecturer IDs found:', lecturerIds);
+        
+        // ✅ Set the primary lecturer ID (use the one with most units)
+        if (lecturerIds.length > 0) {
+            // Count units per lecturer
+            const counts = {};
+            this.assignedUnits.forEach(u => {
+                counts[u.lecturer_id] = (counts[u.lecturer_id] || 0) + 1;
+            });
+            // Find the lecturer with most units
+            let maxCount = 0;
+            let primaryId = lecturerIds[0];
+            for (const [id, count] of Object.entries(counts)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    primaryId = id;
+                }
+            }
+            this.lecturerAssignmentId = primaryId;
+            console.log(`✅ Primary lecturer ID set to: ${primaryId} (${maxCount} units)`);
         }
-    },
+        
+        // ✅ Populate dropdowns
+        this.populateUnitDropdowns();
+        this.populateBlockDropdown();
+        
+    } catch (error) {
+        console.error('❌ Failed to load assigned units:', error);
+        this.assignedUnits = [];
+    }
+},
+   // ============================================================
+// POPULATE UNIT DROPDOWNS - SHOW ALL ASSIGNED UNITS
+// ============================================================
+populateUnitDropdowns() {
+    const unitSelect = document.getElementById('sessionUnit');
+    if (!unitSelect) return;
     
+    const units = this.assignedUnits;
+    
+    if (units && units.length > 0) {
+        // ✅ Show all assigned units with their block
+        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
+            units.map(u => 
+                `<option value="${u.subject_name}" data-block="${u.block || ''}">
+                    ${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name} 
+                    ${u.block ? '(' + u.block + ')' : ''}
+                </option>`
+            ).join('');
+        console.log(`📚 Populated ${units.length} assigned units in dropdown`);
+    } else {
+        unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
+        console.warn('⚠️ No assigned units to populate');
+    }
+},
+    // ============================================================
+// POPULATE BLOCK DROPDOWN - SHOW ALL BLOCKS FROM ASSIGNED UNITS
+// ============================================================
+populateBlockDropdown() {
+    const blockSelect = document.getElementById('sessionBlockTerm');
+    if (!blockSelect) return;
+    
+    // ✅ Get unique blocks from ALL assigned units
+    const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
+    
+    if (blocks.length > 0) {
+        blockSelect.innerHTML = '<option value="">-- Select Block --</option>' +
+            blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+        console.log(`📚 Populated ${blocks.length} blocks:`, blocks);
+    } else {
+        blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
+    }
+},
     // ============================================
     // LOAD SESSIONS - ONLY THIS LECTURER'S SESSIONS
     // ============================================
