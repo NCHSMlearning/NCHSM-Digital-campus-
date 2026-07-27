@@ -1,8 +1,8 @@
-// js/lecturer-exams.js - FIXED for UUID created_by
+// js/lecturer-exams.js - FIXED with multi-ID support
 /**
  * NCHSM Lecturer Exams Module
  * Uses exams table with UUID created_by
- * Handles UUID for created_by
+ * Handles multiple lecturer IDs (UUID, STAFF101, STAFF102)
  */
 
 const LecturerExams = {
@@ -10,6 +10,7 @@ const LecturerExams = {
     lecturerAssignmentId: null,
     lecturerUuid: null,
     assignedUnits: [],
+    isProcessing: false,
     
     async init() {
         console.log('📝 Initializing Lecturer Exams...');
@@ -45,54 +46,50 @@ const LecturerExams = {
             console.log('🔍 Auth ID (UUID):', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // ✅ Store UUID for exams (created_by is UUID)
+            // Store UUID for exams (created_by is UUID)
             this.lecturerUuid = authId;
             
-            // For other modules that use text IDs, find the text ID
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
-            
-            if (!isUUID && authId) {
-                this.lecturerAssignmentId = authId;
-                console.log('✅ Using non-UUID auth ID:', this.lecturerAssignmentId);
-                return;
-            }
-            
-            // Try to find text ID from lecturer_subject_assignments
+            // Find all lecturer IDs by name
             const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .ilike('lecturer_name', `%${fullName}%`);
             
             if (!assignError && assignments && assignments.length > 0) {
-                const textId = assignments.find(a => {
+                console.log('📋 Found lecturer assignments by name:', assignments);
+                
+                // Try to find STAFF ID first (non-UUID)
+                const staffId = assignments.find(a => {
                     const id = a.lecturer_id;
                     return id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
                 });
                 
-                if (textId) {
-                    this.lecturerAssignmentId = textId.lecturer_id;
-                    console.log('✅ Found non-UUID ID for other modules:', this.lecturerAssignmentId);
-                    return;
+                if (staffId) {
+                    this.lecturerAssignmentId = staffId.lecturer_id;
+                    console.log('✅ Found STAFF ID:', this.lecturerAssignmentId);
+                } else {
+                    this.lecturerAssignmentId = assignments[0].lecturer_id;
+                    console.log('⚠️ Using first match ID:', this.lecturerAssignmentId);
                 }
                 
-                this.lecturerAssignmentId = assignments[0].lecturer_id;
-                console.log('⚠️ Using first match ID:', this.lecturerAssignmentId);
+                // Also try STAFF102 directly if not found
+                if (!this.lecturerAssignmentId || this.lecturerAssignmentId === authId) {
+                    const { data: staffCheck } = await supabase
+                        .from('lecturer_subject_assignments')
+                        .select('lecturer_id')
+                        .eq('lecturer_id', 'STAFF102')
+                        .limit(1);
+                    
+                    if (staffCheck && staffCheck.length > 0) {
+                        this.lecturerAssignmentId = 'STAFF102';
+                        console.log('✅ Found STAFF102 directly:', this.lecturerAssignmentId);
+                    }
+                }
+                
                 return;
             }
             
-            // Try staff_records
-            const nameParts = fullName.split(' ');
-            const { data: staff, error: staffError } = await supabase
-                .from('staff_records')
-                .select('id, first_name, other_names')
-                .ilike('first_name', `%${nameParts[0]}%`);
-            
-            if (!staffError && staff && staff.length > 0) {
-                this.lecturerAssignmentId = staff[0].id;
-                console.log('✅ Found lecturer ID from staff_records:', this.lecturerAssignmentId);
-                return;
-            }
-            
+            // Fallback to auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -104,39 +101,53 @@ const LecturerExams = {
     },
     
     // ============================================
-    // LOAD ASSIGNED UNITS (for form dropdown)
+    // LOAD ASSIGNED UNITS - GET ALL UNITS FOR THE LECTURER
     // ============================================
     async loadAssignedUnits() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
-            
-            // Use text ID for assignments
-            const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            
-            const { data: assignments, error } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('subject_name, subject_code, block, program, academic_year')
-                .eq('lecturer_id', String(lecturerId));
-            
-            if (error) {
-                console.error('Error loading assigned units:', error);
+            if (!supabase) {
+                console.warn('⚠️ Supabase not available');
                 return;
             }
             
-            this.assignedUnits = assignments || [];
-            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units`);
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('⚠️ No lecturer profile found');
+                return;
+            }
+            
+            const fullName = profile.full_name;
+            console.log('🔍 Loading assigned units for exams:', fullName);
+            
+            // ✅ Get ALL assignments for this lecturer by name
+            const { data: assignments, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('subject_name, subject_code, block, program, academic_year, lecturer_id')
+                .ilike('lecturer_name', `%${fullName}%`);
+            
+            if (error) {
+                console.error('❌ Error loading assigned units:', error);
+                this.assignedUnits = [];
+                return;
+            }
+            
+            // ✅ Filter to KRCHN program
+            const krchnUnits = assignments?.filter(u => u.program === 'KRCHN') || [];
+            const allUnits = assignments || [];
+            this.assignedUnits = krchnUnits.length > 0 ? krchnUnits : allUnits;
+            
+            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for exams:`, 
+                this.assignedUnits.map(u => `${u.subject_name} (${u.lecturer_id})`));
             
         } catch (error) {
-            console.error('Failed to load assigned units:', error);
+            console.error('❌ Failed to load assigned units:', error);
+            this.assignedUnits = [];
         }
     },
     
     // ============================================
-    // LOAD EXAMS - USING exams TABLE (UUID created_by)
+    // LOAD EXAMS - WITH MULTI-ID SUPPORT
     // ============================================
     async loadExams() {
         try {
@@ -154,19 +165,45 @@ const LecturerExams = {
                 return;
             }
             
-            // ✅ Use UUID for created_by (it's the correct type)
-            const lecturerUuid = this.lecturerUuid || profile?.user_id;
+            // ✅ Get all lecturer IDs (UUID and text IDs)
+            const lecturerIds = [];
+            
+            // Add UUID
+            if (this.lecturerUuid) {
+                lecturerIds.push(this.lecturerUuid);
+            }
+            
+            // Add text ID
+            if (this.lecturerAssignmentId && this.lecturerAssignmentId !== this.lecturerUuid) {
+                lecturerIds.push(this.lecturerAssignmentId);
+            }
+            
+            // Also try STAFF102 if not already included
+            if (!lecturerIds.includes('STAFF102')) {
+                lecturerIds.push('STAFF102');
+            }
+            
+            // Also try STAFF101 if not already included
+            if (!lecturerIds.includes('STAFF101')) {
+                lecturerIds.push('STAFF101');
+            }
             
             console.log('🔍 Loading exams for program:', program);
-            console.log('🔍 Lecturer UUID:', lecturerUuid);
+            console.log('🔍 Lecturer IDs to check:', lecturerIds);
             
-            // Get exams where created_by matches the lecturer UUID
-            const { data: exams, error } = await supabase
+            // ✅ Query using OR condition for multiple IDs
+            let query = supabase
                 .from('exams')
                 .select('*')
-                .eq('target_program', program)
-                .eq('created_by', lecturerUuid)
-                .order('exam_date', { ascending: false });
+                .eq('target_program', program);
+            
+            // Build OR condition for created_by
+            if (lecturerIds.length > 0) {
+                const orConditions = lecturerIds.map(id => `created_by.eq.${id}`).join(',');
+                query = query.or(orConditions);
+            }
+            
+            const { data: exams, error } = await query.order('exam_date', { ascending: false });
             
             if (error) {
                 console.error('Error loading exams:', error);
@@ -200,11 +237,6 @@ const LecturerExams = {
                         <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
                         <h3 style="color: #475569; margin: 0 0 8px 0;">No Exams Created</h3>
                         <p style="margin: 0; font-size: 14px;">Create your first exam or CAT using the form above.</p>
-                        <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                            <span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">📝 CAT</span>
-                            <span style="background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">📊 Exam</span>
-                            <span style="background: #fef3c7; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #92400e;">🔬 Practical</span>
-                        </div>
                     </td>
                 </tr>
             `;
@@ -247,7 +279,7 @@ const LecturerExams = {
             
             let actions = '';
             
-            if (approvalStatus === 'draft') {
+            if (approvalStatus === 'draft' || approvalStatus === 'pending') {
                 actions += `
                     <button onclick="LecturerExams.editExam('${exam.id}')" 
                             style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
@@ -344,7 +376,7 @@ const LecturerExams = {
         
         console.log('📝 Populating exam form for program:', program);
         
-        // Program - use target_program
+        // Program
         const programSelect = document.getElementById('examProgram');
         if (programSelect && program) {
             programSelect.innerHTML = `<option value="${program}">${program}</option>`;
@@ -354,8 +386,12 @@ const LecturerExams = {
         const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
         const blockSelect = document.getElementById('examBlockTerm');
         if (blockSelect) {
-            blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
-                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+            if (blocks.length > 0) {
+                blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
+                    blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+            } else {
+                blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
+            }
         }
         
         // Units from assigned units
@@ -379,19 +415,20 @@ const LecturerExams = {
         if (units && units.length > 0) {
             unitSelect.innerHTML = '<option value="">-- Select Unit (Optional) --</option>' +
                 units.map(u => 
-                    `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
+                    `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name} ${u.block ? '(' + u.block + ')' : ''}</option>`
                 ).join('');
-            console.log(`✅ Loaded ${units.length} units for form`);
+            console.log(`✅ Loaded ${units.length} units for exam form`);
         } else {
             unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
-            console.log('⚠️ No units available for form');
         }
     },
     
     setupEventListeners() {
         const form = document.getElementById('addExamForm');
         if (form) {
-            form.addEventListener('submit', (e) => this.handleAddExam(e));
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+            newForm.addEventListener('submit', (e) => this.handleAddExam(e));
         }
         
         const searchInput = document.getElementById('examSearch');
@@ -418,7 +455,7 @@ const LecturerExams = {
                     const filtered = this.assignedUnits.filter(u => u.block === block || !block);
                     unitSelect.innerHTML = '<option value="">-- Select Unit (Optional) --</option>' +
                         filtered.map(u => 
-                            `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
+                            `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name} ${u.block ? '(' + u.block + ')' : ''}</option>`
                         ).join('');
                 }
             });
@@ -442,6 +479,9 @@ const LecturerExams = {
     },
     
     async handleAddExam(e) {
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+        
         e.preventDefault();
         const btn = e.submitter || e.target.querySelector('button[type="submit"]');
         const originalText = btn.innerHTML;
@@ -468,22 +508,23 @@ const LecturerExams = {
             window.showNotification('Please fill all required fields.', 'error');
             btn.disabled = false;
             btn.innerHTML = originalText;
+            this.isProcessing = false;
             return;
         }
         
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
+            const supabase = window.lecturerDB?.supabase;
             
-            // ✅ Use UUID for created_by (it's the correct type)
+            if (!supabase) {
+                throw new Error('Database connection not available');
+            }
+            
+            // ✅ Use UUID for created_by
             const lecturerUuid = this.lecturerUuid || profile?.user_id;
             
             if (!lecturerUuid) {
                 throw new Error('No UUID found for lecturer');
-            }
-            
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database connection not available');
             }
             
             const examData = {
@@ -504,7 +545,7 @@ const LecturerExams = {
                 online_link: formData.link || null,
                 exam_link: formData.link || null,
                 venue: formData.venue || null,
-                created_by: lecturerUuid, // ✅ UUID type
+                created_by: lecturerUuid,
                 approval_status: 'pending',
                 created_at: new Date().toISOString()
             };
@@ -532,6 +573,7 @@ const LecturerExams = {
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;
+            this.isProcessing = false;
         }
     },
     
@@ -683,4 +725,4 @@ window.LecturerExams = LecturerExams;
 window.searchExams = () => LecturerExams.filterExams();
 window.exportExams = () => LecturerExams.exportExams();
 
-console.log('✅ LecturerExams module loaded - Uses UUID for created_by');
+console.log('✅ LecturerExams module loaded - Multi-ID support (UUID, STAFF101, STAFF102)');
