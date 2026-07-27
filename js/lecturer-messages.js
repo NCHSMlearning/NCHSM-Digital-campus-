@@ -441,45 +441,45 @@ const LecturerMessages = {
             
             const senderName = profile?.full_name || 'Lecturer';
             
-            // ✅ Use correct column names for the messages table
-            const messageData = {
-                sender_id: senderUuid,  // ✅ UUID type (matches column type)
-                sender_role: 'lecturer',
-                topic: subject,
-                body: body,
-                message: body,
-                recipient_role: 'student',
-                target_program: profile?.program,
-                target_group: target === 'all-students' ? 'all-students' : 'specific-user',
-                receiver_id: target === 'all-students' ? null : target,
-                approval_status: 'sent',
-                status: 'sent',
-                created_at: new Date().toISOString(),
-                inserted_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                program_type: profile?.program || 'KRCHN'
-            };
-            
-            console.log('📤 Sending message with UUID sender_id:', senderUuid);
-            
-            const { data: result, error } = await supabase
-                .from('messages')
-                .insert([messageData])
-                .select();
-            
-            if (error) {
-                console.error('DB Error:', error);
-                throw new Error('Failed to send message: ' + error.message);
-            }
-            
-            window.showNotification('✅ Message sent successfully!', 'success');
-            
-            // Reset form
-            document.getElementById('sendMessageForm')?.reset();
-            const charCount = document.getElementById('charCount');
-            if (charCount) charCount.textContent = '0 characters';
-            
-            await this.loadMessages();
+            // ✅ FIXED: Use correct column names for the messages table
+const messageData = {
+    sender_id: senderUuid,  // ✅ UUID type (matches column type)
+    sender_role: 'lecturer',
+    topic: subject,
+    body: body,
+    // message: body,  // ❌ REMOVED - not in your table
+    recipient_role: 'student',
+    target_program: profile?.program || null,
+    target_group: target === 'all-students' ? 'all-students' : 'specific-user',
+    receiver_id: target === 'all-students' ? null : target,
+    approval_status: 'pending',  // ✅ Use 'pending' not 'sent'
+    // status: 'sent',  // ❌ REMOVED - not in your table
+    created_at: new Date().toISOString(),
+    // inserted_at: new Date().toISOString(),  // ❌ REMOVED - causing duplicate column error
+    // updated_at: new Date().toISOString(),  // ❌ REMOVED - not in your table
+    program_type: profile?.program || 'KRCHN'
+};
+
+console.log('📤 Sending message with UUID sender_id:', senderUuid);
+
+const { data: result, error } = await supabase
+    .from('messages')
+    .insert([messageData])
+    .select();
+
+if (error) {
+    console.error('DB Error:', error);
+    throw new Error('Failed to send message: ' + error.message);
+}
+
+window.showNotification('✅ Message sent successfully!', 'success');
+
+// Reset form
+document.getElementById('sendMessageForm')?.reset();
+const charCount = document.getElementById('charCount');
+if (charCount) charCount.textContent = '0 characters';
+
+await this.loadMessages();
             
         } catch (error) {
             console.error('Error sending message:', error);
