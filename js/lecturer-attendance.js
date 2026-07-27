@@ -1,8 +1,8 @@
 // js/lecturer-attendance.js
 /**
  * NCHSM Lecturer Attendance Module
- * Uses dedicated lecturer database with correct ID resolution
- * Includes map view for attendance locations
+ * Uses geo_attendance_logs table with correct column names
+ * Includes map view functionality
  */
 
 const LecturerAttendance = {
@@ -47,75 +47,29 @@ const LecturerAttendance = {
                 return;
             }
             
-            const authId = profile.user_id;
             const fullName = profile.full_name;
+            const authId = profile.user_id;
             
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // Try to find by name in lecturer_subject_assignments
-            const { data, error } = await supabase
+            const { data: nameData, error: nameError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
-                .eq('lecturer_name', fullName)
-                .limit(1);
+                .ilike('lecturer_name', `%${fullName}%`);
             
-            if (!error && data && data.length > 0) {
-                this.lecturerAssignmentId = data[0].lecturer_id;
-                console.log('✅ Found lecturer ID by name:', this.lecturerAssignmentId);
+            if (!nameError && nameData && nameData.length > 0) {
+                const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
+                if (nonStaff) {
+                    this.lecturerAssignmentId = nonStaff.lecturer_id;
+                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
+                    return;
+                }
+                this.lecturerAssignmentId = nameData[0].lecturer_id;
+                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
                 return;
             }
             
-            // Try partial name match with scoring
-            const nameParts = fullName.toLowerCase().split(' ');
-            const { data: allLecturers, error: allError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .order('created_at', { ascending: false });
-            
-            if (!allError && allLecturers && allLecturers.length > 0) {
-                let bestMatch = null;
-                let bestScore = -1;
-                
-                for (const lecturer of allLecturers) {
-                    const lecturerName = lecturer.lecturer_name || '';
-                    const lecturerId = lecturer.lecturer_id;
-                    let score = 0;
-                    
-                    const lecturerNameLower = lecturerName.toLowerCase();
-                    for (const part of nameParts) {
-                        if (part.length > 1 && lecturerNameLower.includes(part)) {
-                            score += 5;
-                        }
-                    }
-                    
-                    if (lecturerNameLower === fullName.toLowerCase()) {
-                        score += 20;
-                    }
-                    
-                    // BIG BONUS for non-STAFF IDs
-                    if (!lecturerId.toString().startsWith('STAFF')) {
-                        score += 50;
-                    }
-                    
-                    if (lecturerId.toString().includes('-')) {
-                        score += 30;
-                    }
-                    
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMatch = lecturerId;
-                    }
-                }
-                
-                if (bestMatch) {
-                    this.lecturerAssignmentId = bestMatch;
-                    console.log(`✅ Selected lecturer ID with score ${bestScore}:`, this.lecturerAssignmentId);
-                    return;
-                }
-            }
-            
-            // Fallback: use auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -243,20 +197,12 @@ const LecturerAttendance = {
                 return;
             }
             
+            // ✅ Use correct column names
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
-                .select(`
-                    *,
-                    student:student_id (
-                        full_name,
-                        student_id,
-                        program,
-                        block,
-                        intake_year,
-                        email
-                    )
-                `)
+                .select('*')
                 .eq('program', program)
+                .eq('session_type', 'Class')
                 .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .lte('check_in_time', `${todayStr}T23:59:59.999Z`)
                 .order('check_in_time', { ascending: false });
@@ -276,7 +222,7 @@ const LecturerAttendance = {
         const tbody = document.getElementById('attendanceTable');
         if (!tbody) return;
         
-        const logs = this.todayLogs.filter(log => log.session_type !== 'Lecturer Check-in');
+        const logs = this.todayLogs;
         const countEl = document.getElementById('todayLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
         
@@ -292,17 +238,17 @@ const LecturerAttendance = {
             return;
         }
         
+        const statusColors = {
+            'Present': '#10b981',
+            'Absent': '#ef4444',
+            'Pending': '#f59e0b',
+            'Late': '#f59e0b',
+            'Excused': '#3b82f6'
+        };
+        
         tbody.innerHTML = logs.map(log => {
-            const student = log.student || {};
             const hasLocation = log.latitude && log.longitude;
-            const status = log.attendance_status || (log.is_verified ? 'Present' : 'Pending');
-            
-            const statusColors = {
-                'Present': '#10b981',
-                'Absent': '#ef4444',
-                'Pending': '#f59e0b'
-            };
-            
+            const status = log.attendance_status || 'Pending';
             const statusColor = statusColors[status] || '#6b7280';
             
             return `
@@ -310,16 +256,16 @@ const LecturerAttendance = {
                     onmouseover="this.style.background='#f8fafc'" 
                     onmouseout="this.style.background='transparent'">
                     <td style="padding: 12px 16px; font-weight: 500; color: #1e293b;">
-                        ${this.escapeHtml(student.full_name || 'Unknown')}
+                        ${this.escapeHtml(log.student_name || 'Unknown')}
                     </td>
                     <td style="padding: 12px 16px; font-weight: 600; color: #4C1D95;">
-                        ${this.escapeHtml(student.student_id || 'N/A')}
+                        ${this.escapeHtml(log.student_id || 'N/A')}
                     </td>
                     <td style="padding: 12px 16px; color: #475569;">
-                        ${this.escapeHtml(student.program || 'N/A')}
+                        ${this.escapeHtml(log.program || 'N/A')}
                     </td>
                     <td style="padding: 12px 16px; color: #475569;">
-                        ${this.escapeHtml(student.block || 'N/A')}
+                        ${this.escapeHtml(log.block || 'N/A')}
                     </td>
                     <td style="padding: 12px 16px; color: #475569;">
                         ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
@@ -342,7 +288,7 @@ const LecturerAttendance = {
                     </td>
                     <td style="padding: 12px 16px; text-align: center;">
                         ${hasLocation ? 
-                            `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(student.full_name || 'Student')}')" 
+                            `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(log.student_name || 'Student')}')" 
                                     style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
                                     onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
                                 <i class="fas fa-map-marker-alt"></i> View Map
@@ -377,19 +323,12 @@ const LecturerAttendance = {
                 return;
             }
             
+            // ✅ Use correct column names
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
-                .select(`
-                    *,
-                    student:student_id (
-                        full_name,
-                        student_id,
-                        program,
-                        block,
-                        intake_year
-                    )
-                `)
+                .select('*')
                 .eq('program', program)
+                .eq('session_type', 'Class')
                 .lt('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .order('check_in_time', { ascending: false })
                 .limit(100);
@@ -409,7 +348,7 @@ const LecturerAttendance = {
         const tbody = document.getElementById('pastAttendanceTable');
         if (!tbody) return;
         
-        const logs = this.pastLogs.filter(log => log.session_type !== 'Lecturer Check-in');
+        const logs = this.pastLogs;
         const countEl = document.getElementById('pastLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
         
@@ -425,17 +364,17 @@ const LecturerAttendance = {
             return;
         }
         
+        const statusColors = {
+            'Present': '#10b981',
+            'Absent': '#ef4444',
+            'Pending': '#f59e0b',
+            'Late': '#f59e0b',
+            'Excused': '#3b82f6'
+        };
+        
         tbody.innerHTML = logs.map(log => {
-            const student = log.student || {};
             const hasLocation = log.latitude && log.longitude;
-            const status = log.attendance_status || (log.is_verified ? 'Present' : 'Pending');
-            
-            const statusColors = {
-                'Present': '#10b981',
-                'Absent': '#ef4444',
-                'Pending': '#f59e0b'
-            };
-            
+            const status = log.attendance_status || 'Pending';
             const statusColor = statusColors[status] || '#6b7280';
             const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
             
@@ -447,13 +386,13 @@ const LecturerAttendance = {
                         ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
                     <td style="padding: 12px 16px; font-weight: 500; color: #1e293b;">
-                        ${this.escapeHtml(student.full_name || 'Unknown')}
+                        ${this.escapeHtml(log.student_name || 'Unknown')}
                     </td>
                     <td style="padding: 12px 16px; font-weight: 600; color: #4C1D95;">
-                        ${this.escapeHtml(student.student_id || 'N/A')}
+                        ${this.escapeHtml(log.student_id || 'N/A')}
                     </td>
                     <td style="padding: 12px 16px; color: #475569;">
-                        ${this.escapeHtml(student.block || 'N/A')}
+                        ${this.escapeHtml(log.block || 'N/A')}
                     </td>
                     <td style="padding: 12px 16px; color: #475569;">
                         ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
@@ -476,7 +415,7 @@ const LecturerAttendance = {
                     </td>
                     <td style="padding: 12px 16px; text-align: center;">
                         ${hasLocation ? 
-                            `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(student.full_name || 'Student')}')" 
+                            `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(log.student_name || 'Student')}')" 
                                     style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
                                     onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
                                 <i class="fas fa-map-marker-alt"></i> View Map
@@ -500,13 +439,11 @@ const LecturerAttendance = {
         
         this.currentLocation = { lat: parseFloat(lat), lng: parseFloat(lng), name: name };
         
-        // Show modal
         const modal = document.getElementById('attendanceMapModal');
         if (modal) {
             modal.style.display = 'flex';
         }
         
-        // Update location info
         const infoEl = document.getElementById('mapLocationInfo');
         const textEl = document.getElementById('mapLocationText');
         if (infoEl && textEl) {
@@ -514,7 +451,6 @@ const LecturerAttendance = {
             textEl.textContent = `📍 ${name} - Latitude: ${lat}, Longitude: ${lng}`;
         }
         
-        // Initialize map after a short delay
         setTimeout(() => {
             this.initMap(lat, lng, name);
         }, 300);
@@ -524,17 +460,14 @@ const LecturerAttendance = {
         const container = document.getElementById('mapContainer');
         if (!container) return;
         
-        // Clear previous map
         if (this.mapInstance) {
             this.mapInstance.remove();
             this.mapInstance = null;
         }
         
-        // Hide loading
         const loadingEl = document.getElementById('mapLoading');
         if (loadingEl) loadingEl.style.display = 'none';
         
-        // Check if Leaflet is available
         if (typeof L === 'undefined') {
             container.innerHTML = `
                 <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;flex-direction:column;">
@@ -549,22 +482,18 @@ const LecturerAttendance = {
             return;
         }
         
-        // Create map
         this.mapInstance = L.map(container).setView([lat, lng], 16);
         
-        // Add tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 19
         }).addTo(this.mapInstance);
         
-        // Add marker
-        const marker = L.marker([lat, lng])
+        L.marker([lat, lng])
             .addTo(this.mapInstance)
             .bindPopup(`<b>${name}</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
             .openPopup();
         
-        // Add circle for accuracy
         L.circle([lat, lng], {
             radius: 50,
             color: '#4C1D95',
@@ -573,7 +502,6 @@ const LecturerAttendance = {
             weight: 2
         }).addTo(this.mapInstance);
         
-        // Invalidate size after a moment
         setTimeout(() => {
             if (this.mapInstance) {
                 this.mapInstance.invalidateSize();
@@ -597,10 +525,12 @@ const LecturerAttendance = {
             
             if (!supabase) return;
             
+            // ✅ Use correct column names
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('attendance_status, is_verified')
                 .eq('program', program)
+                .eq('session_type', 'Class')
                 .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .lte('check_in_time', `${todayStr}T23:59:59.999Z`);
             
@@ -672,10 +602,12 @@ const LecturerAttendance = {
                     return;
                 }
                 
+                // ✅ Use correct column names
                 const { error } = await supabase
                     .from('geo_attendance_logs')
                     .insert({
                         student_id: userId,
+                        student_name: profile?.full_name || 'Lecturer',
                         check_in_time: new Date().toISOString(),
                         session_type: 'Lecturer Check-in',
                         latitude: pos.coords.latitude,
@@ -685,8 +617,8 @@ const LecturerAttendance = {
                         is_verified: true,
                         target_name: 'Lecturer Check-in',
                         location_address: 'Lecturer Check-in',
-                        student_name: profile?.full_name || 'Lecturer',
-                        program: profile?.program || profile?.department
+                        program: profile?.program || profile?.department,
+                        role: 'lecturer'
                     });
                 
                 if (error) throw error;
@@ -755,29 +687,30 @@ const LecturerAttendance = {
                 throw new Error('Student not found');
             }
             
+            // ✅ Use correct column names
             await supabase
                 .from('geo_attendance_logs')
                 .insert({
                     student_id: studentId,
+                    student_name: student.full_name || 'Student',
                     check_in_time: `${date}T${time || '12:00'}:00.000Z`,
                     session_type: sessionType,
                     target_name: unit || 'General',
                     unit_name: unit || 'General',
                     attendance_status: 'Present',
                     is_verified: true,
+                    is_manual_entry: true,
                     location_friendly_name: location || 'Manual Entry',
                     location_address: `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
-                    student_name: student.full_name || 'Student',
                     program: student.program || profile.program,
                     block: student.block || profile.block,
                     intake_year: student.intake_year || profile.intake_year,
-                    student_id_number: student.student_id || 'N/A'
+                    role: 'student'
                 });
             
             window.showNotification(`✅ ${student.full_name || 'Student'} marked present!`, 'success');
             e.target.reset();
             
-            // Reset date to today
             const today = new Date();
             document.getElementById('attDate').value = today.toISOString().split('T')[0];
             
@@ -796,19 +729,16 @@ const LecturerAttendance = {
     // POPULATE FILTERS
     // ============================================
     populateFilters() {
-        // Set today's date in filter
         const filterDate = document.getElementById('filterDate');
         if (filterDate) {
             filterDate.value = new Date().toISOString().split('T')[0];
         }
         
-        // Set today's date in manual form
         const attDate = document.getElementById('attDate');
         if (attDate) {
             attDate.value = new Date().toISOString().split('T')[0];
         }
         
-        // Populate student dropdown
         this.populateStudentSelect();
     },
     
@@ -844,7 +774,6 @@ const LecturerAttendance = {
     // FILTERS
     // ============================================
     applyFilters() {
-        // Filter implementation
         this.renderTodayAttendance();
     },
     
@@ -882,15 +811,14 @@ const LecturerAttendance = {
         const rows = [headers.join(',')];
         
         logs.forEach(log => {
-            const student = log.student || {};
             const status = log.attendance_status || (log.is_verified ? 'Present' : 'Pending');
             const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
             
             const row = [
-                `"${(student.full_name || 'Unknown')}"`,
-                `"${(student.student_id || 'N/A')}"`,
-                `"${(student.program || 'N/A')}"`,
-                `"${(student.block || 'N/A')}"`,
+                `"${(log.student_name || 'Unknown')}"`,
+                `"${(log.student_id || 'N/A')}"`,
+                `"${(log.program || 'N/A')}"`,
+                `"${(log.block || 'N/A')}"`,
                 `"${(log.unit_name || log.target_name || 'General')}"`,
                 `"${(log.session_type || 'Class')}"`,
                 `"${date.toLocaleString('en-GB')}"`,
@@ -1001,4 +929,4 @@ window.openInGoogleMaps = () => {
     }
 };
 
-console.log('✅ LecturerAttendance module loaded - Includes map view functionality');
+console.log('✅ LecturerAttendance module loaded - Using geo_attendance_logs with correct columns');
