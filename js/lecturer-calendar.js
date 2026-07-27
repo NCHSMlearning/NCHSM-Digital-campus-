@@ -1,16 +1,99 @@
+// js/lecturer-calendar.js - COMPLETE FIXED VERSION
+/**
+ * NCHSM Lecturer Calendar Module
+ * Enhanced calendar with event management for lecturers
+ * Shows sessions, exams, and calendar events
+ * Uses: scheduled_sessions, exams, calendar_events
+ */
+
 const LecturerCalendar = {
     currentMonth: new Date().getMonth(),
     currentYear: new Date().getFullYear(),
     events: [],
     currentView: 'month',
+    lecturerAssignmentId: null,
+    lecturerUuid: null,
     
     async init() {
         console.log('📅 Initializing Lecturer Calendar...');
+        await this.resolveLecturerId();
         await this.loadEvents();
         this.renderCalendar();
         this.updateStats();
         this.renderUpcomingEvents();
         console.log('✅ Lecturer Calendar initialized');
+    },
+    
+    // ============================================
+    // RESOLVE THE CORRECT LECTURER ID
+    // ============================================
+    async resolveLecturerId() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) return;
+            
+            const authId = profile.user_id;
+            const fullName = profile.full_name;
+            
+            console.log('🔍 Auth ID (UUID):', authId);
+            console.log('🔍 Lecturer name:', fullName);
+            
+            // Store UUID for calendar
+            this.lecturerUuid = authId;
+            
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
+            
+            if (!isUUID && authId) {
+                this.lecturerAssignmentId = authId;
+                console.log('✅ Using non-UUID auth ID:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            const { data: assignments, error: assignError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .ilike('lecturer_name', `%${fullName}%`);
+            
+            if (!assignError && assignments && assignments.length > 0) {
+                const textId = assignments.find(a => {
+                    const id = a.lecturer_id;
+                    return id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+                });
+                
+                if (textId) {
+                    this.lecturerAssignmentId = textId.lecturer_id;
+                    console.log('✅ Found non-UUID ID:', this.lecturerAssignmentId);
+                    return;
+                }
+                
+                this.lecturerAssignmentId = assignments[0].lecturer_id;
+                console.log('⚠️ Using first match ID:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            const nameParts = fullName.split(' ');
+            const { data: staff, error: staffError } = await supabase
+                .from('staff_records')
+                .select('id, first_name, other_names')
+                .ilike('first_name', `%${nameParts[0]}%`);
+            
+            if (!staffError && staff && staff.length > 0) {
+                this.lecturerAssignmentId = staff[0].id;
+                console.log('✅ Found lecturer ID from staff_records:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            this.lecturerAssignmentId = authId;
+            console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
+            
+        } catch (error) {
+            console.error('Error resolving lecturer ID:', error);
+            this.lecturerAssignmentId = null;
+            this.lecturerUuid = null;
+        }
     },
     
     async loadEvents() {
@@ -22,7 +105,7 @@ const LecturerCalendar = {
                 return;
             }
             
-            const program = profile.program || profile.department;
+            const program = profile.program || profile.department || 'KRCHN';
             const supabase = window.lecturerDB?.supabase;
             
             if (!supabase) {
@@ -30,94 +113,111 @@ const LecturerCalendar = {
                 return;
             }
             
-            // Load sessions
+            console.log('📅 Loading events for program:', program);
+            
+            this.events = [];
+            
+            // ============================================
+            // 1. LOAD SESSIONS FROM scheduled_sessions
+            // ============================================
             const { data: sessions, error: sessionsError } = await supabase
-                .from('sessions')
+                .from('scheduled_sessions')
                 .select('*')
-                .eq('program', program);
+                .eq('target_program', program);
             
             if (sessionsError) {
                 console.error('Error loading sessions:', sessionsError);
+            } else if (sessions) {
+                console.log(`📚 Found ${sessions.length} sessions`);
+                sessions.forEach(s => {
+                    const date = s.session_date ? new Date(s.session_date) : new Date();
+                    this.events.push({
+                        id: s.id || `session-${Date.now()}`,
+                        title: s.session_title || s.title || 'Session',
+                        description: s.description || '',
+                        date: date,
+                        time: s.session_time || '09:00',
+                        endTime: s.session_end_time || '10:00',
+                        location: s.location_name || s.venue || 'Lecture Hall',
+                        type: 'session',
+                        program: s.target_program || program,
+                        block: s.block_term || s.block || 'N/A',
+                        color: '#3b82f6',
+                        icon: '📚',
+                        raw: s
+                    });
+                });
             }
             
-            // Load exams
+            // ============================================
+            // 2. LOAD EXAMS FROM exams
+            // ============================================
             const { data: exams, error: examsError } = await supabase
                 .from('exams')
                 .select('*')
-                .eq('program', program);
+                .eq('target_program', program);
             
             if (examsError) {
                 console.error('Error loading exams:', examsError);
+            } else if (exams) {
+                console.log(`📝 Found ${exams.length} exams`);
+                exams.forEach(e => {
+                    const date = e.exam_date ? new Date(e.exam_date) : new Date();
+                    this.events.push({
+                        id: e.id || `exam-${Date.now()}`,
+                        title: e.exam_name || e.title || 'Exam',
+                        description: e.instructions || '',
+                        date: date,
+                        time: e.exam_start_time || '10:00',
+                        endTime: e.end_time || '12:00',
+                        location: e.venue || 'Exam Hall',
+                        type: 'exam',
+                        program: e.target_program || program,
+                        block: e.block || e.block_term || 'N/A',
+                        color: '#10b981',
+                        icon: '📝',
+                        raw: e
+                    });
+                });
             }
             
-            // Load deadlines (from assignments or tasks)
-            const { data: deadlines, error: deadlinesError } = await supabase
-                .from('deadlines')
+            // ============================================
+            // 3. LOAD CALENDAR EVENTS FROM calendar_events
+            // ============================================
+            const { data: calendarEvents, error: calendarError } = await supabase
+                .from('calendar_events')
                 .select('*')
-                .eq('program', program);
+                .eq('target_program', program);
             
-            if (deadlinesError) {
-                console.error('Error loading deadlines:', deadlinesError);
+            if (calendarError) {
+                console.error('Error loading calendar events:', calendarError);
+            } else if (calendarEvents) {
+                console.log(`📅 Found ${calendarEvents.length} calendar events`);
+                calendarEvents.forEach(e => {
+                    const date = e.event_date ? new Date(e.event_date) : new Date();
+                    this.events.push({
+                        id: e.id || `calendar-${Date.now()}`,
+                        title: e.event_name || e.title || 'Event',
+                        description: e.description || '',
+                        date: date,
+                        time: e.start_time || '09:00',
+                        endTime: e.end_time || '17:00',
+                        location: e.venue || e.location || 'N/A',
+                        type: 'event',
+                        program: e.target_program || program,
+                        block: e.target_block || 'N/A',
+                        organizer: e.organizer || '',
+                        color: '#8b5cf6',
+                        icon: '📌',
+                        raw: e
+                    });
+                });
             }
-            
-            // Combine all events
-            this.events = [];
-            
-            // Add sessions
-            (sessions || []).forEach(s => {
-                this.events.push({
-                    id: s.id || `session-${Date.now()}`,
-                    title: s.topic || 'Session',
-                    description: s.description || '',
-                    date: new Date(s.date),
-                    time: s.time || '09:00',
-                    endTime: s.end_time || '10:00',
-                    location: s.location || 'Lecture Hall',
-                    type: 'session',
-                    program: s.program || program,
-                    block: s.block || 'N/A',
-                    color: '#3b82f6',
-                    icon: '📚'
-                });
-            });
-            
-            // Add exams
-            (exams || []).forEach(e => {
-                this.events.push({
-                    id: e.id || `exam-${Date.now()}`,
-                    title: e.title || 'Exam',
-                    description: e.description || '',
-                    date: new Date(e.date),
-                    time: e.time || '10:00',
-                    endTime: e.end_time || '12:00',
-                    location: e.location || 'Exam Hall',
-                    type: 'exam',
-                    program: e.program || program,
-                    block: e.block || 'N/A',
-                    color: '#10b981',
-                    icon: '📝'
-                });
-            });
-            
-            // Add deadlines
-            (deadlines || []).forEach(d => {
-                this.events.push({
-                    id: d.id || `deadline-${Date.now()}`,
-                    title: d.title || 'Deadline',
-                    description: d.description || '',
-                    date: new Date(d.date),
-                    time: d.time || '23:59',
-                    location: d.location || '',
-                    type: 'deadline',
-                    program: d.program || program,
-                    block: d.block || 'N/A',
-                    color: '#ef4444',
-                    icon: '⏰'
-                });
-            });
             
             // Sort events by date
             this.events.sort((a, b) => a.date - b.date);
+            
+            console.log(`✅ Loaded ${this.events.length} total events`);
             
         } catch (error) {
             console.error('Failed to load events:', error);
@@ -129,13 +229,12 @@ const LecturerCalendar = {
         const today = new Date();
         const events = [];
         
-        // Current month events
         for (let i = 1; i <= 5; i++) {
             const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i * 2);
             events.push({
-                id: `mock-session-${i}`,
+                id: `mock-${i}`,
                 title: i % 2 === 0 ? 'Maternal Health Lecture' : 'Clinical Skills Session',
-                description: `Session ${i} description`,
+                description: `Event ${i}`,
                 date: date,
                 time: i % 2 === 0 ? '09:00' : '14:00',
                 endTime: i % 2 === 0 ? '10:00' : '15:00',
@@ -147,23 +246,6 @@ const LecturerCalendar = {
                 icon: i % 2 === 0 ? '📚' : '📝'
             });
         }
-        
-        // Add a deadline
-        const deadlineDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 8);
-        events.push({
-            id: 'mock-deadline-1',
-            title: 'Assignment Submission Deadline',
-            description: 'Submit Maternal Health assignment',
-            date: deadlineDate,
-            time: '23:59',
-            endTime: '23:59',
-            location: 'Online',
-            type: 'deadline',
-            program: 'KRCHN',
-            block: 'Block 1',
-            color: '#ef4444',
-            icon: '⏰'
-        });
         
         return events;
     },
@@ -188,12 +270,10 @@ const LecturerCalendar = {
         
         let html = '';
         
-        // Empty cells for days before the 1st
         for (let i = 0; i < firstDay; i++) {
             html += `<div style="padding: 8px; min-height: 70px; background: #fafafa; border-radius: 6px;"></div>`;
         }
         
-        // Days of the month
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(this.currentYear, this.currentMonth, day);
             const dateStr = date.toDateString();
@@ -211,22 +291,22 @@ const LecturerCalendar = {
             if (dayEvents.length > 0) {
                 const hasSession = dayEvents.some(e => e.type === 'session');
                 const hasExam = dayEvents.some(e => e.type === 'exam');
-                const hasDeadline = dayEvents.some(e => e.type === 'deadline');
+                const hasEvent = dayEvents.some(e => e.type === 'event');
                 
-                if (hasDeadline) bgColor = '#fef2f2';
+                if (hasEvent) bgColor = '#ede9fe';
                 else if (hasExam) bgColor = '#d1fae5';
                 else if (hasSession) bgColor = '#dbeafe';
-                
-                if (hasDeadline && hasSession) bgColor = '#fef3c7';
-                if (hasDeadline && hasExam) bgColor = '#fef3c7';
+                if (hasEvent && hasExam) bgColor = '#fef3c7';
+                if (hasEvent && hasSession) bgColor = '#fef3c7';
             }
             
             const eventDots = dayEvents.slice(0, 3).map(e => {
                 const colors = {
                     'session': '#3b82f6',
                     'exam': '#10b981',
+                    'event': '#8b5cf6',
                     'deadline': '#ef4444',
-                    'holiday': '#8b5cf6'
+                    'holiday': '#f59e0b'
                 };
                 return `<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${colors[e.type] || '#6b7280'}; margin-right: 2px;"></span>`;
             }).join('');
@@ -282,12 +362,14 @@ const LecturerCalendar = {
             if (e.description) {
                 message += `   📝 ${e.description}\n`;
             }
+            if (e.organizer) {
+                message += `   👤 ${e.organizer}\n`;
+            }
             if (index < events.length - 1) {
                 message += `\n`;
             }
         });
         
-        // Show in a modal or alert
         alert(message);
     },
     
@@ -320,35 +402,19 @@ const LecturerCalendar = {
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
         
-        // Today's sessions
         const todayEvents = this.events.filter(e => e.date.toDateString() === todayStr);
-        const todaySessions = todayEvents.filter(e => e.type === 'session' || e.type === 'exam').length;
+        const todaySessions = todayEvents.filter(e => e.type === 'session' || e.type === 'exam' || e.type === 'event').length;
         const todayEl = document.getElementById('todaySessions');
         if (todayEl) todayEl.textContent = todaySessions;
         
-        // This week
-        const weekEvents = this.events.filter(e => {
-            const dateStr = e.date.toDateString();
-            return e.date >= weekStart && e.date <= weekEnd;
-        });
+        const weekEvents = this.events.filter(e => e.date >= weekStart && e.date <= weekEnd);
         const weekEl = document.getElementById('weekSessions');
         if (weekEl) weekEl.textContent = weekEvents.length;
         
-        // Upcoming exams
-        const upcomingExams = this.events.filter(e => {
-            return (e.type === 'exam' && e.date >= today);
-        });
+        const upcomingExams = this.events.filter(e => e.type === 'exam' && e.date >= today);
         const examsEl = document.getElementById('upcomingExams');
         if (examsEl) examsEl.textContent = upcomingExams.length;
         
-        // Upcoming deadlines
-        const upcomingDeadlines = this.events.filter(e => {
-            return (e.type === 'deadline' && e.date >= today);
-        });
-        const deadlinesEl = document.getElementById('upcomingDeadlines');
-        if (deadlinesEl) deadlinesEl.textContent = upcomingDeadlines.length;
-        
-        // Total events
         const totalEl = document.getElementById('totalEvents');
         if (totalEl) totalEl.textContent = this.events.length;
     },
@@ -368,7 +434,6 @@ const LecturerCalendar = {
                 <div style="text-align: center; padding: 30px; color: #94a3b8;">
                     <i class="fas fa-calendar-plus" style="font-size: 32px; display: block; margin-bottom: 10px; color: #e2e8f0;"></i>
                     <p style="margin: 0;">No upcoming events</p>
-                    <p style="font-size: 13px; margin: 5px 0 0 0; color: #cbd5e1;">Check back later for updates</p>
                 </div>
             `;
             const countEl = document.getElementById('upcomingEventCount');
@@ -379,8 +444,9 @@ const LecturerCalendar = {
         const typeColors = {
             'session': '#3b82f6',
             'exam': '#10b981',
+            'event': '#8b5cf6',
             'deadline': '#ef4444',
-            'holiday': '#8b5cf6'
+            'holiday': '#f59e0b'
         };
         
         container.innerHTML = upcoming.map(e => `
@@ -447,6 +513,7 @@ const LecturerCalendar = {
     },
     
     async refresh() {
+        await this.resolveLecturerId();
         await this.loadEvents();
         this.renderCalendar();
         this.updateStats();
@@ -464,3 +531,5 @@ document.addEventListener('DOMContentLoaded', function() {
 window.LecturerCalendar = LecturerCalendar;
 window.loadCalendar = () => LecturerCalendar.goToToday();
 window.changeMonth = (delta) => LecturerCalendar.changeMonth(delta);
+
+console.log('✅ LecturerCalendar module loaded - Uses scheduled_sessions, exams, and calendar_events');
