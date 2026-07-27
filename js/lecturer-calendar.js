@@ -1,10 +1,3 @@
-// js/lecturer-calendar.js
-/**
- * NCHSM Lecturer Calendar Module
- * Enhanced calendar with event management for lecturers
- * Shows sessions, exams, and deadlines for assigned programs
- */
-
 const LecturerCalendar = {
     currentMonth: new Date().getMonth(),
     currentYear: new Date().getFullYear(),
