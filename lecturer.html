@@ -1839,7 +1839,7 @@
     </div>
 </section>
 
-          <!-- ===== EXAMS / CATS SECTION - ENHANCED ===== -->
+          <!-- ===== EXAMS / CATS SECTION - FULLY FIXED ===== -->
 <section id="cats-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
         <div>
@@ -1904,8 +1904,8 @@
         </div>
     </div>
     
-    <!-- Create Exam Form -->
-    <form id="addExamForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; margin-bottom: 20px;" onsubmit="event.preventDefault(); createExam();">
+    <!-- Create Exam Form - ✅ FIXED onsubmit -->
+    <form id="addExamForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; margin-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
             <i class="fas fa-plus-circle" style="color: #4C1D95; font-size: 22px;"></i>
             <h4 style="margin: 0; color: #0A3D62; font-size: 17px;">Create New Exam / CAT Record</h4>
@@ -2023,7 +2023,7 @@
         </div>
         
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-            <button type="submit" class="btn btn-action" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 10px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+            <button type="submit" onclick="handleAddExam(event)" class="btn btn-action" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 10px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                 <i class="fas fa-plus-circle"></i> Create Exam Record
             </button>
             <button type="reset" style="background: transparent; color: #64748b; border: 2px solid #e2e8f0; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
@@ -2054,9 +2054,9 @@
     <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 200px; position: relative;">
             <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-            <input type="text" id="examSearch" placeholder="Search exams by title, unit, or type..." style="width: 100%; padding: 12px 14px 12px 40px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'" onkeyup="searchExams()">
+            <input type="text" id="examSearch" placeholder="Search exams by title, unit, or type..." style="width: 100%; padding: 12px 14px 12px 40px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'" onkeyup="filterExams()">
         </div>
-        <button class="btn btn-action" id="examSearchBtn" onclick="searchExams()" style="background: #4C1D95; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+        <button class="btn btn-action" onclick="filterExams()" style="background: #4C1D95; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
             <i class="fas fa-search"></i> Search
         </button>
         <button onclick="exportExams()" style="background: #10b981; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
