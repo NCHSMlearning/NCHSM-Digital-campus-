@@ -1,5 +1,5 @@
 // ============================================
-// ✅ attendance.js - COMPLETE WITH BEAUTIFUL MODALS
+// ✅ attendance.js - COMPLETE WITH SESSION SUPPORT
 // NO "This site says" popups!
 // ============================================
 
@@ -23,6 +23,7 @@
     let selectedTarget = null;
     let currentStudent = null;
     let deviceTableExists = null;
+    let activeSessions = [];
     
     // ============================================
     // ✅ BEAUTIFUL MODALS - NO "This site says"!
@@ -52,12 +53,9 @@
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             pointer-events: none;
         `;
-        
         const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
         toast.innerHTML = `<span style="font-size: 20px;">${icon}</span> ${message}`;
-        
         document.body.appendChild(toast);
-        
         setTimeout(() => {
             toast.style.animation = 'slideDownToast 0.3s ease forwards';
             setTimeout(() => toast.remove(), 300);
@@ -121,80 +119,21 @@
                         animation: slideUpModal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
                     ">
                         <div style="text-align: center; margin-bottom: 12px;">
-                            <div style="
-                                width: 64px; height: 64px;
-                                border-radius: 50%;
-                                background: #ede9fe;
-                                display: inline-flex;
-                                align-items: center;
-                                justify-content: center;
-                                font-size: 32px;
-                            ">${options.icon || '📍'}</div>
+                            <div style="width: 64px; height: 64px; border-radius: 50%; background: #ede9fe; display: inline-flex; align-items: center; justify-content: center; font-size: 32px;">${options.icon || '📍'}</div>
                         </div>
-                        
-                        <h3 style="
-                            text-align: center;
-                            margin: 0 0 4px;
-                            font-size: 20px;
-                            font-weight: 700;
-                            color: #0f172a;
-                        ">${options.title || 'Confirm Check-in'}</h3>
-                        
-                        <p style="
-                            text-align: center;
-                            margin: 0 0 20px;
-                            font-size: 14px;
-                            color: #64748b;
-                        ">${options.subtitle || 'Please verify your location before checking in.'}</p>
-                        
-                        <div style="
-                            background: #f8fafc;
-                            border-radius: 12px;
-                            padding: 16px;
-                            margin-bottom: 20px;
-                        ">
+                        <h3 style="text-align: center; margin: 0 0 4px; font-size: 20px; font-weight: 700; color: #0f172a;">${options.title || 'Confirm Check-in'}</h3>
+                        <p style="text-align: center; margin: 0 0 20px; font-size: 14px; color: #64748b;">${options.subtitle || 'Please verify your location before checking in.'}</p>
+                        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
                             ${Object.entries(options.details || {}).map(([key, value]) => `
-                                <div style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    padding: 6px 0;
-                                    border-bottom: 1px solid #f1f5f9;
-                                ">
+                                <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
                                     <span style="color: #64748b; font-size: 13px;">${key}</span>
                                     <span style="font-weight: 500; font-size: 13px; color: #0f172a;">${value}</span>
                                 </div>
                             `).join('')}
                         </div>
-                        
                         <div style="display: flex; gap: 12px;">
-                            <button onclick="window._closeConfirmModal(false)" style="
-                                flex: 1;
-                                padding: 14px;
-                                border: 2px solid #e2e8f0;
-                                border-radius: 12px;
-                                background: white;
-                                font-size: 15px;
-                                font-weight: 600;
-                                cursor: pointer;
-                                color: #64748b;
-                                transition: all 0.2s ease;
-                            " onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-                                Cancel
-                            </button>
-                            <button onclick="window._closeConfirmModal(true)" style="
-                                flex: 2;
-                                padding: 14px;
-                                border: none;
-                                border-radius: 12px;
-                                background: linear-gradient(135deg, #4f46e5, #7c3aed);
-                                font-size: 15px;
-                                font-weight: 600;
-                                cursor: pointer;
-                                color: white;
-                                transition: all 0.2s ease;
-                            " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                                ✅ Confirm
-                            </button>
+                            <button onclick="window._closeConfirmModal(false)" style="flex: 1; padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; background: white; font-size: 15px; font-weight: 600; cursor: pointer; color: #64748b; transition: all 0.2s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">Cancel</button>
+                            <button onclick="window._closeConfirmModal(true)" style="flex: 2; padding: 14px; border: none; border-radius: 12px; background: linear-gradient(135deg, #4f46e5, #7c3aed); font-size: 15px; font-weight: 600; cursor: pointer; color: white; transition: all 0.2s ease;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">✅ Confirm</button>
                         </div>
                     </div>
                 </div>
@@ -203,7 +142,6 @@
             document.body.appendChild(modal);
             window._confirmResolve = resolve;
             
-            // Store close function
             window._closeConfirmModal = function(result) {
                 const modal = document.getElementById('confirmModal');
                 if (modal) {
@@ -220,206 +158,72 @@
         });
     }
     
-  // ============================================
-// ✅ FRIENDLY SUCCESS MODAL - No Scary Popups!
-// ============================================
-
-function showSuccessModal(data) {
-    const existing = document.getElementById('successModal');
-    if (existing) existing.remove();
-    
-    // Determine status emoji, color, and friendly message
-    const statusMap = {
-        'Present': { 
-            emoji: '🎉', 
-            color: '#10b981', 
-            bg: '#d1fae5',
-            title: '✨ Check-in Successful!',
-            message: 'You have been verified! 🎊',
-            iconBg: '#10b981'
-        },
-        'Absent': { 
-            emoji: '📍', 
-            color: '#f59e0b', 
-            bg: '#fef3c7',
-            title: '📍 You are not at this location',
-            message: 'Your location is too far from the target area.',
-            iconBg: '#f59e0b'
-        },
-        'Pending': { 
-            emoji: '⏳', 
-            color: '#3b82f6', 
-            bg: '#dbeafe',
-            title: '⏳ Pending Review',
-            message: 'Your check-in is being reviewed by admin.',
-            iconBg: '#3b82f6'
-        }
-    };
-    
-    const status = statusMap[data.status] || statusMap['Pending'];
-    
-    const modal = document.createElement('div');
-    modal.id = 'successModal';
-    modal.innerHTML = `
-        <div style="
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            z-index: 999999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: fadeInBackdrop 0.3s ease;
-        ">
-            <div style="
-                background: white;
-                border-radius: 24px;
-                max-width: 380px;
-                width: 92%;
-                overflow: hidden;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-                animation: slideUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-                position: relative;
-            ">
-                <!-- Decorative Header -->
-                <div style="
-                    background: ${status.color};
-                    padding: 20px 24px 16px;
-                    text-align: center;
-                    color: white;
-                    position: relative;
-                ">
-                    <div style="font-size: 48px; margin-bottom: 4px;">${status.emoji}</div>
-                    <h2 style="
-                        margin: 0;
-                        font-size: 20px;
-                        font-weight: 700;
-                        color: white;
-                    ">${status.title}</h2>
-                </div>
-                
-                <!-- Body -->
-                <div style="padding: 24px 24px 20px;">
-                    <!-- Friendly Message -->
-                    <div style="
-                        text-align: center;
-                        margin-bottom: 16px;
-                        padding: 12px;
-                        background: ${status.bg};
-                        border-radius: 12px;
-                        color: ${status.color};
-                        font-weight: 500;
-                        font-size: 15px;
-                    ">
-                        ${status.message}
+    // 3. SUCCESS MODAL
+    function showSuccessModal(data) {
+        const existing = document.getElementById('successModal');
+        if (existing) existing.remove();
+        
+        const statusMap = {
+            'Present': { emoji: '🎉', color: '#10b981', bg: '#d1fae5', title: '✨ Check-in Successful!', message: 'You have been verified! 🎊' },
+            'Absent': { emoji: '📍', color: '#f59e0b', bg: '#fef3c7', title: '📍 You are not at this location', message: 'Your location is too far from the target area.' },
+            'Pending': { emoji: '⏳', color: '#3b82f6', bg: '#dbeafe', title: '⏳ Pending Review', message: 'Your check-in is being reviewed.' }
+        };
+        const status = statusMap[data.status] || statusMap['Pending'];
+        
+        const modal = document.createElement('div');
+        modal.id = 'successModal';
+        modal.innerHTML = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 999999; display: flex; align-items: center; justify-content: center; animation: fadeInBackdrop 0.3s ease;">
+                <div style="background: white; border-radius: 24px; max-width: 380px; width: 92%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: slideUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                    <div style="background: ${status.color}; padding: 20px 24px 16px; text-align: center; color: white;">
+                        <div style="font-size: 48px; margin-bottom: 4px;">${status.emoji}</div>
+                        <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: white;">${status.title}</h2>
                     </div>
-                    
-                    <!-- Details -->
-                    <div style="
-                        display: grid;
-                        grid-template-columns: 1fr 1fr 1fr;
-                        gap: 8px;
-                        margin-bottom: 16px;
-                    ">
-                        <div style="
-                            text-align: center;
-                            background: #f8fafc;
-                            border-radius: 10px;
-                            padding: 10px 4px;
-                        ">
-                            <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.distance}</div>
-                            <div style="font-size: 10px; color: #94a3b8;">Distance</div>
+                    <div style="padding: 24px 24px 20px;">
+                        <div style="text-align: center; margin-bottom: 16px; padding: 12px; background: ${status.bg}; border-radius: 12px; color: ${status.color}; font-weight: 500; font-size: 15px;">${status.message}</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px 4px;">
+                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.distance}</div>
+                                <div style="font-size: 10px; color: #94a3b8;">Distance</div>
+                            </div>
+                            <div style="text-align: center; background: #f8fafc; border-radius: 10px; padding: 10px 4px;">
+                                <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.accuracy}</div>
+                                <div style="font-size: 10px; color: #94a3b8;">Accuracy</div>
+                            </div>
+                            <div style="text-align: center; background: ${status.bg}; border-radius: 10px; padding: 10px 4px;">
+                                <div style="font-size: 18px; font-weight: 700; color: ${status.color};">${data.status}</div>
+                                <div style="font-size: 10px; color: ${status.color};">Status</div>
+                            </div>
                         </div>
-                        <div style="
-                            text-align: center;
-                            background: #f8fafc;
-                            border-radius: 10px;
-                            padding: 10px 4px;
-                        ">
-                            <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${data.accuracy}</div>
-                            <div style="font-size: 10px; color: #94a3b8;">Accuracy</div>
+                        ${data.session ? `
+                            <div style="background: #f8fafc; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; text-align: center;">
+                                <div style="font-size: 12px; color: #94a3b8;">📅 Session</div>
+                                <div style="font-weight: 600; font-size: 14px; color: #0f172a;">${data.session}</div>
+                            </div>
+                        ` : ''}
+                        <div style="background: #f8fafc; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; text-align: center;">
+                            <div style="font-size: 12px; color: #94a3b8;">📍 Target</div>
+                            <div style="font-weight: 600; font-size: 14px; color: #0f172a;">${data.target}</div>
+                            <div style="font-size: 12px; color: #64748b;">${data.type}</div>
                         </div>
-                        <div style="
-                            text-align: center;
-                            background: ${status.bg};
-                            border-radius: 10px;
-                            padding: 10px 4px;
-                        ">
-                            <div style="font-size: 18px; font-weight: 700; color: ${status.color};">${data.status}</div>
-                            <div style="font-size: 10px; color: ${status.color};">Status</div>
-                        </div>
+                        <button onclick="window._closeSuccessModal()" style="width: 100%; padding: 14px; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; background: ${status.color}; color: white; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">Got it! 👍</button>
                     </div>
-                    
-                    <!-- Target Name -->
-                    <div style="
-                        background: #f8fafc;
-                        border-radius: 10px;
-                        padding: 10px 14px;
-                        margin-bottom: 16px;
-                        text-align: center;
-                    ">
-                        <div style="font-size: 12px; color: #94a3b8;">📍 Target</div>
-                        <div style="font-weight: 600; font-size: 14px; color: #0f172a;">${data.target}</div>
-                        <div style="font-size: 12px; color: #64748b;">${data.type}</div>
-                    </div>
-                    
-                    <!-- Nice Button -->
-                    <button onclick="window._closeSuccessModal()" style="
-                        width: 100%;
-                        padding: 14px;
-                        border: none;
-                        border-radius: 14px;
-                        font-size: 16px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        background: ${status.color};
-                        color: white;
-                        transition: all 0.2s ease;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 8px;
-                    " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                        <span>Got it!</span> <span style="font-size: 18px;">👍</span>
-                    </button>
                 </div>
             </div>
-        </div>
-        
-        <style>
-            @keyframes fadeInBackdrop {
-                from { opacity: 0; }
-                to { opacity: 1; }
+        `;
+        document.body.appendChild(modal);
+        window._closeSuccessModal = function() {
+            const modal = document.getElementById('successModal');
+            if (modal) {
+                modal.style.animation = 'slideUpModal 0.25s ease reverse';
+                setTimeout(() => modal.remove(), 250);
             }
-            @keyframes slideUpModal {
-                from { opacity: 0; transform: translateY(30px) scale(0.95); }
-                to { opacity: 1; transform: translateY(0) scale(1); }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    window._closeSuccessModal = function() {
-        const modal = document.getElementById('successModal');
-        if (modal) {
-            modal.style.animation = 'slideUpModal 0.25s ease reverse';
-            setTimeout(() => modal.remove(), 250);
+        };
+        if (data.status === 'Present') {
+            setTimeout(() => { if (document.getElementById('successModal')) window._closeSuccessModal(); }, 4000);
         }
-    };
-    
-    // Auto-close for success
-    if (data.status === 'Present') {
-        setTimeout(() => {
-            if (document.getElementById('successModal')) {
-                window._closeSuccessModal();
-            }
-        }, 4000);
     }
-}
+    
     // ============================================
     // HELPER FUNCTIONS
     // ============================================
@@ -444,6 +248,9 @@ function showSuccessModal(data) {
         }
         if (window.supabase && typeof window.supabase.from === 'function') {
             return window.supabase;
+        }
+        if (window.sb && typeof window.sb.from === 'function') {
+            return window.sb;
         }
         return null;
     }
@@ -531,6 +338,158 @@ function showSuccessModal(data) {
     }
     
     // ============================================
+    // LOAD ACTIVE SESSIONS - NEW
+    // ============================================
+    
+    async function loadActiveSessions() {
+        try {
+            const supabase = getSupabase();
+            if (!supabase) return [];
+            
+            const studentId = getCurrentStudentId();
+            if (!studentId) return [];
+            
+            const profile = window.db?.currentUserProfile || JSON.parse(localStorage.getItem('userProfile') || '{}');
+            const program = profile.program || profile.department || 'KRCHN';
+            
+            const { data: sessions, error } = await supabase
+                .from('scheduled_sessions')
+                .select('*')
+                .eq('target_program', program)
+                .eq('status', 'active')
+                .eq('is_active', true)
+                .gte('session_date', new Date().toISOString().split('T')[0])
+                .order('session_date', { ascending: true });
+            
+            if (error) throw error;
+            
+            activeSessions = sessions || [];
+            
+            // Add session option to the dropdown if there are active sessions
+            const targetSelect = document.getElementById('attendance-target');
+            if (targetSelect && activeSessions.length > 0) {
+                // We'll add session options when needed
+            }
+            
+            console.log(`✅ Loaded ${activeSessions.length} active sessions`);
+            return activeSessions;
+            
+        } catch (error) {
+            console.error('Error loading active sessions:', error);
+            return [];
+        }
+    }
+    
+    // ============================================
+    // SIGN IN TO SESSION - NEW
+    // ============================================
+    
+    async function signInToSession(sessionId) {
+        const session = activeSessions.find(s => s.id === sessionId);
+        if (!session) {
+            showToast('Session not found.', 'error');
+            return;
+        }
+        
+        const location = await getAccurateLocation();
+        if (!location) {
+            showToast('Unable to get GPS location. Please enable GPS.', 'error');
+            return;
+        }
+        
+        let distance = 0;
+        let status = 'Present';
+        let targetName = session.location_name || session.session_title || 'Session';
+        
+        if (session.target_latitude && session.target_longitude) {
+            distance = calculateDistance(
+                location.lat, location.lon,
+                parseFloat(session.target_latitude), parseFloat(session.target_longitude)
+            );
+            const radius = session.target_radius || 100;
+            
+            if (distance <= radius) {
+                status = 'Present';
+            } else if (distance <= radius * 2) {
+                status = 'Pending';
+            } else {
+                status = 'Absent';
+            }
+        }
+        
+        const confirmed = await showConfirmModal({
+            icon: '📅',
+            title: 'Sign in to Session',
+            subtitle: 'Confirm your attendance for this session:',
+            details: {
+                'Session': session.session_title || session.title || 'Session',
+                'Date': session.session_date ? new Date(session.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A',
+                'Time': session.session_time || 'TBD',
+                'Location': session.location_name || 'N/A',
+                'Status': status
+            }
+        });
+        
+        if (!confirmed) {
+            showToast('Check-in cancelled', 'warning');
+            return;
+        }
+        
+        try {
+            const supabase = getSupabase();
+            const studentId = getCurrentStudentId();
+            
+            if (!supabase || !studentId) {
+                throw new Error('Not logged in');
+            }
+            
+            const record = {
+                student_id: studentId,
+                session_id: sessionId,
+                check_in_time: new Date().toISOString(),
+                session_type: session.session_type || 'Class',
+                target_id: session.id,
+                target_name: session.session_title || session.title || 'Session',
+                latitude: location.lat,
+                longitude: location.lon,
+                accuracy_m: location.acc || 0,
+                distance_meters: distance || 0,
+                is_verified: status === 'Present',
+                attendance_status: status,
+                target_latitude: session.target_latitude || null,
+                target_longitude: session.target_longitude || null,
+                location_address: location.address || null,
+                location_friendly_name: session.location_name || 'Session Location',
+                program: session.target_program || 'KRCHN',
+                block: session.block_term || 'N/A',
+                student_name: window.db?.currentUserProfile?.full_name || 'Student'
+            };
+            
+            const { error } = await supabase
+                .from('geo_attendance_logs')
+                .insert([record]);
+            
+            if (error) throw error;
+            
+            showSuccessModal({
+                target: session.session_title || session.title || 'Session',
+                type: session.session_type || 'Class',
+                distance: (distance || 0).toFixed(0),
+                accuracy: (location.acc || 0).toFixed(0),
+                status: status,
+                session: session.session_title || session.title || 'Session'
+            });
+            
+            await loadHistory();
+            await loadActiveSessions();
+            
+        } catch (error) {
+            console.error('Sign-in error:', error);
+            showToast('Failed to sign in: ' + error.message, 'error');
+        }
+    }
+    
+    // ============================================
     // UI ELEMENTS
     // ============================================
     
@@ -559,6 +518,10 @@ function showSuccessModal(data) {
                     <div style="font-size:12px; opacity:0.8;">📍 GPS STATUS</div>
                     <div id="stats-gps-status" style="font-size:16px; font-weight:bold; color:#93c5fd;">Ready</div>
                 </div>
+                <div style="flex:1; text-align:center; min-width: 100px;">
+                    <div style="font-size:12px; opacity:0.8;">📚 ACTIVE SESSIONS</div>
+                    <div id="stats-active-sessions" style="font-size:36px; font-weight:bold; color:#fcd34d;">0</div>
+                </div>
             `;
             heading.parentElement.insertBefore(statsContainer, heading.nextSibling);
         }
@@ -583,7 +546,6 @@ function showSuccessModal(data) {
                 transition: all 0.3s ease;
             `;
             btn.onclick = async function() {
-                console.log('📍 FORCE GPS BUTTON CLICKED!');
                 const statusEl = document.getElementById('stats-gps-status');
                 if (statusEl) statusEl.textContent = '⏳ Getting GPS...';
                 try {
@@ -599,7 +561,6 @@ function showSuccessModal(data) {
                 }
             };
             container.insertBefore(btn, container.firstChild);
-            console.log('✅ Force GPS button created');
         }
     }
     
@@ -625,7 +586,6 @@ function showSuccessModal(data) {
                 if (checkBtn) checkBtn.disabled = true;
             }
         });
-        console.log('✅ Dropdown fixed');
     }
     
     // ============================================
@@ -675,7 +635,19 @@ function showSuccessModal(data) {
         targetSelect.innerHTML = '<option value="">Loading...</option>';
         targetSelect.disabled = true;
         let options = [];
-        if (sessionType === 'class') {
+        
+        // ✅ NEW: Add session options if there are active sessions
+        if (sessionType === 'session' || (sessionType === 'class' && activeSessions.length > 0)) {
+            options = activeSessions.map(session => ({
+                id: `session_${session.id}`,
+                name: `📅 ${session.session_title || session.title || 'Session'}`,
+                type: 'session',
+                latitude: session.target_latitude || CAMPUS_COORDINATES.latitude,
+                longitude: session.target_longitude || CAMPUS_COORDINATES.longitude,
+                radius: session.target_radius || 100,
+                session_id: session.id
+            }));
+        } else if (sessionType === 'class') {
             if (approvedUnits.length === 0) await loadApprovedUnits();
             options = approvedUnits.map(unit => ({
                 id: `unit_${unit.id}`,
@@ -696,12 +668,13 @@ function showSuccessModal(data) {
                 radius: 100
             }));
         }
+        
         if (options.length === 0) {
             targetSelect.innerHTML = `<option value="">⚠️ No options available</option>`;
             targetSelect.disabled = false;
             return;
         }
-        targetSelect.innerHTML = `<option value="">📚 Select ${sessionType === 'class' ? 'course' : 'clinical area'}...</option>`;
+        targetSelect.innerHTML = `<option value="">📚 Select ${sessionType === 'class' ? 'course' : sessionType === 'clinical' ? 'clinical area' : 'session'}...</option>`;
         options.forEach(opt => {
             const option = document.createElement('option');
             option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
@@ -759,7 +732,7 @@ function showSuccessModal(data) {
                 subtitle: 'Please confirm your attendance details:',
                 details: {
                     'Target': selectedTarget.name,
-                    'Type': selectedTarget.type === 'class' ? 'Classroom' : 'Clinical',
+                    'Type': selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'session' ? 'Session' : 'Clinical',
                     'Location': location.address || 'Unknown',
                     'Distance': distance.toFixed(0) + 'm',
                     'GPS Accuracy': '±' + accuracy.toFixed(0) + 'm',
@@ -788,8 +761,15 @@ function showSuccessModal(data) {
                 target_latitude: selectedTarget.latitude, target_longitude: selectedTarget.longitude,
                 location_address: location.address || null
             };
+            
+            // ✅ NEW: Add session_id if checking into a session
+            if (selectedTarget.type === 'session' && selectedTarget.id.startsWith('session_')) {
+                const sessionId = selectedTarget.id.replace('session_', '');
+                record.session_id = sessionId;
+            }
+            
             if (sessionType === 'class') { record.unit_code = selectedTarget.name.split(' - ')[0]; }
-            else { record.clinical_area = selectedTarget.name; }
+            else if (sessionType === 'clinical') { record.clinical_area = selectedTarget.name; }
             
             const { error } = await supabase.from('geo_attendance_logs').insert([record]);
             if (error) throw error;
@@ -797,11 +777,12 @@ function showSuccessModal(data) {
             // ✅ BEAUTIFUL SUCCESS MODAL - NO "This site says"!
             showSuccessModal({
                 target: selectedTarget.name,
-                type: selectedTarget.type === 'class' ? 'Classroom' : 'Clinical',
+                type: selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'session' ? 'Session' : 'Clinical',
                 distance: distance.toFixed(0),
                 accuracy: accuracy.toFixed(0),
                 status: status,
-                note: verificationNote
+                note: verificationNote,
+                session: selectedTarget.type === 'session' ? selectedTarget.name : null
             });
             
             await updateStatsData();
@@ -872,6 +853,10 @@ function showSuccessModal(data) {
                 else if (status === 'Absent') { statusColor = '#ef4444'; statusIcon = '❌'; }
                 const sessionIcon = log.session_type === 'class' ? '📚' : '🏥';
                 const targetName = log.target_name || log.location_name || 'Unknown';
+                
+                // Show session link if session_id exists
+                const sessionLink = log.session_id ? ` (Session: ${log.session_id.substring(0, 8)})` : '';
+                
                 return `<tr>
                     <td style="white-space: nowrap; font-size: 12px;">${time}</td>
                     <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
@@ -918,6 +903,12 @@ function showSuccessModal(data) {
                 .gte('check_in_time', today.toISOString());
             if (error) throw error;
             presentEl.textContent = data?.length || 0;
+            
+            // Update active sessions count
+            const sessionsEl = document.getElementById('stats-active-sessions');
+            if (sessionsEl) {
+                sessionsEl.textContent = activeSessions.length;
+            }
         } catch(e) { presentEl.textContent = '?'; }
     }
     
@@ -992,6 +983,9 @@ function showSuccessModal(data) {
             addForceGPSButton();
             fixDropdown();
             
+            // ✅ NEW: Load active sessions first
+            await loadActiveSessions();
+            
             await loadApprovedUnits();
             await loadClinicalLocations();
             await updateStatsData();
@@ -1001,19 +995,50 @@ function showSuccessModal(data) {
             if (sessionType) {
                 sessionType.addEventListener('change', async () => {
                     const targetGroup = document.getElementById('target-control-group');
-                    if (sessionType.value === 'class') { if (targetGroup) targetGroup.style.display = 'flex'; await populateTargetOptions('class'); }
-                    else if (sessionType.value === 'clinical') { if (targetGroup) targetGroup.style.display = 'flex'; await populateTargetOptions('clinical'); }
-                    else { if (targetGroup) targetGroup.style.display = 'none'; }
+                    // ✅ NEW: Add 'session' option if there are active sessions
+                    if (sessionType.value === 'session') {
+                        if (targetGroup) targetGroup.style.display = 'flex';
+                        await populateTargetOptions('session');
+                    } else if (sessionType.value === 'class') {
+                        if (targetGroup) targetGroup.style.display = 'flex';
+                        await populateTargetOptions('class');
+                    } else if (sessionType.value === 'clinical') {
+                        if (targetGroup) targetGroup.style.display = 'flex';
+                        await populateTargetOptions('clinical');
+                    } else {
+                        if (targetGroup) targetGroup.style.display = 'none';
+                    }
                 });
+                
+                // ✅ NEW: Add 'session' option to the dropdown
+                const sessionTypeSelect = document.getElementById('session-type');
+                if (sessionTypeSelect) {
+                    // Check if 'session' option already exists
+                    let hasSessionOption = false;
+                    for (let i = 0; i < sessionTypeSelect.options.length; i++) {
+                        if (sessionTypeSelect.options[i].value === 'session') {
+                            hasSessionOption = true;
+                            break;
+                        }
+                    }
+                    if (!hasSessionOption && activeSessions.length > 0) {
+                        const option = document.createElement('option');
+                        option.value = 'session';
+                        option.textContent = '📅 Active Session';
+                        sessionTypeSelect.appendChild(option);
+                    }
+                }
+                
                 if (sessionType.value === 'class') await populateTargetOptions('class');
                 else if (sessionType.value === 'clinical') await populateTargetOptions('clinical');
+                else if (sessionType.value === 'session') await populateTargetOptions('session');
             }
             
             const filterSelect = document.getElementById('history-filter');
             if (filterSelect) filterSelect.addEventListener('change', filterHistory);
             
             const refreshBtn = document.getElementById('refresh-history');
-            if (refreshBtn) refreshBtn.addEventListener('click', () => { loadHistory(); updateStatsData(); });
+            if (refreshBtn) refreshBtn.addEventListener('click', () => { loadHistory(); updateStatsData(); loadActiveSessions(); });
             
             const checkBtn = document.getElementById('check-in-button');
             if (checkBtn) checkBtn.onclick = (e) => { e.preventDefault(); doCheckIn(); };
@@ -1035,6 +1060,8 @@ function showSuccessModal(data) {
     window.refreshHistory = loadHistory;
     window.filterHistory = filterHistory;
     window.getAccurateLocation = getAccurateLocation;
+    window.signInToSession = signInToSession;
+    window.loadActiveSessions = loadActiveSessions;
     window.attendanceSystemReady = true;
     
     // ============================================
@@ -1048,7 +1075,8 @@ function showSuccessModal(data) {
     }
     
     console.log('✅ Attendance system module loaded!');
-    console.log(`🏫 Campus: ${CAMPUS_COORDINATES.latitude}, ${CAMPUS_COORDINATES.longitude} (Kiamunyi)`);
+    console.log(`🏫 Campus: ${CAMPUS_COORDINATES.latitude}, ${CAMPUS_COORDINATES.longitude}`);
     console.log('🎉 NO "This site says" popups! Beautiful modals only!');
+    console.log('📅 Session support added! Students can sign in to active sessions.');
     
 })();
