@@ -693,21 +693,23 @@ class ResourcesModule {
     // ============================================================
     // ============================================================
     
-    initializeLMS() {
-        console.log('🎓 Initializing LMS features...');
-        
-        // Load LMS courses
-        this.loadCourses();
-        
-        // Setup LMS navigation
-        this.setupLMSNavigation();
-        
-        // Load user progress
-        this.loadUserProgress();
-        
-        console.log('✅ LMS initialized');
-    }
+  initializeLMS() {
+    console.log('🎓 Initializing LMS features...');
     
+    // Load LMS courses
+    this.loadCourses();
+    
+    // Setup LMS navigation
+    this.setupLMSNavigation();
+    
+    // Load user progress
+    this.loadUserProgress();
+    
+    // ✅ ADD THIS: Render LMS content
+    setTimeout(() => this.renderLMSContent(), 500);
+    
+    console.log('✅ LMS initialized');
+}
     // ============================================================
     // LMS - COURSE MANAGEMENT
     // ============================================================
@@ -1806,7 +1808,241 @@ class ResourcesModule {
         
         console.log('✅ LMS container created');
     }
+    // ============================================================
+// LMS - RENDER LMS CONTENT (FIX)
+// ============================================================
+
+renderLMSContent() {
+    console.log('🎓 Rendering LMS content...');
     
+    const container = document.getElementById('lms-container');
+    if (!container) {
+        console.log('❌ LMS container not found, creating...');
+        this.createLMSContainer();
+        return;
+    }
+    
+    // Check if courses are loaded
+    if (!this.courses || this.courses.length === 0) {
+        console.log('⏳ No courses loaded yet, waiting...');
+        setTimeout(() => this.renderLMSContent(), 500);
+        return;
+    }
+    
+    // Build course sidebar items
+    let sidebarItems = '';
+    let continueItems = '';
+    let totalProgress = 0;
+    let totalLessons = 0;
+    let completedLessons = 0;
+    
+    for (const course of this.courses) {
+        const completed = this.getCompletedLessonsCount(course);
+        const progress = course.progress || 0;
+        totalProgress += progress;
+        totalLessons += this.getTotalLessonsCount(course);
+        completedLessons += completed;
+        
+        sidebarItems += `
+            <div class="lms-course-item" onclick="window.resourcesModule?.openCourse('${course.id}')" style="
+                padding: 10px 20px;
+                cursor: pointer;
+                transition: all 0.2s;
+                border-left: 3px solid transparent;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            ">
+                <div class="course-icon" style="
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 14px;
+                    flex-shrink: 0;
+                    color: white;
+                    background: ${course.color || '#4C1D95'};
+                ">
+                    <i class="fas ${course.icon || 'fa-book'}"></i>
+                </div>
+                <div class="course-info" style="flex:1;min-width:0;">
+                    <div class="course-name" style="font-weight:500;font-size:14px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${course.title}</div>
+                    <div class="course-progress-small" style="font-size:12px;color:#64748b;">${completed} lessons completed</div>
+                    <div class="course-progress-bar" style="height:3px;background:#e2e8f0;border-radius:4px;margin-top:4px;overflow:hidden;">
+                        <div class="fill" style="height:100%;background:#4C1D95;border-radius:4px;transition:width 0.5s ease;width:${progress}%;"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Continue learning items
+        if (progress < 100) {
+            const nextLesson = course.modules?.[0]?.lessons?.find(l => !l.completed);
+            continueItems += `
+                <div class="continue-item" onclick="window.resourcesModule?.openCourse('${course.id}')" style="
+                    background: #f8fafc;
+                    padding: 16px;
+                    border-radius: 12px;
+                    border: 1px solid #f1f5f9;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                ">
+                    <div class="item-title" style="font-weight:600;font-size:14px;color:#0f172a;">${nextLesson?.title || 'Start Learning'}</div>
+                    <div class="item-meta" style="font-size:13px;color:#64748b;margin-top:4px;">${course.title} • ${100 - progress}% remaining</div>
+                </div>
+            `;
+        }
+    }
+    
+    if (!continueItems) {
+        continueItems = '<div style="color:#94a3b8;text-align:center;padding:20px;">🎉 All caught up!</div>';
+    }
+    
+    const avgProgress = this.courses.length > 0 ? Math.round(totalProgress / this.courses.length) : 0;
+    
+    // Build complete LMS HTML
+    container.innerHTML = `
+        <div class="lms-layout" style="display:flex;min-height:500px;">
+            <!-- SIDEBAR -->
+            <aside class="lms-sidebar" id="lms-sidebar" style="
+                width: 280px;
+                background: #fafbfc;
+                border-right: 1px solid #e2e8f0;
+                display: flex;
+                flex-direction: column;
+                flex-shrink: 0;
+            ">
+                <div class="lms-sidebar-header" style="
+                    padding: 16px 20px;
+                    border-bottom: 1px solid #e2e8f0;
+                    background: white;
+                ">
+                    <h3 style="margin:0;font-size:15px;font-weight:600;color:#0f172a;">
+                        <i class="fas fa-graduation-cap" style="color:#4C1D95;margin-right:8px;"></i> My Courses
+                    </h3>
+                </div>
+                <nav class="lms-sidebar-nav" id="lms-sidebar-nav" style="flex:1;overflow-y:auto;padding:8px 0;">
+                    ${sidebarItems}
+                </nav>
+                <div class="lms-sidebar-footer" style="
+                    padding: 12px 20px;
+                    border-top: 1px solid #e2e8f0;
+                    background: white;
+                ">
+                    <div class="lms-progress-summary" style="display:flex;align-items:center;gap:12px;font-size:13px;color:#475569;">
+                        <span>Overall</span>
+                        <div class="progress-bar" style="flex:1;height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+                            <div class="fill" style="height:100%;background:linear-gradient(90deg,#4C1D95,#7c3aed);border-radius:4px;transition:width 0.5s ease;width:${avgProgress}%;"></div>
+                        </div>
+                        <span class="progress-text" style="font-weight:600;font-size:13px;color:#4C1D95;min-width:40px;text-align:right;">${avgProgress}%</span>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- MAIN CONTENT -->
+            <main class="lms-main-content" style="flex:1;padding:24px;overflow-y:auto;background:white;min-height:500px;">
+                
+                <!-- DASHBOARD -->
+                <div class="lms-dashboard" id="lms-dashboard">
+                    <div class="lms-dashboard-header" style="margin-bottom:24px;">
+                        <h1 style="font-size:24px;font-weight:700;color:#0f172a;margin-bottom:4px;">👋 Welcome back!</h1>
+                        <p style="color:#64748b;">Continue your learning journey. You're making great progress!</p>
+                    </div>
+                    
+                    <div class="lms-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px;">
+                        <div class="stat-card" style="background:#f8fafc;padding:20px;border-radius:12px;display:flex;align-items:center;gap:16px;border:1px solid #f1f5f9;transition:all 0.2s;">
+                            <i class="fas fa-book-open" style="font-size:28px;color:#4C1D95;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#ede9fe;border-radius:12px;"></i>
+                            <div class="stat-info" style="flex:1;">
+                                <span class="stat-number" style="display:block;font-size:24px;font-weight:700;color:#0f172a;line-height:1.2;">${this.courses.length}</span>
+                                <span class="stat-label" style="font-size:13px;color:#64748b;">Courses Enrolled</span>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="background:#f8fafc;padding:20px;border-radius:12px;display:flex;align-items:center;gap:16px;border:1px solid #f1f5f9;transition:all 0.2s;">
+                            <i class="fas fa-check-circle" style="font-size:28px;color:#4C1D95;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#ede9fe;border-radius:12px;"></i>
+                            <div class="stat-info" style="flex:1;">
+                                <span class="stat-number" style="display:block;font-size:24px;font-weight:700;color:#0f172a;line-height:1.2;">${completedLessons}</span>
+                                <span class="stat-label" style="font-size:13px;color:#64748b;">Lessons Completed</span>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="background:#f8fafc;padding:20px;border-radius:12px;display:flex;align-items:center;gap:16px;border:1px solid #f1f5f9;transition:all 0.2s;">
+                            <i class="fas fa-star" style="font-size:28px;color:#4C1D95;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#ede9fe;border-radius:12px;"></i>
+                            <div class="stat-info" style="flex:1;">
+                                <span class="stat-number" style="display:block;font-size:24px;font-weight:700;color:#0f172a;line-height:1.2;">${Object.keys(this.quizResults).length > 0 ? Math.round(Object.values(this.quizResults).reduce((a,b) => a + b.percentage, 0) / Object.values(this.quizResults).length) : 0}%</span>
+                                <span class="stat-label" style="font-size:13px;color:#64748b;">Average Quiz Score</span>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="background:#f8fafc;padding:20px;border-radius:12px;display:flex;align-items:center;gap:16px;border:1px solid #f1f5f9;transition:all 0.2s;">
+                            <i class="fas fa-trophy" style="font-size:28px;color:#4C1D95;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#ede9fe;border-radius:12px;"></i>
+                            <div class="stat-info" style="flex:1;">
+                                <span class="stat-number" style="display:block;font-size:24px;font-weight:700;color:#0f172a;line-height:1.2;">${this.earnedBadges.length}</span>
+                                <span class="stat-label" style="font-size:13px;color:#64748b;">Badges Earned</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="lms-continue-learning">
+                        <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;color:#0f172a;">📖 Continue Learning</h2>
+                        <div class="continue-learning-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+                            ${continueItems}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- COURSE VIEW (hidden initially) -->
+                <div class="lms-course-view" id="lms-course-view" style="display:none;">
+                    <div class="lms-course-header" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #e2e8f0;">
+                        <button class="lms-back-btn" id="lms-back-btn" style="padding:8px 16px;border:none;border-radius:8px;background:#f1f5f9;color:#475569;cursor:pointer;font-size:13px;font-weight:500;transition:all 0.2s;display:flex;align-items:center;gap:8px;">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <h1 id="lms-course-title" style="flex:1;font-size:22px;font-weight:700;color:#0f172a;margin:0;">Course</h1>
+                        <div class="lms-course-progress" style="display:flex;align-items:center;gap:12px;">
+                            <span id="lms-course-progress-text" style="font-size:13px;font-weight:500;color:#4C1D95;">0% Complete</span>
+                            <div class="progress-bar" style="width:120px;height:6px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+                                <div class="fill" id="lms-course-progress-fill" style="height:100%;background:linear-gradient(90deg,#4C1D95,#7c3aed);border-radius:4px;transition:width 0.5s ease;width:0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lms-course-body" style="display:flex;gap:24px;">
+                        <div class="lms-course-sidebar" style="width:280px;flex-shrink:0;">
+                            <h4 style="font-size:14px;font-weight:600;color:#475569;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">📑 Course Content</h4>
+                            <ul class="lms-module-list" id="lms-module-list" style="list-style:none;padding:0;"></ul>
+                        </div>
+                        <div class="lms-lesson-content" id="lms-lesson-content" style="flex:1;min-height:400px;">
+                            <div class="lesson-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:300px;color:#94a3b8;text-align:center;">
+                                <i class="fas fa-book" style="font-size:48px;margin-bottom:16px;color:#cbd5e1;"></i>
+                                <h3 style="font-size:18px;color:#475569;margin-bottom:8px;">Select a lesson to begin</h3>
+                                <p style="color:#94a3b8;max-width:400px;">Choose a module and lesson from the sidebar to start learning.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    `;
+    
+    // Add styles if not present
+    if (!document.getElementById('lms-styles')) {
+        this.addLMSStyles();
+    }
+    
+    // Setup back button
+    const backBtn = document.getElementById('lms-back-btn');
+    if (backBtn) {
+        backBtn.onclick = () => {
+            document.getElementById('lms-dashboard').style.display = 'block';
+            document.getElementById('lms-course-view').style.display = 'none';
+        };
+    }
+    
+    // Make container visible
+    container.style.display = 'block';
+    container.style.visibility = 'visible';
+    container.style.height = 'auto';
+    
+    console.log('✅ LMS rendered successfully with', this.courses.length, 'courses');
+}
     // ============================================================
     // LMS - STYLES
     // ============================================================
