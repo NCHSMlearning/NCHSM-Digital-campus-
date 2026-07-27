@@ -7662,8 +7662,77 @@
     console.log('✅ All scripts loaded successfully');
 </script>
 
+<!-- ============================================ -->
+<!-- MAIN APPLICATION - ES MODULE                  -->
+<!-- ============================================ -->
 <script type="module" src="script.js"></script>
- <script src="js/chatbot.js"></script>
+
+<!-- ============================================ -->
+<!-- CHATBOT MODULES                              -->
+<!-- ============================================ -->
+<script src="js/chatbot.js"></script>
 <script src="./js/superadmin-chatbot.js"></script>
+
+<!-- ============================================ -->
+<!-- 🔥🔥🔥 NEW MODULES 🔥🔥🔥                    -->
+<!-- ============================================ -->
+
+<!-- 1. SUPER ADMIN ANALYTICS MODULE -->
+<script src="./js/superadmin-analytics.js"></script>
+
+<!-- 2. SUPER ADMIN TRANSCRIPT GENERATOR MODULE -->
+<script src="./js/superadmin-transcript.js"></script>
+
+<!-- ============================================ -->
+<!-- INITIALIZATION - AFTER ALL MODULES LOADED    -->
+<!-- ============================================ -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 Initializing dashboard modules...');
+        
+        // ============================================
+        // 1. INITIALIZE ANALYTICS
+        // ============================================
+        if (typeof window.loadAnalyticsData === 'function') {
+            console.log('📊 Setting up analytics...');
+            
+            // Set up event listeners for analytics
+            ['analytics_program_select', 'analytics_year_select', 'analytics_block_select', 'analytics_metric_select'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', window.loadAnalyticsData);
+                }
+            });
+            
+            // Load initial data
+            setTimeout(window.loadAnalyticsData, 800);
+        } else {
+            console.warn('⚠️ Analytics module not loaded');
+        }
+        
+        // ============================================
+        // 2. INITIALIZE TRANSCRIPT GENERATOR
+        // ============================================
+        if (typeof window.loadTranscriptStudents === 'function') {
+            console.log('📄 Setting up transcript generator...');
+            
+            // Set up event listeners for transcript
+            ['transcript_program_select', 'transcript_year_select', 'transcript_block_select'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', window.loadTranscriptStudents);
+                }
+            });
+            
+            // Load initial data
+            setTimeout(window.loadTranscriptStudents, 800);
+        } else {
+            console.warn('⚠️ Transcript module not loaded');
+        }
+        
+        console.log('✅ Analytics & Transcript modules initialized!');
+    });
+</script>
+
 </body>
 </html>
