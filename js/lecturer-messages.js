@@ -1,9 +1,8 @@
-// js/lecturer-messages.js - COMPLETE FIXED VERSION
+// js/lecturer-messages.js - FIXED for UUID sender_id
 /**
  * NCHSM Lecturer Messages Module
- * Uses messages table with correct column names
- * Handles both UUID and text ID formats
- * Messages sent immediately
+ * sender_id is UUID type - use auth UUID
+ * Handles both UUID and text ID formats for other modules
  */
 
 const LecturerMessages = {
@@ -42,17 +41,24 @@ const LecturerMessages = {
             const authId = profile.user_id;
             const fullName = profile.full_name;
             
-            console.log('🔍 Auth ID:', authId);
+            console.log('🔍 Auth ID (UUID):', authId);
             console.log('🔍 Lecturer name:', fullName);
             
+            // For messages, we MUST use the UUID (sender_id is UUID type)
+            // Store the UUID for messages
+            this.lecturerUuid = authId;
+            
+            // For other modules that use text IDs, find the text ID
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
             
             if (!isUUID && authId) {
+                // If authId is not UUID, use it as text ID
                 this.lecturerAssignmentId = authId;
                 console.log('✅ Using non-UUID auth ID:', this.lecturerAssignmentId);
                 return;
             }
             
+            // Try to find text ID from lecturer_subject_assignments
             const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
@@ -66,7 +72,7 @@ const LecturerMessages = {
                 
                 if (textId) {
                     this.lecturerAssignmentId = textId.lecturer_id;
-                    console.log('✅ Found non-UUID ID by partial name match:', this.lecturerAssignmentId);
+                    console.log('✅ Found non-UUID ID for other modules:', this.lecturerAssignmentId);
                     return;
                 }
                 
@@ -75,6 +81,7 @@ const LecturerMessages = {
                 return;
             }
             
+            // Try staff_records
             const nameParts = fullName.split(' ');
             const { data: staff, error: staffError } = await supabase
                 .from('staff_records')
@@ -93,6 +100,7 @@ const LecturerMessages = {
         } catch (error) {
             console.error('Error resolving lecturer ID:', error);
             this.lecturerAssignmentId = null;
+            this.lecturerUuid = null;
         }
     },
     
@@ -107,6 +115,7 @@ const LecturerMessages = {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (!profile) return;
             
+            // Use text ID for assignments (not UUID)
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
             
             const { data: assignments, error } = await supabase
@@ -129,7 +138,8 @@ const LecturerMessages = {
     
     async loadMessages() {
         try {
-            const userId = this.lecturerAssignmentId || window.lecturerDB?.getCurrentUserId();
+            // ✅ Use UUID for messages (sender_id is UUID type)
+            const userId = this.lecturerUuid || window.lecturerDB?.getCurrentUserId();
             
             if (!userId) {
                 console.warn('No user ID found');
@@ -142,69 +152,18 @@ const LecturerMessages = {
                 return;
             }
             
-            console.log('🔍 Loading messages for user ID:', userId);
+            console.log('🔍 Loading messages for user UUID:', userId);
             
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(userId));
+            // ✅ Use UUID for sender_id (it's the correct type)
+            const { data: messages, error } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('sender_id', userId)
+                .order('created_at', { ascending: false });
             
-            let messages = [];
-            
-            if (isUUID) {
-                // ✅ Use correct column: sender_id (UUID)
-                const { data, error } = await supabase
-                    .from('messages')
-                    .select('*')
-                    .eq('sender_id', userId)
-                    .order('created_at', { ascending: false });
-                
-                if (error) {
-                    console.error('Error loading messages:', error);
-                    return;
-                }
-                messages = data || [];
-            } else {
-                // For text IDs, try to find messages
-                // First try: sender_id as text
-                let { data, error } = await supabase
-                    .from('messages')
-                    .select('*')
-                    .eq('sender_id', String(userId))
-                    .order('created_at', { ascending: false });
-                
-                if (!error && data && data.length > 0) {
-                    messages = data;
-                } else {
-                    // Second try: by sender_name (if available)
-                    const profile = window.lecturerDB?.getCurrentUserProfile();
-                    const fullName = profile?.full_name;
-                    
-                    if (fullName) {
-                        const { data: nameData, error: nameError } = await supabase
-                            .from('messages')
-                            .select('*')
-                            .eq('sender_name', fullName)
-                            .order('created_at', { ascending: false });
-                        
-                        if (!nameError) {
-                            messages = nameData || [];
-                        }
-                    }
-                    
-                    // Third try: fallback - get all messages and filter
-                    if (messages.length === 0) {
-                        const { data: allMessages, error: allError } = await supabase
-                            .from('messages')
-                            .select('*')
-                            .order('created_at', { ascending: false })
-                            .limit(100);
-                        
-                        if (!allError && allMessages) {
-                            messages = allMessages.filter(m => 
-                                m.sender_id === String(userId) || 
-                                m.sender_name?.includes(fullName?.split(' ')[0] || '')
-                            );
-                        }
-                    }
-                }
+            if (error) {
+                console.error('Error loading messages:', error);
+                return;
             }
             
             this.messages = messages || [];
@@ -467,9 +426,15 @@ const LecturerMessages = {
         
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const lecturerId = this.lecturerAssignmentId || profile?.user_id;
-            const supabase = window.lecturerDB?.supabase;
             
+            // ✅ Use UUID for sender_id (it's the correct type for messages)
+            const senderUuid = this.lecturerUuid || profile?.user_id;
+            
+            if (!senderUuid) {
+                throw new Error('No UUID found for sender');
+            }
+            
+            const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
@@ -478,7 +443,7 @@ const LecturerMessages = {
             
             // ✅ Use correct column names for the messages table
             const messageData = {
-                sender_id: String(lecturerId),
+                sender_id: senderUuid,  // ✅ UUID type (matches column type)
                 sender_role: 'lecturer',
                 topic: subject,
                 body: body,
@@ -495,7 +460,7 @@ const LecturerMessages = {
                 program_type: profile?.program || 'KRCHN'
             };
             
-            console.log('📤 Sending message with data:', messageData);
+            console.log('📤 Sending message with UUID sender_id:', senderUuid);
             
             const { data: result, error } = await supabase
                 .from('messages')
@@ -649,4 +614,4 @@ window.sendMessage = (e) => LecturerMessages.handleSendMessage(e);
 window.searchMessages = () => LecturerMessages.filterMessages();
 window.exportMessages = () => LecturerMessages.exportMessages();
 
-console.log('✅ LecturerMessages module loaded - Handles UUID and text IDs');
+console.log('✅ LecturerMessages module loaded - Uses UUID for sender_id');
