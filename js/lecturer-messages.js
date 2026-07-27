@@ -207,7 +207,6 @@ const LecturerMessages = {
                             .limit(100);
                         
                         if (!allError && allMessages) {
-                            // Filter messages where sender_id matches the text ID
                             messages = allMessages.filter(m => 
                                 m.sender_id === String(userId) || 
                                 m.sender_name?.includes(fullName?.split(' ')[0] || '')
