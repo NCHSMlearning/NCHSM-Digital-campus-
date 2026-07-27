@@ -1,5 +1,5 @@
 // ============================================================
-// SUPER ADMIN ANALYTICS MODULE - COMPLETE WITH ENHANCEMENTS
+// SUPER ADMIN ANALYTICS MODULE - COMPLETE
 // ============================================================
 
 console.log('📊 Super Admin Analytics Module Loading...');
@@ -33,7 +33,9 @@ window.loadAnalyticsData = async function() {
     window.showAnalyticsLoading(true);
     
     try {
-        // Get all approved students
+        // ============================================================
+        // 1. GET STUDENTS FROM consolidated_user_profiles_table
+        // ============================================================
         let studentQuery = window.sb
             .from('consolidated_user_profiles_table')
             .select('*')
@@ -60,7 +62,11 @@ window.loadAnalyticsData = async function() {
         
         if (studentError) throw studentError;
         
-        // Get marks for these students
+        console.log(`👥 Found ${students?.length || 0} students`);
+        
+        // ============================================================
+        // 2. GET MARKS FROM student_marks
+        // ============================================================
         const studentIds = students?.map(s => s.student_id) || [];
         let marksQuery = window.sb
             .from('student_marks')
@@ -76,17 +82,42 @@ window.loadAnalyticsData = async function() {
         
         if (marksError) throw marksError;
         
-        // Calculate statistics
+        console.log(`📊 Found ${marks?.length || 0} marks records`);
+        
+        // ============================================================
+        // 3. GET NCK MARKS (for Nursing students)
+        // ============================================================
+        const { data: nckMarks, error: nckError } = await window.sb
+            .from('nck_marks')
+            .select('*')
+            .eq('academic_year', year);
+        
+        if (nckError) console.warn('⚠️ NCK marks error:', nckError);
+        
+        // ============================================================
+        // 4. CALCULATE STATISTICS
+        // ============================================================
         const totalStudents = students?.length || 0;
         const totalSubjects = [...new Set(marks?.map(m => m.subject_name) || [])].length;
         
-        // Calculate pass rate and average
         let totalScore = 0;
         let scoredCount = 0;
         let passedCount = 0;
         let atRiskCount = 0;
         
+        // Calculate from student_marks
         marks?.forEach(m => {
+            const score = m.final_score || 0;
+            if (score > 0) {
+                totalScore += score;
+                scoredCount++;
+                if (score >= 60) passedCount++;
+                if (score < 60) atRiskCount++;
+            }
+        });
+        
+        // Also include NCK marks if available
+        nckMarks?.forEach(m => {
             const score = m.final_score || 0;
             if (score > 0) {
                 totalScore += score;
@@ -99,41 +130,66 @@ window.loadAnalyticsData = async function() {
         const avgScore = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
         const passRate = scoredCount > 0 ? Math.round((passedCount / scoredCount) * 100) : 0;
         
-        // Update stats cards
-        window.updateAnalyticsStats(totalStudents, passRate, avgScore, totalSubjects, atRiskCount);
+        // ============================================================
+        // 5. UPDATE STATS CARDS
+        // ============================================================
+        document.getElementById('analytics_total_students').textContent = totalStudents;
+        document.getElementById('analytics_pass_rate').textContent = passRate + '%';
+        document.getElementById('analytics_avg_score').textContent = avgScore + '%';
+        document.getElementById('analytics_active_subjects').textContent = totalSubjects;
+        document.getElementById('analytics_at_risk').textContent = atRiskCount;
         
-        // Update program badge
-        window.updateAnalyticsProgramBadge(program);
+        // ============================================================
+        // 6. UPDATE PROGRAM BADGE
+        // ============================================================
+        const programLabel = document.getElementById('analytics_program_label');
+        if (programLabel) {
+            if (program === 'all') {
+                programLabel.textContent = 'All Programs';
+            } else if (program === 'TVET') {
+                programLabel.textContent = 'TVET Programs';
+            } else {
+                programLabel.textContent = window.getProgramDisplayName(program) || program;
+            }
+        }
         
-        // Update student count in table header
+        // ============================================================
+        // 7. UPDATE TABLE HEADERS
+        // ============================================================
         document.getElementById('analytics_student_count').textContent = totalStudents;
-        document.getElementById('analytics_program_display').textContent = window.getProgramDisplayName(program) || 'All Programs';
+        document.getElementById('analytics_program_display').textContent = programLabel?.textContent || 'All Programs';
         document.getElementById('analytics_block_year_display').textContent = `${year} - ${block === 'all' ? 'All Blocks' : block}`;
         
-        // Render charts based on metric
-        window.renderAnalyticsCharts(marks, students, program, block, year, metric);
+        // ============================================================
+        // 8. RENDER CHARTS
+        // ============================================================
+        window.renderGradeDistributionChart(marks, nckMarks);
+        window.renderSubjectPerformanceChart(marks);
+        window.renderBlockPerformanceChart(students, marks);
+        window.renderProgramComparisonChart(students, marks);
+        window.renderUnitRankingChart(marks);
         
-        // Render tables
+        // ============================================================
+        // 9. RENDER TABLES
+        // ============================================================
         window.renderAnalyticsSubjectTable(marks);
         window.renderAnalyticsStudentTable(students, marks);
         window.renderAnalyticsBlockTable(students, marks, block);
         window.renderAnalyticsProgramTable(students, marks);
         window.renderAnalyticsTrendsTable(students, marks);
-        window.renderAnalyticsExamDetails(marks, students, program, block, year);
+        window.renderAnalyticsExamDetails(marks, students);
         
-        // NEW: Render unit rankings
-        window.renderUnitRankings(marks, students);
-        
-        // NEW: Render top 10 students
+        // ============================================================
+        // 10. RENDER NEW SECTIONS
+        // ============================================================
+        window.renderUnitRankings(marks);
         window.renderTopStudents(students, marks);
-        
-        // NEW: Render weak students
         window.renderWeakStudents(students, marks);
-        
-        // NEW: Render block filter stats
         window.renderBlockFilterStats(students, marks, block);
         
-        // Show dynamic content, hide placeholder
+        // ============================================================
+        // 11. SHOW CONTENT
+        // ============================================================
         document.getElementById('analyticsPlaceholder').style.display = 'none';
         document.getElementById('analyticsDynamicContent').style.display = 'block';
         
@@ -179,35 +235,6 @@ window.showAnalyticsLoading = function(isLoading) {
 };
 
 // ============================================================
-// UPDATE ANALYTICS STATS
-// ============================================================
-
-window.updateAnalyticsStats = function(totalStudents, passRate, avgScore, totalSubjects, atRiskCount) {
-    document.getElementById('analytics_total_students').textContent = totalStudents;
-    document.getElementById('analytics_pass_rate').textContent = passRate + '%';
-    document.getElementById('analytics_avg_score').textContent = avgScore + '%';
-    document.getElementById('analytics_active_subjects').textContent = totalSubjects;
-    document.getElementById('analytics_at_risk').textContent = atRiskCount;
-};
-
-// ============================================================
-// UPDATE ANALYTICS PROGRAM BADGE
-// ============================================================
-
-window.updateAnalyticsProgramBadge = function(program) {
-    const programLabel = document.getElementById('analytics_program_label');
-    if (programLabel) {
-        if (program === 'all') {
-            programLabel.textContent = 'All Programs';
-        } else if (program === 'TVET') {
-            programLabel.textContent = 'TVET Programs';
-        } else {
-            programLabel.textContent = window.getProgramDisplayName(program) || program;
-        }
-    }
-};
-
-// ============================================================
 // GET PROGRAM DISPLAY NAME
 // ============================================================
 
@@ -243,22 +270,42 @@ window.getProgramDisplayName = function(programCode) {
 };
 
 // ============================================================
-// RENDER ANALYTICS CHARTS
+// CALCULATE GRADE (Helper)
 // ============================================================
 
-window.renderAnalyticsCharts = function(marks, students, program, block, year, metric) {
-    window.renderGradeDistributionChart(marks);
-    window.renderSubjectPerformanceChart(marks);
-    window.renderBlockPerformanceChart(marks, students);
-    window.renderProgramComparisonChart(marks, students);
-    window.renderUnitRankingChart(marks);
+window.calculateGrade = function(score) {
+    if (score >= 80) return 'A';
+    if (score >= 75) return 'A-';
+    if (score >= 70) return 'B+';
+    if (score >= 65) return 'B';
+    if (score >= 60) return 'B-';
+    if (score >= 55) return 'C+';
+    if (score >= 50) return 'C';
+    if (score >= 45) return 'C-';
+    if (score >= 40) return 'D+';
+    if (score >= 35) return 'D';
+    return 'E';
+};
+
+// ============================================================
+// ESCAPE HTML HELPER
+// ============================================================
+
+window.escapeHtml = function(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 };
 
 // ============================================================
 // RENDER GRADE DISTRIBUTION CHART
 // ============================================================
 
-window.renderGradeDistributionChart = function(marks) {
+window.renderGradeDistributionChart = function(marks, nckMarks) {
     const canvas = document.getElementById('analyticsGradeChart');
     if (!canvas) return;
     
@@ -273,7 +320,20 @@ window.renderGradeDistributionChart = function(marks) {
         'A': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0
     };
     
+    // Process student_marks
     marks?.forEach(m => {
+        const score = m.final_score || 0;
+        if (score > 0) {
+            if (score >= 80) grades.A++;
+            else if (score >= 65) grades.B++;
+            else if (score >= 60) grades.C++;
+            else if (score >= 40) grades.D++;
+            else grades.F++;
+        }
+    });
+    
+    // Process NCK marks
+    nckMarks?.forEach(m => {
         const score = m.final_score || 0;
         if (score > 0) {
             if (score >= 80) grades.A++;
@@ -408,7 +468,7 @@ window.renderSubjectPerformanceChart = function(marks) {
 // RENDER BLOCK PERFORMANCE CHART
 // ============================================================
 
-window.renderBlockPerformanceChart = function(marks, students) {
+window.renderBlockPerformanceChart = function(students, marks) {
     const canvas = document.getElementById('analyticsBlockChart');
     if (!canvas) return;
     
@@ -511,7 +571,7 @@ window.renderBlockPerformanceChart = function(marks, students) {
 // RENDER PROGRAM COMPARISON CHART
 // ============================================================
 
-window.renderProgramComparisonChart = function(marks, students) {
+window.renderProgramComparisonChart = function(students, marks) {
     const canvas = document.getElementById('analyticsProgramChart');
     if (!canvas) return;
     
@@ -600,7 +660,7 @@ window.renderProgramComparisonChart = function(marks, students) {
 };
 
 // ============================================================
-// NEW: RENDER UNIT RANKING CHART
+// RENDER UNIT RANKING CHART
 // ============================================================
 
 window.renderUnitRankingChart = function(marks) {
@@ -614,7 +674,6 @@ window.renderUnitRankingChart = function(marks) {
         window.analyticsChartInstances.unitRankingChart = null;
     }
     
-    // Group by subject and calculate average
     const subjectData = {};
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
@@ -629,7 +688,6 @@ window.renderUnitRankingChart = function(marks) {
         }
     });
     
-    // Calculate average and sort by average (descending)
     const sortedSubjects = Object.keys(subjectData)
         .map(subject => ({
             name: subject,
@@ -637,12 +695,12 @@ window.renderUnitRankingChart = function(marks) {
             count: subjectData[subject].count,
             passRate: subjectData[subject].count > 0 ? Math.round((subjectData[subject].pass / subjectData[subject].count) * 100) : 0
         }))
-        .sort((a, b) => b.avg - a.avg);
+        .sort((a, b) => b.avg - a.avg)
+        .slice(0, 15);
     
-    const topSubjects = sortedSubjects.slice(0, 15);
-    const labels = topSubjects.map(s => s.name.length > 20 ? s.name.substring(0, 20) + '...' : s.name);
-    const avgData = topSubjects.map(s => s.avg);
-    const passData = topSubjects.map(s => s.passRate);
+    const labels = sortedSubjects.map(s => s.name.length > 20 ? s.name.substring(0, 20) + '...' : s.name);
+    const avgData = sortedSubjects.map(s => s.avg);
+    const passData = sortedSubjects.map(s => s.passRate);
     
     const colors = avgData.map(avg => {
         if (avg >= 80) return 'rgba(16, 185, 129, 0.8)';
@@ -705,14 +763,13 @@ window.renderUnitRankingChart = function(marks) {
 };
 
 // ============================================================
-// NEW: RENDER UNIT RANKINGS TABLE
+// RENDER UNIT RANKINGS TABLE
 // ============================================================
 
-window.renderUnitRankings = function(marks, students) {
+window.renderUnitRankings = function(marks) {
     const container = document.getElementById('analytics_unit_rankings');
     if (!container) return;
     
-    // Group by subject
     const subjectData = {};
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
@@ -800,14 +857,13 @@ window.renderUnitRankings = function(marks, students) {
 };
 
 // ============================================================
-// NEW: RENDER TOP 10 STUDENTS
+// RENDER TOP 10 STUDENTS
 // ============================================================
 
 window.renderTopStudents = function(students, marks) {
     const container = document.getElementById('analytics_top_students');
     if (!container) return;
     
-    // Calculate average per student
     const studentAverages = {};
     marks?.forEach(m => {
         const admission = m.admission_number;
@@ -822,7 +878,6 @@ window.renderTopStudents = function(students, marks) {
         }
     });
     
-    // Calculate averages and add student info
     const studentData = [];
     students?.forEach(s => {
         const data = studentAverages[s.student_id];
@@ -841,7 +896,6 @@ window.renderTopStudents = function(students, marks) {
         }
     });
     
-    // Sort by average (descending) and get top 10
     const topStudents = studentData.sort((a, b) => b.avg - a.avg).slice(0, 10);
     
     if (topStudents.length === 0) {
@@ -855,7 +909,7 @@ window.renderTopStudents = function(students, marks) {
     
     topStudents.forEach((data, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
-        const grade = window.calculateTranscriptGrade(data.avg);
+        const grade = window.calculateGrade(data.avg);
         const statusColor = data.avg >= 60 ? '#10b981' : '#dc2626';
         
         html += `
@@ -892,14 +946,13 @@ window.renderTopStudents = function(students, marks) {
 };
 
 // ============================================================
-// NEW: RENDER WEAK STUDENTS (At Risk)
+// RENDER WEAK STUDENTS (At Risk)
 // ============================================================
 
 window.renderWeakStudents = function(students, marks) {
     const container = document.getElementById('analytics_weak_students');
     if (!container) return;
     
-    // Calculate average per student
     const studentAverages = {};
     marks?.forEach(m => {
         const admission = m.admission_number;
@@ -914,13 +967,12 @@ window.renderWeakStudents = function(students, marks) {
         }
     });
     
-    // Calculate averages and add student info
     const studentData = [];
     students?.forEach(s => {
         const data = studentAverages[s.student_id];
         if (data && data.count > 0) {
             const avg = Math.round((data.total / data.count) * 10) / 10;
-            if (avg > 0 && avg < 60) { // Only students with scores below 60%
+            if (avg > 0 && avg < 60) {
                 studentData.push({
                     student: s,
                     avg: avg,
@@ -932,7 +984,6 @@ window.renderWeakStudents = function(students, marks) {
         }
     });
     
-    // Sort by average (ascending) - weakest first
     const weakStudents = studentData.sort((a, b) => a.avg - b.avg);
     
     if (weakStudents.length === 0) {
@@ -996,14 +1047,13 @@ window.renderWeakStudents = function(students, marks) {
 };
 
 // ============================================================
-// NEW: RENDER BLOCK FILTER STATS
+// RENDER BLOCK FILTER STATS
 // ============================================================
 
 window.renderBlockFilterStats = function(students, marks, selectedBlock) {
     const container = document.getElementById('analytics_block_filter_stats');
     if (!container) return;
     
-    // Group by block
     const blockStats = {};
     const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
     
@@ -1011,7 +1061,6 @@ window.renderBlockFilterStats = function(students, marks, selectedBlock) {
         blockStats[b] = { total: 0, avg: 0, pass: 0, fail: 0, pending: 0, totalScore: 0, scoredCount: 0 };
     });
     
-    // Count students per block
     students?.forEach(s => {
         const block = s.block || 'Unknown';
         if (blockStats[block]) {
@@ -1021,7 +1070,6 @@ window.renderBlockFilterStats = function(students, marks, selectedBlock) {
         }
     });
     
-    // Calculate marks per block
     marks?.forEach(m => {
         const block = m.block || 'Unknown';
         const score = m.final_score || 0;
@@ -1037,13 +1085,11 @@ window.renderBlockFilterStats = function(students, marks, selectedBlock) {
         }
     });
     
-    // Calculate averages
     Object.keys(blockStats).forEach(block => {
         const data = blockStats[block];
         data.avg = data.scoredCount > 0 ? Math.round((data.totalScore / data.scoredCount) * 10) / 10 : 0;
     });
     
-    // Get the selected block or all
     const displayBlocks = selectedBlock !== 'all' 
         ? [selectedBlock] 
         : Object.keys(blockStats).filter(b => blockStats[b].total > 0);
@@ -1422,7 +1468,7 @@ window.renderAnalyticsTrendsTable = function(students, marks) {
 // RENDER ANALYTICS EXAM DETAILS
 // ============================================================
 
-window.renderAnalyticsExamDetails = function(marks, students, program, block, year) {
+window.renderAnalyticsExamDetails = function(marks, students) {
     const tbody = document.getElementById('analytics_exam_details_body');
     if (!tbody) return;
     
@@ -1454,24 +1500,6 @@ window.renderAnalyticsExamDetails = function(marks, students, program, block, ye
     });
     
     tbody.innerHTML = html;
-};
-
-// ============================================================
-// CALCULATE TRANSCRIPT GRADE (Helper)
-// ============================================================
-
-window.calculateTranscriptGrade = function(score) {
-    if (score >= 80) return 'A';
-    if (score >= 75) return 'A-';
-    if (score >= 70) return 'B+';
-    if (score >= 65) return 'B';
-    if (score >= 60) return 'B-';
-    if (score >= 55) return 'C+';
-    if (score >= 50) return 'C';
-    if (score >= 45) return 'C-';
-    if (score >= 40) return 'D+';
-    if (score >= 35) return 'D';
-    return 'E';
 };
 
 // ============================================================
@@ -1556,20 +1584,6 @@ window.updateAnalyticsMetric = function() {
 };
 
 // ============================================================
-// ESCAPE HTML HELPER
-// ============================================================
-
-window.escapeHtml = function(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-};
-
-// ============================================================
 // EXPOSE FUNCTIONS TO GLOBAL SCOPE
 // ============================================================
 
@@ -1579,7 +1593,7 @@ window.exportAnalyticsReport = window.exportAnalyticsReport;
 window.filterAnalytics = window.filterAnalytics;
 window.updateAnalyticsMetric = window.updateAnalyticsMetric;
 window.getProgramDisplayName = window.getProgramDisplayName;
-window.calculateTranscriptGrade = window.calculateTranscriptGrade;
+window.calculateGrade = window.calculateGrade;
 window.escapeHtml = window.escapeHtml;
 
 console.log('✅ Super Admin Analytics Module Loaded Successfully!');
