@@ -265,124 +265,139 @@ const LecturerAttendance = {
     // ============================================================
     // RENDER TODAY'S ATTENDANCE
     // ============================================================
-    renderTodayAttendance() {
-        const tbody = document.getElementById('attendanceTable');
-        if (!tbody) return;
+ // ============================================================
+// RENDER TODAY'S ATTENDANCE - FIXED TO USE REGISTRATION NUMBER
+// ============================================================
+renderTodayAttendance() {
+    const tbody = document.getElementById('attendanceTable');
+    if (!tbody) return;
 
-        const logs = this.todayLogs;
+    const logs = this.todayLogs;
 
-        // Update count
-        const countEl = document.getElementById('todayLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
+    // Update count
+    const countEl = document.getElementById('todayLogCount');
+    if (countEl) countEl.textContent = `${logs.length} records`;
 
-        // Empty state
-        if (!logs || logs.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                        <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                        <p style="margin:0;">No student attendance records today.</p>
-                        <p style="font-size:12px;margin-top:5px;color:#cbd5e1;">Students will appear here after they check in.</p>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
+    // Empty state
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+                    <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                    <p style="margin:0;">No student attendance records today.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
-        // Status colors
-        const statusColors = {
-            'Present': '#10b981',
-            'Absent': '#ef4444',
-            'Pending': '#f59e0b',
-            'Late': '#f59e0b',
-            'Excused': '#3b82f6'
-        };
+    const statusColors = {
+        'Present': '#10b981',
+        'Absent': '#ef4444',
+        'Pending': '#f59e0b',
+        'Late': '#f59e0b',
+        'Excused': '#3b82f6'
+    };
 
-        // Build table rows
-        tbody.innerHTML = logs.map((log, index) => {
-            const hasLocation = log.latitude && log.longitude;
-            const status = log.attendance_status || 'Pending';
-            const statusColor = statusColors[status] || '#6b7280';
-            
-            const studentName = log.student_name || 'Unknown Student';
-            const studentId = log.student_id || 'N/A';
-            const displayId = studentId.length > 12 ? studentId.substring(0, 12) + '...' : studentId;
-            
-            const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
-            const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            }) : 'N/A';
+    tbody.innerHTML = logs.map((log, index) => {
+        const hasLocation = log.latitude && log.longitude;
+        const status = log.attendance_status || 'Pending';
+        const statusColor = statusColors[status] || '#6b7280';
+        
+        const studentName = log.student_name || 'Unknown Student';
+        
+        // ✅ FIX: Use registration_number instead of student_id
+        // registration_number contains: KRCHN/0052/MAR/2024
+        // student_id contains: 28fa4da5-93a9-4098-ac2e-88ba142a77ee (UUID)
+        const regNumber = log.registration_number || log.student_id || 'N/A';
+        const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
+        
+        const blockDisplay = log.block || 'N/A';
+        const programDisplay = log.program || 'N/A';
+        
+        const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
+        const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        }) : 'N/A';
 
-            return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
-                    onmouseover="this.style.background='#f8fafc'" 
-                    onmouseout="this.style.background='transparent'">
-                    
-                    <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
-                        ${this.escapeHtml(studentName)}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
-                        title="${this.escapeHtml(studentId)}">
-                        ${this.escapeHtml(displayId)}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
-                        <span style="background: ${log.program === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; 
-                                     color: ${log.program === 'KRCHN' ? '#1e40af' : '#92400e'}; 
-                                     padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                            ${this.escapeHtml(log.program || 'N/A')}
-                        </span>
-                    </td>
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                        ${this.escapeHtml(log.block || 'N/A')}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                        ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
-                    </td>
-                    
-                    <td style="padding: 10px 14px;">
-                        <span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                            ${this.escapeHtml(log.session_type || 'Class')}
-                        </span>
-                    </td>
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                        ${timeStr}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${this.escapeHtml(log.location_address || log.location_friendly_name || log.location_name || 'N/A')}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${statusColor}20; 
-                                     color: ${statusColor}; 
-                                     padding: 3px 12px; 
-                                     border-radius: 12px; 
-                                     font-size: 11px; 
-                                     font-weight: 600;">
-                            ${status}
-                        </span>
-                        ${log.is_verified ? '<span style="font-size:10px;color:#10b981;margin-left:4px;">✓</span>' : ''}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; text-align: center;">
-                        ${hasLocation ? 
-                            `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
-                                    style="background: #4C1D95; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
-                                <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> Map
-                            </button>` : 
-                            `<span style="color: #94a3b8; font-size: 11px;">No location</span>`
-                        }
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    },
+        // Determine if this is a lecturer check-in
+        const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
+        const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
+            (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
+
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
+                onmouseover="this.style.background='${isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
+                onmouseout="this.style.background='${isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
+                
+                <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
+                    ${this.escapeHtml(studentName)}
+                    ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
+                </td>
+                
+                <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
+                    title="${this.escapeHtml(regNumber)}">
+                    ${this.escapeHtml(displayReg)}
+                </td>
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
+                    <span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; 
+                                 color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'}; 
+                                 padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                        ${this.escapeHtml(programDisplay)}
+                    </span>
+                </td>
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                    ${this.escapeHtml(blockDisplay)}
+                </td>
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                    ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
+                </td>
+                
+                <td style="padding: 10px 14px;">
+                    <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; 
+                                 color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; 
+                                 padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                        ${this.escapeHtml(log.session_type || 'Class')}
+                    </span>
+                </td>
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                    ${timeStr}
+                </td>
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${this.escapeHtml(locationDisplay)}
+                </td>
+                
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="background: ${statusColor}20; 
+                                 color: ${statusColor}; 
+                                 padding: 3px 12px; 
+                                 border-radius: 12px; 
+                                 font-size: 11px; 
+                                 font-weight: 600;">
+                        ${status}
+                    </span>
+                    ${log.is_verified ? '<span style="font-size:10px;color:#10b981;margin-left:4px;">✓</span>' : ''}
+                </td>
+                
+                <td style="padding: 10px 14px; text-align: center;">
+                    ${hasLocation && !isLecturerCheckin ? 
+                        `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
+                                style="background: #4C1D95; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
+                            <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> Map
+                        </button>` : 
+                        `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
+                    }
+                </td>
+            </tr>
+        `;
+    }).join('');
+},
 
     // ============================================================
     // UPDATE STATS - FULL FUNCTION
@@ -516,107 +531,118 @@ const LecturerAttendance = {
     // ============================================================
     // RENDER PAST ATTENDANCE
     // ============================================================
-    renderPastAttendance() {
-        const tbody = document.getElementById('pastAttendanceTable');
-        if (!tbody) return;
+   // ============================================================
+// RENDER PAST ATTENDANCE - FIXED TO USE REGISTRATION NUMBER
+// ============================================================
+renderPastAttendance() {
+    const tbody = document.getElementById('pastAttendanceTable');
+    if (!tbody) return;
 
-        const logs = this.pastLogs;
+    const logs = this.pastLogs;
 
-        // Update count
-        const countEl = document.getElementById('pastLogCount');
-        if (countEl) countEl.textContent = `${logs.length} records`;
+    // Update count
+    const countEl = document.getElementById('pastLogCount');
+    if (countEl) countEl.textContent = `${logs.length} records`;
 
-        // Empty state
-        if (!logs || logs.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                        <i class="fas fa-history" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                        <p style="margin:0;">No past attendance records found.</p>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
+    // Empty state
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+                    <i class="fas fa-history" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                    <p style="margin:0;">No past attendance records found.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
-        const statusColors = {
-            'Present': '#10b981',
-            'Absent': '#ef4444',
-            'Pending': '#f59e0b',
-            'Late': '#f59e0b',
-            'Excused': '#3b82f6'
-        };
+    const statusColors = {
+        'Present': '#10b981',
+        'Absent': '#ef4444',
+        'Pending': '#f59e0b',
+        'Late': '#f59e0b',
+        'Excused': '#3b82f6'
+    };
 
-        tbody.innerHTML = logs.map((log) => {
-            const hasLocation = log.latitude && log.longitude;
-            const status = log.attendance_status || 'Pending';
-            const statusColor = statusColors[status] || '#6b7280';
-            const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
-            
-            const studentName = log.student_name || 'Unknown Student';
-            const studentId = log.student_id || 'N/A';
-            const displayId = studentId.length > 12 ? studentId.substring(0, 12) + '...' : studentId;
+    tbody.innerHTML = logs.map((log) => {
+        const hasLocation = log.latitude && log.longitude;
+        const status = log.attendance_status || 'Pending';
+        const statusColor = statusColors[status] || '#6b7280';
+        const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
+        
+        const studentName = log.student_name || 'Unknown Student';
+        
+        // ✅ FIX: Use registration_number instead of student_id
+        const regNumber = log.registration_number || log.student_id || 'N/A';
+        const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
+        
+        const blockDisplay = log.block || 'N/A';
+        const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
+        const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
+            (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
 
-            return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
-                    onmouseover="this.style.background='#f8fafc'" 
-                    onmouseout="this.style.background='transparent'">
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
-                        ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
-                        ${this.escapeHtml(studentName)}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
-                        title="${this.escapeHtml(studentId)}">
-                        ${this.escapeHtml(displayId)}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                        ${this.escapeHtml(log.block || 'N/A')}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                        ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
-                    </td>
-                    
-                    <td style="padding: 10px 14px;">
-                        <span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                            ${this.escapeHtml(log.session_type || 'Class')}
-                        </span>
-                    </td>
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                        ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${this.escapeHtml(log.location_address || log.location_friendly_name || log.location_name || 'N/A')}
-                    </td>
-                    
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${statusColor}20; color: ${statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                            ${status}
-                        </span>
-                    </td>
-                    
-                    <td style="padding: 10px 14px; text-align: center;">
-                        ${hasLocation ? 
-                            `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
-                                    style="background: #4C1D95; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
-                                <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> Map
-                            </button>` : 
-                            `<span style="color: #94a3b8; font-size: 11px;">No location</span>`
-                        }
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    },
-
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
+                onmouseover="this.style.background='${isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
+                onmouseout="this.style.background='${isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
+                    ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </td>
+                
+                <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
+                    ${this.escapeHtml(studentName)}
+                </td>
+                
+                <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
+                    title="${this.escapeHtml(regNumber)}">
+                    ${this.escapeHtml(displayReg)}
+                </td>
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                    ${this.escapeHtml(blockDisplay)}
+                </td>
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                    ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
+                </td>
+                
+                <td style="padding: 10px 14px;">
+                    <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; 
+                                 color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; 
+                                 padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                        ${this.escapeHtml(log.session_type || 'Class')}
+                    </span>
+                </td>
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                    ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                </td>
+                
+                <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${this.escapeHtml(locationDisplay)}
+                </td>
+                
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="background: ${statusColor}20; color: ${statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                        ${status}
+                    </span>
+                </td>
+                
+                <td style="padding: 10px 14px; text-align: center;">
+                    ${hasLocation && !isLecturerCheckin ? 
+                        `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
+                                style="background: #4C1D95; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
+                            <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> Map
+                        </button>` : 
+                        `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
+                    }
+                </td>
+            </tr>
+        `;
+    }).join('');
+},
     // ============================================================
     // LOAD ATTENDANCE STATS (for dashboard cards)
     // ============================================================
