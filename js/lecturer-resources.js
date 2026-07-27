@@ -1,4 +1,4 @@
-// js/lecturer-resources.js
+// js/lecturer-resources.js - COMPLETE FIXED VERSION
 /**
  * NCHSM Lecturer Resources Module
  * AUTO-PUBLISH - No admin approval required
@@ -9,6 +9,8 @@
 const LecturerResources = {
     resources: [],
     lecturerAssignmentId: null,
+    isUploading: false,  // ✅ Prevents double submission
+    editingResourceId: null,  // ✅ For edit functionality
     
     async init() {
         console.log('📁 Initializing Lecturer Resources (Auto-Publish)...');
@@ -86,7 +88,6 @@ const LecturerResources = {
             
             const userId = this.lecturerAssignmentId || profile.user_id;
             
-            // ✅ CORRECT: Use 'uploaded_by' column (not 'created_by')
             const { data: resources, error } = await supabase
                 .from('resources')
                 .select('*')
@@ -138,7 +139,6 @@ const LecturerResources = {
         tbody.innerHTML = resources.map(r => {
             // ✅ Check ownership using 'uploaded_by'
             const isOwner = r.uploaded_by === currentUserId || r.uploaded_by === profile?.user_id;
-            // ✅ Use correct column names
             const programDisplay = r.target_program || r.program_type || r.program || 'N/A';
             const blockDisplay = r.block || r.block_term || 'N/A';
             
@@ -181,7 +181,13 @@ const LecturerResources = {
                                 </a>
                             ` : ''}
                             ${isOwner ? `
-                                <button onclick="LecturerResources.deleteResource('${r.id}')" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" 
+                                <button onclick="LecturerResources.editResource('${r.id}')" 
+                                        style="background: #dbeafe; color: #1e40af; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" 
+                                        onmouseover="this.style.background='#bfdbfe'" onmouseout="this.style.background='#dbeafe'">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button onclick="LecturerResources.deleteResource('${r.id}')" 
+                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" 
                                         onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
@@ -197,13 +203,11 @@ const LecturerResources = {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
         
-        // Program - use 'program' column
         const programSelect = document.getElementById('resourceProgram');
         if (programSelect && program) {
             programSelect.innerHTML = `<option value="${program}">${program}</option>`;
         }
         
-        // Intake years
         const years = [2024, 2025, 2026, 2027, 2028];
         const intakeSelect = document.getElementById('resourceIntake');
         if (intakeSelect) {
@@ -211,7 +215,6 @@ const LecturerResources = {
                 years.map(y => `<option value="${y}">${y}</option>`).join('');
         }
         
-        // Blocks - use 'block' column
         const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
         const blockSelect = document.getElementById('resourceBlock');
         if (blockSelect) {
@@ -221,16 +224,18 @@ const LecturerResources = {
     },
     
     setupEventListeners() {
-        // Upload form
         const form = document.getElementById('uploadResourceForm');
         if (form) {
-            form.addEventListener('submit', (e) => {
+            // ✅ Remove any existing listeners to prevent duplicates
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+            
+            newForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleUpload(e);
             });
         }
         
-        // Search
         const searchInput = document.getElementById('resourceSearch');
         if (searchInput) {
             let timeout;
@@ -240,7 +245,6 @@ const LecturerResources = {
             });
         }
         
-        // Search button
         const searchBtn = document.getElementById('resourceSearchBtn');
         if (searchBtn) {
             searchBtn.addEventListener('click', () => {
@@ -248,11 +252,16 @@ const LecturerResources = {
             });
         }
         
-        // Refresh button
         const refreshBtn = document.querySelector('#resources-content .btn-refresh') || 
                           document.querySelector('#resources-content button[onclick*="loadResources"]');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.loadResources());
+        }
+        
+        // ✅ Cancel edit button
+        const cancelBtn = document.getElementById('cancelEditResource');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.cancelEdit());
         }
     },
     
@@ -284,19 +293,30 @@ const LecturerResources = {
         }
     },
     
+    // ============================================
+    // HANDLE UPLOAD - FIXED (Prevents double submission)
+    // ============================================
     async handleUpload(e) {
-        // Handle both event and direct calls
+        // ✅ Prevent double submission
+        if (this.isUploading) {
+            console.log('⚠️ Upload already in progress, ignoring duplicate');
+            return;
+        }
+        
         if (e && typeof e.preventDefault === 'function') {
             e.preventDefault();
         }
         
+        this.isUploading = true;  // ✅ Set flag
+        
         const form = document.getElementById('uploadResourceForm');
         const btn = form?.querySelector('button[type="submit"]');
         const originalText = btn?.innerHTML || 'Publish Resource';
+        const isEditing = this.editingResourceId !== null;
         
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${isEditing ? 'Updating...' : 'Publishing...'}`;
         }
         
         const program = document.getElementById('resourceProgram')?.value;
@@ -307,8 +327,9 @@ const LecturerResources = {
         const category = document.getElementById('resourceCategory')?.value;
         const description = document.getElementById('resourceDescription')?.value?.trim();
         
-        if (!fileInput?.files.length || !program || !intake || !block || !title || !category) {
+        if (!program || !intake || !block || !title || !category) {
             window.showNotification('Please fill all required fields.', 'error');
+            this.isUploading = false;
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -316,7 +337,18 @@ const LecturerResources = {
             return;
         }
         
-        const file = fileInput.files[0];
+        // ✅ If editing, file is optional
+        if (!isEditing && !fileInput?.files.length) {
+            window.showNotification('Please select a file to upload.', 'error');
+            this.isUploading = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+            return;
+        }
+        
+        const file = fileInput?.files?.[0];
         
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -327,69 +359,126 @@ const LecturerResources = {
                 throw new Error('Database connection not available');
             }
             
-            // Upload file to storage
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-            const filePath = `resources/${program}/${intake}/${block}/${fileName}`;
+            let fileUrl = null;
+            let filePath = null;
             
-            const { error: uploadError } = await supabase.storage
-                .from('resources')
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
-            
-            if (uploadError) {
-                console.error('Storage error:', uploadError);
-                throw new Error('Failed to upload file: ' + uploadError.message);
+            // ✅ Only upload file if it's a new upload or editing with new file
+            if (file) {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                filePath = `resources/${program}/${intake}/${block}/${fileName}`;
+                
+                const { error: uploadError } = await supabase.storage
+                    .from('resources')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+                
+                if (uploadError) {
+                    console.error('Storage error:', uploadError);
+                    throw new Error('Failed to upload file: ' + uploadError.message);
+                }
+                
+                const { data: urlData } = supabase.storage
+                    .from('resources')
+                    .getPublicUrl(filePath);
+                
+                fileUrl = urlData?.publicUrl || '';
             }
             
-            const { data: urlData } = supabase.storage
-                .from('resources')
-                .getPublicUrl(filePath);
+            let result;
             
-            const fileUrl = urlData?.publicUrl || '';
-            
-            // ✅ CORRECT: Use correct column names that exist in the table
-            const { data: result, error: dbError } = await supabase
-                .from('resources')
-                .insert({
+            if (isEditing) {
+                // ✅ UPDATE existing resource
+                const updateData = {
                     title: title,
                     description: description || '',
                     category: category,
-                    program_type: program,        // ✅ Column exists
-                    target_program: program,       // ✅ Column exists
-                    intake: intake,                // ✅ Column exists
-                    block: block,                  // ✅ Column exists
-                    block_term: block,             // ✅ Column exists
-                    file_url: fileUrl,             // ✅ Column exists
-                    file_path: filePath,           // ✅ Column exists
-                    file_name: file.name,          // ✅ Column exists
-                    file_size: file.size,          // ✅ Column exists
-                    file_type: file.type || file.name.split('.').pop(), // ✅ Column exists
-                    uploaded_by: userId,           // ✅ Column exists (NOT created_by)
-                    uploaded_by_name: profile?.full_name || 'Lecturer', // ✅ Column exists
-                    approval_status: 'approved',   // ✅ Column exists
-                    created_at: new Date().toISOString() // ✅ Column exists
-                })
-                .select();
-            
-            if (dbError) {
-                console.error('DB Error:', dbError);
-                // Delete the uploaded file if DB insert fails
-                await supabase.storage
+                    program_type: program,
+                    target_program: program,
+                    intake: intake,
+                    block: block,
+                    block_term: block,
+                    updated_at: new Date().toISOString()
+                };
+                
+                // Only update file fields if a new file was uploaded
+                if (file) {
+                    updateData.file_url = fileUrl;
+                    updateData.file_path = filePath;
+                    updateData.file_name = file.name;
+                    updateData.file_size = file.size;
+                    updateData.file_type = file.type || file.name.split('.').pop();
+                }
+                
+                const { data: updateResult, error: updateError } = await supabase
                     .from('resources')
-                    .remove([filePath]);
-                throw new Error('Failed to save resource: ' + dbError.message);
+                    .update(updateData)
+                    .eq('id', this.editingResourceId)
+                    .eq('uploaded_by', userId) // ✅ Ensure ownership
+                    .select();
+                
+                if (updateError) {
+                    console.error('Update error:', updateError);
+                    throw new Error('Failed to update resource: ' + updateError.message);
+                }
+                
+                result = updateResult;
+                window.showNotification('✅ Resource updated successfully!', 'success');
+                this.cancelEdit();
+                
+            } else {
+                // ✅ INSERT new resource
+                const { data: insertResult, error: dbError } = await supabase
+                    .from('resources')
+                    .insert({
+                        title: title,
+                        description: description || '',
+                        category: category,
+                        program_type: program,
+                        target_program: program,
+                        intake: intake,
+                        block: block,
+                        block_term: block,
+                        file_url: fileUrl,
+                        file_path: filePath,
+                        file_name: file.name,
+                        file_size: file.size,
+                        file_type: file.type || file.name.split('.').pop(),
+                        uploaded_by: userId,
+                        uploaded_by_name: profile?.full_name || 'Lecturer',
+                        approval_status: 'approved',
+                        created_at: new Date().toISOString()
+                    })
+                    .select();
+                
+                if (dbError) {
+                    console.error('DB Error:', dbError);
+                    if (filePath) {
+                        await supabase.storage
+                            .from('resources')
+                            .remove([filePath]);
+                    }
+                    throw new Error('Failed to save resource: ' + dbError.message);
+                }
+                
+                result = insertResult;
+                window.showNotification('✅ Resource published successfully! Students can now access it.', 'success');
             }
             
-            // Add to local list
+            // Add/update in local list
             if (result && result.length > 0) {
-                this.resources.unshift(result[0]);
+                if (isEditing) {
+                    const index = this.resources.findIndex(r => r.id === this.editingResourceId);
+                    if (index !== -1) {
+                        this.resources[index] = result[0];
+                    }
+                } else {
+                    this.resources.unshift(result[0]);
+                }
                 this.renderResources();
             }
-            
-            window.showNotification('✅ Resource published successfully! Students can now access it.', 'success');
             
             // Show success banner
             const successBanner = document.getElementById('resourceUploadSuccess');
@@ -401,12 +490,14 @@ const LecturerResources = {
             }
             
             form?.reset();
+            document.getElementById('resourceFileName')?.textContent = 'No file selected';
             await this.loadResources();
             
         } catch (error) {
             console.error('Upload error:', error);
-            window.showNotification('Upload failed: ' + error.message, 'error');
+            window.showNotification(`❌ ${error.message}`, 'error');
         } finally {
+            this.isUploading = false;
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -414,6 +505,113 @@ const LecturerResources = {
         }
     },
     
+    // ============================================
+    // EDIT RESOURCE
+    // ============================================
+    async editResource(resourceId) {
+        const resource = this.resources.find(r => r.id === resourceId);
+        if (!resource) {
+            window.showNotification('Resource not found.', 'error');
+            return;
+        }
+        
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const userId = this.lecturerAssignmentId || profile?.user_id;
+        
+        // ✅ Check ownership
+        if (resource.uploaded_by !== userId) {
+            window.showNotification('You can only edit resources you uploaded.', 'warning');
+            return;
+        }
+        
+        // ✅ Set editing mode
+        this.editingResourceId = resourceId;
+        
+        // ✅ Populate form with resource data
+        document.getElementById('resourceTitle').value = resource.title || '';
+        document.getElementById('resourceDescription').value = resource.description || '';
+        document.getElementById('resourceCategory').value = resource.category || 'Academic';
+        document.getElementById('resourceProgram').value = resource.target_program || resource.program_type || '';
+        document.getElementById('resourceIntake').value = resource.intake || '';
+        document.getElementById('resourceBlock').value = resource.block || resource.block_term || '';
+        
+        // ✅ Update button text
+        const submitBtn = document.querySelector('#uploadResourceForm button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Resource';
+        }
+        
+        // ✅ Show cancel button
+        const cancelBtn = document.getElementById('cancelEditResource');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'inline-flex';
+        }
+        
+        // ✅ Change form title
+        const formTitle = document.querySelector('#uploadResourceForm h4');
+        if (formTitle) {
+            formTitle.textContent = '✏️ Edit Resource';
+        }
+        
+        // ✅ Show current file info
+        const fileInfo = document.getElementById('currentFileInfo');
+        if (fileInfo && resource.file_name) {
+            fileInfo.innerHTML = `
+                <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin: 10px 0; font-size: 13px;">
+                    <strong>Current file:</strong> ${this.escapeHtml(resource.file_name)} 
+                    <span style="color: #64748b;">(leave file empty to keep current)</span>
+                </div>
+            `;
+            fileInfo.style.display = 'block';
+        }
+        
+        // ✅ Scroll to form
+        document.getElementById('uploadResourceForm')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        window.showNotification('📝 Editing resource. Make changes and click Update.', 'info');
+    },
+    
+    // ============================================
+    // CANCEL EDIT
+    // ============================================
+    cancelEdit() {
+        this.editingResourceId = null;
+        
+        // Reset form
+        const form = document.getElementById('uploadResourceForm');
+        form?.reset();
+        document.getElementById('resourceFileName')?.textContent = 'No file selected';
+        
+        // Reset button
+        const submitBtn = document.querySelector('#uploadResourceForm button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-upload"></i> Publish Resource';
+        }
+        
+        // Hide cancel button
+        const cancelBtn = document.getElementById('cancelEditResource');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+        }
+        
+        // Reset form title
+        const formTitle = document.querySelector('#uploadResourceForm h4');
+        if (formTitle) {
+            formTitle.textContent = '📤 Upload New Resource';
+        }
+        
+        // Hide file info
+        const fileInfo = document.getElementById('currentFileInfo');
+        if (fileInfo) {
+            fileInfo.style.display = 'none';
+        }
+        
+        window.showNotification('Edit cancelled.', 'info');
+    },
+    
+    // ============================================
+    // DELETE RESOURCE - FIXED
+    // ============================================
     async deleteResource(resourceId) {
         const resource = this.resources.find(r => r.id === resourceId);
         if (!resource) {
@@ -421,7 +619,8 @@ const LecturerResources = {
             return;
         }
         
-        const userId = this.lecturerAssignmentId || window.lecturerDB?.getCurrentUserId();
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const userId = this.lecturerAssignmentId || profile?.user_id;
         
         // ✅ Check ownership using 'uploaded_by'
         if (resource.uploaded_by !== userId) {
@@ -429,29 +628,39 @@ const LecturerResources = {
             return;
         }
         
-        if (!confirm(`Delete resource "${resource.title}"?`)) return;
+        if (!confirm(`Delete resource "${resource.title}"? This action cannot be undone.`)) return;
         
         try {
             const supabase = window.lecturerDB?.supabase;
             
-            // Delete from storage
+            // ✅ Delete from storage if file exists
             if (resource.file_path) {
-                await supabase.storage
+                const { error: storageError } = await supabase.storage
                     .from('resources')
                     .remove([resource.file_path]);
+                
+                if (storageError) {
+                    console.warn('Storage delete error (file may not exist):', storageError);
+                }
             }
             
-            // ✅ Delete using 'id' column
-            await supabase
+            // ✅ Delete from database
+            const { error: dbError } = await supabase
                 .from('resources')
                 .delete()
-                .eq('id', resourceId);
+                .eq('id', resourceId)
+                .eq('uploaded_by', userId); // ✅ Extra safety - only if owner
+            
+            if (dbError) {
+                console.error('DB Delete error:', dbError);
+                throw new Error('Failed to delete resource: ' + dbError.message);
+            }
             
             // Remove from local list
             this.resources = this.resources.filter(r => r.id !== resourceId);
             this.renderResources();
             
-            window.showNotification('✅ Resource deleted!', 'success');
+            window.showNotification('✅ Resource deleted successfully!', 'success');
             
         } catch (error) {
             console.error('Delete error:', error);
@@ -496,5 +705,7 @@ document.addEventListener('DOMContentLoaded', function() {
 window.LecturerResources = LecturerResources;
 window.uploadResource = (e) => LecturerResources.handleUpload(e);
 window.loadResources = () => LecturerResources.loadResources();
+window.deleteResource = (id) => LecturerResources.deleteResource(id);
+window.editResource = (id) => LecturerResources.editResource(id);
 
 console.log('✅ LecturerResources module loaded - Auto-Publish (No Admin Approval)');
