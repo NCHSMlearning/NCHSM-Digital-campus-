@@ -1,22 +1,24 @@
-// js/lecturer-resources.js - COMPLETE FIXED VERSION
+// js/lecturer-resources.js - COMPLETE VERSION
 /**
  * NCHSM Lecturer Resources Module
- * AUTO-PUBLISH - No admin approval required
- * Resources are published immediately for students
- * Uses correct table columns: uploaded_by, target_program, approval_status, etc.
+ * Supports: General Resources, Past Papers, Exam Resources
+ * Auto-published immediately
  */
 
 const LecturerResources = {
     resources: [],
+    pastPapers: [],
+    examResources: [],
     lecturerAssignmentId: null,
-    isUploading: false,  // ✅ Prevents double submission
-    editingResourceId: null,  // ✅ For edit functionality
+    isUploading: false,
+    editingResourceId: null,
+    currentTab: 'general',
     
     async init() {
-        console.log('📁 Initializing Lecturer Resources (Auto-Publish)...');
+        console.log('📁 Initializing Lecturer Resources...');
         await this.resolveLecturerId();
-        await this.loadResources();
-        this.populateResourceForm();
+        await this.loadAllResources();
+        this.populateResourceForms();
         this.setupEventListeners();
         console.log('✅ Lecturer Resources initialized');
     },
@@ -70,6 +72,15 @@ const LecturerResources = {
         }
     },
     
+    // ============================================
+    // LOAD ALL RESOURCES
+    // ============================================
+    async loadAllResources() {
+        await this.loadResources();
+        await this.loadPastPapers();
+        await this.loadExamResources();
+    },
+    
     async loadResources() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -78,9 +89,7 @@ const LecturerResources = {
                 return;
             }
             
-            const program = profile.program || profile.department;
             const supabase = window.lecturerDB?.supabase;
-            
             if (!supabase) {
                 console.warn('Supabase not available');
                 return;
@@ -92,6 +101,7 @@ const LecturerResources = {
                 .from('resources')
                 .select('*')
                 .eq('uploaded_by', userId)
+                .eq('resource_type', 'general') // Only general resources
                 .order('created_at', { ascending: false });
             
             if (error) {
@@ -102,17 +112,95 @@ const LecturerResources = {
             
             this.resources = resources || [];
             this.renderResources();
-            console.log(`✅ Loaded ${this.resources.length} resources`);
+            console.log(`✅ Loaded ${this.resources.length} general resources`);
             
         } catch (error) {
             console.error('Failed to load resources:', error);
             this.resources = [];
-            if (window.LecturerUI) {
-                window.LecturerUI.showNotification('Failed to load resources: ' + error.message, 'error');
-            }
         }
     },
     
+    async loadPastPapers() {
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
+            }
+            
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
+            
+            const userId = this.lecturerAssignmentId || profile.user_id;
+            
+            const { data: pastPapers, error } = await supabase
+                .from('resources')
+                .select('*')
+                .eq('uploaded_by', userId)
+                .eq('resource_type', 'pastpaper')
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error('Failed to load past papers:', error);
+                this.pastPapers = [];
+                return;
+            }
+            
+            this.pastPapers = pastPapers || [];
+            this.renderPastPapers();
+            console.log(`✅ Loaded ${this.pastPapers.length} past papers`);
+            
+        } catch (error) {
+            console.error('Failed to load past papers:', error);
+            this.pastPapers = [];
+        }
+    },
+    
+    async loadExamResources() {
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
+            }
+            
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
+            
+            const userId = this.lecturerAssignmentId || profile.user_id;
+            
+            const { data: examResources, error } = await supabase
+                .from('resources')
+                .select('*')
+                .eq('uploaded_by', userId)
+                .eq('resource_type', 'exam')
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error('Failed to load exam resources:', error);
+                this.examResources = [];
+                return;
+            }
+            
+            this.examResources = examResources || [];
+            this.renderExamResources();
+            console.log(`✅ Loaded ${this.examResources.length} exam resources`);
+            
+        } catch (error) {
+            console.error('Failed to load exam resources:', error);
+            this.examResources = [];
+        }
+    },
+    
+    // ============================================
+    // RENDER FUNCTIONS
+    // ============================================
     renderResources() {
         const tbody = document.getElementById('resourcesList');
         if (!tbody) return;
@@ -126,7 +214,6 @@ const LecturerResources = {
                         <i class="fas fa-file-upload" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
                         <h3 style="color: #475569; margin: 0 0 8px 0;">No Resources Uploaded</h3>
                         <p style="margin: 0; font-size: 14px;">Upload your first resource using the form above.</p>
-                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Resources are published immediately - no approval needed!</p>
                     </td>
                 </tr>
             `;
@@ -137,7 +224,6 @@ const LecturerResources = {
         const currentUserId = this.lecturerAssignmentId || profile?.user_id;
         
         tbody.innerHTML = resources.map(r => {
-            // ✅ Check ownership using 'uploaded_by'
             const isOwner = r.uploaded_by === currentUserId || r.uploaded_by === profile?.user_id;
             const programDisplay = r.target_program || r.program_type || r.program || 'N/A';
             const blockDisplay = r.block || r.block_term || 'N/A';
@@ -147,7 +233,7 @@ const LecturerResources = {
                     onmouseover="this.style.background='#f8fafc'" 
                     onmouseout="this.style.background='transparent'">
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                        <i class="fas fa-file-pdf" style="color: #ef4444; margin-right: 8px;"></i>
+                        <i class="fas fa-file-alt" style="color: #4C1D95; margin-right: 8px;"></i>
                         ${this.escapeHtml(r.title || 'Untitled')}
                     </td>
                     <td style="padding: 14px 18px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -199,6 +285,27 @@ const LecturerResources = {
         }).join('');
     },
     
+    renderPastPapers() {
+        // Similar to renderResources but for past papers
+        // You can add a separate table for past papers if needed
+        // For now, we'll use the same table
+        this.renderResources();
+    },
+    
+    renderExamResources() {
+        // Similar to renderResources but for exam resources
+        this.renderResources();
+    },
+    
+    // ============================================
+    // POPULATE FORMS
+    // ============================================
+    populateResourceForms() {
+        this.populateResourceForm();
+        this.populatePastPaperForm();
+        this.populateExamResourceForm();
+    },
+    
     populateResourceForm() {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
@@ -206,13 +313,6 @@ const LecturerResources = {
         const programSelect = document.getElementById('resourceProgram');
         if (programSelect && program) {
             programSelect.innerHTML = `<option value="${program}">${program}</option>`;
-        }
-        
-        const years = [2024, 2025, 2026, 2027, 2028];
-        const intakeSelect = document.getElementById('resourceIntake');
-        if (intakeSelect) {
-            intakeSelect.innerHTML = '<option value="">-- Select Intake --</option>' +
-                years.map(y => `<option value="${y}">${y}</option>`).join('');
         }
         
         const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
@@ -223,19 +323,150 @@ const LecturerResources = {
         }
     },
     
+    populatePastPaperForm() {
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const program = profile?.program || profile?.department;
+        
+        const programSelect = document.getElementById('pastpaperProgram');
+        if (programSelect && program) {
+            programSelect.innerHTML = `<option value="${program}">${program}</option>`;
+        }
+        
+        const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        const blockSelect = document.getElementById('pastpaperBlock');
+        if (blockSelect) {
+            blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
+                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+        }
+        
+        // Load units for past paper
+        this.loadUnitsForPastPaper();
+    },
+    
+    populateExamResourceForm() {
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const program = profile?.program || profile?.department;
+        
+        const programSelect = document.getElementById('examResourceProgram');
+        if (programSelect && program) {
+            programSelect.innerHTML = `<option value="${program}">${program}</option>`;
+        }
+        
+        const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        const blockSelect = document.getElementById('examResourceBlock');
+        if (blockSelect) {
+            blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
+                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+        }
+        
+        // Load units for exam resource
+        this.loadUnitsForExamResource();
+    },
+    
+    async loadUnitsForPastPaper() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) return;
+            
+            const lecturerId = this.lecturerAssignmentId || profile.user_id;
+            
+            const { data: assignments, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('subject_name, subject_code')
+                .eq('lecturer_id', String(lecturerId));
+            
+            if (error) {
+                console.error('Error loading units:', error);
+                return;
+            }
+            
+            const unitSelect = document.getElementById('pastpaperUnit');
+            if (unitSelect) {
+                unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
+                    (assignments || []).map(u => 
+                        `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
+                    ).join('');
+            }
+            
+        } catch (error) {
+            console.error('Failed to load units:', error);
+        }
+    },
+    
+    async loadUnitsForExamResource() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) return;
+            
+            const lecturerId = this.lecturerAssignmentId || profile.user_id;
+            
+            const { data: assignments, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('subject_name, subject_code')
+                .eq('lecturer_id', String(lecturerId));
+            
+            if (error) {
+                console.error('Error loading units:', error);
+                return;
+            }
+            
+            const unitSelect = document.getElementById('examResourceUnit');
+            if (unitSelect) {
+                unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
+                    (assignments || []).map(u => 
+                        `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
+                    ).join('');
+            }
+            
+        } catch (error) {
+            console.error('Failed to load units:', error);
+        }
+    },
+    
+    // ============================================
+    // SETUP EVENT LISTENERS
+    // ============================================
     setupEventListeners() {
+        // General Resource Form
         const form = document.getElementById('uploadResourceForm');
         if (form) {
-            // ✅ Remove any existing listeners to prevent duplicates
             const newForm = form.cloneNode(true);
             form.parentNode.replaceChild(newForm, form);
-            
             newForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleUpload(e);
             });
         }
         
+        // Past Paper Form
+        const pastPaperForm = document.getElementById('uploadPastPaperForm');
+        if (pastPaperForm) {
+            const newForm = pastPaperForm.cloneNode(true);
+            pastPaperForm.parentNode.replaceChild(newForm, pastPaperForm);
+            newForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.uploadPastPaper(e);
+            });
+        }
+        
+        // Exam Resource Form
+        const examForm = document.getElementById('uploadExamResourceForm');
+        if (examForm) {
+            const newForm = examForm.cloneNode(true);
+            examForm.parentNode.replaceChild(newForm, examForm);
+            newForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.uploadExamResource(e);
+            });
+        }
+        
+        // Search
         const searchInput = document.getElementById('resourceSearch');
         if (searchInput) {
             let timeout;
@@ -245,26 +476,462 @@ const LecturerResources = {
             });
         }
         
-        const searchBtn = document.getElementById('resourceSearchBtn');
-        if (searchBtn) {
-            searchBtn.addEventListener('click', () => {
-                this.filterTable('resourceSearch', 'resourcesList', [0, 1, 2, 3]);
-            });
-        }
-        
-        const refreshBtn = document.querySelector('#resources-content .btn-refresh') || 
-                          document.querySelector('#resources-content button[onclick*="loadResources"]');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.loadResources());
-        }
-        
-        // ✅ Cancel edit button
+        // Cancel Edit
         const cancelBtn = document.getElementById('cancelEditResource');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => this.cancelEdit());
         }
     },
     
+    // ============================================
+    // UPLOAD FUNCTIONS
+    // ============================================
+    async handleUpload(e) {
+        if (this.isUploading) {
+            console.log('⚠️ Upload already in progress');
+            return;
+        }
+        
+        this.isUploading = true;
+        const btn = document.querySelector('#uploadResourceForm button[type="submit"]');
+        const originalText = btn?.innerHTML || 'Publish Resource';
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+        }
+        
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const userId = this.lecturerAssignmentId || profile?.user_id;
+            const supabase = window.lecturerDB?.supabase;
+            
+            if (!supabase) throw new Error('Database connection not available');
+            
+            const title = document.getElementById('resourceTitle')?.value.trim();
+            const description = document.getElementById('resourceDescription')?.value?.trim();
+            const category = document.getElementById('resourceCategory')?.value;
+            const program = document.getElementById('resourceProgram')?.value;
+            const intake = document.getElementById('resourceIntake')?.value;
+            const block = document.getElementById('resourceBlock')?.value;
+            const fileInput = document.getElementById('resourceFile');
+            
+            if (!title || !program || !intake || !block || !category || !fileInput?.files?.length) {
+                window.showNotification('Please fill all required fields.', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            // Upload to storage
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `resources/${program}/${intake}/${block}/${fileName}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('resources')
+                .upload(filePath, file);
+            
+            if (uploadError) throw new Error('Failed to upload file: ' + uploadError.message);
+            
+            const { data: urlData } = supabase.storage.from('resources').getPublicUrl(filePath);
+            const fileUrl = urlData?.publicUrl || '';
+            
+            // Insert into database
+            const { data: result, error: dbError } = await supabase
+                .from('resources')
+                .insert({
+                    title: title,
+                    description: description || '',
+                    category: category,
+                    resource_type: 'general',
+                    program_type: program,
+                    target_program: program,
+                    intake: intake,
+                    block: block,
+                    block_term: block,
+                    file_url: fileUrl,
+                    file_path: filePath,
+                    file_name: file.name,
+                    file_size: file.size,
+                    file_type: file.type || file.name.split('.').pop(),
+                    uploaded_by: userId,
+                    uploaded_by_name: profile?.full_name || 'Lecturer',
+                    approval_status: 'approved',
+                    created_at: new Date().toISOString()
+                })
+                .select();
+            
+            if (dbError) throw new Error('Failed to save resource: ' + dbError.message);
+            
+            window.showNotification('✅ Resource published successfully!', 'success');
+            document.getElementById('uploadResourceForm')?.reset();
+            document.getElementById('resourceFileName').textContent = 'No file selected';
+            await this.loadResources();
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            window.showNotification('❌ ' + error.message, 'error');
+        } finally {
+            this.isUploading = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    },
+    
+    async uploadPastPaper(e) {
+        if (this.isUploading) {
+            console.log('⚠️ Upload already in progress');
+            return;
+        }
+        
+        this.isUploading = true;
+        const btn = document.querySelector('#uploadPastPaperForm button[type="submit"]');
+        const originalText = btn?.innerHTML || 'Upload Past Paper';
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        }
+        
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const userId = this.lecturerAssignmentId || profile?.user_id;
+            const supabase = window.lecturerDB?.supabase;
+            
+            if (!supabase) throw new Error('Database connection not available');
+            
+            const title = document.getElementById('pastpaperTitle')?.value.trim();
+            const year = document.getElementById('pastpaperYear')?.value;
+            const unit = document.getElementById('pastpaperUnit')?.value;
+            const examType = document.getElementById('pastpaperExamType')?.value;
+            const program = document.getElementById('pastpaperProgram')?.value;
+            const block = document.getElementById('pastpaperBlock')?.value;
+            const description = document.getElementById('pastpaperDescription')?.value?.trim();
+            const fileInput = document.getElementById('pastpaperFile');
+            
+            if (!title || !year || !unit || !examType || !program || !block || !fileInput?.files?.length) {
+                window.showNotification('Please fill all required fields.', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            // Upload to storage
+            const fileExt = file.name.split('.').pop();
+            const fileName = `pastpapers/${year}/${unit}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `pastpapers/${year}/${unit}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('resources')
+                .upload(filePath, file);
+            
+            if (uploadError) throw new Error('Failed to upload file: ' + uploadError.message);
+            
+            const { data: urlData } = supabase.storage.from('resources').getPublicUrl(filePath);
+            const fileUrl = urlData?.publicUrl || '';
+            
+            // Insert into database
+            const { data: result, error: dbError } = await supabase
+                .from('resources')
+                .insert({
+                    title: title,
+                    description: description || '',
+                    resource_type: 'pastpaper',
+                    pastpaper_year: parseInt(year),
+                    exam_type: examType,
+                    unit_name: unit,
+                    program_type: program,
+                    target_program: program,
+                    block: block,
+                    block_term: block,
+                    file_url: fileUrl,
+                    file_path: filePath,
+                    file_name: file.name,
+                    file_size: file.size,
+                    file_type: file.type || 'application/pdf',
+                    uploaded_by: userId,
+                    uploaded_by_name: profile?.full_name || 'Lecturer',
+                    approval_status: 'approved',
+                    created_at: new Date().toISOString()
+                })
+                .select();
+            
+            if (dbError) throw new Error('Failed to save past paper: ' + dbError.message);
+            
+            window.showNotification('✅ Past paper uploaded successfully!', 'success');
+            document.getElementById('uploadPastPaperForm')?.reset();
+            document.getElementById('pastpaperFileName').textContent = 'No file selected';
+            await this.loadPastPapers();
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            window.showNotification('❌ ' + error.message, 'error');
+        } finally {
+            this.isUploading = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    },
+    
+    async uploadExamResource(e) {
+        if (this.isUploading) {
+            console.log('⚠️ Upload already in progress');
+            return;
+        }
+        
+        this.isUploading = true;
+        const btn = document.querySelector('#uploadExamResourceForm button[type="submit"]');
+        const originalText = btn?.innerHTML || 'Upload Exam Resource';
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        }
+        
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const userId = this.lecturerAssignmentId || profile?.user_id;
+            const supabase = window.lecturerDB?.supabase;
+            
+            if (!supabase) throw new Error('Database connection not available');
+            
+            const title = document.getElementById('examResourceTitle')?.value.trim();
+            const resourceType = document.getElementById('examResourceType')?.value;
+            const unit = document.getElementById('examResourceUnit')?.value;
+            const program = document.getElementById('examResourceProgram')?.value;
+            const block = document.getElementById('examResourceBlock')?.value;
+            const year = document.getElementById('examResourceYear')?.value;
+            const description = document.getElementById('examResourceDescription')?.value?.trim();
+            const fileInput = document.getElementById('examResourceFile');
+            
+            if (!title || !resourceType || !unit || !program || !block || !year || !fileInput?.files?.length) {
+                window.showNotification('Please fill all required fields.', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            // Upload to storage
+            const fileExt = file.name.split('.').pop();
+            const filePath = `exam-resources/${year}/${unit}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('resources')
+                .upload(filePath, file);
+            
+            if (uploadError) throw new Error('Failed to upload file: ' + uploadError.message);
+            
+            const { data: urlData } = supabase.storage.from('resources').getPublicUrl(filePath);
+            const fileUrl = urlData?.publicUrl || '';
+            
+            // Insert into database
+            const { data: result, error: dbError } = await supabase
+                .from('resources')
+                .insert({
+                    title: title,
+                    description: description || '',
+                    resource_type: 'exam',
+                    category: resourceType,
+                    unit_name: unit,
+                    program_type: program,
+                    target_program: program,
+                    block: block,
+                    block_term: block,
+                    pastpaper_year: parseInt(year),
+                    file_url: fileUrl,
+                    file_path: filePath,
+                    file_name: file.name,
+                    file_size: file.size,
+                    file_type: file.type || file.name.split('.').pop(),
+                    uploaded_by: userId,
+                    uploaded_by_name: profile?.full_name || 'Lecturer',
+                    approval_status: 'approved',
+                    created_at: new Date().toISOString()
+                })
+                .select();
+            
+            if (dbError) throw new Error('Failed to save exam resource: ' + dbError.message);
+            
+            window.showNotification('✅ Exam resource uploaded successfully!', 'success');
+            document.getElementById('uploadExamResourceForm')?.reset();
+            document.getElementById('examResourceFileName').textContent = 'No file selected';
+            await this.loadExamResources();
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            window.showNotification('❌ ' + error.message, 'error');
+        } finally {
+            this.isUploading = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    },
+    
+    // ============================================
+    // DELETE RESOURCE
+    // ============================================
+    async deleteResource(resourceId) {
+        const allResources = [...this.resources, ...this.pastPapers, ...this.examResources];
+        const resource = allResources.find(r => r.id === resourceId);
+        
+        if (!resource) {
+            window.showNotification('Resource not found.', 'error');
+            return;
+        }
+        
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const userId = this.lecturerAssignmentId || profile?.user_id;
+        
+        if (resource.uploaded_by !== userId) {
+            window.showNotification('You can only delete resources you uploaded.', 'warning');
+            return;
+        }
+        
+        if (!confirm(`Delete "${resource.title}"? This action cannot be undone.`)) return;
+        
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            
+            if (resource.file_path) {
+                await supabase.storage.from('resources').remove([resource.file_path]);
+            }
+            
+            const { error: dbError } = await supabase
+                .from('resources')
+                .delete()
+                .eq('id', resourceId)
+                .eq('uploaded_by', userId);
+            
+            if (dbError) throw new Error('Failed to delete: ' + dbError.message);
+            
+            // Remove from local lists
+            this.resources = this.resources.filter(r => r.id !== resourceId);
+            this.pastPapers = this.pastPapers.filter(r => r.id !== resourceId);
+            this.examResources = this.examResources.filter(r => r.id !== resourceId);
+            
+            this.renderResources();
+            window.showNotification('✅ Resource deleted successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Delete error:', error);
+            window.showNotification('❌ ' + error.message, 'error');
+        }
+    },
+    
+    // ============================================
+    // EDIT RESOURCE
+    // ============================================
+    async editResource(resourceId) {
+        const allResources = [...this.resources, ...this.pastPapers, ...this.examResources];
+        const resource = allResources.find(r => r.id === resourceId);
+        
+        if (!resource) {
+            window.showNotification('Resource not found.', 'error');
+            return;
+        }
+        
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const userId = this.lecturerAssignmentId || profile?.user_id;
+        
+        if (resource.uploaded_by !== userId) {
+            window.showNotification('You can only edit resources you uploaded.', 'warning');
+            return;
+        }
+        
+        this.editingResourceId = resourceId;
+        
+        // Populate form based on resource type
+        if (resource.resource_type === 'general' || !resource.resource_type) {
+            document.getElementById('resourceTitle').value = resource.title || '';
+            document.getElementById('resourceDescription').value = resource.description || '';
+            document.getElementById('resourceCategory').value = resource.category || 'Academic';
+            document.getElementById('resourceProgram').value = resource.target_program || resource.program_type || '';
+            document.getElementById('resourceIntake').value = resource.intake || '';
+            document.getElementById('resourceBlock').value = resource.block || resource.block_term || '';
+            
+            const btn = document.querySelector('#uploadResourceForm button[type="submit"]');
+            if (btn) btn.innerHTML = '<i class="fas fa-save"></i> Update Resource';
+            
+            document.getElementById('cancelEditResource').style.display = 'inline-flex';
+            document.querySelector('#uploadResourceForm h4').textContent = '✏️ Edit Resource';
+            
+            // Show current file
+            const fileInfo = document.getElementById('currentFileInfo');
+            if (fileInfo && resource.file_name) {
+                fileInfo.innerHTML = `
+                    <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin: 10px 0; font-size: 13px;">
+                        <strong>Current file:</strong> ${this.escapeHtml(resource.file_name)} 
+                        <span style="color: #64748b;">(leave file empty to keep current)</span>
+                    </div>
+                `;
+                fileInfo.style.display = 'block';
+            }
+            
+            document.getElementById('uploadResourceForm').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        window.showNotification('📝 Editing resource. Make changes and click Update.', 'info');
+    },
+    
+    cancelEdit() {
+        this.editingResourceId = null;
+        document.getElementById('uploadResourceForm')?.reset();
+        document.getElementById('resourceFileName').textContent = 'No file selected';
+        
+        const btn = document.querySelector('#uploadResourceForm button[type="submit"]');
+        if (btn) btn.innerHTML = '<i class="fas fa-upload"></i> Publish Resource';
+        
+        document.getElementById('cancelEditResource').style.display = 'none';
+        document.querySelector('#uploadResourceForm h4').textContent = '📤 Upload New Resource';
+        document.getElementById('currentFileInfo').style.display = 'none';
+        
+        window.showNotification('Edit cancelled.', 'info');
+    },
+    
+    // ============================================
+    // TAB SWITCHING
+    // ============================================
+    switchTab(tab) {
+        this.currentTab = tab;
+        
+        // Hide all tabs
+        document.querySelectorAll('.resource-tab-content').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        // Remove active class from all buttons
+        document.querySelectorAll('.resource-tab-btn').forEach(el => {
+            el.style.background = '#e2e8f0';
+            el.style.color = '#475569';
+        });
+        
+        // Show selected tab
+        const tabContent = document.getElementById(`resource-tab-${tab}`);
+        if (tabContent) tabContent.style.display = 'block';
+        
+        // Activate button
+        const btn = document.getElementById(`tab-${tab}`);
+        if (btn) {
+            btn.style.background = '#4C1D95';
+            btn.style.color = 'white';
+        }
+        
+        // Load appropriate resources
+        if (tab === 'general') this.renderResources();
+        else if (tab === 'pastpaper') this.renderPastPapers();
+        else if (tab === 'exam') this.renderExamResources();
+    },
+    
+    // ============================================
+    // UTILITY FUNCTIONS
+    // ============================================
     filterTable(inputId, tableId, columnsToSearch = [0]) {
         const filter = document.getElementById(inputId)?.value?.toUpperCase() || '';
         const tbody = document.getElementById(tableId);
@@ -293,381 +960,6 @@ const LecturerResources = {
         }
     },
     
-    // ============================================
-    // HANDLE UPLOAD - FIXED (Prevents double submission)
-    // ============================================
-    async handleUpload(e) {
-        // ✅ Prevent double submission
-        if (this.isUploading) {
-            console.log('⚠️ Upload already in progress, ignoring duplicate');
-            return;
-        }
-        
-        if (e && typeof e.preventDefault === 'function') {
-            e.preventDefault();
-        }
-        
-        this.isUploading = true;  // ✅ Set flag
-        
-        const form = document.getElementById('uploadResourceForm');
-        const btn = form?.querySelector('button[type="submit"]');
-        const originalText = btn?.innerHTML || 'Publish Resource';
-        const isEditing = this.editingResourceId !== null;
-        
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${isEditing ? 'Updating...' : 'Publishing...'}`;
-        }
-        
-        const program = document.getElementById('resourceProgram')?.value;
-        const intake = document.getElementById('resourceIntake')?.value;
-        const block = document.getElementById('resourceBlock')?.value;
-        const fileInput = document.getElementById('resourceFile');
-        const title = document.getElementById('resourceTitle')?.value.trim();
-        const category = document.getElementById('resourceCategory')?.value;
-        const description = document.getElementById('resourceDescription')?.value?.trim();
-        
-        if (!program || !intake || !block || !title || !category) {
-            window.showNotification('Please fill all required fields.', 'error');
-            this.isUploading = false;
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-            return;
-        }
-        
-        // ✅ If editing, file is optional
-        if (!isEditing && !fileInput?.files.length) {
-            window.showNotification('Please select a file to upload.', 'error');
-            this.isUploading = false;
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-            return;
-        }
-        
-        const file = fileInput?.files?.[0];
-        
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const userId = this.lecturerAssignmentId || profile?.user_id;
-            const supabase = window.lecturerDB?.supabase;
-            
-            if (!supabase) {
-                throw new Error('Database connection not available');
-            }
-            
-            let fileUrl = null;
-            let filePath = null;
-            
-            // ✅ Only upload file if it's a new upload or editing with new file
-            if (file) {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-                filePath = `resources/${program}/${intake}/${block}/${fileName}`;
-                
-                const { error: uploadError } = await supabase.storage
-                    .from('resources')
-                    .upload(filePath, file, {
-                        cacheControl: '3600',
-                        upsert: false
-                    });
-                
-                if (uploadError) {
-                    console.error('Storage error:', uploadError);
-                    throw new Error('Failed to upload file: ' + uploadError.message);
-                }
-                
-                const { data: urlData } = supabase.storage
-                    .from('resources')
-                    .getPublicUrl(filePath);
-                
-                fileUrl = urlData?.publicUrl || '';
-            }
-            
-            let result;
-            
-            if (isEditing) {
-                // ✅ UPDATE existing resource
-                const updateData = {
-                    title: title,
-                    description: description || '',
-                    category: category,
-                    program_type: program,
-                    target_program: program,
-                    intake: intake,
-                    block: block,
-                    block_term: block,
-                    updated_at: new Date().toISOString()
-                };
-                
-                // Only update file fields if a new file was uploaded
-                if (file) {
-                    updateData.file_url = fileUrl;
-                    updateData.file_path = filePath;
-                    updateData.file_name = file.name;
-                    updateData.file_size = file.size;
-                    updateData.file_type = file.type || file.name.split('.').pop();
-                }
-                
-                const { data: updateResult, error: updateError } = await supabase
-                    .from('resources')
-                    .update(updateData)
-                    .eq('id', this.editingResourceId)
-                    .eq('uploaded_by', userId) // ✅ Ensure ownership
-                    .select();
-                
-                if (updateError) {
-                    console.error('Update error:', updateError);
-                    throw new Error('Failed to update resource: ' + updateError.message);
-                }
-                
-                result = updateResult;
-                window.showNotification('✅ Resource updated successfully!', 'success');
-                this.cancelEdit();
-                
-            } else {
-                // ✅ INSERT new resource
-                const { data: insertResult, error: dbError } = await supabase
-                    .from('resources')
-                    .insert({
-                        title: title,
-                        description: description || '',
-                        category: category,
-                        program_type: program,
-                        target_program: program,
-                        intake: intake,
-                        block: block,
-                        block_term: block,
-                        file_url: fileUrl,
-                        file_path: filePath,
-                        file_name: file.name,
-                        file_size: file.size,
-                        file_type: file.type || file.name.split('.').pop(),
-                        uploaded_by: userId,
-                        uploaded_by_name: profile?.full_name || 'Lecturer',
-                        approval_status: 'approved',
-                        created_at: new Date().toISOString()
-                    })
-                    .select();
-                
-                if (dbError) {
-                    console.error('DB Error:', dbError);
-                    if (filePath) {
-                        await supabase.storage
-                            .from('resources')
-                            .remove([filePath]);
-                    }
-                    throw new Error('Failed to save resource: ' + dbError.message);
-                }
-                
-                result = insertResult;
-                window.showNotification('✅ Resource published successfully! Students can now access it.', 'success');
-            }
-            
-            // Add/update in local list
-            if (result && result.length > 0) {
-                if (isEditing) {
-                    const index = this.resources.findIndex(r => r.id === this.editingResourceId);
-                    if (index !== -1) {
-                        this.resources[index] = result[0];
-                    }
-                } else {
-                    this.resources.unshift(result[0]);
-                }
-                this.renderResources();
-            }
-            
-            // Show success banner
-            const successBanner = document.getElementById('resourceUploadSuccess');
-            if (successBanner) {
-                successBanner.style.display = 'block';
-                setTimeout(() => {
-                    successBanner.style.display = 'none';
-                }, 6000);
-            }
-            
-            form?.reset();
-            document.getElementById('resourceFileName')?.textContent = 'No file selected';
-            await this.loadResources();
-            
-        } catch (error) {
-            console.error('Upload error:', error);
-            window.showNotification(`❌ ${error.message}`, 'error');
-        } finally {
-            this.isUploading = false;
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-        }
-    },
-    
-    // ============================================
-    // EDIT RESOURCE
-    // ============================================
-    async editResource(resourceId) {
-        const resource = this.resources.find(r => r.id === resourceId);
-        if (!resource) {
-            window.showNotification('Resource not found.', 'error');
-            return;
-        }
-        
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const userId = this.lecturerAssignmentId || profile?.user_id;
-        
-        // ✅ Check ownership
-        if (resource.uploaded_by !== userId) {
-            window.showNotification('You can only edit resources you uploaded.', 'warning');
-            return;
-        }
-        
-        // ✅ Set editing mode
-        this.editingResourceId = resourceId;
-        
-        // ✅ Populate form with resource data
-        document.getElementById('resourceTitle').value = resource.title || '';
-        document.getElementById('resourceDescription').value = resource.description || '';
-        document.getElementById('resourceCategory').value = resource.category || 'Academic';
-        document.getElementById('resourceProgram').value = resource.target_program || resource.program_type || '';
-        document.getElementById('resourceIntake').value = resource.intake || '';
-        document.getElementById('resourceBlock').value = resource.block || resource.block_term || '';
-        
-        // ✅ Update button text
-        const submitBtn = document.querySelector('#uploadResourceForm button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Resource';
-        }
-        
-        // ✅ Show cancel button
-        const cancelBtn = document.getElementById('cancelEditResource');
-        if (cancelBtn) {
-            cancelBtn.style.display = 'inline-flex';
-        }
-        
-        // ✅ Change form title
-        const formTitle = document.querySelector('#uploadResourceForm h4');
-        if (formTitle) {
-            formTitle.textContent = '✏️ Edit Resource';
-        }
-        
-        // ✅ Show current file info
-        const fileInfo = document.getElementById('currentFileInfo');
-        if (fileInfo && resource.file_name) {
-            fileInfo.innerHTML = `
-                <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin: 10px 0; font-size: 13px;">
-                    <strong>Current file:</strong> ${this.escapeHtml(resource.file_name)} 
-                    <span style="color: #64748b;">(leave file empty to keep current)</span>
-                </div>
-            `;
-            fileInfo.style.display = 'block';
-        }
-        
-        // ✅ Scroll to form
-        document.getElementById('uploadResourceForm')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        window.showNotification('📝 Editing resource. Make changes and click Update.', 'info');
-    },
-    
-    // ============================================
-    // CANCEL EDIT
-    // ============================================
-    cancelEdit() {
-        this.editingResourceId = null;
-        
-        // Reset form
-        const form = document.getElementById('uploadResourceForm');
-        form?.reset();
-        document.getElementById('resourceFileName')?.textContent = 'No file selected';
-        
-        // Reset button
-        const submitBtn = document.querySelector('#uploadResourceForm button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.innerHTML = '<i class="fas fa-upload"></i> Publish Resource';
-        }
-        
-        // Hide cancel button
-        const cancelBtn = document.getElementById('cancelEditResource');
-        if (cancelBtn) {
-            cancelBtn.style.display = 'none';
-        }
-        
-        // Reset form title
-        const formTitle = document.querySelector('#uploadResourceForm h4');
-        if (formTitle) {
-            formTitle.textContent = '📤 Upload New Resource';
-        }
-        
-        // Hide file info
-        const fileInfo = document.getElementById('currentFileInfo');
-        if (fileInfo) {
-            fileInfo.style.display = 'none';
-        }
-        
-        window.showNotification('Edit cancelled.', 'info');
-    },
-    
-    // ============================================
-    // DELETE RESOURCE - FIXED
-    // ============================================
-    async deleteResource(resourceId) {
-        const resource = this.resources.find(r => r.id === resourceId);
-        if (!resource) {
-            window.showNotification('Resource not found.', 'error');
-            return;
-        }
-        
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const userId = this.lecturerAssignmentId || profile?.user_id;
-        
-        // ✅ Check ownership using 'uploaded_by'
-        if (resource.uploaded_by !== userId) {
-            window.showNotification('You can only delete resources you uploaded.', 'warning');
-            return;
-        }
-        
-        if (!confirm(`Delete resource "${resource.title}"? This action cannot be undone.`)) return;
-        
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            
-            // ✅ Delete from storage if file exists
-            if (resource.file_path) {
-                const { error: storageError } = await supabase.storage
-                    .from('resources')
-                    .remove([resource.file_path]);
-                
-                if (storageError) {
-                    console.warn('Storage delete error (file may not exist):', storageError);
-                }
-            }
-            
-            // ✅ Delete from database
-            const { error: dbError } = await supabase
-                .from('resources')
-                .delete()
-                .eq('id', resourceId)
-                .eq('uploaded_by', userId); // ✅ Extra safety - only if owner
-            
-            if (dbError) {
-                console.error('DB Delete error:', dbError);
-                throw new Error('Failed to delete resource: ' + dbError.message);
-            }
-            
-            // Remove from local list
-            this.resources = this.resources.filter(r => r.id !== resourceId);
-            this.renderResources();
-            
-            window.showNotification('✅ Resource deleted successfully!', 'success');
-            
-        } catch (error) {
-            console.error('Delete error:', error);
-            window.showNotification('Delete failed: ' + error.message, 'error');
-        }
-    },
-    
     formatDate(dateString) {
         if (!dateString) return 'N/A';
         try {
@@ -691,21 +983,60 @@ const LecturerResources = {
     
     async refresh() {
         await this.resolveLecturerId();
-        await this.loadResources();
+        await this.loadAllResources();
         window.showNotification('Resources refreshed!', 'success');
     }
 };
 
-// Initialize on DOM ready
+// ============================================
+// GLOBAL FUNCTIONS
+// ============================================
+function switchResourceTab(tab) {
+    LecturerResources.switchTab(tab);
+}
+
+function uploadResource(e) {
+    if (e) e.preventDefault();
+    LecturerResources.handleUpload(e);
+}
+
+function uploadPastPaper(e) {
+    if (e) e.preventDefault();
+    LecturerResources.uploadPastPaper(e);
+}
+
+function uploadExamResource(e) {
+    if (e) e.preventDefault();
+    LecturerResources.uploadExamResource(e);
+}
+
+function loadResources() {
+    LecturerResources.loadAllResources();
+}
+
+function deleteResource(id) {
+    LecturerResources.deleteResource(id);
+}
+
+function editResource(id) {
+    LecturerResources.editResource(id);
+}
+
+// ============================================
+// INITIALIZE
+// ============================================
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => LecturerResources.init(), 900);
 });
 
 // Make globally accessible
 window.LecturerResources = LecturerResources;
-window.uploadResource = (e) => LecturerResources.handleUpload(e);
-window.loadResources = () => LecturerResources.loadResources();
-window.deleteResource = (id) => LecturerResources.deleteResource(id);
-window.editResource = (id) => LecturerResources.editResource(id);
+window.switchResourceTab = switchResourceTab;
+window.uploadResource = uploadResource;
+window.uploadPastPaper = uploadPastPaper;
+window.uploadExamResource = uploadExamResource;
+window.loadResources = loadResources;
+window.deleteResource = deleteResource;
+window.editResource = editResource;
 
-console.log('✅ LecturerResources module loaded - Auto-Publish (No Admin Approval)');
+console.log('✅ LecturerResources module loaded - Complete');
