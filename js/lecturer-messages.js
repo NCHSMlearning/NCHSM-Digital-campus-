@@ -1,7 +1,7 @@
-// js/lecturer-messages.js
+// js/lecturer-messages.js - COMPLETE FIXED VERSION
 /**
  * NCHSM Lecturer Messages Module
- * Uses dedicated lecturer database with correct ID resolution
+ * Uses messages table with correct column names
  * Handles both UUID and text ID formats
  * Messages sent immediately
  */
@@ -23,7 +23,7 @@ const LecturerMessages = {
     },
     
     // ============================================
-    // RESOLVE THE CORRECT LECTURER ID - HANDLES BOTH UUID AND TEXT
+    // RESOLVE THE CORRECT LECTURER ID
     // ============================================
     async resolveLecturerId() {
         try {
@@ -45,24 +45,20 @@ const LecturerMessages = {
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // Check if authId is a valid UUID
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
             
-            // If authId is not a UUID (like NCHSMNUR-001), use it directly
             if (!isUUID && authId) {
                 this.lecturerAssignmentId = authId;
                 console.log('✅ Using non-UUID auth ID:', this.lecturerAssignmentId);
                 return;
             }
             
-            // Try to find by name in lecturer_subject_assignments
             const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .ilike('lecturer_name', `%${fullName}%`);
             
             if (!assignError && assignments && assignments.length > 0) {
-                // Prefer non-UUID IDs (text IDs like NCHSMNUR-001)
                 const textId = assignments.find(a => {
                     const id = a.lecturer_id;
                     return id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
@@ -74,13 +70,11 @@ const LecturerMessages = {
                     return;
                 }
                 
-                // Fallback to first match
                 this.lecturerAssignmentId = assignments[0].lecturer_id;
                 console.log('⚠️ Using first match ID:', this.lecturerAssignmentId);
                 return;
             }
             
-            // Try to find in staff_records
             const nameParts = fullName.split(' ');
             const { data: staff, error: staffError } = await supabase
                 .from('staff_records')
@@ -93,7 +87,6 @@ const LecturerMessages = {
                 return;
             }
             
-            // Fallback to auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -151,13 +144,12 @@ const LecturerMessages = {
             
             console.log('🔍 Loading messages for user ID:', userId);
             
-            // Check if the ID is a valid UUID format
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(userId));
             
             let messages = [];
             
             if (isUUID) {
-                // Use UUID query
+                // ✅ Use correct column: sender_id (UUID)
                 const { data, error } = await supabase
                     .from('messages')
                     .select('*')
@@ -170,9 +162,8 @@ const LecturerMessages = {
                 }
                 messages = data || [];
             } else {
-                // For text IDs like NCHSMNUR-006, try multiple approaches
-                
-                // First try: sender_id direct match
+                // For text IDs, try to find messages
+                // First try: sender_id as text
                 let { data, error } = await supabase
                     .from('messages')
                     .select('*')
@@ -182,7 +173,7 @@ const LecturerMessages = {
                 if (!error && data && data.length > 0) {
                     messages = data;
                 } else {
-                    // Second try: match by sender_name (if available)
+                    // Second try: by sender_name (if available)
                     const profile = window.lecturerDB?.getCurrentUserProfile();
                     const fullName = profile?.full_name;
                     
@@ -198,7 +189,7 @@ const LecturerMessages = {
                         }
                     }
                     
-                    // Third try: if still no messages, check all messages and filter client-side
+                    // Third try: fallback - get all messages and filter
                     if (messages.length === 0) {
                         const { data: allMessages, error: allError } = await supabase
                             .from('messages')
@@ -252,21 +243,30 @@ const LecturerMessages = {
             'sent': '#10b981',
             'delivered': '#3b82f6',
             'read': '#8b5cf6',
-            'failed': '#ef4444'
+            'failed': '#ef4444',
+            'pending': '#f59e0b',
+            'approved': '#10b981',
+            'rejected': '#ef4444'
         };
         
         const statusIcons = {
             'sent': '✅',
             'delivered': '📨',
             'read': '👁️',
-            'failed': '❌'
+            'failed': '❌',
+            'pending': '⏳',
+            'approved': '✅',
+            'rejected': '❌'
         };
         
         const statusLabels = {
             'sent': 'Sent',
             'delivered': 'Delivered',
             'read': 'Read',
-            'failed': 'Failed'
+            'failed': 'Failed',
+            'pending': 'Pending',
+            'approved': 'Approved',
+            'rejected': 'Rejected'
         };
         
         tbody.innerHTML = messages.map(m => {
@@ -288,7 +288,7 @@ const LecturerMessages = {
                     </td>
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
                         ${this.escapeHtml(m.topic || m.subject || 'No Subject')}
-                        ${m.target === 'all-students' || m.target_group === 'all-students' ? 
+                        ${m.target_group === 'all-students' || m.target === 'all-students' ? 
                             '<span style="font-size: 10px; background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">Bulk</span>' : ''}
                     </td>
                     <td style="padding: 14px 18px; font-size: 13px; color: #475569;">
@@ -443,11 +443,14 @@ const LecturerMessages = {
     },
     
     async handleSendMessage(e) {
-        e.preventDefault();
-        const btn = e.submitter || e.target.querySelector('button[type="submit"]');
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        if (e) e.preventDefault();
+        
+        const btn = document.querySelector('#sendMessageForm button[type="submit"]');
+        const originalText = btn?.innerHTML || 'Send Message';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        }
         
         const target = document.getElementById('msgTarget')?.value;
         const subject = document.getElementById('msgSubject')?.value;
@@ -455,8 +458,10 @@ const LecturerMessages = {
         
         if (!target || !subject || !body) {
             window.showNotification('Please fill all fields.', 'error');
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
             return;
         }
         
@@ -471,32 +476,41 @@ const LecturerMessages = {
             
             const senderName = profile?.full_name || 'Lecturer';
             
+            // ✅ Use correct column names for the messages table
+            const messageData = {
+                sender_id: String(lecturerId),
+                sender_role: 'lecturer',
+                topic: subject,
+                body: body,
+                message: body,
+                recipient_role: 'student',
+                target_program: profile?.program,
+                target_group: target === 'all-students' ? 'all-students' : 'specific-user',
+                receiver_id: target === 'all-students' ? null : target,
+                approval_status: 'sent',
+                status: 'sent',
+                created_at: new Date().toISOString(),
+                inserted_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                program_type: profile?.program || 'KRCHN'
+            };
+            
+            console.log('📤 Sending message with data:', messageData);
+            
             const { data: result, error } = await supabase
                 .from('messages')
-                .insert({
-                    sender_id: String(lecturerId),
-                    sender_role: 'lecturer',
-                    sender_name: senderName,
-                    topic: subject,
-                    subject: subject,
-                    body: body,
-                    message: body,
-                    recipient_role: 'student',
-                    target_program: profile?.program,
-                    target_group: target === 'all-students' ? 'all-students' : 'specific-user',
-                    receiver_id: target === 'all-students' ? null : target,
-                    approval_status: 'sent',
-                    status: 'sent',
-                    created_at: new Date().toISOString(),
-                    inserted_at: new Date().toISOString()
-                })
+                .insert([messageData])
                 .select();
             
-            if (error) throw error;
+            if (error) {
+                console.error('DB Error:', error);
+                throw new Error('Failed to send message: ' + error.message);
+            }
             
             window.showNotification('✅ Message sent successfully!', 'success');
-            e.target.reset();
             
+            // Reset form
+            document.getElementById('sendMessageForm')?.reset();
             const charCount = document.getElementById('charCount');
             if (charCount) charCount.textContent = '0 characters';
             
@@ -506,8 +520,10 @@ const LecturerMessages = {
             console.error('Error sending message:', error);
             window.showNotification('Failed to send message: ' + error.message, 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
         }
     },
     
@@ -543,7 +559,7 @@ const LecturerMessages = {
             const { error } = await supabase
                 .from('messages')
                 .delete()
-                .eq('id', messageId);
+                .eq('id', message.id);
             
             if (error) throw error;
             
@@ -627,8 +643,9 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => LecturerMessages.init(), 950);
 });
 
-// Make globally accessible
+// ✅ Make functions globally accessible for inline onclick
 window.LecturerMessages = LecturerMessages;
+window.sendMessage = (e) => LecturerMessages.handleSendMessage(e);
 window.searchMessages = () => LecturerMessages.filterMessages();
 window.exportMessages = () => LecturerMessages.exportMessages();
 
