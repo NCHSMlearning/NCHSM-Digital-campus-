@@ -1,12 +1,14 @@
-// js/lecturer-sessions.js
+// js/lecturer-sessions.js - COMPLETE WITH SESSION MANAGEMENT
 /**
  * NCHSM Lecturer Sessions Module
  * Uses scheduled_sessions table with correct column names
+ * Includes session open/close for student attendance sign-in
  */
 
 const LecturerSessions = {
     sessions: [],
     lecturerAssignmentId: null,
+    lecturerUuid: null,
     assignedUnits: [],
     
     async init() {
@@ -37,26 +39,53 @@ const LecturerSessions = {
                 return;
             }
             
-            const fullName = profile.full_name;
             const authId = profile.user_id;
+            const fullName = profile.full_name;
             
-            console.log('🔍 Auth ID:', authId);
+            console.log('🔍 Auth ID (UUID):', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            const { data: nameData, error: nameError } = await supabase
+            this.lecturerUuid = authId;
+            
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
+            
+            if (!isUUID && authId) {
+                this.lecturerAssignmentId = authId;
+                console.log('✅ Using non-UUID auth ID:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .ilike('lecturer_name', `%${fullName}%`);
             
-            if (!nameError && nameData && nameData.length > 0) {
-                const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
-                if (nonStaff) {
-                    this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
+            if (!assignError && assignments && assignments.length > 0) {
+                const textId = assignments.find(a => {
+                    const id = a.lecturer_id;
+                    return id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+                });
+                
+                if (textId) {
+                    this.lecturerAssignmentId = textId.lecturer_id;
+                    console.log('✅ Found non-UUID ID:', this.lecturerAssignmentId);
                     return;
                 }
-                this.lecturerAssignmentId = nameData[0].lecturer_id;
-                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
+                
+                this.lecturerAssignmentId = assignments[0].lecturer_id;
+                console.log('⚠️ Using first match ID:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            const nameParts = fullName.split(' ');
+            const { data: staff, error: staffError } = await supabase
+                .from('staff_records')
+                .select('id, first_name, other_names')
+                .ilike('first_name', `%${nameParts[0]}%`);
+            
+            if (!staffError && staff && staff.length > 0) {
+                this.lecturerAssignmentId = staff[0].id;
+                console.log('✅ Found lecturer ID from staff_records:', this.lecturerAssignmentId);
                 return;
             }
             
@@ -66,11 +95,12 @@ const LecturerSessions = {
         } catch (error) {
             console.error('Error resolving lecturer ID:', error);
             this.lecturerAssignmentId = null;
+            this.lecturerUuid = null;
         }
     },
     
     // ============================================
-    // LOAD ASSIGNED UNITS
+    // LOAD ASSIGNED UNITS (for form dropdown)
     // ============================================
     async loadAssignedUnits() {
         try {
@@ -85,7 +115,7 @@ const LecturerSessions = {
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('subject_name, subject_code, block, program, academic_year')
-                .eq('lecturer_id', lecturerId);
+                .eq('lecturer_id', String(lecturerId));
             
             if (error) {
                 console.error('Error loading assigned units:', error);
@@ -104,7 +134,7 @@ const LecturerSessions = {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department;
-            const userId = this.lecturerAssignmentId || profile?.user_id;
+            const userId = this.lecturerUuid || profile?.user_id;
             
             if (!program || !userId) {
                 console.warn('No program or user ID found');
@@ -117,7 +147,7 @@ const LecturerSessions = {
                 return;
             }
             
-            // ✅ Use correct column names: session_title, session_date, session_time, target_program
+            // ✅ Use correct column: created_by (UUID)
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
                 .select('*')
@@ -152,7 +182,7 @@ const LecturerSessions = {
         if (!sessions || sessions.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                    <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                         <i class="fas fa-calendar-plus" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
                         <h3 style="color: #475569; margin: 0 0 8px 0;">No Sessions Scheduled</h3>
                         <p style="margin: 0; font-size: 14px;">Schedule your first session using the form above.</p>
@@ -169,13 +199,24 @@ const LecturerSessions = {
             'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
             'approved': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Approved</span>',
             'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Rejected</span>',
-            'completed': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📌 Completed</span>'
+            'completed': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📌 Completed</span>',
+            'active': '<span style="background: #10b981; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🟢 Active</span>',
+            'closed': '<span style="background: #6b7280; color: #1e293b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🔒 Closed</span>'
+        };
+        
+        const sessionTypeLabels = {
+            'Class': '📚 Class',
+            'Clinical': '🏥 Clinical',
+            'Lab': '🔬 Lab',
+            'Tutorial': '📝 Tutorial',
+            'Exam': '📝 Exam'
         };
         
         tbody.innerHTML = sessions.map(session => {
             const sessionDate = session.session_date ? new Date(session.session_date) : null;
             const isToday = sessionDate && sessionDate.toDateString() === today.toDateString();
             const isPast = sessionDate && sessionDate < today;
+            const isActive = session.status === 'active' || session.is_active === true;
             
             const dateTime = session.session_date 
                 ? (this.formatDate(session.session_date)) + (session.session_time ? ' ' + session.session_time : '')
@@ -184,42 +225,82 @@ const LecturerSessions = {
             const status = session.approval_status || 'pending';
             const statusBadge = statusBadges[status] || statusBadges.pending;
             
-            const rowStyle = isToday ? 'background: #dbeafe;' : '';
-            const rowClass = isPast ? 'opacity: 0.7;' : '';
+            const sessionType = session.session_type || 'Class';
+            const sessionTypeLabel = sessionTypeLabels[sessionType] || sessionType;
+            
+            const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
+            const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
             
             // Generate attendance link
             const attendanceLink = `${window.location.origin}/attendance?session=${session.id}`;
             
+            // Session control buttons
+            let sessionControls = '';
+            if (sessionDate && sessionDate >= today) {
+                if (!isActive) {
+                    sessionControls += `
+                        <button onclick="LecturerSessions.openSession('${session.id}')" 
+                                style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                                onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                            <i class="fas fa-play"></i> Open
+                        </button>
+                    `;
+                } else {
+                    sessionControls += `
+                        <button onclick="LecturerSessions.closeSession('${session.id}')" 
+                                style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                                onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                            <i class="fas fa-stop"></i> Close
+                        </button>
+                    `;
+                }
+            }
+            
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle} ${rowClass}" 
-                    onmouseover="this.style.background='${isToday ? '#bfdbfe' : '#f8fafc'}'" 
-                    onmouseout="this.style.background='${isToday ? '#dbeafe' : 'transparent'}'">
+                    onmouseover="this.style.background='${isActive ? '#bfdbfe' : (isToday ? '#bfdbfe' : '#f8fafc')}'" 
+                    onmouseout="this.style.background='${isActive ? '#d1fae5' : (isToday ? '#dbeafe' : 'transparent')}'">
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                        ${this.escapeHtml(session.session_title || 'N/A')}
-                        ${isToday ? '<span style="font-size: 10px; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">TODAY</span>' : ''}
-                        ${isPast ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 8px;">(Past)</span>' : ''}
+                        ${this.escapeHtml(session.session_title || session.title || 'N/A')}
+                        ${isActive ? '<span style="font-size: 10px; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">🟢 OPEN</span>' : ''}
+                        ${isToday && !isActive ? '<span style="font-size: 10px; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">TODAY</span>' : ''}
+                        ${isPast && !isActive ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 8px;">(Past)</span>' : ''}
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
                         ${dateTime}
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
-                        ${this.escapeHtml(session.course_name || session.unit_name || 'N/A')}
+                        ${sessionTypeLabel}
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
                         ${this.escapeHtml(session.target_program || 'N/A')}/${this.escapeHtml(session.block_term || 'N/A')}
                     </td>
-                    <td style="padding: 14px 18px;">
-                        <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
-                                style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-                            <i class="fas fa-link"></i> Get Link
-                        </button>
+                    <td style="padding: 14px 18px; text-align: center;">
+                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
+                                    style="background: #4C1D95; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                    onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                                <i class="fas fa-link"></i> Link
+                            </button>
+                            ${isActive ? `
+                                <button onclick="LecturerSessions.viewAttendees('${session.id}')" 
+                                        style="background: #8b5cf6; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                        onmouseover="this.style.background='#7c3aed'" onmouseout="this.style.background='#8b5cf6'">
+                                    <i class="fas fa-users"></i> Attendees
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                    <td style="padding: 14px 18px; text-align: center;">
+                        ${statusBadge}
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
                         <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
-                            ${statusBadge}
+                            ${sessionControls}
                             ${status === 'pending' ? `
                                 <button onclick="LecturerSessions.cancelSession('${session.id}')" 
-                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                                        onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
                                     <i class="fas fa-times"></i> Cancel
                                 </button>
                             ` : ''}
@@ -246,6 +327,120 @@ const LecturerSessions = {
         });
     },
     
+    async openSession(sessionId) {
+        const session = this.sessions.find(s => s.id === sessionId);
+        if (!session) {
+            window.showNotification('Session not found.', 'error');
+            return;
+        }
+        
+        if (!confirm(`Open "${session.session_title || session.title}" for student attendance?`)) return;
+        
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database connection not available');
+            }
+            
+            // Update session status to active/open
+            const { error } = await supabase
+                .from('scheduled_sessions')
+                .update({
+                    status: 'active',
+                    is_active: true,
+                    opened_at: new Date().toISOString()
+                })
+                .eq('id', sessionId);
+            
+            if (error) throw error;
+            
+            window.showNotification('✅ Session opened! Students can now sign in.', 'success');
+            await this.loadSessions();
+            
+        } catch (error) {
+            console.error('Error opening session:', error);
+            window.showNotification('Failed to open session: ' + error.message, 'error');
+        }
+    },
+    
+    async closeSession(sessionId) {
+        const session = this.sessions.find(s => s.id === sessionId);
+        if (!session) {
+            window.showNotification('Session not found.', 'error');
+            return;
+        }
+        
+        if (!confirm(`Close "${session.session_title || session.title}" and stop attendance?`)) return;
+        
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database connection not available');
+            }
+            
+            // Update session status to closed
+            const { error } = await supabase
+                .from('scheduled_sessions')
+                .update({
+                    status: 'closed',
+                    is_active: false,
+                    closed_at: new Date().toISOString()
+                })
+                .eq('id', sessionId);
+            
+            if (error) throw error;
+            
+            window.showNotification('✅ Session closed. Attendance sign-in disabled.', 'success');
+            await this.loadSessions();
+            
+        } catch (error) {
+            console.error('Error closing session:', error);
+            window.showNotification('Failed to close session: ' + error.message, 'error');
+        }
+    },
+    
+    async viewAttendees(sessionId) {
+        const session = this.sessions.find(s => s.id === sessionId);
+        if (!session) {
+            window.showNotification('Session not found.', 'error');
+            return;
+        }
+        
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database connection not available');
+            }
+            
+            // Get attendance records for this session
+            const { data: attendees, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*, student:student_id(full_name, student_id)')
+                .eq('session_id', sessionId)
+                .order('check_in_time', { ascending: false });
+            
+            if (error) throw error;
+            
+            if (!attendees || attendees.length === 0) {
+                window.showNotification('No students have signed in yet.', 'info');
+                return;
+            }
+            
+            // Show attendees in a formatted list
+            const attendeeList = attendees.map((a, i) => {
+                const name = a.student?.full_name || a.student_name || 'Unknown';
+                const time = a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+                return `${i + 1}. ${name} - ${time}`;
+            }).join('\n');
+            
+            alert(`📋 Attendance for: ${session.session_title || session.title}\n\n${attendeeList}\n\nTotal: ${attendees.length} students`);
+            
+        } catch (error) {
+            console.error('Error viewing attendees:', error);
+            window.showNotification('Failed to load attendees: ' + error.message, 'error');
+        }
+    },
+    
     populateSessionForm() {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
@@ -262,6 +457,18 @@ const LecturerSessions = {
         if (blockSelect) {
             blockSelect.innerHTML = '<option value="">-- Select Block --</option>' +
                 blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+        }
+        
+        // Session Types
+        const typeSelect = document.getElementById('sessionType');
+        if (typeSelect) {
+            typeSelect.innerHTML = `
+                <option value="Class">📚 Class</option>
+                <option value="Clinical">🏥 Clinical</option>
+                <option value="Lab">🔬 Lab</option>
+                <option value="Tutorial">📝 Tutorial</option>
+                <option value="Exam">📝 Exam</option>
+            `;
         }
         
         // Units from assigned units
@@ -328,11 +535,13 @@ const LecturerSessions = {
             time: document.getElementById('sessionTime')?.value,
             program: document.getElementById('sessionProgram')?.value,
             block: document.getElementById('sessionBlockTerm')?.value,
-            unit: document.getElementById('sessionUnit')?.value
+            unit: document.getElementById('sessionUnit')?.value,
+            type: document.getElementById('sessionType')?.value || 'Class',
+            location: document.getElementById('sessionLocation')?.value || 'Lecture Hall'
         };
         
         if (!formData.title || !formData.date || !formData.program || !formData.block || !formData.unit) {
-            window.showNotification('Please fill all fields.', 'error');
+            window.showNotification('Please fill all required fields.', 'error');
             btn.disabled = false;
             btn.innerHTML = originalText;
             return;
@@ -340,7 +549,7 @@ const LecturerSessions = {
         
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const lecturerId = this.lecturerAssignmentId || profile?.user_id;
+            const lecturerUuid = this.lecturerUuid || profile?.user_id;
             const supabase = window.lecturerDB?.supabase;
             
             if (!supabase) {
@@ -348,32 +557,38 @@ const LecturerSessions = {
             }
             
             // ✅ Use correct column names
+            const sessionData = {
+                session_title: formData.title,
+                title: formData.title,
+                session_date: formData.date,
+                session_time: formData.time || '09:00:00',
+                target_program: formData.program,
+                program_type: formData.program,
+                block_term: formData.block,
+                session_type: formData.type,
+                location_name: formData.location,
+                created_by: lecturerUuid,
+                approval_status: 'pending',
+                created_at: new Date().toISOString(),
+                status: 'scheduled',
+                is_active: false
+            };
+            
+            console.log('📤 Creating session with data:', sessionData);
+            
             const { data: result, error } = await supabase
                 .from('scheduled_sessions')
-                .insert({
-                    session_title: formData.title,
-                    session_date: formData.date,
-                    session_time: formData.time || '09:00:00',
-                    target_program: formData.program,
-                    block_term: formData.block,
-                    unit_name: formData.unit,
-                    created_by: lecturerId,
-                    session_type: 'Class',
-                    approval_status: 'pending',
-                    created_at: new Date().toISOString()
-                })
+                .insert([sessionData])
                 .select();
             
-            if (error) throw error;
+            if (error) {
+                console.error('DB Error:', error);
+                throw new Error('Failed to schedule session: ' + error.message);
+            }
             
-            window.showNotification('✅ Session scheduled successfully! Waiting for approval.', 'success');
+            window.showNotification('✅ Session scheduled successfully!', 'success');
             e.target.reset();
-            
-            // Reset date to tomorrow
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('sessionDate').value = tomorrow.toISOString().split('T')[0];
-            
+            this.populateSessionForm();
             await this.loadSessions();
             
         } catch (error) {
@@ -397,7 +612,7 @@ const LecturerSessions = {
             return;
         }
         
-        if (!confirm(`Cancel session "${session.session_title}"?`)) return;
+        if (!confirm(`Cancel session "${session.session_title || session.title}"?`)) return;
         
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -427,9 +642,10 @@ const LecturerSessions = {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
+        const active = sessions.filter(s => s.status === 'active' || s.is_active === true).length;
         const upcoming = sessions.filter(s => {
             const date = s.session_date ? new Date(s.session_date) : null;
-            return date && date >= today && s.approval_status !== 'rejected';
+            return date && date >= today && s.approval_status !== 'rejected' && s.status !== 'closed';
         }).length;
         
         const todaySessions = sessions.filter(s => {
@@ -446,11 +662,11 @@ const LecturerSessions = {
         const totalEl = document.getElementById('totalSessionsStat');
         if (totalEl) totalEl.textContent = total;
         
+        const activeEl = document.getElementById('activeSessionsStat');
+        if (activeEl) activeEl.textContent = active;
+        
         const upcomingEl = document.getElementById('upcomingSessionsStat');
         if (upcomingEl) upcomingEl.textContent = upcoming;
-        
-        const todayEl = document.getElementById('todaySessionsStat');
-        if (todayEl) todayEl.textContent = todaySessions;
         
         const pastEl = document.getElementById('pastSessionsStat');
         if (pastEl) pastEl.textContent = past;
@@ -502,5 +718,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Make globally accessible
 window.LecturerSessions = LecturerSessions;
+window.scheduleSession = (e) => LecturerSessions.handleAddSession(e);
+window.generateAttendanceLink = (id) => LecturerSessions.generateAttendanceLink(id);
+window.openSession = (id) => LecturerSessions.openSession(id);
+window.closeSession = (id) => LecturerSessions.closeSession(id);
+window.viewAttendees = (id) => LecturerSessions.viewAttendees(id);
 
-console.log('✅ LecturerSessions module loaded - Using scheduled_sessions table with correct columns');
+console.log('✅ LecturerSessions module loaded - Session management included');
