@@ -21793,42 +21793,7 @@ async function reloadMarksStudentManager() {
 
 window.reloadMarksStudentManager = reloadMarksStudentManager;
 
-// ============================================================
-// UPDATE SELECTED COUNT
-// ============================================================
 
-function updateSelectedCount() {
-    const checkboxes = document.querySelectorAll('.student-checkbox:checked');
-    const count = checkboxes.length;
-    
-    // Update all count displays
-    document.querySelectorAll('#selectedStudentCount, #selectedStudentCountBottom').forEach(el => {
-        if (el) el.textContent = count;
-    });
-    document.querySelectorAll('#dropSelectedCount, #dropSelectedCountBottom').forEach(el => {
-        if (el) el.textContent = count;
-    });
-    
-    // Show/hide drop buttons
-    document.querySelectorAll('#dropSelectedBtn, #dropSelectedBtnBottom').forEach(btn => {
-        if (btn) btn.style.display = count > 0 ? 'inline-block' : 'none';
-    });
-    
-    // Update select all checkboxes
-    const allCheckboxes = document.querySelectorAll('.student-checkbox');
-    const allChecked = document.querySelectorAll('.student-checkbox:checked');
-    const selectAll = document.getElementById('selectAllStudents');
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    
-    if (selectAll && allCheckboxes.length > 0) {
-        selectAll.checked = allChecked.length === allCheckboxes.length;
-    }
-    if (selectAllCheckbox && allCheckboxes.length > 0) {
-        selectAllCheckbox.checked = allChecked.length === allCheckboxes.length;
-    }
-}
-
-window.updateSelectedCount = updateSelectedCount;
 
 // ============================================================
 // TOGGLE ALL STUDENTS
@@ -22004,20 +21969,6 @@ async function clearAllStudentsFromMarksUnit() {
 
 window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
 
-// ============================================================
-// ESCAPE HTML HELPER
-// ============================================================
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-window.escapeHtml = escapeHtml;
-
-console.log('✅ Student Manager Functions Fully Loaded!');
 // ============================================================
 // SHOW/HIDE NOTIFICATION/LOADING FUNCTIONS
 // ============================================================
