@@ -2,7 +2,8 @@
 /**
  * NCHSM Lecturer Messages Module
  * Uses dedicated lecturer database with correct ID resolution
- * Messages sent immediately with admin approval workflow
+ * Handles both UUID and text ID formats
+ * Messages sent immediately
  */
 
 const LecturerMessages = {
@@ -22,7 +23,7 @@ const LecturerMessages = {
     },
     
     // ============================================
-    // RESOLVE THE CORRECT LECTURER ID
+    // RESOLVE THE CORRECT LECTURER ID - HANDLES BOTH UUID AND TEXT
     // ============================================
     async resolveLecturerId() {
         try {
@@ -44,69 +45,55 @@ const LecturerMessages = {
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // Try to find by name in lecturer_subject_assignments
-            const { data, error } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .eq('lecturer_name', fullName)
-                .limit(1);
+            // Check if authId is a valid UUID
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
             
-            if (!error && data && data.length > 0) {
-                this.lecturerAssignmentId = data[0].lecturer_id;
-                console.log('✅ Found lecturer ID by name:', this.lecturerAssignmentId);
+            // If authId is not a UUID (like NCHSMNUR-001), use it directly
+            if (!isUUID && authId) {
+                this.lecturerAssignmentId = authId;
+                console.log('✅ Using non-UUID auth ID:', this.lecturerAssignmentId);
                 return;
             }
             
-            // Try partial name match with scoring
-            const nameParts = fullName.toLowerCase().split(' ');
-            const { data: allLecturers, error: allError } = await supabase
+            // Try to find by name in lecturer_subject_assignments
+            const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
-                .order('created_at', { ascending: false });
+                .ilike('lecturer_name', `%${fullName}%`);
             
-            if (!allError && allLecturers && allLecturers.length > 0) {
-                let bestMatch = null;
-                let bestScore = -1;
+            if (!assignError && assignments && assignments.length > 0) {
+                // Prefer non-UUID IDs (text IDs like NCHSMNUR-001)
+                const textId = assignments.find(a => {
+                    const id = a.lecturer_id;
+                    return id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+                });
                 
-                for (const lecturer of allLecturers) {
-                    const lecturerName = lecturer.lecturer_name || '';
-                    const lecturerId = lecturer.lecturer_id;
-                    let score = 0;
-                    
-                    const lecturerNameLower = lecturerName.toLowerCase();
-                    for (const part of nameParts) {
-                        if (part.length > 1 && lecturerNameLower.includes(part)) {
-                            score += 5;
-                        }
-                    }
-                    
-                    if (lecturerNameLower === fullName.toLowerCase()) {
-                        score += 20;
-                    }
-                    
-                    // BIG BONUS for non-STAFF IDs
-                    if (!lecturerId.toString().startsWith('STAFF')) {
-                        score += 50;
-                    }
-                    
-                    if (lecturerId.toString().includes('-')) {
-                        score += 30;
-                    }
-                    
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMatch = lecturerId;
-                    }
-                }
-                
-                if (bestMatch) {
-                    this.lecturerAssignmentId = bestMatch;
-                    console.log(`✅ Selected lecturer ID with score ${bestScore}:`, this.lecturerAssignmentId);
+                if (textId) {
+                    this.lecturerAssignmentId = textId.lecturer_id;
+                    console.log('✅ Found non-UUID ID by partial name match:', this.lecturerAssignmentId);
                     return;
                 }
+                
+                // Fallback to first match
+                this.lecturerAssignmentId = assignments[0].lecturer_id;
+                console.log('⚠️ Using first match ID:', this.lecturerAssignmentId);
+                return;
             }
             
-            // Fallback: use auth ID
+            // Try to find in staff_records
+            const nameParts = fullName.split(' ');
+            const { data: staff, error: staffError } = await supabase
+                .from('staff_records')
+                .select('id, first_name, other_names')
+                .ilike('first_name', `%${nameParts[0]}%`);
+            
+            if (!staffError && staff && staff.length > 0) {
+                this.lecturerAssignmentId = staff[0].id;
+                console.log('✅ Found lecturer ID from staff_records:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            // Fallback to auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -132,7 +119,7 @@ const LecturerMessages = {
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('subject_name, subject_code, block, program, academic_year')
-                .eq('lecturer_id', lecturerId);
+                .eq('lecturer_id', String(lecturerId));
             
             if (error) {
                 console.error('Error loading assigned units:', error);
@@ -162,15 +149,72 @@ const LecturerMessages = {
                 return;
             }
             
-            const { data: messages, error } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('sender_id', userId)
-                .order('created_at', { ascending: false });
+            console.log('🔍 Loading messages for user ID:', userId);
             
-            if (error) {
-                console.error('Error loading messages:', error);
-                return;
+            // Check if the ID is a valid UUID format
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(userId));
+            
+            let messages = [];
+            
+            if (isUUID) {
+                // Use UUID query
+                const { data, error } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .eq('sender_id', userId)
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    console.error('Error loading messages:', error);
+                    return;
+                }
+                messages = data || [];
+            } else {
+                // For text IDs like NCHSMNUR-006, try multiple approaches
+                
+                // First try: sender_id direct match
+                let { data, error } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .eq('sender_id', String(userId))
+                    .order('created_at', { ascending: false });
+                
+                if (!error && data && data.length > 0) {
+                    messages = data;
+                } else {
+                    // Second try: match by sender_name (if available)
+                    const profile = window.lecturerDB?.getCurrentUserProfile();
+                    const fullName = profile?.full_name;
+                    
+                    if (fullName) {
+                        const { data: nameData, error: nameError } = await supabase
+                            .from('messages')
+                            .select('*')
+                            .eq('sender_name', fullName)
+                            .order('created_at', { ascending: false });
+                        
+                        if (!nameError) {
+                            messages = nameData || [];
+                        }
+                    }
+                    
+                    // Third try: if still no messages, check all messages and filter client-side
+                    if (messages.length === 0) {
+                        const { data: allMessages, error: allError } = await supabase
+                            .from('messages')
+                            .select('*')
+                            .order('created_at', { ascending: false })
+                            .limit(100);
+                        
+                        if (!allError && allMessages) {
+                            // Filter messages where sender_id matches the text ID
+                            messages = allMessages.filter(m => 
+                                m.sender_id === String(userId) || 
+                                m.sender_name?.includes(fullName?.split(' ')[0] || '')
+                            );
+                        }
+                    }
+                }
             }
             
             this.messages = messages || [];
@@ -180,6 +224,8 @@ const LecturerMessages = {
             
         } catch (error) {
             console.error('Failed to load messages:', error);
+            this.messages = [];
+            this.renderMessages();
         }
     },
     
@@ -196,7 +242,7 @@ const LecturerMessages = {
                         <i class="fas fa-envelope" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
                         <h3 style="color: #475569; margin: 0 0 8px 0;">No Messages Sent</h3>
                         <p style="margin: 0; font-size: 14px;">Send your first message using the form above.</p>
-                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Messages are sent immediately - no approval needed!</p>
+                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #94a3b8;">Messages are sent immediately!</p>
                     </td>
                 </tr>
             `;
@@ -207,30 +253,21 @@ const LecturerMessages = {
             'sent': '#10b981',
             'delivered': '#3b82f6',
             'read': '#8b5cf6',
-            'failed': '#ef4444',
-            'pending': '#f59e0b',
-            'approved': '#10b981',
-            'rejected': '#ef4444'
+            'failed': '#ef4444'
         };
         
         const statusIcons = {
             'sent': '✅',
             'delivered': '📨',
             'read': '👁️',
-            'failed': '❌',
-            'pending': '⏳',
-            'approved': '✅',
-            'rejected': '❌'
+            'failed': '❌'
         };
         
         const statusLabels = {
             'sent': 'Sent',
             'delivered': 'Delivered',
             'read': 'Read',
-            'failed': 'Failed',
-            'pending': 'Pending Approval',
-            'approved': 'Approved',
-            'rejected': 'Rejected'
+            'failed': 'Failed'
         };
         
         tbody.innerHTML = messages.map(m => {
@@ -266,14 +303,12 @@ const LecturerMessages = {
                     <td style="padding: 14px 18px; text-align: center;">
                         <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
                             <button onclick="LecturerMessages.viewMessage('${m.id}')" 
-                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                    onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                                 <i class="fas fa-eye"></i> View
                             </button>
                             ${status === 'pending' || status === 'sent' ? `
                                 <button onclick="LecturerMessages.deleteMessage('${m.id}')" 
-                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                        onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             ` : ''}
@@ -317,12 +352,10 @@ const LecturerMessages = {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
         
-        // Add "All Students" option
         targetSelect.innerHTML = `
             <option value="all-students">📨 All ${program || 'Assigned'} Students</option>
         `;
         
-        // Load students
         this.loadStudentsForForm();
     },
     
@@ -345,7 +378,6 @@ const LecturerMessages = {
             
             const targetSelect = document.getElementById('msgTarget');
             if (targetSelect && students) {
-                // Keep the "All Students" option
                 const allOption = targetSelect.querySelector('option[value="all-students"]');
                 targetSelect.innerHTML = '';
                 if (allOption) targetSelect.appendChild(allOption);
@@ -369,7 +401,6 @@ const LecturerMessages = {
             form.addEventListener('submit', (e) => this.handleSendMessage(e));
         }
         
-        // Character counter
         const msgBody = document.getElementById('msgBody');
         if (msgBody) {
             msgBody.addEventListener('input', () => {
@@ -381,7 +412,6 @@ const LecturerMessages = {
             });
         }
         
-        // Search
         const searchInput = document.getElementById('messageSearch');
         if (searchInput) {
             let timeout;
@@ -440,13 +470,14 @@ const LecturerMessages = {
                 throw new Error('Database connection not available');
             }
             
-            // Save message - sent immediately
+            const senderName = profile?.full_name || 'Lecturer';
+            
             const { data: result, error } = await supabase
                 .from('messages')
                 .insert({
-                    sender_id: lecturerId,
+                    sender_id: String(lecturerId),
                     sender_role: 'lecturer',
-                    sender_name: profile?.full_name || 'Lecturer',
+                    sender_name: senderName,
                     topic: subject,
                     subject: subject,
                     body: body,
@@ -467,7 +498,6 @@ const LecturerMessages = {
             window.showNotification('✅ Message sent successfully!', 'success');
             e.target.reset();
             
-            // Reset char count
             const charCount = document.getElementById('charCount');
             if (charCount) charCount.textContent = '0 characters';
             
@@ -603,4 +633,4 @@ window.LecturerMessages = LecturerMessages;
 window.searchMessages = () => LecturerMessages.filterMessages();
 window.exportMessages = () => LecturerMessages.exportMessages();
 
-console.log('✅ LecturerMessages module loaded - Same ID resolution as other modules');
+console.log('✅ LecturerMessages module loaded - Handles UUID and text IDs');
