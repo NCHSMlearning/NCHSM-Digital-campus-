@@ -1,5 +1,5 @@
 // ============================================================
-// SUPER ADMIN ANALYTICS MODULE - COMPLETE
+// SUPER ADMIN ANALYTICS MODULE - COMPLETE WITH ENHANCEMENTS
 // ============================================================
 
 console.log('📊 Super Admin Analytics Module Loading...');
@@ -13,7 +13,8 @@ window.analyticsChartInstances = {
     subjectChart: null,
     blockChart: null,
     programChart: null,
-    termChart: null
+    termChart: null,
+    unitRankingChart: null
 };
 
 // ============================================================
@@ -119,6 +120,18 @@ window.loadAnalyticsData = async function() {
         window.renderAnalyticsProgramTable(students, marks);
         window.renderAnalyticsTrendsTable(students, marks);
         window.renderAnalyticsExamDetails(marks, students, program, block, year);
+        
+        // NEW: Render unit rankings
+        window.renderUnitRankings(marks, students);
+        
+        // NEW: Render top 10 students
+        window.renderTopStudents(students, marks);
+        
+        // NEW: Render weak students
+        window.renderWeakStudents(students, marks);
+        
+        // NEW: Render block filter stats
+        window.renderBlockFilterStats(students, marks, block);
         
         // Show dynamic content, hide placeholder
         document.getElementById('analyticsPlaceholder').style.display = 'none';
@@ -238,6 +251,7 @@ window.renderAnalyticsCharts = function(marks, students, program, block, year, m
     window.renderSubjectPerformanceChart(marks);
     window.renderBlockPerformanceChart(marks, students);
     window.renderProgramComparisonChart(marks, students);
+    window.renderUnitRankingChart(marks);
 };
 
 // ============================================================
@@ -250,13 +264,11 @@ window.renderGradeDistributionChart = function(marks) {
     
     const ctx = canvas.getContext('2d');
     
-    // Destroy existing chart
     if (window.analyticsChartInstances.gradeChart) {
         window.analyticsChartInstances.gradeChart.destroy();
         window.analyticsChartInstances.gradeChart = null;
     }
     
-    // Calculate grade distribution
     const grades = {
         'A': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0
     };
@@ -324,7 +336,6 @@ window.renderSubjectPerformanceChart = function(marks) {
         window.analyticsChartInstances.subjectChart = null;
     }
     
-    // Group by subject
     const subjectData = {};
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
@@ -408,16 +419,13 @@ window.renderBlockPerformanceChart = function(marks, students) {
         window.analyticsChartInstances.blockChart = null;
     }
     
-    // Group by block
     const blockData = {};
     const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
     
-    // Initialize all blocks
     blockOrder.forEach(b => {
         blockData[b] = { total: 0, count: 0, pass: 0, students: 0 };
     });
     
-    // Count students per block
     students?.forEach(s => {
         const block = s.block || 'Unknown';
         if (blockData[block]) {
@@ -427,7 +435,6 @@ window.renderBlockPerformanceChart = function(marks, students) {
         }
     });
     
-    // Add marks
     marks?.forEach(m => {
         const block = m.block || 'Unknown';
         const score = m.final_score || 0;
@@ -515,7 +522,6 @@ window.renderProgramComparisonChart = function(marks, students) {
         window.analyticsChartInstances.programChart = null;
     }
     
-    // Group by program
     const programData = {};
     
     students?.forEach(s => {
@@ -536,7 +542,6 @@ window.renderProgramComparisonChart = function(marks, students) {
         }
     });
     
-    // Get top 8 programs by student count
     const sortedPrograms = Object.keys(programData)
         .sort((a, b) => programData[b].students - programData[a].students)
         .slice(0, 8);
@@ -595,6 +600,504 @@ window.renderProgramComparisonChart = function(marks, students) {
 };
 
 // ============================================================
+// NEW: RENDER UNIT RANKING CHART
+// ============================================================
+
+window.renderUnitRankingChart = function(marks) {
+    const canvas = document.getElementById('analyticsUnitRankingChart');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    if (window.analyticsChartInstances.unitRankingChart) {
+        window.analyticsChartInstances.unitRankingChart.destroy();
+        window.analyticsChartInstances.unitRankingChart = null;
+    }
+    
+    // Group by subject and calculate average
+    const subjectData = {};
+    marks?.forEach(m => {
+        const subject = m.subject_name || 'Unknown';
+        const score = m.final_score || 0;
+        if (!subjectData[subject]) {
+            subjectData[subject] = { total: 0, count: 0, pass: 0 };
+        }
+        if (score > 0) {
+            subjectData[subject].total += score;
+            subjectData[subject].count++;
+            if (score >= 60) subjectData[subject].pass++;
+        }
+    });
+    
+    // Calculate average and sort by average (descending)
+    const sortedSubjects = Object.keys(subjectData)
+        .map(subject => ({
+            name: subject,
+            avg: subjectData[subject].count > 0 ? Math.round(subjectData[subject].total / subjectData[subject].count) : 0,
+            count: subjectData[subject].count,
+            passRate: subjectData[subject].count > 0 ? Math.round((subjectData[subject].pass / subjectData[subject].count) * 100) : 0
+        }))
+        .sort((a, b) => b.avg - a.avg);
+    
+    const topSubjects = sortedSubjects.slice(0, 15);
+    const labels = topSubjects.map(s => s.name.length > 20 ? s.name.substring(0, 20) + '...' : s.name);
+    const avgData = topSubjects.map(s => s.avg);
+    const passData = topSubjects.map(s => s.passRate);
+    
+    const colors = avgData.map(avg => {
+        if (avg >= 80) return 'rgba(16, 185, 129, 0.8)';
+        if (avg >= 65) return 'rgba(59, 130, 246, 0.8)';
+        if (avg >= 60) return 'rgba(245, 158, 11, 0.8)';
+        return 'rgba(239, 68, 68, 0.8)';
+    });
+    
+    window.analyticsChartInstances.unitRankingChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Average Score (%)',
+                    data: avgData,
+                    backgroundColor: colors,
+                    borderColor: colors.map(c => c.replace('0.8', '1')),
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Pass Rate (%)',
+                    data: passData,
+                    backgroundColor: 'rgba(139, 92, 246, 0.5)',
+                    borderColor: '#8b5cf6',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { padding: 10, usePointStyle: true }
+                },
+                tooltip: {
+                    callbacks: {
+                        afterBody: function(context) {
+                            const index = context[0].dataIndex;
+                            const subject = sortedSubjects[index];
+                            return `Students: ${subject?.count || 0}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { callback: function(value) { return value + '%'; } }
+                }
+            }
+        }
+    });
+};
+
+// ============================================================
+// NEW: RENDER UNIT RANKINGS TABLE
+// ============================================================
+
+window.renderUnitRankings = function(marks, students) {
+    const container = document.getElementById('analytics_unit_rankings');
+    if (!container) return;
+    
+    // Group by subject
+    const subjectData = {};
+    marks?.forEach(m => {
+        const subject = m.subject_name || 'Unknown';
+        const score = m.final_score || 0;
+        if (!subjectData[subject]) {
+            subjectData[subject] = { total: 0, count: 0, pass: 0, scores: [] };
+        }
+        if (score > 0) {
+            subjectData[subject].total += score;
+            subjectData[subject].count++;
+            subjectData[subject].scores.push(score);
+            if (score >= 60) subjectData[subject].pass++;
+        }
+    });
+    
+    const sortedSubjects = Object.keys(subjectData)
+        .map(subject => ({
+            name: subject,
+            avg: subjectData[subject].count > 0 ? Math.round(subjectData[subject].total / subjectData[subject].count) : 0,
+            count: subjectData[subject].count,
+            pass: subjectData[subject].pass,
+            passRate: subjectData[subject].count > 0 ? Math.round((subjectData[subject].pass / subjectData[subject].count) * 100) : 0,
+            highest: subjectData[subject].scores.length > 0 ? Math.max(...subjectData[subject].scores) : 0,
+            lowest: subjectData[subject].scores.length > 0 ? Math.min(...subjectData[subject].scores) : 0
+        }))
+        .sort((a, b) => b.avg - a.avg);
+    
+    if (sortedSubjects.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No unit data available</p>';
+        return;
+    }
+    
+    let html = `
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white;">
+                        <th style="padding: 10px 12px; text-align: left;">Rank</th>
+                        <th style="padding: 10px 12px; text-align: left;">Unit/Subject</th>
+                        <th style="padding: 10px 12px; text-align: center;">Students</th>
+                        <th style="padding: 10px 12px; text-align: center;">Avg Score</th>
+                        <th style="padding: 10px 12px; text-align: center;">Pass Rate</th>
+                        <th style="padding: 10px 12px; text-align: center;">Highest</th>
+                        <th style="padding: 10px 12px; text-align: center;">Lowest</th>
+                        <th style="padding: 10px 12px; text-align: center;">Performance</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    sortedSubjects.forEach((subject, index) => {
+        const rank = index + 1;
+        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+        const performanceColor = subject.avg >= 80 ? '#10b981' : subject.avg >= 65 ? '#3b82f6' : subject.avg >= 60 ? '#f59e0b' : '#ef4444';
+        const barColor = subject.avg >= 80 ? '#10b981' : subject.avg >= 65 ? '#3b82f6' : subject.avg >= 60 ? '#f59e0b' : '#ef4444';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                <td style="padding: 10px 12px; font-weight: 700; text-align: center;">${medal}</td>
+                <td style="padding: 10px 12px; font-weight: 500;">${window.escapeHtml(subject.name)}</td>
+                <td style="padding: 10px 12px; text-align: center;">${subject.count}</td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: ${performanceColor};">${subject.avg}%</td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${subject.passRate}%</td>
+                <td style="padding: 10px 12px; text-align: center; color: #10b981;">${subject.highest}%</td>
+                <td style="padding: 10px 12px; text-align: center; color: #ef4444;">${subject.lowest}%</td>
+                <td style="padding: 10px 12px; text-align: center;">
+                    <div style="height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden; max-width: 100px; margin: 0 auto;">
+                        <div style="width: ${subject.avg}%; height: 100%; background: ${barColor}; border-radius: 4px;"></div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: #94a3b8; text-align: right;">
+            Showing ${sortedSubjects.length} units
+        </div>
+    `;
+    
+    container.innerHTML = html;
+};
+
+// ============================================================
+// NEW: RENDER TOP 10 STUDENTS
+// ============================================================
+
+window.renderTopStudents = function(students, marks) {
+    const container = document.getElementById('analytics_top_students');
+    if (!container) return;
+    
+    // Calculate average per student
+    const studentAverages = {};
+    marks?.forEach(m => {
+        const admission = m.admission_number;
+        const score = m.final_score || 0;
+        if (!studentAverages[admission]) {
+            studentAverages[admission] = { total: 0, count: 0, scores: [] };
+        }
+        if (score > 0) {
+            studentAverages[admission].total += score;
+            studentAverages[admission].count++;
+            studentAverages[admission].scores.push(score);
+        }
+    });
+    
+    // Calculate averages and add student info
+    const studentData = [];
+    students?.forEach(s => {
+        const data = studentAverages[s.student_id];
+        if (data && data.count > 0) {
+            const avg = Math.round((data.total / data.count) * 10) / 10;
+            const highest = data.scores.length > 0 ? Math.max(...data.scores) : 0;
+            const lowest = data.scores.length > 0 ? Math.min(...data.scores) : 0;
+            studentData.push({
+                student: s,
+                avg: avg,
+                count: data.count,
+                highest: highest,
+                lowest: lowest,
+                totalScore: data.total
+            });
+        }
+    });
+    
+    // Sort by average (descending) and get top 10
+    const topStudents = studentData.sort((a, b) => b.avg - a.avg).slice(0, 10);
+    
+    if (topStudents.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No student data available</p>';
+        return;
+    }
+    
+    let html = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
+    `;
+    
+    topStudents.forEach((data, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
+        const grade = window.calculateTranscriptGrade(data.avg);
+        const statusColor = data.avg >= 60 ? '#10b981' : '#dc2626';
+        
+        html += `
+            <div style="
+                background: ${index === 0 ? '#fef3c7' : index === 1 ? '#f0fdf4' : index === 2 ? '#eff6ff' : '#f8fafc'};
+                border: 2px solid ${index === 0 ? '#f59e0b' : index === 1 ? '#10b981' : index === 2 ? '#3b82f6' : '#e5e7eb'};
+                border-radius: 12px;
+                padding: 16px;
+                text-align: center;
+            ">
+                <div style="font-size: 28px; margin-bottom: 8px;">${medal}</div>
+                <div style="font-weight: 700; font-size: 15px; color: #1e293b;">${window.escapeHtml(data.student.full_name || 'Unknown')}</div>
+                <div style="font-size: 12px; color: #64748b;">${window.escapeHtml(data.student.student_id || 'N/A')}</div>
+                <div style="font-size: 12px; color: #64748b;">${window.escapeHtml(data.student.program || 'N/A')}</div>
+                <div style="margin-top: 10px; display: flex; justify-content: center; gap: 20px;">
+                    <div>
+                        <div style="font-size: 11px; color: #94a3b8;">Average</div>
+                        <div style="font-size: 22px; font-weight: 700; color: ${statusColor};">${data.avg}%</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; color: #94a3b8;">Grade</div>
+                        <div style="font-size: 22px; font-weight: 700; color: ${statusColor};">${grade}</div>
+                    </div>
+                </div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 5px;">
+                    ${data.count} subjects • Highest: ${data.highest}% • Lowest: ${data.lowest}%
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+};
+
+// ============================================================
+// NEW: RENDER WEAK STUDENTS (At Risk)
+// ============================================================
+
+window.renderWeakStudents = function(students, marks) {
+    const container = document.getElementById('analytics_weak_students');
+    if (!container) return;
+    
+    // Calculate average per student
+    const studentAverages = {};
+    marks?.forEach(m => {
+        const admission = m.admission_number;
+        const score = m.final_score || 0;
+        if (!studentAverages[admission]) {
+            studentAverages[admission] = { total: 0, count: 0, scores: [] };
+        }
+        if (score > 0) {
+            studentAverages[admission].total += score;
+            studentAverages[admission].count++;
+            studentAverages[admission].scores.push(score);
+        }
+    });
+    
+    // Calculate averages and add student info
+    const studentData = [];
+    students?.forEach(s => {
+        const data = studentAverages[s.student_id];
+        if (data && data.count > 0) {
+            const avg = Math.round((data.total / data.count) * 10) / 10;
+            if (avg > 0 && avg < 60) { // Only students with scores below 60%
+                studentData.push({
+                    student: s,
+                    avg: avg,
+                    count: data.count,
+                    highest: data.scores.length > 0 ? Math.max(...data.scores) : 0,
+                    lowest: data.scores.length > 0 ? Math.min(...data.scores) : 0
+                });
+            }
+        }
+    });
+    
+    // Sort by average (ascending) - weakest first
+    const weakStudents = studentData.sort((a, b) => a.avg - b.avg);
+    
+    if (weakStudents.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #10b981;">
+                <i class="fas fa-check-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                🎉 No weak students! All students are performing well.
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #dc2626; color: white;">
+                        <th style="padding: 10px 12px; text-align: left;">#</th>
+                        <th style="padding: 10px 12px; text-align: left;">Student Name</th>
+                        <th style="padding: 10px 12px; text-align: left;">Admission</th>
+                        <th style="padding: 10px 12px; text-align: left;">Program</th>
+                        <th style="padding: 10px 12px; text-align: center;">Avg Score</th>
+                        <th style="padding: 10px 12px; text-align: center;">Subjects</th>
+                        <th style="padding: 10px 12px; text-align: center;">Highest</th>
+                        <th style="padding: 10px 12px; text-align: center;">Lowest</th>
+                        <th style="padding: 10px 12px; text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    weakStudents.forEach((data, index) => {
+        const status = data.avg >= 50 ? '⚠️ At Risk' : '❌ Critical';
+        const statusColor = data.avg >= 50 ? '#f59e0b' : '#dc2626';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #fef2f2;' : ''}">
+                <td style="padding: 10px 12px; text-align: center;">${index + 1}</td>
+                <td style="padding: 10px 12px; font-weight: 500;">${window.escapeHtml(data.student.full_name || 'Unknown')}</td>
+                <td style="padding: 10px 12px;">${window.escapeHtml(data.student.student_id || 'N/A')}</td>
+                <td style="padding: 10px 12px;">${window.escapeHtml(data.student.program || 'N/A')}</td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: ${statusColor};">${data.avg}%</td>
+                <td style="padding: 10px 12px; text-align: center;">${data.count}</td>
+                <td style="padding: 10px 12px; text-align: center; color: #10b981;">${data.highest}%</td>
+                <td style="padding: 10px 12px; text-align: center; color: #dc2626;">${data.lowest}%</td>
+                <td style="padding: 10px 12px; text-align: center; color: ${statusColor}; font-weight: 600;">${status}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: #94a3b8; text-align: right;">
+            ${weakStudents.length} students need intervention
+        </div>
+    `;
+    
+    container.innerHTML = html;
+};
+
+// ============================================================
+// NEW: RENDER BLOCK FILTER STATS
+// ============================================================
+
+window.renderBlockFilterStats = function(students, marks, selectedBlock) {
+    const container = document.getElementById('analytics_block_filter_stats');
+    if (!container) return;
+    
+    // Group by block
+    const blockStats = {};
+    const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+    
+    blockOrder.forEach(b => {
+        blockStats[b] = { total: 0, avg: 0, pass: 0, fail: 0, pending: 0, totalScore: 0, scoredCount: 0 };
+    });
+    
+    // Count students per block
+    students?.forEach(s => {
+        const block = s.block || 'Unknown';
+        if (blockStats[block]) {
+            blockStats[block].total++;
+        } else {
+            blockStats[block] = { total: 1, avg: 0, pass: 0, fail: 0, pending: 0, totalScore: 0, scoredCount: 0 };
+        }
+    });
+    
+    // Calculate marks per block
+    marks?.forEach(m => {
+        const block = m.block || 'Unknown';
+        const score = m.final_score || 0;
+        if (blockStats[block]) {
+            if (score > 0) {
+                blockStats[block].totalScore += score;
+                blockStats[block].scoredCount++;
+                if (score >= 60) blockStats[block].pass++;
+                else blockStats[block].fail++;
+            } else {
+                blockStats[block].pending++;
+            }
+        }
+    });
+    
+    // Calculate averages
+    Object.keys(blockStats).forEach(block => {
+        const data = blockStats[block];
+        data.avg = data.scoredCount > 0 ? Math.round((data.totalScore / data.scoredCount) * 10) / 10 : 0;
+    });
+    
+    // Get the selected block or all
+    const displayBlocks = selectedBlock !== 'all' 
+        ? [selectedBlock] 
+        : Object.keys(blockStats).filter(b => blockStats[b].total > 0);
+    
+    if (displayBlocks.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No block data available</p>';
+        return;
+    }
+    
+    let html = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+    `;
+    
+    displayBlocks.forEach(block => {
+        const data = blockStats[block];
+        const statusColor = data.avg >= 60 ? '#10b981' : (data.avg > 0 ? '#dc2626' : '#f59e0b');
+        const passRate = data.scoredCount > 0 ? Math.round((data.pass / data.scoredCount) * 100) : 0;
+        
+        html += `
+            <div style="
+                background: ${data.avg >= 60 ? '#f0fdf4' : data.avg > 0 ? '#fef2f2' : '#fefce8'};
+                border: 2px solid ${data.avg >= 60 ? '#10b981' : data.avg > 0 ? '#dc2626' : '#f59e0b'};
+                border-radius: 12px;
+                padding: 16px;
+                text-align: center;
+            ">
+                <div style="font-weight: 700; font-size: 14px; color: #1e293b;">${block}</div>
+                <div style="font-size: 11px; color: #64748b;">${data.total} students</div>
+                <div style="font-size: 24px; font-weight: 700; color: ${statusColor}; margin: 8px 0;">
+                    ${data.avg}%
+                </div>
+                <div style="display: flex; justify-content: center; gap: 15px; font-size: 12px;">
+                    <div>
+                        <span style="color: #10b981;">✅ ${data.pass}</span>
+                    </div>
+                    <div>
+                        <span style="color: #dc2626;">❌ ${data.fail}</span>
+                    </div>
+                    <div>
+                        <span style="color: #f59e0b;">⏳ ${data.pending}</span>
+                    </div>
+                </div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 5px;">
+                    Pass Rate: ${passRate}%
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+};
+
+// ============================================================
 // RENDER ANALYTICS SUBJECT TABLE
 // ============================================================
 
@@ -602,7 +1105,6 @@ window.renderAnalyticsSubjectTable = function(marks) {
     const tbody = document.getElementById('analytics_subject_table_body');
     if (!tbody) return;
     
-    // Group by subject
     const subjectData = {};
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
@@ -665,7 +1167,6 @@ window.renderAnalyticsStudentTable = function(students, marks) {
         return;
     }
     
-    // Calculate average per student
     const studentMarks = {};
     marks?.forEach(m => {
         const admission = m.admission_number;
@@ -711,7 +1212,6 @@ window.renderAnalyticsBlockTable = function(students, marks, selectedBlock) {
     const tbody = document.getElementById('analytics_block_table_body');
     if (!tbody) return;
     
-    // Group by block
     const blockData = {};
     const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
     
@@ -719,7 +1219,6 @@ window.renderAnalyticsBlockTable = function(students, marks, selectedBlock) {
         blockData[b] = { total: 0, count: 0, pass: 0, students: 0, topStudent: null, topScore: 0, atRisk: 0 };
     });
     
-    // Count students per block
     students?.forEach(s => {
         const block = s.block || 'Unknown';
         if (!blockData[block]) {
@@ -728,7 +1227,6 @@ window.renderAnalyticsBlockTable = function(students, marks, selectedBlock) {
         blockData[block].students++;
     });
     
-    // Add marks
     marks?.forEach(m => {
         const block = m.block || 'Unknown';
         const score = m.final_score || 0;
@@ -738,7 +1236,6 @@ window.renderAnalyticsBlockTable = function(students, marks, selectedBlock) {
             if (score >= 60) blockData[block].pass++;
             else blockData[block].atRisk++;
             
-            // Track top performer
             if (score > blockData[block].topScore) {
                 blockData[block].topScore = score;
                 blockData[block].topStudent = m.student_name || 'Unknown';
@@ -784,7 +1281,6 @@ window.renderAnalyticsProgramTable = function(students, marks) {
     const tbody = document.getElementById('analytics_program_table_body');
     if (!tbody) return;
     
-    // Group by program
     const programData = {};
     
     students?.forEach(s => {
@@ -851,7 +1347,6 @@ window.renderAnalyticsTrendsTable = function(students, marks) {
     const tbody = document.getElementById('analytics_trends_table_body');
     if (!tbody) return;
     
-    // Group by year
     const yearData = {};
     
     students?.forEach(s => {
@@ -944,10 +1439,10 @@ window.renderAnalyticsExamDetails = function(marks, students, program, block, ye
         
         html += `
             <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px 12px;">${index + 1}</td>
                 <td style="padding: 10px 12px;">${window.escapeHtml(m.subject_name || 'N/A')}</td>
                 <td style="padding: 10px 12px;">${window.escapeHtml(m.student_name || 'Unknown')}</td>
                 <td style="padding: 10px 12px; text-align: center;">${window.escapeHtml(m.block || 'N/A')}</td>
-                <td style="padding: 10px 12px; text-align: center;">${window.escapeHtml(m.admission_number || 'N/A')}</td>
                 <td style="padding: 10px 12px; text-align: center;">${m.cat1_score || '-'}</td>
                 <td style="padding: 10px 12px; text-align: center;">${m.cat2_score || '-'}</td>
                 <td style="padding: 10px 12px; text-align: center;">${m.exam_score || '-'}</td>
@@ -959,6 +1454,24 @@ window.renderAnalyticsExamDetails = function(marks, students, program, block, ye
     });
     
     tbody.innerHTML = html;
+};
+
+// ============================================================
+// CALCULATE TRANSCRIPT GRADE (Helper)
+// ============================================================
+
+window.calculateTranscriptGrade = function(score) {
+    if (score >= 80) return 'A';
+    if (score >= 75) return 'A-';
+    if (score >= 70) return 'B+';
+    if (score >= 65) return 'B';
+    if (score >= 60) return 'B-';
+    if (score >= 55) return 'C+';
+    if (score >= 50) return 'C';
+    if (score >= 45) return 'C-';
+    if (score >= 40) return 'D+';
+    if (score >= 35) return 'D';
+    return 'E';
 };
 
 // ============================================================
@@ -980,13 +1493,14 @@ window.refreshAnalytics = function() {
 window.exportAnalyticsReport = function() {
     console.log('📤 Exporting analytics report...');
     
-    // Get stats
     const totalStudents = document.getElementById('analytics_total_students')?.textContent || '0';
     const passRate = document.getElementById('analytics_pass_rate')?.textContent || '0%';
     const avgScore = document.getElementById('analytics_avg_score')?.textContent || '0%';
     const atRisk = document.getElementById('analytics_at_risk')?.textContent || '0';
+    const program = document.getElementById('analytics_program_label')?.textContent || 'All';
+    const year = document.getElementById('analytics_year_select')?.value || '2025';
+    const block = document.getElementById('analytics_block_select')?.value || 'All';
     
-    // Build report
     const report = `
 ========================================
 📊 NCHSM ANALYTICS REPORT
@@ -1000,13 +1514,12 @@ Pass Rate: ${passRate}
 Average Score: ${avgScore}
 At Risk Students: ${atRisk}
 ----------------------------------------
-Program: ${document.getElementById('analytics_program_label')?.textContent || 'All'}
-Year: ${document.getElementById('analytics_year_select')?.value || '2025'}
-Block: ${document.getElementById('analytics_block_select')?.value || 'All'}
+Program: ${program}
+Year: ${year}
+Block: ${block}
 ========================================
     `;
     
-    // Download as text file
     const blob = new Blob([report], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1066,6 +1579,7 @@ window.exportAnalyticsReport = window.exportAnalyticsReport;
 window.filterAnalytics = window.filterAnalytics;
 window.updateAnalyticsMetric = window.updateAnalyticsMetric;
 window.getProgramDisplayName = window.getProgramDisplayName;
+window.calculateTranscriptGrade = window.calculateTranscriptGrade;
 window.escapeHtml = window.escapeHtml;
 
 console.log('✅ Super Admin Analytics Module Loaded Successfully!');
