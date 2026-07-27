@@ -1,8 +1,9 @@
-// js/lecturer-sessions.js - COMPLETE WITH OWNER-ONLY ACCESS
+// js/lecturer-sessions.js - COMPLETE WITH UNIT FILTERING
 /**
  * NCHSM Lecturer Sessions Module
  * Uses scheduled_sessions table with correct column names
- * Lecturers can only see and manage their OWN sessions
+ * Includes session open/close for student attendance sign-in
+ * STRICT UNIT ASSIGNMENT FILTERING - Same as Resources and Marks
  */
 
 const LecturerSessions = {
@@ -10,6 +11,7 @@ const LecturerSessions = {
     lecturerAssignmentId: null,
     lecturerUuid: null,
     assignedUnits: [],
+    isProcessing: false,
     
     async init() {
         console.log('📅 Initializing Lecturer Sessions...');
@@ -101,7 +103,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // LOAD ASSIGNED UNITS (for form dropdown)
+    // LOAD ASSIGNED UNITS - SAME AS RESOURCES & MARKS
     // ============================================
     async loadAssignedUnits() {
         try {
@@ -115,7 +117,7 @@ const LecturerSessions = {
             
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
-                .select('subject_name, subject_code, block, program, academic_year')
+                .select('subject_name, subject_code, block, program, academic_year, id')
                 .eq('lecturer_id', String(lecturerId));
             
             if (error) {
@@ -124,10 +126,32 @@ const LecturerSessions = {
             }
             
             this.assignedUnits = assignments || [];
-            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units`);
+            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for sessions`);
+            
+            // Populate unit dropdowns
+            this.populateUnitDropdowns();
             
         } catch (error) {
             console.error('Failed to load assigned units:', error);
+        }
+    },
+    
+    // ============================================
+    // POPULATE UNIT DROPDOWNS - SAME AS RESOURCES
+    // ============================================
+    populateUnitDropdowns() {
+        const unitSelect = document.getElementById('sessionUnit');
+        if (!unitSelect) return;
+        
+        const units = this.assignedUnits;
+        
+        if (units && units.length > 0) {
+            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
+                units.map(u => 
+                    `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
+                ).join('');
+        } else {
+            unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
         }
     },
     
@@ -176,6 +200,9 @@ const LecturerSessions = {
         }
     },
     
+    // ============================================
+    // RENDER SESSIONS
+    // ============================================
     renderSessions() {
         const tbody = document.getElementById('sessionsTable');
         if (!tbody) return;
@@ -204,7 +231,8 @@ const LecturerSessions = {
             'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Rejected</span>',
             'completed': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📌 Completed</span>',
             'active': '<span style="background: #10b981; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🟢 Active</span>',
-            'closed': '<span style="background: #6b7280; color: #1e293b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🔒 Closed</span>'
+            'closed': '<span style="background: #6b7280; color: #1e293b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🔒 Closed</span>',
+            'scheduled': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📅 Scheduled</span>'
         };
         
         const sessionTypeLabels = {
@@ -225,8 +253,8 @@ const LecturerSessions = {
                 ? (this.formatDate(session.session_date)) + (session.session_time ? ' ' + session.session_time : '')
                 : 'N/A';
             
-            const status = session.approval_status || 'pending';
-            const statusBadge = statusBadges[status] || statusBadges.pending;
+            const status = session.approval_status || 'scheduled';
+            const statusBadge = statusBadges[status] || statusBadges.scheduled;
             
             const sessionType = session.session_type || 'Class';
             const sessionTypeLabel = sessionTypeLabels[sessionType] || sessionType;
@@ -237,7 +265,7 @@ const LecturerSessions = {
             // Session control buttons - only for this lecturer's sessions
             let sessionControls = '';
             if (sessionDate && sessionDate >= today) {
-                if (!isActive) {
+                if (!isActive && status !== 'closed') {
                     sessionControls += `
                         <button onclick="LecturerSessions.openSession('${session.id}')" 
                                 style="background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
@@ -245,7 +273,7 @@ const LecturerSessions = {
                             <i class="fas fa-play"></i> Open
                         </button>
                     `;
-                } else {
+                } else if (isActive) {
                     sessionControls += `
                         <button onclick="LecturerSessions.closeSession('${session.id}')" 
                                 style="background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
@@ -256,12 +284,14 @@ const LecturerSessions = {
                 }
             }
             
+            const titleDisplay = session.session_title || session.title || 'N/A';
+            
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle} ${rowClass}" 
                     onmouseover="this.style.background='${isActive ? '#bfdbfe' : (isToday ? '#bfdbfe' : '#f8fafc')}'" 
                     onmouseout="this.style.background='${isActive ? '#d1fae5' : (isToday ? '#dbeafe' : 'transparent')}'">
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                        ${this.escapeHtml(session.session_title || session.title || 'N/A')}
+                        ${this.escapeHtml(titleDisplay)}
                         ${isActive ? '<span style="font-size: 10px; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">🟢 OPEN</span>' : ''}
                         ${isToday && !isActive ? '<span style="font-size: 10px; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">TODAY</span>' : ''}
                         ${isPast && !isActive ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 8px;">(Past)</span>' : ''}
@@ -276,19 +306,23 @@ const LecturerSessions = {
                         ${this.escapeHtml(session.target_program || 'N/A')}/${this.escapeHtml(session.block_term || 'N/A')}
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
-                        <span style="font-weight: 600; color: #0A3D62;">0</span>
+                        ${statusBadge}
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
-                        <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
+                        <button onclick="LecturerSessions.viewAttendees('${session.id}')" 
                                 style="background: #4C1D95; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
                                 onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
-                            <i class="fas fa-link"></i> Link
+                            <i class="fas fa-users"></i> View
                         </button>
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${sessionControls}
-                            ${status === 'pending' ? `
+                            <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
+                                    style="background: #2563eb; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                    onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
+                                <i class="fas fa-link"></i> Link
+                            </button>
+                            ${(status === 'pending' || status === 'scheduled') ? `
                                 <button onclick="LecturerSessions.cancelSession('${session.id}')" 
                                         style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
                                         onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
@@ -325,9 +359,13 @@ const LecturerSessions = {
     // OPEN SESSION - OWNER ONLY
     // ============================================
     async openSession(sessionId) {
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+        
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
             window.showNotification('Session not found.', 'error');
+            this.isProcessing = false;
             return;
         }
         
@@ -335,10 +373,14 @@ const LecturerSessions = {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only manage your own sessions.', 'warning');
+            this.isProcessing = false;
             return;
         }
         
-        if (!confirm(`Open "${session.session_title || session.title}" for student attendance?`)) return;
+        if (!confirm(`Open "${session.session_title || session.title}" for student attendance?`)) {
+            this.isProcessing = false;
+            return;
+        }
         
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -364,6 +406,8 @@ const LecturerSessions = {
         } catch (error) {
             console.error('Error opening session:', error);
             window.showNotification('Failed to open session: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
         }
     },
     
@@ -371,9 +415,13 @@ const LecturerSessions = {
     // CLOSE SESSION - OWNER ONLY
     // ============================================
     async closeSession(sessionId) {
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+        
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
             window.showNotification('Session not found.', 'error');
+            this.isProcessing = false;
             return;
         }
         
@@ -381,10 +429,14 @@ const LecturerSessions = {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only manage your own sessions.', 'warning');
+            this.isProcessing = false;
             return;
         }
         
-        if (!confirm(`Close "${session.session_title || session.title}" and stop attendance?`)) return;
+        if (!confirm(`Close "${session.session_title || session.title}" and stop attendance?`)) {
+            this.isProcessing = false;
+            return;
+        }
         
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -410,6 +462,8 @@ const LecturerSessions = {
         } catch (error) {
             console.error('Error closing session:', error);
             window.showNotification('Failed to close session: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
         }
     },
     
@@ -467,6 +521,9 @@ const LecturerSessions = {
     // OPEN TODAY'S SESSION - OWNER ONLY
     // ============================================
     async openTodaySession() {
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+        
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
@@ -476,6 +533,7 @@ const LecturerSessions = {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const program = profile?.program || profile?.department || 'KRCHN';
             const lecturerId = this.lecturerUuid || profile?.user_id;
+            const currentYear = new Date().getFullYear().toString();
             
             const today = new Date().toISOString().split('T')[0];
             
@@ -494,6 +552,7 @@ const LecturerSessions = {
             
             if (!sessions || sessions.length === 0) {
                 window.showNotification('No sessions scheduled for today.', 'info');
+                this.isProcessing = false;
                 return;
             }
             
@@ -517,6 +576,8 @@ const LecturerSessions = {
         } catch (error) {
             console.error('Error opening today\'s session:', error);
             window.showNotification('Failed to open session: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
         }
     },
     
@@ -524,6 +585,9 @@ const LecturerSessions = {
     // CLOSE ALL SESSIONS - OWNER ONLY
     // ============================================
     async closeAllSessions() {
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+        
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
@@ -533,7 +597,10 @@ const LecturerSessions = {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerId = this.lecturerUuid || profile?.user_id;
             
-            if (!confirm('Close all your active sessions and stop attendance?')) return;
+            if (!confirm('Close all your active sessions and stop attendance?')) {
+                this.isProcessing = false;
+                return;
+            }
             
             // ✅ Only close sessions owned by this lecturer
             const { error } = await supabase
@@ -554,6 +621,8 @@ const LecturerSessions = {
         } catch (error) {
             console.error('Error closing all sessions:', error);
             window.showNotification('Failed to close sessions: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
         }
     },
     
@@ -561,9 +630,13 @@ const LecturerSessions = {
     // CANCEL SESSION - OWNER ONLY
     // ============================================
     async cancelSession(sessionId) {
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+        
         const session = this.sessions.find(s => s.id === sessionId);
         if (!session) {
             window.showNotification('Session not found.', 'error');
+            this.isProcessing = false;
             return;
         }
         
@@ -571,15 +644,20 @@ const LecturerSessions = {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only cancel your own sessions.', 'warning');
+            this.isProcessing = false;
             return;
         }
         
         if (session.approval_status === 'approved') {
             window.showNotification('Approved sessions cannot be cancelled.', 'warning');
+            this.isProcessing = false;
             return;
         }
         
-        if (!confirm(`Cancel session "${session.session_title || session.title}"?`)) return;
+        if (!confirm(`Cancel session "${session.session_title || session.title}"?`)) {
+            this.isProcessing = false;
+            return;
+        }
         
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -602,11 +680,13 @@ const LecturerSessions = {
         } catch (error) {
             console.error('Error cancelling session:', error);
             window.showNotification('Failed to cancel session: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
         }
     },
     
     // ============================================
-    // POPULATE SESSION FORM
+    // POPULATE SESSION FORM - WITH ASSIGNED UNITS
     // ============================================
     populateSessionForm() {
         const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -617,13 +697,22 @@ const LecturerSessions = {
             programSelect.innerHTML = `<option value="${program}">${program}</option>`;
         }
         
+        // ✅ Populate blocks from assigned units (same as Resources)
         const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (blockSelect) {
-            blockSelect.innerHTML = '<option value="">-- Select Block --</option>' +
-                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+            if (blocks.length > 0) {
+                blockSelect.innerHTML = '<option value="">-- Select Block --</option>' +
+                    blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+            } else {
+                blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
+            }
         }
         
+        // ✅ Populate units from assigned units (same as Resources)
+        this.populateUnitDropdowns();
+        
+        // Session type
         const typeSelect = document.getElementById('sessionType');
         if (typeSelect) {
             typeSelect.innerHTML = `
@@ -635,38 +724,38 @@ const LecturerSessions = {
             `;
         }
         
-        this.loadUnitsForForm();
-        
+        // Set default date to tomorrow
         const dateInput = document.getElementById('sessionDate');
         if (dateInput) {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             dateInput.value = tomorrow.toISOString().split('T')[0];
         }
-    },
-    
-    loadUnitsForForm() {
-        const unitSelect = document.getElementById('sessionUnit');
-        if (!unitSelect) return;
         
-        const units = this.assignedUnits;
-        
-        if (units && units.length > 0) {
-            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
-                units.map(u => 
-                    `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
-                ).join('');
-        } else {
-            unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
+        // Set default time
+        const timeInput = document.getElementById('sessionTime');
+        if (timeInput) {
+            timeInput.value = '09:00';
         }
     },
     
+    // ============================================
+    // SETUP EVENT LISTENERS
+    // ============================================
     setupEventListeners() {
         const form = document.getElementById('addSessionForm');
         if (form) {
-            form.addEventListener('submit', (e) => this.handleAddSession(e));
+            // Remove any existing listeners to prevent duplicates
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+            
+            newForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleAddSession(e);
+            });
         }
         
+        // Block filter change - filter units by block (same as Resources)
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (blockSelect) {
             blockSelect.addEventListener('change', () => {
@@ -674,10 +763,14 @@ const LecturerSessions = {
                 const unitSelect = document.getElementById('sessionUnit');
                 if (unitSelect) {
                     const filtered = this.assignedUnits.filter(u => u.block === block || !block);
-                    unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
-                        filtered.map(u => 
-                            `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
-                        ).join('');
+                    if (filtered.length > 0) {
+                        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
+                            filtered.map(u => 
+                                `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
+                            ).join('');
+                    } else {
+                        unitSelect.innerHTML = '<option value="">-- No units in this block --</option>';
+                    }
                 }
             });
         }
@@ -687,14 +780,24 @@ const LecturerSessions = {
     // HANDLE ADD SESSION - Creates session for this lecturer
     // ============================================
     async handleAddSession(e) {
-        e.preventDefault();
-        const btn = e.submitter || e.target.querySelector('button[type="submit"]');
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scheduling...';
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+        
+        // Prevent default if event exists
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+        }
+        
+        const btn = document.querySelector('#addSessionForm button[type="submit"]');
+        const originalText = btn?.innerHTML || 'Schedule Session';
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scheduling...';
+        }
         
         const formData = {
-            title: document.getElementById('sessionTopic')?.value,
+            title: document.getElementById('sessionTopic')?.value?.trim(),
             date: document.getElementById('sessionDate')?.value,
             time: document.getElementById('sessionTime')?.value,
             program: document.getElementById('sessionProgram')?.value,
@@ -707,8 +810,11 @@ const LecturerSessions = {
         
         if (!formData.title || !formData.date || !formData.program || !formData.block || !formData.unit) {
             window.showNotification('Please fill all required fields.', 'error');
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+            this.isProcessing = false;
             return;
         }
         
@@ -731,23 +837,33 @@ const LecturerSessions = {
                 program_type: formData.program,
                 block_term: formData.block,
                 session_type: formData.type,
-                location_name: formData.location,
+                location_name: formData.location || 'Lecture Hall',
                 created_by: lecturerUuid, // ✅ Owner is set
                 approval_status: 'pending',
-                created_at: new Date().toISOString(),
                 status: 'scheduled',
-                is_active: false
+                is_active: false,
+                capacity: parseInt(formData.capacity) || 0,
+                intake_year: new Date().getFullYear().toString(),
+                created_at: new Date().toISOString()
             };
+            
+            console.log('📤 Scheduling session:', sessionData);
             
             const { data: result, error } = await supabase
                 .from('scheduled_sessions')
                 .insert([sessionData])
                 .select();
             
-            if (error) throw error;
+            if (error) {
+                console.error('DB Error:', error);
+                throw new Error('Failed to schedule session: ' + error.message);
+            }
             
             window.showNotification('✅ Session scheduled successfully!', 'success');
-            e.target.reset();
+            
+            // Reset form
+            const form = document.getElementById('addSessionForm');
+            if (form) form.reset();
             this.populateSessionForm();
             await this.loadSessions();
             
@@ -755,8 +871,11 @@ const LecturerSessions = {
             console.error('Error scheduling session:', error);
             window.showNotification('Failed to schedule session: ' + error.message, 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+            this.isProcessing = false;
         }
     },
     
@@ -817,7 +936,7 @@ const LecturerSessions = {
             return;
         }
         
-        const headers = ['Topic', 'Date', 'Time', 'Type', 'Program', 'Block', 'Unit', 'Status'];
+        const headers = ['Topic', 'Date', 'Time', 'Type', 'Program', 'Block', 'Unit', 'Status', 'Approval'];
         const rows = sessions.map(s => [
             s.session_title || s.title || 'N/A',
             s.session_date || 'N/A',
@@ -826,7 +945,8 @@ const LecturerSessions = {
             s.target_program || 'N/A',
             s.block_term || 'N/A',
             s.unit_name || 'N/A',
-            s.status || 'scheduled'
+            s.status || 'scheduled',
+            s.approval_status || 'pending'
         ]);
         
         const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -880,20 +1000,60 @@ const LecturerSessions = {
     }
 };
 
-// Initialize on DOM ready
+// ============================================
+// GLOBAL FUNCTIONS
+// ============================================
+function scheduleSession(e) {
+    if (e) e.preventDefault();
+    LecturerSessions.handleAddSession(e);
+}
+
+function generateAttendanceLink(id) {
+    LecturerSessions.generateAttendanceLink(id);
+}
+
+function openSession(id) {
+    LecturerSessions.openSession(id);
+}
+
+function closeSession(id) {
+    LecturerSessions.closeSession(id);
+}
+
+function viewAttendees(id) {
+    LecturerSessions.viewAttendees(id);
+}
+
+function openTodaySession() {
+    LecturerSessions.openTodaySession();
+}
+
+function closeAllSessions() {
+    LecturerSessions.closeAllSessions();
+}
+
+function exportSessions() {
+    LecturerSessions.exportSessions();
+}
+
+// ============================================
+// INITIALIZE ON DOM READY
+// ============================================
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => LecturerSessions.init(), 700);
 });
 
 // Make globally accessible
 window.LecturerSessions = LecturerSessions;
-window.scheduleSession = (e) => LecturerSessions.handleAddSession(e);
-window.generateAttendanceLink = (id) => LecturerSessions.generateAttendanceLink(id);
-window.openSession = (id) => LecturerSessions.openSession(id);
-window.closeSession = (id) => LecturerSessions.closeSession(id);
-window.viewAttendees = (id) => LecturerSessions.viewAttendees(id);
-window.openTodaySession = () => LecturerSessions.openTodaySession();
-window.closeAllSessions = () => LecturerSessions.closeAllSessions();
-window.exportSessions = () => LecturerSessions.exportSessions();
+window.scheduleSession = scheduleSession;
+window.generateAttendanceLink = generateAttendanceLink;
+window.openSession = openSession;
+window.closeSession = closeSession;
+window.viewAttendees = viewAttendees;
+window.openTodaySession = openTodaySession;
+window.closeAllSessions = closeAllSessions;
+window.exportSessions = exportSessions;
 
-console.log('✅ LecturerSessions module loaded - Owner-only access');
+console.log('✅ LecturerSessions module loaded - Complete with unit filtering');
+console.log('🔒 Lecturers can only see and manage their own sessions');
+console.log('📚 Unit filtering matches Resources and Marks modules');
