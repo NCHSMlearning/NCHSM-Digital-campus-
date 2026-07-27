@@ -7683,6 +7683,9 @@
 <!-- 2. SUPER ADMIN TRANSCRIPT GENERATOR MODULE -->
 <script src="./js/superadmin-transcript.js"></script>
 
+<!-- 3. SUPER ADMIN MARKS ENTRY MODULE -->
+<script src="./js/superadmin-marks-entry.js"></script>
+
 <!-- ============================================ -->
 <!-- INITIALIZATION - AFTER ALL MODULES LOADED    -->
 <!-- ============================================ -->
@@ -7696,7 +7699,6 @@
         if (typeof window.loadAnalyticsData === 'function') {
             console.log('📊 Setting up analytics...');
             
-            // Set up event listeners for analytics
             ['analytics_program_select', 'analytics_year_select', 'analytics_block_select', 'analytics_metric_select'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -7704,7 +7706,6 @@
                 }
             });
             
-            // Load initial data
             setTimeout(window.loadAnalyticsData, 800);
         } else {
             console.warn('⚠️ Analytics module not loaded');
@@ -7716,7 +7717,6 @@
         if (typeof window.loadTranscriptStudents === 'function') {
             console.log('📄 Setting up transcript generator...');
             
-            // Set up event listeners for transcript
             ['transcript_program_select', 'transcript_year_select', 'transcript_block_select'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -7724,13 +7724,70 @@
                 }
             });
             
-            // Load initial data
             setTimeout(window.loadTranscriptStudents, 800);
         } else {
             console.warn('⚠️ Transcript module not loaded');
         }
         
-        console.log('✅ Analytics & Transcript modules initialized!');
+        // ============================================
+        // 3. INITIALIZE MARKS ENTRY
+        // ============================================
+        if (typeof window.loadMarksEntry === 'function') {
+            console.log('📝 Setting up marks entry...');
+            
+            // Set up event listeners for marks entry
+            const meProgramSelect = document.getElementById('me_program_select');
+            const meBlockSelect = document.getElementById('me_block_select');
+            const meSubjectSelect = document.getElementById('me_subject_select');
+            const meYearSelect = document.getElementById('me_year_select');
+            
+            if (meProgramSelect) {
+                meProgramSelect.addEventListener('change', function() {
+                    if (typeof window.loadMEBlocks === 'function') {
+                        window.loadMEBlocks();
+                    }
+                });
+            }
+            
+            if (meBlockSelect) {
+                meBlockSelect.addEventListener('change', function() {
+                    if (typeof window.loadMEUnits === 'function') {
+                        window.loadMEUnits();
+                    }
+                });
+            }
+            
+            if (meSubjectSelect) {
+                meSubjectSelect.addEventListener('change', function() {
+                    if (typeof window.loadMarksEntry === 'function') {
+                        window.loadMarksEntry();
+                    }
+                });
+            }
+            
+            if (meYearSelect) {
+                meYearSelect.addEventListener('change', function() {
+                    if (typeof window.loadMarksEntry === 'function') {
+                        window.loadMarksEntry();
+                    }
+                });
+            }
+            
+            // Load initial data if program is already selected
+            if (meProgramSelect && meProgramSelect.value) {
+                setTimeout(function() {
+                    if (typeof window.loadMEBlocks === 'function') {
+                        window.loadMEBlocks();
+                    }
+                }, 900);
+            }
+            
+            console.log('✅ Marks entry initialized');
+        } else {
+            console.warn('⚠️ Marks entry module not loaded');
+        }
+        
+        console.log('✅ All modules initialized!');
     });
 </script>
 
