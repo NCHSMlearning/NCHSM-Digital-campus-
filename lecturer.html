@@ -2590,6 +2590,251 @@
         </table>
     </div>
 </section>
+             <!-- ===== REPORTS SECTION - ENHANCED WITH UNIT SELECTION ===== -->
+<section id="reports-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+        <div>
+            <h2 style="margin: 0;"><i class="fas fa-chart-bar" style="color: #FDB913;"></i> Academic Reports</h2>
+            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Generate comprehensive reports for your assigned units, courses, and students</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <span style="background: #dbeafe; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-file-pdf"></i> PDF
+            </span>
+            <span style="background: #d1fae5; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #065f46; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-file-excel"></i> Excel
+            </span>
+            <span style="background: #fef3c7; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #92400e; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-print"></i> Print
+            </span>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #4C1D95;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-file-alt" style="color: #4C1D95; font-size: 20px;"></i>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="totalReportsCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Total Reports</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #10b981;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-users" style="color: #10b981; font-size: 20px;"></i>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="studentReportsCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Student Reports</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-chart-line" style="color: #f59e0b; font-size: 20px;"></i>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="performanceReportsCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Performance Reports</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #8b5cf6;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-book" style="color: #8b5cf6; font-size: 20px;"></i>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="unitReportsCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Unit Reports</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Report Generation Form -->
+    <form id="reportGenerationForm" style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 25px; border: 1px solid #e5e7eb;" onsubmit="event.preventDefault(); generateReport();">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+            <i class="fas fa-plus-circle" style="color: #4C1D95; font-size: 22px;"></i>
+            <h4 style="margin: 0; color: #0A3D62; font-size: 18px;">Generate New Report</h4>
+            <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">
+                <i class="fas fa-info-circle"></i> Select unit to generate unit-specific reports
+            </span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="reportUnit" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-book" style="color: #4C1D95; width: 18px;"></i> Select Unit
+                </label>
+                <select id="reportUnit" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">-- Select Unit --</option>
+                </select>
+                <small style="color: #94a3b8; font-size: 11px;">Units you are currently teaching</small>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="reportType" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-tag" style="color: #4C1D95; width: 18px;"></i> Report Type
+                </label>
+                <select id="reportType" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">-- Select Report Type --</option>
+                    <option value="AttendanceSummary">📋 Attendance Summary</option>
+                    <option value="CourseGradeBook">📊 Unit Grade Book</option>
+                    <option value="EnrollmentList">👥 Enrollment List</option>
+                    <option value="PerformanceAnalysis">📈 Performance Analysis</option>
+                    <option value="ClassRoster">📝 Class Roster</option>
+                    <option value="UnitProgress">🎯 Unit Progress Report</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="reportScope" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-bullseye" style="color: #4C1D95; width: 18px;"></i> Scope
+                </label>
+                <select id="reportScope" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">-- Select Scope --</option>
+                    <option value="MyCourses">📚 All My Units</option>
+                    <option value="MyStudents">👨‍🎓 My Students</option>
+                    <option value="UnitOnly">📖 Selected Unit Only</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="reportFormat" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-file" style="color: #4C1D95; width: 18px;"></i> Output Format
+                </label>
+                <select id="reportFormat" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="PDF">📄 PDF Document</option>
+                    <option value="Excel">📊 Excel Spreadsheet</option>
+                    <option value="CSV">📋 CSV File</option>
+                    <option value="HTML">🌐 HTML Preview</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Additional Options -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="includeAttendance" checked style="width: 18px; height: 18px; accent-color: #4C1D95;">
+                <label for="includeAttendance" style="font-size: 13px; color: #475569;">Include Attendance</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="includeGrades" checked style="width: 18px; height: 18px; accent-color: #4C1D95;">
+                <label for="includeGrades" style="font-size: 13px; color: #475569;">Include Grades</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="includeComments" style="width: 18px; height: 18px; accent-color: #4C1D95;">
+                <label for="includeComments" style="font-size: 13px; color: #475569;">Include Comments</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="includeRanking" style="width: 18px; height: 18px; accent-color: #4C1D95;">
+                <label for="includeRanking" style="font-size: 13px; color: #475569;">Include Ranking</label>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+            <button type="submit" class="btn btn-action" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s; display: flex; align-items: center; gap: 10px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-chart-line"></i> Generate Report
+            </button>
+            <button type="reset" style="background: transparent; color: #64748b; border: 2px solid #e2e8f0; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+        </div>
+    </form>
+    
+    <!-- Report Filters -->
+    <div style="background: white; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; border: 1px solid #e5e7eb;">
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px;">
+            <i class="fas fa-search" style="color: #94a3b8;"></i>
+            <input type="text" id="reportSearch" placeholder="Search reports by name, type, or unit..." style="flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; min-width: 150px;" onkeyup="filterReports()">
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <select id="reportTypeFilter" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white;" onchange="filterReports()">
+                <option value="all">All Types</option>
+                <option value="AttendanceSummary">Attendance</option>
+                <option value="CourseGradeBook">Grade Book</option>
+                <option value="EnrollmentList">Enrollment</option>
+                <option value="PerformanceAnalysis">Performance</option>
+                <option value="ClassRoster">Roster</option>
+                <option value="UnitProgress">Unit Progress</option>
+            </select>
+            <select id="reportUnitFilter" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white;" onchange="filterReports()">
+                <option value="all">All Units</option>
+            </select>
+            <button onclick="filterReports()" style="background: #4C1D95; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+            <button onclick="clearReportFilters()" style="background: transparent; color: #64748b; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                <i class="fas fa-times"></i> Clear
+            </button>
+            <button onclick="refreshReports()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+    
+    <!-- Reports Table -->
+    <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-file-alt" style="margin-right: 8px; color: #4C1D95;"></i> Report Name
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-book" style="margin-right: 8px; color: #4C1D95;"></i> Unit
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-tag" style="margin-right: 8px; color: #4C1D95;"></i> Type
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-bullseye" style="margin-right: 8px; color: #4C1D95;"></i> Scope
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-calendar" style="margin-right: 8px; color: #4C1D95;"></i> Date Generated
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-file" style="margin-right: 8px; color: #4C1D95;"></i> Format
+                        </th>
+                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-cog" style="margin-right: 8px; color: #4C1D95;"></i> Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="reportsTable">
+                    <tr>
+                        <td colspan="7" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                            <i class="fas fa-chart-bar" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
+                            <h3 style="color: #475569; margin: 0 0 8px 0;">No Reports Generated Yet</h3>
+                            <p style="margin: 0; font-size: 14px;">Select a unit and report type above to generate your first report</p>
+                            <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                                <span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">📋 Attendance</span>
+                                <span style="background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">📊 Grades</span>
+                                <span style="background: #fef3c7; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #92400e;">👥 Enrollment</span>
+                                <span style="background: #ede9fe; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #5b21b6;">🎯 Progress</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Table Footer -->
+        <div style="padding: 12px 18px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <span style="font-size: 13px; color: #64748b;">
+                <i class="fas fa-database"></i> <span id="reportCountDisplay">0</span> reports available
+            </span>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="exportAllReports()" style="background: transparent; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #475569; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-file-export"></i> Export All
+                </button>
+                <button onclick="printReportTable()" style="background: transparent; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #475569; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
 
           <!-- ===== MESSAGES SECTION - ENHANCED ===== -->
 <section id="messages-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
