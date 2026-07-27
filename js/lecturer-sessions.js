@@ -265,141 +265,148 @@ populateBlockDropdown() {
         }
     },
     
-    // ============================================
-    // RENDER SESSIONS
-    // ============================================
-    renderSessions() {
-        const tbody = document.getElementById('sessionsTable');
-        if (!tbody) return;
+   // ============================================
+// RENDER SESSIONS - WITH UNIT DISPLAY
+// ============================================
+renderSessions() {
+    const tbody = document.getElementById('sessionsTable');
+    if (!tbody) return;
+    
+    const sessions = this.sessions;
+    
+    if (!sessions || sessions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                    <i class="fas fa-calendar-plus" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
+                    <h3 style="color: #475569; margin: 0 0 8px 0;">No Sessions Scheduled</h3>
+                    <p style="margin: 0; font-size: 14px;">Schedule your first session using the form above.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const statusBadges = {
+        'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
+        'approved': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Approved</span>',
+        'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Rejected</span>',
+        'completed': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📌 Completed</span>',
+        'active': '<span style="background: #10b981; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🟢 Active</span>',
+        'closed': '<span style="background: #6b7280; color: #1e293b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🔒 Closed</span>',
+        'scheduled': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📅 Scheduled</span>'
+    };
+    
+    const sessionTypeLabels = {
+        'Class': '📚 Class',
+        'Clinical': '🏥 Clinical',
+        'Lab': '🔬 Lab',
+        'Tutorial': '📝 Tutorial',
+        'Exam': '📝 Exam'
+    };
+    
+    tbody.innerHTML = sessions.map(session => {
+        const sessionDate = session.session_date ? new Date(session.session_date) : null;
+        const isToday = sessionDate && sessionDate.toDateString() === today.toDateString();
+        const isPast = sessionDate && sessionDate < today;
+        const isActive = session.status === 'active' || session.is_active === true;
         
-        const sessions = this.sessions;
+        const dateTime = session.session_date 
+            ? (this.formatDate(session.session_date)) + (session.session_time ? ' ' + session.session_time : '')
+            : 'N/A';
         
-        if (!sessions || sessions.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
-                        <i class="fas fa-calendar-plus" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Sessions Scheduled</h3>
-                        <p style="margin: 0; font-size: 14px;">Schedule your first session using the form above.</p>
-                    </td>
-                </tr>
-            `;
-            return;
+        const status = session.approval_status || 'scheduled';
+        const statusBadge = statusBadges[status] || statusBadges.scheduled;
+        
+        const sessionType = session.session_type || 'Class';
+        const sessionTypeLabel = sessionTypeLabels[sessionType] || sessionType;
+        
+        // ✅ Display unit name (use unit_name, fallback to course_name)
+        const unitDisplay = session.unit_name || session.course_name || 'N/A';
+        
+        const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
+        const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
+        
+        // Session control buttons
+        let sessionControls = '';
+        if (sessionDate && sessionDate >= today) {
+            if (!isActive && status !== 'closed') {
+                sessionControls += `
+                    <button onclick="LecturerSessions.openSession('${session.id}')" 
+                            style="background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                            onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                        <i class="fas fa-play"></i> Open
+                    </button>
+                `;
+            } else if (isActive) {
+                sessionControls += `
+                    <button onclick="LecturerSessions.closeSession('${session.id}')" 
+                            style="background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                            onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                        <i class="fas fa-stop"></i> Close
+                    </button>
+                `;
+            }
         }
         
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const titleDisplay = session.session_title || session.title || 'N/A';
         
-        const statusBadges = {
-            'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
-            'approved': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Approved</span>',
-            'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Rejected</span>',
-            'completed': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📌 Completed</span>',
-            'active': '<span style="background: #10b981; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🟢 Active</span>',
-            'closed': '<span style="background: #6b7280; color: #1e293b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🔒 Closed</span>',
-            'scheduled': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📅 Scheduled</span>'
-        };
-        
-        const sessionTypeLabels = {
-            'Class': '📚 Class',
-            'Clinical': '🏥 Clinical',
-            'Lab': '🔬 Lab',
-            'Tutorial': '📝 Tutorial',
-            'Exam': '📝 Exam'
-        };
-        
-        tbody.innerHTML = sessions.map(session => {
-            const sessionDate = session.session_date ? new Date(session.session_date) : null;
-            const isToday = sessionDate && sessionDate.toDateString() === today.toDateString();
-            const isPast = sessionDate && sessionDate < today;
-            const isActive = session.status === 'active' || session.is_active === true;
-            
-            const dateTime = session.session_date 
-                ? (this.formatDate(session.session_date)) + (session.session_time ? ' ' + session.session_time : '')
-                : 'N/A';
-            
-            const status = session.approval_status || 'scheduled';
-            const statusBadge = statusBadges[status] || statusBadges.scheduled;
-            
-            const sessionType = session.session_type || 'Class';
-            const sessionTypeLabel = sessionTypeLabels[sessionType] || sessionType;
-            
-            const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
-            const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
-            
-            // Session control buttons - only for this lecturer's sessions
-            let sessionControls = '';
-            if (sessionDate && sessionDate >= today) {
-                if (!isActive && status !== 'closed') {
-                    sessionControls += `
-                        <button onclick="LecturerSessions.openSession('${session.id}')" 
-                                style="background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-                            <i class="fas fa-play"></i> Open
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle} ${rowClass}" 
+                onmouseover="this.style.background='${isActive ? '#bfdbfe' : (isToday ? '#bfdbfe' : '#f8fafc')}'" 
+                onmouseout="this.style.background='${isActive ? '#d1fae5' : (isToday ? '#dbeafe' : 'transparent')}'">
+                <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
+                    ${this.escapeHtml(titleDisplay)}
+                    ${isActive ? '<span style="font-size: 10px; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">🟢 OPEN</span>' : ''}
+                    ${isToday && !isActive ? '<span style="font-size: 10px; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">TODAY</span>' : ''}
+                    ${isPast && !isActive ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 8px;">(Past)</span>' : ''}
+                </td>
+                <td style="padding: 14px 18px; color: #475569;">
+                    ${dateTime}
+                </td>
+                <td style="padding: 14px 18px; color: #475569;">
+                    ${sessionTypeLabel}
+                </td>
+                <td style="padding: 14px 18px; color: #475569; font-weight: 500;">
+                    ${this.escapeHtml(unitDisplay)}
+                </td>
+                <td style="padding: 14px 18px; color: #475569;">
+                    ${this.escapeHtml(session.target_program || 'N/A')}/${this.escapeHtml(session.block_term || 'N/A')}
+                </td>
+                <td style="padding: 14px 18px; text-align: center;">
+                    ${statusBadge}
+                </td>
+                <td style="padding: 14px 18px; text-align: center;">
+                    <button onclick="LecturerSessions.viewAttendees('${session.id}')" 
+                            style="background: #4C1D95; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                            onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                        <i class="fas fa-users"></i> View
+                    </button>
+                </td>
+                <td style="padding: 14px 18px; text-align: center;">
+                    <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
+                                style="background: #2563eb; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
+                            <i class="fas fa-link"></i> Link
                         </button>
-                    `;
-                } else if (isActive) {
-                    sessionControls += `
-                        <button onclick="LecturerSessions.closeSession('${session.id}')" 
-                                style="background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
-                            <i class="fas fa-stop"></i> Close
-                        </button>
-                    `;
-                }
-            }
-            
-            const titleDisplay = session.session_title || session.title || 'N/A';
-            
-            return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle} ${rowClass}" 
-                    onmouseover="this.style.background='${isActive ? '#bfdbfe' : (isToday ? '#bfdbfe' : '#f8fafc')}'" 
-                    onmouseout="this.style.background='${isActive ? '#d1fae5' : (isToday ? '#dbeafe' : 'transparent')}'">
-                    <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                        ${this.escapeHtml(titleDisplay)}
-                        ${isActive ? '<span style="font-size: 10px; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">🟢 OPEN</span>' : ''}
-                        ${isToday && !isActive ? '<span style="font-size: 10px; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">TODAY</span>' : ''}
-                        ${isPast && !isActive ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 8px;">(Past)</span>' : ''}
-                    </td>
-                    <td style="padding: 14px 18px; color: #475569;">
-                        ${dateTime}
-                    </td>
-                    <td style="padding: 14px 18px; color: #475569;">
-                        ${sessionTypeLabel}
-                    </td>
-                    <td style="padding: 14px 18px; color: #475569;">
-                        ${this.escapeHtml(session.target_program || 'N/A')}/${this.escapeHtml(session.block_term || 'N/A')}
-                    </td>
-                    <td style="padding: 14px 18px; text-align: center;">
-                        ${statusBadge}
-                    </td>
-                    <td style="padding: 14px 18px; text-align: center;">
-                        <button onclick="LecturerSessions.viewAttendees('${session.id}')" 
-                                style="background: #4C1D95; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
-                            <i class="fas fa-users"></i> View
-                        </button>
-                    </td>
-                    <td style="padding: 14px 18px; text-align: center;">
-                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
-                                    style="background: #2563eb; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                    onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
-                                <i class="fas fa-link"></i> Link
+                        ${(status === 'pending' || status === 'scheduled') ? `
+                            <button onclick="LecturerSessions.cancelSession('${session.id}')" 
+                                    style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                    onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                                <i class="fas fa-times"></i>
                             </button>
-                            ${(status === 'pending' || status === 'scheduled') ? `
-                                <button onclick="LecturerSessions.cancelSession('${session.id}')" 
-                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                        onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            ` : ''}
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    },
+                        ` : ''}
+                        ${sessionControls}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+},
     
     // ============================================
     // GENERATE ATTENDANCE LINK
@@ -892,26 +899,26 @@ populateBlockDropdown() {
                 throw new Error('Database connection not available');
             }
             
-            // ✅ Session is created with this lecturer as owner
-            const sessionData = {
-                session_title: formData.title,
-                title: formData.title,
-                session_date: formData.date,
-                session_time: formData.time || '09:00:00',
-                target_program: formData.program,
-                program_type: formData.program,
-                block_term: formData.block,
-                session_type: formData.type,
-                location_name: formData.location || 'Lecture Hall',
-                created_by: lecturerUuid, // ✅ Owner is set
-                approval_status: 'pending',
-                status: 'scheduled',
-                is_active: false,
-                capacity: parseInt(formData.capacity) || 0,
-                intake_year: new Date().getFullYear().toString(),
-                created_at: new Date().toISOString()
-            };
-            
+          // In handleAddSession - add unit_name to the sessionData
+const sessionData = {
+    session_title: formData.title,
+    title: formData.title,
+    session_date: formData.date,
+    session_time: formData.time || '09:00:00',
+    target_program: formData.program,
+    program_type: formData.program,
+    block_term: formData.block,
+    session_type: formData.type,
+    location_name: formData.location || 'Lecture Hall',
+    created_by: lecturerUuid,
+    approval_status: 'pending',
+    status: 'scheduled',
+    is_active: false,
+    capacity: parseInt(formData.capacity) || 0,
+    intake_year: new Date().getFullYear().toString(),
+    unit_name: formData.unit,  // ✅ Store the unit name
+    created_at: new Date().toISOString()
+};
             console.log('📤 Scheduling session:', sessionData);
             
             const { data: result, error } = await supabase
