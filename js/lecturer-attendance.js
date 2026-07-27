@@ -859,156 +859,175 @@ renderPastAttendance() {
     // ============================================================
     // LECTURER SELF CHECK-IN
     // ============================================================
-    async lecturerCheckIn() {
-        if (this.isProcessing) {
-            this.showNotification('Please wait, processing...', 'warning');
-            return;
-        }
+   // ============================================================
+// LECTURER SELF CHECK-IN - FIXED
+// ============================================================
+async lecturerCheckIn() {
+    if (this.isProcessing) {
+        this.showNotification('Please wait, processing...', 'warning');
+        return;
+    }
 
-        const btn = document.getElementById('lecturerCheckinBtn');
-        const statusEl = document.getElementById('lecturerCheckinStatus');
+    const btn = document.getElementById('lecturerCheckinBtn');
+    const statusEl = document.getElementById('lecturerCheckinStatus');
 
-        if (!btn) return;
+    if (!btn) return;
 
-        this.isProcessing = true;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
+    this.isProcessing = true;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
 
+    if (statusEl) {
+        statusEl.textContent = '⏳ Getting location...';
+        statusEl.style.color = '#f59e0b';
+    }
+
+    if (!navigator.geolocation) {
+        this.showNotification('Geolocation not supported by your browser.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
         if (statusEl) {
-            statusEl.textContent = '⏳ Getting location...';
-            statusEl.style.color = '#f59e0b';
+            statusEl.textContent = '❌ Geolocation not supported';
+            statusEl.style.color = '#ef4444';
         }
+        this.isProcessing = false;
+        return;
+    }
 
-        // Check if geolocation is available
-        if (!navigator.geolocation) {
-            this.showNotification('Geolocation not supported by your browser.', 'error');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-            if (statusEl) {
-                statusEl.textContent = '❌ Geolocation not supported';
-                statusEl.style.color = '#ef4444';
-            }
-            this.isProcessing = false;
-            return;
-        }
+    navigator.geolocation.getCurrentPosition(
+        async (position) => {
+            try {
+                const supabase = window.lecturerDB?.supabase;
+                const profile = window.lecturerDB?.getCurrentUserProfile();
+                
+                // ✅ Use the correct ID (UUID) from the profile
+                const userId = profile?.user_id || this.lecturerUuid || this.lecturerAssignmentId;
+                
+                // ✅ Get staff number from profile or use a default
+                const staffNumber = profile?.staff_id || profile?.staff_number || 'LECTURER';
+                const fullName = profile?.full_name || 'Lecturer';
+                const staffId = profile?.id || userId;
 
-        // Get location
-        navigator.geolocation.getCurrentPosition(
-            // Success callback
-            async (position) => {
-                try {
-                    const supabase = window.lecturerDB?.supabase;
-                    const profile = window.lecturerDB?.getCurrentUserProfile();
-                    const userId = this.lecturerAssignmentId || profile?.user_id;
+                if (!supabase || !userId) {
+                    throw new Error('Database or user not available');
+                }
 
-                    if (!supabase || !userId) {
-                        throw new Error('Database or user not available');
-                    }
+                if (statusEl) {
+                    statusEl.textContent = '⏳ Checking in...';
+                    statusEl.style.color = '#f59e0b';
+                }
 
+                const today = new Date().toISOString().split('T')[0];
+                
+                // ✅ Check existing check-in using user_id (UUID)
+                const { data: existing, error: checkError } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('id')
+                    .eq('user_id', userId)  // ✅ Use user_id (UUID)
+                    .eq('session_type', 'Lecturer Check-in')
+                    .gte('check_in_time', `${today}T00:00:00.000Z`)
+                    .lte('check_in_time', `${today}T23:59:59.999Z`)
+                    .limit(1);
+
+                if (checkError) {
+                    console.warn('⚠️ Error checking existing check-in:', checkError);
+                }
+
+                if (existing && existing.length > 0) {
+                    this.showNotification('✅ You have already checked in today!', 'success');
                     if (statusEl) {
-                        statusEl.textContent = '⏳ Checking in...';
-                        statusEl.style.color = '#f59e0b';
-                    }
-
-                    // Check if already checked in today
-                    const today = new Date().toISOString().split('T')[0];
-                    const { data: existing, error: checkError } = await supabase
-                        .from('geo_attendance_logs')
-                        .select('id')
-                        .eq('student_id', userId)
-                        .eq('session_type', 'Lecturer Check-in')
-                        .gte('check_in_time', `${today}T00:00:00.000Z`)
-                        .lte('check_in_time', `${today}T23:59:59.999Z`)
-                        .limit(1);
-
-                    if (checkError) {
-                        console.warn('⚠️ Error checking existing check-in:', checkError);
-                    }
-
-                    if (existing && existing.length > 0) {
-                        this.showNotification('✅ You have already checked in today!', 'success');
-                        if (statusEl) {
-                            statusEl.textContent = '✅ Already checked in today';
-                            statusEl.style.color = '#10b981';
-                        }
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-                        this.isProcessing = false;
-                        return;
-                    }
-
-                    // Insert check-in record
-                    const { error: insertError } = await supabase
-                        .from('geo_attendance_logs')
-                        .insert({
-                            student_id: userId,
-                            student_name: profile?.full_name || 'Lecturer',
-                            check_in_time: new Date().toISOString(),
-                            session_type: 'Lecturer Check-in',
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude,
-                            accuracy_m: position.coords.accuracy || null,
-                            attendance_status: 'Present',
-                            is_verified: true,
-                            target_name: 'Lecturer Check-in',
-                            location_address: 'Lecturer Check-in',
-                            program: profile?.program || profile?.department || 'KRCHN',
-                            role: 'lecturer',
-                            recorded_by_name: profile?.full_name || 'Lecturer'
-                        });
-
-                    if (insertError) {
-                        console.error('❌ Insert error:', insertError);
-                        throw new Error(insertError.message);
-                    }
-
-                    this.showNotification('✅ Lecturer check-in logged successfully!', 'success');
-                    if (statusEl) {
-                        statusEl.textContent = '✅ Checked in successfully';
+                        statusEl.textContent = '✅ Already checked in today';
                         statusEl.style.color = '#10b981';
                     }
-
-                    // Refresh attendance data
-                    await this.loadTodayAttendance();
-                    await this.loadAttendanceStats();
-
-                } catch (error) {
-                    console.error('❌ Check-in error:', error);
-                    this.showNotification('Check-in failed: ' + error.message, 'error');
-                    if (statusEl) {
-                        statusEl.textContent = '❌ Check-in failed';
-                        statusEl.style.color = '#ef4444';
-                    }
-                } finally {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
                     this.isProcessing = false;
+                    return;
                 }
-            },
-            // Error callback
-            (error) => {
-                console.error('❌ Geolocation error:', error);
-                let errorMessage = 'Location unavailable';
-                if (error.code === 1) errorMessage = 'Location access denied. Please enable location services.';
-                else if (error.code === 2) errorMessage = 'Location unavailable. Please try again.';
-                else if (error.code === 3) errorMessage = 'Location request timed out.';
 
-                this.showNotification('Geolocation error: ' + errorMessage, 'error');
+                // ✅ Insert with correct column types
+                // student_id = UUID (use userId)
+                // user_id = UUID (use userId)  
+                // registration_number = TEXT (use staffNumber)
+                const { error: insertError } = await supabase
+                    .from('geo_attendance_logs')
+                    .insert({
+                        // ✅ UUID columns - use userId (valid UUID)
+                        student_id: userId,           // ✅ UUID, not STAFF102
+                        user_id: userId,              // ✅ UUID
+                        
+                        // ✅ TEXT columns - can store staff ID
+                        registration_number: staffNumber,  // ✅ "STAFF102" or "LECTURER"
+                        student_name: fullName,
+                        
+                        // ✅ Other fields
+                        check_in_time: new Date().toISOString(),
+                        session_type: 'Lecturer Check-in',
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy_m: position.coords.accuracy || null,
+                        attendance_status: 'Present',
+                        is_verified: true,
+                        target_name: 'Lecturer Check-in',
+                        location_address: 'Lecturer Check-in',
+                        program: profile?.program || profile?.department || 'KRCHN',
+                        block: profile?.block || 'Staff',
+                        role: 'lecturer',
+                        recorded_by_name: fullName,
+                        created_at: new Date().toISOString()
+                    });
+
+                if (insertError) {
+                    console.error('❌ Insert error:', insertError);
+                    throw new Error(insertError.message);
+                }
+
+                this.showNotification('✅ Lecturer check-in logged successfully!', 'success');
                 if (statusEl) {
-                    statusEl.textContent = '❌ ' + errorMessage;
+                    statusEl.textContent = '✅ Checked in successfully';
+                    statusEl.style.color = '#10b981';
+                }
+
+                // Refresh attendance data
+                await this.loadTodayAttendance();
+                await this.loadAttendanceStats();
+
+            } catch (error) {
+                console.error('❌ Check-in error:', error);
+                this.showNotification('Check-in failed: ' + error.message, 'error');
+                if (statusEl) {
+                    statusEl.textContent = '❌ Check-in failed';
                     statusEl.style.color = '#ef4444';
                 }
+            } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
                 this.isProcessing = false;
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 30000
             }
-        );
-    },
+        },
+        (error) => {
+            console.error('❌ Geolocation error:', error);
+            let errorMessage = 'Location unavailable';
+            if (error.code === 1) errorMessage = 'Location access denied. Please enable location services.';
+            else if (error.code === 2) errorMessage = 'Location unavailable. Please try again.';
+            else if (error.code === 3) errorMessage = 'Location request timed out.';
+
+            this.showNotification('Geolocation error: ' + errorMessage, 'error');
+            if (statusEl) {
+                statusEl.textContent = '❌ ' + errorMessage;
+                statusEl.style.color = '#ef4444';
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
+            this.isProcessing = false;
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 30000
+        }
+    );
+},
 
     // ============================================================
     // MARK STUDENT ATTENDANCE (Manual)
