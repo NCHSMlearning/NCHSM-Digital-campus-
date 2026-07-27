@@ -1,25 +1,25 @@
-// js/lecturer-calendar.js - FIXED
+// js/lecturer-exams.js
 /**
- * NCHSM Lecturer Calendar Module
- * Enhanced calendar with event management for lecturers
- * Shows sessions, exams, and deadlines for assigned programs
+ * NCHSM Lecturer Exams Module
+ * Uses exams table with correct column names
+ * Handles both UUID and text ID formats
+ * Includes admin approval workflow
  */
 
-const LecturerCalendar = {
-    currentMonth: new Date().getMonth(),
-    currentYear: new Date().getFullYear(),
-    events: [],
-    currentView: 'month',
+const LecturerExams = {
+    exams: [],
     lecturerAssignmentId: null,
+    assignedUnits: [],
     
     async init() {
-        console.log('📅 Initializing Lecturer Calendar...');
+        console.log('📝 Initializing Lecturer Exams...');
         await this.resolveLecturerId();
-        await this.loadEvents();
-        this.renderCalendar();
+        await this.loadAssignedUnits();
+        await this.loadExams();
+        this.populateExamForm();
+        this.setupEventListeners();
         this.updateStats();
-        this.renderUpcomingEvents();
-        console.log('✅ Lecturer Calendar initialized');
+        console.log('✅ Lecturer Exams initialized');
     },
     
     // ============================================
@@ -28,31 +28,67 @@ const LecturerCalendar = {
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
             
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
+            }
             
-            const fullName = profile.full_name;
             const authId = profile.user_id;
+            const fullName = profile.full_name;
             
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            const { data: nameData, error: nameError } = await supabase
+            // Check if authId is a valid UUID
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
+            
+            // If authId is not a UUID (like NCHSMNUR-001), use it directly
+            if (!isUUID && authId) {
+                this.lecturerAssignmentId = authId;
+                console.log('✅ Using non-UUID auth ID:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            // Try to find by name in lecturer_subject_assignments
+            const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .ilike('lecturer_name', `%${fullName}%`);
             
-            if (!nameError && nameData && nameData.length > 0) {
-                const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
-                if (nonStaff) {
-                    this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
+            if (!assignError && assignments && assignments.length > 0) {
+                // Prefer non-UUID IDs (text IDs like NCHSMNUR-001)
+                const textId = assignments.find(a => {
+                    const id = a.lecturer_id;
+                    return id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+                });
+                
+                if (textId) {
+                    this.lecturerAssignmentId = textId.lecturer_id;
+                    console.log('✅ Found non-UUID ID by partial name match:', this.lecturerAssignmentId);
                     return;
                 }
-                this.lecturerAssignmentId = nameData[0].lecturer_id;
-                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
+                
+                this.lecturerAssignmentId = assignments[0].lecturer_id;
+                console.log('⚠️ Using first match ID:', this.lecturerAssignmentId);
+                return;
+            }
+            
+            // Try to find in staff_records
+            const nameParts = fullName.split(' ');
+            const { data: staff, error: staffError } = await supabase
+                .from('staff_records')
+                .select('id, first_name, other_names')
+                .ilike('first_name', `%${nameParts[0]}%`);
+            
+            if (!staffError && staff && staff.length > 0) {
+                this.lecturerAssignmentId = staff[0].id;
+                console.log('✅ Found lecturer ID from staff_records:', this.lecturerAssignmentId);
                 return;
             }
             
@@ -65,366 +101,543 @@ const LecturerCalendar = {
         }
     },
     
-    async loadEvents() {
+    // ============================================
+    // LOAD ASSIGNED UNITS (for form dropdown)
+    // ============================================
+    async loadAssignedUnits() {
         try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                this.events = this.getMockEvents();
-                return;
-            }
-            
-            const program = profile.program || profile.department || 'KRCHN';
             const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
             
-            if (!supabase) {
-                this.events = this.getMockEvents();
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) return;
+            
+            const lecturerId = this.lecturerAssignmentId || profile.user_id;
+            
+            const { data: assignments, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('subject_name, subject_code, block, program, academic_year')
+                .eq('lecturer_id', String(lecturerId));
+            
+            if (error) {
+                console.error('Error loading assigned units:', error);
                 return;
             }
             
-            // ✅ Load sessions from scheduled_sessions (not sessions)
-            const { data: sessions, error: sessionsError } = await supabase
-                .from('scheduled_sessions')
-                .select('*')
-                .eq('target_program', program);
-            
-            if (sessionsError) {
-                console.error('Error loading sessions:', sessionsError);
-            }
-            
-            // ✅ Load exams from exams (not cats_exams)
-            const { data: exams, error: examsError } = await supabase
-                .from('exams')
-                .select('*')
-                .eq('target_program', program);
-            
-            if (examsError) {
-                console.error('Error loading exams:', examsError);
-            }
-            
-            // Combine all events
-            this.events = [];
-            
-            // Add sessions
-            (sessions || []).forEach(s => {
-                const date = s.session_date ? new Date(s.session_date) : new Date();
-                this.events.push({
-                    id: s.id || `session-${Date.now()}`,
-                    title: s.session_title || 'Session',
-                    description: s.description || '',
-                    date: date,
-                    time: s.session_time || '09:00',
-                    endTime: s.session_end_time || '10:00',
-                    location: s.location_name || 'Lecture Hall',
-                    type: 'session',
-                    program: s.target_program || program,
-                    block: s.block_term || 'N/A',
-                    color: '#3b82f6',
-                    icon: '📚',
-                    raw: s
-                });
-            });
-            
-            // Add exams
-            (exams || []).forEach(e => {
-                const date = e.exam_date ? new Date(e.exam_date) : new Date();
-                this.events.push({
-                    id: e.id || `exam-${Date.now()}`,
-                    title: e.exam_name || e.title || 'Exam',
-                    description: e.instructions || '',
-                    date: date,
-                    time: e.exam_start_time || '10:00',
-                    endTime: e.exam_end_time || '12:00',
-                    location: e.venue || 'Exam Hall',
-                    type: 'exam',
-                    program: e.target_program || program,
-                    block: e.block_term || 'N/A',
-                    color: '#10b981',
-                    icon: '📝',
-                    raw: e
-                });
-            });
-            
-            // Sort events by date
-            this.events.sort((a, b) => a.date - b.date);
-            
-            console.log(`✅ Loaded ${this.events.length} events`);
+            this.assignedUnits = assignments || [];
+            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units`);
             
         } catch (error) {
-            console.error('Failed to load events:', error);
-            this.events = this.getMockEvents();
+            console.error('Failed to load assigned units:', error);
         }
     },
     
-    getMockEvents() {
-        const today = new Date();
-        const events = [];
-        
-        // Current month events
-        for (let i = 1; i <= 5; i++) {
-            const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i * 2);
-            events.push({
-                id: `mock-session-${i}`,
-                title: i % 2 === 0 ? 'Maternal Health Lecture' : 'Clinical Skills Session',
-                description: `Session ${i} description`,
-                date: date,
-                time: i % 2 === 0 ? '09:00' : '14:00',
-                endTime: i % 2 === 0 ? '10:00' : '15:00',
-                location: i % 2 === 0 ? 'Lecture Hall A' : 'Clinical Lab 2',
-                type: i % 2 === 0 ? 'session' : 'exam',
-                program: 'KRCHN',
-                block: `Block ${Math.ceil(i/2)}`,
-                color: i % 2 === 0 ? '#3b82f6' : '#10b981',
-                icon: i % 2 === 0 ? '📚' : '📝'
-            });
+    // ============================================
+    // LOAD EXAMS - USING exams TABLE
+    // ============================================
+    async loadExams() {
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const program = profile?.program || profile?.department;
+            const lecturerId = this.lecturerAssignmentId || profile?.user_id;
+            
+            if (!program) {
+                console.warn('No program found');
+                return;
+            }
+            
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
+            
+            console.log('🔍 Loading exams for program:', program);
+            console.log('🔍 Lecturer ID:', lecturerId);
+            
+            // Check if lecturerId is a valid UUID
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(lecturerId));
+            
+            let exams = [];
+            
+            // Try to load exams
+            const { data, error } = await supabase
+                .from('exams')
+                .select('*')
+                .eq('target_program', program)
+                .order('exam_date', { ascending: false });
+            
+            if (error) {
+                console.error('Error loading exams:', error);
+                return;
+            }
+            
+            // Filter exams based on lecturer ID
+            if (data) {
+                exams = data.filter(e => {
+                    // If created_by matches the lecturer ID
+                    if (e.created_by === String(lecturerId)) return true;
+                    // If created_by matches the staff_id (for text IDs)
+                    if (profile?.staff_id && e.created_by === profile.staff_id) return true;
+                    // If no created_by, include it (for backwards compatibility)
+                    if (!e.created_by) return true;
+                    return false;
+                });
+            }
+            
+            this.exams = exams || [];
+            this.renderExams();
+            this.updateStats();
+            
+            console.log(`✅ Loaded ${this.exams.length} exams`);
+            
+        } catch (error) {
+            console.error('Failed to load exams:', error);
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed to load exams: ' + error.message, 'error');
+            }
         }
-        
-        return events;
     },
     
-    renderCalendar() {
-        const monthYear = document.getElementById('calendarMonthYear');
-        const daysContainer = document.getElementById('calendarDays');
+    renderExams() {
+        const tbody = document.getElementById('examsTable');
+        if (!tbody) return;
         
-        if (!daysContainer) return;
+        const exams = this.exams;
         
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                           'July', 'August', 'September', 'October', 'November', 'December'];
-        
-        if (monthYear) {
-            monthYear.textContent = `${monthNames[this.currentMonth]} ${this.currentYear}`;
-        }
-        
-        const firstDay = new Date(this.currentYear, this.currentMonth, 1).getDay();
-        const daysInMonth = new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
-        const today = new Date();
-        const todayStr = today.toDateString();
-        
-        let html = '';
-        
-        // Empty cells for days before the 1st
-        for (let i = 0; i < firstDay; i++) {
-            html += `<div style="padding: 8px; min-height: 70px; background: #fafafa; border-radius: 6px;"></div>`;
-        }
-        
-        // Days of the month
-        for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(this.currentYear, this.currentMonth, day);
-            const dateStr = date.toDateString();
-            const isToday = dateStr === todayStr;
-            const dayEvents = this.events.filter(e => e.date.toDateString() === dateStr);
-            
-            let bgColor = 'white';
-            let borderColor = '#e5e7eb';
-            
-            if (isToday) {
-                bgColor = '#f0f4ff';
-                borderColor = '#4C1D95';
-            }
-            
-            if (dayEvents.length > 0) {
-                const hasSession = dayEvents.some(e => e.type === 'session');
-                const hasExam = dayEvents.some(e => e.type === 'exam');
-                
-                if (hasExam) bgColor = '#d1fae5';
-                else if (hasSession) bgColor = '#dbeafe';
-                if (hasSession && hasExam) bgColor = '#fef3c7';
-            }
-            
-            const eventDots = dayEvents.slice(0, 3).map(e => {
-                const colors = {
-                    'session': '#3b82f6',
-                    'exam': '#10b981',
-                    'deadline': '#ef4444',
-                    'holiday': '#8b5cf6'
-                };
-                return `<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${colors[e.type] || '#6b7280'}; margin-right: 2px;"></span>`;
-            }).join('');
-            
-            html += `
-                <div style="padding: 8px; min-height: 70px; background: ${bgColor}; border-radius: 6px; border: 2px solid ${isToday ? '#4C1D95' : 'transparent'}; cursor: pointer; transition: all 0.2s; position: relative;" 
-                     onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" 
-                     onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'"
-                     onclick="window.LecturerCalendar.viewDay('${date.toISOString()}')">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: ${isToday ? '800' : '500'}; color: ${isToday ? '#4C1D95' : '#1e293b'};">
-                            ${day}
-                        </span>
-                        ${isToday ? '<span style="font-size: 8px; background: #4C1D95; color: white; padding: 1px 6px; border-radius: 10px;">Today</span>' : ''}
-                    </div>
-                    ${dayEvents.length > 0 ? `
-                        <div style="margin-top: 6px;">
-                            ${dayEvents.slice(0, 2).map(e => `
-                                <div style="font-size: 9px; color: #475569; background: rgba(255,255,255,0.8); padding: 1px 4px; border-radius: 3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 3px;">
-                                    <span>${e.icon || '📌'}</span>
-                                    <span>${e.title}</span>
-                                </div>
-                            `).join('')}
-                            ${dayEvents.length > 2 ? `<div style="font-size: 8px; color: #94a3b8;">+${dayEvents.length - 2} more</div>` : ''}
-                        </div>
-                    ` : ''}
-                    <div style="position: absolute; bottom: 4px; right: 4px; display: flex; gap: 2px;">
-                        ${eventDots}
-                    </div>
-                </div>
+        if (!exams || exams.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                        <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
+                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Exams Created</h3>
+                        <p style="margin: 0; font-size: 14px;">Create your first exam or CAT using the form above.</p>
+                    </td>
+                </tr>
             `;
-        }
-        
-        daysContainer.innerHTML = html;
-    },
-    
-    viewDay(dateString) {
-        const date = new Date(dateString);
-        const events = this.events.filter(e => e.date.toDateString() === date.toDateString());
-        
-        if (events.length === 0) {
-            window.showNotification('No events on this day', 'info');
             return;
         }
         
-        let message = `📅 ${date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}\n\n`;
-        message += `━`.repeat(30) + `\n\n`;
+        const statusColors = {
+            'Scheduled': '#f59e0b',
+            'InProgress': '#3b82f6',
+            'Completed': '#10b981',
+            'Cancelled': '#ef4444'
+        };
         
-        events.forEach((e, index) => {
-            message += `${e.icon || '📌'} ${e.title}\n`;
-            message += `   ⏰ ${e.time || 'TBD'} - ${e.endTime || 'TBD'}\n`;
-            message += `   📍 ${e.location || 'N/A'}\n`;
-            if (e.description) {
-                message += `   📝 ${e.description}\n`;
-            }
-            if (index < events.length - 1) {
-                message += `\n`;
-            }
-        });
+        const statusIcons = {
+            'Scheduled': '📅',
+            'InProgress': '🔄',
+            'Completed': '✅',
+            'Cancelled': '❌'
+        };
         
-        alert(message);
-    },
-    
-    changeMonth(delta) {
-        this.currentMonth += delta;
-        if (this.currentMonth > 11) {
-            this.currentMonth = 0;
-            this.currentYear++;
-        } else if (this.currentMonth < 0) {
-            this.currentMonth = 11;
-            this.currentYear--;
-        }
-        this.renderCalendar();
-    },
-    
-    goToToday() {
-        const today = new Date();
-        this.currentMonth = today.getMonth();
-        this.currentYear = today.getFullYear();
-        this.renderCalendar();
-        this.updateStats();
-        this.renderUpcomingEvents();
+        const approvalBadges = {
+            'pending': '<span style="background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 12px; font-size: 10px;">⏳ Pending</span>',
+            'approved': '<span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 10px;">✅ Approved</span>',
+            'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 12px; font-size: 10px;">❌ Rejected</span>',
+            'draft': '<span style="background: #e5e7eb; color: #6b7280; padding: 2px 10px; border-radius: 12px; font-size: 10px;">📝 Draft</span>'
+        };
+        
+        tbody.innerHTML = exams.map(exam => {
+            const unit = exam.course_name || exam.unit_name || exam.course_code || 'General';
+            const dateTime = exam.exam_date ? (this.formatDate(exam.exam_date)) + (exam.exam_start_time ? ' ' + exam.exam_start_time : '') : 'N/A';
+            const status = exam.status || 'Scheduled';
+            const statusColor = statusColors[status] || '#6b7280';
+            const statusIcon = statusIcons[status] || '📌';
+            const approvalStatus = exam.approval_status || 'pending';
+            const approvalBadge = approvalBadges[approvalStatus] || approvalBadges.pending;
+            
+            let actions = '';
+            
+            if (approvalStatus === 'pending' || approvalStatus === 'draft') {
+                actions += `
+                    <button onclick="LecturerExams.editExam('${exam.id}')" 
+                            style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="LecturerExams.deleteExam('${exam.id}')" 
+                            style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+            }
+            
+            if (approvalStatus === 'approved' || status === 'Completed') {
+                actions += `
+                    <button onclick="LecturerExams.gradeExam('${exam.id}')" 
+                            style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-check-circle"></i> Grade
+                    </button>
+                `;
+            }
+            
+            return `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+                    onmouseover="this.style.background='#f8fafc'" 
+                    onmouseout="this.style.background='transparent'">
+                    <td style="padding: 14px 18px;">
+                        <span style="background: #ede9fe; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #5b21b6;">
+                            ${this.escapeHtml(exam.exam_type || 'N/A')}
+                        </span>
+                    </td>
+                    <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
+                        ${this.escapeHtml(exam.exam_name || exam.title || 'Untitled Exam')}
+                        <div style="font-size: 10px; margin-top: 2px;">${approvalBadge}</div>
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569;">
+                        ${this.escapeHtml(unit)}
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569;">
+                        ${this.escapeHtml(exam.target_program || exam.program_type || 'N/A')}/${this.escapeHtml(exam.block_term || exam.block || 'N/A')}
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569; font-size: 13px;">
+                        ${dateTime}
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569;">
+                        ${exam.duration_minutes ? exam.duration_minutes + ' mins' : 'N/A'}
+                    </td>
+                    <td style="padding: 14px 18px;">
+                        <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500;">
+                            ${statusIcon} ${status}
+                        </span>
+                    </td>
+                    <td style="padding: 14px 18px; text-align: center;">
+                        <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                            ${actions || '<span style="color: #94a3b8; font-size: 12px;">No actions</span>'}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        // Update count display
+        const countDisplay = document.getElementById('examCountDisplay');
+        if (countDisplay) countDisplay.textContent = this.exams.length;
     },
     
     updateStats() {
-        const today = new Date();
-        const todayStr = today.toDateString();
-        const weekStart = new Date(today);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
+        const exams = this.exams;
+        const total = exams.length;
+        const scheduled = exams.filter(e => e.status === 'Scheduled' || e.status === 'pending').length;
+        const completed = exams.filter(e => e.status === 'Completed').length;
+        const pending = exams.filter(e => e.status === 'InProgress' || e.status === 'Pending').length;
         
-        // Today's sessions
-        const todayEvents = this.events.filter(e => e.date.toDateString() === todayStr);
-        const todaySessions = todayEvents.filter(e => e.type === 'session' || e.type === 'exam').length;
-        const todayEl = document.getElementById('todaySessions');
-        if (todayEl) todayEl.textContent = todaySessions;
+        const totalEl = document.getElementById('totalExamsStat');
+        if (totalEl) totalEl.textContent = total;
         
-        // This week
-        const weekEvents = this.events.filter(e => {
-            const dateStr = e.date.toDateString();
-            return e.date >= weekStart && e.date <= weekEnd;
-        });
-        const weekEl = document.getElementById('weekSessions');
-        if (weekEl) weekEl.textContent = weekEvents.length;
+        const scheduledEl = document.getElementById('scheduledExamsStat');
+        if (scheduledEl) scheduledEl.textContent = scheduled;
         
-        // Upcoming exams
-        const upcomingExams = this.events.filter(e => {
-            return (e.type === 'exam' && e.date >= today);
-        });
-        const examsEl = document.getElementById('upcomingExams');
-        if (examsEl) examsEl.textContent = upcomingExams.length;
+        const completedEl = document.getElementById('completedExamsStat');
+        if (completedEl) completedEl.textContent = completed;
         
-        // Total events
-        const totalEl = document.getElementById('totalEvents');
-        if (totalEl) totalEl.textContent = this.events.length;
+        const pendingEl = document.getElementById('pendingExamsStat');
+        if (pendingEl) pendingEl.textContent = pending;
+        
+        const badge = document.getElementById('examCountBadge2');
+        if (badge) badge.textContent = total;
+        
+        const countDisplay = document.getElementById('examCountDisplay');
+        if (countDisplay) countDisplay.textContent = total;
     },
     
-    renderUpcomingEvents() {
-        const container = document.getElementById('upcomingEventsList');
-        if (!container) return;
+    populateExamForm() {
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const program = profile?.program || profile?.department;
         
-        const today = new Date();
-        const upcoming = this.events
-            .filter(e => e.date >= today)
-            .sort((a, b) => a.date - b.date)
-            .slice(0, 10);
+        console.log('📝 Populating exam form for program:', program);
         
-        if (upcoming.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 30px; color: #94a3b8;">
-                    <i class="fas fa-calendar-plus" style="font-size: 32px; display: block; margin-bottom: 10px; color: #e2e8f0;"></i>
-                    <p style="margin: 0;">No upcoming events</p>
-                    <p style="font-size: 13px; margin: 5px 0 0 0; color: #cbd5e1;">Check back later for updates</p>
-                </div>
-            `;
-            const countEl = document.getElementById('upcomingEventCount');
-            if (countEl) countEl.textContent = '0';
+        // Program
+        const programSelect = document.getElementById('examProgram');
+        if (programSelect && program) {
+            programSelect.innerHTML = `<option value="${program}">${program}</option>`;
+        }
+        
+        // Blocks from assigned units
+        const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
+        const blockSelect = document.getElementById('examBlockTerm');
+        if (blockSelect) {
+            blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
+                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+        }
+        
+        // Units from assigned units
+        this.loadUnitsForForm();
+        
+        // Set default date
+        const dateInput = document.getElementById('examDate');
+        if (dateInput) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 7);
+            dateInput.value = tomorrow.toISOString().split('T')[0];
+        }
+    },
+    
+    loadUnitsForForm() {
+        const unitSelect = document.getElementById('examUnit');
+        if (!unitSelect) return;
+        
+        const units = this.assignedUnits;
+        
+        if (units && units.length > 0) {
+            unitSelect.innerHTML = '<option value="">-- Select Unit (Optional) --</option>' +
+                units.map(u => 
+                    `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
+                ).join('');
+            console.log(`✅ Loaded ${units.length} units for form`);
+        } else {
+            unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
+            console.log('⚠️ No units available for form');
+        }
+    },
+    
+    setupEventListeners() {
+        const form = document.getElementById('addExamForm');
+        if (form) {
+            form.addEventListener('submit', (e) => this.handleAddExam(e));
+        }
+        
+        const searchInput = document.getElementById('examSearch');
+        if (searchInput) {
+            let timeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => this.filterExams(), 300);
+            });
+        }
+        
+        const searchBtn = document.getElementById('examSearchBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => this.filterExams());
+        }
+        
+        // Block change -> update units
+        const blockSelect = document.getElementById('examBlockTerm');
+        if (blockSelect) {
+            blockSelect.addEventListener('change', () => {
+                const block = blockSelect.value;
+                const unitSelect = document.getElementById('examUnit');
+                if (unitSelect) {
+                    const filtered = this.assignedUnits.filter(u => u.block === block || !block);
+                    unitSelect.innerHTML = '<option value="">-- Select Unit (Optional) --</option>' +
+                        filtered.map(u => 
+                            `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
+                        ).join('');
+                }
+            });
+        }
+    },
+    
+    filterExams() {
+        const searchTerm = document.getElementById('examSearch')?.value?.toLowerCase() || '';
+        const rows = document.querySelectorAll('#examsTable tr');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const text = row.textContent?.toLowerCase() || '';
+            const match = text.includes(searchTerm);
+            row.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+        
+        const countDisplay = document.getElementById('examCountDisplay');
+        if (countDisplay) countDisplay.textContent = visibleCount;
+    },
+    
+    async handleAddExam(e) {
+        e.preventDefault();
+        const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        
+        const formData = {
+            title: document.getElementById('examTitle')?.value,
+            date: document.getElementById('examDate')?.value,
+            type: document.getElementById('examType')?.value,
+            program: document.getElementById('examProgram')?.value,
+            intake: document.getElementById('examIntake')?.value,
+            block: document.getElementById('examBlockTerm')?.value,
+            unit: document.getElementById('examUnit')?.value,
+            startTime: document.getElementById('examStartTime')?.value,
+            duration: document.getElementById('examDurationMinutes')?.value,
+            status: document.getElementById('examStatus')?.value,
+            link: document.getElementById('examLink')?.value,
+            venue: document.getElementById('examVenue')?.value
+        };
+        
+        const required = ['title', 'date', 'type', 'program', 'intake', 'block', 'duration'];
+        if (required.some(f => !formData[f])) {
+            window.showNotification('Please fill all required fields.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
             return;
         }
         
-        const typeColors = {
-            'session': '#3b82f6',
-            'exam': '#10b981',
-            'deadline': '#ef4444',
-            'holiday': '#8b5cf6'
-        };
-        
-        container.innerHTML = upcoming.map(e => `
-            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
-                 onmouseover="this.style.background='#f8fafc'" 
-                 onmouseout="this.style.background='transparent'">
-                <div style="width: 4px; height: 40px; background: ${typeColors[e.type] || '#6b7280'}; border-radius: 2px;"></div>
-                <div style="flex: 1;">
-                    <div style="font-weight: 600; font-size: 14px; color: #1e293b;">
-                        ${e.icon || '📌'} ${this.escapeHtml(e.title)}
-                    </div>
-                    <div style="font-size: 12px; color: #64748b; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 2px;">
-                        <span>📅 ${e.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
-                        <span>⏰ ${e.time || 'TBD'}</span>
-                        ${e.location ? `<span>📍 ${this.escapeHtml(e.location)}</span>` : ''}
-                        <span style="background: ${typeColors[e.type] || '#6b7280'}20; padding: 0 8px; border-radius: 10px; font-size: 10px; color: ${typeColors[e.type] || '#6b7280'};">
-                            ${e.type.charAt(0).toUpperCase() + e.type.slice(1)}
-                        </span>
-                    </div>
-                </div>
-                <div style="font-size: 12px; color: #94a3b8;">
-                    ${this.getDaysUntil(e.date)}
-                </div>
-            </div>
-        `).join('');
-        
-        const countEl = document.getElementById('upcomingEventCount');
-        if (countEl) countEl.textContent = upcoming.length;
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const lecturerId = this.lecturerAssignmentId || profile?.user_id;
+            const supabase = window.lecturerDB?.supabase;
+            
+            if (!supabase) {
+                throw new Error('Database connection not available');
+            }
+            
+            const examData = {
+                exam_name: formData.title,
+                title: formData.title,
+                exam_date: formData.date,
+                exam_type: formData.type,
+                target_program: formData.program,
+                program_type: formData.program,
+                intake_year: parseInt(formData.intake),
+                block_term: formData.block,
+                block: formData.block,
+                course_name: formData.unit || null,
+                unit_name: formData.unit || null,
+                exam_start_time: formData.startTime || null,
+                duration_minutes: parseInt(formData.duration),
+                status: formData.status || 'Scheduled',
+                online_link: formData.link || null,
+                exam_link: formData.link || null,
+                venue: formData.venue || null,
+                created_by: String(lecturerId),
+                approval_status: 'pending',
+                created_at: new Date().toISOString()
+            };
+            
+            console.log('📤 Creating exam with data:', examData);
+            
+            const { data: result, error } = await supabase
+                .from('exams')
+                .insert([examData])
+                .select();
+            
+            if (error) {
+                console.error('DB Error:', error);
+                throw new Error('Failed to create exam: ' + error.message);
+            }
+            
+            window.showNotification('✅ Exam created! Waiting for admin approval.', 'success');
+            e.target.reset();
+            this.populateExamForm();
+            await this.loadExams();
+            
+        } catch (error) {
+            console.error('Error creating exam:', error);
+            window.showNotification('Failed to create exam: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     },
     
-    getDaysUntil(date) {
-        const today = new Date();
-        const diffTime = date - today;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    async editExam(examId) {
+        const exam = this.exams.find(e => e.id === examId);
+        if (!exam) {
+            window.showNotification('Exam not found.', 'error');
+            return;
+        }
         
-        if (diffDays === 0) return 'Today';
-        if (diffDays === 1) return 'Tomorrow';
-        if (diffDays < 7) return `${diffDays} days`;
-        if (diffDays < 14) return '1 week';
-        if (diffDays < 21) return '2 weeks';
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks`;
-        return `${Math.floor(diffDays / 30)} months`;
+        const newTitle = prompt('Edit Exam Title:', exam.exam_name || exam.title || '');
+        if (newTitle !== null && newTitle !== (exam.exam_name || exam.title)) {
+            try {
+                const supabase = window.lecturerDB?.supabase;
+                if (!supabase) {
+                    throw new Error('Database connection not available');
+                }
+                
+                const { error } = await supabase
+                    .from('exams')
+                    .update({ exam_name: newTitle, title: newTitle })
+                    .eq('id', examId);
+                
+                if (error) throw error;
+                
+                window.showNotification('✅ Exam updated!', 'success');
+                await this.loadExams();
+                
+            } catch (error) {
+                console.error('Error updating exam:', error);
+                window.showNotification('Failed to update exam: ' + error.message, 'error');
+            }
+        }
+    },
+    
+    async deleteExam(examId) {
+        const exam = this.exams.find(e => e.id === examId);
+        if (!exam) {
+            window.showNotification('Exam not found.', 'error');
+            return;
+        }
+        
+        if (!confirm(`Delete exam "${exam.exam_name || exam.title || 'Exam'}"?`)) return;
+        
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database connection not available');
+            }
+            
+            const { error } = await supabase
+                .from('exams')
+                .delete()
+                .eq('id', examId);
+            
+            if (error) throw error;
+            
+            window.showNotification('✅ Exam deleted!', 'success');
+            await this.loadExams();
+            
+        } catch (error) {
+            console.error('Error deleting exam:', error);
+            window.showNotification('Failed to delete exam: ' + error.message, 'error');
+        }
+    },
+    
+    async gradeExam(examId) {
+        const exam = this.exams.find(e => e.id === examId);
+        if (!exam) {
+            window.showNotification('Exam not found.', 'error');
+            return;
+        }
+        
+        window.showNotification(`📝 Grading: ${exam.exam_name || exam.title || 'Exam'} - Feature coming soon!`, 'info');
+        console.log('Grading exam:', exam);
+    },
+    
+    exportExams() {
+        const exams = this.exams;
+        if (exams.length === 0) {
+            window.showNotification('No exams to export.', 'warning');
+            return;
+        }
+        
+        const headers = ['Type', 'Title', 'Unit', 'Program', 'Block', 'Date', 'Duration', 'Status'];
+        const rows = exams.map(e => [
+            e.exam_type || 'N/A',
+            e.exam_name || e.title || 'N/A',
+            e.course_name || e.unit_name || e.course_code || 'N/A',
+            e.target_program || e.program_type || 'N/A',
+            e.block_term || e.block || 'N/A',
+            e.exam_date || 'N/A',
+            e.duration_minutes ? e.duration_minutes + ' mins' : 'N/A',
+            e.status || 'Scheduled'
+        ]);
+        
+        const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `exams_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        window.showNotification('✅ Exams exported successfully!', 'success');
     },
     
     formatDate(dateString) {
@@ -450,22 +663,22 @@ const LecturerCalendar = {
     
     async refresh() {
         await this.resolveLecturerId();
-        await this.loadEvents();
-        this.renderCalendar();
+        await this.loadAssignedUnits();
+        await this.loadExams();
+        this.populateExamForm();
         this.updateStats();
-        this.renderUpcomingEvents();
-        window.showNotification('Calendar refreshed!', 'success');
+        window.showNotification('Exams refreshed!', 'success');
     }
 };
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => LecturerCalendar.init(), 900);
+    setTimeout(() => LecturerExams.init(), 800);
 });
 
-// Make available globally
-window.LecturerCalendar = LecturerCalendar;
-window.loadCalendar = () => LecturerCalendar.goToToday();
-window.changeMonth = (delta) => LecturerCalendar.changeMonth(delta);
+// Make globally accessible
+window.LecturerExams = LecturerExams;
+window.searchExams = () => LecturerExams.filterExams();
+window.exportExams = () => LecturerExams.exportExams();
 
-console.log('✅ LecturerCalendar module loaded - Using scheduled_sessions and exams tables');
+console.log('✅ LecturerExams module loaded - Handles UUID and text IDs');
