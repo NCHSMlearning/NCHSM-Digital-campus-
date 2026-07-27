@@ -1271,16 +1271,19 @@
         </div>
     </div>
 </section>
-           <!-- ===== SESSIONS SECTION - ENHANCED ===== -->
+          <!-- ===== SESSIONS SECTION - ENHANCED ===== -->
 <section id="sessions-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
         <div>
-            <h2 style="margin: 0;"><i class="fas fa-calendar-alt" style="color: #FDB913;"></i> Schedule a New Session</h2>
-            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Create and manage sessions for your assigned units</p>
+            <h2 style="margin: 0;"><i class="fas fa-calendar-alt" style="color: #FDB913;"></i> Session Management</h2>
+            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Schedule, open, and manage session attendance for your units</p>
         </div>
         <div style="display: flex; gap: 10px;">
             <span style="background: #dbeafe; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
                 <i class="fas fa-calendar"></i> <span id="sessionsCount">0</span> Upcoming
+            </span>
+            <span style="background: #d1fae5; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #065f46; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-play-circle"></i> <span id="activeSessionsBadge">0</span> Active
             </span>
             <button onclick="LecturerSessions.refresh()" style="background: #4C1D95; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                 <i class="fas fa-sync-alt"></i> Refresh
@@ -1289,7 +1292,7 @@
     </div>
     
     <!-- Session Stats Cards -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px;">
         <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #4C1D95;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="background: #ede9fe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
@@ -1297,18 +1300,18 @@
                 </div>
                 <div>
                     <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="totalSessionsStat">0</div>
-                    <div style="font-size: 12px; color: #6b7280;">Total Sessions</div>
+                    <div style="font-size: 12px; color: #6b7280;">Total</div>
                 </div>
             </div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #10b981;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="background: #d1fae5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-check-circle" style="color: #10b981; font-size: 18px;"></i>
+                    <i class="fas fa-play-circle" style="color: #10b981; font-size: 18px;"></i>
                 </div>
                 <div>
-                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="upcomingSessionsStat">0</div>
-                    <div style="font-size: 12px; color: #6b7280;">Upcoming</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="activeSessionsStat">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Active</div>
                 </div>
             </div>
         </div>
@@ -1329,10 +1332,27 @@
                     <i class="fas fa-hourglass-half" style="color: #8b5cf6; font-size: 18px;"></i>
                 </div>
                 <div>
-                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="pastSessionsStat">0</div>
-                    <div style="font-size: 12px; color: #6b7280;">Past</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="upcomingSessionsStat">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Upcoming</div>
                 </div>
             </div>
+        </div>
+    </div>
+    
+    <!-- Quick Action: Open Session -->
+    <div style="background: linear-gradient(135deg, #f0fdf4, #d1fae5); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; border: 1px solid #bbf7d0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <i class="fas fa-play-circle" style="color: #10b981; font-size: 20px;"></i>
+            <strong style="color: #065f46;">Quick Actions</strong>
+            <span style="color: #047857; font-size: 13px; margin-left: 10px;">Open a session to allow students to sign in for attendance</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="LecturerSessions.openTodaySession()" style="background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                <i class="fas fa-play"></i> Open Today's Session
+            </button>
+            <button onclick="LecturerSessions.closeAllSessions()" style="background: #ef4444; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                <i class="fas fa-stop"></i> Close All
+            </button>
         </div>
     </div>
     
@@ -1342,26 +1362,26 @@
             <i class="fas fa-plus-circle" style="color: #4C1D95; font-size: 22px;"></i>
             <h4 style="margin: 0; color: #0A3D62; font-size: 17px;">Create New Session</h4>
             <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-info-circle"></i> All fields required
+                <i class="fas fa-info-circle"></i> Students sign in via Attendance tab
             </span>
         </div>
         
         <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionTopic" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-tag" style="color: #4C1D95; width: 18px;"></i> Session Topic
+                    <i class="fas fa-tag" style="color: #4C1D95; width: 18px;"></i> Session Topic *
                 </label>
                 <input type="text" id="sessionTopic" placeholder="e.g., Maternal Health - Block A" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionDate" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-calendar-day" style="color: #4C1D95; width: 18px;"></i> Date
+                    <i class="fas fa-calendar-day" style="color: #4C1D95; width: 18px;"></i> Date *
                 </label>
                 <input type="date" id="sessionDate" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionTime" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-clock" style="color: #4C1D95; width: 18px;"></i> Time
+                    <i class="fas fa-clock" style="color: #4C1D95; width: 18px;"></i> Time *
                 </label>
                 <input type="time" id="sessionTime" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
@@ -1370,7 +1390,7 @@
         <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionProgram" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-graduation-cap" style="color: #4C1D95; width: 18px;"></i> Program
+                    <i class="fas fa-graduation-cap" style="color: #4C1D95; width: 18px;"></i> Program *
                 </label>
                 <select id="sessionProgram" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
                     <option value="">-- Select Program --</option>
@@ -1378,7 +1398,7 @@
             </div>
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionBlockTerm" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> Block/Term
+                    <i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> Block/Term *
                 </label>
                 <select id="sessionBlockTerm" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
                     <option value="">-- Select Block --</option>
@@ -1386,11 +1406,38 @@
             </div>
             <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
                 <label for="sessionUnit" style="font-weight: 600; font-size: 13px; color: #475569;">
-                    <i class="fas fa-book" style="color: #4C1D95; width: 18px;"></i> Unit
+                    <i class="fas fa-book" style="color: #4C1D95; width: 18px;"></i> Unit *
                 </label>
                 <select id="sessionUnit" required style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
                     <option value="">-- Select Unit --</option>
                 </select>
+            </div>
+        </div>
+        
+        <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="sessionType" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-tag" style="color: #4C1D95; width: 18px;"></i> Session Type
+                </label>
+                <select id="sessionType" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="Class">📚 Class</option>
+                    <option value="Clinical">🏥 Clinical</option>
+                    <option value="Lab">🔬 Lab</option>
+                    <option value="Tutorial">📝 Tutorial</option>
+                    <option value="Exam">📝 Exam</option>
+                </select>
+            </div>
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                <label for="sessionLocation" style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-map-pin" style="color: #4C1D95; width: 18px;"></i> Location
+                </label>
+                <input type="text" id="sessionLocation" placeholder="e.g., Lecture Hall 3" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+            </div>
+            <div class="form-group" style="display: flex; flex-direction; column; gap: 5px;">
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">
+                    <i class="fas fa-users" style="color: #4C1D95; width: 18px;"></i> Capacity
+                </label>
+                <input type="number" id="sessionCapacity" placeholder="e.g., 50" min="1" style="padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
             </div>
         </div>
         
@@ -1404,18 +1451,21 @@
         </div>
     </form>
     
-    <!-- Upcoming Sessions -->
+    <!-- Sessions Table -->
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-        <h3 style="color: #0A3D62; margin: 0;"><i class="fas fa-list"></i> Upcoming Sessions</h3>
-        <div style="display: flex; gap: 8px;">
-            <span style="font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-circle" style="color: #10b981;"></i> Upcoming
+        <h3 style="color: #0A3D62; margin: 0;"><i class="fas fa-list"></i> My Sessions</h3>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size: 12px; color: #10b981;">
+                <i class="fas fa-circle"></i> Active (Open)
+            </span>
+            <span style="font-size: 12px; color: #f59e0b;">
+                <i class="fas fa-circle"></i> Today
+            </span>
+            <span style="font-size: 12px; color: #3b82f6;">
+                <i class="fas fa-circle"></i> Upcoming
             </span>
             <span style="font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-circle" style="color: #f59e0b;"></i> Today
-            </span>
-            <span style="font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-circle" style="color: #94a3b8;"></i> Past
+                <i class="fas fa-circle"></i> Past
             </span>
         </div>
     </div>
@@ -1432,13 +1482,19 @@
                             <i class="fas fa-calendar" style="margin-right: 8px; color: #4C1D95;"></i> Date/Time
                         </th>
                         <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-tag" style="margin-right: 8px; color: #4C1D95;"></i> Type
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
                             <i class="fas fa-book" style="margin-right: 8px; color: #4C1D95;"></i> Unit
                         </th>
                         <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
                             <i class="fas fa-graduation-cap" style="margin-right: 8px; color: #4C1D95;"></i> Program/Block
                         </th>
-                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
-                            <i class="fas fa-link" style="margin-right: 8px; color: #4C1D95;"></i> Attendance Link
+                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-users" style="margin-right: 8px; color: #4C1D95;"></i> Attendees
+                        </th>
+                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
+                            <i class="fas fa-link" style="margin-right: 8px; color: #4C1D95;"></i> Link
                         </th>
                         <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">
                             <i class="fas fa-cog" style="margin-right: 8px; color: #4C1D95;"></i> Actions
@@ -1447,7 +1503,7 @@
                 </thead>
                 <tbody id="sessionsTable">
                     <tr>
-                        <td colspan="6" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                        <td colspan="8" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                             <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                             <p style="margin: 15px 0 0 0; font-weight: 500;">Loading sessions...</p>
                         </td>
