@@ -1,7 +1,8 @@
-// js/lecturer-dashboard.js
+// js/lecturer-dashboard.js - COMPLETE FIXED VERSION with Student Data
 /**
  * NCHSM Lecturer Dashboard Module
  * Uses dedicated lecturer database with correct ID resolution
+ * Includes assigned students data
  */
 
 const LecturerDashboard = {
@@ -26,16 +27,24 @@ const LecturerDashboard = {
         programBreakdown: null
     },
     lecturerAssignmentId: null,
+    lecturerUuid: null,
+    assignedUnits: [],
+    assignedStudents: [],
     
     async init() {
         console.log('📊 Initializing Lecturer Dashboard...');
         try {
             await this.resolveLecturerId();
+            await this.loadAssignedUnits();
+            await this.loadAssignedStudents();
             await this.loadMetrics();
             await this.loadAttendanceMetrics();
             this.updateWelcomeBanner();
             await this.loadCharts();
+            this.setupEventListeners();
             console.log('✅ Lecturer Dashboard initialized');
+            console.log(`📚 ${this.assignedUnits.length} assigned units`);
+            console.log(`👨‍🎓 ${this.assignedStudents.length} assigned students`);
         } catch (error) {
             console.error('❌ Dashboard initialization error:', error);
         }
@@ -57,6 +66,8 @@ const LecturerDashboard = {
             
             console.log('🔍 Dashboard - Auth ID:', authId);
             console.log('🔍 Dashboard - Lecturer name:', fullName);
+            
+            this.lecturerUuid = authId;
             
             // Get ALL lecturers with similar names
             const nameParts = fullName.toLowerCase().split(' ');
@@ -116,11 +127,137 @@ const LecturerDashboard = {
         }
     },
     
+    // ============================================
+    // LOAD ASSIGNED UNITS
+    // ============================================
+    async loadAssignedUnits() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) return;
+            
+            const fullName = profile.full_name;
+            
+            // Get ALL assignments for this lecturer by name
+            const { data: assignments, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('subject_name, subject_code, block, program, academic_year, lecturer_id')
+                .ilike('lecturer_name', `%${fullName}%`);
+            
+            if (error) {
+                console.error('Error loading assigned units:', error);
+                this.assignedUnits = [];
+                return;
+            }
+            
+            // Filter to KRCHN program
+            const krchnUnits = assignments?.filter(u => u.program === 'KRCHN') || [];
+            this.assignedUnits = krchnUnits.length > 0 ? krchnUnits : (assignments || []);
+            
+            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units:`, 
+                this.assignedUnits.map(u => u.subject_name));
+            
+        } catch (error) {
+            console.error('Failed to load assigned units:', error);
+            this.assignedUnits = [];
+        }
+    },
+    
+    // ============================================
+    // LOAD ASSIGNED STUDENTS - NEW
+    // ============================================
+    async loadAssignedStudents() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const program = profile?.program || profile?.department || 'KRCHN';
+            
+            // Get unit names from assigned units
+            const unitNames = this.assignedUnits.map(u => u.subject_name);
+            
+            if (unitNames.length === 0) {
+                console.log('No assigned units, skipping student load');
+                this.assignedStudents = [];
+                return;
+            }
+            
+            console.log(`🔍 Loading students for units:`, unitNames);
+            
+            // Get students enrolled in these units
+            const { data: enrollments, error: enrollError } = await supabase
+                .from('student_unit_registrations')
+                .select('student_id, unit_name, status')
+                .in('unit_name', unitNames)
+                .eq('program', program)
+                .eq('status', 'approved');
+            
+            if (enrollError) {
+                console.error('Error loading enrollments:', enrollError);
+                this.assignedStudents = [];
+                return;
+            }
+            
+            // Get unique student IDs
+            const studentIds = [...new Set(enrollments?.map(e => e.student_id) || [])];
+            
+            if (studentIds.length === 0) {
+                console.log('No students enrolled in assigned units');
+                this.assignedStudents = [];
+                return;
+            }
+            
+            // Get student profiles
+            const { data: students, error: studentError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, full_name, program, block, intake_year, email, phone')
+                .in('user_id', studentIds)
+                .eq('role', 'student');
+            
+            if (studentError) {
+                console.error('Error loading student profiles:', studentError);
+                this.assignedStudents = [];
+                return;
+            }
+            
+            // Map enrollments to students
+            const enrollmentMap = {};
+            enrollments?.forEach(e => {
+                if (!enrollmentMap[e.student_id]) {
+                    enrollmentMap[e.student_id] = [];
+                }
+                enrollmentMap[e.student_id].push(e.unit_name);
+            });
+            
+            this.assignedStudents = (students || []).map(s => ({
+                ...s,
+                units_enrolled: enrollmentMap[s.user_id] || [],
+                unit_count: (enrollmentMap[s.user_id] || []).length
+            }));
+            
+            console.log(`👨‍🎓 Loaded ${this.assignedStudents.length} assigned students`);
+            console.log('👨‍🎓 Students:', this.assignedStudents.map(s => `${s.full_name} (${s.student_id})`));
+            
+        } catch (error) {
+            console.error('Failed to load assigned students:', error);
+            this.assignedStudents = [];
+        }
+    },
+    
+    // ============================================
+    // UPDATE WELCOME BANNER
+    // ============================================
     updateWelcomeBanner() {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const welcomeHeader = document.getElementById('welcomeHeader');
         const programSubtitle = document.getElementById('programSubtitle');
         const welcomeBannerText = document.getElementById('welcomeBannerText');
+        const currentDateTime = document.getElementById('currentDateTime');
+        const studentCountDisplay = document.getElementById('studentCountDisplay');
+        const unitCountDisplay = document.getElementById('unitCountDisplay');
         
         if (welcomeHeader) {
             welcomeHeader.textContent = profile?.full_name || 'Lecturer';
@@ -136,15 +273,40 @@ const LecturerDashboard = {
         if (welcomeBannerText) {
             welcomeBannerText.textContent = 
                 `This dashboard is filtered to your program: ${programDisplay}. ` +
-                `The card data below highlights urgent tasks requiring your attention.`;
+                `You have ${this.assignedUnits.length} assigned units and ${this.assignedStudents.length} students.`;
         }
         
         const badge = document.getElementById('userProgramBadge');
         if (badge) {
             badge.textContent = programDisplay;
         }
+        
+        // Update student and unit count in header
+        if (studentCountDisplay) {
+            studentCountDisplay.textContent = this.assignedStudents.length || 0;
+        }
+        if (unitCountDisplay) {
+            unitCountDisplay.textContent = this.assignedUnits.length || 0;
+        }
+        
+        // Update date/time
+        if (currentDateTime) {
+            const now = new Date();
+            currentDateTime.textContent = now.toLocaleDateString('en-GB', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            }) + ' · ' + now.toLocaleTimeString('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
     },
     
+    // ============================================
+    // LOAD METRICS - FIXED WITH STUDENT DATA
+    // ============================================
     async loadMetrics() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -161,40 +323,82 @@ const LecturerDashboard = {
                 return;
             }
             
-            // Get students in this program
-            const { data: students } = await supabase
+            // Get students in this program (all students, not just assigned)
+            const { data: allStudents, error: studentError } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
                 .eq('role', 'student')
                 .eq('program', program);
             
-            this.metrics.totalStudents = students?.length || 0;
+            if (studentError) {
+                console.error('Error loading students:', studentError);
+                return;
+            }
             
-            // Get courses assigned to this lecturer using the resolved ID
+            // Update metrics with student data
+            this.metrics.totalStudents = this.assignedStudents.length || allStudents?.length || 0;
+            
+            // Get courses assigned to this lecturer
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            const { data: assignments } = await supabase
+            const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('*')
-                .eq('lecturer_id', lecturerId);
+                .eq('lecturer_id', String(lecturerId));
             
-            this.metrics.totalCourses = assignments?.length || 0;
+            if (assignError) {
+                console.error('Error loading assignments:', assignError);
+                return;
+            }
             
-            // At risk students (simplified)
-            this.metrics.atRiskStudents = students?.filter(s => 
-                (s.cumulative_absences || 0) > 5 || (s.status || '').toLowerCase() === 'probation'
-            ).length || 0;
+            this.metrics.totalCourses = assignments?.length || this.assignedUnits.length || 0;
+            
+            // At risk students (based on attendance or marks)
+            const atRisk = this.assignedStudents.filter(s => {
+                // Check if student has low attendance or marks
+                return (s.absences || 0) > 5 || (s.cumulative_absences || 0) > 5;
+            });
+            this.metrics.atRiskStudents = atRisk.length || 0;
             
             // Exams due
-            const { data: exams } = await supabase
+            const { data: exams, error: examError } = await supabase
                 .from('cats_exams')
                 .select('*')
                 .eq('program', program)
                 .eq('status', 'Scheduled');
             
+            if (examError) {
+                console.error('Error loading exams:', examError);
+                return;
+            }
+            
             this.metrics.examsDue = exams?.length || 0;
+            
+            // Pending attendance (students who haven't checked in today)
+            const today = new Date().toISOString().split('T')[0];
+            const { data: todayLogs } = await supabase
+                .from('geo_attendance_logs')
+                .select('student_id')
+                .eq('program', program)
+                .gte('check_in_time', `${today}T00:00:00.000Z`)
+                .lte('check_in_time', `${today}T23:59:59.999Z`);
+            
+            const checkedIn = new Set(todayLogs?.map(l => l.student_id) || []);
+            const pending = this.assignedStudents.filter(s => !checkedIn.has(s.user_id));
+            this.metrics.pendingAttendance = pending.length || 0;
+            
+            // Unread messages
+            const lecturerId2 = this.lecturerUuid || profile.user_id;
+            const { data: messages } = await supabase
+                .from('messages')
+                .select('id')
+                .eq('receiver_id', lecturerId2)
+                .eq('is_read', false);
+            
+            this.metrics.unreadMessages = messages?.length || 0;
             
             this.updateMetricCards();
             
+            // Update badges
             const badge = document.getElementById('studentCountBadge');
             if (badge) {
                 badge.textContent = this.metrics.totalStudents;
@@ -205,12 +409,17 @@ const LecturerDashboard = {
         }
     },
     
+    // ============================================
+    // UPDATE METRIC CARDS
+    // ============================================
     updateMetricCards() {
         const elements = {
             'totalStudentsCount': this.metrics.totalStudents,
             'totalCoursesCount': this.metrics.totalCourses,
             'studentsAtRiskCount': this.metrics.atRiskStudents,
-            'examsDueCount': this.metrics.examsDue
+            'examsDueCount': this.metrics.examsDue,
+            'pendingAttendanceCount': this.metrics.pendingAttendance,
+            'unreadMessagesCount': this.metrics.unreadMessages
         };
         
         Object.keys(elements).forEach(id => {
@@ -219,8 +428,17 @@ const LecturerDashboard = {
                 el.textContent = elements[id];
             }
         });
+        
+        // Update the assigned students count in header
+        const studentDisplay = document.getElementById('assignedStudentCount');
+        if (studentDisplay) {
+            studentDisplay.textContent = this.metrics.totalStudents;
+        }
     },
     
+    // ============================================
+    // LOAD ATTENDANCE METRICS
+    // ============================================
     async loadAttendanceMetrics() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -264,14 +482,8 @@ const LecturerDashboard = {
                 .eq('program', program);
             
             const uniqueStudents = [...new Set(monthLogs?.map(l => l.student_id) || [])];
-            const { data: allStudents } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id')
-                .eq('role', 'student')
-                .eq('program', program);
-            
-            const totalStudents = allStudents?.length || 1;
-            this.attendanceMetrics.month = Math.round((uniqueStudents.length / totalStudents) * 100);
+            const totalStudents = this.assignedStudents.length || this.metrics.totalStudents || 1;
+            this.attendanceMetrics.month = totalStudents > 0 ? Math.round((uniqueStudents.length / totalStudents) * 100) : 0;
             
             // Overall
             this.attendanceMetrics.overall = monthLogs?.length || 0;
@@ -328,10 +540,9 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================================
-    // CHARTS - FIXED WITH CORRECT DATA
-    // ============================================================
-    
+    // ============================================
+    // CHARTS - FIXED WITH STUDENT DATA
+    // ============================================
     async loadCharts() {
         console.log('📊 Loading lecturer charts...');
         
@@ -615,22 +826,49 @@ const LecturerDashboard = {
         }
     },
     
+    // ============================================
+    // SETUP EVENT LISTENERS
+    // ============================================
+    setupEventListeners() {
+        // Refresh button
+        const refreshBtn = document.querySelector('[data-action="refresh-dashboard"]') || 
+                          document.getElementById('refreshDashboardBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.refresh());
+        }
+    },
+    
+    // ============================================
+    // REFRESH
+    // ============================================
     async refresh() {
+        console.log('🔄 Refreshing dashboard...');
         await this.resolveLecturerId();
+        await this.loadAssignedUnits();
+        await this.loadAssignedStudents();
         await this.loadMetrics();
         await this.loadAttendanceMetrics();
         await this.loadCharts();
+        this.updateWelcomeBanner();
         if (window.LecturerUI) {
             window.LecturerUI.showNotification('Dashboard refreshed!', 'success');
         }
+        console.log('✅ Dashboard refreshed');
     }
 };
 
-// Initialize on DOM ready
+// ============================================
+// INITIALIZE ON DOM READY
+// ============================================
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => LecturerDashboard.init(), 500);
 });
 
+// ============================================
+// GLOBAL EXPOSURE
+// ============================================
 window.LecturerDashboard = LecturerDashboard;
+window.refreshDashboard = () => LecturerDashboard.refresh();
 
 console.log('✅ LecturerDashboard module loaded - Uses correct ID resolution');
+console.log('✅ Includes assigned units and students data');
