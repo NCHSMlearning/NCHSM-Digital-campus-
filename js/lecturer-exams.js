@@ -146,83 +146,61 @@ const LecturerExams = {
         }
     },
     
-    // ============================================
-    // LOAD EXAMS - WITH MULTI-ID SUPPORT
-    // ============================================
-    async loadExams() {
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department;
-            
-            if (!program) {
-                console.warn('No program found');
-                return;
-            }
-            
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                return;
-            }
-            
-            // ✅ Get all lecturer IDs (UUID and text IDs)
-            const lecturerIds = [];
-            
-            // Add UUID
-            if (this.lecturerUuid) {
-                lecturerIds.push(this.lecturerUuid);
-            }
-            
-            // Add text ID
-            if (this.lecturerAssignmentId && this.lecturerAssignmentId !== this.lecturerUuid) {
-                lecturerIds.push(this.lecturerAssignmentId);
-            }
-            
-            // Also try STAFF102 if not already included
-            if (!lecturerIds.includes('STAFF102')) {
-                lecturerIds.push('STAFF102');
-            }
-            
-            // Also try STAFF101 if not already included
-            if (!lecturerIds.includes('STAFF101')) {
-                lecturerIds.push('STAFF101');
-            }
-            
-            console.log('🔍 Loading exams for program:', program);
-            console.log('🔍 Lecturer IDs to check:', lecturerIds);
-            
-            // ✅ Query using OR condition for multiple IDs
-            let query = supabase
-                .from('exams')
-                .select('*')
-                .eq('target_program', program);
-            
-            // Build OR condition for created_by
-            if (lecturerIds.length > 0) {
-                const orConditions = lecturerIds.map(id => `created_by.eq.${id}`).join(',');
-                query = query.or(orConditions);
-            }
-            
-            const { data: exams, error } = await query.order('exam_date', { ascending: false });
-            
-            if (error) {
-                console.error('Error loading exams:', error);
-                return;
-            }
-            
-            this.exams = exams || [];
+   // ============================================
+// LOAD EXAMS - Show ALL KRCHN exams
+// ============================================
+async loadExams() {
+    try {
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const program = profile?.program || profile?.department;
+        
+        if (!program) {
+            console.warn('No program found');
+            return;
+        }
+        
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) {
+            console.warn('Supabase not available');
+            return;
+        }
+        
+        console.log('🔍 Loading ALL exams for program:', program);
+        
+        // ✅ Show ALL exams for the program (not just created by this lecturer)
+        const { data: exams, error } = await supabase
+            .from('exams')
+            .select('*')
+            .eq('target_program', program)
+            .order('exam_date', { ascending: false });
+        
+        if (error) {
+            console.error('Error loading exams:', error);
+            this.exams = [];
+            this.filteredExams = [];
             this.renderExams();
             this.updateStats();
-            
-            console.log(`✅ Loaded ${this.exams.length} exams`);
-            
-        } catch (error) {
-            console.error('Failed to load exams:', error);
-            if (window.LecturerUI) {
-                window.LecturerUI.showNotification('Failed to load exams: ' + error.message, 'error');
-            }
+            return;
         }
-    },
+        
+        this.exams = exams || [];
+        this.filteredExams = this.exams;
+        this.renderExams();
+        this.updateStats();
+        
+        console.log(`✅ Loaded ${this.exams.length} KRCHN exams`);
+        
+    } catch (error) {
+        console.error('Failed to load exams:', error);
+        this.exams = [];
+        this.filteredExams = [];
+        this.renderExams();
+        this.updateStats();
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Failed to load exams: ' + error.message, 'error');
+        }
+    }
+},
     
     renderExams() {
         const tbody = document.getElementById('examsTable');
@@ -462,21 +440,48 @@ const LecturerExams = {
         }
     },
     
-    filterExams() {
-        const searchTerm = document.getElementById('examSearch')?.value?.toLowerCase() || '';
-        const rows = document.querySelectorAll('#examsTable tr');
-        let visibleCount = 0;
+   // ============================================
+// FILTER EXAMS - FIXED
+// ============================================
+filterExams() {
+    const searchTerm = document.getElementById('examSearch')?.value?.toLowerCase() || '';
+    const typeFilter = document.getElementById('examTypeFilter')?.value || 'all';
+    const statusFilter = document.getElementById('examStatusFilter')?.value || 'all';
+    const blockFilter = document.getElementById('examBlockFilter')?.value || 'all';
+    
+    const filtered = this.exams.filter(exam => {
+        // Search filter
+        let match = true;
+        if (searchTerm) {
+            const searchable = `${exam.exam_name || ''} ${exam.title || ''} ${exam.exam_type || ''} ${exam.block || ''}`.toLowerCase();
+            match = searchable.includes(searchTerm);
+        }
         
-        rows.forEach(row => {
-            const text = row.textContent?.toLowerCase() || '';
-            const match = text.includes(searchTerm);
-            row.style.display = match ? '' : 'none';
-            if (match) visibleCount++;
-        });
+        // Type filter
+        if (match && typeFilter !== 'all') {
+            match = (exam.exam_type || '').toLowerCase() === typeFilter;
+        }
         
-        const countDisplay = document.getElementById('examCountDisplay');
-        if (countDisplay) countDisplay.textContent = visibleCount;
-    },
+        // Status filter
+        if (match && statusFilter !== 'all') {
+            match = (exam.status || '').toLowerCase() === statusFilter;
+        }
+        
+        // Block filter
+        if (match && blockFilter !== 'all') {
+            match = (exam.block || '').toLowerCase() === blockFilter;
+        }
+        
+        return match;
+    });
+    
+    this.filteredExams = filtered;
+    this.renderExams();
+    
+    // Update count
+    const countDisplay = document.getElementById('examCountDisplay');
+    if (countDisplay) countDisplay.textContent = filtered.length;
+},
     
     async handleAddExam(e) {
         if (this.isProcessing) return;
