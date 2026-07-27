@@ -1132,24 +1132,25 @@
             </div>
 
             <div id="lecturer-fields" class="role-fields">
-                <div class="two-columns">
-                    <div class="form-group">
-                        <label><i data-feather="id"></i> Staff ID</label>
-                        <input type="text" id="staff_id" name="staff_id" placeholder="e.g. NCHSM-LECT-001">
-                    </div>
-                    <div class="form-group">
-                        <label><i data-feather="briefcase"></i> Department</label>
-                        <select id="department" name="department">
-                            <option value="">-- Select Department --</option>
-                            <option value="Nursing">Nursing</option>
-                            <option value="TVET">TVET</option>
-                            <option value="Community Health">Community Health</option>
-                            <option value="Health Records">Health Records</option>
-                            <option value="ICT">ICT</option>
-                            <option value="Administration">Administration</option>
-                        </select>
-                    </div>
-                </div>
+               <div class="two-columns">
+   <div class="form-group">
+    <label><i data-feather="id"></i> Staff ID <span style="color:#64748B;font-weight:400;">(Optional)</span></label>
+    <input type="text" id="staff_id" name="staff_id" placeholder="Leave blank for auto-generation">
+    <div class="help-text">Staff ID will be auto-generated as NCHSMNUR-001, NCHSMTVT-001, etc.</div>
+</div>
+    <div class="form-group">
+        <label><i data-feather="briefcase"></i> Department</label>
+        <select id="department" name="department">
+            <option value="">-- Select Department --</option>
+            <option value="Nursing">Nursing</option>
+            <option value="TVET">TVET</option>
+            <option value="Community Health">Community Health</option>
+            <option value="Health Records">Health Records</option>
+            <option value="ICT">ICT</option>
+            <option value="Administration">Administration</option>
+        </select>
+    </div>
+</div>
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 0.5rem;">
@@ -1500,7 +1501,68 @@
             console.warn('⚠️ Welcome email error:', e);
         }
     }
+// ============================================
+// ADD STAFF TO STAFF_RECORDS (Auto-Generated Staff ID)
+// ============================================
+async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender) {
+    try {
+        // Check if staff already exists
+        const { data: existing } = await sb
+            .from('staff_records')
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
+        
+        if (existing) {
+            console.log('⚠️ Staff already exists in staff_records:', email);
+            return true;
+        }
+        
+        // ============================================
+        // 🆕 AUTO-GENERATE STAFF ID IF NOT PROVIDED
+        // ============================================
+       // ============================================
+// 🆕 AUTO-GENERATE STAFF ID WITH NCHSM PREFIX
+// ============================================
+let finalStaffId = staffId;
 
+if (!finalStaffId || finalStaffId.trim() === '') {
+    // Department code mapping
+    const deptCodes = {
+        'Nursing': 'NUR',
+        'TVET': 'TVT',
+        'Community Health': 'COM',
+        'Health Records': 'HRT',
+        'ICT': 'ICT',
+        'Administration': 'ADM',
+        'Clinical Medicine': 'CLN',
+        'Tutors': 'TUT'
+    };
+    
+    const deptCode = deptCodes[department] || 'STA';
+    
+    // Get count of staff in this department
+    const { data: deptStaff } = await sb
+        .from('staff_records')
+        .select('id')
+        .ilike('id', 'NCHSM' + deptCode + '-%')
+        .order('created_at', { ascending: false });
+    
+    let nextNumber = 1;
+    if (deptStaff && deptStaff.length > 0) {
+        const lastId = deptStaff[0].id;
+        const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
+        if (match) {
+            nextNumber = parseInt(match[1]) + 1;
+        } else {
+            nextNumber = deptStaff.length + 1;
+        }
+    }
+    
+    // Format: NCHSMNUR-001, NCHSMTVT-001, etc.
+    finalStaffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
+    console.log('🆕 Auto-generated Staff ID:', finalStaffId);
+}
  // ============================================
 // BUILD WELCOME EMAIL - UPDATED CONTACTS
 // ============================================
@@ -2362,6 +2424,31 @@ if (authError) {
 
 console.log('✅ Auth user created:', authData.user.id);
 console.log('📊 User metadata stored:', authData.user.user_metadata || authData.user.data);
+
+// ============================================
+// 🆕 IF LECTURER, ADD TO STAFF_RECORDS
+// ============================================
+if (role === 'lecturer') {
+    console.log('👔 Adding lecturer to staff_records...');
+    
+    // ✅ Pass empty string for staff_id - it will be auto-generated!
+    const staffAdded = await addStaffToRecords(
+        authData.user.id,
+        email,
+        password,
+        full_name,
+        '',  // ← Empty = auto-generate!
+        department || 'Nursing',
+        phone,
+        gender
+    );
+    
+    if (staffAdded) {
+        console.log('✅ Lecturer added to staff_records successfully!');
+    } else {
+        console.warn('⚠️ Lecturer not added to staff_records');
+    }
+}
 
 // Wait for trigger to create profile
 await new Promise(resolve => setTimeout(resolve, 1500));
