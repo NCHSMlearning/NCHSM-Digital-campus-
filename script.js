@@ -21335,7 +21335,7 @@ function getLecturerDepartment(lecturer) {
 
 window.getLecturerDepartment = getLecturerDepartment;
 // ============================================================
-// STUDENT MANAGER FUNCTIONS - COMPLETE FIXED
+// STUDENT MANAGER FUNCTIONS - SHOW ALL STUDENTS
 // ============================================================
 
 async function openMarksStudentManager() {
@@ -21378,7 +21378,7 @@ async function openMarksStudentManager() {
 window.openMarksStudentManager = openMarksStudentManager;
 
 // ============================================================
-// LOAD MARKS STUDENT MANAGER DATA - SYNCED WITH MARKS TABLE
+// LOAD MARKS STUDENT MANAGER DATA - SHOW ALL STUDENTS
 // ============================================================
 
 async function loadMarksStudentManagerData(block, unit, program, year) {
@@ -21389,7 +21389,7 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
     console.log('📊 Block:', block, 'Unit:', unit, 'Program:', program, 'Year:', year);
     
     try {
-        // ✅ SOURCE OF TRUTH: Get ALL marks from student_marks
+        // ✅ Get ALL enrolled students from student_marks
         const { data: enrolledStudents, error: enrolledError } = await sb
             .from('student_marks')
             .select('*')
@@ -21401,22 +21401,7 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
         
         console.log(`📊 Enrolled students found: ${enrolledStudents?.length || 0}`);
         
-        // ✅ Get available students (not yet enrolled)
-        let query = sb
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, email, program, block, admission_number, status')
-            .eq('role', 'student')
-            .eq('status', 'active');
-        
-        if (program) query = query.eq('program', program);
-        if (block) query = query.eq('block', block);
-        
-        const { data: allStudents, error: allError } = await query;
-        if (allError) throw allError;
-        
-        console.log(`📊 All students found: ${allStudents?.length || 0}`);
-        
-        // ✅ Build enrolled map from student_marks using admission_number
+        // ✅ Build enrolled map from student_marks
         const enrolledMap = {};
         enrolledStudents?.forEach(s => {
             if (s.admission_number) {
@@ -21424,19 +21409,81 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
             }
         });
         
-        console.log('📊 Enrolled map size:', Object.keys(enrolledMap).length);
+        // ✅ Get ALL students from consolidated_user_profiles_table
+        let query = sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name, email, program, block, admission_number, status')
+            .eq('role', 'student');
         
-        // ✅ Available = not in enrolled map (check by student_id)
-        const availableStudents = allStudents?.filter(s => {
-            // Check if student is enrolled by student_id
-            const isEnrolled = enrolledMap[s.student_id] || false;
-            return !isEnrolled;
-        }) || [];
+        // Filter by program if provided
+        if (program) query = query.eq('program', program);
+        // Filter by block if provided
+        if (block) query = query.eq('block', block);
+        
+        const { data: profileStudents, error: profileError } = await query;
+        if (profileError) throw profileError;
+        
+        console.log(`📊 Profile students found: ${profileStudents?.length || 0}`);
+        
+        // ✅ Get ALL students from student_marks (to include students not in profiles)
+        const { data: allMarksStudents, error: marksError } = await sb
+            .from('student_marks')
+            .select('admission_number, student_name')
+            .eq('block', block)
+            .eq('academic_year', year);
+        
+        if (marksError) throw marksError;
+        
+        console.log(`📊 Marks students found: ${allMarksStudents?.length || 0}`);
+        
+        // ✅ Combine both sources - use student_id from profiles, admission_number from marks
+        const allStudentsMap = {};
+        
+        // Add students from profiles
+        profileStudents?.forEach(s => {
+            if (s.student_id) {
+                allStudentsMap[s.student_id] = {
+                    student_id: s.student_id,
+                    full_name: s.full_name || 'Unknown',
+                    email: s.email || '',
+                    program: s.program || program,
+                    block: s.block || block,
+                    admission_number: s.admission_number || s.student_id,
+                    status: s.status || 'active',
+                    source: 'profile'
+                };
+            }
+        });
+        
+        // Add students from marks (if not already in map)
+        allMarksStudents?.forEach(s => {
+            if (s.admission_number && !allStudentsMap[s.admission_number]) {
+                allStudentsMap[s.admission_number] = {
+                    student_id: s.admission_number,
+                    full_name: s.student_name || 'Unknown',
+                    email: '',
+                    program: program,
+                    block: block,
+                    admission_number: s.admission_number,
+                    status: 'active',
+                    source: 'marks'
+                };
+            }
+        });
+        
+        const allStudents = Object.values(allStudentsMap);
+        console.log(`📊 Total unique students: ${allStudents.length}`);
+        
+        // ✅ Filter available students (not enrolled)
+        const availableStudents = allStudents.filter(s => {
+            return !enrolledMap[s.student_id] && !enrolledMap[s.admission_number];
+        });
         
         console.log(`📊 Available students: ${availableStudents.length}`);
         
+        // Store data
         me_studentManagerData = {
-            allStudents: allStudents || [],
+            allStudents: allStudents,
             enrolledStudents: enrolledStudents || [],
             availableStudents: availableStudents,
             enrolledMap: enrolledMap,
@@ -21462,7 +21509,7 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
 window.loadMarksStudentManagerData = loadMarksStudentManagerData;
 
 // ============================================================
-// RENDER STUDENT MANAGER
+// RENDER STUDENT MANAGER - SHOW ALL STUDENTS
 // ============================================================
 
 function renderMarksStudentManager() {
@@ -21476,17 +21523,19 @@ function renderMarksStudentManager() {
     const totalStudents = allStudents?.length || 0;
     
     console.log('📊 Rendering student manager...');
-    console.log('📊 Available students count:', totalAvailable);
+    console.log('📊 Total students:', totalStudents);
+    console.log('📊 Available students:', totalAvailable);
+    console.log('📊 Enrolled students:', totalEnrolled);
     
-    // Build student dropdown options
+    // Build student dropdown options - SHOW ALL AVAILABLE STUDENTS
     let studentOptions = '<option value="">-- Select Student to Add --</option>';
     
     if (availableStudents && availableStudents.length > 0) {
         availableStudents.forEach(s => {
             const displayName = s.full_name || 'Unknown';
-            const displayId = s.student_id || 'N/A';
-            const displayAdmission = s.admission_number || displayId;
-            studentOptions += `<option value="${s.student_id}">${escapeHtml(displayName)} (${escapeHtml(displayAdmission)})</option>`;
+            const displayId = s.student_id || s.admission_number || 'N/A';
+            const source = s.source === 'marks' ? '📌' : '';
+            studentOptions += `<option value="${s.student_id || s.admission_number}">${displayName} (${displayId}) ${source}</option>`;
         });
         console.log('📊 Student options built:', availableStudents.length);
     } else {
@@ -21675,27 +21724,25 @@ async function addStudentToMarksUnit() {
         return;
     }
     
-    // Get student details using student_id
-    const { data: student, error: studentError } = await sb
-        .from('consolidated_user_profiles_table')
-        .select('full_name, student_id, admission_number, program, block')
-        .eq('student_id', studentId)
-        .single();
+    // Find student in available list
+    const student = me_studentManagerData.availableStudents.find(s => 
+        s.student_id === studentId || s.admission_number === studentId
+    );
     
-    if (studentError) {
-        console.error('❌ Error fetching student:', studentError);
-        showNotification('Error fetching student details', 'error');
+    if (!student) {
+        showNotification('Student not found in available list', 'error');
         return;
     }
     
-    console.log('📊 Student found:', student);
+    const studentName = student.full_name || 'Unknown';
+    const studentAdmission = student.student_id || student.admission_number || studentId;
     
-    if (!confirm(`Add ${student.full_name} to "${unit}"?`)) return;
+    if (!confirm(`Add ${studentName} to "${unit}"?`)) return;
     
     try {
         const markData = {
-            admission_number: studentId,
-            student_name: student.full_name || 'Unknown',
+            admission_number: studentAdmission,
+            student_name: studentName,
             block: block,
             subject_name: unit,
             assessment_type: 'full',
@@ -21718,7 +21765,7 @@ async function addStudentToMarksUnit() {
         
         if (error) throw error;
         
-        showNotification(`✅ ${student.full_name} added to "${unit}"!`, 'success');
+        showNotification(`✅ ${studentName} added to "${unit}"!`, 'success');
         await reloadMarksStudentManager();
         loadMarksEntry();
         
@@ -21746,7 +21793,7 @@ async function addAllAvailableStudentsToMarksUnit() {
     
     try {
         const inserts = availableStudents.map(s => ({
-            admission_number: s.student_id,
+            admission_number: s.student_id || s.admission_number,
             student_name: s.full_name || 'Unknown',
             block: block,
             subject_name: unit,
@@ -21793,7 +21840,39 @@ async function reloadMarksStudentManager() {
 
 window.reloadMarksStudentManager = reloadMarksStudentManager;
 
+// ============================================================
+// UPDATE SELECTED COUNT
+// ============================================================
 
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+    const count = checkboxes.length;
+    
+    document.querySelectorAll('#selectedStudentCount, #selectedStudentCountBottom').forEach(el => {
+        if (el) el.textContent = count;
+    });
+    document.querySelectorAll('#dropSelectedCount, #dropSelectedCountBottom').forEach(el => {
+        if (el) el.textContent = count;
+    });
+    
+    document.querySelectorAll('#dropSelectedBtn, #dropSelectedBtnBottom').forEach(btn => {
+        if (btn) btn.style.display = count > 0 ? 'inline-block' : 'none';
+    });
+    
+    const allCheckboxes = document.querySelectorAll('.student-checkbox');
+    const allChecked = document.querySelectorAll('.student-checkbox:checked');
+    const selectAll = document.getElementById('selectAllStudents');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    
+    if (selectAll && allCheckboxes.length > 0) {
+        selectAll.checked = allChecked.length === allCheckboxes.length;
+    }
+    if (selectAllCheckbox && allCheckboxes.length > 0) {
+        selectAllCheckbox.checked = allChecked.length === allCheckboxes.length;
+    }
+}
+
+window.updateSelectedCount = updateSelectedCount;
 
 // ============================================================
 // TOGGLE ALL STUDENTS
@@ -21889,7 +21968,7 @@ async function removeStudentFromMarksUnit(admission) {
         return;
     }
     
-    // Get student name
+    // Find student name
     let studentName = 'this student';
     try {
         const { data: student } = await sb
@@ -21969,6 +22048,16 @@ async function clearAllStudentsFromMarksUnit() {
 
 window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
 
+
+
+console.log('✅ Student Manager Functions Fully Loaded!');
+console.log('📋 Student Manager Features:');
+console.log('   - ✅ Shows ALL students from profiles and marks tables');
+console.log('   - ✅ Add Single Student');
+console.log('   - ✅ Add All Students');
+console.log('   - ✅ Drop Selected Students');
+console.log('   - ✅ Remove Single Student');
+console.log('   - ✅ Clear All Students');
 // ============================================================
 // SHOW/HIDE NOTIFICATION/LOADING FUNCTIONS
 // ============================================================
