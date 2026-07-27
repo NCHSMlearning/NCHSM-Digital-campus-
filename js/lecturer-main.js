@@ -2,6 +2,7 @@
 /**
  * NCHSM Lecturer Main Entry Point
  * Uses dedicated lecturer database
+ * Handles both UUID and text ID formats
  */
 
 console.log('🚀 Lecturer Main loading...');
@@ -190,7 +191,70 @@ document.addEventListener('DOMContentLoaded', async function() {
         // 7. Dispatch app ready event
         document.dispatchEvent(new CustomEvent('appReady'));
         
-        // 8. Load initial tab from URL or storage
+        // 8. Check if we need to resolve lecturer ID for all modules
+        // This ensures all modules use the correct ID format
+        const userId = profile.user_id;
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(userId));
+        
+        // If not a UUID, we might need to find the correct text ID from staff_records
+        if (!isUUID) {
+            console.log('🔍 Non-UUID user ID detected:', userId);
+            
+            try {
+                // Try to find staff record with this ID
+                const { data: staff } = await window.lecturerDB.supabase
+                    .from('staff_records')
+                    .select('id, first_name, other_names')
+                    .eq('id', userId)
+                    .maybeSingle();
+                
+                if (staff) {
+                    console.log('✅ Found staff record with ID:', staff.id);
+                    // Store the correct ID for modules to use
+                    window.CORRECT_LECTURER_ID = staff.id;
+                } else {
+                    // Try to find by email
+                    const { data: staffByEmail } = await window.lecturerDB.supabase
+                        .from('staff_records')
+                        .select('id, first_name, other_names')
+                        .eq('email', profile.email)
+                        .maybeSingle();
+                    
+                    if (staffByEmail) {
+                        console.log('✅ Found staff record by email:', staffByEmail.id);
+                        window.CORRECT_LECTURER_ID = staffByEmail.id;
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not find staff record:', e.message);
+            }
+        } else {
+            window.CORRECT_LECTURER_ID = userId;
+        }
+        
+        console.log('🔑 Lecturer ID for modules:', window.CORRECT_LECTURER_ID);
+        
+        // 9. Initialize all modules with the correct ID
+        // Set the ID for each module if they support it
+        const modules = [
+            'LecturerCourses',
+            'LecturerMarks', 
+            'LecturerExams',
+            'LecturerSessions',
+            'LecturerAttendance',
+            'LecturerResources',
+            'LecturerMessages',
+            'LecturerReports'
+        ];
+        
+        modules.forEach(moduleName => {
+            if (window[moduleName] && window[moduleName].lecturerAssignmentId !== undefined) {
+                window[moduleName].lecturerAssignmentId = window.CORRECT_LECTURER_ID;
+                console.log(`✅ Set ${moduleName}.lecturerAssignmentId to:`, window.CORRECT_LECTURER_ID);
+            }
+        });
+        
+        // 10. Load initial tab from URL or storage
         const savedTab = localStorage.getItem('nchsm_current_tab') || 'dashboard';
         if (window.LecturerUI) {
             console.log('📂 Loading tab:', savedTab);
