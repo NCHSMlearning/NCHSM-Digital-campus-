@@ -3,6 +3,7 @@
  * NCHSM Lecturer Resources Module
  * AUTO-PUBLISH - No admin approval required
  * Resources are published immediately for students
+ * Uses correct table columns: uploaded_by, target_program, approval_status, etc.
  */
 
 const LecturerResources = {
@@ -70,14 +71,14 @@ const LecturerResources = {
     async loadResources() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department;
-            
-            if (!program) {
-                console.warn('No program found');
+            if (!profile) {
+                console.warn('No lecturer profile found');
                 return;
             }
             
+            const program = profile.program || profile.department;
             const supabase = window.lecturerDB?.supabase;
+            
             if (!supabase) {
                 console.warn('Supabase not available');
                 return;
@@ -85,6 +86,7 @@ const LecturerResources = {
             
             const userId = this.lecturerAssignmentId || profile.user_id;
             
+            // ✅ CORRECT: Use 'uploaded_by' column (not 'created_by')
             const { data: resources, error } = await supabase
                 .from('resources')
                 .select('*')
@@ -94,15 +96,16 @@ const LecturerResources = {
             if (error) {
                 console.error('Failed to load resources:', error);
                 this.resources = [];
-            } else {
-                this.resources = resources || [];
+                return;
             }
             
+            this.resources = resources || [];
             this.renderResources();
             console.log(`✅ Loaded ${this.resources.length} resources`);
             
         } catch (error) {
             console.error('Failed to load resources:', error);
+            this.resources = [];
             if (window.LecturerUI) {
                 window.LecturerUI.showNotification('Failed to load resources: ' + error.message, 'error');
             }
@@ -129,8 +132,13 @@ const LecturerResources = {
             return;
         }
         
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const currentUserId = this.lecturerAssignmentId || profile?.user_id;
+        
         tbody.innerHTML = resources.map(r => {
-            const isOwner = r.uploaded_by === this.lecturerAssignmentId || r.uploaded_by === window.lecturerDB?.getCurrentUserId();
+            // ✅ Check ownership using 'uploaded_by'
+            const isOwner = r.uploaded_by === currentUserId || r.uploaded_by === profile?.user_id;
+            // ✅ Use correct column names
             const programDisplay = r.target_program || r.program_type || r.program || 'N/A';
             const blockDisplay = r.block || r.block_term || 'N/A';
             
@@ -140,37 +148,41 @@ const LecturerResources = {
                     onmouseout="this.style.background='transparent'">
                     <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
                         <i class="fas fa-file-pdf" style="color: #ef4444; margin-right: 8px;"></i>
-                        ${this.escapeHtml(r.title || 'N/A')}
+                        ${this.escapeHtml(r.title || 'Untitled')}
                     </td>
-                    <td style="padding: 14px 18px; color: #475569;">
+                    <td style="padding: 14px 18px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${this.escapeHtml(r.description || 'No description')}
+                    </td>
+                    <td style="padding: 14px 18px;">
                         <span style="background: #e2e8f0; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #475569;">
                             ${this.escapeHtml(r.category || 'Academic')}
                         </span>
                     </td>
-                    <td style="padding: 14px 18px; color: #475569;">
+                    <td style="padding: 14px 18px; font-size: 13px; color: #475569;">
                         ${this.escapeHtml(programDisplay)} / ${this.escapeHtml(blockDisplay)}
                     </td>
-                    <td style="padding: 14px 18px; color: #475569;">
-                        ${this.escapeHtml(r.uploaded_by_name || 'You')}
+                    <td style="padding: 14px 18px; font-size: 13px; color: #475569;">
+                        ${this.escapeHtml(r.uploaded_by_name || r.uploaded_by || 'You')}
                     </td>
-                    <td style="padding: 14px 18px; color: #475569; font-size: 13px;">
+                    <td style="padding: 14px 18px; font-size: 13px; color: #475569;">
                         ${this.formatDate(r.created_at)}
                     </td>
                     <td style="padding: 14px 18px;">
                         <span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
-                            <i class="fas fa-check-circle"></i> Published
+                            <i class="fas fa-check-circle" style="font-size: 11px;"></i> Published
                         </span>
                     </td>
                     <td style="padding: 14px 18px;">
                         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                            ${r.file_url ? `
-                                <a href="${r.file_url}" target="_blank" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                            ${r.file_url && r.file_url !== '#' ? `
+                                <a href="${r.file_url}" target="_blank" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" 
+                                   onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
                                     <i class="fas fa-download"></i> View
                                 </a>
                             ` : ''}
                             ${isOwner ? `
-                                <button onclick="LecturerResources.deleteResource('${r.id}')" 
-                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                <button onclick="LecturerResources.deleteResource('${r.id}')" style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" 
+                                        onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
                             ` : ''}
@@ -185,11 +197,13 @@ const LecturerResources = {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = profile?.program || profile?.department;
         
+        // Program - use 'program' column
         const programSelect = document.getElementById('resourceProgram');
         if (programSelect && program) {
             programSelect.innerHTML = `<option value="${program}">${program}</option>`;
         }
         
+        // Intake years
         const years = [2024, 2025, 2026, 2027, 2028];
         const intakeSelect = document.getElementById('resourceIntake');
         if (intakeSelect) {
@@ -197,6 +211,7 @@ const LecturerResources = {
                 years.map(y => `<option value="${y}">${y}</option>`).join('');
         }
         
+        // Blocks - use 'block' column
         const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
         const blockSelect = document.getElementById('resourceBlock');
         if (blockSelect) {
@@ -206,25 +221,38 @@ const LecturerResources = {
     },
     
     setupEventListeners() {
+        // Upload form
         const form = document.getElementById('uploadResourceForm');
         if (form) {
-            form.addEventListener('submit', (e) => this.handleUpload(e));
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleUpload(e);
+            });
         }
         
+        // Search
         const searchInput = document.getElementById('resourceSearch');
         if (searchInput) {
             let timeout;
             searchInput.addEventListener('input', () => {
                 clearTimeout(timeout);
-                timeout = setTimeout(() => this.filterTable('resourceSearch', 'resourcesList', [0, 1, 2]), 300);
+                timeout = setTimeout(() => this.filterTable('resourceSearch', 'resourcesList', [0, 1, 2, 3]), 300);
             });
         }
         
+        // Search button
         const searchBtn = document.getElementById('resourceSearchBtn');
         if (searchBtn) {
             searchBtn.addEventListener('click', () => {
-                this.filterTable('resourceSearch', 'resourcesList', [0, 1, 2]);
+                this.filterTable('resourceSearch', 'resourcesList', [0, 1, 2, 3]);
             });
+        }
+        
+        // Refresh button
+        const refreshBtn = document.querySelector('#resources-content .btn-refresh') || 
+                          document.querySelector('#resources-content button[onclick*="loadResources"]');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.loadResources());
         }
     },
     
@@ -257,11 +285,19 @@ const LecturerResources = {
     },
     
     async handleUpload(e) {
-        e.preventDefault();
-        const btn = e.submitter || e.target.querySelector('button[type="submit"]');
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+        // Handle both event and direct calls
+        if (e && typeof e.preventDefault === 'function') {
+            e.preventDefault();
+        }
+        
+        const form = document.getElementById('uploadResourceForm');
+        const btn = form?.querySelector('button[type="submit"]');
+        const originalText = btn?.innerHTML || 'Publish Resource';
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+        }
         
         const program = document.getElementById('resourceProgram')?.value;
         const intake = document.getElementById('resourceIntake')?.value;
@@ -273,8 +309,10 @@ const LecturerResources = {
         
         if (!fileInput?.files.length || !program || !intake || !block || !title || !category) {
             window.showNotification('Please fill all required fields.', 'error');
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
             return;
         }
         
@@ -312,38 +350,40 @@ const LecturerResources = {
             
             const fileUrl = urlData?.publicUrl || '';
             
-            // ✅ Save to database - use correct column names
+            // ✅ CORRECT: Use correct column names that exist in the table
             const { data: result, error: dbError } = await supabase
                 .from('resources')
                 .insert({
                     title: title,
                     description: description || '',
                     category: category,
-                    program_type: program,
-                    target_program: program,
-                    intake: intake,
-                    block: block,
-                    block_term: block,
-                    file_url: fileUrl,
-                    file_path: filePath,
-                    file_name: file.name,
-                    file_size: file.size,
-                    file_type: file.type || file.name.split('.').pop(),
-                    uploaded_by: userId,
-                    uploaded_by_name: profile?.full_name || 'Lecturer',
-                    approval_status: 'approved',
-                    created_at: new Date().toISOString()
+                    program_type: program,        // ✅ Column exists
+                    target_program: program,       // ✅ Column exists
+                    intake: intake,                // ✅ Column exists
+                    block: block,                  // ✅ Column exists
+                    block_term: block,             // ✅ Column exists
+                    file_url: fileUrl,             // ✅ Column exists
+                    file_path: filePath,           // ✅ Column exists
+                    file_name: file.name,          // ✅ Column exists
+                    file_size: file.size,          // ✅ Column exists
+                    file_type: file.type || file.name.split('.').pop(), // ✅ Column exists
+                    uploaded_by: userId,           // ✅ Column exists (NOT created_by)
+                    uploaded_by_name: profile?.full_name || 'Lecturer', // ✅ Column exists
+                    approval_status: 'approved',   // ✅ Column exists
+                    created_at: new Date().toISOString() // ✅ Column exists
                 })
                 .select();
             
             if (dbError) {
                 console.error('DB Error:', dbError);
+                // Delete the uploaded file if DB insert fails
                 await supabase.storage
                     .from('resources')
                     .remove([filePath]);
                 throw new Error('Failed to save resource: ' + dbError.message);
             }
             
+            // Add to local list
             if (result && result.length > 0) {
                 this.resources.unshift(result[0]);
                 this.renderResources();
@@ -351,6 +391,7 @@ const LecturerResources = {
             
             window.showNotification('✅ Resource published successfully! Students can now access it.', 'success');
             
+            // Show success banner
             const successBanner = document.getElementById('resourceUploadSuccess');
             if (successBanner) {
                 successBanner.style.display = 'block';
@@ -359,17 +400,19 @@ const LecturerResources = {
                 }, 6000);
             }
             
-            e.target.reset();
+            form?.reset();
             await this.loadResources();
             
         } catch (error) {
             console.error('Upload error:', error);
             window.showNotification('Upload failed: ' + error.message, 'error');
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
         }
-    },  // ✅ THIS WAS MISSING!
+    },
     
     async deleteResource(resourceId) {
         const resource = this.resources.find(r => r.id === resourceId);
@@ -380,6 +423,7 @@ const LecturerResources = {
         
         const userId = this.lecturerAssignmentId || window.lecturerDB?.getCurrentUserId();
         
+        // ✅ Check ownership using 'uploaded_by'
         if (resource.uploaded_by !== userId) {
             window.showNotification('You can only delete resources you uploaded.', 'warning');
             return;
@@ -390,17 +434,20 @@ const LecturerResources = {
         try {
             const supabase = window.lecturerDB?.supabase;
             
+            // Delete from storage
             if (resource.file_path) {
                 await supabase.storage
                     .from('resources')
                     .remove([resource.file_path]);
             }
             
+            // ✅ Delete using 'id' column
             await supabase
                 .from('resources')
                 .delete()
                 .eq('id', resourceId);
             
+            // Remove from local list
             this.resources = this.resources.filter(r => r.id !== resourceId);
             this.renderResources();
             
