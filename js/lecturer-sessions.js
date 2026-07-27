@@ -1,7 +1,7 @@
 // js/lecturer-sessions.js
 /**
  * NCHSM Lecturer Sessions Module
- * Uses dedicated lecturer database with correct ID resolution
+ * Uses scheduled_sessions table with correct column names
  */
 
 const LecturerSessions = {
@@ -37,75 +37,29 @@ const LecturerSessions = {
                 return;
             }
             
-            const authId = profile.user_id;
             const fullName = profile.full_name;
+            const authId = profile.user_id;
             
             console.log('🔍 Auth ID:', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // Try to find by name in lecturer_subject_assignments
-            const { data, error } = await supabase
+            const { data: nameData, error: nameError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
-                .eq('lecturer_name', fullName)
-                .limit(1);
+                .ilike('lecturer_name', `%${fullName}%`);
             
-            if (!error && data && data.length > 0) {
-                this.lecturerAssignmentId = data[0].lecturer_id;
-                console.log('✅ Found lecturer ID by name:', this.lecturerAssignmentId);
+            if (!nameError && nameData && nameData.length > 0) {
+                const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
+                if (nonStaff) {
+                    this.lecturerAssignmentId = nonStaff.lecturer_id;
+                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
+                    return;
+                }
+                this.lecturerAssignmentId = nameData[0].lecturer_id;
+                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
                 return;
             }
             
-            // Try partial name match with scoring
-            const nameParts = fullName.toLowerCase().split(' ');
-            const { data: allLecturers, error: allError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .order('created_at', { ascending: false });
-            
-            if (!allError && allLecturers && allLecturers.length > 0) {
-                let bestMatch = null;
-                let bestScore = -1;
-                
-                for (const lecturer of allLecturers) {
-                    const lecturerName = lecturer.lecturer_name || '';
-                    const lecturerId = lecturer.lecturer_id;
-                    let score = 0;
-                    
-                    const lecturerNameLower = lecturerName.toLowerCase();
-                    for (const part of nameParts) {
-                        if (part.length > 1 && lecturerNameLower.includes(part)) {
-                            score += 5;
-                        }
-                    }
-                    
-                    if (lecturerNameLower === fullName.toLowerCase()) {
-                        score += 20;
-                    }
-                    
-                    // BIG BONUS for non-STAFF IDs
-                    if (!lecturerId.toString().startsWith('STAFF')) {
-                        score += 50;
-                    }
-                    
-                    if (lecturerId.toString().includes('-')) {
-                        score += 30;
-                    }
-                    
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestMatch = lecturerId;
-                    }
-                }
-                
-                if (bestMatch) {
-                    this.lecturerAssignmentId = bestMatch;
-                    console.log(`✅ Selected lecturer ID with score ${bestScore}:`, this.lecturerAssignmentId);
-                    return;
-                }
-            }
-            
-            // Fallback: use auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -163,11 +117,11 @@ const LecturerSessions = {
                 return;
             }
             
-            // Get sessions from scheduled_sessions
+            // ✅ Use correct column names: session_title, session_date, session_time, target_program
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
                 .select('*')
-                .eq('lecturer_id', userId)
+                .eq('created_by', userId)
                 .order('session_date', { ascending: true });
             
             if (error) {
@@ -211,20 +165,30 @@ const LecturerSessions = {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
+        const statusBadges = {
+            'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
+            'approved': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Approved</span>',
+            'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Rejected</span>',
+            'completed': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📌 Completed</span>'
+        };
+        
         tbody.innerHTML = sessions.map(session => {
             const sessionDate = session.session_date ? new Date(session.session_date) : null;
             const isToday = sessionDate && sessionDate.toDateString() === today.toDateString();
             const isPast = sessionDate && sessionDate < today;
             
             const dateTime = session.session_date 
-                ? window.LecturerUtils?.formatDate(session.session_date) + (session.session_time ? ' ' + session.session_time : '')
+                ? (this.formatDate(session.session_date)) + (session.session_time ? ' ' + session.session_time : '')
                 : 'N/A';
             
-            const statusBadge = this.getStatusBadge(session);
+            const status = session.approval_status || 'pending';
+            const statusBadge = statusBadges[status] || statusBadges.pending;
             
-            // Row highlight for today
             const rowStyle = isToday ? 'background: #dbeafe;' : '';
             const rowClass = isPast ? 'opacity: 0.7;' : '';
+            
+            // Generate attendance link
+            const attendanceLink = `${window.location.origin}/attendance?session=${session.id}`;
             
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle} ${rowClass}" 
@@ -242,41 +206,28 @@ const LecturerSessions = {
                         ${this.escapeHtml(session.course_name || session.unit_name || 'N/A')}
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
-                        ${this.escapeHtml(session.target_program || 'N/A')}/${this.escapeHtml(session.block_term || session.block || 'N/A')}
+                        ${this.escapeHtml(session.target_program || 'N/A')}/${this.escapeHtml(session.block_term || 'N/A')}
                     </td>
                     <td style="padding: 14px 18px;">
                         <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
-                                style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                                style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                             <i class="fas fa-link"></i> Get Link
                         </button>
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
                         <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
                             ${statusBadge}
-                            ${session.approval_status === 'pending' || !session.approval_status ? 
-                                `<button onclick="LecturerSessions.cancelSession('${session.id}')" 
-                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                        onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                            ${status === 'pending' ? `
+                                <button onclick="LecturerSessions.cancelSession('${session.id}')" 
+                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                                     <i class="fas fa-times"></i> Cancel
-                                </button>` : ''
-                            }
+                                </button>
+                            ` : ''}
                         </div>
                     </td>
                 </tr>
             `;
         }).join('');
-    },
-    
-    getStatusBadge(session) {
-        const status = session.approval_status || 'pending';
-        const badges = {
-            'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
-            'approved': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Approved</span>',
-            'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Rejected</span>',
-            'completed': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📌 Completed</span>'
-        };
-        return badges[status] || badges.pending;
     },
     
     generateAttendanceLink(sessionId) {
@@ -315,27 +266,29 @@ const LecturerSessions = {
         
         // Units from assigned units
         this.loadUnitsForForm();
+        
+        // Set default date to tomorrow
+        const dateInput = document.getElementById('sessionDate');
+        if (dateInput) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            dateInput.value = tomorrow.toISOString().split('T')[0];
+        }
     },
     
-    async loadUnitsForForm() {
-        try {
-            const unitSelect = document.getElementById('sessionUnit');
-            if (!unitSelect) return;
-            
-            // Use assigned units
-            const units = this.assignedUnits;
-            
-            if (units && units.length > 0) {
-                unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
-                    units.map(u => 
-                        `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
-                    ).join('');
-            } else {
-                unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
-            }
-            
-        } catch (error) {
-            console.error('Failed to load units for form:', error);
+    loadUnitsForForm() {
+        const unitSelect = document.getElementById('sessionUnit');
+        if (!unitSelect) return;
+        
+        const units = this.assignedUnits;
+        
+        if (units && units.length > 0) {
+            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
+                units.map(u => 
+                    `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
+                ).join('');
+        } else {
+            unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
         }
     },
     
@@ -343,13 +296,6 @@ const LecturerSessions = {
         const form = document.getElementById('addSessionForm');
         if (form) {
             form.addEventListener('submit', (e) => this.handleAddSession(e));
-        }
-        
-        const dateInput = document.getElementById('sessionDate');
-        if (dateInput) {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            dateInput.value = tomorrow.toISOString().split('T')[0];
         }
         
         // Block change -> update units
@@ -395,24 +341,24 @@ const LecturerSessions = {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerId = this.lecturerAssignmentId || profile?.user_id;
-            
             const supabase = window.lecturerDB?.supabase;
+            
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
             
-            // Save session
+            // ✅ Use correct column names
             const { data: result, error } = await supabase
                 .from('scheduled_sessions')
                 .insert({
                     session_title: formData.title,
                     session_date: formData.date,
-                    session_time: formData.time,
+                    session_time: formData.time || '09:00:00',
                     target_program: formData.program,
                     block_term: formData.block,
                     unit_name: formData.unit,
-                    lecturer_id: lecturerId,
-                    lecturer_name: profile?.full_name || 'Lecturer',
+                    created_by: lecturerId,
+                    session_type: 'Class',
                     approval_status: 'pending',
                     created_at: new Date().toISOString()
                 })
@@ -420,7 +366,7 @@ const LecturerSessions = {
             
             if (error) throw error;
             
-            window.showNotification('✅ Session scheduled successfully!', 'success');
+            window.showNotification('✅ Session scheduled successfully! Waiting for approval.', 'success');
             e.target.reset();
             
             // Reset date to tomorrow
@@ -518,6 +464,20 @@ const LecturerSessions = {
         if (countDisplay) countDisplay.textContent = sessions.length;
     },
     
+    formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch {
+            return dateString;
+        }
+    },
+    
     escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -543,4 +503,4 @@ document.addEventListener('DOMContentLoaded', function() {
 // Make globally accessible
 window.LecturerSessions = LecturerSessions;
 
-console.log('✅ LecturerSessions module loaded - Same ID resolution as other modules');
+console.log('✅ LecturerSessions module loaded - Using scheduled_sessions table with correct columns');
