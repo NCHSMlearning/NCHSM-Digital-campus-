@@ -1634,7 +1634,7 @@
         </div>
     </div>
 </section>
-           <!-- ===== MY STUDENTS SECTION - COMPLETE UPGRADE ===== -->
+           <!-- ===== MY STUDENTS SECTION - READ-ONLY VIEW ===== -->
 <section id="my-students-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <style>
         /* ─── Student Section Styles ─── */
@@ -1744,8 +1744,8 @@
         .action-btn-view:hover { background: #C7D2FE; }
         .action-btn-message { background: #E0F2FE; color: #0EA5E9; }
         .action-btn-message:hover { background: #BAE6FD; }
-        .action-btn-edit { background: #FEF3C7; color: #D97706; }
-        .action-btn-edit:hover { background: #FDE68A; }
+        .action-btn-upload { background: #EDE9FE; color: #7C3AED; }
+        .action-btn-upload:hover { background: #DDD6FE; }
 
         /* ─── MODAL STYLES ─── */
         .student-modal-overlay {
@@ -1887,7 +1887,7 @@
             margin-top: 2px;
         }
 
-        /* ─── Uploads Section ─── */
+        /* ─── Uploads Section (Read-Only + Add Upload) ─── */
         .uploads-section {
             margin-top: 20px;
             padding-top: 20px;
@@ -1956,7 +1956,7 @@
         .upload-dropzone {
             border: 2px dashed #d1d5db;
             border-radius: 12px;
-            padding: 30px;
+            padding: 24px;
             text-align: center;
             transition: all 0.3s ease;
             cursor: pointer;
@@ -1971,18 +1971,42 @@
             background: #EEF2FF;
         }
         .upload-dropzone i {
-            font-size: 36px;
+            font-size: 30px;
             color: #94A3B8;
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .upload-dropzone p {
             color: #64748B;
             margin: 0;
+            font-size: 13px;
         }
         .upload-dropzone .highlight {
             color: #4F46E5;
             font-weight: 600;
+        }
+        .upload-dropzone .sub-text {
+            font-size: 11px;
+            color: #94A3B8;
+            margin-top: 4px;
+        }
+
+        /* Read-only notice */
+        .readonly-notice {
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            border-radius: 10px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #065F46;
+            margin-bottom: 16px;
+        }
+        .readonly-notice i {
+            font-size: 18px;
+            color: #059669;
         }
     </style>
 
@@ -1992,7 +2016,7 @@
             <h2 style="margin: 0; font-size: 24px; font-weight: 800; color: #0F172A;">
                 <i class="fas fa-users" style="color: #4F46E5; margin-right: 10px;"></i> My Students
             </h2>
-            <p style="color: #64748B; margin: 4px 0 0 0; font-size: 14px;">View and manage all students under your supervision</p>
+            <p style="color: #64748B; margin: 4px 0 0 0; font-size: 14px;">View and manage students under your supervision</p>
         </div>
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <span style="background: #EEF2FF; padding: 8px 18px; border-radius: 30px; font-size: 13px; color: #4F46E5; font-weight: 600; display: flex; align-items: center; gap: 8px; border: 1px solid #C7D2FE;">
@@ -2004,9 +2028,15 @@
         </div>
     </div>
 
+    <!-- ─── READ-ONLY NOTICE ─── -->
+    <div class="readonly-notice">
+        <i class="fas fa-info-circle"></i>
+        <span><strong>Read-Only Access:</strong> You can view student information and upload supporting documents for approval. Student records cannot be edited or deleted.</span>
+    </div>
+
     <!-- ─── STUDENT STATS CARDS ─── -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 25px;">
-        <div class="student-stat-card" onclick="filterByStatus('all')">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div class="student-stat-card" onclick="applyStudentFilters()">
             <div style="display: flex; align-items: center; gap: 14px;">
                 <div class="stat-icon" style="background: #EEF2FF;">
                     <i class="fas fa-user-graduate" style="color: #4F46E5;"></i>
@@ -2039,7 +2069,7 @@
                 </div>
             </div>
         </div>
-        <div class="student-stat-card" onclick="showUploads()">
+        <div class="student-stat-card">
             <div style="display: flex; align-items: center; gap: 14px;">
                 <div class="stat-icon" style="background: #EDE9FE;">
                     <i class="fas fa-upload" style="color: #7C3AED;"></i>
@@ -2050,7 +2080,7 @@
                 </div>
             </div>
         </div>
-        <div class="student-stat-card" onclick="filterByProgram('KRCHN')">
+        <div class="student-stat-card">
             <div style="display: flex; align-items: center; gap: 14px;">
                 <div class="stat-icon" style="background: #DBEAFE;">
                     <i class="fas fa-graduation-cap" style="color: #2563EB;"></i>
@@ -2132,9 +2162,6 @@
             <button onclick="exportStudentList()" style="background: #10B981; color: white; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 14px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                 <i class="fas fa-file-export"></i> Export CSV
             </button>
-            <button onclick="showUploads()" style="background: #8B5CF6; color: white; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 14px rgba(139,92,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <i class="fas fa-upload"></i> Upload Students
-            </button>
         </div>
         
         <div class="student-stats" id="studentStats" style="margin-top: 16px; padding: 10px 16px; background: #f8fafc; border-radius: 10px; font-size: 13px; color: #475569; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -2159,7 +2186,7 @@
                         <th style="min-width: 70px;"><i class="fas fa-layer-group" style="color: #4F46E5; margin-right: 6px;"></i> Block</th>
                         <th style="min-width: 100px;"><i class="fas fa-circle" style="color: #4F46E5; margin-right: 6px;"></i> Status</th>
                         <th style="min-width: 70px;"><i class="fas fa-chart-line" style="color: #4F46E5; margin-right: 6px;"></i> Risk</th>
-                        <th style="min-width: 180px; text-align: center;"><i class="fas fa-cog" style="color: #4F46E5; margin-right: 6px;"></i> Actions</th>
+                        <th style="min-width: 200px; text-align: center;"><i class="fas fa-cog" style="color: #4F46E5; margin-right: 6px;"></i> Actions</th>
                     </tr>
                 </thead>
                 <tbody id="studentsTableBody">
@@ -2184,14 +2211,11 @@
                 <span onclick="exportStudentList()" style="font-size: 12px; color: #94A3B8; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#94A3B8'">
                     <i class="fas fa-file-export"></i> Export
                 </span>
-                <span onclick="showUploads()" style="font-size: 12px; color: #94A3B8; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#94A3B8'">
-                    <i class="fas fa-upload"></i> Upload
-                </span>
             </div>
         </div>
     </div>
 
-    <!-- ─── STUDENT DETAIL MODAL ─── -->
+    <!-- ─── STUDENT DETAIL MODAL (READ-ONLY + UPLOAD) ─── -->
     <div class="student-modal-overlay" id="studentModal">
         <div class="student-modal">
             <div class="student-modal-header">
@@ -2214,9 +2238,9 @@
                             <button onclick="sendMessageToStudent()" class="action-btn action-btn-message" style="padding: 8px 16px;">
                                 <i class="fas fa-envelope"></i> Message
                             </button>
-                            <button onclick="viewStudentMarks()" class="action-btn action-btn-view" style="padding: 8px 16px;">
-                                <i class="fas fa-chart-bar"></i> Marks
-                            </button>
+                        </div>
+                        <div style="margin-top: 6px; font-size: 11px; color: #94A3B8;">
+                            <i class="fas fa-lock"></i> Read-only view
                         </div>
                     </div>
                     <div>
@@ -2251,17 +2275,21 @@
                             </div>
                         </div>
                         
-                        <!-- Uploads Section -->
+                        <!-- Uploads Section - Lecturer can only ADD uploads, NOT delete -->
                         <div class="uploads-section">
-                            <h4><i class="fas fa-paperclip"></i> Student Uploads</h4>
+                            <h4><i class="fas fa-paperclip"></i> Student Documents <span style="font-size: 11px; color: #94A3B8; font-weight: 400;">(Upload supporting documents for approval)</span></h4>
                             <div id="modalUploads">
-                                <p style="color: #94A3B8; font-size: 13px;">No uploads found.</p>
+                                <p style="color: #94A3B8; font-size: 13px;">No documents found.</p>
                             </div>
                             <div class="upload-dropzone" id="uploadDropzone" onclick="document.getElementById('fileInput').click()">
                                 <i class="fas fa-cloud-upload-alt"></i>
-                                <p>Drag & drop files here or <span class="highlight">click to browse</span></p>
-                                <p style="font-size: 12px; color: #94A3B8;">Supports PDF, DOC, DOCX, JPG, PNG (Max 10MB)</p>
+                                <p>Click to upload supporting documents <span class="highlight">(for approval)</span></p>
+                                <p class="sub-text">Supports PDF, DOC, DOCX, JPG, PNG (Max 10MB)</p>
                                 <input type="file" id="fileInput" style="display: none;" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onchange="handleFileUpload(event)">
+                            </div>
+                            <div style="margin-top: 8px; font-size: 11px; color: #94A3B8; display: flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Uploaded documents will be sent for admin approval before being attached to the student's record.</span>
                             </div>
                         </div>
                     </div>
@@ -2270,44 +2298,52 @@
         </div>
     </div>
 
-    <!-- ─── BULK UPLOAD MODAL ─── -->
+    <!-- ─── BULK UPLOAD MODAL (FOR APPROVAL) ─── -->
     <div class="student-modal-overlay" id="bulkUploadModal">
         <div class="student-modal" style="max-width: 600px;">
             <div class="student-modal-header">
-                <h3><i class="fas fa-upload" style="color: #4F46E5; margin-right: 10px;"></i> Bulk Upload Students</h3>
+                <h3><i class="fas fa-upload" style="color: #4F46E5; margin-right: 10px;"></i> Upload Student Records <span style="font-size: 12px; color: #94A3B8; font-weight: 400;">(For Approval)</span></h3>
                 <button class="student-modal-close" onclick="closeBulkUpload()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="student-modal-body">
-                <div style="margin-bottom: 20px;">
-                    <p style="color: #64748B; font-size: 14px;">Upload a CSV file with student data. The file should contain the following columns:</p>
-                    <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px; font-size: 13px; color: #475569; border: 1px solid #e5e7eb;">
-                        <code>full_name, student_id, program, intake_year, block, email, phone, gender</code>
+                <div style="margin-bottom: 16px; background: #FEF3C7; padding: 12px 16px; border-radius: 10px; border: 1px solid #FDE68A;">
+                    <p style="margin: 0; font-size: 13px; color: #92400E;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Note:</strong> Uploaded records will be submitted for administrative approval. 
+                        Students will only be added to your roster after admin verification.
+                    </p>
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <p style="color: #64748B; font-size: 13px;">Upload a CSV file with student data. Required columns:</p>
+                    <div style="background: #f8fafc; padding: 10px 14px; border-radius: 10px; font-size: 12px; color: #475569; border: 1px solid #e5e7eb; font-family: monospace;">
+                        full_name, student_id, program, intake_year, block, email, phone, gender
                     </div>
-                    <div style="margin-top: 10px;">
+                    <div style="margin-top: 8px;">
                         <a href="#" style="color: #4F46E5; font-size: 13px; font-weight: 500;">
                             <i class="fas fa-download"></i> Download template
                         </a>
                     </div>
                 </div>
                 
-                <div class="upload-dropzone" id="bulkDropzone" style="padding: 40px;" ondrop="handleBulkDrop(event)" ondragover="handleBulkDragOver(event)" onclick="document.getElementById('bulkFileInput').click()">
-                    <i class="fas fa-cloud-upload-alt" style="font-size: 48px;"></i>
+                <div class="upload-dropzone" id="bulkDropzone" style="padding: 30px;" ondrop="handleBulkDrop(event)" ondragover="handleBulkDragOver(event)" onclick="document.getElementById('bulkFileInput').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 36px;"></i>
                     <p>Drop CSV file here or <span class="highlight">click to browse</span></p>
-                    <p style="font-size: 12px; color: #94A3B8;">Only .csv files accepted</p>
+                    <p class="sub-text">Only .csv files accepted</p>
                     <input type="file" id="bulkFileInput" style="display: none;" accept=".csv" onchange="handleBulkFile(event)">
                 </div>
                 
                 <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end;">
                     <button onclick="closeBulkUpload()" style="padding: 10px 24px; border: 1px solid #e5e7eb; background: white; border-radius: 10px; cursor: pointer; font-size: 14px; color: #64748B;">Cancel</button>
-                    <button onclick="processBulkUpload()" style="padding: 10px 24px; background: linear-gradient(135deg, #4F46E5, #7C3AED); color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600;">
-                        <i class="fas fa-upload"></i> Upload Students
+                    <button onclick="processBulkUpload()" style="padding: 10px 24px; background: linear-gradient(135deg, #F59E0B, #D97706); color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                        <i class="fas fa-paper-plane"></i> Submit for Approval
                     </button>
                 </div>
                 <div id="bulkUploadProgress" style="display: none; margin-top: 16px;">
                     <div style="background: #e5e7eb; border-radius: 10px; height: 8px; overflow: hidden;">
-                        <div id="bulkProgressBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #4F46E5, #7C3AED); border-radius: 10px; transition: width 0.3s ease;"></div>
+                        <div id="bulkProgressBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #F59E0B, #D97706); border-radius: 10px; transition: width 0.3s ease;"></div>
                     </div>
                     <p style="font-size: 13px; color: #64748B; margin-top: 6px;" id="bulkProgressText">Processing... 0%</p>
                 </div>
