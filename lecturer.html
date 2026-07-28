@@ -3670,7 +3670,7 @@
         </table>
     </div>
 </section>
-             <!-- ===== REPORTS SECTION - ENHANCED WITH PDF EXPORT, PREVIEW & ANALYTICS ===== -->
+            <!-- ===== REPORTS SECTION - ENHANCED WITH PDF EXPORT, PREVIEW & ANALYTICS ===== -->
 <section id="reports-content" class="tab-content" style="display: none;">
     <!-- Report Header -->
     <div class="report-header">
@@ -3742,7 +3742,7 @@
     </div>
 
     <!-- Report Generation Form -->
-    <form id="reportGenerationForm" class="report-form" onsubmit="event.preventDefault(); generateReport();">
+    <form id="reportGenerationForm" class="report-form" onsubmit="event.preventDefault(); LecturerReports.generateReport(event);">
         <div class="form-header">
             <div class="form-header-left">
                 <i class="fas fa-plus-circle text-purple"></i>
@@ -3776,8 +3776,6 @@
                     <option value="PerformanceAnalysis">📈 Performance Analysis</option>
                     <option value="ClassRoster">📝 Class Roster</option>
                     <option value="UnitProgress">🎯 Unit Progress</option>
-                    <option value="ComparativeAnalysis">📊 Comparative Analysis</option>
-                    <option value="TrendReport">📈 Trend Report</option>
                 </select>
             </div>
 
@@ -3787,10 +3785,10 @@
                 </label>
                 <select id="reportScope" required>
                     <option value="">-- Select Scope --</option>
-                    <option value="MyCourses">📚 All My Units</option>
-                    <option value="MyStudents">👨‍🎓 My Students</option>
-                    <option value="UnitOnly">📖 Selected Unit Only</option>
-                    <option value="Semester">📅 Semester Overview</option>
+                    <option value="Nursing">🏥 Nursing Department</option>
+                    <option value="Clinical">🩺 Clinical Practice</option>
+                    <option value="Research">📚 Research</option>
+                    <option value="Administration">📋 Administration</option>
                 </select>
             </div>
 
@@ -3803,7 +3801,6 @@
                     <option value="Excel">📊 Excel Spreadsheet</option>
                     <option value="CSV">📋 CSV File</option>
                     <option value="HTML">🌐 HTML Preview</option>
-                    <option value="JSON">💾 JSON Data</option>
                 </select>
             </div>
         </div>
@@ -3842,16 +3839,16 @@
             <button type="submit" class="btn btn-generate">
                 <i class="fas fa-chart-line"></i> Generate Report
             </button>
-            <button type="button" class="btn btn-preview" onclick="previewReport()">
+            <button type="button" class="btn btn-preview" onclick="LecturerReports.previewReport()">
                 <i class="fas fa-eye"></i> Preview
             </button>
-            <button type="button" class="btn btn-export-pdf" onclick="exportToPDF()">
+            <button type="button" class="btn btn-export-pdf" onclick="LecturerReports.exportToPDF()">
                 <i class="fas fa-file-pdf"></i> Export PDF
             </button>
             <button type="reset" class="btn btn-reset">
                 <i class="fas fa-undo"></i> Reset
             </button>
-            <button type="button" class="btn btn-schedule" onclick="scheduleReport()">
+            <button type="button" class="btn btn-schedule" onclick="LecturerReports.scheduleReport()">
                 <i class="fas fa-clock"></i> Schedule
             </button>
         </div>
@@ -3862,23 +3859,22 @@
         <div class="modal-container modal-lg">
             <div class="modal-header">
                 <h3><i class="fas fa-eye text-purple"></i> Report Preview</h3>
-                <button class="modal-close" onclick="closePreview()">&times;</button>
+                <button class="modal-close" onclick="LecturerReports.closePreview()">&times;</button>
             </div>
             <div class="modal-body" id="reportPreviewContent">
-                <!-- Report content will be loaded here -->
                 <div class="preview-loading">
                     <i class="fas fa-spinner fa-spin"></i>
                     <p>Loading report preview...</p>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-export-pdf" onclick="exportPreviewToPDF()">
+                <button class="btn btn-export-pdf" onclick="LecturerReports.exportPreviewToPDF()">
                     <i class="fas fa-file-pdf"></i> Download PDF
                 </button>
-                <button class="btn btn-print" onclick="printPreview()">
+                <button class="btn btn-print" onclick="LecturerReports.printPreview()">
                     <i class="fas fa-print"></i> Print
                 </button>
-                <button class="btn btn-secondary" onclick="closePreview()">Close</button>
+                <button class="btn btn-secondary" onclick="LecturerReports.closePreview()">Close</button>
             </div>
         </div>
     </div>
@@ -3887,10 +3883,10 @@
     <div class="report-toolbar">
         <div class="toolbar-search">
             <i class="fas fa-search"></i>
-            <input type="text" id="reportSearch" placeholder="Search reports by name, type, unit..." onkeyup="filterReports()">
+            <input type="text" id="reportSearch" placeholder="Search reports by name, type, unit..." onkeyup="LecturerReports.currentFilters.search=this.value; LecturerReports.renderReports(LecturerReports.reports);">
         </div>
         <div class="toolbar-filters">
-            <select id="reportTypeFilter" onchange="filterReports()">
+            <select id="reportTypeFilter" onchange="LecturerReports.currentFilters.type=this.value; LecturerReports.renderReports(LecturerReports.reports);">
                 <option value="all">All Types</option>
                 <option value="AttendanceSummary">Attendance</option>
                 <option value="CourseGradeBook">Grade Book</option>
@@ -3899,25 +3895,24 @@
                 <option value="ClassRoster">Roster</option>
                 <option value="UnitProgress">Progress</option>
             </select>
-            <select id="reportUnitFilter" onchange="filterReports()">
+            <select id="reportUnitFilter" onchange="LecturerReports.currentFilters.unit=this.value; LecturerReports.renderReports(LecturerReports.reports);">
                 <option value="all">All Units</option>
             </select>
-            <select id="reportDateFilter" onchange="filterReports()">
+            <select id="reportDateFilter" onchange="LecturerReports.filterByDate(this.value)">
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
                 <option value="week">This Week</option>
                 <option value="month">This Month</option>
-                <option value="semester">This Semester</option>
             </select>
         </div>
         <div class="toolbar-actions">
-            <button class="btn-filter" onclick="filterReports()">
+            <button class="btn-filter" onclick="LecturerReports.renderReports(LecturerReports.reports)">
                 <i class="fas fa-filter"></i> Filter
             </button>
-            <button class="btn-clear" onclick="clearReportFilters()">
+            <button class="btn-clear" onclick="LecturerReports.clearFilters()">
                 <i class="fas fa-times"></i> Clear
             </button>
-            <button class="btn-refresh" onclick="refreshReports()">
+            <button class="btn-refresh" onclick="LecturerReports.refresh()">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
         </div>
@@ -3940,22 +3935,7 @@
                     </tr>
                 </thead>
                 <tbody id="reportsTable">
-                    <tr class="empty-state">
-                        <td colspan="8">
-                            <div class="empty-state-content">
-                                <i class="fas fa-chart-bar empty-icon"></i>
-                                <h3>No Reports Generated Yet</h3>
-                                <p>Select a unit and report type above to generate your first report</p>
-                                <div class="empty-tags">
-                                    <span class="tag tag-attendance">📋 Attendance</span>
-                                    <span class="tag tag-grades">📊 Grades</span>
-                                    <span class="tag tag-enrollment">👥 Enrollment</span>
-                                    <span class="tag tag-progress">🎯 Progress</span>
-                                    <span class="tag tag-analysis">📈 Analysis</span>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
+                    <!-- Rendered by JavaScript -->
                 </tbody>
             </table>
         </div>
@@ -3966,19 +3946,19 @@
                 <i class="fas fa-database"></i> <span id="reportCountDisplay">0</span> reports available
             </span>
             <div class="table-actions">
-                <button class="btn-export-all" onclick="exportAllReports()">
+                <button class="btn-export-all" onclick="LecturerReports.exportAllReports()">
                     <i class="fas fa-file-export"></i> Export All
                 </button>
-                <button class="btn-export-pdf-all" onclick="exportAllToPDF()">
+                <button class="btn-export-pdf-all" onclick="LecturerReports.exportAllToPDF()">
                     <i class="fas fa-file-pdf"></i> Export All PDF
                 </button>
-                <button class="btn-export-json" onclick="exportJSON()">
+                <button class="btn-export-json" onclick="LecturerReports.exportJSON()">
                     <i class="fas fa-code"></i> Export JSON
                 </button>
-                <button class="btn-print" onclick="printReportTable()">
+                <button class="btn-print" onclick="LecturerReports.printReportTable()">
                     <i class="fas fa-print"></i> Print
                 </button>
-                <button class="btn-download-all" onclick="downloadAllReports()">
+                <button class="btn-download-all" onclick="LecturerReports.downloadAllReports()">
                     <i class="fas fa-download"></i> Download All
                 </button>
             </div>
@@ -3994,8 +3974,8 @@
         <div class="summary-grid">
             <div class="summary-item">
                 <span class="summary-label">Most Generated</span>
-                <span class="summary-value">Performance Analysis</span>
-                <span class="summary-meta">42 reports</span>
+                <span class="summary-value" id="mostGeneratedType">-</span>
+                <span class="summary-meta">Popular report type</span>
             </div>
             <div class="summary-item">
                 <span class="summary-label">Most Active Unit</span>
@@ -4015,7 +3995,6 @@
         </div>
     </div>
 </section>
-
           <!-- ===== MESSAGES SECTION - ENHANCED ===== -->
 <section id="messages-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
