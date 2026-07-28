@@ -1,10 +1,13 @@
+// ============================================
 // js/lecturer-dashboard.js - COMPLETE UPGRADED VERSION
-/**
- * NCHSM Lecturer Dashboard Module
- * Complete with all features: Metrics, Charts, Top Students, Alerts, Progress, Activity
- */
+// ============================================
+// NCHSM Lecturer Dashboard Module
+// Features: Metrics, Charts, Top Students, Alerts, Progress, Activity, 
+// Clinical Hours, Early Warning System, Attendance Deep Dive, Auto-refresh
+// ============================================
 
 const LecturerDashboard = {
+    // ─── STATE ───
     metrics: {
         totalStudents: 0,
         totalCourses: 0,
@@ -18,7 +21,29 @@ const LecturerDashboard = {
         today: 0,
         week: 0,
         month: 0,
-        overall: 0
+        overall: 0,
+        present: 0,
+        absent: 0,
+        pending: 0,
+        lectureCount: 0,
+        clinicalCount: 0,
+        labCount: 0,
+        campusCount: 0,
+        hospitalCount: 0
+    },
+    clinicalMetrics: {
+        percent: 0,
+        completed: 0,
+        required: 1500,
+        onTrack: 0,
+        atRisk: 0,
+        critical: 0
+    },
+    riskMetrics: {
+        high: 0,
+        medium: 0,
+        low: 0,
+        students: []
     },
     chartInstances: {
         performance: null,
@@ -32,6 +57,7 @@ const LecturerDashboard = {
     isRefreshing: false,
     refreshInterval: null,
     
+    // ─── INIT ───
     async init() {
         console.log('📊 Initializing Lecturer Dashboard...');
         try {
@@ -40,11 +66,14 @@ const LecturerDashboard = {
             await this.loadAssignedStudents();
             await this.loadMetrics();
             await this.loadAttendanceMetrics();
+            await this.loadClinicalHours();
+            await this.loadRiskData();
             this.updateWelcomeBanner();
             this.loadQuickStats();
             await this.loadCourseProgress();
             await this.loadTopStudents();
             await this.loadAttendanceAlerts();
+            await this.loadIntelligentAlerts();
             await this.loadRecentActivity();
             await this.loadCharts();
             this.setupEventListeners();
@@ -58,9 +87,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // RESOLVE LECTURER ID
-    // ============================================
+    // ─── RESOLVE LECTURER ID ───
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -77,14 +104,12 @@ const LecturerDashboard = {
             
             this.lecturerUuid = authId;
             
-            // Try to find from lecturer_subject_assignments
             const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
                 .ilike('lecturer_name', `%${fullName}%`);
             
             if (!assignError && assignments && assignments.length > 0) {
-                // Try to find non-STAFF ID first
                 const nonStaff = assignments.find(a => !a.lecturer_id.toString().startsWith('STAFF'));
                 if (nonStaff) {
                     this.lecturerAssignmentId = nonStaff.lecturer_id;
@@ -105,9 +130,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // LOAD ASSIGNED UNITS
-    // ============================================
+    // ─── LOAD ASSIGNED UNITS ───
     async loadAssignedUnits() {
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -129,7 +152,6 @@ const LecturerDashboard = {
                 return;
             }
             
-            // Filter to KRCHN program
             const krchnUnits = assignments?.filter(u => u.program === 'KRCHN') || [];
             this.assignedUnits = krchnUnits.length > 0 ? krchnUnits : (assignments || []);
             
@@ -141,9 +163,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // LOAD ASSIGNED STUDENTS
-    // ============================================
+    // ─── LOAD ASSIGNED STUDENTS ───
     async loadAssignedStudents() {
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -159,7 +179,6 @@ const LecturerDashboard = {
                 return;
             }
             
-            // Get students enrolled in these units
             const { data: enrollments, error: enrollError } = await supabase
                 .from('student_unit_registrations')
                 .select('student_id, unit_name, status')
@@ -180,7 +199,6 @@ const LecturerDashboard = {
                 return;
             }
             
-            // Get student profiles
             const { data: students, error: studentError } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('user_id, student_id, full_name, program, block, intake_year, email, phone, gender')
@@ -193,7 +211,6 @@ const LecturerDashboard = {
                 return;
             }
             
-            // Map enrollments to students
             const enrollmentMap = {};
             enrollments?.forEach(e => {
                 if (!enrollmentMap[e.student_id]) {
@@ -216,9 +233,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // LOAD METRICS
-    // ============================================
+    // ─── LOAD METRICS ───
     async loadMetrics() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -227,13 +242,10 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            // Total students (assigned)
             this.metrics.totalStudents = this.assignedStudents.length || 0;
-            
-            // Total courses
             this.metrics.totalCourses = this.assignedUnits.length || 0;
             
-            // At risk students (based on attendance or marks)
+            // At risk students (from risk data)
             const atRisk = this.assignedStudents.filter(s => {
                 return (s.absences || 0) > 5 || (s.cumulative_absences || 0) > 5;
             });
@@ -295,9 +307,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // UPDATE METRIC CARDS
-    // ============================================
+    // ─── UPDATE METRIC CARDS ───
     updateMetricCards() {
         const elements = {
             'totalStudentsCount': this.metrics.totalStudents,
@@ -315,17 +325,9 @@ const LecturerDashboard = {
                 el.textContent = elements[id];
             }
         });
-        
-        // Update badges
-        const badge = document.getElementById('studentCountBadge');
-        if (badge) {
-            badge.textContent = this.metrics.totalStudents;
-        }
     },
     
-    // ============================================
-    // LOAD QUICK STATS
-    // ============================================
+    // ─── LOAD QUICK STATS ───
     loadQuickStats() {
         const container = document.getElementById('quickStatsContainer');
         if (!container) return;
@@ -362,9 +364,7 @@ const LecturerDashboard = {
         `;
     },
     
-    // ============================================
-    // LOAD ATTENDANCE METRICS
-    // ============================================
+    // ─── LOAD ATTENDANCE METRICS ───
     async loadAttendanceMetrics() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -384,7 +384,24 @@ const LecturerDashboard = {
                 .gte('check_in_time', `${todayStr}T00:00:00.000Z`)
                 .lte('check_in_time', `${todayStr}T23:59:59.999Z`);
             
-            this.attendanceMetrics.today = todayLogs?.length || 0;
+            const logs = todayLogs || [];
+            this.attendanceMetrics.today = logs.length;
+            this.attendanceMetrics.present = logs.filter(l => l.attendance_status === 'Present' || l.status === 'present').length;
+            this.attendanceMetrics.absent = logs.filter(l => l.attendance_status === 'Absent' || l.status === 'absent').length;
+            this.attendanceMetrics.pending = this.assignedStudents.length - logs.length;
+            
+            // Session type breakdown
+            this.attendanceMetrics.lectureCount = logs.filter(l => l.session_type === 'Lecture' || l.session_type === 'Class').length;
+            this.attendanceMetrics.clinicalCount = logs.filter(l => l.session_type === 'Clinical').length;
+            this.attendanceMetrics.labCount = logs.filter(l => l.session_type === 'Lab').length;
+            
+            // Location breakdown
+            this.attendanceMetrics.campusCount = logs.filter(l => 
+                l.location && l.location.toLowerCase().includes('kiamunyi')
+            ).length;
+            this.attendanceMetrics.hospitalCount = logs.filter(l => 
+                l.location && l.location.toLowerCase().includes('hospital')
+            ).length;
             
             // Weekly attendance
             const weekRange = this.getWeekRange();
@@ -437,7 +454,13 @@ const LecturerDashboard = {
             'todayAttendanceTotal2': this.attendanceMetrics.today,
             'weeklyAttendanceTotal': this.attendanceMetrics.week,
             'monthlyAttendanceRate': this.attendanceMetrics.month + '%',
-            'overallAttendanceTotal': this.attendanceMetrics.overall
+            'overallAttendanceTotal': this.attendanceMetrics.overall,
+            'todayPresent': this.attendanceMetrics.present,
+            'todayAbsent': this.attendanceMetrics.absent,
+            'todayPending': this.attendanceMetrics.pending,
+            'lectureAttendance': this.attendanceMetrics.lectureCount,
+            'clinicalAttendance': this.attendanceMetrics.clinicalCount,
+            'labAttendance': this.attendanceMetrics.labCount
         };
         
         Object.keys(elements).forEach(id => {
@@ -446,6 +469,12 @@ const LecturerDashboard = {
                 el.textContent = elements[id];
             }
         });
+        
+        // Location breakdown
+        const locationEl = document.getElementById('locationBreakdown');
+        if (locationEl) {
+            locationEl.textContent = `🏫 ${this.attendanceMetrics.campusCount} · 🏥 ${this.attendanceMetrics.hospitalCount}`;
+        }
         
         const dateDisplay = document.getElementById('todayDateDisplay');
         if (dateDisplay) {
@@ -457,39 +486,238 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // UPDATE WELCOME BANNER
-    // ============================================
+    // ─── LOAD CLINICAL HOURS ───
+    async loadClinicalHours() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const program = profile?.program || profile?.department || 'KRCHN';
+            
+            const studentIds = this.assignedStudents.map(s => s.user_id);
+            
+            if (studentIds.length === 0) {
+                this.updateClinicalUI(0, 0, 0, 0, 0);
+                return;
+            }
+            
+            const { data: logs } = await supabase
+                .from('clinical_hours_logs')
+                .select('student_id, hours_completed')
+                .in('student_id', studentIds)
+                .eq('program', program);
+            
+            const totalHours = logs?.reduce((sum, l) => sum + (l.hours_completed || 0), 0) || 0;
+            const required = 1500;
+            const percent = Math.min(Math.round((totalHours / required) * 100), 100);
+            
+            // Student distribution
+            const studentHours = {};
+            logs?.forEach(l => {
+                studentHours[l.student_id] = (studentHours[l.student_id] || 0) + (l.hours_completed || 0);
+            });
+            
+            let onTrack = 0, atRisk = 0, critical = 0;
+            Object.values(studentHours).forEach(hours => {
+                const pct = (hours / required) * 100;
+                if (pct >= 80) onTrack++;
+                else if (pct >= 60) atRisk++;
+                else critical++;
+            });
+            
+            this.clinicalMetrics = {
+                percent,
+                completed: totalHours,
+                required,
+                onTrack,
+                atRisk,
+                critical
+            };
+            
+            this.updateClinicalUI(percent, totalHours, onTrack, atRisk, critical);
+            
+        } catch (error) {
+            console.error('Failed to load clinical hours:', error);
+        }
+    },
+    
+    updateClinicalUI(percent, completed, onTrack, atRisk, critical) {
+        const elements = {
+            'clinicalHoursPercent': percent + '%',
+            'clinicalHoursCompleted': completed,
+            'clinicalOnTrack': onTrack,
+            'clinicalAtRisk': atRisk,
+            'clinicalCritical': critical
+        };
+        
+        Object.keys(elements).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = elements[id];
+            }
+        });
+        
+        // Progress ring
+        const ring = document.getElementById('clinicalRing');
+        if (ring) {
+            const circumference = 314;
+            const offset = circumference - (percent / 100) * circumference;
+            ring.style.strokeDashoffset = offset;
+        }
+        
+        // Progress bar
+        const bar = document.getElementById('clinicalHoursBar');
+        if (bar) {
+            bar.style.width = Math.min(percent, 100) + '%';
+        }
+    },
+    
+    // ─── LOAD RISK DATA ───
+    async loadRiskData() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const studentIds = this.assignedStudents.map(s => s.user_id);
+            
+            if (studentIds.length === 0) {
+                this.updateRiskUI([], 0, 0, 0);
+                return;
+            }
+            
+            // Get attendance data for risk calculation
+            const { data: attendance } = await supabase
+                .from('geo_attendance_logs')
+                .select('student_id, attendance_status')
+                .in('student_id', studentIds);
+            
+            // Get marks data
+            const { data: marks } = await supabase
+                .from('student_marks')
+                .select('student_id, final_score')
+                .in('student_id', studentIds);
+            
+            // Calculate risk scores
+            const riskMap = {};
+            studentIds.forEach(id => {
+                const student = this.assignedStudents.find(s => s.user_id === id);
+                const studentAttendance = attendance?.filter(a => a.student_id === id) || [];
+                const studentMarks = marks?.filter(m => m.student_id === id) || [];
+                
+                const absences = studentAttendance.filter(a => 
+                    a.attendance_status === 'Absent' || a.attendance_status === 'absent'
+                ).length;
+                
+                const avgScore = studentMarks.length > 0 
+                    ? studentMarks.reduce((sum, m) => sum + (m.final_score || 0), 0) / studentMarks.length
+                    : 0;
+                
+                const submissions = studentMarks.length;
+                const totalStudents = studentIds.length;
+                const submissionRate = totalStudents > 0 ? (submissions / totalStudents) * 100 : 0;
+                
+                // Risk score algorithm
+                let riskScore = 0;
+                riskScore += Math.min(absences * 10, 50);
+                riskScore += Math.max((100 - avgScore) * 0.3, 0);
+                riskScore += Math.max((100 - submissionRate) * 0.2, 0);
+                
+                riskMap[id] = {
+                    name: student?.full_name || 'Unknown',
+                    absences,
+                    avgScore: Math.round(avgScore),
+                    submissionRate: Math.round(submissionRate),
+                    riskScore: Math.round(riskScore),
+                    riskLevel: riskScore > 50 ? 'high' : (riskScore > 25 ? 'medium' : 'low')
+                };
+            });
+            
+            const riskStudents = Object.entries(riskMap).map(([id, data]) => ({ id, ...data }));
+            
+            this.riskMetrics.high = riskStudents.filter(s => s.riskLevel === 'high').length;
+            this.riskMetrics.medium = riskStudents.filter(s => s.riskLevel === 'medium').length;
+            this.riskMetrics.low = riskStudents.filter(s => s.riskLevel === 'low').length;
+            this.riskMetrics.students = riskStudents.sort((a, b) => b.riskScore - a.riskScore);
+            
+            this.updateRiskUI(riskStudents, this.riskMetrics.high, this.riskMetrics.medium, this.riskMetrics.low);
+            
+        } catch (error) {
+            console.error('Failed to load risk data:', error);
+        }
+    },
+    
+    updateRiskUI(students, high, medium, low) {
+        const elements = {
+            'highRiskCount': high,
+            'mediumRiskCount': medium,
+            'lowRiskCount': low
+        };
+        
+        Object.keys(elements).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = elements[id];
+            }
+        });
+        
+        const container = document.getElementById('riskStudentList');
+        if (!container) return;
+        
+        if (students.length === 0) {
+            container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 10px;">No risk data available.</p>';
+            return;
+        }
+        
+        // Show top 5 at-risk students
+        const topRisk = students.filter(s => s.riskLevel !== 'low').slice(0, 5);
+        
+        if (topRisk.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 10px; color: #10b981;">
+                    <i class="fas fa-check-circle"></i> All students are low risk!
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = topRisk.map(s => {
+            const colors = {
+                high: { bg: '#fef2f2', border: '#dc2626', text: '#dc2626', label: '🔴 HIGH' },
+                medium: { bg: '#fffbeb', border: '#f59e0b', text: '#d97706', label: '🟡 MEDIUM' }
+            };
+            const c = colors[s.riskLevel] || colors.medium;
+            
+            return `
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: ${c.bg}; border-radius: 8px; margin-bottom: 6px; border-left: 3px solid ${c.border};">
+                    <span style="font-weight: 600; color: ${c.text}; font-size: 11px;">${c.label}</span>
+                    <span style="flex: 1; font-size: 13px; color: #1e293b; font-weight: 500;">${s.name}</span>
+                    <span style="font-size: 12px; color: #64748b;">${s.absences} absences</span>
+                    <span style="font-size: 12px; font-weight: 600; color: ${s.avgScore >= 50 ? '#10b981' : '#ef4444'};">${s.avgScore}%</span>
+                </div>
+            `;
+        }).join('');
+    },
+    
+    // ─── UPDATE WELCOME BANNER ───
     updateWelcomeBanner() {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const welcomeHeader = document.getElementById('welcomeHeader');
         const welcomeBannerText = document.getElementById('welcomeBannerText');
         const studentCountDisplay = document.getElementById('studentCountDisplay');
         const unitCountDisplay = document.getElementById('unitCountDisplay');
-        const programSubtitle = document.getElementById('programSubtitle');
         
         if (welcomeHeader) {
             welcomeHeader.textContent = profile?.full_name || 'Lecturer';
         }
         
-        const program = profile?.program || profile?.department || 'KRCHN';
-        const programDisplay = window.LecturerUtils?.getProgramDisplayName(program) || program;
-        
-        if (programSubtitle) {
-            programSubtitle.textContent = `Dashboard filtered for ${programDisplay}`;
-        }
-        
         if (welcomeBannerText) {
             const totalStudents = this.assignedStudents.length || 0;
             const totalUnits = this.assignedUnits.length || 0;
+            const atRisk = this.riskMetrics.high || 0;
+            const riskMsg = atRisk > 0 ? `⚠️ ${atRisk} at-risk students need attention.` : '✅ All students on track!';
             welcomeBannerText.textContent = 
-                `Welcome back! You have ${totalUnits} assigned units with ${totalStudents} students. ` +
-                `Quick actions are available below to help you manage your courses efficiently.`;
-        }
-        
-        const badge = document.getElementById('userProgramBadge');
-        if (badge) {
-            badge.textContent = programDisplay;
+                `Welcome back! You have ${totalUnits} assigned units with ${totalStudents} students. ${riskMsg}`;
         }
         
         if (studentCountDisplay) {
@@ -515,9 +743,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // LOAD COURSE PROGRESS
-    // ============================================
+    // ─── LOAD COURSE PROGRESS ───
     async loadCourseProgress() {
         try {
             const container = document.getElementById('courseProgressList');
@@ -556,20 +782,22 @@ const LecturerDashboard = {
             
             container.innerHTML = progressData.map(p => {
                 const color = p.avgScore >= 70 ? '#10b981' : (p.avgScore >= 50 ? '#f59e0b' : '#ef4444');
+                const statusLabel = p.avgScore >= 70 ? '✅ Excellent' : (p.avgScore >= 50 ? '⚡ Good' : '⚠️ Needs Improvement');
                 return `
-                    <div style="margin-bottom: 14px;">
+                    <div style="margin-bottom: 14px; padding: 10px 12px; background: #f8fafc; border-radius: 10px; border: 1px solid #e5e7eb;">
                         <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
-                            <span style="color: #1e293b; font-weight: 500;">${p.unit}</span>
+                            <span style="color: #1e293b; font-weight: 600;">${p.unit}</span>
                             <span style="color: ${color}; font-weight: 600;">
-                                ${p.avgScore}% avg (${p.studentCount}/${p.totalStudents} students)
+                                ${p.avgScore}% avg · ${statusLabel}
                             </span>
                         </div>
-                        <div style="background: #f1f5f9; border-radius: 8px; height: 8px; overflow: hidden;">
+                        <div style="background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
                             <div class="progress-bar" style="background: ${color}; width: ${p.avgScore}%; height: 100%; border-radius: 8px; transition: width 1.5s ease;"></div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 2px;">
-                            <span>${p.completionRate}% completion</span>
-                            <span>${p.studentCount} submissions</span>
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-top: 4px;">
+                            <span>📊 ${p.completionRate}% completion</span>
+                            <span>📝 ${p.studentCount} submissions</span>
+                            <span>👨‍🎓 ${p.totalStudents} enrolled</span>
                         </div>
                     </div>
                 `;
@@ -584,9 +812,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // LOAD TOP STUDENTS
-    // ============================================
+    // ─── LOAD TOP STUDENTS ───
     async loadTopStudents() {
         try {
             const container = document.getElementById('topStudentsList');
@@ -595,9 +821,6 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
-            
             const studentIds = this.assignedStudents.map(s => s.user_id);
             
             if (studentIds.length === 0) {
@@ -605,7 +828,6 @@ const LecturerDashboard = {
                 return;
             }
             
-            // Get top performing students
             const { data: marks } = await supabase
                 .from('student_marks')
                 .select('student_id, student_name, final_score, subject_name')
@@ -619,26 +841,24 @@ const LecturerDashboard = {
             }
             
             container.innerHTML = marks.map((m, i) => {
+                const medals = ['🥇', '🥈', '🥉'];
                 const medalColors = ['#fcd34d', '#d1d5db', '#fca5a5'];
-                const textColors = ['#92400e', '#374151', '#991b1b'];
                 const bgColors = ['#fef3c7', '#f3f4f6', '#fee2e2'];
                 const isTop3 = i < 3;
                 
                 return `
                     <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
-                        <span style="background: ${isTop3 ? medalColors[i] : '#e5e7eb'}; 
-                                     color: ${isTop3 ? textColors[i] : '#6b7280'}; 
-                                     width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-                                     font-weight: bold; font-size: 13px;">
-                            ${i + 1}
-                        </span>
+                        <span style="font-size: 20px;">${isTop3 ? medals[i] : (i + 1)}</span>
                         <div style="flex: 1;">
-                            <div style="font-weight: 500; font-size: 14px; color: #1e293b;">${m.student_name || 'Unknown'}</div>
+                            <div style="font-weight: 600; font-size: 14px; color: #1e293b;">${m.student_name || 'Unknown'}</div>
                             <div style="font-size: 11px; color: #94a3b8;">${m.subject_name || 'General'}</div>
                         </div>
-                        <span style="font-weight: 700; color: ${m.final_score >= 70 ? '#10b981' : m.final_score >= 50 ? '#f59e0b' : '#ef4444'}; font-size: 16px;">
-                            ${m.final_score || 0}%
-                        </span>
+                        <div style="text-align: right;">
+                            <span style="font-weight: 700; color: ${m.final_score >= 70 ? '#10b981' : m.final_score >= 50 ? '#f59e0b' : '#ef4444'}; font-size: 18px;">
+                                ${m.final_score || 0}%
+                            </span>
+                            <div style="font-size: 10px; color: #94a3b8;">${m.final_score >= 70 ? '🌟 Excellent' : m.final_score >= 50 ? '📈 Good' : '📉 Needs work'}</div>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -652,9 +872,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // LOAD ATTENDANCE ALERTS
-    // ============================================
+    // ─── LOAD ATTENDANCE ALERTS ───
     async loadAttendanceAlerts() {
         try {
             const container = document.getElementById('attendanceAlerts');
@@ -663,9 +881,6 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
-            
             const studentIds = this.assignedStudents.map(s => s.user_id);
             
             if (studentIds.length === 0) {
@@ -673,19 +888,28 @@ const LecturerDashboard = {
                 return;
             }
             
-            // Get students with multiple absences in the last 7 days
             const { data: absences } = await supabase
                 .from('geo_attendance_logs')
-                .select('student_id, student_name, COUNT(*) as absence_count')
+                .select('student_id, student_name, attendance_status, check_in_time')
                 .in('student_id', studentIds)
                 .eq('attendance_status', 'Absent')
-                .gte('check_in_time', new Date(Date.now() - 7*24*60*60*1000).toISOString())
-                .group_by('student_id, student_name')
-                .having('COUNT(*) > 2')
-                .order('absence_count', { ascending: false })
-                .limit(5);
+                .gte('check_in_time', new Date(Date.now() - 7*24*60*60*1000).toISOString());
             
-            if (!absences || absences.length === 0) {
+            // Count absences per student
+            const absenceCount = {};
+            absences?.forEach(a => {
+                if (!absenceCount[a.student_id]) {
+                    absenceCount[a.student_id] = { name: a.student_name || 'Unknown', count: 0 };
+                }
+                absenceCount[a.student_id].count++;
+            });
+            
+            const alertStudents = Object.entries(absenceCount)
+                .filter(([_, data]) => data.count > 2)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, 5);
+            
+            if (alertStudents.length === 0) {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: #10b981;">
                         <i class="fas fa-check-circle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
@@ -695,12 +919,12 @@ const LecturerDashboard = {
                 return;
             }
             
-            container.innerHTML = absences.map(a => `
+            container.innerHTML = alertStudents.map(([_, data]) => `
                 <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #fef2f2; border-radius: 8px; margin-bottom: 6px; border-left: 3px solid #ef4444;">
                     <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 14px;"></i>
-                    <span style="flex: 1; font-size: 13px; color: #1e293b; font-weight: 500;">${a.student_name || 'Unknown'}</span>
-                    <span style="font-size: 12px; color: #ef4444; font-weight: 600; background: #fee2e2; padding: 2px 10px; border-radius: 12px;">
-                        ${a.absence_count} absences
+                    <span style="flex: 1; font-size: 13px; color: #1e293b; font-weight: 500;">${data.name}</span>
+                    <span style="font-size: 12px; color: #ef4444; font-weight: 600; background: #fee2e2; padding: 2px 12px; border-radius: 12px;">
+                        ${data.count} absences this week
                     </span>
                 </div>
             `).join('');
@@ -714,9 +938,94 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // LOAD RECENT ACTIVITY
-    // ============================================
+    // ─── LOAD INTELLIGENT ALERTS ───
+    async loadIntelligentAlerts() {
+        try {
+            const container = document.getElementById('intelligentAlerts');
+            if (!container) return;
+            
+            const alerts = [];
+            
+            // Check clinical hours
+            if (this.clinicalMetrics.critical > 0) {
+                alerts.push({
+                    type: 'critical',
+                    icon: '🚨',
+                    message: `${this.clinicalMetrics.critical} students are critically below clinical hours requirement (${this.clinicalMetrics.percent}% completion)`
+                });
+            }
+            
+            // Check high risk students
+            if (this.riskMetrics.high > 0) {
+                alerts.push({
+                    type: 'warning',
+                    icon: '⚠️',
+                    message: `${this.riskMetrics.high} students are at HIGH risk - immediate intervention recommended`
+                });
+            }
+            
+            // Check pending attendance
+            if (this.metrics.pendingAttendance > 20) {
+                alerts.push({
+                    type: 'warning',
+                    icon: '📌',
+                    message: `${this.metrics.pendingAttendance} students have not checked in today - attendance pending`
+                });
+            }
+            
+            // Check exams due
+            if (this.metrics.examsDue > 0) {
+                alerts.push({
+                    type: 'info',
+                    icon: '📝',
+                    message: `${this.metrics.examsDue} exams/CATs are scheduled and awaiting grading`
+                });
+            }
+            
+            // Check submissions
+            const unitNames = this.assignedUnits.map(u => u.subject_name);
+            if (unitNames.length > 0) {
+                alerts.push({
+                    type: 'success',
+                    icon: '✅',
+                    message: `${unitNames.length} units assigned - all courses are active`
+                });
+            }
+            
+            // Check if all is clear
+            if (alerts.length === 0) {
+                alerts.push({
+                    type: 'success',
+                    icon: '🎉',
+                    message: 'All systems clear! Your dashboard is up to date.'
+                });
+            }
+            
+            container.innerHTML = alerts.slice(0, 5).map(a => {
+                const classes = {
+                    critical: 'alert-critical',
+                    warning: 'alert-warning',
+                    info: 'alert-info',
+                    success: 'alert-success'
+                };
+                return `
+                    <div class="alert-modern ${classes[a.type] || 'alert-info'}" style="padding: 10px 14px; border-radius: 10px; margin-bottom: 6px; display: flex; align-items: center; gap: 12px; border-left: 4px solid transparent;">
+                        <span style="font-size: 18px;">${a.icon}</span>
+                        <span style="font-size: 13px; color: #1e293b;">${a.message}</span>
+                    </div>
+                `;
+            }).join('');
+            
+        } catch (error) {
+            console.error('Failed to load intelligent alerts:', error);
+            const container = document.getElementById('intelligentAlerts');
+            if (container) {
+                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No alerts available</p>';
+            }
+        }
+    },
+    
+    // ─── LOAD RECENT ACTIVITY ───
     async loadRecentActivity() {
         try {
             const container = document.getElementById('recentActivityList');
@@ -740,11 +1049,12 @@ const LecturerDashboard = {
             
             if (recentAttendance && recentAttendance.length > 0) {
                 recentAttendance.forEach(a => {
+                    const sessionType = a.session_type || 'class';
                     activities.push({
                         type: 'attendance',
                         icon: 'fa-clipboard-check',
                         color: '#10b981',
-                        message: `${a.student_name || 'Student'} checked in for ${a.session_type || 'class'}`,
+                        message: `${a.student_name || 'Student'} checked in for ${sessionType.toLowerCase()}`,
                         time: a.check_in_time
                     });
                 });
@@ -764,7 +1074,7 @@ const LecturerDashboard = {
                         type: 'exam',
                         icon: 'fa-file-alt',
                         color: '#8b5cf6',
-                        message: `Exam "${e.exam_name || e.title}" was created`,
+                        message: `Exam "${e.exam_name || e.title || 'Untitled'}" was created`,
                         time: e.created_at
                     });
                 });
@@ -784,7 +1094,7 @@ const LecturerDashboard = {
                         type: 'session',
                         icon: 'fa-calendar-plus',
                         color: '#f59e0b',
-                        message: `Session "${s.session_title || s.title}" was scheduled`,
+                        message: `Session "${s.session_title || s.title || 'Untitled'}" was scheduled`,
                         time: s.created_at
                     });
                 });
@@ -803,7 +1113,6 @@ const LecturerDashboard = {
                 return;
             }
             
-            // Show top 5 activities
             const topActivities = activities.slice(0, 5);
             
             container.innerHTML = topActivities.map(a => {
@@ -830,9 +1139,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // TIME AGO HELPER
-    // ============================================
+    // ─── TIME AGO HELPER ───
     timeAgo(date) {
         const now = new Date();
         const diff = Math.floor((now - date) / 1000);
@@ -844,9 +1151,7 @@ const LecturerDashboard = {
         return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     },
     
-    // ============================================
-    // UPDATE LAST UPDATED
-    // ============================================
+    // ─── UPDATE LAST UPDATED ───
     updateLastUpdated() {
         const el = document.getElementById('lastUpdatedTime');
         if (el) {
@@ -855,9 +1160,7 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // START AUTO REFRESH
-    // ============================================
+    // ─── START AUTO REFRESH ───
     startAutoRefresh() {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
@@ -868,9 +1171,7 @@ const LecturerDashboard = {
         console.log('🔄 Auto-refresh started (30s interval)');
     },
     
-    // ============================================
-    // CHARTS
-    // ============================================
+    // ─── CHARTS ───
     async loadCharts() {
         console.log('📊 Loading lecturer charts...');
         
@@ -889,9 +1190,7 @@ const LecturerDashboard = {
                 .eq('role', 'student')
                 .eq('program', program);
             
-            // ============================================
-            // 1. GENDER DISTRIBUTION CHART
-            // ============================================
+            // ─── 1. GENDER DISTRIBUTION CHART ───
             const maleCount = students?.filter(s => s.gender === 'Male' || s.gender === 'M').length || 0;
             const femaleCount = students?.filter(s => s.gender === 'Female' || s.gender === 'F').length || 0;
             const otherCount = students?.filter(s => s.gender && !['Male', 'M', 'Female', 'F'].includes(s.gender)).length || 0;
@@ -917,13 +1216,14 @@ const LecturerDashboard = {
                         plugins: {
                             legend: {
                                 position: 'bottom',
-                                labels: { padding: 15, font: { size: 12 } }
+                                labels: { padding: 15, font: { size: 12, weight: '500' } }
                             },
                             title: {
                                 display: true,
                                 text: `Gender Distribution - ${program}`,
-                                font: { size: 14, weight: '600' },
-                                padding: { bottom: 10 }
+                                font: { size: 14, weight: '700' },
+                                padding: { bottom: 10 },
+                                color: '#0F172A'
                             }
                         }
                     }
@@ -931,9 +1231,7 @@ const LecturerDashboard = {
                 console.log('✅ Gender distribution chart updated');
             }
             
-            // ============================================
-            // 2. PERFORMANCE CHART
-            // ============================================
+            // ─── 2. PERFORMANCE CHART ───
             const studentIds = students?.map(s => s.user_id) || [];
             let marksData = [];
             if (studentIds.length > 0) {
@@ -988,8 +1286,9 @@ const LecturerDashboard = {
                             title: {
                                 display: true,
                                 text: `Performance by Subject - ${program}`,
-                                font: { size: 14, weight: '600' },
-                                padding: { bottom: 10 }
+                                font: { size: 14, weight: '700' },
+                                padding: { bottom: 10 },
+                                color: '#0F172A'
                             }
                         },
                         scales: {
@@ -998,7 +1297,8 @@ const LecturerDashboard = {
                                 max: 100,
                                 title: {
                                     display: true,
-                                    text: 'Average Score (%)'
+                                    text: 'Average Score (%)',
+                                    font: { weight: '500' }
                                 }
                             }
                         }
@@ -1007,9 +1307,7 @@ const LecturerDashboard = {
                 console.log('✅ Performance chart updated with', subjectNames.length, 'subjects');
             }
             
-            // ============================================
-            // 3. ATTENDANCE TREND CHART
-            // ============================================
+            // ─── 3. ATTENDANCE TREND CHART ───
             const ctx3 = document.getElementById('attendanceTrendChart');
             if (ctx3) {
                 if (this.chartInstances.trend) {
@@ -1045,7 +1343,9 @@ const LecturerDashboard = {
                             backgroundColor: 'rgba(76, 29, 149, 0.1)',
                             fill: true,
                             tension: 0.4,
-                            pointBackgroundColor: '#4C1D95'
+                            pointBackgroundColor: '#4C1D95',
+                            pointBorderColor: '#4C1D95',
+                            pointRadius: 4
                         }]
                     },
                     options: {
@@ -1056,8 +1356,9 @@ const LecturerDashboard = {
                             title: {
                                 display: true,
                                 text: `Attendance Trend - ${program}`,
-                                font: { size: 14, weight: '600' },
-                                padding: { bottom: 10 }
+                                font: { size: 14, weight: '700' },
+                                padding: { bottom: 10 },
+                                color: '#0F172A'
                             }
                         },
                         scales: {
@@ -1065,7 +1366,8 @@ const LecturerDashboard = {
                                 beginAtZero: true,
                                 title: {
                                     display: true,
-                                    text: 'Students Present'
+                                    text: 'Students Present',
+                                    font: { weight: '500' }
                                 }
                             }
                         }
@@ -1081,16 +1383,10 @@ const LecturerDashboard = {
         }
     },
     
-    // ============================================
-    // SETUP EVENT LISTENERS
-    // ============================================
+    // ─── SETUP EVENT LISTENERS ───
     setupEventListeners() {
-        // Quick action cards already use onclick in HTML
-        // Stats cards already use onclick in HTML
-        
-        // Additional keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'r') {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
                 e.preventDefault();
                 this.refresh();
             }
@@ -1099,9 +1395,7 @@ const LecturerDashboard = {
         console.log('✅ Event listeners setup complete');
     },
     
-    // ============================================
-    // REFRESH
-    // ============================================
+    // ─── REFRESH ───
     async refresh() {
         if (this.isRefreshing) return;
         this.isRefreshing = true;
@@ -1114,36 +1408,39 @@ const LecturerDashboard = {
             await this.loadAssignedStudents();
             await this.loadMetrics();
             await this.loadAttendanceMetrics();
+            await this.loadClinicalHours();
+            await this.loadRiskData();
             this.updateWelcomeBanner();
             this.loadQuickStats();
             await this.loadCourseProgress();
             await this.loadTopStudents();
             await this.loadAttendanceAlerts();
+            await this.loadIntelligentAlerts();
             await this.loadRecentActivity();
             await this.loadCharts();
             this.updateLastUpdated();
             
             if (window.LecturerUI) {
-                window.LecturerUI.showNotification('Dashboard refreshed!', 'success');
+                window.LecturerUI.showNotification('Dashboard refreshed successfully!', 'success');
             }
             console.log('✅ Dashboard refreshed');
         } catch (error) {
             console.error('❌ Refresh error:', error);
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Error refreshing dashboard', 'error');
+            }
         } finally {
             this.isRefreshing = false;
         }
     },
     
-    // ============================================
-    // DESTROY (Cleanup)
-    // ============================================
+    // ─── DESTROY ───
     destroy() {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
         }
         
-        // Destroy chart instances
         Object.keys(this.chartInstances).forEach(key => {
             if (this.chartInstances[key]) {
                 this.chartInstances[key].destroy();
@@ -1155,18 +1452,26 @@ const LecturerDashboard = {
     }
 };
 
-// ============================================
-// INITIALIZE ON DOM READY
-// ============================================
+// ─── INITIALIZE ───
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => LecturerDashboard.init(), 500);
 });
 
-// ============================================
-// GLOBAL EXPOSURE
-// ============================================
+// ─── GLOBAL EXPOSURE ───
 window.LecturerDashboard = LecturerDashboard;
 window.refreshDashboard = () => LecturerDashboard.refresh();
 
 console.log('✅ LecturerDashboard module loaded - Complete upgraded version');
-console.log('📊 Features: Metrics, Charts, Top Students, Alerts, Progress, Activity, Auto-refresh');
+console.log('📊 Features:');
+console.log('   • Metrics & Stats Cards');
+console.log('   • Clinical Hours Tracker');
+console.log('   • Attendance Deep Dive (Present/Absent/Pending/Location)');
+console.log('   • Early Warning System (Risk Monitoring)');
+console.log('   • Course Progress with Visual Bars');
+console.log('   • Top Students Ranking');
+console.log('   • Intelligent Alerts');
+console.log('   • Attendance Alerts');
+console.log('   • Recent Activity Feed');
+console.log('   • Charts (Performance, Distribution, Trend)');
+console.log('   • Auto-refresh every 30 seconds');
+console.log('   • Keyboard shortcut: Ctrl+R to refresh');
