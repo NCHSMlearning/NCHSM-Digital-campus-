@@ -20,59 +20,57 @@
         crossorigin=""></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Mobile Navigation Toggle -->
-        <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Toggle navigation" aria-expanded="false">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-
-        <!-- ===== SIDEBAR - SUPER ADMIN STYLE (FIXED DROPDOWNS) ===== -->
-        <aside class="sidebar" id="sidebar" style="
-            width: 280px;
-            height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            position: fixed;
-            left: 0;
-            top: 0;
-            padding: 24px 16px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
-            z-index: 999;
-            overflow-y: auto;
-            transition: all 0.3s ease;
-        ">
-            <!-- Sidebar Header -->
-            <div style="
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                padding: 0 12px 24px 12px;
-                border-bottom: 1px solid rgba(255,255,255,0.2);
-                margin-bottom: 20px;
-            ">
-                <img 
-                    src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-                    alt="NCHSM Logo"
-                    style="
-                        width: 48px;
-                        height: 48px;
-                        border-radius: 12px;
-                        background: white;
-                        padding: 8px;
-                        object-fit: contain;
-                    "
-                    onerror="this.style.display='none'"
-                >
-                <div>
-                    <h2 style="font-size: 18px; font-weight: 700; margin: 0; color: white;">Lecturer Portal</h2>
-                    <span style="font-size: 11px; opacity: 0.8; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px;">Lecturer</span>
-                    <span style="font-size: 10px; opacity: 0.7; background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px; margin-left: 4px;" id="userProgramBadge">Loading...</span>
-                </div>
+   <!-- ===== SIDEBAR - SUPER ADMIN STYLE (FIXED DROPDOWNS) ===== -->
+<aside class="sidebar" id="sidebar" style="
+    width: 280px;
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    position: fixed;
+    left: 0;
+    top: 0;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+    z-index: 999;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+">
+    <!-- Sidebar Header -->
+    <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 0 12px 24px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        margin-bottom: 20px;
+    ">
+        <!-- Logo on top -->
+        <img 
+            src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+            alt="NCHSM Logo"
+            style="
+                width: 72px;
+                height: 72px;
+                border-radius: 16px;
+                background: white;
+                padding: 10px;
+                object-fit: contain;
+                margin-bottom: 12px;
+            "
+            onerror="this.style.display='none'"
+        >
+        <!-- Writing below the logo -->
+        <div>
+            <h2 style="font-size: 18px; font-weight: 700; margin: 0 0 4px 0; color: white;">Lecturer Portal</h2>
+            <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
+                <span style="font-size: 11px; opacity: 0.8; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; display: inline-block;">Lecturer</span>
+                <span style="font-size: 10px; opacity: 0.7; background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 20px; display: inline-block;" id="userProgramBadge">Loading...</span>
             </div>
+        </div>
+    </div>
 <!-- Navigation -->
 <ul style="
     list-style: none;
