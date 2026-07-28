@@ -94,41 +94,52 @@ window.loadAnalyticsData = async function() {
         
         if (nckError) console.warn('⚠️ NCK marks error:', nckError);
         
-        // ============================================================
-        // 4. CALCULATE STATISTICS
-        // ============================================================
-        const totalStudents = students?.length || 0;
-        const totalSubjects = [...new Set(marks?.map(m => m.subject_name) || [])].length;
-        
-        let totalScore = 0;
-        let scoredCount = 0;
-        let passedCount = 0;
-        let atRiskCount = 0;
-        
-        // Calculate from student_marks
-        marks?.forEach(m => {
-            const score = m.final_score || 0;
-            if (score > 0) {
-                totalScore += score;
-                scoredCount++;
-                if (score >= 60) passedCount++;
-                if (score < 60) atRiskCount++;
-            }
-        });
-        
-        // Also include NCK marks if available
-        nckMarks?.forEach(m => {
-            const score = m.final_score || 0;
-            if (score > 0) {
-                totalScore += score;
-                scoredCount++;
-                if (score >= 60) passedCount++;
-                if (score < 60) atRiskCount++;
-            }
-        });
-        
-        const avgScore = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
-        const passRate = scoredCount > 0 ? Math.round((passedCount / scoredCount) * 100) : 0;
+      // ============================================================
+// 4. CALCULATE STATISTICS (FILTERED)
+// ============================================================
+let filteredStudents = students || [];
+
+// Filter by program
+if (program && program !== 'all' && program !== 'TVET') {
+    filteredStudents = filteredStudents.filter(s => s.program === program);
+} else if (program === 'TVET') {
+    filteredStudents = filteredStudents.filter(s => s.program !== 'KRCHN');
+}
+
+// Filter by block
+if (block && block !== 'all') {
+    filteredStudents = filteredStudents.filter(s => s.block === block);
+}
+
+const totalStudents = filteredStudents.length;
+const filteredStudentIds = filteredStudents.map(s => s.student_id);
+
+// Filter marks
+let filteredMarks = marks || [];
+if (filteredStudentIds.length > 0) {
+    filteredMarks = marks.filter(m => filteredStudentIds.includes(m.admission_number));
+}
+
+const totalSubjects = [...new Set(filteredMarks?.map(m => m.subject_name) || [])].length;
+
+let totalScore = 0;
+let scoredCount = 0;
+let passedCount = 0;
+let atRiskCount = 0;
+
+// Calculate from filtered student_marks
+filteredMarks?.forEach(m => {
+    const score = m.final_score || 0;
+    if (score > 0) {
+        totalScore += score;
+        scoredCount++;
+        if (score >= 60) passedCount++;
+        if (score < 60) atRiskCount++;
+    }
+});
+
+const avgScore = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
+const passRate = scoredCount > 0 ? Math.round((passedCount / scoredCount) * 100) : 0;
         
         // ============================================================
         // 5. UPDATE STATS CARDS
@@ -172,7 +183,7 @@ window.loadAnalyticsData = async function() {
         // ============================================================
         // 9. RENDER TABLES
         // ============================================================
-        window.renderAnalyticsSubjectTable(marks);
+window.renderAnalyticsSubjectTable(marks, students, program, block);
         window.renderAnalyticsStudentTable(students, marks);
         window.renderAnalyticsBlockTable(students, marks, block);
         window.renderAnalyticsProgramTable(students, marks);
@@ -1144,53 +1155,121 @@ window.renderBlockFilterStats = function(students, marks, selectedBlock) {
 };
 
 // ============================================================
-// RENDER ANALYTICS SUBJECT TABLE
+// FIXED: RENDER ANALYTICS SUBJECT TABLE - WITH PROPER FILTERING
 // ============================================================
 
-window.renderAnalyticsSubjectTable = function(marks) {
+window.renderAnalyticsSubjectTable = function(marks, students, program, block) {
     const tbody = document.getElementById('analytics_subject_table_body');
     if (!tbody) return;
     
+    // ============================================================
+    // STEP 1: Filter students by program and block
+    // ============================================================
+    let filteredStudents = students || [];
+    
+    // Filter by program
+    if (program && program !== 'all' && program !== 'TVET') {
+        filteredStudents = filteredStudents.filter(s => s.program === program);
+    } else if (program === 'TVET') {
+        filteredStudents = filteredStudents.filter(s => s.program !== 'KRCHN');
+    }
+    
+    // Filter by block
+    if (block && block !== 'all') {
+        filteredStudents = filteredStudents.filter(s => s.block === block);
+    }
+    
+    // Get student IDs for filtering marks
+    const filteredStudentIds = filteredStudents.map(s => s.student_id);
+    
+    // ============================================================
+    // STEP 2: Filter marks by student IDs
+    // ============================================================
+    let filteredMarks = marks || [];
+    if (filteredStudentIds.length > 0) {
+        filteredMarks = marks.filter(m => filteredStudentIds.includes(m.admission_number));
+    } else {
+        // If no students match, show empty
+        filteredMarks = [];
+    }
+    
+    console.log(`📊 Subject calculation: ${filteredMarks.length} marks for ${filteredStudentIds.length} students`);
+    console.log(`📊 Filters: Program=${program}, Block=${block}`);
+    
+    // ============================================================
+    // STEP 3: Calculate subject averages CORRECTLY
+    // ============================================================
     const subjectData = {};
-    marks?.forEach(m => {
+    filteredMarks.forEach(m => {
         const subject = m.subject_name || 'Unknown';
-        const score = m.final_score || 0;
+        const score = parseFloat(m.final_score) || 0;
+        
         if (!subjectData[subject]) {
-            subjectData[subject] = { total: 0, count: 0, pass: 0 };
+            subjectData[subject] = { 
+                total: 0, 
+                count: 0, 
+                pass: 0,
+                students: new Set()  // Track unique students per subject
+            };
         }
+        
+        // Only count scores > 0 (students who actually took the exam)
         if (score > 0) {
             subjectData[subject].total += score;
             subjectData[subject].count++;
-            if (score >= 60) subjectData[subject].pass++;
+            subjectData[subject].students.add(m.admission_number);
+            if (score >= 60) {
+                subjectData[subject].pass++;
+            }
         }
     });
     
-    const sorted = Object.keys(subjectData).sort((a, b) => {
-        const aCount = subjectData[a].count;
-        const bCount = subjectData[b].count;
-        return bCount - aCount;
-    });
+    // ============================================================
+    // STEP 4: Calculate averages and sort
+    // ============================================================
+    const sorted = Object.keys(subjectData)
+        .map(subject => ({
+            name: subject,
+            avg: subjectData[subject].count > 0 
+                ? Math.round((subjectData[subject].total / subjectData[subject].count) * 10) / 10 
+                : 0,
+            count: subjectData[subject].count,
+            passCount: subjectData[subject].pass,
+            passRate: subjectData[subject].count > 0 
+                ? Math.round((subjectData[subject].pass / subjectData[subject].count) * 100) 
+                : 0,
+            uniqueStudents: subjectData[subject].students.size
+        }))
+        .sort((a, b) => b.avg - a.avg);  // Sort by highest average first
     
     if (sorted.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">No subject data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">No subject data available for the selected filters</td></tr>';
         return;
     }
     
+    // ============================================================
+    // STEP 5: Render the table
+    // ============================================================
     let html = '';
     sorted.forEach(subject => {
-        const data = subjectData[subject];
-        const avg = data.count > 0 ? Math.round((data.total / data.count) * 10) / 10 : 0;
-        const passRate = data.count > 0 ? Math.round((data.pass / data.count) * 100) : 0;
-        const grade = avg >= 80 ? 'A' : avg >= 65 ? 'B' : avg >= 60 ? 'C' : avg >= 40 ? 'D' : 'F';
-        const status = avg >= 60 ? '✅ Passing' : (avg > 0 ? '⚠️ At Risk' : '⏳ No Data');
-        const statusColor = avg >= 60 ? '#10b981' : (avg > 0 ? '#f59e0b' : '#94a3b8');
+        const grade = subject.avg >= 80 ? 'A' : 
+                      subject.avg >= 65 ? 'B' : 
+                      subject.avg >= 60 ? 'C' : 
+                      subject.avg >= 40 ? 'D' : 'F';
+        const status = subject.avg >= 60 ? '✅ Passing' : 
+                       (subject.avg > 0 ? '⚠️ At Risk' : '⏳ No Data');
+        const statusColor = subject.avg >= 60 ? '#10b981' : 
+                           (subject.avg > 0 ? '#f59e0b' : '#94a3b8');
         
         html += `
             <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 10px 12px; font-weight: 500;">${window.escapeHtml(subject)}</td>
-                <td style="padding: 10px 12px; text-align: center;">${data.count}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${avg}%</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${passRate}%</td>
+                <td style="padding: 10px 12px; font-weight: 500;">${window.escapeHtml(subject.name)}</td>
+                <td style="padding: 10px 12px; text-align: center;">
+                    ${subject.uniqueStudents} / ${subject.count}
+                    <span style="font-size: 10px; color: #94a3b8; display: block;">enrolled / graded</span>
+                </td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${subject.avg}%</td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${subject.passRate}%</td>
                 <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: ${statusColor};">${grade}</td>
                 <td style="padding: 10px 12px; text-align: center; color: ${statusColor};">${status}</td>
             </tr>
