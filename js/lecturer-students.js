@@ -1,13 +1,17 @@
-// js/lecturer-students.js
-/**
- * NCHSM Lecturer Students Module
- * Uses dedicated lecturer database with correct ID resolution
- * Shows students based on assigned units
- */
+// ============================================
+// js/lecturer-students.js - READ-ONLY VERSION
+// ============================================
+// NCHSM Lecturer Students Module
+// READ-ONLY: Lecturers can ONLY view students and upload supporting documents
+// No editing, deleting, or modifying student records
+// ============================================
 
 const LecturerStudents = {
     students: [],
     filteredStudents: [],
+    selectedStudentId: null,
+    currentStudent: null,
+    uploads: [],
     filters: {
         intake: 'all',
         block: 'all',
@@ -17,20 +21,28 @@ const LecturerStudents = {
     },
     lecturerAssignmentId: null,
     assignedUnits: [],
+    isRefreshing: false,
     
+    // ─── INIT ───
     async init() {
-        console.log('👥 Initializing Lecturer Students...');
-        await this.resolveLecturerId();
-        await this.loadAssignedUnits();
-        await this.loadStudents();
-        this.setupEventListeners();
-        this.updateStats();
-        console.log('✅ Lecturer Students initialized');
+        console.log('👥 Initializing Lecturer Students (Read-Only)...');
+        try {
+            await this.resolveLecturerId();
+            await this.loadAssignedUnits();
+            await this.loadStudents();
+            await this.loadUploads();
+            this.setupEventListeners();
+            this.updateStats();
+            this.setupBulkUpload();
+            console.log('✅ Lecturer Students initialized (Read-Only mode)');
+            console.log(`👨‍🎓 ${this.students.length} students loaded`);
+            console.log(`📁 ${this.uploads.length} uploads found`);
+        } catch (error) {
+            console.error('❌ Students initialization error:', error);
+        }
     },
     
-    // ============================================
-    // RESOLVE THE CORRECT LECTURER ID
-    // ============================================
+    // ─── RESOLVE LECTURER ID ───
     async resolveLecturerId() {
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -91,7 +103,6 @@ const LecturerStudents = {
                         score += 20;
                     }
                     
-                    // BIG BONUS for non-STAFF IDs
                     if (!lecturerId.toString().startsWith('STAFF')) {
                         score += 50;
                     }
@@ -113,7 +124,6 @@ const LecturerStudents = {
                 }
             }
             
-            // Fallback: use auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
             
@@ -123,9 +133,7 @@ const LecturerStudents = {
         }
     },
     
-    // ============================================
-    // LOAD ASSIGNED UNITS
-    // ============================================
+    // ─── LOAD ASSIGNED UNITS ───
     async loadAssignedUnits() {
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -154,15 +162,11 @@ const LecturerStudents = {
         }
     },
     
+    // ─── LOAD STUDENTS ───
     async loadStudents() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department;
-            
-            if (!program) {
-                console.warn('No program found for lecturer');
-                return;
-            }
+            const program = profile?.program || profile?.department || 'KRCHN';
             
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
@@ -199,13 +203,18 @@ const LecturerStudents = {
                     .in('unit_name', unitNames);
                 
                 if (!regError && registrations) {
-                    // Mark which students are registered to assigned units
                     const registeredStudentIds = new Set(registrations.map(r => r.student_id));
                     this.students.forEach(s => {
                         s.isRegistered = registeredStudentIds.has(s.user_id);
+                        s.enrolledUnits = registrations
+                            .filter(r => r.student_id === s.user_id)
+                            .map(r => r.unit_name);
                     });
                 }
             }
+            
+            // Get risk data
+            await this.loadRiskData();
             
             this.filteredStudents = [...this.students];
             
@@ -215,9 +224,9 @@ const LecturerStudents = {
             
             // Update badge
             const badge = document.getElementById('studentCountBadge');
-            if (badge) {
-                badge.textContent = this.students.length;
-            }
+            if (badge) badge.textContent = this.students.length;
+            const badge2 = document.getElementById('studentCountBadge2');
+            if (badge2) badge2.textContent = this.students.length;
             
             console.log(`✅ Loaded ${this.students.length} students`);
             
@@ -229,6 +238,89 @@ const LecturerStudents = {
         }
     },
     
+    // ─── LOAD RISK DATA ───
+    async loadRiskData() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const studentIds = this.students.map(s => s.user_id);
+            if (studentIds.length === 0) return;
+            
+            // Get attendance data
+            const { data: attendance } = await supabase
+                .from('geo_attendance_logs')
+                .select('student_id, attendance_status')
+                .in('student_id', studentIds);
+            
+            // Get marks data
+            const { data: marks } = await supabase
+                .from('student_marks')
+                .select('student_id, final_score')
+                .in('student_id', studentIds);
+            
+            // Calculate risk for each student
+            this.students.forEach(student => {
+                const studentAttendance = attendance?.filter(a => a.student_id === student.user_id) || [];
+                const studentMarks = marks?.filter(m => m.student_id === student.user_id) || [];
+                
+                const absences = studentAttendance.filter(a => 
+                    a.attendance_status === 'Absent' || a.attendance_status === 'absent'
+                ).length;
+                
+                const avgScore = studentMarks.length > 0 
+                    ? studentMarks.reduce((sum, m) => sum + (m.final_score || 0), 0) / studentMarks.length
+                    : 0;
+                
+                // Risk score calculation
+                let riskScore = 0;
+                riskScore += Math.min(absences * 10, 50);
+                riskScore += Math.max((100 - avgScore) * 0.3, 0);
+                
+                student.absences = absences;
+                student.avgScore = Math.round(avgScore);
+                student.riskScore = Math.round(riskScore);
+                student.riskLevel = riskScore > 50 ? 'high' : (riskScore > 25 ? 'medium' : 'low');
+            });
+            
+        } catch (error) {
+            console.error('Failed to load risk data:', error);
+        }
+    },
+    
+    // ─── LOAD UPLOADS ───
+    async loadUploads() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const { data: uploads, error } = await supabase
+                .from('student_uploads')
+                .select('*')
+                .order('uploaded_at', { ascending: false });
+            
+            if (error) {
+                console.error('Error loading uploads:', error);
+                return;
+            }
+            
+            this.uploads = uploads || [];
+            this.updateUploadStats();
+            
+        } catch (error) {
+            console.error('Failed to load uploads:', error);
+        }
+    },
+    
+    // ─── UPDATE UPLOAD STATS ───
+    updateUploadStats() {
+        const el = document.getElementById('totalUploadsStat');
+        if (el) {
+            el.textContent = this.uploads.length || 0;
+        }
+    },
+    
+    // ─── POPULATE FILTERS ───
     populateFilters() {
         // Intake years
         const years = [...new Set(this.students.map(s => s.intake_year).filter(Boolean))].sort().reverse();
@@ -247,6 +339,7 @@ const LecturerStudents = {
         }
     },
     
+    // ─── RENDER TABLE ───
     renderTable() {
         const tbody = document.getElementById('studentsTableBody');
         if (!tbody) return;
@@ -256,7 +349,7 @@ const LecturerStudents = {
         if (!students || students.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                    <td colspan="9" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                         <i class="fas fa-users" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
                         <h3 style="color: #475569; margin: 0 0 8px 0;">No Students Found</h3>
                         <p style="margin: 0; font-size: 14px;">${this.students.length === 0 ? 'No students in your program.' : 'Try adjusting your filters.'}</p>
@@ -267,67 +360,68 @@ const LecturerStudents = {
         }
         
         tbody.innerHTML = students.map(student => {
-            const status = (student.status || 'Active').toLowerCase();
-            const atRisk = (student.cumulative_absences || 0) > 5 || status === 'probation';
+            const status = (student.status || 'Active');
+            const statusClass = status.toLowerCase();
+            const riskLevel = student.riskLevel || 'low';
             const regNo = student.student_id || student.admission_number || student.user_id?.substring(0, 8) || 'N/A';
             const isRegistered = student.isRegistered !== false;
-            
-            const statusColors = {
-                'active': '#10b981',
-                'probation': '#f59e0b',
-                'inactive': '#ef4444'
-            };
-            
-            const statusLabels = {
-                'active': '✅ Active',
-                'probation': '⚠️ Probation',
-                'inactive': '❌ Inactive'
-            };
-            
-            const statusColor = statusColors[status] || '#6b7280';
-            const statusLabel = statusLabels[status] || status;
+            const initials = this.getInitials(student.full_name);
             
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${atRisk ? 'background: #fef2f2;' : ''}" 
-                    onmouseover="this.style.background='${atRisk ? '#fee2e2' : '#f8fafc'}'" 
-                    onmouseout="this.style.background='${atRisk ? '#fef2f2' : 'transparent'}'">
-                    <td style="padding: 14px 18px; font-weight: 500; color: #1e293b;">
-                        ${atRisk ? '⚠️ ' : ''}${this.escapeHtml(student.full_name || 'N/A')}
-                        ${!isRegistered ? '<span style="font-size: 10px; color: #94a3b8; display: block;">Not registered to any assigned unit</span>' : ''}
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s; ${riskLevel === 'high' ? 'background: #fef2f2;' : riskLevel === 'medium' ? 'background: #fffbeb;' : ''}" 
+                    onmouseover="this.style.background='${riskLevel === 'high' ? '#fee2e2' : riskLevel === 'medium' ? '#fef3c7' : '#f8fafc'}'" 
+                    onmouseout="this.style.background='${riskLevel === 'high' ? '#fef2f2' : riskLevel === 'medium' ? '#fffbeb' : 'transparent'}'">
+                    <td style="padding: 12px 16px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #4F46E5, #7C3AED); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; flex-shrink: 0;">
+                                ${initials}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; color: #0F172A;">${this.escapeHtml(student.full_name || 'N/A')}</div>
+                                ${!isRegistered ? '<span style="font-size: 10px; color: #94a3b8;">⚠️ Not registered</span>' : ''}
+                            </div>
+                        </div>
                     </td>
-                    <td style="padding: 14px 18px; font-weight: 600; color: #4C1D95;">
+                    <td style="padding: 12px 16px; font-weight: 600; color: #4F46E5; font-size: 13px;">
                         ${this.escapeHtml(regNo)}
                     </td>
-                    <td style="padding: 14px 18px; color: #475569;">
+                    <td style="padding: 12px 16px; color: #475569; font-size: 13px;">
                         ${this.escapeHtml(student.email || 'N/A')}
                     </td>
-                    <td style="padding: 14px 18px;">
-                        <span style="background: #ede9fe; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #5b21b6;">
+                    <td style="padding: 12px 16px;">
+                        <span style="background: #EDE9FE; color: #7C3AED; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
                             ${this.escapeHtml(student.program || 'N/A')}
                         </span>
                     </td>
-                    <td style="padding: 14px 18px; color: #475569;">
+                    <td style="padding: 12px 16px; color: #475569; font-size: 13px;">
                         ${this.escapeHtml(student.intake_year || 'N/A')}
                     </td>
-                    <td style="padding: 14px 18px;">
-                        <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 500;">
-                            ${statusLabel}
+                    <td style="padding: 12px 16px; font-size: 13px;">
+                        ${this.escapeHtml(student.block || 'N/A')}
+                    </td>
+                    <td style="padding: 12px 16px;">
+                        <span class="status-badge status-${statusClass}">
+                            ${status === 'Active' ? '🟢 Active' : status === 'Probation' ? '🟡 Probation' : status === 'Inactive' ? '🔴 Inactive' : '🔵 ' + status}
                         </span>
                     </td>
-                    <td style="padding: 14px 18px; text-align: center; color: ${(student.cumulative_absences || 0) > 3 ? '#ef4444' : '#10b981'}; font-weight: 600;">
-                        ${student.cumulative_absences || 0}
+                    <td style="padding: 12px 16px;">
+                        <span class="risk-badge risk-${riskLevel}">
+                            ${riskLevel === 'high' ? '🔴 High' : riskLevel === 'medium' ? '🟡 Medium' : '🟢 Low'}
+                        </span>
                     </td>
-                    <td style="padding: 14px 18px; text-align: center;">
+                    <td style="padding: 12px 16px; text-align: center;">
                         <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
-                            <button onclick="LecturerStudents.viewStudent('${student.user_id}')" 
-                                    style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                    onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                            <button onclick="LecturerStudents.openStudentModal('${student.user_id}')" 
+                                    class="action-btn action-btn-view" style="padding: 6px 12px;">
                                 <i class="fas fa-eye"></i> View
                             </button>
-                            <button onclick="LecturerStudents.messageStudent('${student.user_id}', '${this.escapeHtml(student.full_name || '')}')" 
-                                    style="background: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
-                                    onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                            <button onclick="LecturerStudents.messageStudent('${student.user_id}')" 
+                                    class="action-btn action-btn-message" style="padding: 6px 12px;">
                                 <i class="fas fa-envelope"></i>
+                            </button>
+                            <button onclick="LecturerStudents.openStudentModal('${student.user_id}')" 
+                                    class="action-btn action-btn-upload" style="padding: 6px 12px;">
+                                <i class="fas fa-upload"></i> Upload
                             </button>
                         </div>
                     </td>
@@ -352,14 +446,22 @@ const LecturerStudents = {
         }
     },
     
+    // ─── GET INITIALS ───
+    getInitials(name) {
+        if (!name) return '?';
+        const parts = name.split(' ');
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    },
+    
+    // ─── UPDATE STATS ───
     updateStats() {
         const total = this.students.length;
         const filtered = this.filteredStudents.length;
-        const atRisk = this.students.filter(s => 
-            (s.cumulative_absences || 0) > 5 || (s.status || '').toLowerCase() === 'probation'
-        ).length;
-        const active = this.students.filter(s => (s.status || 'Active').toLowerCase() === 'active').length;
-        const probation = this.students.filter(s => (s.status || '').toLowerCase() === 'probation').length;
+        const atRisk = this.students.filter(s => (s.riskLevel || 'low') === 'high').length;
+        const active = this.students.filter(s => (s.status || 'Active') === 'Active').length;
+        const probation = this.students.filter(s => (s.status || '') === 'Probation').length;
+        const programs = [...new Set(this.students.map(s => s.program).filter(Boolean))];
         
         // Stats cards
         const totalEl = document.getElementById('totalStudentsStat');
@@ -371,30 +473,400 @@ const LecturerStudents = {
         const atRiskEl = document.getElementById('atRiskStudentsStat');
         if (atRiskEl) atRiskEl.textContent = atRisk;
         
-        const enrolledEl = document.getElementById('enrolledUnitsStat');
-        if (enrolledEl) enrolledEl.textContent = this.assignedUnits.length || 0;
+        const programEl = document.getElementById('programCountStat');
+        if (programEl) programEl.textContent = programs.length || 0;
         
         // Stats bar
-        const statsEl = document.getElementById('studentStats');
-        if (statsEl) {
-            document.getElementById('studentTotalDisplay').textContent = filtered;
-            document.getElementById('studentActiveDisplay').textContent = active;
-            document.getElementById('studentRiskDisplay').textContent = atRisk;
-            document.getElementById('studentProbationDisplay').textContent = probation;
-        }
+        const totalDisplay = document.getElementById('studentTotalDisplay');
+        if (totalDisplay) totalDisplay.textContent = filtered;
         
-        // Badge
+        const activeDisplay = document.getElementById('studentActiveDisplay');
+        if (activeDisplay) activeDisplay.textContent = active;
+        
+        const riskDisplay = document.getElementById('studentRiskDisplay');
+        if (riskDisplay) riskDisplay.textContent = atRisk;
+        
+        const probationDisplay = document.getElementById('studentProbationDisplay');
+        if (probationDisplay) probationDisplay.textContent = probation;
+        
+        // Badges
         const badge = document.getElementById('studentCountBadge');
-        if (badge) {
-            badge.textContent = total;
+        if (badge) badge.textContent = total;
+        const badge2 = document.getElementById('studentCountBadge2');
+        if (badge2) badge2.textContent = total;
+    },
+    
+    // ─── OPEN STUDENT MODAL ───
+    openStudentModal(userId) {
+        const student = this.students.find(s => s.user_id === userId);
+        if (!student) {
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Student not found.', 'error');
+            }
+            return;
         }
         
-        const badge2 = document.getElementById('studentCountBadge2');
-        if (badge2) {
-            badge2.textContent = total;
+        this.currentStudent = student;
+        this.selectedStudentId = userId;
+        
+        // Fill modal with student data
+        document.getElementById('modalStudentName').textContent = student.full_name || 'Student Profile';
+        document.getElementById('modalFullName').textContent = student.full_name || 'N/A';
+        document.getElementById('modalRegNo').textContent = student.student_id || student.admission_number || 'N/A';
+        document.getElementById('modalStudentId').textContent = student.user_id || 'N/A';
+        document.getElementById('modalProgram').textContent = student.program || 'N/A';
+        document.getElementById('modalIntake').textContent = student.intake_year || 'N/A';
+        document.getElementById('modalBlock').textContent = student.block || 'N/A';
+        document.getElementById('modalEmail').textContent = student.email || 'N/A';
+        document.getElementById('modalPhone').textContent = student.phone || 'N/A';
+        
+        // Status
+        const statusEl = document.getElementById('modalStatus');
+        const status = student.status || 'Active';
+        statusEl.textContent = status;
+        statusEl.className = 'status-badge status-' + status.toLowerCase();
+        
+        // Risk
+        const riskEl = document.getElementById('modalRisk');
+        const risk = student.riskLevel || 'low';
+        riskEl.textContent = risk === 'high' ? '🔴 High Risk' : risk === 'medium' ? '🟡 Medium Risk' : '🟢 Low Risk';
+        riskEl.className = 'risk-badge risk-' + risk;
+        
+        // Avatar
+        const initials = this.getInitials(student.full_name);
+        document.getElementById('modalAvatar').textContent = initials;
+        
+        // Units
+        const unitsEl = document.getElementById('modalUnits');
+        if (student.enrolledUnits && student.enrolledUnits.length > 0) {
+            unitsEl.innerHTML = student.enrolledUnits.map(u => 
+                `<span style="background: #EEF2FF; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #4F46E5; margin: 2px; display: inline-block;">${this.escapeHtml(u)}</span>`
+            ).join('');
+        } else {
+            unitsEl.textContent = 'No units enrolled';
+            unitsEl.style.color = '#94a3b8';
+        }
+        
+        // Load uploads for this student
+        this.loadStudentUploads(userId);
+        
+        // Show modal
+        document.getElementById('studentModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    },
+    
+    // ─── LOAD STUDENT UPLOADS ───
+    async loadStudentUploads(studentId) {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const { data: uploads, error } = await supabase
+                .from('student_uploads')
+                .select('*')
+                .eq('student_id', studentId)
+                .order('uploaded_at', { ascending: false });
+            
+            if (error) {
+                console.error('Error loading student uploads:', error);
+                return;
+            }
+            
+            this.renderStudentUploads(uploads || []);
+            
+        } catch (error) {
+            console.error('Failed to load student uploads:', error);
         }
     },
     
+    // ─── RENDER STUDENT UPLOADS ───
+    renderStudentUploads(uploads) {
+        const container = document.getElementById('modalUploads');
+        if (!container) return;
+        
+        if (!uploads || uploads.length === 0) {
+            container.innerHTML = '<p style="color: #94A3B8; font-size: 13px;">No documents found for this student.</p>';
+            return;
+        }
+        
+        container.innerHTML = uploads.map(u => {
+            const fileExt = u.file_name?.split('.').pop()?.toLowerCase() || '';
+            const iconClass = ['pdf'].includes(fileExt) ? 'pdf' : 
+                             ['doc', 'docx'].includes(fileExt) ? 'doc' : 
+                             ['jpg', 'jpeg', 'png', 'gif'].includes(fileExt) ? 'img' : 'other';
+            const icon = ['pdf'].includes(fileExt) ? 'fa-file-pdf' : 
+                         ['doc', 'docx'].includes(fileExt) ? 'fa-file-word' : 
+                         ['jpg', 'jpeg', 'png', 'gif'].includes(fileExt) ? 'fa-file-image' : 'fa-file';
+            
+            const size = u.file_size ? (u.file_size / 1024).toFixed(1) + ' KB' : 'N/A';
+            const date = u.uploaded_at ? new Date(u.uploaded_at).toLocaleDateString() : 'N/A';
+            const status = u.status || 'Pending Approval';
+            
+            return `
+                <div class="upload-item">
+                    <div class="file-icon ${iconClass}">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div class="file-info">
+                        <div class="name">${this.escapeHtml(u.file_name || 'Untitled')}</div>
+                        <div class="meta">${size} • ${date} • <span style="color: #F59E0B;">${status}</span></div>
+                    </div>
+                    <div class="file-download" onclick="LecturerStudents.downloadFile('${u.id}')">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <!-- No delete button - read-only -->
+                </div>
+            `;
+        }).join('');
+    },
+    
+    // ─── CLOSE STUDENT MODAL ───
+    closeStudentModal() {
+        document.getElementById('studentModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+        this.currentStudent = null;
+        this.selectedStudentId = null;
+    },
+    
+    // ─── HANDLE FILE UPLOAD ───
+    async handleFileUpload(event) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+        
+        const studentId = this.selectedStudentId;
+        if (!studentId) {
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('No student selected.', 'error');
+            }
+            return;
+        }
+        
+        for (const file of files) {
+            await this.uploadFile(studentId, file);
+        }
+        
+        // Reset file input
+        event.target.value = '';
+        
+        // Reload uploads
+        await this.loadStudentUploads(studentId);
+        await this.loadUploads();
+    },
+    
+    // ─── UPLOAD FILE (FOR APPROVAL) ───
+    async uploadFile(studentId, file) {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            
+            const { data, error } = await supabase
+                .from('student_uploads')
+                .insert({
+                    student_id: studentId,
+                    file_name: file.name,
+                    file_size: file.size,
+                    file_type: file.type,
+                    uploaded_by: profile?.user_id || 'unknown',
+                    uploaded_by_name: profile?.full_name || 'Lecturer',
+                    uploaded_at: new Date().toISOString(),
+                    status: 'Pending Approval'
+                });
+            
+            if (error) {
+                console.error('Error uploading file:', error);
+                if (window.LecturerUI) {
+                    window.LecturerUI.showNotification('Failed to upload: ' + file.name, 'error');
+                }
+                return;
+            }
+            
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('✅ Uploaded: ' + file.name + ' (Pending Approval)', 'success');
+            }
+            
+            // Update uploads count
+            this.uploads.push(data);
+            this.updateUploadStats();
+            
+        } catch (error) {
+            console.error('Failed to upload file:', error);
+        }
+    },
+    
+    // ─── DOWNLOAD FILE ───
+    downloadFile(uploadId) {
+        // Placeholder - implement actual download logic
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Download functionality coming soon.', 'info');
+        }
+        console.log('Download file:', uploadId);
+    },
+    
+    // ─── SETUP BULK UPLOAD ───
+    setupBulkUpload() {
+        const dropzone = document.getElementById('bulkDropzone');
+        if (!dropzone) return;
+        
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+        
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                this.handleBulkFile({ target: { files } });
+            }
+        });
+    },
+    
+    // ─── HANDLE BULK FILE ───
+    handleBulkFile(event) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+        
+        const file = files[0];
+        if (!file.name.endsWith('.csv')) {
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Please upload a CSV file.', 'error');
+            }
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            this.parseCSV(text);
+        };
+        reader.readAsText(file);
+    },
+    
+    // ─── PARSE CSV ───
+    parseCSV(text) {
+        const lines = text.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('CSV file is empty or invalid.', 'error');
+            }
+            return;
+        }
+        
+        // Parse headers
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const requiredHeaders = ['full_name', 'student_id', 'program', 'intake_year'];
+        const missing = requiredHeaders.filter(h => !headers.includes(h));
+        
+        if (missing.length > 0) {
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Missing required columns: ' + missing.join(', '), 'error');
+            }
+            return;
+        }
+        
+        // Parse data
+        const students = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            const student = {};
+            headers.forEach((h, index) => {
+                student[h] = values[index] || '';
+            });
+            students.push(student);
+        }
+        
+        this.processBulkUpload(students);
+    },
+    
+    // ─── PROCESS BULK UPLOAD (FOR APPROVAL) ───
+    async processBulkUpload(students) {
+        const progressContainer = document.getElementById('bulkUploadProgress');
+        const progressBar = document.getElementById('bulkProgressBar');
+        const progressText = document.getElementById('bulkProgressText');
+        
+        progressContainer.style.display = 'block';
+        
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) return;
+        
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (let i = 0; i < students.length; i++) {
+            const s = students[i];
+            const progress = Math.round(((i + 1) / students.length) * 100);
+            progressBar.style.width = progress + '%';
+            progressText.textContent = `Processing... ${progress}% (${i + 1}/${students.length})`;
+            
+            try {
+                // Submit for approval - insert into pending_students table
+                const { data, error } = await supabase
+                    .from('pending_student_uploads')
+                    .insert({
+                        full_name: s.full_name,
+                        student_id: s.student_id,
+                        program: s.program || 'KRCHN',
+                        intake_year: s.intake_year,
+                        block: s.block || '',
+                        email: s.email || '',
+                        phone: s.phone || '',
+                        gender: s.gender || '',
+                        uploaded_by: profile?.user_id || 'unknown',
+                        uploaded_by_name: profile?.full_name || 'Lecturer',
+                        uploaded_at: new Date().toISOString(),
+                        status: 'Pending Approval'
+                    });
+                
+                if (error) {
+                    console.error('Error submitting student:', s, error);
+                    errorCount++;
+                } else {
+                    successCount++;
+                }
+            } catch (error) {
+                console.error('Error processing student:', s, error);
+                errorCount++;
+            }
+        }
+        
+        // Final progress
+        progressBar.style.width = '100%';
+        progressText.textContent = `✅ Complete! ${successCount} students submitted for approval, ${errorCount} errors.`;
+        
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification(`✅ ${successCount} students submitted for approval!`, 'success');
+        }
+        
+        // Close modal after delay
+        setTimeout(() => {
+            this.closeBulkUpload();
+        }, 3000);
+    },
+    
+    // ─── SHOW UPLOADS ───
+    showUploads() {
+        document.getElementById('bulkUploadModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    },
+    
+    // ─── CLOSE BULK UPLOAD ───
+    closeBulkUpload() {
+        document.getElementById('bulkUploadModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+        document.getElementById('bulkUploadProgress').style.display = 'none';
+        document.getElementById('bulkProgressBar').style.width = '0%';
+    },
+    
+    // ─── APPLY FILTERS ───
     applyFilters() {
         const intake = document.getElementById('studentIntakeFilter')?.value || 'all';
         const block = document.getElementById('studentBlockFilter')?.value || 'all';
@@ -407,7 +879,8 @@ const LecturerStudents = {
             const matchBlock = block === 'all' || student.block === block;
             const matchStatus = status === 'all' || (student.status || 'Active') === status;
             const matchRisk = risk === 'all' || 
-                (risk === 'at-risk' && ((student.cumulative_absences || 0) > 5 || (student.status || '').toLowerCase() === 'probation'));
+                (risk === 'at-risk' && (student.riskLevel || 'low') === 'high') ||
+                (risk === 'low-risk' && (student.riskLevel || 'low') === 'low');
             const matchSearch = !search || 
                 student.full_name?.toLowerCase().includes(search) || 
                 student.student_id?.toLowerCase().includes(search) ||
@@ -421,6 +894,27 @@ const LecturerStudents = {
         this.updateStats();
     },
     
+    // ─── CLEAR FILTERS ───
+    clearFilters() {
+        const filterIds = ['studentIntakeFilter', 'studentBlockFilter', 'studentStatusFilter', 'studentRiskFilter'];
+        filterIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = 'all';
+        });
+        
+        const searchEl = document.getElementById('studentSearch');
+        if (searchEl) searchEl.value = '';
+        
+        this.filteredStudents = [...this.students];
+        this.renderTable();
+        this.updateStats();
+        
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('Filters cleared!', 'info');
+        }
+    },
+    
+    // ─── SETUP EVENT LISTENERS ───
     setupEventListeners() {
         ['studentIntakeFilter', 'studentBlockFilter', 'studentStatusFilter', 'studentRiskFilter'].forEach(id => {
             const el = document.getElementById(id);
@@ -437,35 +931,51 @@ const LecturerStudents = {
                 timeout = setTimeout(() => this.applyFilters(), 300);
             });
         }
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeStudentModal();
+                this.closeBulkUpload();
+            }
+        });
+        
+        // Close modal on overlay click
+        const modal = document.getElementById('studentModal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.closeStudentModal();
+                }
+            });
+        }
+        
+        const bulkModal = document.getElementById('bulkUploadModal');
+        if (bulkModal) {
+            bulkModal.addEventListener('click', (e) => {
+                if (e.target === bulkModal) {
+                    this.closeBulkUpload();
+                }
+            });
+        }
     },
     
-    viewStudent(userId) {
+    // ─── MESSAGE STUDENT ───
+    messageStudent(userId) {
         const student = this.students.find(s => s.user_id === userId);
         if (!student) {
-            window.showNotification('Student not found.', 'error');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Student not found.', 'error');
+            }
             return;
         }
         
-        // Create a modal or show student details
-        const message = `
-📋 Student Details
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Name: ${student.full_name || 'N/A'}
-🎓 Reg No: ${student.student_id || student.admission_number || 'N/A'}
-📧 Email: ${student.email || 'N/A'}
-📚 Program: ${student.program || 'N/A'}
-📅 Intake: ${student.intake_year || 'N/A'}
-📊 Status: ${student.status || 'Active'}
-📉 Absences: ${student.cumulative_absences || 0}
-${student.phone ? `📱 Phone: ${student.phone}` : ''}
-${student.block ? `📋 Block: ${student.block}` : ''}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        `;
+        // Switch to messages tab
+        if (typeof showTab === 'function') {
+            showTab('messages');
+        }
         
-        alert(message);
-    },
-    
-    messageStudent(userId, fullName) {
+        // Set target student
         const targetSelect = document.getElementById('msgTarget');
         if (targetSelect) {
             for (let i = 0; i < targetSelect.options.length; i++) {
@@ -475,20 +985,23 @@ ${student.block ? `📋 Block: ${student.block}` : ''}
                 }
             }
         }
-        if (typeof showTab === 'function') {
-            showTab('messages');
+        
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification(`Ready to message ${student.full_name}`, 'info');
         }
-        window.showNotification(`Ready to message ${fullName}`, 'info');
     },
     
+    // ─── EXPORT STUDENTS ───
     exportStudents() {
         const students = this.filteredStudents || this.students;
         if (students.length === 0) {
-            window.showNotification('No students to export.', 'warning');
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('No students to export.', 'warning');
+            }
             return;
         }
         
-        const headers = ['Name', 'Reg No', 'Email', 'Program', 'Intake', 'Block', 'Status', 'Absences'];
+        const headers = ['Name', 'Reg No', 'Email', 'Program', 'Intake', 'Block', 'Status', 'Risk Level', 'Absences'];
         const rows = students.map(s => [
             s.full_name || 'N/A',
             s.student_id || s.admission_number || 'N/A',
@@ -497,11 +1010,12 @@ ${student.block ? `📋 Block: ${student.block}` : ''}
             s.intake_year || 'N/A',
             s.block || 'N/A',
             s.status || 'Active',
-            s.cumulative_absences || 0
+            s.riskLevel || 'low',
+            s.absences || 0
         ]);
         
         const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -511,26 +1025,12 @@ ${student.block ? `📋 Block: ${student.block}` : ''}
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        window.showNotification('✅ Students exported successfully!', 'success');
+        if (window.LecturerUI) {
+            window.LecturerUI.showNotification('✅ Students exported successfully!', 'success');
+        }
     },
     
-    clearFilters() {
-        const filterIds = ['studentIntakeFilter', 'studentBlockFilter', 'studentStatusFilter', 'studentRiskFilter'];
-        filterIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = 'all';
-        });
-        
-        const searchEl = document.getElementById('studentSearch');
-        if (searchEl) searchEl.value = '';
-        
-        this.filteredStudents = [...this.students];
-        this.renderTable();
-        this.updateStats();
-        
-        window.showNotification('Filters cleared!', 'info');
-    },
-    
+    // ─── ESCAPE HTML ───
     escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -538,24 +1038,151 @@ ${student.block ? `📋 Block: ${student.block}` : ''}
         return div.innerHTML;
     },
     
+    // ─── REFRESH ───
     async refresh() {
-        await this.resolveLecturerId();
-        await this.loadAssignedUnits();
-        await this.loadStudents();
-        this.updateStats();
-        window.showNotification('Students refreshed!', 'success');
+        if (this.isRefreshing) return;
+        this.isRefreshing = true;
+        
+        try {
+            await this.resolveLecturerId();
+            await this.loadAssignedUnits();
+            await this.loadStudents();
+            await this.loadUploads();
+            this.updateStats();
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Students refreshed!', 'success');
+            }
+        } catch (error) {
+            console.error('Refresh error:', error);
+        } finally {
+            this.isRefreshing = false;
+        }
+    },
+    
+    // ─── DESTROY ───
+    destroy() {
+        console.log('🗑️ LecturerStudents destroyed');
     }
 };
 
-// Initialize on DOM ready
+// ─── GLOBAL FUNCTIONS ───
+function applyStudentFilters() {
+    LecturerStudents.applyFilters();
+}
+
+function clearStudentFilters() {
+    LecturerStudents.clearFilters();
+}
+
+function exportStudentList() {
+    LecturerStudents.exportStudents();
+}
+
+function openStudentModal(userId) {
+    LecturerStudents.openStudentModal(userId);
+}
+
+function closeStudentModal() {
+    LecturerStudents.closeStudentModal();
+}
+
+function sendMessageToStudent() {
+    if (LecturerStudents.currentStudent) {
+        LecturerStudents.messageStudent(LecturerStudents.currentStudent.user_id);
+        LecturerStudents.closeStudentModal();
+    }
+}
+
+function handleFileUpload(event) {
+    LecturerStudents.handleFileUpload(event);
+}
+
+function showUploads() {
+    LecturerStudents.showUploads();
+}
+
+function closeBulkUpload() {
+    LecturerStudents.closeBulkUpload();
+}
+
+function handleBulkFile(event) {
+    LecturerStudents.handleBulkFile(event);
+}
+
+function handleBulkDrop(event) {
+    event.preventDefault();
+    const dropzone = document.getElementById('bulkDropzone');
+    if (dropzone) dropzone.classList.remove('dragover');
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+        LecturerStudents.handleBulkFile({ target: { files } });
+    }
+}
+
+function handleBulkDragOver(event) {
+    event.preventDefault();
+    const dropzone = document.getElementById('bulkDropzone');
+    if (dropzone) dropzone.classList.add('dragover');
+}
+
+function processBulkUpload() {
+    // Triggered by the "Submit for Approval" button
+    // The actual processing happens in handleBulkFile
+    if (window.LecturerUI) {
+        window.LecturerUI.showNotification('Please select a CSV file first.', 'info');
+    }
+    document.getElementById('bulkFileInput')?.click();
+}
+
+// Filter helper functions
+function filterByStatus(status) {
+    const filter = document.getElementById('studentStatusFilter');
+    if (filter) {
+        filter.value = status;
+        LecturerStudents.applyFilters();
+    }
+}
+
+function filterByRisk(risk) {
+    const filter = document.getElementById('studentRiskFilter');
+    if (filter) {
+        filter.value = risk;
+        LecturerStudents.applyFilters();
+    }
+}
+
+function filterByProgram(program) {
+    // This would require a program filter - for now just clear and show all
+    if (window.LecturerUI) {
+        window.LecturerUI.showNotification('Showing all students for ' + program, 'info');
+    }
+    clearStudentFilters();
+}
+
+// ─── INITIALIZE ───
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => LecturerStudents.init(), 650);
 });
 
-// Make functions globally accessible
+// ─── EXPOSE GLOBALLY ───
 window.LecturerStudents = LecturerStudents;
-window.applyStudentFilters = () => LecturerStudents.applyFilters();
-window.clearStudentFilters = () => LecturerStudents.clearFilters();
-window.exportStudentList = () => LecturerStudents.exportStudents();
+window.applyStudentFilters = applyStudentFilters;
+window.clearStudentFilters = clearStudentFilters;
+window.exportStudentList = exportStudentList;
+window.openStudentModal = openStudentModal;
+window.closeStudentModal = closeStudentModal;
+window.sendMessageToStudent = sendMessageToStudent;
+window.handleFileUpload = handleFileUpload;
+window.showUploads = showUploads;
+window.closeBulkUpload = closeBulkUpload;
+window.handleBulkFile = handleBulkFile;
+window.handleBulkDrop = handleBulkDrop;
+window.handleBulkDragOver = handleBulkDragOver;
+window.processBulkUpload = processBulkUpload;
+window.filterByStatus = filterByStatus;
+window.filterByRisk = filterByRisk;
+window.filterByProgram = filterByProgram;
 
-console.log('✅ LecturerStudents module loaded - Same ID resolution as other modules');
+console.log('✅ LecturerStudents module loaded - READ-ONLY mode');
+console.log('📋 Features: View students, Upload documents for approval, Export');
+console.log('🔒 No edit/delete capabilities');
