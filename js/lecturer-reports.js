@@ -1,8 +1,7 @@
-// js/lecturer-reports.js - COMPLETE WITH PDF EXPORT, PREVIEW & ANALYTICS
+// js/lecturer-reports.js - UPDATED FOR NEW HTML STRUCTURE
 /**
  * NCHSM Lecturer Reports Module
  * Generate and manage academic reports for assigned units and students
- * Uses the same lecturer ID resolution as marks and courses modules
  */
 
 const LecturerReports = {
@@ -33,7 +32,7 @@ const LecturerReports = {
     },
     
     // ============================================
-    // RESOLVE THE CORRECT LECTURER ID
+    // RESOLVE LECTURER ID
     // ============================================
     async resolveLecturerId() {
         try {
@@ -64,11 +63,11 @@ const LecturerReports = {
                 const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
                 if (nonStaff) {
                     this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
+                    console.log('✅ Found non-STAFF ID:', this.lecturerAssignmentId);
                     return;
                 }
                 this.lecturerAssignmentId = nameData[0].lecturer_id;
-                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
+                console.log('⚠️ Found STAFF ID:', this.lecturerAssignmentId);
                 return;
             }
             
@@ -103,7 +102,6 @@ const LecturerReports = {
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
             console.log('🔍 Using lecturer ID for reports:', lecturerId);
             
-            // Get units from lecturer_subject_assignments
             const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('subject_name, subject_code, block, program, academic_year')
@@ -125,12 +123,11 @@ const LecturerReports = {
                 return;
             }
             
-            // Convert to unit format with student counts
+            // Get student counts
             const program = profile.program || 'KRCHN';
             const unitNames = assignments.map(a => a.subject_name);
             const blocks = [...new Set(assignments.map(a => a.block))];
             
-            // Get student counts from student_unit_registrations
             let studentCounts = {};
             try {
                 const { data: registrations, error: regError } = await supabase
@@ -160,7 +157,6 @@ const LecturerReports = {
                 console.warn('Error getting student counts:', e);
             }
             
-            // Build assigned units with student counts
             this.assignedUnits = assignments.map(a => ({
                 id: a.id || `unit-${Date.now()}-${Math.random()}`,
                 name: a.subject_name || 'Unnamed Unit',
@@ -168,12 +164,10 @@ const LecturerReports = {
                 program: a.program || 'N/A',
                 block: a.block || 'N/A',
                 academic_year: a.academic_year || 'N/A',
-                student_count: studentCounts[a.subject_name] || 0,
-                lecturer_name: a.lecturer_name || 'N/A'
+                student_count: studentCounts[a.subject_name] || 0
             }));
             
-            console.log(`📚 Processed ${this.assignedUnits.length} units with student counts`);
-            
+            console.log(`📚 Processed ${this.assignedUnits.length} units`);
             this.populateUnitSelectors();
             
         } catch (error) {
@@ -413,6 +407,12 @@ const LecturerReports = {
         }).join('');
         
         document.getElementById('reportCountDisplay').textContent = filteredReports.length;
+        
+        // Update filter count
+        const filterCount = document.getElementById('reportFilterCount');
+        if (filterCount) {
+            filterCount.textContent = `Showing ${filteredReports.length} reports`;
+        }
     },
     
     filterReports(reports) {
@@ -472,10 +472,7 @@ const LecturerReports = {
     },
     
     populateReportForm() {
-        const dateInput = document.getElementById('reportDate');
-        if (dateInput) {
-            dateInput.value = new Date().toISOString().split('T')[0];
-        }
+        // Set default values if needed
     },
     
     setupEventListeners() {
@@ -484,37 +481,10 @@ const LecturerReports = {
             form.addEventListener('submit', (e) => this.generateReport(e));
         }
         
-        const searchInput = document.getElementById('reportSearch');
-        if (searchInput) {
-            searchInput.addEventListener('keyup', (e) => {
-                this.currentFilters.search = e.target.value;
-                this.renderReports(this.reports);
-            });
-        }
-        
-        const typeFilter = document.getElementById('reportTypeFilter');
-        if (typeFilter) {
-            typeFilter.addEventListener('change', (e) => {
-                this.currentFilters.type = e.target.value;
-                this.renderReports(this.reports);
-            });
-        }
-        
-        const unitFilter = document.getElementById('reportUnitFilter');
-        if (unitFilter) {
-            unitFilter.addEventListener('change', (e) => {
-                this.currentFilters.unit = e.target.value;
-                this.renderReports(this.reports);
-            });
-        }
-        
-        const dateFilter = document.getElementById('reportDateFilter');
-        if (dateFilter) {
-            dateFilter.addEventListener('change', (e) => {
-                this.currentFilters.date = e.target.value;
-                this.renderReports(this.reports);
-            });
-        }
+        // Search input is handled inline with onkeyup
+        // Type filter is handled inline with onchange
+        // Unit filter is handled inline with onchange
+        // Date filter is handled inline with onchange
     },
     
     // ============================================
@@ -598,8 +568,8 @@ const LecturerReports = {
                 setTimeout(() => this.exportSinglePDF(newReport.id), 1000);
             }
             
+            // Reset form
             form.reset();
-            this.populateReportForm();
             
         } catch (error) {
             console.error('Report generation error:', error);
@@ -666,61 +636,61 @@ const LecturerReports = {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         
         return `
-            <div class="preview-report" id="previewContent">
-                <div class="preview-header">
-                    <div class="preview-title-section">
-                        <h2>${typeIcons[reportType] || '📄'} ${typeNames[reportType] || reportType}</h2>
-                        <p class="preview-subtitle">${unitName}</p>
+            <div class="preview-report" id="previewContent" style="padding: 10px 5px; font-family: 'Segoe UI', Arial, sans-serif;">
+                <div style="border-bottom: 2px solid #4C1D95; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h2 style="margin: 0; color: #0A3D62; font-size: 22px;">${typeIcons[reportType] || '📄'} ${typeNames[reportType] || reportType}</h2>
+                        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">${unitName}</p>
                     </div>
-                    <div class="preview-meta">
-                        <span><i class="fas fa-calendar"></i> Generated: ${new Date().toLocaleString()}</span>
-                        <span><i class="fas fa-user"></i> Lecturer: ${profile?.full_name || 'N/A'}</span>
-                        <span><i class="fas fa-tag"></i> Report ID: ${reportData?.id?.slice(-8) || 'N/A'}</span>
-                    </div>
-                </div>
-                
-                <div class="preview-stats-grid">
-                    <div class="preview-stat">
-                        <span class="stat-label">Total Students</span>
-                        <span class="stat-value">${sampleData.totalStudents}</span>
-                    </div>
-                    <div class="preview-stat">
-                        <span class="stat-label">Average Score</span>
-                        <span class="stat-value">${sampleData.averageScore}%</span>
-                    </div>
-                    <div class="preview-stat">
-                        <span class="stat-label">Pass Rate</span>
-                        <span class="stat-value">${sampleData.passRate}%</span>
-                    </div>
-                    <div class="preview-stat">
-                        <span class="stat-label">Attendance</span>
-                        <span class="stat-value">${sampleData.attendance}%</span>
+                    <div style="text-align: right; color: #94a3b8; font-size: 13px;">
+                        <span style="display: block; margin: 2px 0;"><i class="fas fa-calendar"></i> Generated: ${new Date().toLocaleString()}</span>
+                        <span style="display: block; margin: 2px 0;"><i class="fas fa-user"></i> Lecturer: ${profile?.full_name || 'N/A'}</span>
+                        <span style="display: block; margin: 2px 0;"><i class="fas fa-tag"></i> Report ID: ${reportData?.id?.slice(-8) || 'N/A'}</span>
                     </div>
                 </div>
                 
-                <div class="preview-table-section">
-                    <h4>Detailed Results</h4>
-                    <table class="preview-data-table">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin: 20px 0;">
+                    <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
+                        <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Total Students</span>
+                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${sampleData.totalStudents}</span>
+                    </div>
+                    <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
+                        <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Average Score</span>
+                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${sampleData.averageScore}%</span>
+                    </div>
+                    <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
+                        <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Pass Rate</span>
+                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${sampleData.passRate}%</span>
+                    </div>
+                    <div style="background: #f8fafc; padding: 14px 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0;">
+                        <span style="display: block; color: #64748b; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Attendance</span>
+                        <span style="display: block; font-size: 26px; font-weight: 800; color: #0A3D62; margin-top: 3px;">${sampleData.attendance}%</span>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px;">Detailed Results</h4>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>Student Name</th>
-                                <th>Registration</th>
-                                <th>Grade</th>
-                                <th>Attendance</th>
-                                <th>Status</th>
+                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">#</th>
+                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Student Name</th>
+                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Registration</th>
+                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Grade</th>
+                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Attendance</th>
+                                <th style="background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #0A3D62; border-bottom: 2px solid #e2e8f0;">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${sampleData.students.map((student, index) => `
                                 <tr>
-                                    <td>${index + 1}</td>
-                                    <td>${student.name}</td>
-                                    <td>${student.reg}</td>
-                                    <td>${student.grade}%</td>
-                                    <td>${student.attendance}%</td>
-                                    <td>
-                                        <span class="status-badge ${student.status === 'Pass' ? 'status-pass' : 'status-fail'}">
+                                    <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${index + 1}</td>
+                                    <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${student.name}</td>
+                                    <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${student.reg}</td>
+                                    <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${student.grade}%</td>
+                                    <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">${student.attendance}%</td>
+                                    <td style="padding: 8px 12px; border-bottom: 1px solid #f1f5f9;">
+                                        <span style="padding: 3px 12px; border-radius: 12px; font-size: 12px; font-weight: 500; display: inline-block; background: ${student.status === 'Pass' ? '#d1fae5' : '#fee2e2'}; color: ${student.status === 'Pass' ? '#065f46' : '#991b1b'};">
                                             ${student.status}
                                         </span>
                                     </td>
@@ -730,9 +700,9 @@ const LecturerReports = {
                     </table>
                 </div>
                 
-                <div class="preview-footer">
-                    <p><i class="fas fa-print"></i> Generated by NCHSM Academic System</p>
-                    <p>Report ID: RPT-${Date.now().toString().slice(-6)}</p>
+                <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; flex-wrap: wrap; gap: 8px;">
+                    <p style="margin: 0;"><i class="fas fa-print"></i> Generated by NCHSM Academic System</p>
+                    <p style="margin: 0;">Report ID: RPT-${Date.now().toString().slice(-6)}</p>
                 </div>
             </div>
         `;
@@ -775,11 +745,9 @@ const LecturerReports = {
             return;
         }
         
-        // Generate preview content for the report
         const unitName = report.unit_name || this.getUnitName(report.unit_id) || 'N/A';
         const content = this.generatePreviewHTML(unitName, report.type, report);
         
-        // Create a temporary container
         const container = document.createElement('div');
         container.innerHTML = content;
         container.style.padding = '40px';
@@ -906,7 +874,6 @@ const LecturerReports = {
                         .status-pass { background: #d1fae5; color: #065f46; }
                         .status-fail { background: #fee2e2; color: #991b1b; }
                         .preview-footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; }
-                        .text-purple { color: #4C1D95; }
                     </style>
                 </head>
                 <body>${content.innerHTML}</body>
@@ -992,19 +959,20 @@ const LecturerReports = {
         const unit = this.assignedUnits.find(u => u.id === unitId);
         const unitName = unit ? (unit.name || unit.code) : 'Selected Unit';
         
-        // Create schedule modal dynamically
         const modalHtml = `
-            <div id="scheduleModal" class="modal-overlay" style="display:flex;">
-                <div class="modal-container" style="max-width:500px;">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-clock text-purple"></i> Schedule Report</h3>
-                        <button class="modal-close" onclick="document.getElementById('scheduleModal').remove()">&times;</button>
+            <div id="scheduleModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;">
+                <div style="background: white; border-radius: 16px; max-width: 500px; width: 95%; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <div style="padding: 18px 24px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                        <h3 style="margin: 0; color: #0A3D62; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-clock" style="color: #4C1D95;"></i> Schedule Report
+                        </h3>
+                        <button onclick="document.getElementById('scheduleModal').remove()" style="background: none; border: none; font-size: 32px; cursor: pointer; color: #94a3b8; line-height: 1; padding: 0 8px;">&times;</button>
                     </div>
-                    <div class="modal-body">
-                        <p><strong>${unitName}</strong> - ${this.formatType(reportType)}</p>
+                    <div style="padding: 24px;">
+                        <p style="margin: 0 0 15px 0; color: #475569;"><strong>${unitName}</strong> - ${this.formatType(reportType)}</p>
                         <div style="margin: 15px 0;">
-                            <label style="display:block;margin-bottom:5px;font-weight:600;">Frequency</label>
-                            <select id="scheduleFrequency" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #475569; font-size: 13px;">Frequency</label>
+                            <select id="scheduleFrequency" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
                                 <option value="daily">Daily</option>
                                 <option value="weekly" selected>Weekly</option>
                                 <option value="monthly">Monthly</option>
@@ -1012,17 +980,17 @@ const LecturerReports = {
                             </select>
                         </div>
                         <div style="margin: 15px 0;">
-                            <label style="display:block;margin-bottom:5px;font-weight:600;">Start Date</label>
-                            <input type="date" id="scheduleStartDate" value="${new Date().toISOString().split('T')[0]}" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #475569; font-size: 13px;">Start Date</label>
+                            <input type="date" id="scheduleStartDate" value="${new Date().toISOString().split('T')[0]}" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
                         <div style="margin: 15px 0;">
-                            <label style="display:block;margin-bottom:5px;font-weight:600;">Recipients (Email)</label>
-                            <input type="text" id="scheduleRecipients" placeholder="Enter email addresses (comma separated)" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #475569; font-size: 13px;">Recipients (Email)</label>
+                            <input type="text" id="scheduleRecipients" placeholder="Enter email addresses (comma separated)" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="document.getElementById('scheduleModal').remove()">Cancel</button>
-                        <button class="btn btn-generate" onclick="LecturerReports.saveSchedule()">
+                    <div style="padding: 14px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end; background: #f8fafc;">
+                        <button onclick="document.getElementById('scheduleModal').remove()" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500;">Cancel</button>
+                        <button onclick="LecturerReports.saveSchedule()" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px;">
                             <i class="fas fa-save"></i> Save Schedule
                         </button>
                     </div>
@@ -1054,28 +1022,7 @@ const LecturerReports = {
             return;
         }
         
-        const confirmed = await new Promise((resolve) => {
-            const modal = document.getElementById('customConfirmModal');
-            if (modal) {
-                document.getElementById('confirmModalTitle').textContent = 'Delete Report';
-                document.getElementById('confirmModalMessage').textContent = 
-                    `Are you sure you want to delete "${report.title}"? This action cannot be undone.`;
-                modal.style.display = 'flex';
-                
-                document.getElementById('confirmOkBtn').onclick = () => {
-                    modal.style.display = 'none';
-                    resolve(true);
-                };
-                document.getElementById('confirmCancelBtn').onclick = () => {
-                    modal.style.display = 'none';
-                    resolve(false);
-                };
-            } else {
-                resolve(confirm(`Delete report "${report.title}"?`));
-            }
-        });
-        
-        if (!confirmed) return;
+        if (!confirm(`Delete report "${report.title}"?`)) return;
         
         try {
             const supabase = window.lecturerDB?.supabase;
@@ -1116,7 +1063,6 @@ const LecturerReports = {
         const countDisplay = document.getElementById('reportCountDisplay');
         if (countDisplay) countDisplay.textContent = total;
         
-        // Update individual stats
         const studentReports = this.reports?.filter(r => r.type === 'EnrollmentList' || r.type === 'ClassRoster')?.length || 0;
         const performanceReports = this.reports?.filter(r => r.type === 'PerformanceAnalysis' || r.type === 'UnitProgress')?.length || 0;
         const unitReports = this.reports?.filter(r => r.type === 'CourseGradeBook' || r.type === 'AttendanceSummary')?.length || 0;
@@ -1208,20 +1154,18 @@ const LecturerReports = {
     // NOTIFICATION SYSTEM
     // ============================================
     showNotification(message, type = 'info') {
-        // Use global notification if available
         if (typeof window.showNotification === 'function') {
             window.showNotification(message, type);
             return;
         }
         
-        // Fallback notification
-        const notification = document.createElement('div');
         const colors = {
             success: '#10b981',
             error: '#ef4444',
             warning: '#f59e0b',
             info: '#3b82f6'
         };
+        
         const icons = {
             success: 'fa-check-circle',
             error: 'fa-exclamation-circle',
@@ -1229,6 +1173,7 @@ const LecturerReports = {
             info: 'fa-info-circle'
         };
         
+        const notification = document.createElement('div');
         notification.style.cssText = `
             position: fixed;
             top: 20px;
@@ -1297,10 +1242,9 @@ const LecturerReports = {
 };
 
 // ============================================
-// INITIALIZE ON DOM READY
+// INITIALIZE
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if html2pdf is loaded
     if (typeof html2pdf === 'undefined') {
         console.warn('html2pdf.js not loaded. PDF export will not work.');
     }
