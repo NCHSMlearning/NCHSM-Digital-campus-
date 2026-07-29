@@ -76,7 +76,7 @@
 <!-- MAIN APP CONTENT -->
 <div id="app-content" style="display: none;">
     
-<!-- ===== HEADER - HAMBURGER ON FAR LEFT ===== -->
+ <!-- ===== HEADER - HAMBURGER ON FAR LEFT ===== -->
 <header class="main-header" style="
     display: flex;
     justify-content: space-between;
@@ -89,7 +89,7 @@
     z-index: 100;
     font-family: 'Inter', sans-serif;
 ">
-    <!-- ===== LEFT SIDE: Menu Toggle + Logo ===== -->
+    <!-- ===== LEFT SIDE: Menu Toggle FIRST ===== -->
     <div style="display: flex; align-items: center; gap: 12px;">
         
         <!-- ✅ MOBILE MENU TOGGLE - FAR LEFT -->
@@ -137,106 +137,30 @@
         </div>
     </div>
     
-    <!-- ===== RIGHT SIDE: Profile + Actions ===== -->
-    <div class="header-right" style="
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    ">
-        <!-- User Profile Dropdown -->
+    <!-- ===== RIGHT SIDE ===== -->
+    <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
         <div class="user-profile-dropdown" style="position: relative; cursor: pointer;">
-            <div class="profile-trigger" style="
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 4px 10px 4px 4px;
-                border-radius: 30px;
-                transition: all 0.2s;
-                background: #f8fafc;
-                border: 1px solid #e5e7eb;
-            " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
-                <img id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" alt="Profile" class="profile-avatar round" style="
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    object-fit: cover;
-                    border: 2px solid #e5e7eb;
-                ">
+            <div class="profile-trigger" style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 4px 4px; border-radius: 30px; background: #f8fafc; border: 1px solid #e5e7eb;">
+                <img id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" alt="Profile" class="profile-avatar round" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #e5e7eb;">
                 <div class="profile-info" style="display: none;">
-                    <span class="profile-name" id="header-user-name" style="
-                        font-size: 13px;
-                        font-weight: 600;
-                        color: #0F172A;
-                    ">Student</span>
-                    <span class="profile-role" style="
-                        font-size: 10px;
-                        color: #94a3b8;
-                        display: block;
-                    ">Student</span>
+                    <span class="profile-name" id="header-user-name" style="font-size: 13px; font-weight: 600; color: #0F172A;">Student</span>
+                    <span class="profile-role" style="font-size: 10px; color: #94a3b8; display: block;">Student</span>
                 </div>
                 <i class="fas fa-chevron-down dropdown-icon" style="font-size: 10px; color: #94a3b8;"></i>
             </div>
-            <div class="dropdown-menu" style="display: none; position: absolute; top: 100%; right: 0; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-width: 150px; padding: 8px 0; margin-top: 4px; z-index: 1000; border: 1px solid #e5e7eb;">
-                <a href="#" data-tab="profile" style="display: flex; align-items: center; gap: 10px; padding: 8px 16px; color: #0F172A; text-decoration: none; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'"><i class="fas fa-user" style="width: 16px;"></i> My Profile</a>
-                <div style="height: 1px; background: #e5e7eb; margin: 4px 12px;"></div>
-                <a href="#" id="header-logout" style="display: flex; align-items: center; gap: 10px; padding: 8px 16px; color: #dc2626; text-decoration: none; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'"><i class="fas fa-sign-out-alt" style="width: 16px;"></i> Logout</a>
-            </div>
         </div>
         
-        <!-- Current Time -->
-        <div class="current-time" style="
-            font-size: 12px;
-            color: #64748B;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            background: #f8fafc;
-            border-radius: 20px;
-            border: 1px solid #e5e7eb;
-        ">
+        <div class="current-time" style="font-size: 12px; color: #64748B; display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f8fafc; border-radius: 20px; border: 1px solid #e5e7eb;">
             <i class="fas fa-clock" style="font-size: 12px; color: #4C1D95;"></i>
             <span id="header-time">Loading...</span>
         </div>
         
-        <!-- Notification Bell + Refresh -->
         <div class="header-actions" style="display: flex; align-items: center; gap: 2px;">
-            <!-- 🔔 NOTIFICATION BELL -->
-            <button id="notificationToggle" class="icon-btn" title="Notifications" style="
-                position: relative;
-                background: none;
-                border: none;
-                cursor: pointer;
-                padding: 8px;
-                border-radius: 50%;
-                transition: background 0.2s;
-                color: #4C1D95;
-            " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <button id="notificationToggle" class="icon-btn" title="Notifications" style="position: relative; background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: #4C1D95;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
                 <i class="fas fa-bell" style="font-size: 17px;"></i>
-                <span id="notificationDot" style="
-                    position: absolute;
-                    top: 4px;
-                    right: 4px;
-                    width: 9px;
-                    height: 9px;
-                    background: #ef4444;
-                    border-radius: 50%;
-                    display: none;
-                    border: 2px solid white;
-                    animation: pulse-dot 2s infinite;
-                "></span>
+                <span id="notificationDot" style="position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; background: #ef4444; border-radius: 50%; display: none; border: 2px solid white; animation: pulse-dot 2s infinite;"></span>
             </button>
-            
-            <!-- 🔄 REFRESH -->
-            <button class="icon-btn" id="header-refresh" title="Refresh Dashboard" style="
-                background: none;
-                border: none;
-                cursor: pointer;
-                padding: 8px;
-                border-radius: 50%;
-                transition: background 0.2s;
-                color: #4C1D95;
-            " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <button class="icon-btn" id="header-refresh" title="Refresh Dashboard" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: #4C1D95;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
                 <i class="fas fa-sync-alt" style="font-size: 15px;"></i>
             </button>
         </div>
@@ -244,686 +168,218 @@
 </header>
 
 <div class="overlay" id="overlay" role="presentation" aria-hidden="true"></div>
-
 <div class="container">
  <!-- SIDEBAR NAVIGATION - PREMIUM MODERN -->
-<!-- ===== SIDEBAR - COMPLETE FIXED WITH DROPDOWN ===== -->
-<aside id="sidebar" style="
-    width: 280px;
-    height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    position: fixed;
-    left: 0;
-    top: 0;
-    padding: 20px 16px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
-    z-index: 999;
-    overflow-y: auto;
-    transition: transform 0.3s ease;
-    font-family: 'Inter', sans-serif;
-    transform: translateX(0);
-">
-
+<aside class="sidebar-premium" id="sidebar" aria-label="Main navigation">
+    
     <!-- ===== SIDEBAR HEADER ===== -->
-    <div style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 0 12px 16px 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.2);
-        margin-bottom: 14px;
-    ">
-        <!-- Logo -->
-        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="
-            width: 56px;
-            height: 56px;
-            border-radius: 14px;
-            background: white;
-            padding: 8px;
-            object-fit: contain;
-            margin-bottom: 10px;
-        ">
-        <div>
-            <h2 style="font-size: 17px; font-weight: 700; margin: 0 0 2px 0; color: white;">Student Portal</h2>
-            <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
-                <span style="font-size: 10px; opacity: 0.8; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; display: inline-block;">Student</span>
-                <span style="font-size: 10px; opacity: 0.7; background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 20px; display: inline-block;" id="userProgramBadge">Loading...</span>
+    <div class="sidebar-header-premium">
+        <div class="logo-section">
+            <div class="logo-wrapper">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="sidebar-logo">
+                <div class="logo-glow"></div>
+            </div>
+            <div class="brand-text">
+                <h1 class="brand-title">NCHSM</h1>
+                <span class="brand-subtitle">Student Portal</span>
             </div>
         </div>
-    </div>
-
-    <!-- ===== USER PROFILE MINI ===== -->
-    <div style="
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 14px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 12px;
-        margin-bottom: 10px;
-    ">
-        <div style="position: relative; flex-shrink: 0;">
-            <img id="sidebar-avatar" src="https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=100&bold=true" alt="Profile" style="
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                object-fit: cover;
-                border: 2px solid rgba(255,255,255,0.3);
-            ">
-            <span style="
-                position: absolute;
-                bottom: 0;
-                right: 0;
-                width: 11px;
-                height: 11px;
-                background: #10b981;
-                border-radius: 50%;
-                border: 2px solid #667eea;
-            "></span>
-        </div>
-        <div style="flex: 1; min-width: 0;">
-            <div style="
-                font-size: 14px;
-                font-weight: 600;
-                color: white;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            " id="sidebarUserName">Student</div>
-            <div style="
-                font-size: 11px;
-                color: rgba(255,255,255,0.7);
-            " id="sidebarUserProgram">KRCHN</div>
-        </div>
-    </div>
-
-    <!-- ===== LAST LOGIN ===== -->
-    <div style="
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 14px;
-        background: rgba(255,255,255,0.05);
-        border-radius: 8px;
-        margin-bottom: 10px;
-    ">
-        <div style="
-            width: 28px;
-            height: 28px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        ">
-            <i class="fas fa-history" style="color: rgba(255,255,255,0.6); font-size: 12px;"></i>
-        </div>
-        <div style="flex: 1; min-width: 0;">
-            <div style="
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                font-size: 10px;
-                color: rgba(255,255,255,0.5);
-                font-weight: 500;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            ">
-                <span style="
-                    display: inline-block;
-                    width: 6px;
-                    height: 6px;
-                    background: #10b981;
-                    border-radius: 50%;
-                "></span>
-                Last Login
-            </div>
-            <div style="
-                font-size: 12px;
-                color: white;
-                font-weight: 500;
-            " id="sidebar-last-login-time">Loading...</div>
-            <div style="
-                font-size: 10px;
-                color: rgba(255,255,255,0.5);
-            " id="sidebar-last-login-device">Detecting device...</div>
-        </div>
-    </div>
-
-    <!-- ===== XP MINI BAR ===== -->
-    <div style="margin-bottom: 14px;">
-        <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-        ">
-            <div style="
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                font-size: 12px;
-                color: rgba(255,255,255,0.7);
-            ">
-                <i class="fas fa-star" style="color: #f59e0b; font-size: 13px;"></i>
-                <span>Level <strong id="sidebarUserLevel" style="color: white;">1</strong></span>
-                <span style="color: rgba(255,255,255,0.3);">·</span>
-                <span id="sidebarUserXP" style="color: white;">0 XP</span>
-            </div>
-            <span style="
-                font-size: 10px;
-                color: rgba(255,255,255,0.5);
-                background: rgba(255,255,255,0.1);
-                padding: 2px 10px;
-                border-radius: 12px;
-            ">Level <span id="sidebarNextLevel">2</span></span>
-        </div>
-        <div style="
-            position: relative;
-            width: 100%;
-            height: 5px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 4px;
-            overflow: hidden;
-        ">
-            <div id="sidebarXPProgress" style="
-                width: 0%;
-                height: 100%;
-                background: linear-gradient(90deg, #f59e0b, #fbbf24);
-                border-radius: 4px;
-                transition: width 0.6s ease;
-            "></div>
-            <div style="
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-                animation: shimmer 2s infinite;
-            "></div>
-        </div>
-    </div>
-
-    <!-- ===== NAVIGATION ===== -->
-    <ul style="
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        flex: 1;
-        overflow-y: auto;
-    " id="mainNav">
         
-        <!-- DASHBOARD -->
-        <li style="margin-bottom: 2px;">
-            <a href="#" data-tab="dashboard" class="active" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: white;
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                background: rgba(255,255,255,0.15);
-                border-left: 3px solid #FDB913;
-                cursor: pointer;
-            ">
-                <i class="fas fa-home" style="width: 20px; text-align: center;"></i>
-                <span style="flex: 1;">Dashboard</span>
-                <span style="background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 10px;">Home</span>
-            </a>
-        </li>
-
-        <!-- PROFILE -->
-        <li style="margin-bottom: 2px;">
-            <a href="#" data-tab="profile" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: rgba(255,255,255,0.8);
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                cursor: pointer;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-                <i class="fas fa-user" style="width: 20px; text-align: center;"></i>
-                <span style="flex: 1;">My Profile</span>
-                <span id="profileBadge" style="display: none; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">!</span>
-            </a>
-        </li>
-
-        <!-- ACADEMIC CALENDAR -->
-        <li style="margin-bottom: 2px;">
-            <a href="#" data-tab="calendar" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: rgba(255,255,255,0.8);
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                cursor: pointer;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-                <i class="fas fa-calendar-alt" style="width: 20px; text-align: center;"></i>
-                <span style="flex: 1;">Academic Calendar</span>
-                <span style="font-size: 13px;">📅</span>
-            </a>
-        </li>
-
-      <!-- ===== LEARNING HUB (DROPDOWN) - FIXED ===== -->
-<li class="has-dropdown" style="margin-bottom: 2px; position: relative;">
-    <a href="#" class="dropdown-toggle" style="
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 14px;
-        border-radius: 10px;
-        color: rgba(255,255,255,0.8);
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.2s;
-        cursor: pointer;
-    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-        <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
-        <span style="flex: 1;">My Learning Hub</span>
-        <i class="fas fa-chevron-down" style="font-size: 12px; transition: transform 0.3s;"></i>
-    </a>
-    <ul class="dropdown-menu" style="
-        list-style: none;
-        padding: 8px 0;
-        margin: 4px 0 0 0;
-        display: none;
-        background: rgba(30, 27, 75, 0.95);
-        border-radius: 8px;
-        border: 1px solid rgba(255,255,255,0.15);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-        min-width: 200px;
-        position: relative;
-        z-index: 9999;
-        overflow: visible;
-    ">
-        <li style="margin: 0; padding: 0;">
-            <a href="#" data-tab="hub-courses" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 16px;
-                color: rgba(255,255,255,0.9);
-                text-decoration: none;
-                font-size: 13px;
-                transition: all 0.2s;
-                border-radius: 0;
-                border-left: none;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="fas fa-book-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>My Courses</span>
-            </a>
-        </li>
-        <li style="margin: 0; padding: 0;">
-            <a href="#" data-tab="hub-register" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 16px;
-                color: rgba(255,255,255,0.9);
-                text-decoration: none;
-                font-size: 13px;
-                transition: all 0.2s;
-                border-radius: 0;
-                border-left: none;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="fas fa-plus-circle" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Register Units</span>
-            </a>
-        </li>
-        <li style="margin: 0; padding: 0;">
-            <a href="#" data-tab="hub-online-learning" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 16px;
-                color: rgba(255,255,255,0.9);
-                text-decoration: none;
-                font-size: 13px;
-                transition: all 0.2s;
-                border-radius: 0;
-                border-left: none;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="fas fa-video" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Online Learning</span>
-            </a>
-        </li>
-        <li style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 12px; padding: 0;"></li>
-        <li style="margin: 0; padding: 0;">
-            <a href="#" data-tab="hub-exam-card" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 16px;
-                color: rgba(255,255,255,0.9);
-                text-decoration: none;
-                font-size: 13px;
-                transition: all 0.2s;
-                border-radius: 0;
-                border-left: none;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="fas fa-id-card" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Exam Card</span>
-            </a>
-        </li>
-        <li style="margin: 0; padding: 0;">
-            <a href="#" data-tab="hub-lecture-card" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 16px;
-                color: rgba(255,255,255,0.9);
-                text-decoration: none;
-                font-size: 13px;
-                transition: all 0.2s;
-                border-radius: 0;
-                border-left: none;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="fas fa-chalkboard-teacher" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Lecture Card</span>
-            </a>
-        </li>
-        <li style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 12px; padding: 0;"></li>
-        <li style="margin: 0; padding: 0;">
-            <a href="#" data-tab="cats" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 16px;
-                color: rgba(255,255,255,0.9);
-                text-decoration: none;
-                font-size: 13px;
-                transition: all 0.2s;
-                border-radius: 0;
-                border-left: none;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Exams & Grades</span>
-            </a>
-        </li>
-        <li style="margin: 0; padding: 0;">
-            <a href="#" data-tab="academic-reports" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 16px;
-                color: rgba(255,255,255,0.9);
-                text-decoration: none;
-                font-size: 13px;
-                transition: all 0.2s;
-                border-radius: 0;
-                border-left: none;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Academic Reports</span>
-            </a>
-        </li>
-        <li style="margin: 0; padding: 0;">
-            <a href="#" data-tab="resources" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 16px;
-                color: rgba(255,255,255,0.9);
-                text-decoration: none;
-                font-size: 13px;
-                transition: all 0.2s;
-                border-radius: 0;
-                border-left: none;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="fas fa-folder-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>Resources</span>
-            </a>
-        </li>
-        <li style="margin: 0; padding: 0;">
-            <a href="#" data-tab="nurseiq" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 16px;
-                color: rgba(255,255,255,0.9);
-                text-decoration: none;
-                font-size: 13px;
-                transition: all 0.2s;
-                border-radius: 0;
-                border-left: none;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
-                <i class="fas fa-brain" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                <span>NurseIQ</span>
-            </a>
-        </li>
-    </ul>
-</li>
-
-        <!-- ATTENDANCE -->
-        <li style="margin-bottom: 2px;">
-            <a href="#" data-tab="attendance" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: rgba(255,255,255,0.8);
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                cursor: pointer;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-                <i class="fas fa-check-double" style="width: 20px; text-align: center;"></i>
-                <span style="flex: 1;">Attendance</span>
-                <span style="display: none; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="attendanceBadge">0</span>
-            </a>
-        </li>
-
-        <!-- MESSAGES -->
-        <li style="margin-bottom: 2px;">
-            <a href="#" data-tab="messages" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: rgba(255,255,255,0.8);
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                cursor: pointer;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-                <i class="fas fa-comment-dots" style="width: 20px; text-align: center;"></i>
-                <span style="flex: 1;">Messages</span>
-                <span style="display: none; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="messagesBadge">0</span>
-            </a>
-        </li>
-
-        <!-- SUPPORT TICKETS -->
-        <li style="margin-bottom: 2px;">
-            <a href="#" data-tab="support-tickets" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: rgba(255,255,255,0.8);
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                cursor: pointer;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-                <i class="fas fa-ticket-alt" style="width: 20px; text-align: center;"></i>
-                <span style="flex: 1;">Support Tickets</span>
-                <span style="display: none; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="ticketsBadge">0</span>
-            </a>
-        </li>
-
-        <!-- REVIEWS -->
-        <li style="margin-bottom: 2px;">
-            <a href="#" data-tab="reviews" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: rgba(255,255,255,0.8);
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                cursor: pointer;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-                <i class="fas fa-star" style="width: 20px; text-align: center;"></i>
-                <span style="flex: 1;">Reviews</span>
-                <span style="display: none; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="reviewsBadge">0</span>
-            </a>
-        </li>
-
-        <!-- NEWSLETTER -->
-        <li style="margin-bottom: 2px;">
-            <a href="#" data-tab="newsletter" style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: rgba(255,255,255,0.8);
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                cursor: pointer;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-                <i class="fas fa-envelope" style="width: 20px; text-align: center;"></i>
-                <span style="flex: 1;">Newsletter</span>
-                <span style="display: none; background: #3b82f6; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="newsletterBadge">0</span>
-            </a>
-        </li>
-    </ul>
-
+        <!-- User Profile Mini -->
+        <div class="user-profile-mini" id="sidebarUserProfile">
+            <div class="user-avatar-wrapper">
+                <img id="sidebar-avatar" src="https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=100&bold=true" alt="Profile" class="user-avatar">
+                <span class="online-status-dot"></span>
+            </div>
+            <div class="user-info-mini">
+                <span class="user-name" id="sidebarUserName">Student</span>
+                <span class="user-program" id="sidebarUserProgram">KRCHN</span>
+            </div>
+        </div>
+        
+        <!-- Last Login -->
+        <div class="sidebar-last-login" id="sidebarLastLogin">
+            <div class="last-login-icon">
+                <i class="fas fa-history"></i>
+            </div>
+            <div class="last-login-content">
+                <span class="last-login-label">
+                    <span class="online-dot"></span> Last Login
+                </span>
+                <span class="last-login-time" id="sidebar-last-login-time">Loading...</span>
+                <span class="last-login-device" id="sidebar-last-login-device">Detecting device...</span>
+            </div>
+        </div>
+        
+        <!-- XP Mini Bar -->
+        <div class="xp-mini-premium">
+            <div class="xp-row">
+                <div class="xp-info">
+                    <i class="fas fa-star" style="color: #f59e0b;"></i>
+                    <span>Level <strong id="sidebarUserLevel">1</strong></span>
+                    <span class="xp-divider">·</span>
+                    <span id="sidebarUserXP">0 XP</span>
+                </div>
+                <span class="xp-next-level">Level <span id="sidebarNextLevel">2</span></span>
+            </div>
+            <div class="xp-progress-premium">
+                <div class="xp-progress-fill" id="sidebarXPProgress" style="width: 0%;"></div>
+                <div class="xp-progress-glow"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ===== NAVIGATION ===== -->
+    <nav class="sidebar-nav-premium" aria-label="Primary navigation">
+        <ul class="nav-premium" role="menubar">
+            
+            <!-- DASHBOARD -->
+            <li role="none">
+                <a href="#" data-tab="dashboard" class="active" role="menuitem">
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-home"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Dashboard</span>
+                    <span class="nav-badge-premium">Home</span>
+                </a>
+            </li>
+            
+            <!-- PROFILE -->
+            <li role="none">
+                <a href="#" data-tab="profile" role="menuitem">
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-user-circle"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Profile</span>
+                    <span class="nav-badge-premium" id="profileBadge" style="display:none;">!</span>
+                </a>
+            </li>
+            
+            <!-- ACADEMIC CALENDAR -->
+            <li role="none">
+                <a href="#" data-tab="calendar" role="menuitem">
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Academic Calendar</span>
+                    <span class="nav-badge-premium">📅</span>
+                </a>
+            </li>
+            
+            <!-- LEARNING HUB (DROPDOWN) -->
+            <li role="none" class="has-dropdown-premium">
+                <a href="#" class="dropdown-toggle-premium" role="menuitem" aria-haspopup="true" aria-expanded="false">
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">My Learning Hub</span>
+                    <i class="fas fa-chevron-down dropdown-arrow-premium"></i>
+                </a>
+                <ul class="dropdown-submenu-premium" style="display: none;">
+                    <li role="none"><a href="#" data-tab="hub-courses" role="menuitem"><i class="fas fa-book-open"></i> My Courses</a></li>
+                    <li role="none"><a href="#" data-tab="hub-register" role="menuitem"><i class="fas fa-plus-circle"></i> Register Units</a></li>
+                    <li role="none"><a href="#" data-tab="hub-online-learning" role="menuitem"><i class="fas fa-video"></i> Online Learning</a></li>
+                    <li class="dropdown-divider-premium"></li>
+                    <li role="none"><a href="#" data-tab="hub-exam-card" role="menuitem"><i class="fas fa-id-card"></i> Exam Card</a></li>
+                    <li role="none"><a href="#" data-tab="hub-lecture-card" role="menuitem"><i class="fas fa-chalkboard-teacher"></i> Lecture Card</a></li>
+                    <li class="dropdown-divider-premium"></li>
+                    <li role="none"><a href="#" data-tab="cats" role="menuitem"><i class="fas fa-chart-line"></i> Exams & Grades</a></li>
+                    <li role="none"><a href="#" data-tab="academic-reports" role="menuitem"><i class="fas fa-file-alt"></i> Academic Reports</a></li>
+                    <li role="none"><a href="#" data-tab="resources" role="menuitem"><i class="fas fa-folder-open"></i> Resources</a></li>
+                    <li role="none"><a href="#" data-tab="nurseiq" role="menuitem"><i class="fas fa-brain"></i> NurseIQ</a></li>
+                </ul>
+            </li>
+            
+            <!-- ATTENDANCE -->
+            <li role="none">
+                <a href="#" data-tab="attendance" role="menuitem">
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-check-double"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Attendance</span>
+                    <span class="nav-badge-premium pulse-badge" id="attendanceBadge" style="display:none;">0</span>
+                </a>
+            </li>
+            
+            <!-- MESSAGES -->
+            <li role="none">
+                <a href="#" data-tab="messages" role="menuitem">
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-comment-dots"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Messages</span>
+                    <span class="nav-badge-premium pulse-badge" id="messagesBadge" style="display:none;">0</span>
+                </a>
+            </li>
+            
+            <!-- SUPPORT TICKETS -->
+            <li role="none">
+                <a href="#" data-tab="support-tickets" role="menuitem">
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Support Tickets</span>
+                    <span class="nav-badge-premium" id="ticketsBadge" style="display:none;">0</span>
+                </a>
+            </li>
+            
+            <!-- REVIEWS -->
+            <li role="none">
+                <a href="#" data-tab="reviews" role="menuitem">
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-star"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Reviews</span>
+                    <span class="nav-badge-premium" id="reviewsBadge" style="display:none;">0</span>
+                </a>
+            </li>
+            
+            <!-- NEWSLETTER -->
+            <li role="none">
+                <a href="#" data-tab="newsletter" role="menuitem">
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Newsletter</span>
+                    <span class="nav-badge-premium" id="newsletterBadge" style="display:none;">0</span>
+                </a>
+            </li>
+            
+        </ul>
+    </nav>
+    
     <!-- ===== SIDEBAR FOOTER ===== -->
-    <div style="
-        border-top: 1px solid rgba(255,255,255,0.2);
-        padding-top: 14px;
-        margin-top: 6px;
-    ">
-        <!-- Footer Actions - 3 BUTTONS -->
-        <div style="
-            display: flex;
-            gap: 6px;
-            margin-bottom: 10px;
-        ">
-            <!-- REFRESH BUTTON -->
-            <button id="sidebarRefreshBtn" title="Refresh Dashboard" style="
-                flex: 1;
-                padding: 8px;
-                border: none;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.1);
-                color: rgba(255,255,255,0.8);
-                cursor: pointer;
-                transition: all 0.2s;
-                font-size: 14px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            " onmouseover="this.style.background='rgba(255,255,255,0.2)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.8)'">
+    <div class="sidebar-footer-premium">
+        <div class="footer-actions">
+            <button class="footer-btn" id="sidebarRefreshBtn" title="Refresh Dashboard">
                 <i class="fas fa-sync-alt"></i>
             </button>
-            
-            <!-- THEME BUTTON -->
-            <button id="sidebarThemeBtn" title="Toggle Theme" style="
-                flex: 1;
-                padding: 8px;
-                border: none;
-                border-radius: 8px;
-                background: rgba(255,255,255,0.1);
-                color: rgba(255,255,255,0.8);
-                cursor: pointer;
-                transition: all 0.2s;
-                font-size: 14px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            " onmouseover="this.style.background='rgba(255,255,255,0.2)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.8)'">
+            <button class="footer-btn" id="sidebarThemeBtn" title="Toggle Theme">
                 <i class="fas fa-moon"></i>
             </button>
-            
-            <!-- LOGOUT BUTTON -->
-            <button id="sidebarLogoutBtn" title="Logout" style="
-                flex: 1;
-                padding: 8px;
-                border: none;
-                border-radius: 8px;
-                background: rgba(239,68,68,0.2);
-                color: #fca5a5;
-                cursor: pointer;
-                transition: all 0.2s;
-                font-size: 14px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            " onmouseover="this.style.background='rgba(239,68,68,0.35)'; this.style.color='#fecaca'" onmouseout="this.style.background='rgba(239,68,68,0.2)'; this.style.color='#fca5a5'">
+            <button class="footer-btn" id="sidebarLogoutBtn" title="Logout">
                 <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
-        
-        <!-- Version & Status -->
-        <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 10px;
-            color: rgba(255,255,255,0.4);
-        ">
+        <div class="footer-version">
             <span>Portal v2.1</span>
-            <span id="sidebarOnlineStatus" style="display: flex; align-items: center; gap: 4px;">
-                <span style="
-                    display: inline-block;
-                    width: 6px;
-                    height: 6px;
-                    background: #10b981;
-                    border-radius: 50%;
-                "></span>
-                Online
+            <span class="footer-dot">•</span>
+            <span id="sidebarOnlineStatus" class="online-status">
+                <span class="status-dot-small"></span> Online
             </span>
         </div>
     </div>
+    
 </aside>
-
-<!-- ===== OVERLAY FOR MOBILE ===== -->
-<div id="overlay" style="
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.6);
-    z-index: 998;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-" role="presentation" aria-hidden="true"></div>
 
         <!-- MAIN CONTENT AREA -->
         <main class="main" id="main-content">
@@ -3264,300 +2720,159 @@
 <script src="./js/chatbot.js"></script>
   
 
-<!-- ============================================ -->
-<!-- MAIN NAVIGATION HANDLER - FULLY FIXED      -->
-<!-- ============================================ -->
+
+<!-- MAIN NAVIGATION HANDLER -->
 <script>
 (function() {
     'use strict';
     
-    console.log('🎯 MAIN NAVIGATION HANDLER - FULLY FIXED');
+    console.log('🎯 MAIN NAVIGATION HANDLER');
     
-    // ============================================
-    // SHOW TAB FUNCTION
-    // ============================================
     function showTab(tabId) {
-        console.log('📂 Opening tab:', tabId);
-        
-        // Close mobile sidebar if open
-        if (window.innerWidth <= 768) {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('overlay');
-            if (sidebar) {
-                sidebar.classList.remove('open', 'active');
-                sidebar.style.transform = 'translateX(-100%)';
-            }
-            if (overlay) {
-                overlay.classList.remove('active');
-                overlay.style.display = 'none';
-            }
-            document.body.style.overflow = '';
-        }
-        
-        // Hide all tabs
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        });
-        
-        // Show target tab
-        const target = document.getElementById(tabId);
-        if (target) {
-            target.style.display = 'block';
-            target.classList.add('active');
-            target.removeAttribute('hidden');
-        } else {
-            console.warn('⚠️ Tab not found:', tabId);
-        }
-        
-        // Update active nav links
-        document.querySelectorAll('.nav a, .dropdown-menu a, #sidebar a[data-tab]').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabId) {
-                link.classList.add('active');
-                if (link.closest('#sidebar')) {
-                    link.style.background = 'rgba(255,255,255,0.15)';
-                    link.style.borderLeft = '3px solid #FDB913';
-                    link.style.color = 'white';
-                }
-            } else {
-                if (link.closest('#sidebar')) {
-                    link.style.background = 'transparent';
-                    link.style.borderLeft = 'none';
-                    link.style.color = 'rgba(255,255,255,0.8)';
-                }
-            }
-        });
-        
-        // Save to localStorage
-        try {
-            localStorage.setItem('nchsm_current_tab', tabId);
-        } catch (e) {}
-        
-        // Load module content
-        setTimeout(() => {
-            switch(tabId) {
-                case 'hub-courses':
-                    if (window.coursesModule?.loadCourses) window.coursesModule.loadCourses();
-                    break;
-                case 'hub-register':
-                    if (window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
-                    break;
-                case 'hub-exam-card':
-                    if (window.examCardModule?.loadExamCard) window.examCardModule.loadExamCard();
-                    break;
-                case 'hub-lecture-card':
-                    if (window.lectureCardModule?.loadLectureCard) window.lectureCardModule.loadLectureCard();
-                    break;
-                case 'academic-reports':
-                    if (window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
-                    break;
-                case 'profile':
-                    if (window.profileModule?.loadProfile) window.profileModule.loadProfile();
-                    break;
-                case 'dashboard':
-                    if (window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
-                    break;
-                case 'cats':
-                    if (window.examsModule?.loadExams) window.examsModule.loadExams();
-                    break;
-                case 'resources':
-                    if (window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
-                    break;
-                case 'nurseiq':
-                    if (window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
-                    break;
-                case 'attendance':
-                    if (window.attendanceModule?.loadAttendance) window.attendanceModule.loadAttendance();
-                    break;
-                case 'messages':
-                    if (window.messagesModule?.loadMessages) window.messagesModule.loadMessages();
-                    break;
-                case 'calendar':
-                    if (window.calendarModule?.loadCalendar) window.calendarModule.loadCalendar();
-                    break;
-                case 'reviews':
-                    if (window.reviewsModule?.loadReviews) window.reviewsModule.loadReviews();
-                    break;
-                case 'newsletter':
-                    if (window.newsletterModule?.loadNewsletters) window.newsletterModule.loadNewsletters();
-                    break;
-                case 'support-tickets':
-                    if (window.ticketsModule?.loadTickets) window.ticketsModule.loadTickets();
-                    break;
-                default:
-                    break;
-            }
-        }, 100);
+    console.log('📂 Opening tab:', tabId);
+    
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        if (sidebar) sidebar.classList.remove('active', 'open');
+        if (overlay) overlay.classList.remove('active');
+        document.body.style.overflow = '';
     }
     
-    window.showTab = showTab;
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
+    });
     
-    // ============================================
-    // DROPDOWN TOGGLE - FIXED FOR .has-dropdown
-    // ============================================
-    function setupDropdowns() {
-        console.log('🔧 Setting up dropdown toggles...');
-        
-        document.querySelectorAll('.has-dropdown > .dropdown-toggle').forEach(toggle => {
-            // Remove old listeners
-            const newToggle = toggle.cloneNode(true);
-            toggle.parentNode.replaceChild(newToggle, toggle);
-            
-            newToggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const parent = this.closest('.has-dropdown');
-                const submenu = parent.querySelector('.dropdown-menu');
-                if (!submenu) return;
-                
-                const isOpen = submenu.style.display === 'block';
-                
-                // Close all other dropdowns
-                document.querySelectorAll('.has-dropdown .dropdown-menu').forEach(menu => {
-                    if (menu !== submenu) {
-                        menu.style.display = 'none';
-                        const icon = menu.closest('.has-dropdown').querySelector('.fa-chevron-down');
-                        if (icon) icon.style.transform = 'rotate(0deg)';
-                    }
-                });
-                
-                // Toggle this one
-                if (isOpen) {
-                    submenu.style.display = 'none';
-                    const icon = this.querySelector('.fa-chevron-down');
-                    if (icon) icon.style.transform = 'rotate(0deg)';
-                } else {
-                    submenu.style.display = 'block';
-                    const icon = this.querySelector('.fa-chevron-down');
-                    if (icon) icon.style.transform = 'rotate(180deg)';
-                }
-            });
-        });
-        
-        console.log('✅ Dropdown toggles ready');
+    const target = document.getElementById(tabId);
+    if (target) {
+        target.style.display = 'block';
+        target.classList.add('active');
     }
     
-    // ============================================
-    // DROPDOWN SUBMENU ITEMS
-    // ============================================
-    function setupDropdownItems() {
-        document.querySelectorAll('.dropdown-menu a[data-tab]').forEach(item => {
-            const tabId = item.getAttribute('data-tab');
-            const newItem = item.cloneNode(true);
-            item.parentNode.replaceChild(newItem, item);
-            
-            newItem.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const parentDropdown = this.closest('.has-dropdown');
-                if (parentDropdown) {
-                    const submenu = parentDropdown.querySelector('.dropdown-menu');
-                    if (submenu) submenu.style.display = 'none';
-                    const icon = parentDropdown.querySelector('.fa-chevron-down');
-                    if (icon) icon.style.transform = 'rotate(0deg)';
-                }
-                
-                showTab(tabId);
-            });
-        });
-    }
-    
-    // ============================================
-    // NAV LINKS
-    // ============================================
-    function setupNavLinks() {
-        document.querySelectorAll('.nav a[data-tab], #sidebar a[data-tab]').forEach(link => {
-            const tabId = link.getAttribute('data-tab');
-            
-            if (link.classList.contains('dropdown-toggle')) return;
-            if (tabId === 'learning-hub') return;
-            
-            const newLink = link.cloneNode(true);
-            link.parentNode.replaceChild(newLink, link);
-            
-            newLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                showTab(tabId);
-            });
-        });
-    }
-    
-    // ============================================
-    // CLOSE DROPDOWNS ON OUTSIDE CLICK - FIXED ✅
-    // ============================================
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.has-dropdown')) {
-            document.querySelectorAll('.has-dropdown .dropdown-menu').forEach(menu => {
-                menu.style.display = 'none';
-                const icon = menu.closest('.has-dropdown').querySelector('.fa-chevron-down');
-                if (icon) icon.style.transform = 'rotate(0deg)';
-            });
+    document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('data-tab') === tabId) {
+            link.classList.add('active');
         }
     });
     
-    // ============================================
-    // SIDEBAR FOOTER BUTTONS
-    // ============================================
-    function setupSidebarButtons() {
-        // Refresh button
-        const refreshBtn = document.getElementById('sidebarRefreshBtn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', function() {
-                console.log('🔄 Refreshing...');
-                if (window.dashboardModule?.refreshDashboard) {
-                    window.dashboardModule.refreshDashboard();
-                } else {
-                    window.location.reload();
-                }
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                setTimeout(() => {
-                    this.innerHTML = '<i class="fas fa-sync-alt"></i>';
-                }, 1500);
-            });
-        }
-        
-        // Theme button
-        const themeBtn = document.getElementById('sidebarThemeBtn');
-        if (themeBtn) {
-            themeBtn.addEventListener('click', function() {
-                if (window.toggleTheme) {
-                    window.toggleTheme();
-                }
-            });
-        }
-        
-        // Logout button
-        const logoutBtn = document.getElementById('sidebarLogoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', function() {
-                console.log('🚪 Logging out...');
-                if (window.db?.supabase?.auth) {
-                    window.db.supabase.auth.signOut().then(() => {
-                        window.location.href = '/login';
-                    }).catch(() => {
-                        window.location.href = '/login';
-                    });
-                } else {
-                    window.location.href = '/login';
-                }
-            });
-        }
+    localStorage.setItem('nchsm_current_tab', tabId);
+    
+    setTimeout(() => {
+        if (tabId === 'hub-courses' && window.coursesModule?.loadCourses) window.coursesModule.loadCourses();
+        else if (tabId === 'hub-register' && window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
+        else if (tabId === 'hub-exam-card' && window.examCardModule?.loadExamCard) window.examCardModule.loadExamCard();
+        else if (tabId === 'hub-lecture-card' && window.lectureCardModule?.loadLectureCard) window.lectureCardModule.loadLectureCard();
+        else if (tabId === 'academic-reports' && window.academicReportsModule?.loadReports) window.academicReportsModule.loadReports();
+        else if (tabId === 'profile' && window.profileModule?.loadProfile) window.profileModule.loadProfile();
+        else if (tabId === 'dashboard' && window.dashboardModule?.refreshDashboard) window.dashboardModule.refreshDashboard();
+        else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
+        else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
+        else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
+    }, 100);
+}
+    
+    const dropdownParent = document.querySelector('.has-dropdown');
+    const dropdownToggle = document.querySelector('.has-dropdown > a');
+    const dropdownMenu = document.querySelector('.dropdown-submenu');
+    if (dropdownToggle && dropdownMenu) {
+        const newToggle = dropdownToggle.cloneNode(true);
+        dropdownToggle.parentNode.replaceChild(newToggle, dropdownToggle);
+        newToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = dropdownParent.classList.contains('open');
+            if (isOpen) {
+                dropdownParent.classList.remove('open');
+                dropdownMenu.style.display = 'none';
+            } else {
+                dropdownParent.classList.add('open');
+                dropdownMenu.style.display = 'block';
+            }
+        });
     }
     
-    // ============================================
-    // SHOW DASHBOARD ON LOAD
-    // ============================================
+    document.querySelectorAll('.dropdown-submenu a[data-tab]').forEach(item => {
+        const tabId = item.getAttribute('data-tab');
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        newItem.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dropdownParent) {
+                dropdownParent.classList.remove('open');
+                if (dropdownMenu) dropdownMenu.style.display = 'none';
+            }
+            showTab(tabId);
+        });
+    });
+    
+    const hubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
+    if (hubLink) {
+        const newLink = hubLink.cloneNode(true);
+        hubLink.parentNode.replaceChild(newLink, hubLink);
+        newLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.innerWidth <= 768) {
+                showTab('hub-courses');
+            } else if (dropdownParent) {
+                const isOpen = dropdownParent.classList.contains('open');
+                if (isOpen) {
+                    dropdownParent.classList.remove('open');
+                    if (dropdownMenu) dropdownMenu.style.display = 'none';
+                } else {
+                    dropdownParent.classList.add('open');
+                    if (dropdownMenu) dropdownMenu.style.display = 'block';
+                }
+            }
+        });
+    }
+    
+    document.querySelectorAll('.nav a[data-tab]').forEach(link => {
+        if (link.getAttribute('data-tab') === 'learning-hub') return;
+        const tabId = link.getAttribute('data-tab');
+        const newLink = link.cloneNode(true);
+        link.parentNode.replaceChild(newLink, link);
+        newLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showTab(tabId);
+        });
+    });
+    
+    document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
+        const tabId = card.getAttribute('data-tab');
+        const newCard = card.cloneNode(true);
+        card.parentNode.replaceChild(newCard, card);
+        newCard.addEventListener('click', (e) => {
+            e.preventDefault();
+            showTab(tabId);
+        });
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (dropdownParent && !dropdownParent.contains(e.target) && dropdownParent.classList.contains('open')) {
+            dropdownParent.classList.remove('open');
+            if (dropdownMenu) dropdownMenu.style.display = 'none';
+        }
+    });
+    
+    // ========== FIXED: ALWAYS SHOW DASHBOARD ON PAGE LOAD ==========
+    // Clear any stored preference and force dashboard
+    localStorage.setItem('nchsm_current_tab', 'dashboard');
+    
+    // Wait for DOM to be fully ready before showing dashboard
     function showDashboardOnLoad() {
         console.log('🔄 Showing dashboard on load...');
         const dashboard = document.getElementById('dashboard');
         if (dashboard) {
+            // Force dashboard to be visible
             dashboard.style.display = 'block';
             dashboard.classList.add('active');
             
+            // Hide all other tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 if (tab.id !== 'dashboard') {
                     tab.style.display = 'none';
@@ -3565,19 +2880,14 @@
                 }
             });
             
-            document.querySelectorAll('.nav a, .dropdown-menu a, #sidebar a[data-tab]').forEach(link => {
+            // Update active nav link
+            document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
                 link.classList.remove('active');
                 if (link.getAttribute('data-tab') === 'dashboard') {
                     link.classList.add('active');
-                    if (link.closest('#sidebar')) {
-                        link.style.background = 'rgba(255,255,255,0.15)';
-                        link.style.borderLeft = '3px solid #FDB913';
-                        link.style.color = 'white';
-                    }
                 }
             });
             
-            localStorage.setItem('nchsm_current_tab', 'dashboard');
             console.log('✅ Dashboard is now visible');
         } else {
             console.log('⚠️ Dashboard not found, retrying...');
@@ -3585,178 +2895,122 @@
         }
     }
     
-    // ============================================
-    // INITIALIZE
-    // ============================================
-    function init() {
-        console.log('🔧 Initializing navigation...');
-        setupDropdowns();
-        setupDropdownItems();
-        setupNavLinks();
-        setupSidebarButtons();
-        
-        setTimeout(showDashboardOnLoad, 300);
-    }
-    
+    // Start showing dashboard after a short delay
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(showDashboardOnLoad, 200);
+        });
     } else {
-        init();
+        setTimeout(showDashboardOnLoad, 200);
     }
     
-    console.log('✅ Navigation handler initialized');
+    window.showTab = showTab;
 })();
 </script>
-
-<!-- ============================================ -->
-<!-- INITIALIZATION SCRIPT - UPDATED             -->
-<!-- ============================================ -->
-<script>
-window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
-
-async function initializeApp() {
-    try {
-        console.log('🚀 Starting app initialization...');
-        if (!window.APP_CONFIG) throw new Error('Configuration not loaded.');
-        
-        const config = window.APP_CONFIG;
-        window.app.config = config;
-        
-        if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') throw new Error('SUPABASE_URL not configured');
-        if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') throw new Error('SUPABASE_ANON_KEY not configured');
-        
-        if (typeof window.db === 'undefined') throw new Error('Database module not loaded');
-        
-        const dbInstance = await window.db.initialize();
-        if (!dbInstance) throw new Error('Database initialization failed');
-        
-        console.log('✅ Database initialized');
-        
-        let userSession = null;
-        if (window.db.supabase) {
-            const { data, error } = await window.db.supabase.auth.getSession();
-            if (error) throw error;
-            userSession = data.session;
-        }
-        
-        if (!userSession) {
-            console.log('⚠️ No active session, redirecting...');
-            window.location.href = '/login';
-            return;
-        }
-        
-        window.db.currentUserId = userSession.user.id;
-        await window.db.loadUserProfile();
-        
-        console.log('✅ User authenticated');
-        
-        if (window.db.currentUserId && window.ui && window.ui.recordNewLogin) {
-            await window.ui.recordNewLogin(window.db.currentUserId);
-        }
-        
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) loadingScreen.style.display = 'none';
-        const appContent = document.getElementById('app-content');
-        if (appContent) appContent.style.display = 'block';
-        
-        window.supabase = window.db.supabase;
-        window.currentUserId = window.db.currentUserId;
-        window.currentUserProfile = window.db.currentUserProfile;
-        
-        // Update sidebar user info
-        if (window.currentUserProfile) {
-            const userName = window.currentUserProfile.full_name || 'Student';
-            const program = window.currentUserProfile.program || 'KRCHN';
+    <!-- INITIALIZATION SCRIPT -->
+    <script>
+    window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
+    
+    async function initializeApp() {
+        try {
+            console.log('🚀 Starting app initialization...');
+            if (!window.APP_CONFIG) throw new Error('Configuration not loaded.');
             
-            // Update header
+            const config = window.APP_CONFIG;
+            window.app.config = config;
+            
+            if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') throw new Error('SUPABASE_URL not configured');
+            if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') throw new Error('SUPABASE_ANON_KEY not configured');
+            
+            if (typeof window.db === 'undefined') throw new Error('Database module not loaded');
+            
+            const dbInstance = await window.db.initialize();
+            if (!dbInstance) throw new Error('Database initialization failed');
+            
+            console.log('✅ Database initialized');
+            
+            let userSession = null;
+            if (window.db.supabase) {
+                const { data, error } = await window.db.supabase.auth.getSession();
+                if (error) throw error;
+                userSession = data.session;
+            }
+            
+            if (!userSession) {
+                console.log('⚠️ No active session, redirecting...');
+                window.location.href = '/login';
+                return;
+            }
+            
+            window.db.currentUserId = userSession.user.id;
+            await window.db.loadUserProfile();
+            
+            console.log('✅ User authenticated');
+            
+            if (window.db.currentUserId && window.ui && window.ui.recordNewLogin) {
+                await window.ui.recordNewLogin(window.db.currentUserId);
+            }
+            
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) loadingScreen.style.display = 'none';
+            const appContent = document.getElementById('app-content');
+            if (appContent) appContent.style.display = 'block';
+            
+            window.supabase = window.db.supabase;
+            window.currentUserId = window.db.currentUserId;
+            window.currentUserProfile = window.db.currentUserProfile;
+            
+            const welcomeHeader = document.getElementById('welcome-header');
+            if (welcomeHeader && window.db.currentUserProfile?.full_name) {
+                welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
+            }
             const headerName = document.getElementById('header-user-name');
-            if (headerName) headerName.textContent = userName;
-            
-            // Update sidebar
-            const sidebarName = document.getElementById('sidebarUserName');
-            if (sidebarName) sidebarName.textContent = userName;
-            
-            const sidebarProgram = document.getElementById('sidebarUserProgram');
-            if (sidebarProgram) sidebarProgram.textContent = program;
-            
-            // Update avatar
-            const nameForAvatar = userName.replace(/\s+/g, '');
-            const headerPhoto = document.getElementById('header-profile-photo');
-            if (headerPhoto) {
-                headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
+            if (headerName && window.db.currentUserProfile?.full_name) {
+                headerName.textContent = window.db.currentUserProfile.full_name;
             }
-            const sidebarAvatar = document.getElementById('sidebar-avatar');
-            if (sidebarAvatar) {
-                sidebarAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=4C1D95&color=fff&size=100&bold=true`;
+            if (window.db.currentUserProfile?.full_name) {
+                const nameForAvatar = window.db.currentUserProfile.full_name.replace(/\s+/g, '');
+                const headerPhoto = document.getElementById('header-profile-photo');
+                if (headerPhoto) headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
             }
             
-            // Update welcome message
-            const welcomeName = document.getElementById('welcome-student-name');
-            if (welcomeName) welcomeName.textContent = userName;
-            
-            // Update last login
-            const lastLoginTime = document.getElementById('sidebar-last-login-time');
-            if (lastLoginTime) {
-                const now = new Date();
-                lastLoginTime.textContent = now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            }
-            
-            // Update XP
-            const userLevel = document.getElementById('sidebarUserLevel');
-            if (userLevel) userLevel.textContent = window.currentUserProfile.level || 1;
-            
-            const userXP = document.getElementById('sidebarUserXP');
-            if (userXP) userXP.textContent = (window.currentUserProfile.xp || 0) + ' XP';
-            
-            const xpProgress = document.getElementById('sidebarXPProgress');
-            if (xpProgress) {
-                const xp = window.currentUserProfile.xp || 0;
-                const maxXP = 100;
-                const progress = Math.min((xp / maxXP) * 100, 100);
-                xpProgress.style.width = progress + '%';
-            }
+            if (typeof initUI === 'function') initUI();
+            if (typeof initProfileModule === 'function') setTimeout(() => initProfileModule(), 100);
+           if (typeof initDashboardModule === 'function') {
+    setTimeout(() => {
+        window.dashboardModule = initDashboardModule(window.db.supabase);
+        if (window.dashboardModule && window.currentUserId && window.currentUserProfile) {
+            window.dashboardModule.initialize(window.currentUserId, window.currentUserProfile);
         }
-        
-        if (typeof initUI === 'function') initUI();
-        if (typeof initProfileModule === 'function') setTimeout(() => initProfileModule(), 100);
-        
-        if (typeof initDashboardModule === 'function') {
-            setTimeout(() => {
-                window.dashboardModule = initDashboardModule(window.db.supabase);
-                if (window.dashboardModule && window.currentUserId && window.currentUserProfile) {
-                    window.dashboardModule.initialize(window.currentUserId, window.currentUserProfile);
-                }
-                const dash = document.getElementById('dashboard');
-                if (dash) {
-                    dash.style.display = 'block';
-                    dash.classList.add('active');
-                }
-            }, 200);
+        // Force dashboard visible
+        const dash = document.getElementById('dashboard');
+        if (dash) {
+            dash.style.display = 'block';
+            dash.classList.add('active');
         }
-        
-        window.app.isInitialized = true;
-        window.app.supabase = window.db.supabase;
-        window.app.user = window.db.currentUserProfile;
-        
-        console.log('✅ Application initialized successfully');
-        document.dispatchEvent(new CustomEvent('appReady', {
-            detail: { userId: window.currentUserId, userProfile: window.currentUserProfile, database: window.db }
-        }));
-        
-    } catch (error) {
-        console.error('❌ Initialization failed:', error);
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) loadingScreen.style.display = 'none';
-        const appContent = document.getElementById('app-content');
-        if (appContent) appContent.style.display = 'block';
-        const welcomeSection = document.getElementById('welcome-section');
-        if (welcomeSection) {
-            welcomeSection.innerHTML = '<h2>Application Error</h2><p>' + error.message + '</p><button onclick="location.reload()" class="profile-button">Retry</button>';
+    }, 200);
+}
+            
+            window.app.isInitialized = true;
+            window.app.supabase = window.db.supabase;
+            window.app.user = window.db.currentUserProfile;
+            
+            console.log('✅ Application initialized successfully');
+            document.dispatchEvent(new CustomEvent('appReady', {
+                detail: { userId: window.currentUserId, userProfile: window.currentUserProfile, database: window.db }
+            }));
+            
+        } catch (error) {
+            console.error('❌ Initialization failed:', error);
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) loadingScreen.style.display = 'none';
+            const appContent = document.getElementById('app-content');
+            if (appContent) appContent.style.display = 'block';
+            const welcomeSection = document.getElementById('welcome-section');
+            if (welcomeSection) welcomeSection.innerHTML = '<h2>Application Error</h2><p>' + error.message + '</p><button onclick="location.reload()" class="profile-button">Retry</button>';
         }
     }
-}
-
-// Force dashboard visible after initialization
+    // FORCE DASHBOARD VISIBLE AFTER INITIALIZATION
 setTimeout(function() {
     const dashboard = document.getElementById('dashboard');
     if (dashboard) {
@@ -3764,6 +3018,7 @@ setTimeout(function() {
         dashboard.classList.add('active');
         console.log('✅ Dashboard forced visible from initializeApp');
     }
+    // Hide other tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
         if (tab.id !== 'dashboard') {
             tab.style.display = 'none';
@@ -3771,17 +3026,13 @@ setTimeout(function() {
         }
     });
 }, 300);
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📱 DOM ready, starting app initialization...');
-    document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
-    initializeApp();
-});
-</script>
-
-<!-- ============================================ -->
-<!-- FORCE UI UPDATE - FIXES DASHBOARD DISPLAY   -->
-<!-- ============================================ -->
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📱 DOM ready, starting app initialization...');
+        document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
+        initializeApp();
+    });
+    </script>
+<!-- FORCE UI UPDATE - FIXES DASHBOARD DISPLAY -->
 <script>
 (function forceUIUpdate() {
     let attempts = 0;
@@ -3793,55 +3044,38 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.dashboardModule && window.dashboardModule.metrics) {
             const m = window.dashboardModule.metrics;
             
+            // Check if UI already has data
             const rateEl = document.getElementById('dashboard-attendance-rate');
             if (rateEl && rateEl.innerText === '--%') {
                 console.log('🔄 Updating dashboard UI...');
                 
-                const rate = document.getElementById('dashboard-attendance-rate');
-                if (rate) rate.innerText = m.attendance.rate + '%';
+                // Update attendance
+                document.getElementById('dashboard-attendance-rate').innerText = m.attendance.rate + '%';
+                document.getElementById('dashboard-verified-count').innerText = m.attendance.verified;
+                document.getElementById('dashboard-total-count').innerText = m.attendance.total;
+                document.getElementById('dashboard-pending-count').innerText = m.attendance.pending;
                 
-                const verified = document.getElementById('dashboard-verified-count');
-                if (verified) verified.innerText = m.attendance.verified;
+                // Update courses
+                document.getElementById('dashboard-active-courses').innerText = m.courses;
                 
-                const total = document.getElementById('dashboard-total-count');
-                if (total) total.innerText = m.attendance.total;
+                // Update exam card
+                document.getElementById('dashboard-exam-status').innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                document.getElementById('dashboard-exam-status').style.color = m.examCard.eligible ? '#059669' : '#dc2626';
+                document.getElementById('dashboard-approved-units').innerText = m.examCard.approved;
                 
-                const pending = document.getElementById('dashboard-pending-count');
-                if (pending) pending.innerText = m.attendance.pending;
+                // Update NurseIQ
+                document.getElementById('dashboard-nurseiq-progress').innerText = m.nurseiq.progress + '%';
+                document.getElementById('dashboard-nurseiq-accuracy').innerText = m.nurseiq.accuracy + '%';
+                document.getElementById('dashboard-nurseiq-questions').innerText = m.nurseiq.questions;
                 
-                const courses = document.getElementById('dashboard-active-courses');
-                if (courses) courses.innerText = m.courses;
+                // Update upcoming exam
+                document.getElementById('dashboard-upcoming-exam').innerText = m.exams || 'No upcoming exams';
                 
-                const examStatus = document.getElementById('dashboard-exam-status');
-                if (examStatus) {
-                    examStatus.innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-                    examStatus.style.color = m.examCard.eligible ? '#059669' : '#dc2626';
-                }
-                
-                const approvedUnits = document.getElementById('dashboard-approved-units');
-                if (approvedUnits) approvedUnits.innerText = m.examCard.approved;
-                
-                const nurseProgress = document.getElementById('dashboard-nurseiq-progress');
-                if (nurseProgress) nurseProgress.innerText = m.nurseiq.progress + '%';
-                
-                const nurseAccuracy = document.getElementById('dashboard-nurseiq-accuracy');
-                if (nurseAccuracy) nurseAccuracy.innerText = m.nurseiq.accuracy + '%';
-                
-                const nurseQuestions = document.getElementById('dashboard-nurseiq-questions');
-                if (nurseQuestions) nurseQuestions.innerText = m.nurseiq.questions;
-                
-                const upcomingExam = document.getElementById('dashboard-upcoming-exam');
-                if (upcomingExam) upcomingExam.innerText = m.exams || 'No upcoming exams';
-                
+                // Update current block from profile
                 if (window.currentUserProfile) {
-                    const block = document.getElementById('dashboard-current-block-value');
-                    if (block) block.innerText = window.currentUserProfile.block || 'Block 4';
-                    
-                    const program = document.getElementById('dashboard-program-name');
-                    if (program) program.innerText = window.currentUserProfile.program || 'KRCHN';
-                    
-                    const intake = document.getElementById('dashboard-intake-year');
-                    if (intake) intake.innerText = window.currentUserProfile.intake_year || '2024';
+                    document.getElementById('dashboard-current-block-value').innerText = window.currentUserProfile.block || 'Block 4';
+                    document.getElementById('dashboard-program-name').innerText = window.currentUserProfile.program || 'KRCHN';
+                    document.getElementById('dashboard-intake-year').innerText = window.currentUserProfile.intake_year || '2024';
                 }
                 
                 console.log('✅ Dashboard UI updated!');
@@ -3857,6 +3091,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     }
     
+    // Start after page loads
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(updateUI, 500);
@@ -3866,11 +3101,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 })();
 </script>
-
-<!-- ============================================ -->
-<!-- 🎨 THEME SWITCHER - UPDATED                -->
-<!-- ============================================ -->
-<script>
+        <script>
+// ============================================
+// 🎨 THEME SWITCHER
+// ============================================
 function setTheme(theme) {
     document.querySelectorAll('.theme-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -3880,84 +3114,47 @@ function setTheme(theme) {
     
     document.body.setAttribute('data-theme', theme);
     localStorage.setItem('nchsm_theme', theme);
-    
-    const themeBtn = document.getElementById('sidebarThemeBtn');
-    if (themeBtn) {
-        if (theme === 'dark') {
-            themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
-            themeBtn.style.color = '#f59e0b';
-        } else {
-            themeBtn.innerHTML = '<i class="fas fa-moon"></i>';
-            themeBtn.style.color = 'rgba(255,255,255,0.8)';
-        }
-    }
-    
-    console.log('🎨 Theme set to:', theme);
+    console.log('🎨 Theme:', theme);
 }
 
-function toggleTheme() {
-    const current = localStorage.getItem('nchsm_theme') || 'purple';
-    const themes = ['purple', 'blue', 'green', 'dark'];
-    const currentIndex = themes.indexOf(current);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    setTheme(themes[nextIndex]);
-}
-
+// Load saved theme
 function loadTheme() {
     const saved = localStorage.getItem('nchsm_theme') || 'purple';
     setTheme(saved);
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const themeBtn = document.getElementById('sidebarThemeBtn');
-    if (themeBtn) {
-        themeBtn.addEventListener('click', toggleTheme);
-    }
-    loadTheme();
-});
-
+document.addEventListener('DOMContentLoaded', loadTheme);
 document.addEventListener('appReady', loadTheme);
-
 window.setTheme = setTheme;
-window.toggleTheme = toggleTheme;
-</script>
-
-<!-- ============================================ -->
-<!-- PERMANENT SUPER FIX FOR LECTURE CARD        -->
-<!-- ============================================ -->
+</script>                
 <script>
+// ========== PERMANENT SUPER FIX FOR LECTURE CARD ==========
 (function() {
     'use strict';
     
     console.log('🔧 Installing PERMANENT SUPER FIX for Lecture Card...');
     
     function installSuperFix() {
-        const oldLink = document.querySelector('#sidebar a[data-tab="hub-lecture-card"]');
+        const oldLink = document.querySelector('a[data-tab="hub-lecture-card"]');
         if (!oldLink) {
-            console.log('⏳ Waiting for Lecture Card link...');
+            console.log('Waiting for Lecture Card link...');
             setTimeout(installSuperFix, 200);
             return;
         }
         
-        console.log('✅ Found Lecture Card link, applying SUPER FIX...');
+        console.log('Found Lecture Card link, applying SUPER FIX...');
         
         const li = oldLink.parentElement;
         const newLink = document.createElement('a');
         newLink.href = '#';
         newLink.setAttribute('data-tab', 'hub-lecture-card');
         newLink.setAttribute('role', 'menuitem');
-        newLink.innerHTML = `
-            <span style="position:relative; width:28px; height:28px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i class="fas fa-chalkboard-teacher" style="font-size:16px;"></i>
-            </span>
-            <span style="flex:1;">Lecture Card</span>
-        `;
+        newLink.innerHTML = '<i class="fas fa-chalkboard-teacher"></i> Lecture Card';
         newLink.className = oldLink.className;
-        newLink.style.cssText = oldLink.style.cssText;
         
         li.replaceChild(newLink, oldLink);
         
-        newLink.addEventListener('click', function(e) {
+        newLink.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
@@ -3983,30 +3180,21 @@ window.toggleTheme = toggleTheme;
             const ddParent = document.querySelector('.has-dropdown');
             if (ddParent) {
                 ddParent.classList.remove('open');
-                const ddMenu = ddParent.querySelector('.dropdown-menu');
+                const ddMenu = ddParent.querySelector('.dropdown-submenu');
                 if (ddMenu) ddMenu.style.display = 'none';
-                const icon = ddParent.querySelector('.fa-chevron-down');
-                if (icon) icon.style.transform = 'rotate(0deg)';
             }
             
-            document.querySelectorAll('.nav a, .dropdown-menu a, #sidebar a[data-tab]').forEach(link => {
+            document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
                 link.classList.remove('active');
-                if (link.getAttribute('data-tab') === 'hub-lecture-card') {
-                    link.classList.add('active');
-                    if (link.closest('#sidebar')) {
-                        link.style.background = 'rgba(255,255,255,0.15)';
-                        link.style.borderLeft = '3px solid #FDB913';
-                        link.style.color = 'white';
-                    }
-                }
             });
+            newLink.classList.add('active');
             
             if (window.lectureCardModule && window.lectureCardModule.loadLectureCard) {
                 setTimeout(() => window.lectureCardModule.loadLectureCard(), 50);
             }
             
             return false;
-        });
+        };
         
         console.log('✅ PERMANENT SUPER FIX INSTALLED!');
     }
@@ -4019,13 +3207,10 @@ window.toggleTheme = toggleTheme;
     
     setTimeout(installSuperFix, 1000);
     setTimeout(installSuperFix, 3000);
-    setTimeout(installSuperFix, 5000);
 })();
 </script>
-
-<!-- ============================================ -->
-<!-- PWA SERVICE WORKER REGISTRATION             -->
-<!-- ============================================ -->
+                        
+    <!-- PWA Service Worker Registration -->
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -4033,12 +3218,14 @@ if ('serviceWorker' in navigator) {
       .then(registration => {
         console.log('✅ Service Worker registered successfully:', registration.scope);
         
+        // Check for updates
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           console.log('🔄 New service worker installing...');
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               console.log('📱 Update available! Refresh to get latest version.');
+              // Show update notification
               const toast = document.getElementById('toast');
               if (toast) {
                 toast.innerHTML = '<i class="fas fa-sync-alt"></i> Update available! Refresh for latest features.';
@@ -4058,6 +3245,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// PWA Install Prompt
 let deferredPrompt;
 const installBtn = document.createElement('button');
 
@@ -4065,6 +3253,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
   
+  // Create install button
   installBtn.innerHTML = '<i class="fab fa-windows"></i> Install NCHSM App';
   installBtn.style.cssText = `
     position: fixed;
@@ -4100,6 +3289,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   document.body.appendChild(installBtn);
 });
 
+// Hide install button if already installed
 window.addEventListener('appinstalled', () => {
   if (installBtn) installBtn.style.display = 'none';
   console.log('✅ App installed successfully');
