@@ -622,7 +622,12 @@ async function loadSectionData(tabId) {
             loadDashboardData(); 
             break;
         case 'users': 
-            loadAllUsers(); 
+            // ✅ FIX: Call initManageUsers to populate filters AND load users
+            if (typeof initManageUsers === 'function') {
+                await initManageUsers();
+            } else {
+                loadAllUsers(); 
+            }
             break;
         case 'pending': 
             loadPendingApprovals(); 
@@ -2272,7 +2277,121 @@ const USERS_STATE = {
 };
 
 let searchTimeout = null;
+// ============================================================
+// 🔥 FIX: POPULATE PROGRAM AND BLOCK DROPDOWNS IN MANAGE USERS
+// ============================================================
 
+/**
+ * Populate program filter dropdown with all programs
+ */
+async function populateUserProgramFilter() {
+    const programFilter = document.getElementById('user-program-filter');
+    if (!programFilter) return;
+    
+    try {
+        // Get distinct programs from user profiles
+        const { data: programs, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('program')
+            .not('program', 'is', null)
+            .order('program');
+        
+        if (error) throw error;
+        
+        // Keep "All Programs" option
+        programFilter.innerHTML = '<option value="all">All Programs</option>';
+        
+        // Get unique programs
+        const uniquePrograms = [...new Set(programs.map(p => p.program).filter(Boolean))];
+        
+        // Sort with KRCHN first, then TVET programs alphabetically
+        uniquePrograms.sort((a, b) => {
+            if (a === 'KRCHN') return -1;
+            if (b === 'KRCHN') return 1;
+            return a.localeCompare(b);
+        });
+        
+        uniquePrograms.forEach(program => {
+            const displayName = getProgramDisplayName(program) || program;
+            const option = document.createElement('option');
+            option.value = program;
+            option.textContent = displayName;
+            programFilter.appendChild(option);
+        });
+        
+        console.log(`✅ Loaded ${uniquePrograms.length} programs into filter`);
+        
+    } catch (error) {
+        console.error('Error loading program filter:', error);
+    }
+}
+
+/**
+ * Populate block filter dropdown with all blocks
+ */
+async function populateUserBlockFilter() {
+    const blockFilter = document.getElementById('user-block-filter');
+    if (!blockFilter) return;
+    
+    try {
+        // Get distinct blocks from user profiles
+        const { data: blocks, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('block')
+            .not('block', 'is', null)
+            .order('block');
+        
+        if (error) throw error;
+        
+        // Keep "All Blocks" option
+        blockFilter.innerHTML = '<option value="all">All Blocks</option>';
+        
+        // Get unique blocks
+        const uniqueBlocks = [...new Set(blocks.map(b => b.block).filter(Boolean))];
+        
+        // Sort blocks in logical order
+        const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        uniqueBlocks.sort((a, b) => {
+            const indexA = blockOrder.indexOf(a);
+            const indexB = blockOrder.indexOf(b);
+            if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+        
+        uniqueBlocks.forEach(block => {
+            const option = document.createElement('option');
+            option.value = block;
+            option.textContent = block;
+            blockFilter.appendChild(option);
+        });
+        
+        console.log(`✅ Loaded ${uniqueBlocks.length} blocks into filter`);
+        
+    } catch (error) {
+        console.error('Error loading block filter:', error);
+    }
+}
+
+// ============================================================
+// 🔥 HELPER: Populate dropdowns if they are empty
+// ============================================================
+
+async function populateUserFilterDropdownsIfEmpty() {
+    const programFilter = document.getElementById('user-program-filter');
+    const blockFilter = document.getElementById('user-block-filter');
+    
+    // Check if program filter needs populating
+    if (programFilter && programFilter.options.length <= 1) {
+        await populateUserProgramFilter();
+    }
+    
+    // Check if block filter needs populating
+    if (blockFilter && blockFilter.options.length <= 1) {
+        await populateUserBlockFilter();
+    }
+}
 // ============================================
 // 📧 SEND APPROVAL EMAIL - UPDATED
 // ============================================
@@ -2474,6 +2593,9 @@ async function loadAllUsers(page = 1, filters = {}) {
     tbody.innerHTML = '<tr><td colspan="11"><div class="loading-spinner"></div> Loading users...</td></tr>';
     
     try {
+        // ✅ FIRST: Populate filter dropdowns if they are empty
+        await populateUserFilterDropdownsIfEmpty();
+        
         let query = sb.from(USER_PROFILE_TABLE).select('*', { count: 'exact' });
         
         if (filters.role && filters.role !== 'all') {
@@ -2543,6 +2665,7 @@ async function loadAllUsers(page = 1, filters = {}) {
         return { users: [], total: 0 };
     }
 }
+
 
 // ============================================
 // 📊 RENDER USERS TABLE
@@ -3067,11 +3190,14 @@ async function loadStudents() {
 }
 
 // ============================================
-// 🚀 INITIALIZE MANAGE USERS
+// 🚀 INITIALIZE MANAGE USERS - UPDATED
 // ============================================
 
 async function initManageUsers() {
     console.log('👥 Initializing Manage Users (optimized)...');
+    
+    // 🔥 ADD THIS LINE - Populate filter dropdowns FIRST
+    await populateUserFilterDropdowns();
     
     await loadFilterOptions();
     await loadAllUsers(1, USERS_STATE.filters);
@@ -3092,7 +3218,6 @@ async function initManageUsers() {
     
     console.log('✅ Manage Users initialized (optimized)');
 }
-
 // ============================================
 // 📝 ORIGINAL FUNCTIONS (PRESERVED WITH FIXES)
 // ============================================
