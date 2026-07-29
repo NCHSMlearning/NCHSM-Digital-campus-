@@ -4829,257 +4829,8 @@
                 </div>
             </section>
 
-         <!-- ============================================================ -->
-<!-- 👥 USERS MANAGEMENT - MODERN DASHBOARD                       -->
-<!-- ============================================================ -->
-
-<!-- ============================================================ -->
-<!-- SECTION 1: SYSTEM USERS (MANAGE USERS)                      -->
-<!-- ============================================================ -->
-<section id="users" class="tab-content">
-    <!-- Modern Header -->
-    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-        <div>
-            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
-                <i class="fas fa-users" style="color: #FDB913;"></i> System Users
-            </h2>
-            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-                <i class="fas fa-database"></i> Manage all users with fast pagination &amp; advanced filtering
-            </p>
-        </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="loadAllUsersOptimized(1, USERS_STATE.filters)" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-            <button onclick="showTab('enroll')" class="btn-action" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
-                <i class="fas fa-user-plus"></i> Add User
-            </button>
-        </div>
-    </div>
-
-    <!-- Stats Cards - Modern Grid -->
-    <div id="userStatsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #0A3D62; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Total</span>
-                <i class="fas fa-users" style="color: #0A3D62; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #0A3D62; margin-top: 4px;" id="userStatTotal">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Active</span>
-                <i class="fas fa-check-circle" style="color: #10b981; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #10b981; margin-top: 4px;" id="userStatActive">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Pending</span>
-                <i class="fas fa-clock" style="color: #f59e0b; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #f59e0b; margin-top: 4px;" id="userStatPending">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Students</span>
-                <i class="fas fa-user-graduate" style="color: #3b82f6; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #3b82f6; margin-top: 4px;" id="userStatStudents">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Lecturers</span>
-                <i class="fas fa-chalkboard-user" style="color: #8b5cf6; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #8b5cf6; margin-top: 4px;" id="userStatLecturers">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #ef4444; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Admins</span>
-                <i class="fas fa-shield-alt" style="color: #ef4444; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #ef4444; margin-top: 4px;" id="userStatAdmins">0</div>
-        </div>
-    </div>
-
-    <!-- Toolbar - Modern Filter Bar -->
-    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-            <div style="flex: 1; min-width: 180px; position: relative;">
-                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                <input type="text" id="user-search" placeholder="Search by name, email or ID..." 
-                       style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.2s;"
-                       onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'"
-                       onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-            </div>
-            
-            <select id="user-role-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
-                <option value="all">All Roles</option>
-                <option value="student">👨‍🎓 Student</option>
-                <option value="lecturer">👨‍🏫 Lecturer</option>
-                <option value="admin">🛡️ Admin</option>
-                <option value="superadmin">⭐ Super Admin</option>
-            </select>
-            
-            <select id="user-status-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
-                <option value="all">All Status</option>
-                <option value="approved">✅ Approved</option>
-                <option value="pending">⏳ Pending</option>
-                <option value="blocked">🚫 Blocked</option>
-            </select>
-            
-            <select id="user-program-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
-                <option value="all">All Programs</option>
-            </select>
-            
-            <select id="user-block-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
-                <option value="all">All Blocks</option>
-            </select>
-            
-            <button onclick="filterUsers()" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-filter"></i> Filter
-            </button>
-            
-            <button onclick="resetUserFilters()" style="background: #e5e7eb; color: #475569; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-                <i class="fas fa-undo"></i> Reset
-            </button>
-            
-            <button onclick="exportTableToCSV('users-table-body', 'System_Users_Export.csv')" style="background: #059669; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-download"></i> Export
-            </button>
-        </div>
-    </div>
-
-    <!-- Table - Modern Design -->
-    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <div style="overflow-x: auto;">
-            <table id="users-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                <thead>
-                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-hashtag"></i> ID
-                        </th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-user"></i> Name
-                        </th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-envelope"></i> Email
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-user-tag"></i> Role
-                        </th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-graduation-cap"></i> Program
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-calendar"></i> Intake
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            📄 KCSE
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            🪪 ID
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            📸 Photo
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-circle"></i> Status
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-cog"></i> Actions
-                        </th>
-                    </tr>
-                </thead>
-                <tbody id="users-table-body">
-                    <tr>
-                        <td colspan="11" style="padding: 60px 20px; text-align: center; color: #94a3b8;">
-                            <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
-                            <p style="margin: 0;">Loading users...</p>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Pagination - Modern -->
-    <div id="userPagination" style="display: flex; gap: 6px; justify-content: center; align-items: center; margin-top: 20px; flex-wrap: wrap;"></div>
-</section>
-
-<!-- ============================================================ -->
-<!-- SECTION 2: PENDING APPROVALS                                 -->
-<!-- ============================================================ -->
-<section id="pending" class="tab-content">
-    <div style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(245,158,11,0.3);">
-        <div>
-            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
-                <i class="fas fa-clock"></i> Pending Approvals
-            </h2>
-            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
-                <i class="fas fa-file-check"></i> Review student registrations and verify documents
-            </p>
-        </div>
-        <button onclick="loadPendingApprovalsOptimized()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-            <i class="fas fa-sync-alt"></i> Refresh
-        </button>
-    </div>
-
-    <!-- Stats -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
-        <div style="background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Pending</span>
-                <i class="fas fa-clock" style="color: #f59e0b; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 32px; font-weight: 800; color: #f59e0b; margin-top: 4px;" id="pendingCount">0</div>
-            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Awaiting approval</div>
-        </div>
-        <div style="background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Docs Pending</span>
-                <i class="fas fa-file-alt" style="color: #3b82f6; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 32px; font-weight: 800; color: #3b82f6; margin-top: 4px;" id="pendingDocsCount">0</div>
-            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Documents to verify</div>
-        </div>
-    </div>
-
-    <!-- Table -->
-    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <div style="overflow-x: auto;">
-            <table id="pending-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                <thead>
-                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Name</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Email</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Role</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Intake</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Student ID</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">📄 KCSE</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">🪪 ID</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">📸 Photo</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Registered</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="pending-table-body">
-                    <tr>
-                        <td colspan="11" style="padding: 60px 20px; text-align: center; color: #94a3b8;">
-                            <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
-                            <p style="margin: 0;">Loading pending approvals...</p>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</section>
-
-<!-- ============================================================ -->
-<!-- SECTION 3: ENROLL ACCOUNTS                                  -->
+       <!-- ============================================================ -->
+<!-- ➕ TAB 3: ENROLL ACCOUNTS - MODERN                           -->
 <!-- ============================================================ -->
 <section id="enroll" class="tab-content">
     <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(16,185,129,0.3);">
@@ -5093,7 +4844,7 @@
         </div>
     </div>
 
-    <!-- Enrollment Form - Modern -->
+    <!-- Enrollment Form -->
     <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <form id="add-account-form" onsubmit="event.preventDefault(); handleAddAccount(event);">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
@@ -5363,83 +5114,286 @@
         </form>
     </div>
 </section>
-        <!-- Program with onchange to update BOTH FROM and TO blocks -->
-        <select id="promote_program" required onchange="updateBlockTermOptions('promote_program', 'promote_from_block'); updateBlockTermOptions('promote_program', 'promote_to_block');">
-            <option value="">-- Select Program --</option>
-            <option value="KRCHN">🎓 KRCHN Nursing</option>
-            <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
-                <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
-                <option value="DCH">Diploma in Community Health</option>
-                <option value="DHRIT">Diploma in Health Records and IT</option>
-                <option value="DSL">Diploma in Science Lab</option>
-                <option value="DSW">Diploma in Social Work & Community Development</option>
-                <option value="DCJS">Diploma in Criminal Justice</option>
-                <option value="DHSS">Diploma in Health Support Services</option>
-                <option value="DICT">Diploma in ICT</option>
-                <option value="DME">Diploma in Medical Engineering</option>
-            </optgroup>
-            <optgroup label="📜 TVET Certificate Programs (3-12 months)">
-                <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
-                <option value="CCH">Certificate in Community Health</option>
-                <option value="CHRIT">Certificate in Health Records and IT</option>
-                <option value="CPC">Certificate in Patient Care</option>
-                <option value="CSL">Certificate in Science Lab</option>
-                <option value="CSW">Certificate in Social Work & Community Development</option>
-                <option value="CCJS">Certificate in Criminal Justice</option>
-                <option value="CAG">Certificate in Agriculture</option>
-                <option value="CHSS">Certificate in Health Support Services</option>
-                <option value="CICT">Certificate in ICT</option>
-            </optgroup>
-            <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
-                <option value="ACH">Artisan in Community Health</option>
-                <option value="AAG">Artisan in Agriculture</option>
-                <option value="ASW">Artisan in Social Work & Community Development</option>
-            </optgroup>
-            <optgroup label="📊 Other TVET Programs">
-                <option value="CCA">Certificate in Computer Applications</option>
-                <option value="PTE">TVET/CDACC (PTE)</option>
-            </optgroup>
-        </select>
-        
-        <!-- FROM Block -->
-        <select id="promote_from_block" required>
-            <option value="">-- Promote Students FROM --</option>
-        </select>
-        
-        <!-- TO Block -->
-        <select id="promote_to_block" required>
-            <option value="">-- Promote Students TO --</option>
-        </select>
-        
-        <button type="submit" class="btn-danger">Execute Mass Promotion</button>
-    </form>
+       <!-- ============================================ -->
+<!-- PROGRAM MANAGEMENT - COMPLETE SECTION        -->
+<!-- ============================================ -->
+<section id="programs" class="tab-content">
+    <h2><i class="fas fa-sitemap"></i> Program Management</h2>
+    <p>Define and manage all academic programs offered by NCHSM. Programs serve as the foundation for courses, units, and student enrollment.</p>
     
-    <hr>
-    
-    <!-- Enrolled Students -->
-    <h3>Enrolled Students</h3>
-    <div class="toolbar">
-        <button onclick="exportTableToCSV('students-table', 'Enrolled_Students_Export.csv')" class="btn-action export-btn">Export Student List (CSV)</button>
+    <!-- Stats Cards -->
+    <div class="cards">
+        <div class="card" onclick="filterPrograms('active')" style="cursor: pointer; border-top: 4px solid #059669;">
+            <h3 style="color: #059669;"><i class="fas fa-check-circle"></i> Active Programs</h3>
+            <p class="data" id="activeProgramsCount" style="color: #059669; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Currently running</p>
+        </div>
+        <div class="card" onclick="filterPrograms('inactive')" style="cursor: pointer; border-top: 4px solid #d97706;">
+            <h3 style="color: #d97706;"><i class="fas fa-pause-circle"></i> Inactive</h3>
+            <p class="data" id="inactiveProgramsCount" style="color: #d97706; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Archived/Inactive</p>
+        </div>
+        <div class="card" onclick="showProgramIntakes()" style="cursor: pointer; border-top: 4px solid #4C1D95;">
+            <h3 style="color: #4C1D95;"><i class="fas fa-calendar-plus"></i> Total Intakes</h3>
+            <p class="data" id="totalIntakesCount" style="color: #4C1D95; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Across all programs</p>
+        </div>
+        <div class="card" onclick="showProgramBlocks()" style="cursor: pointer; border-top: 4px solid #2563eb;">
+            <h3 style="color: #2563eb;"><i class="fas fa-layer-group"></i> Total Blocks</h3>
+            <p class="data" id="totalBlocksCount" style="color: #2563eb; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Curriculum blocks</p>
+        </div>
     </div>
-    <input type="text" id="student-search" placeholder="Search Students..." onkeyup="filterTable('student-search', 'students-table', [1, 3, 5])">
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Program</th>
-                <th>Intake</th>
-                <th>Block/Term</th>
-                <th>Phone</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="students-table">
-            <tr><td colspan="9">Loading students...</td></tr>
-        </tbody>
-    </table>
+    
+    <!-- Add New Program Form -->
+    <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 25px; border-radius: 12px; margin-bottom: 25px;">
+        <h3 style="color: #4C1D95; margin-bottom: 5px;"><i class="fas fa-plus-circle"></i> Add New Program</h3>
+        <p style="color: #6b7280; font-size: 13px; margin-top: -5px; margin-bottom: 15px;">Create a new academic program with its core details</p>
+        
+        <form id="add-program-form" onsubmit="event.preventDefault(); createProgram();">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program Code *</label>
+                    <input type="text" id="program_code" placeholder="e.g., KRCHN, DPOTT" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program Name *</label>
+                    <input type="text" id="program_name" placeholder="Full program name" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Category *</label>
+                    <select id="program_category" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                        <option value="KRCHN">🎓 KRCHN - Nursing</option>
+                        <option value="TVET">🔧 TVET - Technical/Vocational</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program Type *</label>
+                    <select id="program_type" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                        <option value="diploma">Diploma</option>
+                        <option value="certificate">Certificate</option>
+                        <option value="artisan">Artisan</option>
+                        <option value="degree">Degree</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Duration (Months)</label>
+                    <input type="number" id="program_duration" placeholder="e.g., 24" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Total Credits</label>
+                    <input type="number" id="program_credits" placeholder="e.g., 120" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Description</label>
+                <textarea id="program_description" rows="2" placeholder="Program description..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Status</label>
+                    <select id="program_status" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                        <option value="active">✅ Active</option>
+                        <option value="inactive">⏸️ Inactive</option>
+                        <option value="archived">📦 Archived</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-action" style="background: #4C1D95; padding: 12px 30px; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                <i class="fas fa-save"></i> Create Program
+            </button>
+        </form>
+    </div>
+    
+    <!-- Filter & Search -->
+    <div class="filter-bar">
+        <input type="text" id="program_search" placeholder="🔍 Search programs..." onkeyup="filterProgramsTable()" style="padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; flex: 1; min-width: 150px;">
+        <select id="program_category_filter" onchange="filterProgramsTable()" style="padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;">
+            <option value="all">All Categories</option>
+            <option value="KRCHN">KRCHN</option>
+            <option value="TVET">TVET</option>
+        </select>
+        <select id="program_type_filter" onchange="filterProgramsTable()" style="padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;">
+            <option value="all">All Types</option>
+            <option value="diploma">Diploma</option>
+            <option value="certificate">Certificate</option>
+            <option value="artisan">Artisan</option>
+            <option value="degree">Degree</option>
+        </select>
+        <select id="program_status_filter" onchange="filterProgramsTable()" style="padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;">
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="archived">Archived</option>
+        </select>
+        <button onclick="loadAllPrograms()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <button onclick="exportProgramsToCSV()" class="btn-action" style="background: #059669; color: white; padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer;">
+            <i class="fas fa-download"></i> Export
+        </button>
+    </div>
+    
+    <!-- Programs Table -->
+    <div class="table-responsive">
+        <table class="data-table" id="programs-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden;">
+            <thead>
+                <tr>
+                    <th style="padding: 12px; text-align: left;">Code</th>
+                    <th style="padding: 12px; text-align: left;">Name</th>
+                    <th style="padding: 12px; text-align: left;">Category</th>
+                    <th style="padding: 12px; text-align: left;">Type</th>
+                    <th style="padding: 12px; text-align: left;">Duration</th>
+                    <th style="padding: 12px; text-align: left;">Credits</th>
+                    <th style="padding: 12px; text-align: left;">Intakes</th>
+                    <th style="padding: 12px; text-align: left;">Blocks</th>
+                    <th style="padding: 12px; text-align: left;">Status</th>
+                    <th style="padding: 12px; text-align: left;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="programs-table-body">
+                <tr><td colspan="10" style="padding: 40px; text-align: center;">
+                    <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 10px; color: #6b7280;">Loading programs...</p>
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- ====== INTAKE MANAGEMENT ====== -->
+    <div style="margin-top: 35px; border-top: 2px solid #e5e7eb; padding-top: 25px;">
+        <h3><i class="fas fa-calendar-plus"></i> Program Intake Management</h3>
+        <p style="color: #6b7280; font-size: 13px;">Manage student intakes for each program. Intakes define when students join a program.</p>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 15px 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: end;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program</label>
+                    <select id="intake_program_select" onchange="loadProgramIntakes()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Select Program --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Intake Name</label>
+                    <input type="text" id="intake_name" placeholder="e.g., March 2026 Intake" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Year</label>
+                    <input type="number" id="intake_year" placeholder="2026" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Status</label>
+                    <select id="intake_status" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="upcoming">📅 Upcoming</option>
+                        <option value="active">✅ Active</option>
+                        <option value="completed">📌 Completed</option>
+                    </select>
+                </div>
+                <div>
+                    <button onclick="addProgramIntake()" class="btn-action" style="background: #4C1D95; padding: 10px 20px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-plus"></i> Add Intake
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="program-intakes-container" style="max-height: 350px; overflow-y: auto;">
+            <p style="color: #6b7280; text-align: center; padding: 20px;">Select a program to view its intakes.</p>
+        </div>
+    </div>
+    
+    <!-- ====== BLOCK MANAGEMENT ====== -->
+    <div style="margin-top: 35px; border-top: 2px solid #e5e7eb; padding-top: 25px;">
+        <h3><i class="fas fa-layer-group"></i> Program Block Structure</h3>
+        <p style="color: #6b7280; font-size: 13px;">Define the curriculum blocks/semesters for each program.</p>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 15px 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: end;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program</label>
+                    <select id="block_program_select" onchange="loadProgramBlocks()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Select Program --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Block Name</label>
+                    <input type="text" id="block_name" placeholder="e.g., Block 3" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Sequence</label>
+                    <input type="number" id="block_sequence" placeholder="0, 1, 2..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Credit Hours</label>
+                    <input type="number" id="block_credit_hours" placeholder="0" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
+                <div>
+                    <button onclick="addProgramBlock()" class="btn-action" style="background: #4C1D95; padding: 10px 20px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-plus"></i> Add Block
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="program-blocks-container" style="max-height: 350px; overflow-y: auto;">
+            <p style="color: #6b7280; text-align: center; padding: 20px;">Select a program to view its blocks.</p>
+        </div>
+    </div>
+    
+    <!-- ====== PROGRAM-COURSE MAPPING ====== -->
+    <div style="margin-top: 35px; border-top: 2px solid #e5e7eb; padding-top: 25px;">
+        <h3><i class="fas fa-link"></i> Program-Course Mapping</h3>
+        <p style="color: #6b7280; font-size: 13px;">Assign courses to programs and optionally to specific blocks.</p>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 15px 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: end;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Program</label>
+                    <select id="mapping_program_select" onchange="loadProgramMappings()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Select Program --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Course</label>
+                    <select id="mapping_course_select" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Select Course --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Block (Optional)</label>
+                    <select id="mapping_block_select" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="">-- Any Block --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px;">Type</label>
+                    <select id="mapping_is_core" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="true">📘 Core (Required)</option>
+                        <option value="false">📗 Elective</option>
+                    </select>
+                </div>
+                <div>
+                    <button onclick="addProgramCourseMapping()" class="btn-action" style="background: #4C1D95; padding: 10px 20px; width: 100%; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-link"></i> Map Course
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="program-mappings-container" style="max-height: 350px; overflow-y: auto;">
+            <p style="color: #6b7280; text-align: center; padding: 20px;">Select a program to view its course mappings.</p>
+        </div>
+    </div>
 </section>
 
             <!-- Courses Section -->
