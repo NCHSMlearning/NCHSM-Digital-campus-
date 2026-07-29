@@ -75,28 +75,42 @@
 
 <!-- MAIN APP CONTENT -->
 <div id="app-content" style="display: none;">
-    
- <!-- ===== HEADER - FIXED MOBILE MENU (INLINE STYLES) ===== -->
+<!-- ===== HEADER - LECTURER STYLE WITH PULSE ANIMATION ===== -->
+<style>
+    @keyframes pulse-dot {
+        0%, 100% { 
+            transform: scale(1); 
+            opacity: 1; 
+        }
+        50% { 
+            transform: scale(1.6); 
+            opacity: 0.6; 
+        }
+    }
+</style>
+
 <header style="
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
+    padding: 10px 24px;
     background: white;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 2px solid #e5e7eb;
     position: sticky;
     top: 0;
     z-index: 100;
     font-family: 'Inter', sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 ">
-    <div style="display: flex; align-items: center; gap: 12px;">
+    <!-- LEFT: Menu + Logo -->
+    <div style="display: flex; align-items: center; gap: 16px;">
         
-        <!-- ✅ MOBILE MENU TOGGLE - FAR LEFT -->
+        <!-- MOBILE MENU TOGGLE -->
         <button id="mobile-menu-toggle" aria-label="Toggle navigation" style="
             display: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
             border: none;
             background: #f1f5f9;
             color: #4C1D95;
@@ -106,51 +120,68 @@
             flex-shrink: 0;
             align-items: center;
             justify-content: center;
-        ">
+        " onmouseover="this.style.background='#e2e8f0'; this.style.transform='scale(1.05)'" onmouseout="this.style.background='#f1f5f9'; this.style.transform='scale(1)'">
             <i class="fas fa-bars"></i>
         </button>
         
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <!-- Logo -->
+        <div style="display: flex; align-items: center; gap: 12px;">
             <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="
-                width: 36px;
-                height: 36px;
+                width: 40px;
+                height: 40px;
                 object-fit: contain;
-                border-radius: 8px;
+                border-radius: 10px;
+                background: #f8fafc;
+                padding: 5px;
+                border: 1px solid #e5e7eb;
             ">
             <div>
                 <h1 style="
-                    font-size: 16px;
-                    font-weight: 800;
+                    font-size: 18px;
+                    font-weight: 700;
                     color: #0F172A;
                     margin: 0;
                     line-height: 1.2;
+                    letter-spacing: -0.3px;
                 ">NCHSM</h1>
                 <h2 style="
                     font-size: 10px;
                     color: #64748B;
                     margin: 0;
-                    font-weight: 400;
-                ">Digital Student Portal</h2>
+                    font-weight: 500;
+                    letter-spacing: 0.5px;
+                    text-transform: uppercase;
+                ">Student Portal</h2>
             </div>
         </div>
     </div>
     
+    <!-- RIGHT: Profile + Actions -->
     <div style="
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 16px;
     ">
         <!-- User Profile -->
         <div style="position: relative; cursor: pointer;" id="userProfileDropdown">
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 4px 12px 4px 4px;
+                border-radius: 30px;
+                transition: all 0.2s;
+                background: #f8fafc;
+                border: 1.5px solid #e5e7eb;
+            " onmouseover="this.style.background='#f1f5f9'; this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e5e7eb'">
                 <img id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student&background=667eea&color=fff&size=100" alt="Profile" style="
-                    width: 36px;
-                    height: 36px;
+                    width: 32px;
+                    height: 32px;
                     border-radius: 50%;
                     object-fit: cover;
                     border: 2px solid #e5e7eb;
                 ">
-                <div style="display: none;" class="profile-info">
+                <div class="profile-info" style="display: none;">
                     <span id="header-user-name" style="
                         font-size: 13px;
                         font-weight: 600;
@@ -166,836 +197,689 @@
             </div>
         </div>
         
-        <!-- Time -->
+        <!-- Time Display -->
         <div style="
-            display: none;
             font-size: 12px;
             color: #64748B;
+            display: flex;
             align-items: center;
             gap: 6px;
+            padding: 6px 14px;
+            background: #f8fafc;
+            border-radius: 20px;
+            border: 1.5px solid #e5e7eb;
         " class="current-time">
-            <i class="fas fa-clock" style="font-size: 12px;"></i>
+            <i class="fas fa-clock" style="font-size: 12px; color: #4C1D95;"></i>
             <span id="header-time">Loading...</span>
         </div>
         
-        <!-- Actions -->
-        <div style="display: flex; align-items: center; gap: 4px;">
+        <!-- Action Buttons -->
+        <div style="display: flex; align-items: center; gap: 2px;">
+            
+            <!-- Notification Bell -->
             <button id="notificationToggle" title="Notifications" style="
                 position: relative;
                 background: none;
                 border: none;
                 cursor: pointer;
-                padding: 8px;
+                padding: 8px 10px;
                 border-radius: 50%;
-                transition: background 0.2s;
+                transition: all 0.2s;
+                color: #4C1D95;
+                font-size: 17px;
             " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-                <i class="fas fa-bell" style="color: #4C1D95; font-size: 16px;"></i>
+                <i class="fas fa-bell"></i>
                 <span id="notificationDot" style="
                     position: absolute;
                     top: 4px;
                     right: 4px;
-                    width: 8px;
-                    height: 8px;
+                    width: 9px;
+                    height: 9px;
                     background: #ef4444;
                     border-radius: 50%;
                     display: none;
                     border: 2px solid white;
+                    animation: pulse-dot 2s infinite;
                 "></span>
             </button>
             
-            <button id="header-refresh" title="Refresh" style="
+            <!-- Refresh Button -->
+            <button id="header-refresh" title="Refresh Dashboard" style="
                 background: none;
                 border: none;
                 cursor: pointer;
-                padding: 8px;
+                padding: 8px 10px;
                 border-radius: 50%;
-                transition: background 0.2s;
+                transition: all 0.2s;
+                color: #4C1D95;
+                font-size: 15px;
             " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-                <i class="fas fa-redo" style="color: #4C1D95; font-size: 14px;"></i>
+                <i class="fas fa-sync-alt"></i>
             </button>
         </div>
     </div>
 </header>
+
+<!-- OVERLAY -->
 <div class="overlay" id="overlay" role="presentation" aria-hidden="true"></div>
 
 <div class="container">
-<!-- ===== SIDEBAR NAVIGATION - PREMIUM MODERN (INLINE STYLES) ===== -->
-<aside id="sidebar" aria-label="Main navigation" style="
-    position: fixed;
-    top: 0;
-    left: 0;
+<!-- ===== SIDEBAR - LECTURER STYLE WITH ALL COMPONENTS ===== -->
+<aside id="sidebar" style="
     width: 280px;
     height: 100vh;
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%);
-    color: #e2e8f0;
-    z-index: 1000;
-    overflow-y: auto;
-    overflow-x: hidden;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 4px 0 30px rgba(0,0,0,0.5);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    position: fixed;
+    left: 0;
+    top: 0;
+    padding: 20px 16px;
     display: flex;
     flex-direction: column;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+    z-index: 999;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
     font-family: 'Inter', sans-serif;
-    transform: translateX(-100%);
+    transform: translateX(0);
 ">
-    
+
     <!-- ===== SIDEBAR HEADER ===== -->
     <div style="
-        padding: 20px 20px 16px;
-        border-bottom: 1px solid rgba(255,255,255,0.06);
-        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 0 12px 16px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        margin-bottom: 14px;
     ">
-        <!-- Logo Section -->
-        <div style="
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 16px;
+        <!-- Logo - SMALLER -->
+        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: white;
+            padding: 8px;
+            object-fit: contain;
+            margin-bottom: 10px;
         ">
-            <div style="
-                position: relative;
-                flex-shrink: 0;
-            ">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 12px;
-                    object-fit: contain;
-                    background: rgba(255,255,255,0.05);
-                    padding: 4px;
-                    border: 2px solid rgba(76,29,149,0.3);
-                ">
-                <div style="
-                    position: absolute;
-                    top: -4px;
-                    right: -4px;
-                    width: 16px;
-                    height: 16px;
-                    background: #4C1D95;
-                    border-radius: 50%;
-                    border: 2px solid #1a1a2e;
-                    box-shadow: 0 0 20px rgba(76,29,149,0.4);
-                "></div>
-            </div>
-            <div>
-                <h1 style="
-                    font-size: 20px;
-                    font-weight: 800;
-                    color: white;
-                    margin: 0;
-                    line-height: 1.2;
-                    letter-spacing: -0.5px;
-                ">NCHSM</h1>
-                <span style="
-                    font-size: 11px;
-                    color: #94a3b8;
-                    font-weight: 400;
-                    letter-spacing: 0.5px;
-                    text-transform: uppercase;
-                ">Student Portal</span>
-            </div>
-        </div>
-        
-        <!-- User Profile Mini -->
-        <div style="
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            background: rgba(255,255,255,0.04);
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.06);
-            margin-bottom: 12px;
-        ">
-            <div style="
-                position: relative;
-                flex-shrink: 0;
-            ">
-                <img id="sidebar-avatar" src="https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=100&bold=true" alt="Profile" style="
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    object-fit: cover;
-                    border: 2px solid #4C1D95;
-                ">
-                <span style="
-                    position: absolute;
-                    bottom: 0;
-                    right: 0;
-                    width: 12px;
-                    height: 12px;
-                    background: #10b981;
-                    border-radius: 50%;
-                    border: 2px solid #1a1a2e;
-                "></span>
-            </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: white;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                " id="sidebarUserName">Student</div>
-                <div style="
-                    font-size: 11px;
-                    color: #94a3b8;
-                " id="sidebarUserProgram">KRCHN</div>
-            </div>
-        </div>
-        
-        <!-- Last Login -->
-        <div style="
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 8px;
-            margin-bottom: 12px;
-        ">
-            <div style="
-                width: 28px;
-                height: 28px;
-                background: rgba(76,29,149,0.2);
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-            ">
-                <i class="fas fa-history" style="color: #94a3b8; font-size: 12px;"></i>
-            </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    font-size: 10px;
-                    color: #94a3b8;
-                    font-weight: 500;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                ">
-                    <span style="
-                        display: inline-block;
-                        width: 6px;
-                        height: 6px;
-                        background: #10b981;
-                        border-radius: 50%;
-                    "></span>
-                    Last Login
-                </div>
-                <div style="
-                    font-size: 12px;
-                    color: #e2e8f0;
-                    font-weight: 500;
-                " id="sidebar-last-login-time">Loading...</div>
-                <div style="
-                    font-size: 10px;
-                    color: #64748b;
-                " id="sidebar-last-login-device">Detecting device...</div>
-            </div>
-        </div>
-        
-        <!-- XP Mini Bar -->
         <div>
-            <div style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 6px;
-            ">
-                <div style="
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    font-size: 12px;
-                    color: #94a3b8;
-                ">
-                    <i class="fas fa-star" style="color: #f59e0b; font-size: 14px;"></i>
-                    <span>Level <strong id="sidebarUserLevel" style="color: white;">1</strong></span>
-                    <span style="color: #475569;">·</span>
-                    <span id="sidebarUserXP" style="color: #e2e8f0;">0 XP</span>
-                </div>
-                <span style="
-                    font-size: 10px;
-                    color: #64748b;
-                    background: rgba(255,255,255,0.05);
-                    padding: 2px 10px;
-                    border-radius: 12px;
-                ">Level <span id="sidebarNextLevel">2</span></span>
-            </div>
-            <div style="
-                position: relative;
-                width: 100%;
-                height: 6px;
-                background: rgba(255,255,255,0.06);
-                border-radius: 4px;
-                overflow: hidden;
-            ">
-                <div id="sidebarXPProgress" style="
-                    width: 0%;
-                    height: 100%;
-                    background: linear-gradient(90deg, #4C1D95, #7c3aed, #f59e0b);
-                    border-radius: 4px;
-                    transition: width 0.6s ease;
-                "></div>
-                <div style="
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-                    animation: shimmer 2s infinite;
-                "></div>
+            <h2 style="font-size: 17px; font-weight: 700; margin: 0 0 2px 0; color: white;">Student Portal</h2>
+            <div style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
+                <span style="font-size: 10px; opacity: 0.8; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; display: inline-block;">Student</span>
+                <span style="font-size: 10px; opacity: 0.7; background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 20px; display: inline-block;" id="userProgramBadge">Loading...</span>
             </div>
         </div>
     </div>
-    
+
+    <!-- ===== USER PROFILE MINI ===== -->
+    <div style="
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 12px;
+        margin-bottom: 10px;
+    ">
+        <div style="position: relative; flex-shrink: 0;">
+            <img id="sidebar-avatar" src="https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=100&bold=true" alt="Profile" style="
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                object-fit: cover;
+                border: 2px solid rgba(255,255,255,0.3);
+            ">
+            <span style="
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                width: 11px;
+                height: 11px;
+                background: #10b981;
+                border-radius: 50%;
+                border: 2px solid #667eea;
+            "></span>
+        </div>
+        <div style="flex: 1; min-width: 0;">
+            <div style="
+                font-size: 14px;
+                font-weight: 600;
+                color: white;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            " id="sidebarUserName">Student</div>
+            <div style="
+                font-size: 11px;
+                color: rgba(255,255,255,0.7);
+            " id="sidebarUserProgram">KRCHN</div>
+        </div>
+    </div>
+
+    <!-- ===== LAST LOGIN ===== -->
+    <div style="
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 8px;
+        margin-bottom: 10px;
+    ">
+        <div style="
+            width: 28px;
+            height: 28px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        ">
+            <i class="fas fa-history" style="color: rgba(255,255,255,0.6); font-size: 12px;"></i>
+        </div>
+        <div style="flex: 1; min-width: 0;">
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 10px;
+                color: rgba(255,255,255,0.5);
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            ">
+                <span style="
+                    display: inline-block;
+                    width: 6px;
+                    height: 6px;
+                    background: #10b981;
+                    border-radius: 50%;
+                "></span>
+                Last Login
+            </div>
+            <div style="
+                font-size: 12px;
+                color: white;
+                font-weight: 500;
+            " id="sidebar-last-login-time">Loading...</div>
+            <div style="
+                font-size: 10px;
+                color: rgba(255,255,255,0.5);
+            " id="sidebar-last-login-device">Detecting device...</div>
+        </div>
+    </div>
+
+    <!-- ===== XP MINI BAR ===== -->
+    <div style="margin-bottom: 14px;">
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        ">
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12px;
+                color: rgba(255,255,255,0.7);
+            ">
+                <i class="fas fa-star" style="color: #f59e0b; font-size: 13px;"></i>
+                <span>Level <strong id="sidebarUserLevel" style="color: white;">1</strong></span>
+                <span style="color: rgba(255,255,255,0.3);">·</span>
+                <span id="sidebarUserXP" style="color: white;">0 XP</span>
+            </div>
+            <span style="
+                font-size: 10px;
+                color: rgba(255,255,255,0.5);
+                background: rgba(255,255,255,0.1);
+                padding: 2px 10px;
+                border-radius: 12px;
+            ">Level <span id="sidebarNextLevel">2</span></span>
+        </div>
+        <div style="
+            position: relative;
+            width: 100%;
+            height: 5px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+            overflow: hidden;
+        ">
+            <div id="sidebarXPProgress" style="
+                width: 0%;
+                height: 100%;
+                background: linear-gradient(90deg, #f59e0b, #fbbf24);
+                border-radius: 4px;
+                transition: width 0.6s ease;
+            "></div>
+            <div style="
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+                animation: shimmer 2s infinite;
+            "></div>
+        </div>
+    </div>
+
     <!-- ===== NAVIGATION ===== -->
-    <nav style="
+    <ul style="
+        list-style: none;
+        padding: 0;
+        margin: 0;
         flex: 1;
         overflow-y: auto;
-        overflow-x: hidden;
-        padding: 8px 12px 20px;
-    ">
-        <ul style="
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        " role="menubar">
-            
-            <!-- DASHBOARD -->
-            <li style="margin-bottom: 2px;" role="none">
-                <a href="#" data-tab="dashboard" class="active" role="menuitem" style="
+    " id="mainNav">
+        
+        <!-- DASHBOARD -->
+        <li style="margin-bottom: 2px;">
+            <a href="#" data-tab="dashboard" class="active" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: white;
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                background: rgba(255,255,255,0.15);
+                border-left: 3px solid #FDB913;
+                cursor: pointer;
+            ">
+                <i class="fas fa-home" style="width: 20px; text-align: center;"></i>
+                <span style="flex: 1;">Dashboard</span>
+                <span style="background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 10px;">Home</span>
+            </a>
+        </li>
+
+        <!-- PROFILE -->
+        <li style="margin-bottom: 2px;">
+            <a href="#" data-tab="profile" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: rgba(255,255,255,0.8);
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                cursor: pointer;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
+                <i class="fas fa-user" style="width: 20px; text-align: center;"></i>
+                <span style="flex: 1;">My Profile</span>
+                <span id="profileBadge" style="display: none; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">!</span>
+            </a>
+        </li>
+
+        <!-- ACADEMIC CALENDAR -->
+        <li style="margin-bottom: 2px;">
+            <a href="#" data-tab="calendar" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: rgba(255,255,255,0.8);
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                cursor: pointer;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
+                <i class="fas fa-calendar-alt" style="width: 20px; text-align: center;"></i>
+                <span style="flex: 1;">Academic Calendar</span>
+                <span style="font-size: 13px;">📅</span>
+            </a>
+        </li>
+
+        <!-- LEARNING HUB (DROPDOWN) -->
+        <li class="nav-dropdown" style="margin-bottom: 2px; position: relative;">
+            <a href="#" class="dropdown-toggle" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: rgba(255,255,255,0.8);
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                cursor: pointer;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
+                <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
+                <span style="flex: 1;">My Learning Hub</span>
+                <i class="fas fa-chevron-down" style="font-size: 12px; transition: transform 0.3s;"></i>
+            </a>
+            <ul class="dropdown-menu" style="
+                list-style: none;
+                padding: 4px 0 4px 20px;
+                margin: 0;
+                display: none;
+            ">
+                <li><a href="#" data-tab="hub-courses" style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
-                    color: white;
-                    text-decoration: none;
-                    font-size: 13px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    cursor: pointer;
-                    background: rgba(76,29,149,0.3);
-                    border-left: 3px solid #FDB913;
-                    position: relative;
-                ">
-                    <span style="
-                        position: relative;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                    ">
-                        <i class="fas fa-home" style="font-size: 16px; color: #FDB913;"></i>
-                        <span style="
-                            position: absolute;
-                            inset: 0;
-                            background: rgba(253,185,19,0.1);
-                            border-radius: 8px;
-                        "></span>
-                    </span>
-                    <span style="flex: 1;">Dashboard</span>
-                    <span style="
-                        background: rgba(253,185,19,0.15);
-                        color: #FDB913;
-                        padding: 2px 10px;
-                        border-radius: 12px;
-                        font-size: 9px;
-                        font-weight: 600;
-                        text-transform: uppercase;
-                    ">Home</span>
-                </a>
-            </li>
-            
-            <!-- PROFILE -->
-            <li style="margin-bottom: 2px;" role="none">
-                <a href="#" data-tab="profile" role="menuitem" style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
                     color: rgba(255,255,255,0.7);
                     text-decoration: none;
                     font-size: 13px;
-                    font-weight: 500;
                     transition: all 0.2s;
-                    cursor: pointer;
-                " onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                    <span style="
-                        position: relative;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                    ">
-                        <i class="fas fa-user-circle" style="font-size: 16px;"></i>
-                    </span>
-                    <span style="flex: 1;">Profile</span>
-                    <span id="profileBadge" style="display: none; background: #ef4444; color: white; padding: 0 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">!</span>
-                </a>
-            </li>
-            
-            <!-- ACADEMIC CALENDAR -->
-            <li style="margin-bottom: 2px;" role="none">
-                <a href="#" data-tab="calendar" role="menuitem" style="
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-book-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                    <span>My Courses</span>
+                </a></li>
+                <li><a href="#" data-tab="hub-register" style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
                     color: rgba(255,255,255,0.7);
                     text-decoration: none;
                     font-size: 13px;
-                    font-weight: 500;
                     transition: all 0.2s;
-                    cursor: pointer;
-                " onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                    <span style="
-                        position: relative;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                    ">
-                        <i class="fas fa-calendar-alt" style="font-size: 16px;"></i>
-                    </span>
-                    <span style="flex: 1;">Academic Calendar</span>
-                    <span style="font-size: 14px;">📅</span>
-                </a>
-            </li>
-            
-            <!-- LEARNING HUB (DROPDOWN) -->
-            <li style="margin-bottom: 2px; position: relative;" role="none" class="has-dropdown">
-                <a href="#" class="dropdown-toggle" role="menuitem" aria-haspopup="true" aria-expanded="false" style="
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-plus-circle" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                    <span>Register Units</span>
+                </a></li>
+                <li><a href="#" data-tab="hub-online-learning" style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
                     color: rgba(255,255,255,0.7);
                     text-decoration: none;
                     font-size: 13px;
-                    font-weight: 500;
                     transition: all 0.2s;
-                    cursor: pointer;
-                " onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                    <span style="
-                        position: relative;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                    ">
-                        <i class="fas fa-graduation-cap" style="font-size: 16px;"></i>
-                    </span>
-                    <span style="flex: 1;">My Learning Hub</span>
-                    <i class="fas fa-chevron-down" style="
-                        font-size: 11px;
-                        transition: transform 0.3s ease;
-                        color: rgba(255,255,255,0.4);
-                    "></i>
-                </a>
-                <ul class="dropdown-submenu" style="
-                    list-style: none;
-                    padding: 4px 0 4px 12px;
-                    margin: 0;
-                    display: none;
-                    border-left: 1px solid rgba(255,255,255,0.06);
-                    margin-left: 16px;
-                ">
-                    <li style="margin-bottom: 1px;" role="none">
-                        <a href="#" data-tab="hub-courses" role="menuitem" style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.6);
-                            text-decoration: none;
-                            font-size: 12px;
-                            transition: all 0.2s;
-                            cursor: pointer;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.6)'">
-                            <i class="fas fa-book-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                            <span>My Courses</span>
-                        </a>
-                    </li>
-                    <li style="margin-bottom: 1px;" role="none">
-                        <a href="#" data-tab="hub-register" role="menuitem" style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.6);
-                            text-decoration: none;
-                            font-size: 12px;
-                            transition: all 0.2s;
-                            cursor: pointer;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.6)'">
-                            <i class="fas fa-plus-circle" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                            <span>Register Units</span>
-                        </a>
-                    </li>
-                    <li style="margin-bottom: 1px;" role="none">
-                        <a href="#" data-tab="hub-online-learning" role="menuitem" style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.6);
-                            text-decoration: none;
-                            font-size: 12px;
-                            transition: all 0.2s;
-                            cursor: pointer;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.6)'">
-                            <i class="fas fa-video" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                            <span>Online Learning</span>
-                        </a>
-                    </li>
-                    <li style="height: 1px; background: rgba(255,255,255,0.06); margin: 4px 14px;"></li>
-                    <li style="margin-bottom: 1px;" role="none">
-                        <a href="#" data-tab="hub-exam-card" role="menuitem" style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.6);
-                            text-decoration: none;
-                            font-size: 12px;
-                            transition: all 0.2s;
-                            cursor: pointer;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.6)'">
-                            <i class="fas fa-id-card" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                            <span>Exam Card</span>
-                        </a>
-                    </li>
-                    <li style="margin-bottom: 1px;" role="none">
-                        <a href="#" data-tab="hub-lecture-card" role="menuitem" style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.6);
-                            text-decoration: none;
-                            font-size: 12px;
-                            transition: all 0.2s;
-                            cursor: pointer;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.6)'">
-                            <i class="fas fa-chalkboard-teacher" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                            <span>Lecture Card</span>
-                        </a>
-                    </li>
-                    <li style="height: 1px; background: rgba(255,255,255,0.06); margin: 4px 14px;"></li>
-                    <li style="margin-bottom: 1px;" role="none">
-                        <a href="#" data-tab="cats" role="menuitem" style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.6);
-                            text-decoration: none;
-                            font-size: 12px;
-                            transition: all 0.2s;
-                            cursor: pointer;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.6)'">
-                            <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                            <span>Exams & Grades</span>
-                        </a>
-                    </li>
-                    <li style="margin-bottom: 1px;" role="none">
-                        <a href="#" data-tab="academic-reports" role="menuitem" style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.6);
-                            text-decoration: none;
-                            font-size: 12px;
-                            transition: all 0.2s;
-                            cursor: pointer;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.6)'">
-                            <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                            <span>Academic Reports</span>
-                        </a>
-                    </li>
-                    <li style="margin-bottom: 1px;" role="none">
-                        <a href="#" data-tab="resources" role="menuitem" style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.6);
-                            text-decoration: none;
-                            font-size: 12px;
-                            transition: all 0.2s;
-                            cursor: pointer;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.6)'">
-                            <i class="fas fa-folder-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                            <span>Resources</span>
-                        </a>
-                    </li>
-                    <li style="margin-bottom: 1px;" role="none">
-                        <a href="#" data-tab="nurseiq" role="menuitem" style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 8px 14px;
-                            border-radius: 8px;
-                            color: rgba(255,255,255,0.6);
-                            text-decoration: none;
-                            font-size: 12px;
-                            transition: all 0.2s;
-                            cursor: pointer;
-                        " onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.6)'">
-                            <i class="fas fa-brain" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                            <span>NurseIQ</span>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-            
-            <!-- ATTENDANCE -->
-            <li style="margin-bottom: 2px;" role="none">
-                <a href="#" data-tab="attendance" role="menuitem" style="
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-video" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                    <span>Online Learning</span>
+                </a></li>
+                <li style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 14px;"></li>
+                <li><a href="#" data-tab="hub-exam-card" style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
                     color: rgba(255,255,255,0.7);
                     text-decoration: none;
                     font-size: 13px;
-                    font-weight: 500;
                     transition: all 0.2s;
-                    cursor: pointer;
-                " onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                    <span style="
-                        position: relative;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                    ">
-                        <i class="fas fa-check-double" style="font-size: 16px;"></i>
-                    </span>
-                    <span style="flex: 1;">Attendance</span>
-                    <span id="attendanceBadge" style="display: none; background: #ef4444; color: white; padding: 0 8px; border-radius: 12px; font-size: 10px; font-weight: 700; animation: pulse 2s infinite;">0</span>
-                </a>
-            </li>
-            
-            <!-- MESSAGES -->
-            <li style="margin-bottom: 2px;" role="none">
-                <a href="#" data-tab="messages" role="menuitem" style="
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-id-card" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                    <span>Exam Card</span>
+                </a></li>
+                <li><a href="#" data-tab="hub-lecture-card" style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
                     color: rgba(255,255,255,0.7);
                     text-decoration: none;
                     font-size: 13px;
-                    font-weight: 500;
                     transition: all 0.2s;
-                    cursor: pointer;
-                " onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                    <span style="
-                        position: relative;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                    ">
-                        <i class="fas fa-comment-dots" style="font-size: 16px;"></i>
-                    </span>
-                    <span style="flex: 1;">Messages</span>
-                    <span id="messagesBadge" style="display: none; background: #ef4444; color: white; padding: 0 8px; border-radius: 12px; font-size: 10px; font-weight: 700; animation: pulse 2s infinite;">0</span>
-                </a>
-            </li>
-            
-            <!-- SUPPORT TICKETS -->
-            <li style="margin-bottom: 2px;" role="none">
-                <a href="#" data-tab="support-tickets" role="menuitem" style="
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-chalkboard-teacher" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                    <span>Lecture Card</span>
+                </a></li>
+                <li style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 14px;"></li>
+                <li><a href="#" data-tab="cats" style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
                     color: rgba(255,255,255,0.7);
                     text-decoration: none;
                     font-size: 13px;
-                    font-weight: 500;
                     transition: all 0.2s;
-                    cursor: pointer;
-                " onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                    <span style="
-                        position: relative;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                    ">
-                        <i class="fas fa-ticket-alt" style="font-size: 16px;"></i>
-                    </span>
-                    <span style="flex: 1;">Support Tickets</span>
-                    <span id="ticketsBadge" style="display: none; background: #f59e0b; color: white; padding: 0 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">0</span>
-                </a>
-            </li>
-            
-            <!-- REVIEWS -->
-            <li style="margin-bottom: 2px;" role="none">
-                <a href="#" data-tab="reviews" role="menuitem" style="
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                    <span>Exams & Grades</span>
+                </a></li>
+                <li><a href="#" data-tab="academic-reports" style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
                     color: rgba(255,255,255,0.7);
                     text-decoration: none;
                     font-size: 13px;
-                    font-weight: 500;
                     transition: all 0.2s;
-                    cursor: pointer;
-                " onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                    <span style="
-                        position: relative;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                    ">
-                        <i class="fas fa-star" style="font-size: 16px;"></i>
-                    </span>
-                    <span style="flex: 1;">Reviews</span>
-                    <span id="reviewsBadge" style="display: none; background: #f59e0b; color: white; padding: 0 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">0</span>
-                </a>
-            </li>
-            
-            <!-- NEWSLETTER -->
-            <li style="margin-bottom: 2px;" role="none">
-                <a href="#" data-tab="newsletter" role="menuitem" style="
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                    <span>Academic Reports</span>
+                </a></li>
+                <li><a href="#" data-tab="resources" style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 14px;
-                    border-radius: 10px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
                     color: rgba(255,255,255,0.7);
                     text-decoration: none;
                     font-size: 13px;
-                    font-weight: 500;
                     transition: all 0.2s;
-                    cursor: pointer;
-                " onmouseover="this.style.background='rgba(255,255,255,0.06)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                    <span style="
-                        position: relative;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                    ">
-                        <i class="fas fa-envelope" style="font-size: 16px;"></i>
-                    </span>
-                    <span style="flex: 1;">Newsletter</span>
-                    <span id="newsletterBadge" style="display: none; background: #3b82f6; color: white; padding: 0 8px; border-radius: 12px; font-size: 10px; font-weight: 700;">0</span>
-                </a>
-            </li>
-            
-        </ul>
-    </nav>
-    
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-folder-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                    <span>Resources</span>
+                </a></li>
+                <li><a href="#" data-tab="nurseiq" style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.7);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-brain" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                    <span>NurseIQ</span>
+                </a></li>
+            </ul>
+        </li>
+
+        <!-- ATTENDANCE -->
+        <li style="margin-bottom: 2px;">
+            <a href="#" data-tab="attendance" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: rgba(255,255,255,0.8);
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                cursor: pointer;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
+                <i class="fas fa-check-double" style="width: 20px; text-align: center;"></i>
+                <span style="flex: 1;">Attendance</span>
+                <span style="display: none; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="attendanceBadge">0</span>
+            </a>
+        </li>
+
+        <!-- MESSAGES -->
+        <li style="margin-bottom: 2px;">
+            <a href="#" data-tab="messages" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: rgba(255,255,255,0.8);
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                cursor: pointer;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
+                <i class="fas fa-comment-dots" style="width: 20px; text-align: center;"></i>
+                <span style="flex: 1;">Messages</span>
+                <span style="display: none; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="messagesBadge">0</span>
+            </a>
+        </li>
+
+        <!-- SUPPORT TICKETS -->
+        <li style="margin-bottom: 2px;">
+            <a href="#" data-tab="support-tickets" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: rgba(255,255,255,0.8);
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                cursor: pointer;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
+                <i class="fas fa-ticket-alt" style="width: 20px; text-align: center;"></i>
+                <span style="flex: 1;">Support Tickets</span>
+                <span style="display: none; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="ticketsBadge">0</span>
+            </a>
+        </li>
+
+        <!-- REVIEWS -->
+        <li style="margin-bottom: 2px;">
+            <a href="#" data-tab="reviews" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: rgba(255,255,255,0.8);
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                cursor: pointer;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
+                <i class="fas fa-star" style="width: 20px; text-align: center;"></i>
+                <span style="flex: 1;">Reviews</span>
+                <span style="display: none; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="reviewsBadge">0</span>
+            </a>
+        </li>
+
+        <!-- NEWSLETTER -->
+        <li style="margin-bottom: 2px;">
+            <a href="#" data-tab="newsletter" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                border-radius: 10px;
+                color: rgba(255,255,255,0.8);
+                text-decoration: none;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                cursor: pointer;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
+                <i class="fas fa-envelope" style="width: 20px; text-align: center;"></i>
+                <span style="flex: 1;">Newsletter</span>
+                <span style="display: none; background: #3b82f6; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="newsletterBadge">0</span>
+            </a>
+        </li>
+    </ul>
+
     <!-- ===== SIDEBAR FOOTER ===== -->
     <div style="
-        flex-shrink: 0;
-        padding: 12px 16px 16px;
-        border-top: 1px solid rgba(255,255,255,0.06);
-        background: rgba(0,0,0,0.2);
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 14px;
+        margin-top: 6px;
     ">
+        <!-- Footer Actions - 3 BUTTONS -->
         <div style="
             display: flex;
             gap: 6px;
             margin-bottom: 10px;
         ">
+            <!-- REFRESH BUTTON -->
             <button id="sidebarRefreshBtn" title="Refresh Dashboard" style="
                 flex: 1;
                 padding: 8px;
                 border: none;
                 border-radius: 8px;
-                background: rgba(255,255,255,0.04);
-                color: rgba(255,255,255,0.6);
+                background: rgba(255,255,255,0.1);
+                color: rgba(255,255,255,0.8);
                 cursor: pointer;
                 transition: all 0.2s;
                 font-size: 14px;
-            " onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='rgba(255,255,255,0.6)'">
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            " onmouseover="this.style.background='rgba(255,255,255,0.2)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.8)'">
                 <i class="fas fa-sync-alt"></i>
             </button>
+            
+            <!-- THEME BUTTON -->
             <button id="sidebarThemeBtn" title="Toggle Theme" style="
                 flex: 1;
                 padding: 8px;
                 border: none;
                 border-radius: 8px;
-                background: rgba(255,255,255,0.04);
-                color: rgba(255,255,255,0.6);
+                background: rgba(255,255,255,0.1);
+                color: rgba(255,255,255,0.8);
                 cursor: pointer;
                 transition: all 0.2s;
                 font-size: 14px;
-            " onmouseover="this.style.background='rgba(255,255,255,0.08)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.color='rgba(255,255,255,0.6)'">
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            " onmouseover="this.style.background='rgba(255,255,255,0.2)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.8)'">
                 <i class="fas fa-moon"></i>
             </button>
+            
+            <!-- LOGOUT BUTTON -->
             <button id="sidebarLogoutBtn" title="Logout" style="
                 flex: 1;
                 padding: 8px;
                 border: none;
                 border-radius: 8px;
-                background: rgba(239,68,68,0.1);
-                color: #ef4444;
+                background: rgba(239,68,68,0.2);
+                color: #fca5a5;
                 cursor: pointer;
                 transition: all 0.2s;
                 font-size: 14px;
-            " onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            " onmouseover="this.style.background='rgba(239,68,68,0.35)'; this.style.color='#fecaca'" onmouseout="this.style.background='rgba(239,68,68,0.2)'; this.style.color='#fca5a5'">
                 <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
+        
+        <!-- Version & Status -->
         <div style="
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 10px;
-            color: #64748b;
+            color: rgba(255,255,255,0.4);
         ">
             <span>Portal v2.1</span>
-            <span style="display: flex; align-items: center; gap: 4px;">
+            <span id="sidebarOnlineStatus" style="display: flex; align-items: center; gap: 4px;">
                 <span style="
                     display: inline-block;
                     width: 6px;
@@ -1007,7 +891,6 @@
             </span>
         </div>
     </div>
-    
 </aside>
 
 <!-- ===== OVERLAY FOR MOBILE ===== -->
@@ -1019,7 +902,7 @@
     width: 100%;
     height: 100%;
     background: rgba(0,0,0,0.6);
-    z-index: 999;
+    z-index: 998;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
 " role="presentation" aria-hidden="true"></div>
