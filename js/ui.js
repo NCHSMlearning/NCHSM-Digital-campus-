@@ -364,165 +364,179 @@ class UIModule {
         setTimeout(handleRoute, 100);
     }
     
-    // ============================================
-    // 🔧 SETUP EVENT LISTENERS - FIXED
-    // ============================================
+  // ============================================
+// 🔧 SETUP EVENT LISTENERS - FIXED VERSION
+// ============================================
 
-    setupEventListeners() {
-        console.log('🔧 Setting up event listeners...');
+setupEventListeners() {
+    console.log('🔧 Setting up event listeners...');
 
-        // Mobile menu toggle - WITH NULL CHECK
-        if (this.mobileMenuToggle) {
-            try {
-                const newToggle = this.mobileMenuToggle.cloneNode(true);
-                this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
-                this.mobileMenuToggle = newToggle;
-                this.mobileMenuToggle.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.toggleMenu();
-                });
-                console.log('✅ Mobile toggle setup complete');
-            } catch (error) {
-                console.warn('⚠️ Could not setup mobile toggle:', error);
-            }
-        } else {
-            console.warn('⚠️ Mobile menu toggle not found - skipping');
+    // ✅ Mobile menu toggle - FIXED
+    if (this.mobileMenuToggle) {
+        try {
+            const newToggle = this.mobileMenuToggle.cloneNode(true);
+            this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
+            this.mobileMenuToggle = newToggle;
+            this.mobileMenuToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleMenu();
+            });
+            console.log('✅ Mobile toggle setup complete');
+        } catch (error) {
+            console.warn('⚠️ Could not setup mobile toggle:', error);
         }
+    } else {
+        console.warn('⚠️ Mobile menu toggle not found - skipping');
+    }
 
-        // Overlay click - WITH NULL CHECK
-        if (this.overlay) {
-            try {
-                const newOverlay = this.overlay.cloneNode(true);
-                this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
-                this.overlay = newOverlay;
-                this.overlay.addEventListener('click', () => {
-                    this.closeMenu();
-                });
-                console.log('✅ Overlay click setup complete');
-            } catch (error) {
-                console.warn('⚠️ Could not setup overlay:', error);
-            }
-        } else {
-            console.warn('⚠️ Overlay not found - skipping');
+    // ✅ Overlay click - FIXED
+    if (this.overlay) {
+        try {
+            const newOverlay = this.overlay.cloneNode(true);
+            this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
+            this.overlay = newOverlay;
+            this.overlay.addEventListener('click', () => {
+                this.closeMenu();
+            });
+            console.log('✅ Overlay click setup complete');
+        } catch (error) {
+            console.warn('⚠️ Could not setup overlay:', error);
         }
+    } else {
+        console.warn('⚠️ Overlay not found - skipping');
+    }
 
-        // Dropdown toggle setup
-        this.setupDropdownToggle();
+    // ✅ Dropdown toggle setup
+    this.setupDropdownToggle();
 
-        // Sidebar navigation links - WITH NULL CHECK
-        const allNavLinks = document.querySelectorAll('.nav a[data-tab], .dropdown-submenu a[data-tab], .footer-links a[data-tab], .nav-premium a[data-tab], .dropdown-submenu-premium a[data-tab]');
-        console.log(`🔗 Found ${allNavLinks.length} navigation links`);
+    // ✅ SIDEBAR NAVIGATION LINKS - FIXED
+    const allNavLinks = document.querySelectorAll(
+        '.nav a[data-tab], .dropdown-submenu a[data-tab], ' +
+        '.footer-links a[data-tab], .nav-premium a[data-tab], ' +
+        '.dropdown-submenu-premium a[data-tab], #sidebar a[data-tab]'
+    );
+    console.log(`🔗 Found ${allNavLinks.length} navigation links`);
 
-        allNavLinks.forEach(link => {
+    allNavLinks.forEach(link => {
+        try {
+            // Skip dropdown toggles
+            if (link.classList.contains('dropdown-toggle') || 
+                link.classList.contains('dropdown-toggle-premium')) {
+                return;
+            }
+
+            const tabId = link.getAttribute('data-tab');
+            if (!tabId || !this.isValidTab(tabId)) return;
+
+            // Clone to remove old listeners
+            const newLink = link.cloneNode(true);
+            link.parentNode.replaceChild(newLink, link);
+
+            newLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                console.log(`🖱️ Link clicked: ${tabId}`);
+                
+                // Close mobile menu if open
+                if (this.isMenuOpen()) this.closeMenu();
+                
+                // Navigate to tab
+                this.navigateToTab(tabId);
+            });
+        } catch (error) {
+            console.warn('⚠️ Could not setup link:', error);
+        }
+    });
+
+    // ✅ Header logout - FIXED
+    if (this.headerLogout) {
+        try {
+            const newLogout = this.headerLogout.cloneNode(true);
+            this.headerLogout.parentNode.replaceChild(newLogout, this.headerLogout);
+            this.headerLogout = newLogout;
+            this.headerLogout.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
+            console.log('✅ Logout button setup complete');
+        } catch (error) {
+            console.warn('⚠️ Could not setup logout:', error);
+        }
+    }
+
+    // ✅ Header refresh - FIXED
+    if (this.headerRefresh) {
+        try {
+            const newRefresh = this.headerRefresh.cloneNode(true);
+            this.headerRefresh.parentNode.replaceChild(newRefresh, this.headerRefresh);
+            this.headerRefresh = newRefresh;
+            this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
+            console.log('✅ Refresh button setup complete');
+        } catch (error) {
+            console.warn('⚠️ Could not setup refresh:', error);
+        }
+    }
+
+    // ✅ Utility buttons
+    if (this.clearCacheBtn) {
+        this.clearCacheBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.clearCache();
+        });
+    }
+
+    if (this.exportDataBtn) {
+        this.exportDataBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.exportData();
+        });
+    }
+
+    if (this.systemInfoBtn) {
+        this.systemInfoBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showSystemInfo();
+        });
+    }
+
+    // ✅ Dashboard stat cards
+    setTimeout(() => {
+        document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
             try {
-                const newLink = link.cloneNode(true);
-                link.parentNode.replaceChild(newLink, link);
-
-                newLink.addEventListener('click', (e) => {
+                const newCard = card.cloneNode(true);
+                card.parentNode.replaceChild(newCard, card);
+                newCard.addEventListener('click', (e) => {
                     e.preventDefault();
-                    e.stopPropagation();
-
-                    const tabId = newLink.getAttribute('data-tab');
+                    const tabId = newCard.getAttribute('data-tab');
                     if (tabId && this.isValidTab(tabId)) {
-                        console.log(`🖱️ Link clicked: ${tabId}`);
                         if (this.isMenuOpen()) this.closeMenu();
                         this.navigateToTab(tabId);
                     }
                 });
             } catch (error) {
-                console.warn('⚠️ Could not setup link:', error);
+                // Silently skip
             }
         });
+    }, 1000);
 
-        // Header logout - WITH NULL CHECK
-        if (this.headerLogout) {
-            try {
-                const newLogout = this.headerLogout.cloneNode(true);
-                this.headerLogout.parentNode.replaceChild(newLogout, this.headerLogout);
-                this.headerLogout = newLogout;
-                this.headerLogout.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.logout();
-                });
-                console.log('✅ Logout button setup complete');
-            } catch (error) {
-                console.warn('⚠️ Could not setup logout:', error);
-            }
+    // ✅ Close menu on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.isMenuOpen()) {
+            this.closeMenu();
         }
+    });
 
-        // Header refresh - WITH NULL CHECK
-        if (this.headerRefresh) {
-            try {
-                const newRefresh = this.headerRefresh.cloneNode(true);
-                this.headerRefresh.parentNode.replaceChild(newRefresh, this.headerRefresh);
-                this.headerRefresh = newRefresh;
-                this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
-                console.log('✅ Refresh button setup complete');
-            } catch (error) {
-                console.warn('⚠️ Could not setup refresh:', error);
-            }
+    // ✅ Close menu on resize
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768 && this.isMenuOpen()) {
+            this.closeMenu();
         }
+    });
 
-        // Utility buttons - WITH NULL CHECKS
-        if (this.clearCacheBtn) {
-            this.clearCacheBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.clearCache();
-            });
-        }
-
-        if (this.exportDataBtn) {
-            this.exportDataBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.exportData();
-            });
-        }
-
-        if (this.systemInfoBtn) {
-            this.systemInfoBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.showSystemInfo();
-            });
-        }
-
-        // Dashboard stat cards
-        setTimeout(() => {
-            document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
-                try {
-                    const newCard = card.cloneNode(true);
-                    card.parentNode.replaceChild(newCard, card);
-                    newCard.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const tabId = newCard.getAttribute('data-tab');
-                        if (tabId && this.isValidTab(tabId)) {
-                            if (this.isMenuOpen()) this.closeMenu();
-                            this.navigateToTab(tabId);
-                        }
-                    });
-                } catch (error) {
-                    // Silently skip
-                }
-            });
-        }, 1000);
-
-        // Close menu on Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isMenuOpen()) {
-                this.closeMenu();
-            }
-        });
-
-        // Close menu on resize
-        window.addEventListener('resize', () => {
-            if (window.innerWidth > 768 && this.isMenuOpen()) {
-                this.closeMenu();
-            }
-        });
-
-        console.log('✅ Event listeners setup complete');
-    }
-    
+    console.log('✅ Event listeners setup complete');
+}
     // ============================================
     // DROPDOWN TOGGLE SETUP
     // ============================================
@@ -1808,3 +1822,75 @@ document.addEventListener('appReady', () => {
 
 console.log('✅ UI Module loaded successfully with Reviews & Newsletter support!');
 console.log('✅ Sidebar auto-updater registered!');
+// ============================================
+// 🔧 FIX: ACCESS SIDEBAR FROM PARENT PAGE
+// ============================================
+
+function fixParentSidebar() {
+    try {
+        const parent = window.parent;
+        if (parent === window) {
+            console.log('📌 Not in an iframe, sidebar is in this page');
+            return;
+        }
+        
+        console.log('📌 Page is in an iframe, accessing parent sidebar...');
+        
+        const parentDoc = parent.document;
+        const sidebar = parentDoc.getElementById('sidebar');
+        
+        if (!sidebar) {
+            console.log('❌ Sidebar not found in parent');
+            return;
+        }
+        
+        console.log('✅ Sidebar found in parent! Fixing links...');
+        
+        // Fix parent sidebar links to target iframe
+        const links = sidebar.querySelectorAll('a[data-tab]');
+        console.log(`📊 Found ${links.length} links in parent sidebar`);
+        
+        links.forEach(link => {
+            const tabId = link.getAttribute('data-tab');
+            if (!tabId || link.classList.contains('dropdown-toggle')) return;
+            
+            // Remove old listeners
+            const newLink = link.cloneNode(true);
+            link.parentNode.replaceChild(newLink, link);
+            
+            newLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`🖱️ Parent sidebar clicked: ${tabId}`);
+                
+                // Find iframe content
+                const iframe = parentDoc.querySelector('iframe');
+                if (iframe) {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    
+                    // Show tab in iframe
+                    iframeDoc.querySelectorAll('.tab-content').forEach(t => {
+                        t.style.display = 'none';
+                        t.classList.remove('active');
+                    });
+                    
+                    const target = iframeDoc.getElementById(tabId);
+                    if (target) {
+                        target.style.display = 'block';
+                        target.classList.add('active');
+                        console.log(`✅ Tab "${tabId}" opened in iframe`);
+                    }
+                }
+            });
+        });
+        
+        console.log('✅ Parent sidebar links fixed!');
+        
+    } catch (error) {
+        console.warn('⚠️ Could not access parent:', error.message);
+    }
+}
+
+// Run the fix after UI initializes
+setTimeout(fixParentSidebar, 1000);
+setTimeout(fixParentSidebar, 3000);
