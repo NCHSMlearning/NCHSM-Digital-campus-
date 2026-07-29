@@ -9,27 +9,36 @@
     padding: 0;
 }
 
-/* ========== WELCOME SECTION ========== */
+/* ========== WELCOME SECTION - PREMIUM PURPLE ========== */
 .welcome {
-    background: linear-gradient(135deg, #0B2A4A, #2A5C9A);
+    background: linear-gradient(135deg, #1a1a2e, #4C1D95, #7c3aed) !important;
+    border: 2px solid #FDB913 !important;
     border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: 24px 30px 20px;
+    margin-bottom: 24px;
     color: white;
     text-align: center;
+    box-shadow: 0 8px 40px rgba(76, 29, 149, 0.4) !important;
+    transition: all 0.3s ease;
+}
+
+.welcome:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 50px rgba(76, 29, 149, 0.5) !important;
 }
 
 .welcome h1 {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 8px;
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 4px;
     color: white;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.2);
 }
 
 .welcome p {
-    font-size: 13px;
+    font-size: 16px;
+    margin-top: 4px;
     opacity: 0.9;
-    margin: 0;
     color: rgba(255,255,255,0.9);
 }
 
