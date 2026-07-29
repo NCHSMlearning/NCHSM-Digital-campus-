@@ -2587,14 +2587,28 @@ async function loadAllUsers(page = 1, filters = {}) {
     const startTime = performance.now();
     console.log('🚀 Loading users (optimized)...');
     
-    const tbody = document.getElementById('users-table');
-    if (!tbody) return;
+    // ✅ FIX: Use the correct tbody ID
+    const tbody = document.getElementById('users-table-body');
+    if (!tbody) {
+        console.error('❌ users-table-body not found');
+        return;
+    }
     
-    tbody.innerHTML = '<tr><td colspan="11"><div class="loading-spinner"></div> Loading users...</td></tr>';
+    // Show loading state
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="11" style="padding: 60px 20px; text-align: center;">
+                <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="color: #6b7280; margin: 0;">Loading users...</p>
+            </td>
+        </tr>
+    `;
     
     try {
         // ✅ FIRST: Populate filter dropdowns if they are empty
-        await populateUserFilterDropdownsIfEmpty();
+        if (typeof populateUserFilterDropdownsIfEmpty === 'function') {
+            await populateUserFilterDropdownsIfEmpty();
+        }
         
         let query = sb.from(USER_PROFILE_TABLE).select('*', { count: 'exact' });
         
@@ -2657,30 +2671,55 @@ async function loadAllUsers(page = 1, filters = {}) {
         renderUserPagination(count || 0, page);
         updateUserStats(users, count);
         
+        // ✅ Store load time for display
+        window._lastLoadTime = loadTime;
+        
         return { users, total: count };
         
     } catch (error) {
         console.error('❌ Error loading users:', error);
-        tbody.innerHTML = `<tr><td colspan="11" style="color:red;">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="11" style="padding: 40px 20px; text-align: center; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 8px;"></i>
+                    Error: ${error.message}
+                    <br>
+                    <button onclick="loadAllUsers(1, USERS_STATE.filters)" style="margin-top: 10px; padding: 6px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </td>
+            </tr>
+        `;
         return { users: [], total: 0 };
     }
 }
-
-
 // ============================================
-// 📊 RENDER USERS TABLE
+// 📊 RENDER USERS TABLE - FIXED TBODY ID
 // ============================================
 
 function renderUsersTable(users, docCache = {}) {
-    const tbody = document.getElementById('users-table');
-    if (!tbody) return;
-    
-    if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px;">👥 No users found</td></tr>';
+    // ✅ FIX: Use the correct tbody ID
+    const tbody = document.getElementById('users-table-body');
+    if (!tbody) {
+        console.error('❌ users-table-body not found');
         return;
     }
     
-    tbody.innerHTML = '';
+    if (!users || users.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="11" style="text-align:center; padding: 60px 20px; color: #94a3b8;">
+                    <i class="fas fa-users" style="font-size: 40px; display: block; margin-bottom: 12px; opacity: 0.3;"></i>
+                    No users found
+                    <br>
+                    <small style="font-size: 12px;">Try adjusting your filters or add a new user</small>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
     
     for (const u of users) {
         const userDocs = docCache[u.user_id] || {};
@@ -2709,67 +2748,75 @@ function renderUsersTable(users, docCache = {}) {
         
         const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
 
-        tbody.innerHTML += `
-            <tr>
-                <td><code style="font-size:11px;">${escapeHtml(u.user_id.substring(0, 8))}...</code></td>
-                <td><strong>${escapeHtml(u.full_name)}</strong></td>
-                <td style="font-size:13px;">${escapeHtml(u.email)}</td>
-                <td>
-                    <select class="btn" style="padding:2px 8px; font-size:12px;" 
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" 
+                onmouseover="this.style.background='#f8fafc'" 
+                onmouseout="this.style.background='white'">
+                <td style="padding: 10px 14px;">
+                    <code style="font-size: 11px; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">${escapeHtml(u.user_id.substring(0, 8))}...</code>
+                </td>
+                <td style="padding: 10px 14px; font-weight: 500;">${escapeHtml(u.full_name)}</td>
+                <td style="padding: 10px 14px; font-size: 13px; color: #475569;">${escapeHtml(u.email)}</td>
+                <td style="padding: 10px 14px; text-align: center;">
+                    <select style="padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; cursor: pointer;" 
                             onchange="updateUserRole('${escapeHtml(u.user_id)}', this.value, '${escapeHtml(u.full_name)}')" 
                             ${u.role === 'superadmin' ? 'disabled' : ''}>
                         ${roleOptions}
                     </select>
                 </td>
-                <td>
-                    <div style="font-weight:500; font-size:13px;">${escapeHtml(programName)}</div>
-                    <div class="program-badge ${programBadgeClass}" style="font-size:10px; margin-top:2px;">
+                <td style="padding: 10px 14px;">
+                    <div style="font-weight: 500; font-size: 13px;">${escapeHtml(programName)}</div>
+                    <div style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${programType === 'TVET' ? '#fef3c7' : '#dbeafe'}; color: ${programType === 'TVET' ? '#92400e' : '#1e40af'}; margin-top: 2px;">
                         <i class="fas ${programIcon}"></i> ${programType}
                     </div>
                 </td>
-                <td style="font-size:13px;">${escapeHtml(intakeDisplay)}</td>
-                <td>
-                    <span class="badge ${statusColors[kcseStatus]}" 
-                          style="cursor:pointer; font-size:11px;" 
+                <td style="padding: 10px 14px; text-align: center; font-size: 13px;">${escapeHtml(intakeDisplay)}</td>
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="cursor:pointer; font-size: 11px; padding: 2px 10px; border-radius: 12px; background: ${kcseStatus === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${kcseStatus === 'pending' ? '#92400e' : '#065f46'};" 
                           onclick="viewDocument('${escapeHtml(u.user_id)}','kcse')">
                         ${kcseStatus.toUpperCase()}
-                        <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
+                        <i class="fas fa-eye" style="font-size: 9px; margin-left: 3px;"></i>
                     </span>
                 </td>
-                <td>
-                    <span class="badge ${statusColors[idStatus]}" 
-                          style="cursor:pointer; font-size:11px;" 
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="cursor:pointer; font-size: 11px; padding: 2px 10px; border-radius: 12px; background: ${idStatus === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${idStatus === 'pending' ? '#92400e' : '#065f46'};" 
                           onclick="viewDocument('${escapeHtml(u.user_id)}','id')">
                         ${idStatus.toUpperCase()}
-                        <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
+                        <i class="fas fa-eye" style="font-size: 9px; margin-left: 3px;"></i>
                     </span>
                 </td>
-                <td>
+                <td style="padding: 10px 14px; text-align: center;">
                     ${u.profile_photo_url ? 
                         `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
                               alt="Photo" 
-                              style="width:35px;height:35px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
+                              style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; cursor: pointer; border: 2px solid #e5e7eb;" 
                               onclick="viewDocument('${escapeHtml(u.user_id)}','photo')"
                               onerror="this.style.display='none';">` :
-                        `<span class="badge badge-secondary" style="font-size:11px;cursor:pointer;" onclick="viewDocument('${escapeHtml(u.user_id)}','photo')">No photo</span>`
+                        `<span style="font-size: 11px; cursor: pointer; color: #94a3b8;" onclick="viewDocument('${escapeHtml(u.user_id)}','photo')">No photo</span>`
                     }
                 </td>
-                <td class="${statusClass}" style="font-size:12px; font-weight:600;">${statusText}</td>
-                <td>
-                    <button class="btn-action" onclick="openEditUserModal('${escapeHtml(u.user_id)}')" title="Edit User">
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: ${statusClass === 'status-approved' ? '#d1fae5' : statusClass === 'status-danger' ? '#fee2e2' : '#fef3c7'}; color: ${statusClass === 'status-approved' ? '#065f46' : statusClass === 'status-danger' ? '#991b1b' : '#92400e'};">
+                        ${statusText}
+                    </span>
+                </td>
+                <td style="padding: 10px 14px; text-align: center; white-space: nowrap;">
+                    <button onclick="openEditUserModal('${escapeHtml(u.user_id)}')" style="background: #3b82f6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
                         <i class="fas fa-edit"></i>
                     </button>
-                    ${!isApproved ? `<button class="btn-approve" onclick="approveUser('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" style="font-size:11px; padding:2px 10px; border-radius:4px;">Approve</button>` : ''}
-                    <button class="btn-delete" onclick="deleteProfile('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" style="font-size:11px; padding:2px 10px; border-radius:4px;">
+                    ${!isApproved ? `<button onclick="approveUser('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" style="background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-left: 4px; transition: all 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                        <i class="fas fa-check"></i>
+                    </button>` : ''}
+                    <button onclick="deleteProfile('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-left: 4px; transition: all 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
-            </tr>`;
+            </tr>
+        `;
     }
-
-    filterTable('user-search', 'users-table', [1, 2, 4]);
+    
+    tbody.innerHTML = html;
 }
-
 // ============================================
 // 📊 UPDATE USER STATS
 // ============================================
