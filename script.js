@@ -4594,15 +4594,16 @@ loadBrevoApiKey().then(success => {
 // 📧 EXAM NOTIFICATION FUNCTIONS
 // ============================================
 
+// ============================================
+// 📧 EXAM NOTIFICATION FUNCTIONS - FIXED
+// ✅ Uses Edge Function (same as release exam)
+// ============================================
+
 /**
  * Send exam posted notification to a single student
+ * ✅ FIXED: Uses Edge Function instead of direct Brevo API
  */
 async function sendExamPostedNotification(studentEmail, studentName, examName, examDate, examTime, examType, program, block, duration, examLink) {
-    if (!BREVO_CONFIG || !BREVO_CONFIG.apiKey) {
-        console.warn('⚠️ Brevo not configured. Notification skipped.');
-        return { success: false, error: 'Brevo not configured' };
-    }
-    
     try {
         // Format exam date
         let formattedDate = examDate || 'TBA';
@@ -4619,108 +4620,118 @@ async function sendExamPostedNotification(studentEmail, studentName, examName, e
             } catch(e) {}
         }
         
+        // Escape HTML special characters
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+        
         // Build email HTML
         const htmlContent = `
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
-    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-        <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
-            <div style="display: inline-block; background: #0A3D62; border-radius: 50%; padding: 12px;">
-                <span style="font-size: 32px;">📝</span>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Exam Posted</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background: #f0f4f8; }
+        .container { max-width: 580px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px; text-align: center; color: white; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header p { margin: 4px 0 0; opacity: 0.8; }
+        .body { padding: 30px 35px; }
+        .exam-details { background: #F8FAFC; padding: 20px; border-radius: 12px; margin: 16px 0; }
+        .exam-details h3 { margin: 0 0 12px; color: #0A3D62; }
+        .exam-details p { margin: 6px 0; color: #2c3e50; display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+        .exam-details p:last-child { border-bottom: none; }
+        .exam-details .label { color: #64748B; font-weight: 500; }
+        .exam-details .value { color: #0A3D62; font-weight: 600; text-align: right; }
+        .btn { display: inline-block; background: #0A3D62; color: white; padding: 14px 35px; border-radius: 10px; text-decoration: none; font-weight: 600; }
+        .footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .badge-cat { background: #DBEAFE; color: #1E40AF; }
+        .badge-exam { background: #FEF3C7; color: #92400E; }
+        @media (max-width: 480px) { .body { padding: 20px; } .header { padding: 20px; } .exam-details p { flex-direction: column; } .exam-details .value { text-align: left; margin-top: 2px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>📝 New Exam Posted</h1>
+                <p>Nakuru College of Health Sciences and Management</p>
             </div>
-            <h2 style="color: #0A3D62; margin: 10px 0 5px;">New Exam Posted!</h2>
-            <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
-            <p style="color: #10b981; margin: 5px 0 0; font-size: 12px; font-weight: 600;">🔔 A new exam has been scheduled for you</p>
+            
+            <div class="body">
+                <p>Dear <strong>${escapeHtml(studentName) || 'Student'}</strong>,</p>
+                <p>A new exam has been posted for you to take.</p>
+                
+                <div class="exam-details">
+                    <h3>${escapeHtml(examName) || 'New Exam'}</h3>
+                    <p><span class="label">📚 Type</span> <span class="value"><span class="badge ${examType?.toUpperCase().includes('CAT') ? 'badge-cat' : 'badge-exam'}">${escapeHtml(examType) || 'Exam'}</span></span></p>
+                    <p><span class="label">📅 Date</span> <span class="value">${formattedDate}</span></p>
+                    <p><span class="label">⏰ Time</span> <span class="value">${escapeHtml(examTime) || '09:00'}</span></p>
+                    <p><span class="label">⏱️ Duration</span> <span class="value">${duration || 30} minutes</span></p>
+                    <p><span class="label">📚 Program</span> <span class="value">${escapeHtml(program) || 'N/A'}</span></p>
+                    ${block ? `<p><span class="label">📋 Block/Term</span> <span class="value">${escapeHtml(block)}</span></p>` : ''}
+                </div>
+                
+                <div style="text-align: center; margin: 24px 0 16px;">
+                    <a href="${escapeHtml(examLink) || 'https://nchsm.co.ke/exams'}" class="btn">
+                        📝 Take Exam Now
+                    </a>
+                </div>
+                
+                <p style="font-size: 0.85rem; color: #64748B; margin-top: 16px;">
+                    💡 Please ensure you have a stable internet connection before starting.
+                </p>
+            </div>
+            
+            <div class="footer">
+                <p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
+                <p style="margin: 4px 0 0; font-size: 0.75rem;">This is an automated message from NCHSM Exam System.</p>
+            </div>
         </div>
-        
-        <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
-            <p style="margin: 0; font-size: 16px; color: #0A3D62;">
-                👋 <strong>Dear ${studentName}</strong>
-            </p>
-            <p style="margin: 8px 0 0; color: #1e293b;">
-                A new assessment has been scheduled for your class. Please review the details below.
-            </p>
-        </div>
-        
-        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-            <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Exam Details</h4>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📚 Exam</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${escapeHtml(examName)}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📋 Type</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${escapeHtml(examType || 'EXAM')}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📅 Date</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${formattedDate}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">🕐 Time</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${examTime || '09:00'}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">⏱️ Duration</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${duration || 60} minutes</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📚 Program</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${escapeHtml(program)}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">📌 Block</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${escapeHtml(block)}</td></tr>
-            </table>
-        </div>
-        
-        <div style="text-align: center; margin: 20px 0;">
-            <a href="https://nchsm.co.ke/exams" 
-               style="background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
-                🚪 Go to Exams Portal
-            </a>
-        </div>
-        
-        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
-            <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Need Help?</h5>
-            <p style="margin: 0; color: #78350F; font-size: 13px;">
-                Contact NCHSM Examinations Office:<br>
-                📧 portal.nchsm@gmail.com<br>
-                📞 0790969743 | 0702432987
-            </p>
-        </div>
-        
-        <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">
-            NCHSM Examinations Office<br>
-            © ${new Date().getFullYear()} Nakuru College of Health Sciences and Management
-        </p>
     </div>
 </body>
 </html>
         `;
         
-        // Send via Brevo
-        const response = await fetch(BREVO_CONFIG.apiUrl, {
+        // ✅ USE THE WORKING EDGE FUNCTION (SAME AS RELEASE EXAM)
+        const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
             method: 'POST',
             headers: {
-                'api-key': BREVO_CONFIG.apiKey,
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                sender: {
-                    email: 'noreply@nchsm.co.ke/',
-                    name: 'NCHSM Examinations Office'
-                },
-                to: [{ email: studentEmail }],
-                subject: `📝 New Exam Posted - ${examName}`,
-                htmlContent: htmlContent
+                to: studentEmail,
+                subject: `📝 New Exam Available: ${escapeHtml(examName) || 'Exam'}`,
+                html: htmlContent,
+                from: 'NCHSM Exam Office <admin@nchsm.co.ke>'  // ✅ Verified sender
             })
         });
-        
+
         const data = await response.json();
         
-        if (response.ok) {
+        if (data.success) {
             console.log(`✅ Exam notification sent to ${studentEmail}`);
             return { success: true, data };
         } else {
-            console.error('❌ Notification failed:', data);
-            return { success: false, error: data };
+            console.error(`❌ Email failed for ${studentEmail}:`, data.error);
+            return { success: false, error: data.error || 'Email sending failed' };
         }
-        
-    } catch(e) {
-        console.warn('⚠️ Notification error:', e);
-        return { success: false, error: e.message };
+
+    } catch (error) {
+        console.error(`❌ Notification error for ${studentEmail}:`, error);
+        return { success: false, error: error.message };
     }
 }
 
@@ -4761,42 +4772,62 @@ async function notifyAllStudentsAboutExam(examData) {
         
         let successCount = 0;
         let failCount = 0;
+        let errors = [];
         
-        for (const student of students) {
-            try {
-                const result = await sendExamPostedNotification(
-                    student.email,
-                    student.full_name || 'Student',
-                    examData.title || examData.exam_name || 'New Exam',
-                    examData.exam_date,
-                    examData.exam_start_time || '09:00',
-                    examData.exam_type || 'EXAM',
-                    student.program || examData.program_type,
-                    student.block || examData.block,
-                    examData.duration_minutes || 60,
-                    examData.online_link || examData.exam_link
-                );
-                
-                if (result.success) successCount++;
-                else failCount++;
-                
-                await new Promise(r => setTimeout(r, 300));
-                
-            } catch (err) {
-                console.error(`❌ Failed for ${student.email}:`, err);
-                failCount++;
+        // Send in batches of 10 to avoid rate limiting
+        const batchSize = 10;
+        for (let i = 0; i < students.length; i += batchSize) {
+            const batch = students.slice(i, i + batchSize);
+            
+            await Promise.all(batch.map(async (student) => {
+                try {
+                    const result = await sendExamPostedNotification(
+                        student.email,
+                        student.full_name || 'Student',
+                        examData.title || examData.exam_name || 'New Exam',
+                        examData.exam_date,
+                        examData.exam_start_time || '09:00',
+                        examData.exam_type || 'EXAM',
+                        student.program || examData.program_type,
+                        student.block || examData.block,
+                        examData.duration_minutes || 60,
+                        examData.online_link || examData.exam_link
+                    );
+                    
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                        errors.push({ email: student.email, error: result.error });
+                    }
+                } catch (err) {
+                    console.error(`❌ Failed for ${student.email}:`, err);
+                    failCount++;
+                    errors.push({ email: student.email, error: err.message });
+                }
+            }));
+            
+            // Delay between batches
+            if (i + batchSize < students.length) {
+                await new Promise(r => setTimeout(r, 1000));
             }
         }
         
         console.log(`✅ Notifications sent: ${successCount} success, ${failCount} failed`);
-        return { success: true, successCount, failCount, total: students.length };
+        
+        return { 
+            success: true, 
+            successCount, 
+            failCount, 
+            total: students.length,
+            errors: errors.slice(0, 10) // Return first 10 errors
+        };
         
     } catch (error) {
         console.error('❌ Error sending notifications:', error);
         return { success: false, error: error.message };
     }
 }
-
 // ========== CREATE EXAM - WITH NOTIFICATIONS ==========
 async function handleAddExam(e) {
     e.preventDefault();
