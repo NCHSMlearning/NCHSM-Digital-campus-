@@ -4903,7 +4903,7 @@
         <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
             <div style="flex: 1; min-width: 180px; position: relative;">
                 <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                <input type="text" id="user-search" placeholder="Search by name, email or ID..." 
+                <input type="text" id="user-search" placeholder="🔍 Search by name, email or ID..." 
                        style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.2s;">
             </div>
             
@@ -4944,23 +4944,45 @@
         </div>
     </div>
 
-    <!-- Users Table -->
+    <!-- ✅ TABLE WITH PROPER HEADERS -->
     <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <div style="overflow-x: auto;">
             <table id="users-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">ID</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">Name</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">Email</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">Role</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">Program</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">Intake</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">📄 KCSE</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">🪪 ID</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">📸 Photo</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">Status</th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">Actions</th>
+                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
+                            <i class="fas fa-hashtag"></i> ID
+                        </th>
+                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
+                            <i class="fas fa-user"></i> Name
+                        </th>
+                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
+                            <i class="fas fa-envelope"></i> Email
+                        </th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
+                            <i class="fas fa-user-tag"></i> Role
+                        </th>
+                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
+                            <i class="fas fa-graduation-cap"></i> Program
+                        </th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
+                            <i class="fas fa-calendar"></i> Intake
+                        </th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
+                            📄 KCSE
+                        </th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
+                            🪪 ID
+                        </th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
+                            📸 Photo
+                        </th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
+                            <i class="fas fa-circle"></i> Status
+                        </th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
+                            <i class="fas fa-cog"></i> Actions
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="users-table-body">
@@ -4976,7 +4998,78 @@
     </div>
 
     <!-- Pagination -->
-    <div id="userPagination" style="display: flex; gap: 6px; justify-content: center; align-items: center; margin-top: 20px; flex-wrap: wrap;"></div>
+<!-- Pagination - Modern Enhanced -->
+<div id="userPagination" style="
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding: 12px 0;
+    flex-wrap: wrap;
+    gap: 12px;
+    border-top: 1px solid #e5e7eb;
+">
+    <!-- Left: Showing info -->
+    <div style="
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #64748b;
+        font-size: 13px;
+    ">
+        <span id="paginationInfo">
+            <i class="fas fa-list"></i> 
+            Showing <strong id="paginationStart">1</strong> - <strong id="paginationEnd">20</strong> 
+            of <strong id="paginationTotal">0</strong> users
+        </span>
+        <span style="
+            background: #f1f5f9;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: #475569;
+        ">
+            <i class="fas fa-clock"></i> <span id="paginationSpeed">0.0</span>s
+        </span>
+    </div>
+
+    <!-- Center: Page buttons -->
+    <div style="
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-wrap: wrap;
+    " id="paginationButtons">
+        <!-- Generated by JavaScript -->
+    </div>
+
+    <!-- Right: Per page selector -->
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="
+            font-size: 12px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        ">
+            <i class="fas fa-eye"></i>
+            <select id="paginationPerPage" onchange="changePerPage(this.value)" style="
+                padding: 4px 8px;
+                border-radius: 6px;
+                border: 1px solid #e2e8f0;
+                font-size: 12px;
+                background: white;
+                cursor: pointer;
+            ">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            per page
+        </label>
+    </div>
+</div>
 </section>
                     <!-- ============================================================ -->
 <!-- ⏳ TAB 2: PENDING APPROVALS - MODERN                         -->
