@@ -3827,7 +3827,7 @@ function getDisplayIntake(program, year) {
 }
 
 // ============================================
-// DELETE PROFILE - PRESERVED
+// DELETE PROFILE - COMPLETE FIX
 // ============================================
 
 async function deleteProfile(userId, fullName, isRejection = false) {
@@ -3841,6 +3841,18 @@ async function deleteProfile(userId, fullName, isRejection = false) {
     if (!confirm(`${action}: ${message}`)) return;
 
     try {
+        // ✅ STEP 1: Get the user's email before deleting
+        const { data: userProfile, error: fetchError } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('user_id, email, full_name')
+            .eq('user_id', userId)
+            .single();
+        
+        if (fetchError) {
+            console.warn('Could not fetch user details:', fetchError);
+        }
+
+        // ✅ STEP 2: Delete from consolidated_user_profiles_table
         const { error: profileError } = await sb
             .from(USER_PROFILE_TABLE)
             .delete()
@@ -3860,38 +3872,117 @@ async function deleteProfile(userId, fullName, isRejection = false) {
 
         console.log('✅ Profile deleted from table');
 
+        // ✅ STEP 3: Delete from Supabase Auth (CRITICAL)
         let authDeleted = false;
+        let authError = null;
+        
         try {
-            const { error: authErr } = await sb.auth.admin.deleteUser(userId);
-            if (authErr) {
-                console.warn('⚠️ Auth deletion failed (may need manual cleanup):', authErr);
-            } else {
-                authDeleted = true;
-                console.log('✅ Auth user deleted');
+            // ✅ Get the admin session token
+            const { data: { session }, error: sessionError } = await sb.auth.getSession();
+            
+            if (sessionError || !session) {
+                console.warn('⚠️ No active session, cannot delete auth user');
+                throw new Error('No active session');
             }
+            
+            // ✅ Call the admin delete user edge function
+            const response = await fetch(
+                'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-delete-user',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
+                    body: JSON.stringify({ 
+                        userId: userId,
+                        email: userProfile?.email || ''
+                    })
+                }
+            );
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.error || 'Auth deletion failed');
+            }
+            
+            authDeleted = true;
+            console.log('✅ Auth user deleted successfully:', result);
+            
         } catch (authError) {
-            console.warn('⚠️ Auth deletion error:', authError);
+            console.warn('⚠️ Auth deletion failed:', authError.message);
+            
+            // ✅ Try alternative method: Update password to lock out user
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (session) {
+                    // Lock the user out by setting a random password
+                    await sb.auth.admin.updateUserById(userId, {
+                        password: 'LOCKED_' + Date.now() + '_' + Math.random().toString(36)
+                    });
+                    console.log('🔒 Auth user locked out (password changed)');
+                    // Then try to delete again
+                    try {
+                        await sb.auth.admin.deleteUser(userId);
+                        authDeleted = true;
+                        console.log('✅ Auth user deleted on retry');
+                    } catch (retryError) {
+                        console.warn('⚠️ Retry delete failed:', retryError.message);
+                    }
+                }
+            } catch (lockError) {
+                console.warn('⚠️ Could not lock out user:', lockError.message);
+            }
         }
 
+        // ✅ STEP 4: Also delete user documents if they exist
+        try {
+            const { error: docError } = await sb
+                .from('user_documents')
+                .delete()
+                .eq('user_id', userId);
+            
+            if (docError) {
+                console.warn('Could not delete user documents:', docError);
+            } else {
+                console.log('✅ User documents deleted');
+            }
+        } catch (docErr) {
+            console.warn('Error deleting documents:', docErr);
+        }
+
+        // ✅ STEP 5: Log the audit
         const auditDetails = isRejection 
             ? `Rejected user ${fullName} (pending approval)`
             : `Deleted user ${fullName}`;
         
         const auditStatus = authDeleted ? 'SUCCESS' : 'WARNING';
+        const auditMessage = authDeleted 
+            ? `User ${fullName} deleted successfully from both profile and auth.`
+            : `Profile for ${fullName} deleted, but auth user remains. Manual cleanup may be needed.`;
 
         await logAudit(
             'USER_DELETE',
-            auditDetails,
+            auditDetails + ' ' + auditMessage,
             userId,
             auditStatus
         );
 
+        // ✅ STEP 6: Show feedback
         if (authDeleted) {
             showFeedback(`✅ ${action} successful! User ${fullName} has been removed.`, 'success');
         } else {
-            showFeedback(`⚠️ Profile deleted, but auth cleanup may be needed for ${fullName}.`, 'warning');
+            showFeedback(`⚠️ Profile deleted, but auth user ${userProfile?.email || 'still exists'} may need manual cleanup.`, 'warning');
+            
+            // Show instructions for manual cleanup
+            console.log('🛠️ Manual cleanup instructions:');
+            console.log(`1. Go to Supabase Dashboard → Authentication → Users`);
+            console.log(`2. Find the user with email: ${userProfile?.email || 'unknown'}`);
+            console.log(`3. Click "Delete" to remove the user`);
         }
 
+        // ✅ STEP 7: Refresh all tables
         loadPendingApprovals();
         loadAllUsers(1, USERS_STATE.filters);
         loadStudents();
@@ -3913,7 +4004,6 @@ async function deleteProfile(userId, fullName, isRejection = false) {
         showFeedback(`Unexpected error: ${err.message}`, 'error');
     }
 }
-
 // ============================================
 // OPEN EDIT USER MODAL - PRESERVED
 // ============================================
