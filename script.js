@@ -2242,10 +2242,860 @@ async function loadDataVisualization() {
     // Placeholder for data visualization loading
     console.log('Loading data visualization...');
 }
-
 /*******************************************************
- * 9. USERS MANAGEMENT - ENHANCED WITH TVET/KRCHN
+ * 9. USERS MANAGEMENT - COMPLETE & OPTIMIZED
+ * ✅ ALL original functions preserved
+ * ✅ Performance optimizations added
+ * ✅ TVET/KRCHN fixes applied
+ * ✅ Full program names everywhere
  *******************************************************/
+
+// ============================================
+// 📊 STATE (NEW - For pagination/caching)
+// ============================================
+const USERS_STATE = {
+    page: 1,
+    perPage: 20,
+    total: 0,
+    filters: {
+        role: 'all',
+        status: 'all',
+        program: 'all',
+        block: 'all',
+        search: ''
+    },
+    cache: {
+        programs: null,
+        blocks: null,
+        documents: {}
+    }
+};
+
+let searchTimeout = null;
+
+// ============================================
+// 📧 SEND APPROVAL EMAIL - UPDATED
+// ============================================
+
+async function sendApprovalEmail(email, userName, role, program, intakeYear, block) {
+    console.log('📧 Sending approval email to:', email);
+    
+    // Get full program details
+    const programDisplay = getProgramDisplayName(program) || program || 'N/A';
+    const programType = getProgramType(program);
+    const programLevel = getProgramLevel(program);
+    const blockLabel = programType === 'TVET' ? 'Term' : 'Block';
+    const blockDisplay = block || 'Not assigned';
+    const intakeDisplay = intakeYear ? getDisplayIntake(program, intakeYear) : 'N/A';
+    
+    if (typeof BREVO_CONFIG === 'undefined' || !BREVO_CONFIG.apiKey) {
+        console.warn('⚠️ Brevo not configured. Using fallback email.');
+        return sendApprovalEmailFallback(email, userName, role, programDisplay, intakeDisplay, blockDisplay);
+    }
+    
+    try {
+        const year = new Date().getFullYear();
+        const roleDisplay = role === 'student' ? 'Student' : role || 'User';
+        
+        const programTypeBadge = programType === 'TVET' ? 
+            '🔧 TVET (Technical & Vocational)' : 
+            '🎓 KRCHN (Nursing)';
+        
+        const levelDisplay = programLevel ? `Level: ${programLevel}` : '';
+        
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Approved - NCHSM</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background: #f0f4f8; }
+        .container { max-width: 580px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px; text-align: center; color: white; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header p { margin: 4px 0 0; opacity: 0.8; }
+        .body { padding: 30px 35px; }
+        .greeting { background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #10b981; }
+        .greeting p { margin: 0; font-size: 16px; color: #0A3D62; }
+        .details { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+        .details h4 { margin: 0 0 12px 0; color: #1e293b; }
+        .details table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .details td { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+        .details .label { color: #64748B; font-weight: 500; }
+        .details .value { color: #0A3D62; font-weight: 600; text-align: right; }
+        .details tr:last-child td { border-bottom: none; }
+        .program-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .badge-tvet { background: #FEF3C7; color: #92400E; }
+        .badge-krchn { background: #DBEAFE; color: #1E40AF; }
+        .next-steps { background: #dbeafe; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #3b82f6; }
+        .next-steps ul { margin: 0; padding-left: 20px; color: #1e293b; font-size: 13px; line-height: 1.6; }
+        .btn { display: inline-block; background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; }
+        .footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }
+        .help { background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B; margin-top: 16px; }
+        .help p { margin: 0; color: #78350F; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>✅ Account Approved!</h1>
+                <p>Nakuru College of Health Sciences and Management</p>
+            </div>
+            
+            <div class="body">
+                <div class="greeting">
+                    <p>👋 <strong>Dear ${userName}</strong></p>
+                    <p style="margin: 8px 0 0; color: #1e293b;">
+                        Your NCHSM Digital Portal account has been <strong>approved</strong>! 
+                        You can now access all features of the portal.
+                    </p>
+                </div>
+                
+                <div class="details">
+                    <h4>📋 Account Details</h4>
+                    <table>
+                        <tr><td class="label">👤 Name</td><td class="value">${userName}</td></tr>
+                        <tr><td class="label">📧 Email</td><td class="value">${email}</td></tr>
+                        <tr><td class="label">🎭 Role</td><td class="value">${roleDisplay}</td></tr>
+                        <tr><td class="label">📚 Program</td>
+                            <td class="value">
+                                ${programDisplay}
+                                <div class="program-badge ${programType === 'TVET' ? 'badge-tvet' : 'badge-krchn'}" style="font-size:0.65rem; margin-top:4px;">
+                                    ${programTypeBadge}
+                                </div>
+                                ${levelDisplay ? `<div style="font-size:0.7rem; color:#64748B; margin-top:2px;">${levelDisplay}</div>` : ''}
+                            </td>
+                        </tr>
+                        <tr><td class="label">📅 Intake</td><td class="value">${intakeDisplay}</td></tr>
+                        <tr><td class="label">📌 ${blockLabel}</td><td class="value">${blockDisplay}</td></tr>
+                    </table>
+                </div>
+                
+                <div class="next-steps">
+                    <h5>📌 Next Steps</h5>
+                    <ul>
+                        <li>✅ Login to your account using your email and password</li>
+                        <li>📚 Access course materials and learning resources</li>
+                        <li>📊 Track your academic progress</li>
+                    </ul>
+                </div>
+                
+                <div style="text-align: center; margin: 20px 0;">
+                    <a href="https://nchsm.co.ke/login.html" class="btn">🚪 Login Now</a>
+                </div>
+                
+                <div class="help">
+                    <h5>💡 Need Help?</h5>
+                    <p>📧 portal.nchsm@gmail.com<br>📞 0790969743 | 0702432987</p>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
+                <p style="font-size:0.75rem;">© ${year} Nakuru College of Health Sciences and Management</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+        
+        const response = await fetch(BREVO_CONFIG.apiUrl, {
+            method: 'POST',
+            headers: {
+                'api-key': BREVO_CONFIG.apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: {
+                    email: 'noreply@nakurucollegeofhealthelearning.site',
+                    name: 'NCHSM ICT Support'
+                },
+                to: [{ email: email }],
+                subject: `✅ Account Approved - Welcome to NCHSM!`,
+                htmlContent: htmlContent
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log(`✅ Approval email sent to ${email}`);
+            return { success: true, data };
+        } else {
+            console.error('❌ Approval email failed:', data);
+            return { success: false, error: data };
+        }
+        
+    } catch(e) {
+        console.warn('⚠️ Approval email error:', e);
+        return sendApprovalEmailFallback(email, userName, role, programDisplay, intakeDisplay, blockDisplay);
+    }
+}
+
+async function sendApprovalEmailFallback(email, userName, role, programDisplay, intakeDisplay, blockDisplay) {
+    console.log('📧 Using fallback approval email to:', email);
+    
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
+    
+    const params = new URLSearchParams({
+        to: email,
+        userName: userName,
+        role: role,
+        program: programDisplay || 'N/A',
+        intake: intakeDisplay || 'N/A',
+        block: blockDisplay || 'N/A',
+        emailType: 'approval',
+        subject: 'Account Approved - NCHSM Digital Portal'
+    });
+    
+    const img = new Image();
+    img.src = scriptUrl + '?' + params.toString();
+    img.style.display = 'none';
+    document.body.appendChild(img);
+    
+    return new Promise(resolve => setTimeout(() => resolve(true), 1000));
+}
+
+// ============================================
+// 🚀 LOAD ALL USERS - OPTIMIZED WITH PAGINATION
+// ============================================
+
+async function loadAllUsers(page = 1, filters = {}) {
+    const startTime = performance.now();
+    console.log('🚀 Loading users (optimized)...');
+    
+    const tbody = document.getElementById('users-table');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="11"><div class="loading-spinner"></div> Loading users...</td></tr>';
+    
+    try {
+        let query = sb.from(USER_PROFILE_TABLE).select('*', { count: 'exact' });
+        
+        if (filters.role && filters.role !== 'all') {
+            query = query.eq('role', filters.role);
+        }
+        if (filters.status && filters.status !== 'all') {
+            query = query.eq('status', filters.status);
+        }
+        if (filters.program && filters.program !== 'all') {
+            query = query.eq('program', filters.program);
+        }
+        if (filters.block && filters.block !== 'all') {
+            query = query.eq('block', filters.block);
+        }
+        
+        if (filters.search && filters.search.length > 1) {
+            const searchTerm = `%${filters.search}%`;
+            query = query.or(
+                `full_name.ilike.${searchTerm},` +
+                `email.ilike.${searchTerm},` +
+                `student_id.ilike.${searchTerm}`
+            );
+        }
+        
+        const from = (page - 1) * USERS_STATE.perPage;
+        const to = from + USERS_STATE.perPage - 1;
+        query = query.range(from, to).order('full_name', { ascending: true });
+        
+        const { data: users, error, count } = await query;
+        
+        if (error) throw error;
+        
+        const loadTime = ((performance.now() - startTime) / 1000).toFixed(2);
+        console.log(`✅ Loaded ${users?.length || 0} users in ${loadTime}s (Total: ${count})`);
+        
+        USERS_STATE.total = count || 0;
+        USERS_STATE.page = page;
+        
+        // ✅ BATCH FETCH DOCUMENTS
+        const userIds = users.map(u => u.user_id).filter(id => id);
+        let docCache = {};
+        
+        if (userIds.length > 0) {
+            const { data: docs } = await sb
+                .from('user_documents')
+                .select('user_id, document_type, status, file_path')
+                .in('user_id', userIds);
+            
+            docCache = {};
+            docs?.forEach(doc => {
+                if (!docCache[doc.user_id]) {
+                    docCache[doc.user_id] = {};
+                }
+                docCache[doc.user_id][doc.document_type] = doc.status;
+            });
+        }
+        
+        renderUsersTable(users, docCache);
+        renderUserPagination(count || 0, page);
+        updateUserStats(users, count);
+        
+        return { users, total: count };
+        
+    } catch (error) {
+        console.error('❌ Error loading users:', error);
+        tbody.innerHTML = `<tr><td colspan="11" style="color:red;">Error: ${error.message}</td></tr>`;
+        return { users: [], total: 0 };
+    }
+}
+
+// ============================================
+// 📊 RENDER USERS TABLE
+// ============================================
+
+function renderUsersTable(users, docCache = {}) {
+    const tbody = document.getElementById('users-table');
+    if (!tbody) return;
+    
+    if (!users || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px;">👥 No users found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    for (const u of users) {
+        const userDocs = docCache[u.user_id] || {};
+        const kcseStatus = userDocs['kcse'] || 'pending';
+        const idStatus = userDocs['id'] || 'pending';
+        
+        const statusColors = {
+            'pending': 'badge-warning',
+            'uploaded': 'badge-info',
+            'verified': 'badge-success',
+            'rejected': 'badge-danger'
+        };
+        
+        const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
+            .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
+
+        const isBlocked = u.block_program_year === true;
+        const isApproved = u.status === 'approved' || u.status === 'active';
+        const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
+        const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
+        
+        const programName = getProgramDisplayName(u.program);
+        const programType = getProgramType(u.program);
+        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+        
+        const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
+
+        tbody.innerHTML += `
+            <tr>
+                <td><code style="font-size:11px;">${escapeHtml(u.user_id.substring(0, 8))}...</code></td>
+                <td><strong>${escapeHtml(u.full_name)}</strong></td>
+                <td style="font-size:13px;">${escapeHtml(u.email)}</td>
+                <td>
+                    <select class="btn" style="padding:2px 8px; font-size:12px;" 
+                            onchange="updateUserRole('${escapeHtml(u.user_id)}', this.value, '${escapeHtml(u.full_name)}')" 
+                            ${u.role === 'superadmin' ? 'disabled' : ''}>
+                        ${roleOptions}
+                    </select>
+                </td>
+                <td>
+                    <div style="font-weight:500; font-size:13px;">${escapeHtml(programName)}</div>
+                    <div class="program-badge ${programBadgeClass}" style="font-size:10px; margin-top:2px;">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </div>
+                </td>
+                <td style="font-size:13px;">${escapeHtml(intakeDisplay)}</td>
+                <td>
+                    <span class="badge ${statusColors[kcseStatus]}" 
+                          style="cursor:pointer; font-size:11px;" 
+                          onclick="viewDocument('${escapeHtml(u.user_id)}','kcse')">
+                        ${kcseStatus.toUpperCase()}
+                        <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
+                    </span>
+                </td>
+                <td>
+                    <span class="badge ${statusColors[idStatus]}" 
+                          style="cursor:pointer; font-size:11px;" 
+                          onclick="viewDocument('${escapeHtml(u.user_id)}','id')">
+                        ${idStatus.toUpperCase()}
+                        <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
+                    </span>
+                </td>
+                <td>
+                    ${u.profile_photo_url ? 
+                        `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
+                              alt="Photo" 
+                              style="width:35px;height:35px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
+                              onclick="viewDocument('${escapeHtml(u.user_id)}','photo')"
+                              onerror="this.style.display='none';">` :
+                        `<span class="badge badge-secondary" style="font-size:11px;cursor:pointer;" onclick="viewDocument('${escapeHtml(u.user_id)}','photo')">No photo</span>`
+                    }
+                </td>
+                <td class="${statusClass}" style="font-size:12px; font-weight:600;">${statusText}</td>
+                <td>
+                    <button class="btn-action" onclick="openEditUserModal('${escapeHtml(u.user_id)}')" title="Edit User">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    ${!isApproved ? `<button class="btn-approve" onclick="approveUser('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" style="font-size:11px; padding:2px 10px; border-radius:4px;">Approve</button>` : ''}
+                    <button class="btn-delete" onclick="deleteProfile('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" style="font-size:11px; padding:2px 10px; border-radius:4px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+    }
+
+    filterTable('user-search', 'users-table', [1, 2, 4]);
+}
+
+// ============================================
+// 📊 UPDATE USER STATS
+// ============================================
+
+function updateUserStats(users, total) {
+    const statsContainer = document.getElementById('userStatsContainer');
+    if (!statsContainer) return;
+    
+    const approved = users?.filter(u => u.status === 'approved' || u.status === 'active').length || 0;
+    const pending = users?.filter(u => u.status === 'pending').length || 0;
+    const students = users?.filter(u => u.role === 'student').length || 0;
+    const admins = users?.filter(u => u.role === 'admin').length || 0;
+    const lecturers = users?.filter(u => u.role === 'lecturer').length || 0;
+    
+    statsContainer.innerHTML = `
+        <div class="stats-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap:8px; margin-bottom:12px;">
+            <div class="stat-card" style="background:white; padding:8px; border-radius:8px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                <div style="font-size:1.2rem; font-weight:700; color:#0A3D62;">${total || 0}</div>
+                <div style="font-size:0.6rem; color:#64748B;">Total</div>
+            </div>
+            <div class="stat-card" style="background:#D1FAE5; padding:8px; border-radius:8px; text-align:center;">
+                <div style="font-size:1.2rem; font-weight:700; color:#064E3B;">${approved}</div>
+                <div style="font-size:0.6rem; color:#064E3B;">✅ Active</div>
+            </div>
+            <div class="stat-card" style="background:#FEF3C7; padding:8px; border-radius:8px; text-align:center;">
+                <div style="font-size:1.2rem; font-weight:700; color:#92400E;">${pending}</div>
+                <div style="font-size:0.6rem; color:#92400E;">⏳ Pending</div>
+            </div>
+            <div class="stat-card" style="background:#DBEAFE; padding:8px; border-radius:8px; text-align:center;">
+                <div style="font-size:1.2rem; font-weight:700; color:#1E40AF;">${students}</div>
+                <div style="font-size:0.6rem; color:#1E40AF;">👨‍🎓 Students</div>
+            </div>
+            <div class="stat-card" style="background:#EDE9FE; padding:8px; border-radius:8px; text-align:center;">
+                <div style="font-size:1.2rem; font-weight:700; color:#5B21B6;">${lecturers}</div>
+                <div style="font-size:0.6rem; color:#5B21B6;">👨‍🏫 Lecturers</div>
+            </div>
+            <div class="stat-card" style="background:#FEE2E2; padding:8px; border-radius:8px; text-align:center;">
+                <div style="font-size:1.2rem; font-weight:700; color:#991B1B;">${admins}</div>
+                <div style="font-size:0.6rem; color:#991B1B;">🛡️ Admins</div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
+// 📄 RENDER PAGINATION
+// ============================================
+
+function renderUserPagination(total, currentPage) {
+    const container = document.getElementById('userPagination');
+    if (!container) return;
+    
+    const totalPages = Math.ceil(total / USERS_STATE.perPage);
+    
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = `
+        <button class="page-btn" onclick="changeUserPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+            ‹
+        </button>
+    `;
+    
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        html += `<button class="page-btn" onclick="changeUserPage(1)">1</button>`;
+        if (startPage > 2) html += `<span style="padding:0 4px; color:#94A3B8;">...</span>`;
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `
+            <button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="changeUserPage(${i})">
+                ${i}
+            </button>
+        `;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span style="padding:0 4px; color:#94A3B8;">...</span>`;
+        html += `<button class="page-btn" onclick="changeUserPage(${totalPages})">${totalPages}</button>`;
+    }
+    
+    html += `
+        <button class="page-btn" onclick="changeUserPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+            ›
+        </button>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// ============================================
+// 🔄 CHANGE PAGE
+// ============================================
+
+function changeUserPage(page) {
+    if (page < 1) return;
+    const totalPages = Math.ceil(USERS_STATE.total / USERS_STATE.perPage);
+    if (page > totalPages) return;
+    
+    loadAllUsers(page, USERS_STATE.filters);
+    
+    const table = document.getElementById('users-table');
+    if (table) {
+        table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// ============================================
+// 🔍 SEARCH WITH DEBOUNCE
+// ============================================
+
+function searchUsersDebounced() {
+    const searchInput = document.getElementById('user-search');
+    if (!searchInput) return;
+    
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        USERS_STATE.filters.search = searchInput.value.trim();
+        USERS_STATE.page = 1;
+        loadAllUsers(1, USERS_STATE.filters);
+    }, 500);
+}
+
+// ============================================
+// 🎯 FILTER USERS
+// ============================================
+
+function filterUsers() {
+    const roleFilter = document.getElementById('user-role-filter');
+    const statusFilter = document.getElementById('user-status-filter');
+    const programFilter = document.getElementById('user-program-filter');
+    const blockFilter = document.getElementById('user-block-filter');
+    
+    USERS_STATE.filters.role = roleFilter?.value || 'all';
+    USERS_STATE.filters.status = statusFilter?.value || 'all';
+    USERS_STATE.filters.program = programFilter?.value || 'all';
+    USERS_STATE.filters.block = blockFilter?.value || 'all';
+    
+    USERS_STATE.page = 1;
+    loadAllUsers(1, USERS_STATE.filters);
+}
+
+// ============================================
+// 🔄 RESET FILTERS
+// ============================================
+
+function resetUserFilters() {
+    ['user-search', 'user-role-filter', 'user-status-filter', 'user-program-filter', 'user-block-filter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    
+    USERS_STATE.filters = { role: 'all', status: 'all', program: 'all', block: 'all', search: '' };
+    USERS_STATE.page = 1;
+    loadAllUsers(1, USERS_STATE.filters);
+}
+
+// ============================================
+// 📊 LOAD FILTER OPTIONS - CACHED
+// ============================================
+
+async function loadFilterOptions() {
+    try {
+        if (!USERS_STATE.cache.programs) {
+            const { data: programs } = await sb
+                .from(USER_PROFILE_TABLE)
+                .select('program', { distinct: true })
+                .order('program');
+            USERS_STATE.cache.programs = programs?.map(p => p.program).filter(Boolean) || [];
+        }
+        
+        if (!USERS_STATE.cache.blocks) {
+            const { data: blocks } = await sb
+                .from(USER_PROFILE_TABLE)
+                .select('block', { distinct: true })
+                .order('block');
+            USERS_STATE.cache.blocks = blocks?.map(b => b.block).filter(Boolean) || [];
+        }
+        
+        const programFilter = document.getElementById('user-program-filter');
+        if (programFilter) {
+            programFilter.innerHTML = '<option value="all">All Programs</option>';
+            const sortedPrograms = [...USERS_STATE.cache.programs].sort((a, b) => {
+                const nameA = getProgramDisplayName(a);
+                const nameB = getProgramDisplayName(b);
+                return nameA.localeCompare(nameB);
+            });
+            sortedPrograms.forEach(p => {
+                const displayName = getProgramDisplayName(p);
+                programFilter.innerHTML += `<option value="${p}">${displayName}</option>`;
+            });
+        }
+        
+        const blockFilter = document.getElementById('user-block-filter');
+        if (blockFilter) {
+            blockFilter.innerHTML = '<option value="all">All Blocks/Terms</option>';
+            USERS_STATE.cache.blocks.forEach(b => {
+                blockFilter.innerHTML += `<option value="${b}">${b}</option>`;
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error loading filter options:', error);
+    }
+}
+
+// ============================================
+// 🔥 LOAD PENDING APPROVALS - OPTIMIZED
+// ============================================
+
+async function loadPendingApprovals() {
+    const tbody = document.getElementById('pending-table');
+    if (!tbody) {
+        console.error("Missing <tbody id='pending-table'> element in your HTML.");
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="11"><div class="loading-spinner"></div> Loading pending approvals...</td></tr>';
+
+    try {
+        const { data: pending, error, count } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('*', { count: 'exact' })
+            .eq('status', 'pending')
+            .order('created_at', { ascending: true })
+            .limit(50);
+
+        if (error) throw error;
+
+        if (!pending || pending.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px;">✅ No pending approvals</td></tr>';
+            return;
+        }
+
+        const userIds = pending.map(u => u.user_id).filter(id => id);
+        let docCache = {};
+        
+        if (userIds.length > 0) {
+            const { data: docs } = await sb
+                .from('user_documents')
+                .select('user_id, document_type, status, file_path')
+                .in('user_id', userIds);
+            
+            docCache = {};
+            docs?.forEach(doc => {
+                if (!docCache[doc.user_id]) docCache[doc.user_id] = {};
+                docCache[doc.user_id][doc.document_type] = doc.status;
+            });
+        }
+
+        tbody.innerHTML = '';
+
+        for (const u of pending) {
+            const userDocs = docCache[u.user_id] || {};
+            const kcseStatus = userDocs['kcse'] || 'pending';
+            const idStatus = userDocs['id'] || 'pending';
+            
+            const statusColors = {
+                'pending': 'badge-warning',
+                'uploaded': 'badge-info',
+                'verified': 'badge-success',
+                'rejected': 'badge-danger'
+            };
+            
+            const escapedName = escapeHtml(u.full_name);
+            const escapedUserId = escapeHtml(u.user_id);
+            const escapedStudentId = escapeHtml(u.student_id || '');
+            const escapedEmail = escapeHtml(u.email || '');
+            const escapedRole = escapeHtml(u.role || 'student');
+            const escapedProgram = escapeHtml(u.program || 'N/A');
+            
+            const programName = getProgramDisplayName(u.program);
+            const programType = getProgramType(u.program);
+            const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+            const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+            
+            const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${escapedName}</strong></td>
+                    <td>${escapedEmail}</td>
+                    <td>${escapedRole}</td>
+                    <td>
+                        <div style="font-weight:500; font-size:13px;">${escapeHtml(programName)}</div>
+                        <div class="program-badge ${programBadgeClass}" style="font-size:10px; margin-top:2px;">
+                            <i class="fas ${programIcon}"></i> ${programType}
+                        </div>
+                    </td>
+                    <td>${escapeHtml(intakeDisplay)}</td>
+                    <td>${escapedStudentId || 'N/A'}</td>
+                    <td>
+                        <span class="badge ${statusColors[kcseStatus]}" 
+                              style="cursor:pointer; font-size:11px;" 
+                              onclick="viewDocument('${escapedUserId}','kcse')">
+                            ${kcseStatus.toUpperCase()}
+                            <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${statusColors[idStatus]}" 
+                              style="cursor:pointer; font-size:11px;" 
+                              onclick="viewDocument('${escapedUserId}','id')">
+                            ${idStatus.toUpperCase()}
+                            <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
+                        </span>
+                    </td>
+                    <td>
+                        ${u.profile_photo_url ? 
+                            `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
+                                  alt="Photo" 
+                                  style="width:35px;height:35px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
+                                  onclick="viewDocument('${escapedUserId}','photo')"
+                                  onerror="this.style.display='none';">` :
+                            `<span class="badge badge-secondary" style="font-size:11px;cursor:pointer;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`
+                        }
+                    </td>
+                    <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn-approve" 
+                                onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
+                            <i class="fas fa-eye"></i> Review
+                        </button>
+                        <button class="btn-delete" 
+                                onclick="deleteProfile('${escapedUserId}', '${escapedName}', true)">
+                            Reject
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        const pendingBadge = document.getElementById('pendingBadge');
+        if (pendingBadge) pendingBadge.textContent = pending.length;
+
+    } catch (error) {
+        console.error('Error loading pending approvals:', error);
+        tbody.innerHTML = `<tr><td colspan="11" style="color:red;">Error: ${error.message}</td></tr>`;
+    }
+}
+
+// ============================================
+// 👥 LOAD STUDENTS - OPTIMIZED
+// ============================================
+
+async function loadStudents() {
+    console.log('📋 Loading students (optimized)...');
+    
+    const tbody = document.getElementById('students-table');
+    if (!tbody) {
+        console.warn('students-table not found');
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading students...</td></tr>';
+    
+    try {
+        const { data: students, error } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('*')
+            .eq('role', 'student')
+            .order('full_name', { ascending: true })
+            .limit(100);
+        
+        if (error) throw error;
+        
+        if (!students || students.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px;">No students found.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        students.forEach((student, index) => {
+            const programName = getProgramDisplayName(student.program);
+            const programType = getProgramType(student.program);
+            const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+            const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+            
+            const intakeDisplay = student.intake_year ? getDisplayIntake(student.program, student.intake_year) : 'N/A';
+            const statusClass = student.status === 'approved' ? 'status-approved' : 'status-pending';
+            
+            const blockLabel = programType === 'TVET' ? 'Term' : 'Block';
+            const blockDisplay = student.block || student.current_block || 'N/A';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${escapeHtml(student.student_id || 'N/A')}</td>
+                    <td><strong>${escapeHtml(student.full_name)}</strong></td>
+                    <td>${escapeHtml(student.email || '')}</td>
+                    <td>
+                        <div style="font-weight:500; font-size:13px;">${escapeHtml(programName)}</div>
+                        <div class="program-badge ${programBadgeClass}" style="font-size:10px; margin-top:2px;">
+                            <i class="fas ${programIcon}"></i> ${programType}
+                        </div>
+                    </td>
+                    <td>${escapeHtml(intakeDisplay)}</td>
+                    <td>${escapeHtml(blockDisplay)}</td>
+                    <td class="${statusClass}">${escapeHtml(student.status || 'Pending')}</td>
+                    <td>
+                        <button class="btn-action" onclick="openEditUserModal('${escapeHtml(student.user_id)}')">Edit</button>
+                        <button class="btn-delete" onclick="deleteProfile('${escapeHtml(student.user_id)}', '${escapeHtml(student.full_name)}')">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+    } catch (error) {
+        console.error('Error loading students:', error);
+        tbody.innerHTML = `<tr><td colspan="9" style="color:red;">Error: ${error.message}</td></tr>`;
+    }
+}
+
+// ============================================
+// 🚀 INITIALIZE MANAGE USERS
+// ============================================
+
+async function initManageUsers() {
+    console.log('👥 Initializing Manage Users (optimized)...');
+    
+    await loadFilterOptions();
+    await loadAllUsers(1, USERS_STATE.filters);
+    await loadPendingApprovals();
+    await loadStudents();
+    
+    const searchInput = document.getElementById('user-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', searchUsersDebounced);
+    }
+    
+    ['user-role-filter', 'user-status-filter', 'user-program-filter', 'user-block-filter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', filterUsers);
+        }
+    });
+    
+    console.log('✅ Manage Users initialized (optimized)');
+}
+
+// ============================================
+// 📝 ORIGINAL FUNCTIONS (PRESERVED WITH FIXES)
+// ============================================
 
 async function handleAddAccount(e) {
     e.preventDefault();
@@ -2262,12 +3112,11 @@ async function handleAddAccount(e) {
     const intake_year = $('account-intake').value;
     const block = $('account-block-term').value;
     
-    // Get program type and name
     const programType = getProgramType(programCode);
     const programName = getProgramDisplayName(programCode);
     const programLevel = getProgramLevel(programCode);
 
-    // Determine if this is TVET or KRCHN for block/term naming
+    // ✅ FIX: TVET uses 'term', KRCHN uses 'block'
     const blockTermField = programType === 'TVET' ? 'term' : 'block';
     const blockTermValue = block;
 
@@ -2313,7 +3162,7 @@ async function handleAddAccount(e) {
             
             await logAudit('USER_ENROLL', `Enrolled new ${role} account: ${name} (${programName})`, user.id);
             
-            loadAllUsers();
+            loadAllUsers(1, USERS_STATE.filters);
             loadStudents();
             loadDashboardData();
         }
@@ -2325,6 +3174,7 @@ async function handleAddAccount(e) {
     }
 }
 
+// ✅ FIXED: Mass Promotion uses correct field
 async function handleMassPromotion(e) {
     e.preventDefault();
     const submitButton = e.submitter;
@@ -2348,8 +3198,9 @@ async function handleMassPromotion(e) {
         return;
     }
     
-    // Get program display name for confirmation
-    const programName = promote_program === 'KRCHN' ? 'KRCHN' : 'TVET';
+    const programName = getProgramDisplayName(promote_program);
+    const programType = getProgramType(promote_program);
+    const blockLabel = programType === 'TVET' ? 'Term' : 'Block';
     
     if (!confirm(`⚠️ CRITICAL ACTION: Promote ALL ${programName} students from Intake ${promote_intake}\nFROM: ${promote_from_block}\nTO: ${promote_to_block}\n\nThis action is IRREVERSIBLE. Continue?`)) {
         setButtonLoading(submitButton, false, originalText);
@@ -2357,18 +3208,20 @@ async function handleMassPromotion(e) {
     }
 
     try {
-        // Update students matching the criteria
+        // ✅ FIX: Use correct field name based on program type
+        const blockField = programType === 'TVET' ? 'term' : 'block';
+        
         const { data, error } = await sb
             .from(USER_PROFILE_TABLE)
             .update({ 
-                block: promote_to_block,
+                [blockField]: promote_to_block,
                 updated_at: new Date().toISOString()
             })
             .eq('role', 'student')
             .eq('status', 'approved')
             .eq('intake_year', promote_intake)
             .eq('program', promote_program)
-            .eq('block', promote_from_block)
+            .eq(blockField, promote_from_block)
             .select('user_id, full_name');
 
         if (error) throw error;
@@ -2376,32 +3229,25 @@ async function handleMassPromotion(e) {
         const count = data?.length || 0;
         
         if (count > 0) {
-            // Log the promotion
             await logAudit('PROMOTION_MASS', 
                 `Promoted ${count} ${programName} students: Intake ${promote_intake} ${promote_from_block} → ${promote_to_block}`, 
                 null, 
                 'SUCCESS'
             );
             
-            // Show list of promoted students
             const studentNames = data.map(s => s.full_name).join(', ');
             showFeedback(`✅ Successfully promoted ${count} ${programName} students!\n\nPromoted:\n${studentNames.substring(0, 200)}${studentNames.length > 200 ? '...' : ''}`, 'success');
         } else {
             await logAudit('PROMOTION_MASS', 
-                `No ${programName} students found for criteria: Intake ${promote_intake}, Block ${promote_from_block}`, 
+                `No ${programName} students found for criteria: Intake ${promote_intake}, ${blockLabel} ${promote_from_block}`, 
                 null, 
                 'WARNING'
             );
-            showFeedback(`⚠️ No ${programName} students were found matching the promotion criteria.\n\nIntake: ${promote_intake}\nFrom Block: ${promote_from_block}\n\nPlease check your selections.`, 'warning');
+            showFeedback(`⚠️ No ${programName} students were found matching the promotion criteria.\n\nIntake: ${promote_intake}\nFrom ${blockLabel}: ${promote_from_block}\n\nPlease check your selections.`, 'warning');
         }
 
-        // Refresh student list
-        if (typeof loadStudents === 'function') {
-            loadStudents();
-        }
-        if (typeof loadAllUsers === 'function') {
-            loadAllUsers();
-        }
+        loadStudents();
+        loadAllUsers(1, USERS_STATE.filters);
 
     } catch (err) {
         await logAudit('PROMOTION_MASS', 
@@ -2416,7 +3262,7 @@ async function handleMassPromotion(e) {
 }
 
 // ============================================
-// APPROVE USER WITH DETAILS CHECK - FIXED
+// APPROVE USER - PRESERVED
 // ============================================
 
 async function approveUser(userId, fullName, studentId = '', email = '', role = 'student', program = 'N/A') {
@@ -2434,7 +3280,6 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
             return;
         }
         
-        // ✅ Call the modal function
         showApprovalModal(user);
         
     } catch (err) {
@@ -2444,20 +3289,18 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
 }
 
 // ============================================
-// SHOW APPROVAL MODAL WITH EDITABLE FIELDS - FIXED
+// SHOW APPROVAL MODAL - PRESERVED
 // ============================================
 
 function showApprovalModal(user) {
     console.log('📋 Showing approval modal for:', user.full_name);
     
-    // Remove existing modal
     const existingModal = document.getElementById('approvalModal');
     if (existingModal) existingModal.remove();
     
     const programType = getProgramType(user.program);
     const isTVET = programType === 'TVET';
     
-    // Build program options
     const programOptions = `
         <option value="KRCHN" ${user.program === 'KRCHN' ? 'selected' : ''}>🎓 KRCHN Nursing</option>
         <optgroup label="🎯 TVET Diploma Programs">
@@ -2494,7 +3337,6 @@ function showApprovalModal(user) {
         </optgroup>
     `;
     
-    // Block/Term options based on program type
     const blockOptions = isTVET 
         ? ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
         : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
@@ -2533,7 +3375,6 @@ function showApprovalModal(user) {
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             animation: slideIn 0.3s ease;
         ">
-            <!-- Header -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
                 <div>
                     <h2 style="margin: 0; color: #4C1D95;">
@@ -2554,7 +3395,6 @@ function showApprovalModal(user) {
             </div>
             
             <form id="approvalForm" onsubmit="event.preventDefault(); confirmApproveUser();">
-                <!-- Personal Information -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fas fa-user"></i> Personal Information
@@ -2600,7 +3440,6 @@ function showApprovalModal(user) {
                     </div>
                 </div>
                 
-                <!-- Academic Information -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fas fa-graduation-cap"></i> Academic Information
@@ -2631,7 +3470,6 @@ function showApprovalModal(user) {
                     </div>
                 </div>
                 
-                <!-- Additional Details -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fas fa-info-circle"></i> System Information
@@ -2643,7 +3481,6 @@ function showApprovalModal(user) {
                     </div>
                 </div>
                 
-                <!-- Actions -->
                 <div style="display: flex; gap: 12px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
                     <button type="submit" style="
                         flex: 1;
@@ -2693,14 +3530,8 @@ function showApprovalModal(user) {
     `;
     
     document.body.appendChild(modal);
-    
-    // Store user ID
     modal.dataset.userId = user.user_id;
 }
-
-// ============================================
-// CLOSE APPROVAL MODAL - FIXED
-// ============================================
 
 function closeApprovalModal() {
     const modal = document.getElementById('approvalModal');
@@ -2711,10 +3542,6 @@ function closeApprovalModal() {
         }, 300);
     }
 }
-
-// ============================================
-// CONFIRM APPROVE USER - WITH ENHANCED EMAIL
-// ============================================
 
 async function confirmApproveUser() {
     console.log('✅ confirmApproveUser called');
@@ -2727,7 +3554,6 @@ async function confirmApproveUser() {
     
     const userId = modal.dataset.userId;
     
-    // Get edited values
     const fullName = document.getElementById('edit_full_name')?.value?.trim();
     const email = document.getElementById('edit_email')?.value?.trim();
     const studentId = document.getElementById('edit_student_id')?.value?.trim();
@@ -2738,7 +3564,6 @@ async function confirmApproveUser() {
     const block = document.getElementById('edit_block')?.value;
     const status = document.getElementById('edit_status')?.value || 'approved';
     
-    // Validate
     if (!fullName) {
         showFeedback('❌ Full Name is required', 'error');
         const nameInput = document.getElementById('edit_full_name');
@@ -2756,10 +3581,8 @@ async function confirmApproveUser() {
         return;
     }
     
-    // Close modal first
     closeApprovalModal();
     
-    // Confirm
     if (!confirm(`⚠️ Approve User:\n\nName: ${fullName}\nEmail: ${email}\nProgram: ${program}\nBlock: ${block || 'Not set'}\nRole: ${role}\nStatus: ${status}\n\nProceed?`)) {
         return;
     }
@@ -2786,27 +3609,18 @@ async function confirmApproveUser() {
         
         if (error) throw error;
         
-        // ✅ Send approval email with full details
         try {
-            await sendApprovalEmail(
-                email,           // Student's email
-                fullName,        // Student's full name
-                role,            // Student's role
-                program,         // Program (KRCHN, DPOTT, etc.)
-                intakeYear       // Intake year
-            );
+            await sendApprovalEmail(email, fullName, role, program, intakeYear, block);
         } catch (e) {
             console.warn('⚠️ Email error:', e);
-            // Don't fail approval if email fails
         }
         
         showFeedback(`✅ User ${fullName} approved successfully!`, 'success');
         
         await logAudit('USER_APPROVE', `User ${fullName} approved`, userId, 'SUCCESS');
         
-        // Refresh all tables
         loadPendingApprovals();
-        loadAllUsers();
+        loadAllUsers(1, USERS_STATE.filters);
         loadStudents();
         loadDashboardData();
         
@@ -2817,181 +3631,7 @@ async function confirmApproveUser() {
 }
 
 // ============================================
-// ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
-// ============================================
-
-window.approveUser = approveUser;
-window.showApprovalModal = showApprovalModal;
-window.closeApprovalModal = closeApprovalModal;
-window.confirmApproveUser = confirmApproveUser;
-window.loadPendingApprovals = loadPendingApprovals;
-window.loadAllUsers = loadAllUsers;
-window.loadStudents = loadStudents;
-window.deleteProfile = deleteProfile;
-window.updateUserRole = updateUserRole;
-
-console.log('✅ Approval functions exposed to global scope');
-// ============================================
-// 📧 SEND APPROVAL EMAIL VIA BREVO
-// ============================================
-
-async function sendApprovalEmail(email, userName, role, program, intakeYear) {
-    console.log('📧 Sending approval email to:', email);
-    
-    // Check if Brevo is configured
-    if (typeof BREVO_CONFIG === 'undefined' || !BREVO_CONFIG.apiKey) {
-        console.warn('⚠️ Brevo not configured. Using fallback email.');
-        // Fallback to old method
-        return sendApprovalEmailFallback(email, userName, role);
-    }
-    
-    try {
-        const year = new Date().getFullYear();
-        const programDisplay = program || 'N/A';
-        const intakeDisplay = intakeYear || 'N/A';
-        const roleDisplay = role === 'student' ? 'Student' : role || 'User';
-        
-        // Build approval email HTML
-        const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
-    <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-        <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
-            <div style="display: inline-block; background: #10b981; border-radius: 50%; padding: 12px;">
-                <span style="font-size: 32px;">✅</span>
-            </div>
-            <h2 style="color: #0A3D62; margin: 10px 0 5px;">Account Approved!</h2>
-            <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
-        </div>
-        
-        <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #10b981;">
-            <p style="margin: 0; font-size: 16px; color: #0A3D62;">
-                👋 <strong>Dear ${userName}</strong>
-            </p>
-            <p style="margin: 8px 0 0; color: #1e293b;">
-                Your NCHSM Digital Portal account has been <strong>approved</strong>! 
-                You can now access all features of the portal.
-            </p>
-        </div>
-        
-        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-            <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Account Details</h4>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">👤 Name</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${userName}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📧 Email</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${email}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">🎭 Role</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${roleDisplay}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B; border-bottom: 1px solid #e2e8f0;">📚 Program</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500; border-bottom: 1px solid #e2e8f0;">${programDisplay}</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748B;">📅 Intake</td>
-                    <td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${intakeDisplay}</td></tr>
-            </table>
-        </div>
-        
-        <div style="background: #dbeafe; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
-            <h5 style="margin: 0 0 8px 0; color: #1E40AF;">📌 Next Steps</h5>
-            <ul style="margin: 0; padding-left: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;">
-                <li>✅ Login to your account using your email and password</li>
-                <li>📚 Access course materials and learning resources</li>
-                <li>📊 Track your academic progress</li>
-                <li>📧 Contact support if you need any assistance</li>
-            </ul>
-        </div>
-        
-        <div style="text-align: center; margin: 20px 0;">
-            <a href="https://nchsm.co.ke/login.html" 
-               style="background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
-                🚪 Login Now
-            </a>
-        </div>
-        
-        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
-            <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Need Help?</h5>
-            <p style="margin: 0; color: #78350F; font-size: 13px;">
-                Contact NCHSM ICT Support:<br>
-                📧 portal.nchsm@gmail.com<br>
-                📞 0790969743 | 0702432987
-            </p>
-        </div>
-        
-        <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">
-            NCHSM ICT Support<br>
-            📧 portal.nchsm@gmail.com<br>
-            📞 0790969743 | 0702432987<br>
-            © ${year} Nakuru College of Health Sciences and Management
-        </p>
-    </div>
-</body>
-</html>
-        `;
-        
-        // Send via Brevo
-        const response = await fetch(BREVO_CONFIG.apiUrl, {
-            method: 'POST',
-            headers: {
-                'api-key': BREVO_CONFIG.apiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: {
-                    email: 'noreply@nakurucollegeofhealthelearning.site',
-                    name: 'NCHSM ICT Support'
-                },
-                to: [{ email: email }],
-                subject: `✅ Account Approved - Welcome to NCHSM!`,
-                htmlContent: htmlContent
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            console.log(`✅ Approval email sent to ${email}`);
-            return { success: true, data };
-        } else {
-            console.error('❌ Approval email failed:', data);
-            return { success: false, error: data };
-        }
-        
-    } catch(e) {
-        console.warn('⚠️ Approval email error:', e);
-        // Fallback to old method
-        return sendApprovalEmailFallback(email, userName, role);
-    }
-}
-
-// ============================================
-// 📧 FALLBACK: SEND APPROVAL EMAIL (OLD METHOD)
-// ============================================
-
-async function sendApprovalEmailFallback(email, userName, role) {
-    console.log('📧 Using fallback approval email to:', email);
-    
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
-    
-    const params = new URLSearchParams({
-        to: email,
-        userName: userName,
-        role: role,
-        emailType: 'approval',
-        subject: 'Account Approved - NCHSM Digital Portal'
-    });
-    
-    const img = new Image();
-    img.src = scriptUrl + '?' + params.toString();
-    img.style.display = 'none';
-    document.body.appendChild(img);
-    
-    return new Promise(resolve => setTimeout(() => resolve(true), 1000));
-}
-
-// ============================================
-// UPDATE USER ROLE
+// UPDATE USER ROLE - PRESERVED
 // ============================================
 
 async function updateUserRole(userId, newRole, fullName) {
@@ -3020,7 +3660,6 @@ async function updateUserRole(userId, newRole, fullName) {
             return;
         }
         
-        // Log successful update
         await logAudit(
             'USER_ROLE_UPDATE', 
             `Updated ${fullName}'s role to ${newRole}.`, 
@@ -3030,12 +3669,10 @@ async function updateUserRole(userId, newRole, fullName) {
         
         showFeedback(`✅ Role updated to ${newRole}!`, 'success');
         
-        // Refresh all user tables
-        loadAllUsers();
+        loadAllUsers(1, USERS_STATE.filters);
         loadStudents();
         loadPendingApprovals();
         
-        // Refresh dashboard if exists
         if (typeof loadDashboardData === 'function') {
             loadDashboardData();
         }
@@ -3045,337 +3682,115 @@ async function updateUserRole(userId, newRole, fullName) {
         showFeedback(`Unexpected error: ${err.message}`, 'error');
     }
 }
+
 // ============================================
-// DISPLAY INTAKE FUNCTION
+// DISPLAY INTAKE FUNCTION - PRESERVED
 // ============================================
+
 function getDisplayIntake(program, year) {
     if (!year) return 'N/A';
     
-    // Check if year is already a full string (like "March 2026" or "March 2026 Intake")
     if (typeof year === 'string' && year.includes(' ')) {
         return year;
     }
     
-    // Determine display format based on program
     if (program === 'KRCHN') {
         return `March ${year}`;
     } else {
-        // TVET programs
         return `March ${year} Intake`;
     }
 }
+
 // ============================================
-// UPDATED loadAllUsers() - WITH DOCUMENT COLUMNS
-// ============================================
-async function loadAllUsers() {
-    const tbody = $('users-table');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="11">Loading all users...</td></tr>';
-
-    const { data: users, error } = await sb.from(USER_PROFILE_TABLE)
-        .select('*')
-        .order('full_name', { ascending: true });
-    
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="11">Error loading users: ${error.message}</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = '';
-    
-    for (const u of users) {
-        // ✅ FETCH DOCUMENTS FOR THIS USER
-        const { data: docs } = await sb
-            .from('user_documents')
-            .select('document_type, status, file_path')
-            .eq('user_id', u.user_id);
-        
-        const docStatus = {};
-        docs?.forEach(d => { docStatus[d.document_type] = d.status; });
-        
-        // Document status badges
-        const kcseStatus = docStatus['kcse'] || 'pending';
-        const idStatus = docStatus['id'] || 'pending';
-        
-        const statusColors = {
-            'pending': 'badge-warning',
-            'uploaded': 'badge-info',
-            'verified': 'badge-success',
-            'rejected': 'badge-danger'
-        };
-        
-        const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
-            .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
-
-        const isBlocked = u.block_program_year === true;
-        const isApproved = u.status === 'approved' || u.status === 'active';
-        const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
-        const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
-        
-        const programName = getProgramDisplayName(u.program);
-        const programType = getProgramType(u.program);
-        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
-        
-        const intakeDisplay = u.intake_year ? 
-            `${u.intake_year}${u.intake_month ? ' ' + u.intake_month : ''}` : 
-            'N/A';
-
-        // ✅ BUILD ROW WITH DOCUMENT COLUMNS (11 columns total)
-        tbody.innerHTML += `
-            <tr>
-                <td>${escapeHtml(u.user_id.substring(0, 8))}...</td>
-                <td>${escapeHtml(u.full_name)}</td>
-                <td>${escapeHtml(u.email)}</td>
-                <td>
-                    <select class="btn" 
-                            onchange="updateUserRole('${escapeHtml(u.user_id)}', this.value, '${escapeHtml(u.full_name)}')" 
-                            ${u.role === 'superadmin' ? 'disabled' : ''}>
-                        ${roleOptions}
-                    </select>
-                </td>
-                <td>
-                    ${escapeHtml(programName)}
-                    <div class="program-badge ${programBadgeClass}">
-                        <i class="fas ${programIcon}"></i> ${programType}
-                    </div>
-                </td>
-                <td>${escapeHtml(intakeDisplay)}</td>
-                <!-- 📄 KCSE Column -->
-                <td>
-                    <span class="badge ${statusColors[kcseStatus]}" 
-                          style="cursor:pointer;" 
-                          onclick="viewDocument('${escapeHtml(u.user_id)}','kcse')">
-                        ${kcseStatus.toUpperCase()}
-                        <i class="fas fa-eye" style="font-size:10px;margin-left:4px;"></i>
-                    </span>
-                </td>
-                <!-- 🪪 ID/Passport Column -->
-                <td>
-                    <span class="badge ${statusColors[idStatus]}" 
-                          style="cursor:pointer;" 
-                          onclick="viewDocument('${escapeHtml(u.user_id)}','id')">
-                        ${idStatus.toUpperCase()}
-                        <i class="fas fa-eye" style="font-size:10px;margin-left:4px;"></i>
-                    </span>
-                </td>
-                <!-- 📸 Photo Column -->
-                <td>
-                    ${u.profile_photo_url ? 
-                        `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
-                              alt="Photo" 
-                              style="width:40px;height:40px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
-                              onclick="viewDocument('${escapeHtml(u.user_id)}','photo')"
-                              onerror="this.style.display='none';">` :
-                        `<span class="badge badge-secondary" style="cursor:pointer;" onclick="viewDocument('${escapeHtml(u.user_id)}','photo')">No photo</span>`
-                    }
-                </td>
-                <td class="${statusClass}">${statusText}</td>
-                <td>
-                    <button class="btn btn-map" onclick="openEditUserModal('${escapeHtml(u.user_id)}')">Edit</button>
-                    ${!isApproved ? `<button class="btn btn-approve" onclick="approveUser('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')">Review & Approve</button>` : ''}
-                    <button class="btn btn-delete" onclick="deleteProfile('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')">Delete</button>
-                </td>
-            </tr>`;
-    }
-
-    filterTable('user-search', 'users-table', [1, 2, 4]);
-}
-// ============================================
-// UPDATED loadPendingApprovals() - WITH DOCUMENT COLUMNS
-// ============================================
-async function loadPendingApprovals() {
-    const tbody = $('pending-table');
-    if (!tbody) {
-        console.error("Missing <tbody id='pending-table'> element in your HTML.");
-        return;
-    }
-
-    tbody.innerHTML = '<tr><td colspan="11">Loading pending approvals...</td></tr>';
-
-    const { data: pending, error } = await sb
-        .from(USER_PROFILE_TABLE)
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true });
-
-    if (error) {
-        tbody.innerHTML = `<tr><td colspan="11">Error: ${error.message}</td></tr>`;
-        return;
-    }
-
-    if (!pending || pending.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11">No pending approvals.</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = '';
-
-    for (const u of pending) {
-        // ✅ FETCH DOCUMENTS FOR THIS USER
-        const { data: docs } = await sb
-            .from('user_documents')
-            .select('document_type, status, file_path')
-            .eq('user_id', u.user_id);
-        
-        const docStatus = {};
-        docs?.forEach(d => { docStatus[d.document_type] = d.status; });
-        
-        const kcseStatus = docStatus['kcse'] || 'pending';
-        const idStatus = docStatus['id'] || 'pending';
-        
-        const statusColors = {
-            'pending': 'badge-warning',
-            'uploaded': 'badge-info',
-            'verified': 'badge-success',
-            'rejected': 'badge-danger'
-        };
-        
-        const escapedName = escapeHtml(u.full_name);
-        const escapedUserId = escapeHtml(u.user_id);
-        const escapedStudentId = escapeHtml(u.student_id || '');
-        const escapedEmail = escapeHtml(u.email || '');
-        const escapedRole = escapeHtml(u.role || 'student');
-        const escapedProgram = escapeHtml(u.program || 'N/A');
-        
-        const programName = getProgramDisplayName(u.program);
-        const programType = getProgramType(u.program);
-        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
-        
-        const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
-        
-        // ✅ BUILD ROW WITH DOCUMENT COLUMNS (11 columns total)
-        tbody.innerHTML += `
-            <tr>
-                <td>${escapedName}</td>
-                <td>${escapedEmail}</td>
-                <td>${escapedRole}</td>
-                <td>
-                    ${escapeHtml(programName)}
-                    <div class="program-badge ${programBadgeClass}">
-                        <i class="fas ${programIcon}"></i> ${programType}
-                    </div>
-                </td>
-                <td>${escapeHtml(intakeDisplay)}</td>
-                <td>${escapedStudentId || 'N/A'}</td>
-                <!-- 📄 KCSE Column -->
-                <td>
-                    <span class="badge ${statusColors[kcseStatus]}" 
-                          style="cursor:pointer;" 
-                          onclick="viewDocument('${escapedUserId}','kcse')">
-                        ${kcseStatus.toUpperCase()}
-                        <i class="fas fa-eye" style="font-size:10px;margin-left:4px;"></i>
-                    </span>
-                </td>
-                <!-- 🪪 ID/Passport Column -->
-                <td>
-                    <span class="badge ${statusColors[idStatus]}" 
-                          style="cursor:pointer;" 
-                          onclick="viewDocument('${escapedUserId}','id')">
-                        ${idStatus.toUpperCase()}
-                        <i class="fas fa-eye" style="font-size:10px;margin-left:4px;"></i>
-                    </span>
-                </td>
-                <!-- 📸 Photo Column -->
-                <td>
-                    ${u.profile_photo_url ? 
-                        `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
-                              alt="Photo" 
-                              style="width:40px;height:40px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
-                              onclick="viewDocument('${escapedUserId}','photo')"
-                              onerror="this.style.display='none';">` :
-                        `<span class="badge badge-secondary" style="cursor:pointer;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`
-                    }
-                </td>
-                <td>${new Date(u.created_at).toLocaleDateString()}</td>
-                <td>
-                    <button class="btn btn-approve" 
-                            onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
-                        <i class="fas fa-eye"></i> Review & Approve
-                    </button>
-                    <button class="btn btn-delete" 
-                            onclick="deleteProfile('${escapedUserId}', '${escapedName}')">
-                        Reject
-                    </button>
-                </td>
-            </tr>`;
-    }
-}
-// ============================================
-// 👥 LOAD STUDENTS FOR ENROLLMENT TAB
+// DELETE PROFILE - PRESERVED
 // ============================================
 
-async function loadStudents() {
-    console.log('📋 Loading students...');
+async function deleteProfile(userId, fullName, isRejection = false) {
+    console.log('🗑️ Deleting profile:', { userId, fullName, isRejection });
     
-    const tbody = document.getElementById('students-table');
-    if (!tbody) {
-        console.warn('students-table not found');
-        return;
-    }
+    const action = isRejection ? 'Reject' : 'Delete';
+    const message = isRejection 
+        ? `Reject (delete) user ${fullName}? This will permanently remove their account.`
+        : `CRITICAL: Permanently delete profile and user ${fullName}?`;
     
-    tbody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading students...</td></tr>';
-    
+    if (!confirm(`${action}: ${message}`)) return;
+
     try {
-        const { data: students, error } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('role', 'student')
-            .order('full_name', { ascending: true });
-        
-        if (error) throw error;
-        
-        if (!students || students.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">No students found.</td></tr>';
+        const { error: profileError } = await sb
+            .from(USER_PROFILE_TABLE)
+            .delete()
+            .eq('user_id', userId);
+
+        if (profileError) {
+            console.error('❌ Error deleting profile:', profileError);
+            await logAudit(
+                'USER_DELETE',
+                `Failed to delete profile for ${fullName}. Reason: ${profileError.message}`,
+                userId,
+                'FAILURE'
+            );
+            showFeedback(`Failed to delete profile: ${profileError.message}`, 'error');
             return;
         }
+
+        console.log('✅ Profile deleted from table');
+
+        let authDeleted = false;
+        try {
+            const { error: authErr } = await sb.auth.admin.deleteUser(userId);
+            if (authErr) {
+                console.warn('⚠️ Auth deletion failed (may need manual cleanup):', authErr);
+            } else {
+                authDeleted = true;
+                console.log('✅ Auth user deleted');
+            }
+        } catch (authError) {
+            console.warn('⚠️ Auth deletion error:', authError);
+        }
+
+        const auditDetails = isRejection 
+            ? `Rejected user ${fullName} (pending approval)`
+            : `Deleted user ${fullName}`;
         
-        tbody.innerHTML = '';
+        const auditStatus = authDeleted ? 'SUCCESS' : 'WARNING';
+
+        await logAudit(
+            'USER_DELETE',
+            auditDetails,
+            userId,
+            auditStatus
+        );
+
+        if (authDeleted) {
+            showFeedback(`✅ ${action} successful! User ${fullName} has been removed.`, 'success');
+        } else {
+            showFeedback(`⚠️ Profile deleted, but auth cleanup may be needed for ${fullName}.`, 'warning');
+        }
+
+        loadPendingApprovals();
+        loadAllUsers(1, USERS_STATE.filters);
+        loadStudents();
         
-        students.forEach((student, index) => {
-            const programName = getProgramDisplayName(student.program);
-            const programType = getProgramType(student.program);
-            const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-            const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
-            
-            const intakeDisplay = student.intake_year ? getDisplayIntake(student.program, student.intake_year) : 'N/A';
-            const statusClass = student.status === 'approved' ? 'status-approved' : 'status-pending';
-            
-            tbody.innerHTML += `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${escapeHtml(student.student_id || 'N/A')}</td>
-                    <td><strong>${escapeHtml(student.full_name)}</strong></td>
-                    <td>${escapeHtml(student.email || '')}</td>
-                    <td>
-                        ${escapeHtml(programName)}
-                        <div class="program-badge ${programBadgeClass}">
-                            <i class="fas ${programIcon}"></i> ${programType}
-                        </div>
-                    </td>
-                    <td>${escapeHtml(intakeDisplay)}</td>
-                    <td>${escapeHtml(student.block || 'N/A')}</td>
-                    <td class="${statusClass}">${escapeHtml(student.status || 'Pending')}</td>
-                    <td>
-                        <button class="btn-action" onclick="openEditUserModal('${escapeHtml(student.user_id)}')">Edit</button>
-                        <button class="btn btn-delete" onclick="deleteProfile('${escapeHtml(student.user_id)}', '${escapeHtml(student.full_name)}')">Delete</button>
-                    </td>
-                </tr>
-            `;
-        });
+        if (typeof loadDashboardData === 'function') {
+            loadDashboardData();
+        }
+
+    } catch (err) {
+        console.error('❌ Unexpected error in deleteProfile:', err);
         
-    } catch (error) {
-        console.error('Error loading students:', error);
-        tbody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td></tr>`;
+        await logAudit(
+            'USER_DELETE',
+            `Unexpected error deleting ${fullName}: ${err.message}`,
+            userId,
+            'FAILURE'
+        );
+        
+        showFeedback(`Unexpected error: ${err.message}`, 'error');
     }
 }
 
-// Make globally accessible
-window.loadStudents = loadStudents;
 // ============================================
-// OPEN EDIT USER MODAL - COMPLETE WITH ALL FIELDS
+// OPEN EDIT USER MODAL - PRESERVED
 // ============================================
 
 async function openEditUserModal(userId) {
@@ -3388,7 +3803,6 @@ async function openEditUserModal(userId) {
         
         if (error || !user) throw new Error('User fetch failed.');
 
-        // Get modal element first
         const modal = document.getElementById('userEditModal');
         if (!modal) {
             console.error('userEditModal not found in HTML');
@@ -3396,9 +3810,6 @@ async function openEditUserModal(userId) {
             return;
         }
 
-        // ============================================
-        // SET ALL FIELDS - Personal Information
-        // ============================================
         document.getElementById('edit_user_id').value = user.user_id;
         document.getElementById('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
         document.getElementById('edit_user_name').value = user.full_name || '';
@@ -3410,9 +3821,6 @@ async function openEditUserModal(userId) {
         document.getElementById('edit_user_national_id').value = user.national_id || '';
         document.getElementById('edit_user_address').value = user.address || '';
 
-        // ============================================
-        // SET ACADEMIC INFORMATION
-        // ============================================
         document.getElementById('edit_user_role').value = user.role || 'student';
         document.getElementById('edit_user_student_id').value = user.student_id || '';
         document.getElementById('edit_user_intake_year').value = user.intake_year || '';
@@ -3421,36 +3829,22 @@ async function openEditUserModal(userId) {
         document.getElementById('edit_user_guardian_phone').value = user.guardian_phone || '';
         document.getElementById('edit_user_status').value = user.status || 'pending';
 
-        // ============================================
-        // SET DOCUMENT STATUS
-        // ============================================
         document.getElementById('edit_user_doc_kcse').value = user.doc_kcse || 'pending';
         document.getElementById('edit_user_doc_id').value = user.doc_id || 'pending';
 
-        // ============================================
-        // HANDLE PROGRAM DROPDOWN
-        // ============================================
         const editUserProgram = document.getElementById('edit_user_program');
         const editUserBlock = document.getElementById('edit_user_block');
 
         if (editUserProgram) {
-            // Step 1: Update the program dropdown with all options
             updateProgramDropdown(editUserProgram);
-            
-            // Step 2: Set the program value
             editUserProgram.value = user.program || 'KRCHN';
             
-            // Step 3: Manually trigger the change event to update block options
             const changeEvent = new Event('change', { bubbles: true });
             editUserProgram.dispatchEvent(changeEvent);
             
-            // Step 4: After block options are populated, set the block value
             setTimeout(() => {
                 if (editUserBlock) {
-                    // Update block options explicitly
                     updateBlockTermOptions('edit_user_program', 'edit_user_block');
-                    
-                    // Set the block value
                     setTimeout(() => {
                         editUserBlock.value = user.current_block || user.block || 'Introductory';
                         console.log('✅ Block/Term set to:', user.current_block || user.block);
@@ -3459,13 +3853,9 @@ async function openEditUserModal(userId) {
             }, 100);
         }
 
-        // ============================================
-        // CLEAR PASSWORD FIELDS (for security)
-        // ============================================
         document.getElementById('edit_user_new_password').value = '';
         document.getElementById('edit_user_confirm_password').value = '';
 
-        // Show the modal
         modal.style.display = 'flex';
         
         console.log('✅ Edit user modal opened for:', user.full_name);
@@ -3477,7 +3867,7 @@ async function openEditUserModal(userId) {
 }
 
 // ============================================
-// HANDLE EDIT USER - SAVE ALL FIELDS
+// HANDLE EDIT USER - PRESERVED
 // ============================================
 
 async function handleEditUser(e) {
@@ -3495,9 +3885,6 @@ async function handleEditUser(e) {
         const userId = document.getElementById('edit_user_id').value;
         if (!userId) throw new Error('User ID is missing.');
 
-        // ============================================
-        // COLLECT ALL FORM DATA
-        // ============================================
         const updatedData = {
             full_name: document.getElementById('edit_user_name').value.trim(),
             email: document.getElementById('edit_user_email').value.trim(),
@@ -3521,9 +3908,6 @@ async function handleEditUser(e) {
             updated_at: new Date().toISOString()
         };
 
-        // ============================================
-        // HANDLE PASSWORD RESET (Optional)
-        // ============================================
         const newPassword = document.getElementById('edit_user_new_password').value.trim();
         const confirmPassword = document.getElementById('edit_user_confirm_password').value.trim();
         
@@ -3539,9 +3923,6 @@ async function handleEditUser(e) {
             return;
         }
 
-        // ============================================
-        // UPDATE PROFILE
-        // ============================================
         const { error: profileError } = await sb
             .from(USER_PROFILE_TABLE)
             .update(updatedData)
@@ -3549,9 +3930,6 @@ async function handleEditUser(e) {
 
         if (profileError) throw profileError;
 
-        // ============================================
-        // UPDATE PASSWORD IF PROVIDED
-        // ============================================
         if (newPassword) {
             const { error: pwError } = await sb.auth.admin.updateUserById(userId, {
                 password: newPassword
@@ -3565,21 +3943,14 @@ async function handleEditUser(e) {
             }
         }
 
-        // ============================================
-        // LOG AUDIT & SHOW FEEDBACK
-        // ============================================
         await logAudit('USER_EDIT', `Edited profile for user ${updatedData.full_name}`, userId, 'SUCCESS');
         showFeedback('✅ User profile updated successfully!', 'success');
 
-        // ============================================
-        // CLOSE MODAL & REFRESH DATA
-        // ============================================
         document.getElementById('userEditModal').style.display = 'none';
         document.getElementById('edit_user_new_password').value = '';
         document.getElementById('edit_user_confirm_password').value = '';
         
-        // Refresh all tables
-        await loadAllUsers();
+        await loadAllUsers(1, USERS_STATE.filters);
         await loadStudents();
         await loadPendingApprovals();
         await loadDashboardData();
@@ -3593,102 +3964,31 @@ async function handleEditUser(e) {
 }
 
 // ============================================
-// DELETE PROFILE
+// ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
 // ============================================
 
-async function deleteProfile(userId, fullName, isRejection = false) {
-    console.log('🗑️ Deleting profile:', { userId, fullName, isRejection });
-    
-    const action = isRejection ? 'Reject' : 'Delete';
-    const message = isRejection 
-        ? `Reject (delete) user ${fullName}? This will permanently remove their account.`
-        : `CRITICAL: Permanently delete profile and user ${fullName}?`;
-    
-    if (!confirm(`${action}: ${message}`)) return;
+window.loadAllUsers = loadAllUsers;
+window.loadPendingApprovals = loadPendingApprovals;
+window.loadStudents = loadStudents;
+window.initManageUsers = initManageUsers;
+window.changeUserPage = changeUserPage;
+window.searchUsersDebounced = searchUsersDebounced;
+window.filterUsers = filterUsers;
+window.resetUserFilters = resetUserFilters;
+window.approveUser = approveUser;
+window.showApprovalModal = showApprovalModal;
+window.closeApprovalModal = closeApprovalModal;
+window.confirmApproveUser = confirmApproveUser;
+window.updateUserRole = updateUserRole;
+window.deleteProfile = deleteProfile;
+window.sendApprovalEmail = sendApprovalEmail;
+window.getDisplayIntake = getDisplayIntake;
+window.handleAddAccount = handleAddAccount;
+window.handleMassPromotion = handleMassPromotion;
+window.openEditUserModal = openEditUserModal;
+window.handleEditUser = handleEditUser;
 
-    try {
-        // 1. First delete from user_profiles table
-        const { error: profileError } = await sb
-            .from(USER_PROFILE_TABLE)
-            .delete()
-            .eq('user_id', userId);
-
-        if (profileError) {
-            console.error('❌ Error deleting profile:', profileError);
-            await logAudit(
-                'USER_DELETE',
-                `Failed to delete profile for ${fullName}. Reason: ${profileError.message}`,
-                userId,
-                'FAILURE'
-            );
-            showFeedback(`Failed to delete profile: ${profileError.message}`, 'error');
-            return;
-        }
-
-        console.log('✅ Profile deleted from table');
-
-        // 2. Try to delete auth user (admin only)
-        let authDeleted = false;
-        try {
-            const { error: authErr } = await sb.auth.admin.deleteUser(userId);
-            if (authErr) {
-                console.warn('⚠️ Auth deletion failed (may need manual cleanup):', authErr);
-                // Continue anyway - profile is already deleted
-            } else {
-                authDeleted = true;
-                console.log('✅ Auth user deleted');
-            }
-        } catch (authError) {
-            console.warn('⚠️ Auth deletion error:', authError);
-        }
-
-        // 3. Log the audit
-        const auditDetails = isRejection 
-            ? `Rejected user ${fullName} (pending approval)`
-            : `Deleted user ${fullName}`;
-        
-        const auditStatus = authDeleted ? 'SUCCESS' : 'WARNING';
-        const auditMessage = authDeleted 
-            ? `User ${fullName} deleted successfully from both profile and auth.`
-            : `Profile for ${fullName} deleted, but auth deletion may need manual cleanup.`;
-
-        await logAudit(
-            'USER_DELETE',
-            auditDetails,
-            userId,
-            auditStatus
-        );
-
-        // 4. Show feedback
-        if (authDeleted) {
-            showFeedback(`✅ ${action} successful! User ${fullName} has been removed.`, 'success');
-        } else {
-            showFeedback(`⚠️ Profile deleted, but auth cleanup may be needed for ${fullName}.`, 'warning');
-        }
-
-        // 5. Refresh all user tables
-        loadPendingApprovals();
-        loadAllUsers();
-        loadStudents();
-        
-        // 6. Refresh dashboard if exists
-        if (typeof loadDashboardData === 'function') {
-            loadDashboardData();
-        }
-
-    } catch (err) {
-        console.error('❌ Unexpected error in deleteProfile:', err);
-        
-        await logAudit(
-            'USER_DELETE',
-            `Unexpected error deleting ${fullName}: ${err.message}`,
-            userId,
-            'FAILURE'
-        );
-        
-        showFeedback(`Unexpected error: ${err.message}`, 'error');
-    }
-}
+console.log('✅ Users Management fully optimized and exposed to global scope!');
 
 /*******************************************************
  * 10. COURSES MANAGEMENT
