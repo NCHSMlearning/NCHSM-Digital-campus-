@@ -524,174 +524,196 @@
             </a>
         </li>
 
-        <!-- ===== LEARNING HUB (DROPDOWN) - FIXED ===== -->
-        <li class="has-dropdown" style="margin-bottom: 2px; position: relative;">
-            <a href="#" class="dropdown-toggle" style="
+      <!-- ===== LEARNING HUB (DROPDOWN) - FIXED ===== -->
+<li class="has-dropdown" style="margin-bottom: 2px; position: relative;">
+    <a href="#" class="dropdown-toggle" style="
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
+        <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
+        <span style="flex: 1;">My Learning Hub</span>
+        <i class="fas fa-chevron-down" style="font-size: 12px; transition: transform 0.3s;"></i>
+    </a>
+    <ul class="dropdown-menu" style="
+        list-style: none;
+        padding: 8px 0;
+        margin: 4px 0 0 0;
+        display: none;
+        background: rgba(30, 27, 75, 0.95);
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.15);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        min-width: 200px;
+        position: relative;
+        z-index: 9999;
+        overflow: visible;
+    ">
+        <li style="margin: 0; padding: 0;">
+            <a href="#" data-tab="hub-courses" style="
                 display: flex;
                 align-items: center;
                 gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: rgba(255,255,255,0.8);
+                padding: 10px 16px;
+                color: rgba(255,255,255,0.9);
                 text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
+                font-size: 13px;
                 transition: all 0.2s;
-                cursor: pointer;
-            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
-                <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
-                <span style="flex: 1;">My Learning Hub</span>
-                <i class="fas fa-chevron-down" style="font-size: 12px; transition: transform 0.3s;"></i>
+                border-radius: 0;
+                border-left: none;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
+                <i class="fas fa-book-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>My Courses</span>
             </a>
-            <ul class="dropdown-menu" style="
-                list-style: none;
-                padding: 4px 0;
-                margin: 4px 0 0 0;
-                display: none;
-                background: rgba(255,255,255,0.1);
-                border-radius: 8px;
-                border: 1px solid rgba(255,255,255,0.1);
-                overflow: hidden;
-            ">
-                <li style="margin: 0;">
-                    <a href="#" data-tab="hub-courses" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 16px;
-                        color: rgba(255,255,255,0.7);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                        <i class="fas fa-book-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>My Courses</span>
-                    </a>
-                </li>
-                <li style="margin: 0;">
-                    <a href="#" data-tab="hub-register" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 16px;
-                        color: rgba(255,255,255,0.7);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                        <i class="fas fa-plus-circle" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Register Units</span>
-                    </a>
-                </li>
-                <li style="margin: 0;">
-                    <a href="#" data-tab="hub-online-learning" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 16px;
-                        color: rgba(255,255,255,0.7);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                        <i class="fas fa-video" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Online Learning</span>
-                    </a>
-                </li>
-                <li style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 12px;"></li>
-                <li style="margin: 0;">
-                    <a href="#" data-tab="hub-exam-card" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 16px;
-                        color: rgba(255,255,255,0.7);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                        <i class="fas fa-id-card" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Exam Card</span>
-                    </a>
-                </li>
-                <li style="margin: 0;">
-                    <a href="#" data-tab="hub-lecture-card" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 16px;
-                        color: rgba(255,255,255,0.7);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                        <i class="fas fa-chalkboard-teacher" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Lecture Card</span>
-                    </a>
-                </li>
-                <li style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 12px;"></li>
-                <li style="margin: 0;">
-                    <a href="#" data-tab="cats" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 16px;
-                        color: rgba(255,255,255,0.7);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                        <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Exams & Grades</span>
-                    </a>
-                </li>
-                <li style="margin: 0;">
-                    <a href="#" data-tab="academic-reports" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 16px;
-                        color: rgba(255,255,255,0.7);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                        <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Academic Reports</span>
-                    </a>
-                </li>
-                <li style="margin: 0;">
-                    <a href="#" data-tab="resources" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 16px;
-                        color: rgba(255,255,255,0.7);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                        <i class="fas fa-folder-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>Resources</span>
-                    </a>
-                </li>
-                <li style="margin: 0;">
-                    <a href="#" data-tab="nurseiq" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 16px;
-                        color: rgba(255,255,255,0.7);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.7)'">
-                        <i class="fas fa-brain" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                        <span>NurseIQ</span>
-                    </a>
-                </li>
-            </ul>
         </li>
+        <li style="margin: 0; padding: 0;">
+            <a href="#" data-tab="hub-register" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 16px;
+                color: rgba(255,255,255,0.9);
+                text-decoration: none;
+                font-size: 13px;
+                transition: all 0.2s;
+                border-radius: 0;
+                border-left: none;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
+                <i class="fas fa-plus-circle" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Register Units</span>
+            </a>
+        </li>
+        <li style="margin: 0; padding: 0;">
+            <a href="#" data-tab="hub-online-learning" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 16px;
+                color: rgba(255,255,255,0.9);
+                text-decoration: none;
+                font-size: 13px;
+                transition: all 0.2s;
+                border-radius: 0;
+                border-left: none;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
+                <i class="fas fa-video" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Online Learning</span>
+            </a>
+        </li>
+        <li style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 12px; padding: 0;"></li>
+        <li style="margin: 0; padding: 0;">
+            <a href="#" data-tab="hub-exam-card" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 16px;
+                color: rgba(255,255,255,0.9);
+                text-decoration: none;
+                font-size: 13px;
+                transition: all 0.2s;
+                border-radius: 0;
+                border-left: none;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
+                <i class="fas fa-id-card" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Exam Card</span>
+            </a>
+        </li>
+        <li style="margin: 0; padding: 0;">
+            <a href="#" data-tab="hub-lecture-card" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 16px;
+                color: rgba(255,255,255,0.9);
+                text-decoration: none;
+                font-size: 13px;
+                transition: all 0.2s;
+                border-radius: 0;
+                border-left: none;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
+                <i class="fas fa-chalkboard-teacher" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Lecture Card</span>
+            </a>
+        </li>
+        <li style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 12px; padding: 0;"></li>
+        <li style="margin: 0; padding: 0;">
+            <a href="#" data-tab="cats" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 16px;
+                color: rgba(255,255,255,0.9);
+                text-decoration: none;
+                font-size: 13px;
+                transition: all 0.2s;
+                border-radius: 0;
+                border-left: none;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
+                <i class="fas fa-chart-line" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Exams & Grades</span>
+            </a>
+        </li>
+        <li style="margin: 0; padding: 0;">
+            <a href="#" data-tab="academic-reports" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 16px;
+                color: rgba(255,255,255,0.9);
+                text-decoration: none;
+                font-size: 13px;
+                transition: all 0.2s;
+                border-radius: 0;
+                border-left: none;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
+                <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Academic Reports</span>
+            </a>
+        </li>
+        <li style="margin: 0; padding: 0;">
+            <a href="#" data-tab="resources" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 16px;
+                color: rgba(255,255,255,0.9);
+                text-decoration: none;
+                font-size: 13px;
+                transition: all 0.2s;
+                border-radius: 0;
+                border-left: none;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
+                <i class="fas fa-folder-open" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Resources</span>
+            </a>
+        </li>
+        <li style="margin: 0; padding: 0;">
+            <a href="#" data-tab="nurseiq" style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 16px;
+                color: rgba(255,255,255,0.9);
+                text-decoration: none;
+                font-size: 13px;
+                transition: all 0.2s;
+                border-radius: 0;
+                border-left: none;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.9)'">
+                <i class="fas fa-brain" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>NurseIQ</span>
+            </a>
+        </li>
+    </ul>
+</li>
 
         <!-- ATTENDANCE -->
         <li style="margin-bottom: 2px;">
