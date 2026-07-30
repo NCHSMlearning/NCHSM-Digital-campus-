@@ -96,38 +96,43 @@
 
     function getGradeColor(grade) {
         const colors = {
-            'A': '#10b981', 'A-': '#34d399', 'B+': '#f59e0b',
-            'B': '#fbbf24', 'B-': '#fcd34d', 'C+': '#f97316',
-            'C': '#fb923c', 'C-': '#fca5a5', 'D': '#ef4444',
-            'D+': '#dc2626', 'F': '#991b1b'
+            'A': '#10b981',
+            'B': '#3b82f6',
+            'C': '#f59e0b',
+            'D': '#ef4444'
         };
         return colors[grade] || '#6b7280';
     }
 
-    function calculateLetterGrade(percentage) {
-        if (percentage === null || percentage === undefined) return 'N/A';
-        if (percentage >= 85) return 'A';
-        if (percentage >= 75) return 'B+';
-        if (percentage >= 70) return 'B';
-        if (percentage >= 65) return 'C+';
-        if (percentage >= 60) return 'C';
-        if (percentage >= 50) return 'D';
-        return 'F';
+    // ============================================================
+    // 4. GRADING FUNCTIONS (A: 75-100%, B: 65-74%, C: 60-64%, D: Below 60%)
+    // ============================================================
+    function calculateGrade(score) {
+        if (score === null || score === undefined || score === 0) return 'N/A';
+        if (score >= 75) return 'A';
+        if (score >= 65) return 'B';
+        if (score >= 60) return 'C';
+        return 'D';
     }
 
-    function calculateGPA(percentage) {
-        if (percentage === null || percentage === undefined) return 0;
-        if (percentage >= 85) return 4.0;
-        if (percentage >= 75) return 3.5;
-        if (percentage >= 70) return 3.0;
-        if (percentage >= 65) return 2.5;
-        if (percentage >= 60) return 2.0;
-        if (percentage >= 50) return 1.0;
-        return 0.0;
+    function calculatePoints(grade) {
+        const points = {
+            'A': 4.0,
+            'B': 3.0,
+            'C': 2.0,
+            'D': 0.0
+        };
+        return points[grade] || 0.0;
+    }
+
+    function calculateGPA(marks) {
+        if (!marks || marks.length === 0) return 0;
+        const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
+        return totalPoints / marks.length;
     }
 
     // ============================================================
-    // 4. GRADING STATUS HELPER
+    // 5. GRADING STATUS HELPER
     // ============================================================
     function getGradingStatus(score) {
         if (score === null || score === undefined || score === 0) return 'PENDING';
@@ -149,7 +154,7 @@
     }
 
     // ============================================================
-    // 5. GENERATE SAMPLE GRADES (Fallback)
+    // 6. GENERATE SAMPLE GRADES (Fallback)
     // ============================================================
     function generateSampleGrades() {
         const user = window.currentUserProfile || {};
@@ -174,8 +179,8 @@
         return courses.map((course) => {
             const base = 65 + Math.random() * 30;
             const score = Math.min(99, Math.round(base * 10) / 10);
-            const grade = calculateLetterGrade(score);
-            const gpa = calculateGPA(score);
+            const grade = calculateGrade(score);
+            const points = calculatePoints(grade);
             
             return {
                 courseCode: course.code,
@@ -186,7 +191,7 @@
                 final: Math.round(40 + Math.random() * 40),
                 total: score,
                 grade: grade,
-                gpa: gpa,
+                points: points,
                 status: score >= 60 ? 'PASS' : 'FAIL',
                 blockTerm: course.block,
                 year: '2024',
@@ -196,7 +201,7 @@
     }
 
     // ============================================================
-    // 6. MY MARKS - STATE & FUNCTIONS
+    // 7. MY MARKS - STATE & FUNCTIONS
     // ============================================================
     let myMarksData = [];
     let myMarksFiltered = [];
@@ -206,13 +211,13 @@
         
         if (isTVET) {
             return [
-                { id: 101, admission_number: 'TVET/001/2025', student_name: 'Student', subject_name: 'Occupational Health & Safety', program: program, block: 'Term 1', year: '2025', cat1_score: 16, cat2_score: 18, exam_score: 45, final_score: 79, grade: 'B+', points: 3.5, published: true, published_at: '2025-01-15', assessment_type: 'full', academic_year: '2025' }
+                { id: 101, admission_number: 'TVET/001/2025', student_name: 'Student', subject_name: 'Occupational Health & Safety', program: program, block: 'Term 1', year: '2025', cat1_score: 16, cat2_score: 18, exam_score: 45, final_score: 79, grade: 'B', points: 3.0, published: true, published_at: '2025-01-15', assessment_type: 'full', academic_year: '2025' }
             ];
         }
         
         return [
             { id: 1, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Fundamentals of Nursing', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 18, cat2_score: 19, exam_score: 55, final_score: 92, grade: 'A', points: 4.0, published: true, published_at: '2025-01-15', assessment_type: 'full', academic_year: '2025' },
-            { id: 2, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Anatomy and Physiology', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 15, cat2_score: 16, exam_score: 48, final_score: 79, grade: 'B+', points: 3.5, published: true, published_at: '2025-01-15', assessment_type: 'full', academic_year: '2025' }
+            { id: 2, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Anatomy and Physiology', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 15, cat2_score: 16, exam_score: 48, final_score: 79, grade: 'B', points: 3.0, published: true, published_at: '2025-01-15', assessment_type: 'full', academic_year: '2025' }
         ];
     }
 
@@ -238,7 +243,7 @@
             
             const registrationNumber = user.student_id || user.admission_number || user.user_id;
             
-            // Update student info - only elements that exist
+            // Update student info
             const nameEl = document.getElementById('my_marks_student_name');
             if (nameEl) nameEl.textContent = user.full_name || 'Student';
             
@@ -247,6 +252,9 @@
             
             const programEl = document.getElementById('my_marks_program');
             if (programEl) programEl.textContent = user.program || '-';
+            
+            const academicYearEl = document.getElementById('my_marks_academic_year');
+            if (academicYearEl) academicYearEl.textContent = user.academic_year || user.intake_year || '2025';
             
             const blockLabel = PROGRAM.getBlockLabel(user.program);
             const headerEl = document.querySelector('#my_marks_table_body')?.closest('table')?.querySelector('th:nth-child(3)');
@@ -284,13 +292,18 @@
                             marks = marks.map(mark => ({
                                 ...mark,
                                 unit_code: unitMap[mark.subject_name]?.unit_code || getUnitCode(mark.subject_name),
-                                credits: unitMap[mark.subject_name]?.credits || 3
+                                credits: unitMap[mark.subject_name]?.credits || 3,
+                                // Recalculate grade and points based on correct scale
+                                grade: mark.grade || calculateGrade(mark.final_score),
+                                points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score))
                             }));
                         } else {
                             marks = marks.map(mark => ({
                                 ...mark,
                                 unit_code: getUnitCode(mark.subject_name),
-                                credits: 3
+                                credits: 3,
+                                grade: mark.grade || calculateGrade(mark.final_score),
+                                points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score))
                             }));
                         }
                     } catch (e) {
@@ -298,7 +311,9 @@
                         marks = marks.map(mark => ({
                             ...mark,
                             unit_code: getUnitCode(mark.subject_name),
-                            credits: 3
+                            credits: 3,
+                            grade: mark.grade || calculateGrade(mark.final_score),
+                            points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score))
                         }));
                     }
                 }
@@ -312,12 +327,15 @@
                 myMarksData = getDemoMarks(user.program);
                 myMarksData = myMarksData.map(mark => ({
                     ...mark,
-                    unit_code: getUnitCode(mark.subject_name)
+                    unit_code: getUnitCode(mark.subject_name),
+                    grade: mark.grade || calculateGrade(mark.final_score),
+                    points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score))
                 }));
             }
             
             myMarksFiltered = [...myMarksData];
             
+            // Populate subject filter
             const subjectFilter = document.getElementById('my_marks_subject_filter');
             if (subjectFilter) {
                 const subjects = [...new Set(myMarksData.map(m => m.subject_name).filter(Boolean))];
@@ -330,6 +348,7 @@
                 });
             }
             
+            // Populate year filter
             const yearFilter = document.getElementById('my_marks_year_filter');
             if (yearFilter) {
                 const years = [...new Set(myMarksData.map(m => m.academic_year || m.year || '2025').filter(Boolean))];
@@ -342,8 +361,14 @@
                 });
             }
             
+            // Update GPA
+            const total = myMarksData.length;
+            const totalPoints = myMarksData.reduce((sum, m) => sum + (m.points || 0), 0);
+            const gpa = total > 0 ? (totalPoints / total) : 0;
+            const gpaEl = document.getElementById('my_marks_gpa');
+            if (gpaEl) gpaEl.textContent = gpa.toFixed(2);
+            
             renderMyMarksTable();
-            updateMyMarksStats();
             
         } catch (error) {
             console.error('Error loading my marks:', error);
@@ -393,6 +418,7 @@
             const gradeColor = getGradeColor(mark.grade);
             const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
             const credits = mark.credits || 3;
+            const score = mark.final_score || 0;
             
             html += `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
@@ -402,7 +428,7 @@
                     <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
                     <td style="padding: 10px 14px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
                     <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${credits}</td>
-                    <td style="padding: 10px 14px; text-align: center; font-weight: 700;">${mark.final_score || 0}%</td>
+                    <td style="padding: 10px 14px; text-align: center; font-weight: 700;">${score}%</td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
                             ${mark.grade || '-'}
@@ -419,11 +445,6 @@
         
         tbody.innerHTML = html;
         document.getElementById('my_marks_count').textContent = `${marks.length} results`;
-    }
-
-    function updateMyMarksStats() {
-        // Stats removed - keeping function for compatibility
-        return;
     }
 
     function filterMyMarks() {
@@ -456,7 +477,7 @@
     }
 
     // ============================================================
-    // 7. SEMESTER REPORT
+    // 8. SEMESTER REPORT
     // ============================================================
     let gradeChart = null;
     let currentGrades = [];
@@ -487,8 +508,8 @@
                         cat2: e.cat2Display || e.cat_2_score || '--',
                         final: e.finalDisplay || e.final_score || '--',
                         total: e.totalPercentage || 0,
-                        grade: calculateLetterGrade(e.totalPercentage || 0),
-                        gpa: calculateGPA(e.totalPercentage || 0),
+                        grade: calculateGrade(e.totalPercentage || 0),
+                        points: calculatePoints(calculateGrade(e.totalPercentage || 0)),
                         status: (e.totalPercentage || 0) >= 60 ? 'PASS' : 'FAIL',
                         blockTerm: e.block_term || e.block || 'General',
                         year: e.intake_year || '2024'
@@ -505,8 +526,8 @@
             const total = grades.length;
             const totalScore = grades.reduce((sum, g) => sum + g.total, 0);
             const avgScore = total > 0 ? (totalScore / total) : 0;
-            const gpa = calculateGPA(avgScore);
-            const grade = calculateLetterGrade(avgScore);
+            const gpa = calculateGPA(grades);
+            const grade = calculateGrade(avgScore);
             const passed = grades.filter(g => g.status === 'PASS').length;
             
             document.getElementById('semester-gpa').textContent = gpa.toFixed(2);
@@ -548,7 +569,7 @@
         const canvas = document.getElementById('grade-distribution-chart');
         if (!canvas) return;
         
-        const gradeCounts = { 'A': 0, 'B+': 0, 'B': 0, 'C+': 0, 'C': 0, 'D': 0, 'F': 0 };
+        const gradeCounts = { 'A': 0, 'B': 0, 'C': 0, 'D': 0 };
         grades.forEach(g => { if (gradeCounts[g.grade] !== undefined) gradeCounts[g.grade]++; });
         
         const labels = Object.keys(gradeCounts);
@@ -564,7 +585,7 @@
                     datasets: [{
                         label: 'Number of Courses',
                         data: data,
-                        backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#f97316', '#ef4444', '#dc2626'],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
                         borderWidth: 1,
                         borderRadius: 8
                     }]
@@ -583,13 +604,13 @@
     }
 
     // ============================================================
-    // 8. YEARLY REPORT
+    // 9. YEARLY REPORT
     // ============================================================
     function loadYearlyReport() {
         const grades = currentGrades.length > 0 ? currentGrades : generateSampleGrades();
         const total = grades.length;
         const avg = total > 0 ? (grades.reduce((sum, g) => sum + g.total, 0) / total) : 0;
-        const gpa = calculateGPA(avg);
+        const gpa = calculateGPA(grades);
         
         document.getElementById('year-gpa').textContent = gpa.toFixed(2);
         document.getElementById('year-credits').textContent = total * 3;
@@ -598,7 +619,7 @@
     }
 
     // ============================================================
-    // 9. FULL TRANSCRIPT
+    // 10. FULL TRANSCRIPT
     // ============================================================
     function loadTranscript() {
         const tbody = document.getElementById('transcript-table-body');
@@ -617,7 +638,7 @@
         let totalPoints = 0;
         
         grades.forEach(g => {
-            const points = g.gpa * g.credits;
+            const points = g.points * g.credits;
             totalAttempted += g.credits;
             if (g.status === 'PASS') totalEarned += g.credits;
             totalPoints += points;
@@ -643,7 +664,7 @@
     }
 
     // ============================================================
-    // 10. COURSE PROGRESS
+    // 11. COURSE PROGRESS
     // ============================================================
     function loadCourseProgress() {
         const container = document.getElementById('course-progress-list');
@@ -679,15 +700,15 @@
     }
 
     // ============================================================
-    // 11. DOWNLOAD FULL TRANSCRIPT
+    // 12. DOWNLOAD FULL TRANSCRIPT
     // ============================================================
     function downloadTranscriptPDF() {
         const user = window.currentUserProfile || {};
         const grades = currentGrades.length > 0 ? currentGrades : generateSampleGrades();
         const total = grades.length;
         const avg = total > 0 ? (grades.reduce((sum, g) => sum + g.total, 0) / total) : 0;
-        const gpa = calculateGPA(avg);
-        const grade = calculateLetterGrade(avg);
+        const gpa = calculateGPA(grades);
+        const grade = calculateGrade(avg);
         
         let html = `
             <!DOCTYPE html>
@@ -737,7 +758,7 @@
                     <td>${escapeHtml(g.courseName)}</td>
                     <td>${g.credits}</td>
                     <td>${g.grade}</td>
-                    <td>${(g.gpa * g.credits).toFixed(1)}</td>
+                    <td>${(g.points * g.credits).toFixed(1)}</td>
                 </tr>
             `;
         });
@@ -764,7 +785,7 @@
     }
 
     // ============================================================
-    // 12. DOWNLOAD REPORT CARD (WITH LOGO, NO POINTS, NO STATS)
+    // 13. DOWNLOAD REPORT CARD
     // ============================================================
     function downloadReportCard() {
         const user = window.currentUserProfile || {};
@@ -1014,6 +1035,10 @@
                             <div class="label">Academic Year</div>
                             <div class="value">${escapeHtml(academicYear)}</div>
                         </div>
+                        <div>
+                            <div class="label">Overall GPA</div>
+                            <div class="value" style="color: #6d28d9; font-size: 20px;">${calculateGPA(marks).toFixed(2)}</div>
+                        </div>
                     </div>
                     
                     <table>
@@ -1091,7 +1116,7 @@
     }
 
     // ============================================================
-    // 13. TAB SWITCHING
+    // 14. TAB SWITCHING
     // ============================================================
     function setupTabs() {
         const tabs = document.querySelectorAll('.report-tab');
@@ -1131,7 +1156,7 @@
     }
 
     // ============================================================
-    // 14. INITIALIZE
+    // 15. INITIALIZE
     // ============================================================
     function init() {
         console.log('🔧 Initializing Academic Reports...');
@@ -1216,7 +1241,7 @@
     }
 
     // ============================================================
-    // 15. EXPOSE FUNCTIONS
+    // 16. EXPOSE FUNCTIONS
     // ============================================================
     window.loadMyMarks = loadMyMarks;
     window.filterMyMarks = filterMyMarks;
@@ -1229,9 +1254,12 @@
     window.getUnitCode = getUnitCode;
     window.UNIT_CODE_MAP = UNIT_CODE_MAP;
     window.getGradingStatus = getGradingStatus;
+    window.calculateGrade = calculateGrade;
+    window.calculatePoints = calculatePoints;
+    window.calculateGPA = calculateGPA;
 
     // ============================================================
-    // 16. AUTO-INIT
+    // 17. AUTO-INIT
     // ============================================================
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
