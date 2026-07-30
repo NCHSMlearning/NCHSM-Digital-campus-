@@ -1451,8 +1451,9 @@
             <p class="subtitle">View your academic performance, transcripts, and progress reports</p>
         </div>
         <div class="header-actions">
-            <button id="download-transcript-pdf" class="btn-primary"><i class="fas fa-download"></i> Download Full Transcript</button>
-            <button id="print-report" class="btn-secondary"><i class="fas fa-print"></i> Print Report</button>
+            <button id="download-transcript-pdf" class="btn-primary" onclick="window.downloadTranscriptPDF?.()"><i class="fas fa-download"></i> Download Full Transcript</button>
+            <button id="download-report-card" class="btn-success" onclick="window.downloadReportCard?.()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;"><i class="fas fa-file-pdf"></i> Download Report Card</button>
+            <button id="print-report" class="btn-secondary" onclick="window.print()"><i class="fas fa-print"></i> Print Report</button>
         </div>
     </div>
     
@@ -1462,7 +1463,7 @@
         <button class="report-tab" data-report="yearly"><i class="fas fa-chart-bar"></i> Yearly Summary</button>
         <button class="report-tab" data-report="transcript"><i class="fas fa-file-alt"></i> Full Transcript</button>
         <button class="report-tab" data-report="progress"><i class="fas fa-tasks"></i> Course Progress</button>
-        <button class="report-tab" data-report="mymarks"><i class="fas fa-file-alt" style="color: #4C1D95;"></i> 📄 My Marks</button>
+        <button class="report-tab" data-report="mymarks"><i class="fas fa-file-alt"></i> 📄 My Marks</button>
     </div>
     
     <!-- ========== SEMESTER REPORT ========== -->
@@ -1482,7 +1483,7 @@
                     <option value="cumulative">Cumulative GPA</option>
                 </select>
             </div>
-            <button id="refresh-report" class="btn-refresh"><i class="fas fa-sync-alt"></i> Load Report</button>
+            <button id="refresh-report" class="btn-refresh" onclick="window.loadSemesterReport?.()"><i class="fas fa-sync-alt"></i> Load Report</button>
         </div>
         
         <div class="gpa-summary">
@@ -1779,6 +1780,32 @@
                 <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 11px;">C (60-64%) → 2.0</span>
                 <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 11px;">D (Below 60%) → 0.0</span>
             </div>
+        </div>
+        
+        <!-- ✅ DOWNLOAD REPORT CARD BUTTON -->
+        <div style="margin-top: 24px; text-align: center; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb;">
+            <button onclick="downloadReportCard()" class="btn-success" style="
+                background: #10b981;
+                color: white;
+                border: none;
+                padding: 14px 40px;
+                border-radius: 10px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 12px;
+                transition: all 0.3s;
+                box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(16,185,129,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(16,185,129,0.3)'">
+                <i class="fas fa-file-pdf" style="font-size: 20px;"></i> 
+                Download Report Card
+                <span style="font-size: 12px; opacity: 0.8; font-weight: 400;">(PDF)</span>
+            </button>
+            <p style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                <i class="fas fa-info-circle"></i> Your report card includes all published marks and performance summary
+            </p>
         </div>
         
     </div>
