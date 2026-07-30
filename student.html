@@ -1459,26 +1459,108 @@
         </div>
     </div>
     
-  <!-- ========== REPORT TABS ========== -->
-<div class="report-tabs" style="display: flex !important; visibility: visible !important;">
-    <button class="report-tab active" data-report="semester" style="display: inline-flex !important; visibility: visible !important;">
-        <i class="fas fa-calendar-alt"></i> Semester Report
-    </button>
-    <button class="report-tab" data-report="yearly" style="display: inline-flex !important; visibility: visible !important;">
-        <i class="fas fa-chart-bar"></i> Yearly Summary
-    </button>
-    <button class="report-tab" data-report="transcript" style="display: inline-flex !important; visibility: visible !important;">
-        <i class="fas fa-file-alt"></i> Full Transcript
-    </button>
-    <button class="report-tab" data-report="progress" style="display: inline-flex !important; visibility: visible !important;">
-        <i class="fas fa-tasks"></i> Course Progress
-    </button>
-    <button class="report-tab" data-report="mymarks" style="display: inline-flex !important; visibility: visible !important; background: #f0fdf4 !important; border-color: #10b981 !important;">
-        <i class="fas fa-file-alt" style="color: #10b981;"></i> 📄 My Marks
-    </button>
-</div>
+    <!-- ========== REPORT TABS WITH INLINE STYLES ========== -->
+    <div class="report-tabs" style="display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; padding: 10px; background: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0;">
+        
+        <!-- Semester Report -->
+        <button class="report-tab" data-report="semester" style="
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 10px 22px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 500; 
+            font-size: 14px; 
+            transition: all 0.3s ease; 
+            border: 2px solid transparent; 
+            background: #ffffff; 
+            color: #475569; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
+            <i class="fas fa-calendar-alt" style="color: #64748b;"></i> Semester Report
+        </button>
+        
+        <!-- Yearly Summary -->
+        <button class="report-tab" data-report="yearly" style="
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 10px 22px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 500; 
+            font-size: 14px; 
+            transition: all 0.3s ease; 
+            border: 2px solid transparent; 
+            background: #ffffff; 
+            color: #475569; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
+            <i class="fas fa-chart-bar" style="color: #64748b;"></i> Yearly Summary
+        </button>
+        
+        <!-- Full Transcript -->
+        <button class="report-tab" data-report="transcript" style="
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 10px 22px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 500; 
+            font-size: 14px; 
+            transition: all 0.3s ease; 
+            border: 2px solid transparent; 
+            background: #ffffff; 
+            color: #475569; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
+            <i class="fas fa-file-alt" style="color: #64748b;"></i> Full Transcript
+        </button>
+        
+        <!-- Course Progress -->
+        <button class="report-tab" data-report="progress" style="
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 10px 22px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 500; 
+            font-size: 14px; 
+            transition: all 0.3s ease; 
+            border: 2px solid transparent; 
+            background: #ffffff; 
+            color: #475569; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
+            <i class="fas fa-tasks" style="color: #64748b;"></i> Course Progress
+        </button>
+        
+        <!-- My Marks - ACTIVE -->
+        <button class="report-tab active" data-report="mymarks" style="
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 10px 22px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 14px; 
+            transition: all 0.3s ease; 
+            border: 2px solid #0A3D62; 
+            background: #0A3D62; 
+            color: #ffffff; 
+            box-shadow: 0 4px 12px rgba(10, 61, 98, 0.3);
+        " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10, 61, 98, 0.4)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(10, 61, 98, 0.3)'">
+            <i class="fas fa-file-alt" style="color: #ffffff;"></i> 📄 My Marks
+        </button>
+        
+    </div>
+    
     <!-- ========== SEMESTER REPORT ========== -->
-    <div id="semester-report" class="report-content active">
+    <div id="semester-report" class="report-content" style="display: none;">
         <div class="report-filter">
             <div class="filter-group">
                 <label><i class="fas fa-calendar"></i> Select Semester:</label>
@@ -1670,7 +1752,7 @@
     <!-- ============================================================ -->
     <!-- ✅ MY MARKS TAB - PUBLISHED MARKS / TRANSCRIPT              -->
     <!-- ============================================================ -->
-    <div id="mymarks-report" class="report-content" style="display:none;">
+    <div id="mymarks-report" class="report-content" style="display: block;">
         
         <!-- Student Info Card -->
         <div class="transcript-student-card" style="
@@ -1748,32 +1830,33 @@
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
         </div>
-      <!-- Marks Table -->
-<div style="background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
-    <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-            <thead style="background: #0A3D62; color: white;">
-                <tr>
-                    <th style="padding: 10px 14px; text-align: left; width: 50px;">#</th>
-                    <th style="padding: 10px 14px; text-align: left; min-width: 100px;">Unit Code</th>
-                    <th style="padding: 10px 14px; text-align: left; min-width: 150px;">Unit Name</th>
-                    <th style="padding: 10px 14px; text-align: center; width: 70px;">Credits</th>
-                    <th style="padding: 10px 14px; text-align: center; width: 70px;">Grade</th>
-                    <th style="padding: 10px 14px; text-align: center; width: 70px;">Points</th>
-                    <th style="padding: 10px 14px; text-align: center; width: 100px;">Status</th>
-                </tr>
-            </thead>
-            <tbody id="my_marks_table_body">
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px;">
-                        <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                        <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+        
+        <!-- Marks Table -->
+        <div style="background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead style="background: #0A3D62; color: white;">
+                        <tr>
+                            <th style="padding: 10px 14px; text-align: left; width: 50px;">#</th>
+                            <th style="padding: 10px 14px; text-align: left; min-width: 100px;">Unit Code</th>
+                            <th style="padding: 10px 14px; text-align: left; min-width: 150px;">Unit Name</th>
+                            <th style="padding: 10px 14px; text-align: center; width: 70px;">Credits</th>
+                            <th style="padding: 10px 14px; text-align: center; width: 70px;">Grade</th>
+                            <th style="padding: 10px 14px; text-align: center; width: 70px;">Points</th>
+                            <th style="padding: 10px 14px; text-align: center; width: 100px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="my_marks_table_body">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px;">
+                                <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                                <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         
         <!-- Grading Scale -->
         <div style="margin-top: 20px; background: white; border-radius: 8px; padding: 16px; border: 1px solid #e5e7eb;">
@@ -1788,7 +1871,7 @@
             </div>
         </div>
         
-        <!-- ✅ DOWNLOAD REPORT CARD BUTTON -->
+        <!-- DOWNLOAD REPORT CARD BUTTON -->
         <div style="margin-top: 24px; text-align: center; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb;">
             <button onclick="downloadReportCard()" class="btn-success" style="
                 background: #10b981;
@@ -1819,7 +1902,6 @@
     
 </section>
 <!-- END ACADEMIC REPORTS -->
-
 <!-- ==================== ATTENDANCE TAB ==================== -->
 <section id="attendance" class="tab-content" hidden>
     <div class="attendance-header">
