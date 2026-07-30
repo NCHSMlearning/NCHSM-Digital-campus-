@@ -1477,12 +1477,11 @@
         }
     }
 
-   // ============================================================
-// 15. DOWNLOAD REPORT CARD - FULL PORTRAIT PAGE
-// NO SCORES - ONLY GRADES AND POINTS
+ // ============================================================
+// 15. DOWNLOAD REPORT CARD - PROFESSIONAL WITH BALANCED MARGINS
 // ============================================================
 function downloadReportCard() {
-    console.log('📊 Downloading Report Card...');
+    console.log('📊 Downloading Professional Report Card...');
     
     const user = window.currentUserProfile || {};
     const userProgram = user.program || '';
@@ -1551,6 +1550,9 @@ function downloadReportCard() {
     let passed = 0;
     let failed = 0;
     let pending = 0;
+    let distinction = 0;
+    let credit = 0;
+    let pass = 0;
     
     marks.forEach(m => {
         const points = m.points || 0;
@@ -1566,13 +1568,21 @@ function downloadReportCard() {
         } else {
             passed++;
         }
+        
+        if (status === 'DISTINCTION' || status === 'EXCELLENT') {
+            distinction++;
+        } else if (status === 'CREDIT' || status === 'GOOD') {
+            credit++;
+        } else if (status === 'PASS' || status === 'SATISFACTORY') {
+            pass++;
+        }
     });
     
     const gpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
     const grade = calculateGrade(gpa * 10, userProgram);
     const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
     
-    // Build table rows - NO SCORE COLUMN
+    // Build table rows
     let tableRows = '';
     marks.forEach((mark, index) => {
         const status = mark.status || getGradingStatus(0, userProgram);
@@ -1581,23 +1591,22 @@ function downloadReportCard() {
         const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
         const gradeColor = getGradeColor(mark.grade);
         const gradeDisplay = mark.grade || calculateGrade(0, userProgram) || '-';
-        const isPassing = status !== 'FAIL' && status !== 'PENDING';
         
         tableRows += `
-            <tr style="${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
-                <td style="padding: 3px 5px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 8px; color: #94a3b8;">${index + 1}</td>
-                <td style="padding: 3px 5px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 8px;">${escapeHtml(unitCode)}</td>
-                <td style="padding: 3px 5px; border-bottom: 1px solid #e5e7eb; font-size: 8px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
-                <td style="padding: 3px 5px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                    <span style="background: ${gradeColor}; color: white; padding: 1px 8px; border-radius: 8px; font-weight: 700; font-size: 8px; display: inline-block; min-width: 20px;">
+            <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''}">
+                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
+                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 9px;">${escapeHtml(unitCode)}</td>
+                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; font-size: 9px; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 10px; display: inline-block; min-width: 28px;">
                         ${escapeHtml(gradeDisplay)}
                     </span>
                 </td>
-                <td style="padding: 3px 5px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 600; font-size: 8px; color: ${isPassing ? '#10b981' : '#ef4444'};">
+                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700; font-size: 10px; color: ${gradeColor};">
                     ${points.toFixed(1)}
                 </td>
-                <td style="padding: 3px 5px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                    <span style="background: ${statusColor}; color: white; padding: 1px 6px; border-radius: 8px; font-weight: 600; font-size: 7px; display: inline-block; min-width: 40px;">
+                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                    <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 8px; display: inline-block;">
                         ${status}
                     </span>
                 </td>
@@ -1609,36 +1618,36 @@ function downloadReportCard() {
     let gradingScaleHTML = '';
     if (isTVET) {
         gradingScaleHTML = `
-            <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; font-size: 7px;">
-                <span><span style="background: #10b981; color: white; padding: 1px 4px; border-radius: 2px; font-weight: 700;">A</span> 75-100% → 4.0</span>
-                <span><span style="background: #3b82f6; color: white; padding: 1px 4px; border-radius: 2px; font-weight: 700;">B</span> 65-74% → 3.0</span>
-                <span><span style="background: #f59e0b; color: white; padding: 1px 4px; border-radius: 2px; font-weight: 700;">C</span> 50-64% → 2.0</span>
-                <span><span style="background: #ef4444; color: white; padding: 1px 4px; border-radius: 2px; font-weight: 700;">FAIL</span> Below 50% → 0.0</span>
-                <span style="color: #94a3b8;">| Min Pass: 50%</span>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 4px 0;">
+                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #065f46;">A (75-100%) → 4.0</span>
+                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #1e40af;">B (65-74%) → 3.0</span>
+                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #92400e;">C (50-64%) → 2.0</span>
+                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #991b1b;">FAIL (Below 50%) → 0.0</span>
+                <span style="font-size: 8px; color: #94a3b8;">| Min Pass: 50%</span>
             </div>
-            <div style="display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; font-size: 6px; margin-top: 1px;">
-                <span style="background: #10b981; color: white; padding: 1px 4px; border-radius: 2px;">EXCELLENT</span>
-                <span style="background: #3b82f6; color: white; padding: 1px 4px; border-radius: 2px;">GOOD</span>
-                <span style="background: #f59e0b; color: white; padding: 1px 4px; border-radius: 2px;">SATISFACTORY</span>
-                <span style="background: #ef4444; color: white; padding: 1px 4px; border-radius: 2px;">FAIL</span>
-                <span style="background: #94a3b8; color: white; padding: 1px 4px; border-radius: 2px;">PENDING</span>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
+                <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">EXCELLENT</span>
+                <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">GOOD</span>
+                <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">SATISFACTORY</span>
+                <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">FAIL</span>
+                <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">PENDING</span>
             </div>
         `;
     } else {
         gradingScaleHTML = `
-            <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; font-size: 7px;">
-                <span><span style="background: #10b981; color: white; padding: 1px 4px; border-radius: 2px; font-weight: 700;">A</span> 75-100% → 4.0</span>
-                <span><span style="background: #3b82f6; color: white; padding: 1px 4px; border-radius: 2px; font-weight: 700;">B</span> 65-74% → 3.0</span>
-                <span><span style="background: #f59e0b; color: white; padding: 1px 4px; border-radius: 2px; font-weight: 700;">C</span> 60-64% → 2.0</span>
-                <span><span style="background: #ef4444; color: white; padding: 1px 4px; border-radius: 2px; font-weight: 700;">D</span> Below 60% → 0.0</span>
-                <span style="color: #94a3b8;">| Min Pass: 60%</span>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 4px 0;">
+                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #065f46;">A (75-100%) → 4.0</span>
+                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #1e40af;">B (65-74%) → 3.0</span>
+                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #92400e;">C (60-64%) → 2.0</span>
+                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #991b1b;">D (Below 60%) → 0.0</span>
+                <span style="font-size: 8px; color: #94a3b8;">| Min Pass: 60%</span>
             </div>
-            <div style="display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; font-size: 6px; margin-top: 1px;">
-                <span style="background: #10b981; color: white; padding: 1px 4px; border-radius: 2px;">DISTINCTION</span>
-                <span style="background: #3b82f6; color: white; padding: 1px 4px; border-radius: 2px;">CREDIT</span>
-                <span style="background: #f59e0b; color: white; padding: 1px 4px; border-radius: 2px;">PASS</span>
-                <span style="background: #ef4444; color: white; padding: 1px 4px; border-radius: 2px;">FAIL</span>
-                <span style="background: #94a3b8; color: white; padding: 1px 4px; border-radius: 2px;">PENDING</span>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
+                <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">DISTINCTION</span>
+                <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">CREDIT</span>
+                <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">PASS</span>
+                <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">FAIL</span>
+                <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">PENDING</span>
             </div>
         `;
     }
@@ -1651,346 +1660,433 @@ function downloadReportCard() {
     <title>Report Card - ${escapeHtml(user.full_name || 'Student')}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page {
+            size: A4 portrait;
+            margin: 12mm 15mm;
+        }
         body { 
-            font-family: 'Times New Roman', Times, serif; 
-            padding: 6px 8px; 
-            color: #1e293b; 
-            background: white; 
-            font-size: 9px;
+            font-family: 'Times New Roman', 'Georgia', serif; 
+            background: #ffffff; 
+            font-size: 10px;
             margin: 0;
-            width: 100%;
+            padding: 0;
+            color: #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             min-height: 100vh;
         }
         .container { 
-            max-width: 100%; 
+            max-width: 780px;
+            width: 100%;
             margin: 0 auto; 
-            padding: 6px 8px; 
-            border: 2px solid #0A3D62; 
-            border-radius: 6px; 
+            padding: 25px 30px;
             background: #ffffff;
-            page-break-after: avoid;
-            height: 100%;
-            min-height: 95vh;
-            display: flex;
-            flex-direction: column;
+            border: 2px solid #0A3D62;
+            border-radius: 6px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
         }
+        
+        /* HEADER */
         .header { 
             text-align: center; 
-            border-bottom: 2px solid #0A3D62; 
-            padding-bottom: 4px; 
-            margin-bottom: 4px; 
+            border-bottom: 3px double #0A3D62;
+            padding-bottom: 12px;
+            margin-bottom: 14px;
         }
-        .header .logo { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 8px; 
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 4px;
         }
-        .header .logo img { 
-            max-height: 35px; 
+        .header-top img { 
+            max-height: 45px; 
             width: auto; 
         }
         .header .school { 
-            font-size: 13px; 
+            font-size: 17px; 
             font-weight: 700; 
             color: #0A3D62; 
             letter-spacing: 0.5px;
+            font-family: 'Georgia', serif;
         }
         .header .motto { 
-            font-size: 7px; 
+            font-size: 8px; 
             color: #64748b; 
             font-style: italic; 
+            letter-spacing: 0.5px;
         }
         .header .subtitle { 
-            font-size: 10px; 
+            font-size: 13px; 
             color: #0A3D62; 
             font-weight: 700;
-            margin-top: 1px;
-            letter-spacing: 1px;
+            margin-top: 4px;
+            letter-spacing: 1.5px;
+            font-family: 'Georgia', serif;
         }
         .header .date { 
-            font-size: 7px; 
+            font-size: 8px; 
             color: #94a3b8; 
-            margin-top: 1px; 
+            margin-top: 2px;
         }
-        .student-info { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr 1fr 1fr; 
-            gap: 3px; 
-            margin: 3px 0; 
-            padding: 4px 8px; 
-            background: #f8fafc; 
-            border-radius: 4px; 
-            border: 1px solid #e5e7eb; 
+        
+        /* STUDENT INFO */
+        .student-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 6px;
+            margin: 6px 0 12px 0;
+            padding: 10px 14px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        .student-info .field { 
+            display: flex;
+            flex-direction: column;
         }
         .student-info .label { 
-            font-size: 6px; 
+            font-size: 7px; 
             color: #94a3b8; 
             text-transform: uppercase; 
-            letter-spacing: 0.3px;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
         .student-info .value { 
             font-weight: 600; 
-            font-size: 9px; 
+            font-size: 10px; 
             color: #0A3D62; 
+            margin-top: 2px;
         }
+        
+        /* SUMMARY CARDS */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin: 6px 0 12px 0;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-radius: 6px;
+            padding: 10px 12px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        .summary-card .value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0A3D62;
+            font-family: 'Georgia', serif;
+        }
+        .summary-card .label {
+            font-size: 7px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        .summary-card .value.grade-a { color: #10b981; }
+        .summary-card .value.grade-b { color: #3b82f6; }
+        .summary-card .value.grade-c { color: #f59e0b; }
+        .summary-card .value.grade-d { color: #ef4444; }
+        
+        /* TABLE */
         table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin: 3px 0; 
-            font-size: 8px; 
-            flex: 1;
+            margin: 6px 0 10px 0;
+            font-size: 9px;
         }
-        th { 
+        thead th { 
             background: #0A3D62; 
             color: white; 
-            padding: 3px 5px; 
+            padding: 7px 8px; 
             text-align: left; 
             font-size: 7px; 
             text-transform: uppercase; 
-            letter-spacing: 0.3px;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
-        td { 
-            padding: 3px 5px; 
+        thead th.center { text-align: center; }
+        tbody td { 
+            padding: 5px 8px; 
             border-bottom: 1px solid #e5e7eb; 
-            font-size: 8px; 
-        }
-        .summary-grid { 
-            display: grid; 
-            grid-template-columns: repeat(4, 1fr); 
-            gap: 3px; 
-            margin: 3px 0; 
-            padding: 4px 8px; 
-            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-            border-radius: 4px; 
-            border: 1px solid #e5e7eb; 
-        }
-        .summary-item { 
-            text-align: center; 
-        }
-        .summary-item .value { 
-            font-size: 14px; 
-            font-weight: 700; 
-            color: #0A3D62; 
-        }
-        .summary-item .label { 
-            font-size: 6px; 
-            color: #94a3b8; 
-            text-transform: uppercase; 
-            letter-spacing: 0.3px;
-        }
-        .grading-scale { 
-            margin-top: 3px; 
-            padding: 3px 8px; 
-            background: #f8fafc; 
-            border-radius: 4px; 
-            border: 1px solid #e5e7eb; 
-        }
-        .grading-scale .title { 
-            font-weight: 600; 
-            font-size: 7px; 
-            color: #0A3D62; 
-            text-align: center; 
-        }
-        .declaration { 
-            margin-top: 3px; 
-            padding: 3px 8px; 
-            background: #f8fafc; 
-            border-radius: 4px; 
-            border: 1px solid #e5e7eb; 
-            font-size: 7px; 
-        }
-        .declaration .title { 
-            font-weight: 700; 
-            color: #0A3D62; 
-            font-size: 7px; 
-        }
-        .declaration .checkbox { 
-            display: inline-block; 
-            width: 9px; 
-            height: 9px; 
-            border: 2px solid #0A3D62; 
-            border-radius: 2px; 
-            margin-right: 3px; 
-            vertical-align: middle; 
-            background: #0A3D62; 
-            position: relative; 
-        }
-        .declaration .checkbox::after { 
-            content: "✓"; 
-            color: white; 
-            font-size: 6px; 
-            position: absolute; 
-            top: -2px; 
-            left: 0px; 
-        }
-        .signatures { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 20px; 
-            margin-top: 4px; 
-            padding-top: 4px; 
-            border-top: 1px solid #e5e7eb; 
-        }
-        .signature-box { 
-            text-align: center; 
-        }
-        .signature-box .line { 
-            border-bottom: 2px solid #1e293b; 
-            width: 120px; 
-            margin: 6px auto 2px auto; 
-        }
-        .signature-box .label { 
-            font-size: 6px; 
-            color: #94a3b8; 
-            text-transform: uppercase; 
-            letter-spacing: 0.3px;
-        }
-        .signature-box .name { 
-            font-weight: 600; 
             font-size: 9px; 
-            color: #0A3D62; 
         }
-        .footer { 
-            text-align: center; 
-            margin-top: 3px; 
-            padding-top: 3px; 
-            border-top: 1px solid #e5e7eb; 
-            font-size: 6px; 
-            color: #94a3b8; 
+        tbody td.center { text-align: center; }
+        
+        /* GRADING SCALE */
+        .grading-scale {
+            margin: 6px 0 8px 0;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
         }
-        .watermark { 
-            position: fixed; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%) rotate(-45deg); 
-            font-size: 50px; 
-            color: rgba(10, 61, 98, 0.03); 
-            font-weight: 700; 
-            pointer-events: none; 
-            z-index: 0; 
-            white-space: nowrap; 
+        .grading-scale .title {
+            font-weight: 700;
+            font-size: 8px;
+            color: #0A3D62;
+            text-align: center;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
         }
-        .no-print { display: block; }
-        @media print { 
-            body { padding: 4px; } 
-            .no-print { display: none; } 
-            .container { border: 2px solid #0A3D62; box-shadow: none; padding: 4px; min-height: 100vh; }
+        
+        /* DECLARATION */
+        .declaration {
+            margin: 6px 0 8px 0;
+            padding: 8px 14px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            font-size: 8px;
+        }
+        .declaration .title {
+            font-weight: 700;
+            color: #0A3D62;
+            font-size: 8px;
+            letter-spacing: 0.5px;
+        }
+        .declaration .checkbox {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border: 2px solid #0A3D62;
+            border-radius: 2px;
+            margin-right: 4px;
+            vertical-align: middle;
+            background: #0A3D62;
+            position: relative;
+        }
+        .declaration .checkbox::after {
+            content: "✓";
+            color: white;
+            font-size: 6px;
+            position: absolute;
+            top: -2px;
+            left: 0px;
+        }
+        
+        /* SIGNATURES */
+        .signatures {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 8px 0 6px 0;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .signature-box {
+            text-align: center;
+        }
+        .signature-box .line {
+            border-bottom: 2px solid #1e293b;
+            width: 140px;
+            margin: 10px auto 3px auto;
+        }
+        .signature-box .label {
+            font-size: 7px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .signature-box .name {
+            font-weight: 600;
+            font-size: 10px;
+            color: #0A3D62;
+        }
+        .signature-box .date {
+            font-size: 7px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+        
+        /* FOOTER */
+        .footer {
+            text-align: center;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 7px;
+            color: #94a3b8;
+        }
+        .footer strong { color: #0A3D62; }
+        
+        /* WATERMARK */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 60px;
+            color: rgba(10, 61, 98, 0.03);
+            font-weight: 700;
+            pointer-events: none;
+            z-index: 0;
+            white-space: nowrap;
+            font-family: 'Georgia', serif;
+        }
+        
+        .no-print { text-align: center; margin-top: 8px; }
+        .no-print button {
+            padding: 6px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 10px;
+            transition: all 0.2s;
+        }
+        .no-print .btn-print {
+            background: #0A3D62;
+            color: white;
+        }
+        .no-print .btn-print:hover { background: #1a5a7a; }
+        .no-print .btn-close {
+            background: #e2e8f0;
+            color: #475569;
+            margin-left: 6px;
+        }
+        .no-print .btn-close:hover { background: #cbd5e1; }
+        
+        @media print {
+            body { padding: 0; background: white; }
+            .container { border: 2px solid #0A3D62; border-radius: 0; padding: 20px 25px; box-shadow: none; max-width: 100%; }
+            .no-print { display: none !important; }
             .watermark { display: none; }
+            .summary-card { background: #f8fafc; }
+            thead th { background: #0A3D62 !important; color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            td span { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
+        
         .container { page-break-after: avoid; }
         table { page-break-inside: avoid; }
         tr { page-break-inside: avoid; }
-        html, body { height: 100%; }
-        .container { min-height: 100vh; }
     </style>
 </head>
 <body>
     <div class="watermark">NCHSM</div>
     <div class="container">
-        <!-- Header -->
+        <!-- HEADER -->
         <div class="header">
-            <div class="logo">
+            <div class="header-top">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
                 <div>
                     <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
                     <div class="motto">"Excellence in Health Sciences Education"</div>
-                    <div class="subtitle">📊 STUDENT REPORT CARD</div>
-                    <div class="date">Generated: ${now}</div>
                 </div>
+            </div>
+            <div class="subtitle">📊 ACADEMIC REPORT CARD</div>
+            <div class="date">Generated: ${now}</div>
+        </div>
+        
+        <!-- STUDENT INFO -->
+        <div class="student-info">
+            <div class="field">
+                <span class="label">👤 Student Name</span>
+                <span class="value">${escapeHtml(user.full_name || 'Student')}</span>
+            </div>
+            <div class="field">
+                <span class="label">🪪 Admission Number</span>
+                <span class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</span>
+            </div>
+            <div class="field">
+                <span class="label">🎓 Program</span>
+                <span class="value">${escapeHtml(userProgram || 'KRCHN')}</span>
+            </div>
+            <div class="field">
+                <span class="label">📅 Academic Year</span>
+                <span class="value">${escapeHtml(academicYear)}</span>
             </div>
         </div>
         
-        <!-- Student Info -->
-        <div class="student-info">
-            <div><div class="label">👤 Student</div><div class="value">${escapeHtml(user.full_name || 'Student')}</div></div>
-            <div><div class="label">🪪 Admission No.</div><div class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div></div>
-            <div><div class="label">🎓 Program</div><div class="value">${escapeHtml(userProgram || 'KRCHN')}</div></div>
-            <div><div class="label">📅 Academic Year</div><div class="value">${escapeHtml(academicYear)}</div></div>
-        </div>
-        
-        <!-- Summary -->
+        <!-- SUMMARY -->
         <div class="summary-grid">
-            <div class="summary-item">
+            <div class="summary-card">
                 <div class="value">${gpa.toFixed(2)}</div>
                 <div class="label">GPA</div>
             </div>
-            <div class="summary-item">
-                <div class="value">${grade}</div>
+            <div class="summary-card">
+                <div class="value ${grade === 'A' ? 'grade-a' : grade === 'B' ? 'grade-b' : grade === 'C' ? 'grade-c' : 'grade-d'}">${grade}</div>
                 <div class="label">Grade</div>
             </div>
-            <div class="summary-item">
+            <div class="summary-card">
                 <div class="value">${totalUnits}</div>
                 <div class="label">Units</div>
             </div>
-            <div class="summary-item">
+            <div class="summary-card">
                 <div class="value">${passRate}%</div>
                 <div class="label">Pass Rate</div>
             </div>
         </div>
         
-        <!-- Marks Table - NO SCORE COLUMN -->
+        <!-- MARKS TABLE -->
         <table>
             <thead>
                 <tr>
-                    <th style="text-align: center; width: 20px;">#</th>
-                    <th style="min-width: 60px;">Unit Code</th>
-                    <th style="min-width: 100px;">Unit Name</th>
-                    <th style="text-align: center; width: 40px;">Grade</th>
+                    <th style="text-align: center; width: 25px;">#</th>
+                    <th style="min-width: 65px;">Unit Code</th>
+                    <th style="min-width: 130px;">Unit Name</th>
+                    <th style="text-align: center; width: 45px;">Grade</th>
                     <th style="text-align: center; width: 45px;">Points</th>
-                    <th style="text-align: center; width: 55px;">Status</th>
+                    <th style="text-align: center; width: 65px;">Status</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
         </table>
         
-        <!-- Grading Scale -->
+        <!-- GRADING SCALE -->
         <div class="grading-scale">
             <div class="title">📊 Grading Scale (${programType})</div>
             ${gradingScaleHTML}
         </div>
         
-        <!-- Declaration -->
+        <!-- DECLARATION -->
         <div class="declaration">
             <span class="title">📋 Student Declaration:</span>
             <span class="checkbox"></span>
-            <span style="font-size: 7px;">I confirm that the grades presented are accurate and reflect my academic performance.</span>
-            <span style="font-size: 6px; color: #94a3b8; display: block;">I understand that falsification will result in disciplinary action.</span>
+            <span>I confirm that the grades presented are accurate and reflect my academic performance.</span>
+            <div style="font-size: 6px; color: #94a3b8; margin-top: 2px;">I understand that falsification will result in disciplinary action.</div>
         </div>
         
-        <!-- Signatures -->
+        <!-- SIGNATURES -->
         <div class="signatures">
             <div class="signature-box">
                 <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
                 <div class="line"></div>
                 <div class="label">Student Signature</div>
-                <div style="font-size:6px;color:#94a3b8;">Date: ${now}</div>
+                <div class="date">Date: ${now}</div>
             </div>
             <div class="signature-box">
-                <div class="name" style="color:#94a3b8;font-weight:400;">_________________________</div>
+                <div class="name" style="color: #94a3b8;">_________________________</div>
                 <div class="line"></div>
                 <div class="label">Head of Department (HOD)</div>
-                <div style="font-size:6px;color:#94a3b8;">Date: _____________</div>
+                <div class="date">Date: _____________</div>
             </div>
         </div>
         
-        <!-- Footer -->
+        <!-- FOOTER -->
         <div class="footer">
             <p>This is an official document. For verification, contact the Academic Office.</p>
-            <p>NCHSM · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
+            <p><strong>NCHSM</strong> · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
         </div>
         
-        <!-- Print Button -->
-        <div style="text-align:center;margin-top:4px;" class="no-print">
-            <button onclick="window.print()" style="padding:4px 20px;background:#0A3D62;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:10px;">🖨️ Print Report Card</button>
-            <button onclick="window.close()" style="padding:4px 16px;background:#e2e8f0;color:#475569;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:10px;margin-left:4px;">Close</button>
+        <!-- PRINT BUTTONS -->
+        <div class="no-print">
+            <button class="btn-print" onclick="window.print()">🖨️ Print Report Card</button>
+            <button class="btn-close" onclick="window.close()">Close</button>
         </div>
     </div>
 </body>
 </html>
     `;
     
-    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    const printWindow = window.open('', '_blank', 'width=800,height=1050');
     if (printWindow) {
         printWindow.document.write(fullHtml);
         printWindow.document.close();
