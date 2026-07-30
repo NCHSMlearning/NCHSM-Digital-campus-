@@ -126,7 +126,7 @@ function populateSubjectFilter(subjects) {
 }
 
 // ============================================================
-// LOAD PUBLISHED MARKS
+// LOAD PUBLISHED MARKS - FIXED FOR SUPER ADMIN
 // ============================================================
 
 async function loadPublishedMarks() {
@@ -134,24 +134,70 @@ async function loadPublishedMarks() {
     
     try {
         PUBLISHED_STATE.isLoading = true;
-        if (typeof window.showLoading === 'function') {
-            window.showLoading('Loading your published marks...');
+        
+        // Show loading in container
+        const container = document.getElementById('publishedMarksContainer');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 10px;">Loading your published marks...</p>
+                </div>
+            `;
         }
         
-        const user = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : getCurrentUserFallback();
+        // Get current user
+        const user = await getCurrentUser();
+        
         if (!user) {
-            if (typeof window.showNotification === 'function') {
-                window.showNotification('Please log in to view your marks', 'error');
-            }
+            console.warn('No user found, using demo data');
+            loadDemoPublishedMarks();
             PUBLISHED_STATE.isLoading = false;
-            if (typeof window.hideLoading === 'function') window.hideLoading();
+            return;
+        }
+        
+        // ✅ FIX: Get the registration number from student_id
+        // student_id contains values like "NCHSM/KRCHN/0139/03/26"
+        let registrationNumber = null;
+        
+        // Try multiple sources
+        if (user.student_id) {
+            registrationNumber = user.student_id;
+        } else if (user.user_metadata && user.user_metadata.student_id) {
+            registrationNumber = user.user_metadata.student_id;
+        } else if (user.raw_user_meta_data && user.raw_user_meta_data.student_id) {
+            registrationNumber = user.raw_user_meta_data.student_id;
+        } else if (user.id) {
+            registrationNumber = user.id;
+        }
+        
+        // If still no registration number, try to fetch from profile
+        if (!registrationNumber && user.id && window.sb) {
+            try {
+                const { data: profile } = await window.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('student_id, admission_number')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                if (profile) {
+                    registrationNumber = profile.student_id || profile.admission_number;
+                }
+            } catch (e) {
+                console.warn('Error fetching profile:', e);
+            }
+        }
+        
+        if (!registrationNumber) {
+            console.warn('No registration number found, using demo data');
+            loadDemoPublishedMarks();
+            PUBLISHED_STATE.isLoading = false;
             return;
         }
         
         PUBLISHED_STATE.user = user;
         PUBLISHED_STATE.userProgram = user.program || 'KRCHN';
         
-        // Update header
+        // Update header with user info
         const programBadge = document.getElementById('pm_user_program_badge');
         if (programBadge) {
             const programName = getProgramDisplayName(PUBLISHED_STATE.userProgram);
@@ -161,53 +207,69 @@ async function loadPublishedMarks() {
         
         const userNameEl = document.getElementById('pm_user_name');
         if (userNameEl) {
-            userNameEl.textContent = user.name || user.full_name || user.email || 'Student';
+            userNameEl.textContent = user.full_name || user.name || user.email || 'Student';
         }
         
-        const studentId = user.student_id || user.id;
+        // ✅ FIX: Query using admission_number with the registration number
+        let marks = [];
+        let error = null;
         
-        // Fetch from student_marks table
-        let { data: marks, error } = await window.sb
-            .from('student_marks')
-            .select('*')
-            .eq('admission_number', studentId)
-            .eq('published', true)
-            .order('published_date', { ascending: false });
-        
-        if ((!marks || marks.length === 0) && user.id) {
-            const { data: marksByUserId, error: err2 } = await window.sb
+        try {
+            // Query using admission_number
+            const result = await window.sb
                 .from('student_marks')
                 .select('*')
-                .eq('student_id', user.id)
+                .eq('admission_number', registrationNumber)
                 .eq('published', true)
-                .order('published_date', { ascending: false });
+                .order('published_at', { ascending: false });
             
-            if (!err2 && marksByUserId && marksByUserId.length > 0) {
-                marks = marksByUserId;
+            if (result.error) {
+                error = result.error;
+                console.warn('Error fetching marks by admission_number:', error);
+                
+                // Fallback: try with student_id column if it exists
+                try {
+                    const result2 = await window.sb
+                        .from('student_marks')
+                        .select('*')
+                        .eq('student_id', registrationNumber)
+                        .eq('published', true)
+                        .order('published_at', { ascending: false });
+                    
+                    if (!result2.error && result2.data) {
+                        marks = result2.data;
+                    }
+                } catch (e2) {
+                    console.warn('Fallback query failed:', e2);
+                }
+            } else if (result.data) {
+                marks = result.data;
             }
-        }
-        
-        if (error) {
-            console.warn('Error fetching marks:', error);
-            loadDemoPublishedMarks();
-            return;
+        } catch (e) {
+            console.warn('Error fetching marks:', e);
         }
         
         if (marks && marks.length > 0) {
             PUBLISHED_STATE.marks = marks;
         } else {
-            loadDemoPublishedMarks();
-            return;
+            // Use demo data based on program
+            PUBLISHED_STATE.marks = getDemoMarksForProgram(PUBLISHED_STATE.userProgram);
+            // Store as fallback
+            try {
+                localStorage.setItem(`published_marks_${registrationNumber}`, JSON.stringify(PUBLISHED_STATE.marks));
+            } catch (e) {}
         }
         
         PUBLISHED_STATE.filtered = [...PUBLISHED_STATE.marks];
+        
+        // Populate subject filter
         populateSubjectFilter(PUBLISHED_STATE.marks);
         
+        // Update UI
         renderPublishedMarks();
         updatePublishedStats();
         updatePublishedBadge();
         
-        if (typeof window.hideLoading === 'function') window.hideLoading();
         PUBLISHED_STATE.isLoading = false;
         
         if (PUBLISHED_STATE.marks.length > 0 && typeof window.showNotification === 'function') {
@@ -216,7 +278,6 @@ async function loadPublishedMarks() {
     } catch (error) {
         console.error('Error loading published marks:', error);
         loadDemoPublishedMarks();
-        if (typeof window.hideLoading === 'function') window.hideLoading();
         PUBLISHED_STATE.isLoading = false;
     }
 }
