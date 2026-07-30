@@ -1,7 +1,6 @@
 // js/academic-reports.js - COMPLETE STUDENT VERSION
 // All tabs: Semester Report, Yearly Summary, Full Transcript, Course Progress, My Marks
-// INCLUDES: Report Card Download Functionality
-// SUPPORTS: TVET (Terms, 50% pass) & Nursing (Blocks, 60% pass)
+// INCLUDES: Report Card Download Functionality, Charts, TVET/Nursing Support
 (function() {
     'use strict';
     
@@ -101,22 +100,22 @@
             'B': '#3b82f6',
             'C': '#f59e0b',
             'D': '#f97316',
-            'F': '#ef4444'
+            'F': '#ef4444',
+            'FAIL': '#ef4444'
         };
         return colors[grade] || '#6b7280';
     }
 
     // ============================================================
     // 4. TVET GRADING FUNCTIONS (Min Pass: 50%)
+    // TVET: A: 75-100%, B: 65-74%, C: 50-64%, FAIL: Below 50%
     // ============================================================
-    // TVET: A: 70-100%, B: 60-69%, C: 50-59%, D: 40-49%, F: Below 40%
     function calculateTVETGrade(score) {
-        if (score === null || score === undefined || score === 0) return 'N/A';
-        if (score >= 70) return 'A';
-        if (score >= 60) return 'B';
+        if (score === null || score === undefined || score === 0) return 'FAIL';
+        if (score >= 75) return 'A';
+        if (score >= 65) return 'B';
         if (score >= 50) return 'C';
-        if (score >= 40) return 'D';
-        return 'F';
+        return 'FAIL';
     }
 
     function calculateTVETPoints(grade) {
@@ -125,27 +124,25 @@
             'A': 4.0,
             'B': 3.0,
             'C': 2.0,
-            'D': 1.0,
-            'F': 0.0
+            'FAIL': 0.0
         };
         return points[grade] || 0;
     }
 
     function getTVETStatus(score) {
         if (score === null || score === undefined || score === 0) return 'PENDING';
-        if (score >= 70) return 'DISTINCTION';
-        if (score >= 60) return 'CREDIT';
-        if (score >= 50) return 'PASS';
-        if (score >= 40) return 'REFERRAL';
+        if (score >= 75) return 'EXCELLENT';
+        if (score >= 65) return 'GOOD';
+        if (score >= 50) return 'SATISFACTORY';
         return 'FAIL';
     }
 
     // ============================================================
     // 5. NURSING GRADING FUNCTIONS (Min Pass: 60%)
-    // ============================================================
     // Nursing: A: 75-100%, B: 65-74%, C: 60-64%, D: Below 60%
+    // ============================================================
     function calculateNursingGrade(score) {
-        if (score === null || score === undefined || score === 0) return 'N/A';
+        if (score === null || score === undefined || score === 0) return 'D';
         if (score >= 75) return 'A';
         if (score >= 65) return 'B';
         if (score >= 60) return 'C';
@@ -231,18 +228,16 @@
             const score = Math.min(99, Math.round(base * 10) / 10);
             const grade = calculateGrade(score, program);
             const points = calculatePoints(grade, program);
+            const status = getGradingStatus(score, program);
             
             return {
                 courseCode: course.code,
                 courseName: course.name,
                 credits: 3,
-                cat1: Math.round(15 + Math.random() * 15),
-                cat2: Math.round(15 + Math.random() * 15),
-                final: Math.round(40 + Math.random() * 40),
                 total: score,
                 grade: grade,
                 points: points,
-                status: score >= (isTVET ? 50 : 60) ? 'PASS' : 'FAIL',
+                status: status,
                 blockTerm: course.block,
                 year: '2024',
                 examDate: '2024-01-15'
@@ -261,13 +256,13 @@
         
         if (isTVET) {
             return [
-                { id: 101, admission_number: 'TVET/001/2025', student_name: 'Student', subject_name: 'Occupational Health & Safety', program: program, block: 'Term 1', year: '2025', cat1_score: 16, cat2_score: 18, exam_score: 45, final_score: 79, grade: 'B', points: 3.0, published: true, published_at: '2025-01-15', assessment_type: 'full', academic_year: '2025' }
+                { id: 101, admission_number: 'TVET/001/2025', student_name: 'Student', subject_name: 'Occupational Health & Safety', program: program, block: 'Term 1', year: '2025', final_score: 79, grade: 'B', points: 3.0, published: true, published_at: '2025-01-15', academic_year: '2025' }
             ];
         }
         
         return [
-            { id: 1, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Fundamentals of Nursing', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 18, cat2_score: 19, exam_score: 55, final_score: 92, grade: 'A', points: 4.0, published: true, published_at: '2025-01-15', assessment_type: 'full', academic_year: '2025' },
-            { id: 2, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Anatomy and Physiology', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 15, cat2_score: 16, exam_score: 48, final_score: 79, grade: 'B', points: 3.0, published: true, published_at: '2025-01-15', assessment_type: 'full', academic_year: '2025' }
+            { id: 1, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Fundamentals of Nursing', program: 'KRCHN', block: 'Introductory', year: '2025', final_score: 92, grade: 'A', points: 4.0, published: true, published_at: '2025-01-15', academic_year: '2025' },
+            { id: 2, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Anatomy and Physiology', program: 'KRCHN', block: 'Introductory', year: '2025', final_score: 79, grade: 'B', points: 3.0, published: true, published_at: '2025-01-15', academic_year: '2025' }
         ];
     }
 
@@ -417,9 +412,42 @@
             
             renderMyMarksTable();
             
+            // Show correct grading scale
+            showGradingScale(userProgram, myMarksData);
+            
+            // Render charts after table
+            setTimeout(renderMyMarksCharts, 300);
+            
         } catch (error) {
             console.error('Error loading my marks:', error);
             tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
+        }
+    }
+
+    function showGradingScale(program, marks) {
+        const isTVET = PROGRAM.isTVET(program);
+        const tvetScale = document.getElementById('my_marks_tvet_scale');
+        const nursingScale = document.getElementById('my_marks_nursing_scale');
+        const graphsSection = document.getElementById('my_marks_graphs_section');
+        
+        // Hide all first
+        if (tvetScale) tvetScale.style.display = 'none';
+        if (nursingScale) nursingScale.style.display = 'none';
+        
+        // Check if we have data
+        if (!marks || marks.length === 0) {
+            if (graphsSection) graphsSection.style.display = 'none';
+            return;
+        }
+        
+        // Show graphs section
+        if (graphsSection) graphsSection.style.display = 'block';
+        
+        // Show appropriate scale
+        if (isTVET) {
+            if (tvetScale) tvetScale.style.display = 'block';
+        } else {
+            if (nursingScale) nursingScale.style.display = 'block';
         }
     }
 
@@ -495,21 +523,6 @@
         document.getElementById('my_marks_count').textContent = `${marks.length} results`;
     }
 
-    // ============================================================
-    // 9. STATUS COLOR HELPER
-    // ============================================================
-    function getStatusColor(status) {
-        const colors = {
-            'DISTINCTION': '#10b981',
-            'CREDIT': '#3b82f6',
-            'PASS': '#f59e0b',
-            'REFERRAL': '#f97316',
-            'FAIL': '#dc2626',
-            'PENDING': '#94a3b8'
-        };
-        return colors[status] || '#94a3b8';
-    }
-
     function filterMyMarks() {
         const subjectFilter = document.getElementById('my_marks_subject_filter')?.value || 'all';
         const blockFilter = document.getElementById('my_marks_block_filter')?.value || 'all';
@@ -537,10 +550,152 @@
         myMarksFiltered = filtered;
         renderMyMarksTable();
         document.getElementById('my_marks_count').textContent = `${filtered.length} results`;
+        
+        // Refresh charts after filter
+        setTimeout(renderMyMarksCharts, 200);
     }
 
     // ============================================================
-    // 10. SEMESTER REPORT
+    // 9. STATUS COLOR HELPER
+    // ============================================================
+    function getStatusColor(status) {
+        const colors = {
+            'EXCELLENT': '#10b981',
+            'GOOD': '#3b82f6',
+            'SATISFACTORY': '#f59e0b',
+            'DISTINCTION': '#10b981',
+            'CREDIT': '#3b82f6',
+            'PASS': '#f59e0b',
+            'FAIL': '#ef4444',
+            'PENDING': '#94a3b8'
+        };
+        return colors[status] || '#94a3b8';
+    }
+
+    // ============================================================
+    // 10. RENDER CHARTS FOR MY MARKS
+    // ============================================================
+    function renderMyMarksCharts() {
+        const marks = myMarksFiltered || [];
+        const graphsSection = document.getElementById('my_marks_graphs_section');
+        
+        if (!marks || marks.length === 0) {
+            if (graphsSection) graphsSection.style.display = 'none';
+            return;
+        }
+        
+        if (graphsSection) graphsSection.style.display = 'block';
+        
+        // 1. Grade Distribution Chart
+        const gradeCounts = {};
+        marks.forEach(m => {
+            const grade = m.grade || 'N/A';
+            gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
+        });
+        
+        const gradeLabels = Object.keys(gradeCounts).sort();
+        const gradeData = gradeLabels.map(g => gradeCounts[g]);
+        const gradeColors = {
+            'A': '#10b981',
+            'B': '#3b82f6',
+            'C': '#f59e0b',
+            'D': '#f97316',
+            'F': '#ef4444',
+            'FAIL': '#ef4444',
+            'N/A': '#94a3b8'
+        };
+        
+        const ctx1 = document.getElementById('myMarksGradeChart');
+        if (ctx1) {
+            if (window.myMarksGradeChartInstance) {
+                window.myMarksGradeChartInstance.destroy();
+            }
+            
+            if (typeof Chart !== 'undefined') {
+                window.myMarksGradeChartInstance = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: gradeLabels,
+                        datasets: [{
+                            label: 'Number of Units',
+                            data: gradeData,
+                            backgroundColor: gradeLabels.map(g => gradeColors[g] || '#6b7280'),
+                            borderColor: gradeLabels.map(g => gradeColors[g] || '#6b7280'),
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // 2. Performance Summary Chart (Pass/Fail/Pending)
+        const user = window.currentUserProfile || {};
+        const userProgram = user.program || '';
+        const isTVET = PROGRAM.isTVET(userProgram);
+        const threshold = isTVET ? 50 : 60;
+        
+        const passed = marks.filter(m => m.final_score >= threshold).length;
+        const failed = marks.filter(m => m.final_score > 0 && m.final_score < threshold).length;
+        const pending = marks.filter(m => m.final_score === 0 || m.final_score === null).length;
+        
+        const ctx2 = document.getElementById('myMarksPerformanceChart');
+        if (ctx2) {
+            if (window.myMarksPerformanceChartInstance) {
+                window.myMarksPerformanceChartInstance.destroy();
+            }
+            
+            if (typeof Chart !== 'undefined') {
+                window.myMarksPerformanceChartInstance = new Chart(ctx2, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Passed', 'Failed', 'Pending'],
+                        datasets: [{
+                            data: [passed, failed, pending],
+                            backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 10,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+        }
+    }
+
+    // ============================================================
+    // 11. SEMESTER REPORT
     // ============================================================
     let gradeChart = null;
     let currentGrades = [];
@@ -568,13 +723,10 @@
                         courseCode: e.unit_code || e.course_code || getUnitCode(e.exam_name || e.title),
                         courseName: e.exam_name || e.title || 'Exam',
                         credits: e.credits || 3,
-                        cat1: e.cat1Display || e.cat_1_score || '--',
-                        cat2: e.cat2Display || e.cat_2_score || '--',
-                        final: e.finalDisplay || e.final_score || '--',
                         total: e.totalPercentage || 0,
                         grade: calculateGrade(e.totalPercentage || 0, userProgram),
                         points: calculatePoints(calculateGrade(e.totalPercentage || 0, userProgram), userProgram),
-                        status: (e.totalPercentage || 0) >= (PROGRAM.isTVET(userProgram) ? 50 : 60) ? 'PASS' : 'FAIL',
+                        status: getGradingStatus(e.totalPercentage || 0, userProgram),
                         blockTerm: e.block_term || e.block || 'General',
                         year: e.intake_year || '2024'
                     }));
@@ -592,7 +744,6 @@
             const avgScore = total > 0 ? (totalScore / total) : 0;
             const gpa = calculateGPA(grades);
             const grade = calculateGrade(avgScore, userProgram);
-            const passed = grades.filter(g => g.status === 'PASS').length;
             
             document.getElementById('semester-gpa').textContent = gpa.toFixed(2);
             document.getElementById('semester-grade').textContent = grade;
@@ -603,7 +754,7 @@
             
             let html = '';
             grades.forEach((g, i) => {
-                const statusColor = g.status === 'PASS' ? '#10b981' : '#dc2626';
+                const statusColor = getStatusColor(g.status);
                 const gradeColor = getGradeColor(g.grade);
                 
                 html += `
@@ -611,12 +762,20 @@
                         <td style="padding: 12px;">${escapeHtml(g.courseCode)}</td>
                         <td style="padding: 12px;">${escapeHtml(g.courseName)}</td>
                         <td style="padding: 12px; text-align: center;">${g.credits}</td>
-                        <td style="padding: 12px; text-align: center;">${g.cat1}</td>
-                        <td style="padding: 12px; text-align: center;">${g.cat2}</td>
-                        <td style="padding: 12px; text-align: center;">${g.final}</td>
-                        <td style="padding: 12px; text-align: center; font-weight: 700; color: ${gradeColor};">${g.total}%</td>
-                        <td style="padding: 12px; text-align: center;"><span class="grade-letter">${g.grade}</span></td>
-                        <td style="padding: 12px; text-align: center; color: ${statusColor}; font-weight: 600;">${g.status}</td>
+                        <td style="padding: 12px; text-align: center;">${g.total}%</td>
+                        <td style="padding: 12px; text-align: center;">
+                            <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px;">
+                                ${g.grade}
+                            </span>
+                        </td>
+                        <td style="padding: 12px; text-align: center; font-weight: 600;">${g.points.toFixed(1)}</td>
+                        <td style="padding: 12px; text-align: center;">
+                            <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
+                                ${g.status}
+                            </span>
+                        </td>
+                        <td style="padding: 12px; text-align: center;">${escapeHtml(g.blockTerm)}</td>
+                        <td style="padding: 12px; text-align: center;">${g.year}</td>
                     </tr>
                 `;
             });
@@ -633,23 +792,26 @@
         const canvas = document.getElementById('grade-distribution-chart');
         if (!canvas) return;
         
-        const gradeCounts = { 'A': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
-        grades.forEach(g => { if (gradeCounts[g.grade] !== undefined) gradeCounts[g.grade]++; });
+        const gradeCounts = {};
+        grades.forEach(g => {
+            const grade = g.grade || 'N/A';
+            gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
+        });
         
-        const labels = Object.keys(gradeCounts).filter(k => gradeCounts[k] > 0);
-        const data = labels.map(k => gradeCounts[k]);
+        const labels = Object.keys(gradeCounts).sort();
+        const data = labels.map(l => gradeCounts[l]);
+        const colors = {
+            'A': '#10b981',
+            'B': '#3b82f6',
+            'C': '#f59e0b',
+            'D': '#f97316',
+            'F': '#ef4444',
+            'N/A': '#94a3b8'
+        };
         
         if (gradeChart) gradeChart.destroy();
         
         if (typeof Chart !== 'undefined' && labels.length > 0) {
-            const colors = {
-                'A': '#10b981',
-                'B': '#3b82f6',
-                'C': '#f59e0b',
-                'D': '#f97316',
-                'F': '#ef4444'
-            };
-            
             gradeChart = new Chart(canvas, {
                 type: 'bar',
                 data: {
@@ -676,7 +838,7 @@
     }
 
     // ============================================================
-    // 11. YEARLY REPORT
+    // 12. YEARLY REPORT
     // ============================================================
     function loadYearlyReport() {
         const user = window.currentUserProfile || {};
@@ -693,7 +855,7 @@
     }
 
     // ============================================================
-    // 12. FULL TRANSCRIPT
+    // 13. FULL TRANSCRIPT
     // ============================================================
     function loadTranscript() {
         const tbody = document.getElementById('transcript-table-body');
@@ -709,13 +871,11 @@
         
         let html = '';
         let totalAttempted = 0;
-        let totalEarned = 0;
         let totalPoints = 0;
         
         grades.forEach(g => {
             const points = g.points * g.credits;
             totalAttempted += g.credits;
-            if (g.status === 'PASS') totalEarned += g.credits;
             totalPoints += points;
             
             html += `
@@ -724,7 +884,11 @@
                     <td style="padding: 12px;">${escapeHtml(g.courseCode)}</td>
                     <td style="padding: 12px;">${escapeHtml(g.courseName)}</td>
                     <td style="padding: 12px; text-align: center;">${g.credits}</td>
-                    <td style="padding: 12px; text-align: center;"><span class="grade-letter">${g.grade}</span></td>
+                    <td style="padding: 12px; text-align: center;">
+                        <span style="background: ${getGradeColor(g.grade)}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px;">
+                            ${g.grade}
+                        </span>
+                    </td>
                     <td style="padding: 12px; text-align: center;">${points.toFixed(1)}</td>
                 </tr>
             `;
@@ -734,12 +898,11 @@
         
         const cgpa = totalAttempted > 0 ? (totalPoints / totalAttempted) : 0;
         document.getElementById('total-attempted').textContent = totalAttempted;
-        document.getElementById('total-earned').textContent = totalEarned;
         document.getElementById('transcript-cgpa').textContent = cgpa.toFixed(2);
     }
 
     // ============================================================
-    // 13. COURSE PROGRESS
+    // 14. COURSE PROGRESS
     // ============================================================
     function loadCourseProgress() {
         const container = document.getElementById('course-progress-list');
@@ -749,10 +912,6 @@
         const userProgram = user.program || '';
         const grades = currentGrades.length > 0 ? currentGrades : generateSampleGrades(userProgram);
         const total = grades.length;
-        const completed = grades.filter(g => g.status === 'PASS').length;
-        
-        document.getElementById('completed-courses-progress').textContent = completed;
-        document.getElementById('total-courses-progress').textContent = total;
         
         let html = '';
         grades.forEach(g => {
@@ -762,22 +921,27 @@
                     <div class="progress-header">
                         <span class="course-name">${escapeHtml(g.courseName)}</span>
                         <span class="progress-percent">${g.total}%</span>
+                        <span style="background: ${getGradeColor(g.grade)}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 10px;">
+                            ${g.grade}
+                        </span>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" style="width: ${g.total}%; background: ${barColor};"></div>
                     </div>
-                    <div style="margin-top: 4px; font-size: 12px; color: ${g.status === 'PASS' ? '#10b981' : '#dc2626'};">
-                        ${g.status === 'PASS' ? '✅ Completed' : '❌ In Progress'} · Grade: ${g.grade}
+                    <div style="margin-top: 4px; font-size: 12px; color: ${getStatusColor(g.status)};">
+                        ${g.status} · Points: ${g.points.toFixed(1)}
                     </div>
                 </div>
             `;
         });
         
+        document.getElementById('completed-courses-progress').textContent = grades.filter(g => g.status !== 'FAIL' && g.status !== 'PENDING').length;
+        document.getElementById('total-courses-progress').textContent = total;
         container.innerHTML = html || '<div style="padding: 40px; text-align: center; color: #94a3b8;">No course data available</div>';
     }
 
     // ============================================================
-    // 14. DOWNLOAD FULL TRANSCRIPT
+    // 15. DOWNLOAD FULL TRANSCRIPT
     // ============================================================
     function downloadTranscriptPDF() {
         const user = window.currentUserProfile || {};
@@ -787,6 +951,7 @@
         const avg = total > 0 ? (grades.reduce((sum, g) => sum + g.total, 0) / total) : 0;
         const gpa = calculateGPA(grades);
         const grade = calculateGrade(avg, userProgram);
+        const isTVET = PROGRAM.isTVET(userProgram);
         
         let html = `
             <!DOCTYPE html>
@@ -814,6 +979,7 @@
                     <p>Academic Transcript</p>
                     <p><strong>${escapeHtml(user.full_name || 'Student')}</strong> · ${escapeHtml(user.student_id || 'N/A')}</p>
                     <p>Program: ${escapeHtml(userProgram || 'KRCHN')} · Intake: ${escapeHtml(user.intake_year || '2024')}</p>
+                    <p style="font-size: 12px; color: #64748b;">${isTVET ? 'TVET' : 'Nursing'} Grading System</p>
                 </div>
                 
                 <div class="summary">
@@ -862,428 +1028,229 @@
         }
     }
 
-  // ============================================================
-// 15. DOWNLOAD REPORT CARD (OPTIMIZED FOR ONE PAGE)
-// ============================================================
-function downloadReportCard() {
-    const user = window.currentUserProfile || {};
-    const marks = myMarksData || [];
-    const userProgram = user.program || '';
-    const isTVET = PROGRAM.isTVET(userProgram);
-    
-    if (marks.length === 0) {
-        alert('No marks available to generate report card.');
-        return;
-    }
-    
-    const now = new Date().toLocaleDateString('en-KE', {
-        timeZone: 'Africa/Nairobi',
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-    });
-    
-    // Format Academic Year as 2025/2026
-    const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-    const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
-    
-    let tableRows = '';
-    marks.forEach((mark, index) => {
-        const status = getGradingStatus(mark.final_score, userProgram);
-        const statusColor = getStatusColor(status);
-        const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-        const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
+    // ============================================================
+    // 16. DOWNLOAD REPORT CARD
+    // ============================================================
+    function downloadReportCard() {
+        const user = window.currentUserProfile || {};
+        const marks = myMarksData || [];
+        const userProgram = user.program || '';
+        const isTVET = PROGRAM.isTVET(userProgram);
         
-        tableRows += `
-            <tr>
-                <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 11px;">${index + 1}</td>
-                <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 11px;">${escapeHtml(unitCode)}</td>
-                <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 11px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
-                <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 11px;">
-                    <span style="background: ${getGradeColor(mark.grade)}; color: white; padding: 1px 10px; border-radius: 10px; font-weight: 700; font-size: 11px;">${mark.grade || '-'}</span>
-                </td>
-                <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 600; font-size: 11px;">${points.toFixed(1)}</td>
-                <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                    <span style="background: ${statusColor}; color: white; padding: 1px 10px; border-radius: 10px; font-weight: 600; font-size: 10px;">${status}</span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    const gpa = calculateGPA(marks);
-    const blockLabel = PROGRAM.getBlockLabel(userProgram);
-    
-    // Grading Scale HTML based on program type (compact)
-    let gradingScaleHTML = '';
-    if (isTVET) {
-        gradingScaleHTML = `
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 10px; margin-top: 4px;">
-                <span><span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">A</span> 70-100% → 4.0</span>
-                <span><span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">B</span> 60-69% → 3.0</span>
-                <span><span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">C</span> 50-59% → 2.0</span>
-                <span><span style="background: #f97316; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">D</span> 40-49% → 1.0</span>
-                <span><span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">F</span> Below 40% → 0.0</span>
-                <span style="color: #94a3b8;">| Min Pass: C (50%)</span>
-            </div>
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: 9px; margin-top: 2px;">
-                <span style="background: #10b981; color: white; padding: 1px 8px; border-radius: 3px;">DISTINCTION</span>
-                <span style="background: #3b82f6; color: white; padding: 1px 8px; border-radius: 3px;">CREDIT</span>
-                <span style="background: #f59e0b; color: white; padding: 1px 8px; border-radius: 3px;">PASS</span>
-                <span style="background: #f97316; color: white; padding: 1px 8px; border-radius: 3px;">REFERRAL</span>
-                <span style="background: #ef4444; color: white; padding: 1px 8px; border-radius: 3px;">FAIL</span>
-                <span style="background: #94a3b8; color: white; padding: 1px 8px; border-radius: 3px;">PENDING</span>
-            </div>
-        `;
-    } else {
-        gradingScaleHTML = `
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 10px; margin-top: 4px;">
-                <span><span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">A</span> 75-100% → 4.0</span>
-                <span><span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">B</span> 65-74% → 3.0</span>
-                <span><span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">C</span> 60-64% → 2.0</span>
-                <span><span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">D</span> Below 60% → 0.0</span>
-                <span style="color: #94a3b8;">| Min Pass: C (60%)</span>
-            </div>
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: 9px; margin-top: 2px;">
-                <span style="background: #10b981; color: white; padding: 1px 8px; border-radius: 3px;">DISTINCTION</span>
-                <span style="background: #3b82f6; color: white; padding: 1px 8px; border-radius: 3px;">CREDIT</span>
-                <span style="background: #f59e0b; color: white; padding: 1px 8px; border-radius: 3px;">PASS</span>
-                <span style="background: #ef4444; color: white; padding: 1px 8px; border-radius: 3px;">FAIL</span>
-                <span style="background: #94a3b8; color: white; padding: 1px 8px; border-radius: 3px;">PENDING</span>
-            </div>
-        `;
-    }
-    
-    const fullHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Report Card - ${escapeHtml(user.full_name || 'Student')}</title>
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { 
-                    font-family: 'Times New Roman', Times, serif; 
-                    padding: 20px; 
-                    color: #1e293b; 
-                    background: white;
-                    margin: 0;
-                    font-size: 12px;
-                }
-                .container {
-                    max-width: 1000px;
-                    margin: 0 auto;
-                    padding: 15px;
-                    border: 2px solid #0A3D62;
-                    border-radius: 8px;
-                    background: #ffffff;
-                }
-                .header { 
-                    text-align: center; 
-                    border-bottom: 2px solid #0A3D62; 
-                    padding-bottom: 8px; 
-                    margin-bottom: 8px;
-                }
-                .header .logo {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 15px;
-                }
-                .header .logo img {
-                    max-height: 55px;
-                    width: auto;
-                }
-                .header .school { 
-                    font-size: 16px; 
-                    font-weight: 700;
-                    color: #0A3D62;
-                    letter-spacing: 1px;
-                }
-                .header .motto {
-                    font-size: 10px;
-                    color: #64748b;
-                    font-style: italic;
-                }
-                .header .subtitle { 
-                    font-size: 12px; 
-                    color: #64748b; 
-                }
-                .header .date {
-                    font-size: 9px;
-                    color: #94a3b8;
-                    margin-top: 2px;
-                }
-                .student-info { 
-                    display: grid; 
-                    grid-template-columns: 1fr 1fr 1fr 1fr 1fr; 
-                    gap: 5px; 
-                    margin: 6px 0; 
-                    padding: 8px 12px; 
-                    background: #f8fafc; 
-                    border-radius: 6px; 
-                    border: 1px solid #e5e7eb; 
-                }
-                .student-info .label { 
-                    font-size: 8px; 
-                    color: #94a3b8; 
-                    text-transform: uppercase; 
-                    letter-spacing: 0.3px;
-                }
-                .student-info .value { 
-                    font-weight: 600; 
-                    font-size: 12px; 
-                    color: #0A3D62;
-                }
-                table { 
-                    width: 100%; 
-                    border-collapse: collapse; 
-                    margin: 4px 0; 
-                    font-size: 11px;
-                }
-                th { 
-                    background: #0A3D62; 
-                    color: white; 
-                    padding: 4px 8px; 
-                    text-align: left; 
-                    font-size: 9px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.3px;
-                }
-                th[style*="text-align: center"] { text-align: center !important; }
-                td { 
-                    padding: 3px 8px; 
-                    border-bottom: 1px solid #e5e7eb; 
-                    font-size: 10px; 
-                }
-                .footer { 
-                    text-align: center; 
-                    margin-top: 6px; 
-                    padding-top: 6px; 
-                    border-top: 1px solid #e5e7eb; 
-                    font-size: 9px; 
-                    color: #94a3b8; 
-                }
-                .grading-scale { 
-                    margin-top: 4px; 
-                    padding: 4px 8px; 
-                    background: #f8fafc; 
-                    border-radius: 4px; 
-                    border: 1px solid #e5e7eb; 
-                }
-                .grading-scale .title {
-                    font-weight: 600; 
-                    font-size: 9px; 
-                    color: #0A3D62;
-                    text-align: center;
-                }
-                .signatures {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 30px;
-                    margin-top: 8px;
-                    padding-top: 8px;
-                    border-top: 1px solid #e5e7eb;
-                }
-                .signature-box {
-                    text-align: center;
-                }
-                .signature-box .line {
-                    border-bottom: 1px solid #1e293b;
-                    width: 160px;
-                    margin: 20px auto 4px auto;
-                }
-                .signature-box .label {
-                    font-size: 8px;
-                    color: #94a3b8;
-                    text-transform: uppercase;
-                    letter-spacing: 0.3px;
-                }
-                .signature-box .name {
-                    font-weight: 600;
-                    font-size: 11px;
-                    color: #0A3D62;
-                    min-height: 16px;
-                }
-                .declaration {
-                    margin-top: 6px;
-                    padding: 6px 12px;
-                    background: #f8fafc;
-                    border-radius: 4px;
-                    border: 1px solid #e5e7eb;
-                    font-size: 10px;
-                    line-height: 1.4;
-                }
-                .declaration .title {
-                    font-weight: 700;
-                    color: #0A3D62;
-                    font-size: 10px;
-                }
-                .declaration .checkbox {
-                    display: inline-block;
-                    width: 12px;
-                    height: 12px;
-                    border: 2px solid #0A3D62;
-                    border-radius: 2px;
-                    margin-right: 6px;
-                    vertical-align: middle;
-                    background: #0A3D62;
-                    position: relative;
-                }
-                .declaration .checkbox::after {
-                    content: "✓";
-                    color: white;
-                    font-size: 9px;
-                    position: absolute;
-                    top: -2px;
-                    left: 1px;
-                }
-                .watermark {
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%) rotate(-45deg);
-                    font-size: 60px;
-                    color: rgba(10, 61, 98, 0.04);
-                    font-weight: 700;
-                    pointer-events: none;
-                    z-index: 0;
-                    white-space: nowrap;
-                }
-                .no-print { display: block; }
-                @media print { 
-                    body { padding: 10px; } 
-                    .no-print { display: none; }
-                    .container { border: 2px solid #0A3D62; box-shadow: none; padding: 10px; }
-                    .header .logo img { max-height: 45px; }
-                    .student-info { padding: 4px 8px; }
-                    td { padding: 2px 6px; font-size: 9px; }
-                    th { padding: 3px 6px; font-size: 8px; }
-                    .signature-box .line { width: 120px; margin: 12px auto 3px auto; }
-                }
-                @media (max-width: 768px) {
-                    .student-info { grid-template-columns: 1fr 1fr; gap: 3px; }
-                    .signatures { grid-template-columns: 1fr; gap: 10px; }
-                    table { font-size: 9px; }
-                    th, td { padding: 2px 4px; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="watermark">NCHSM</div>
-            <div class="container">
-                <div class="header">
-                    <div class="logo">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
-                        <div>
-                            <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                            <div class="motto">"Excellence in Health Sciences Education"</div>
-                            <div class="subtitle">Student Report Card</div>
-                            <div class="date">Generated: ${now}</div>
+        if (marks.length === 0) {
+            alert('No marks available to generate report card.');
+            return;
+        }
+        
+        const now = new Date().toLocaleDateString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+        
+        const currentYear = new Date().getFullYear();
+        const nextYear = currentYear + 1;
+        const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
+        const blockLabel = PROGRAM.getBlockLabel(userProgram);
+        const gpa = calculateGPA(marks);
+        const threshold = isTVET ? 50 : 60;
+        const passed = marks.filter(m => m.final_score >= threshold).length;
+        const failed = marks.filter(m => m.final_score > 0 && m.final_score < threshold).length;
+        const pending = marks.filter(m => m.final_score === 0 || m.final_score === null).length;
+        
+        let tableRows = '';
+        marks.forEach((mark, index) => {
+            const status = getGradingStatus(mark.final_score, userProgram);
+            const statusColor = getStatusColor(status);
+            const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
+            const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
+            
+            tableRows += `
+                <tr>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 10px;">${index + 1}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 10px;">${escapeHtml(unitCode)}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 10px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 10px;">
+                        <span style="background: ${getGradeColor(mark.grade)}; color: white; padding: 1px 8px; border-radius: 8px; font-weight: 700; font-size: 10px;">${mark.grade || '-'}</span>
+                    </td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 600; font-size: 10px;">${points.toFixed(1)}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                        <span style="background: ${statusColor}; color: white; padding: 1px 8px; border-radius: 8px; font-weight: 600; font-size: 9px;">${status}</span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        // Grading scale HTML
+        let gradingScaleHTML = '';
+        if (isTVET) {
+            gradingScaleHTML = `
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 9px;">
+                    <span><span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">A</span> 75-100% → 4.0</span>
+                    <span><span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">B</span> 65-74% → 3.0</span>
+                    <span><span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">C</span> 50-64% → 2.0</span>
+                    <span><span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">FAIL</span> Below 50% → 0.0</span>
+                    <span style="color: #94a3b8;">| Min Pass: 50%</span>
+                </div>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; font-size: 8px; margin-top: 2px;">
+                    <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px;">EXCELLENT</span>
+                    <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px;">GOOD</span>
+                    <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px;">SATISFACTORY</span>
+                    <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px;">FAIL</span>
+                    <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px;">PENDING</span>
+                </div>
+            `;
+        } else {
+            gradingScaleHTML = `
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 9px;">
+                    <span><span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">A</span> 75-100% → 4.0</span>
+                    <span><span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">B</span> 65-74% → 3.0</span>
+                    <span><span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">C</span> 60-64% → 2.0</span>
+                    <span><span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">D</span> Below 60% → 0.0</span>
+                    <span style="color: #94a3b8;">| Min Pass: 60%</span>
+                </div>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; font-size: 8px; margin-top: 2px;">
+                    <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px;">DISTINCTION</span>
+                    <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px;">CREDIT</span>
+                    <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px;">PASS</span>
+                    <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px;">FAIL</span>
+                    <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px;">PENDING</span>
+                </div>
+            `;
+        }
+        
+        const fullHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Report Card - ${escapeHtml(user.full_name || 'Student')}</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: 'Times New Roman', Times, serif; padding: 15px; color: #1e293b; background: white; font-size: 11px; }
+                    .container { max-width: 1000px; margin: 0 auto; padding: 12px; border: 2px solid #0A3D62; border-radius: 8px; background: #ffffff; }
+                    .header { text-align: center; border-bottom: 2px solid #0A3D62; padding-bottom: 6px; margin-bottom: 6px; }
+                    .header .logo { display: flex; align-items: center; justify-content: center; gap: 12px; }
+                    .header .logo img { max-height: 50px; width: auto; }
+                    .header .school { font-size: 15px; font-weight: 700; color: #0A3D62; }
+                    .header .motto { font-size: 9px; color: #64748b; font-style: italic; }
+                    .header .subtitle { font-size: 11px; color: #64748b; }
+                    .header .date { font-size: 8px; color: #94a3b8; margin-top: 1px; }
+                    .student-info { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 4px; margin: 4px 0; padding: 6px 10px; background: #f8fafc; border-radius: 6px; border: 1px solid #e5e7eb; }
+                    .student-info .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; }
+                    .student-info .value { font-weight: 600; font-size: 10px; color: #0A3D62; }
+                    table { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 10px; }
+                    th { background: #0A3D62; color: white; padding: 3px 6px; text-align: left; font-size: 8px; text-transform: uppercase; }
+                    td { padding: 3px 6px; border-bottom: 1px solid #e5e7eb; font-size: 9px; }
+                    .footer { text-align: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #94a3b8; }
+                    .grading-scale { margin-top: 4px; padding: 4px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e5e7eb; }
+                    .grading-scale .title { font-weight: 600; font-size: 8px; color: #0A3D62; text-align: center; }
+                    .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; }
+                    .signature-box { text-align: center; }
+                    .signature-box .line { border-bottom: 1px solid #1e293b; width: 140px; margin: 15px auto 3px auto; }
+                    .signature-box .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; }
+                    .signature-box .name { font-weight: 600; font-size: 10px; color: #0A3D62; }
+                    .declaration { margin-top: 4px; padding: 4px 10px; background: #f8fafc; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 9px; }
+                    .declaration .title { font-weight: 700; color: #0A3D62; font-size: 9px; }
+                    .declaration .checkbox { display: inline-block; width: 10px; height: 10px; border: 2px solid #0A3D62; border-radius: 2px; margin-right: 4px; vertical-align: middle; background: #0A3D62; position: relative; }
+                    .declaration .checkbox::after { content: "✓"; color: white; font-size: 7px; position: absolute; top: -2px; left: 0px; }
+                    .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 50px; color: rgba(10, 61, 98, 0.04); font-weight: 700; pointer-events: none; z-index: 0; white-space: nowrap; }
+                    .no-print { display: block; }
+                    @media print { body { padding: 8px; } .no-print { display: none; } .container { border: 2px solid #0A3D62; box-shadow: none; padding: 8px; } }
+                </style>
+            </head>
+            <body>
+                <div class="watermark">NCHSM</div>
+                <div class="container">
+                    <div class="header">
+                        <div class="logo">
+                            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
+                            <div>
+                                <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
+                                <div class="motto">"Excellence in Health Sciences Education"</div>
+                                <div class="subtitle">Student Report Card</div>
+                                <div class="date">Generated: ${now}</div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="student-info">
-                    <div>
-                        <div class="label">Student</div>
-                        <div class="value">${escapeHtml(user.full_name || 'Student')}</div>
+                    
+                    <div class="student-info">
+                        <div><div class="label">Student</div><div class="value">${escapeHtml(user.full_name || 'Student')}</div></div>
+                        <div><div class="label">Admission No.</div><div class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div></div>
+                        <div><div class="label">Program</div><div class="value">${escapeHtml(userProgram || 'KRCHN')}</div></div>
+                        <div><div class="label">Academic Year</div><div class="value">${escapeHtml(academicYear)}</div></div>
+                        <div><div class="label">Cumulative GPA</div><div class="value" style="color: #6d28d9; font-size: 14px;">${gpa.toFixed(2)}</div></div>
                     </div>
-                    <div>
-                        <div class="label">Admission No.</div>
-                        <div class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align: center; width: 25px;">#</th>
+                                <th style="min-width: 70px;">Unit Code</th>
+                                <th style="min-width: 100px;">Unit Name</th>
+                                <th style="text-align: center; width: 40px;">Grade</th>
+                                <th style="text-align: center; width: 50px;">Points</th>
+                                <th style="text-align: center; width: 60px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                    
+                    <div class="grading-scale">
+                        <div class="title">📊 Grading Scale</div>
+                        ${gradingScaleHTML}
                     </div>
-                    <div>
-                        <div class="label">Program</div>
-                        <div class="value">${escapeHtml(userProgram || 'KRCHN')}</div>
+                    
+                    <div class="declaration">
+                        <span class="title">📋 Student Declaration:</span>
+                        <span class="checkbox"></span>
+                        <span style="font-size: 8px;">I confirm that the grades presented are accurate and reflect my academic performance.</span>
+                        <span style="font-size: 7px; color: #94a3b8; display: block;">I understand that falsification will result in disciplinary action.</span>
                     </div>
-                    <div>
-                        <div class="label">Academic Year</div>
-                        <div class="value">${escapeHtml(academicYear)}</div>
+                    
+                    <div class="signatures">
+                        <div class="signature-box">
+                            <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
+                            <div class="line"></div>
+                            <div class="label">Student Signature</div>
+                            <div style="font-size: 7px; color: #94a3b8;">Date: ${now}</div>
+                        </div>
+                        <div class="signature-box">
+                            <div class="name" style="color: #94a3b8; font-weight: 400;">_________________________</div>
+                            <div class="line"></div>
+                            <div class="label">Head of Department (HOD)</div>
+                            <div style="font-size: 7px; color: #94a3b8;">Date: _____________</div>
+                        </div>
                     </div>
-                    <div>
-                        <div class="label">Cumulative GPA</div>
-                        <div class="value" style="color: #6d28d9; font-size: 16px;">${gpa.toFixed(2)}</div>
+                    
+                    <div class="footer">
+                        <p>This is an official document. For verification, contact the Academic Office.</p>
+                        <p>NCHSM · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
                     </div>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="text-align: center; width: 30px;">#</th>
-                            <th style="min-width: 80px;">Unit Code</th>
-                            <th style="min-width: 120px;">Unit Name</th>
-                            <th style="text-align: center; width: 45px;">Grade</th>
-                            <th style="text-align: center; width: 60px;">Grade Pts</th>
-                            <th style="text-align: center; width: 75px;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-                
-                <div class="grading-scale">
-                    <div class="title">📊 Grading Scale</div>
-                    ${gradingScaleHTML}
-                </div>
-                
-                <!-- STUDENT DECLARATION (compact) -->
-                <div class="declaration">
-                    <span class="title">📋 Student Declaration:</span>
-                    <span class="checkbox"></span>
-                    <span style="font-size: 9px;">I confirm that the grades presented are accurate and reflect my academic performance.</span>
-                    <span style="font-size: 8px; color: #94a3b8; display: block; margin-top: 2px;">I understand that falsification will result in disciplinary action.</span>
-                </div>
-                
-                <!-- SIGNATURES (compact) -->
-                <div class="signatures">
-                    <div class="signature-box">
-                        <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
-                        <div class="line"></div>
-                        <div class="label">Student Signature</div>
-                        <div style="font-size: 8px; color: #94a3b8;">Date: ${now}</div>
-                    </div>
-                    <div class="signature-box">
-                        <div class="name" style="color: #94a3b8; font-weight: 400;">_________________________</div>
-                        <div class="line"></div>
-                        <div class="label">Head of Department (HOD)</div>
-                        <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
+                    
+                    <div style="text-align: center; margin-top: 6px;" class="no-print">
+                        <button onclick="window.print()" style="padding: 6px 20px; background: #0A3D62; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px;">🖨️ Print</button>
+                        <button onclick="window.close()" style="padding: 6px 20px; background: #e2e8f0; color: #475569; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; margin-left: 6px;">Close</button>
                     </div>
                 </div>
-                
-                <div class="footer">
-                    <p>This is an official document. For verification, contact the Academic Office.</p>
-                    <p>NCHSM · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
-                </div>
-                
-                <div style="text-align: center; margin-top: 8px;" class="no-print">
-                    <button onclick="window.print()" style="padding: 8px 24px; background: #0A3D62; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
-                        🖨️ Print Report Card
-                    </button>
-                    <button onclick="window.close()" style="padding: 8px 24px; background: #e2e8f0; color: #475569; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; margin-left: 8px;">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </body>
-        </html>
-    `;
-    
-    const printWindow = window.open('', '_blank', 'width=1000,height=800');
-    if (printWindow) {
-        printWindow.document.write(fullHtml);
-        printWindow.document.close();
-        setTimeout(() => {
-            printWindow.print();
-        }, 800);
-    } else {
-        alert('Please allow popups to download the report card.');
+            </body>
+            </html>
+        `;
+        
+        const printWindow = window.open('', '_blank', 'width=1000,height=800');
+        if (printWindow) {
+            printWindow.document.write(fullHtml);
+            printWindow.document.close();
+            setTimeout(() => { printWindow.print(); }, 800);
+        } else {
+            alert('Please allow popups to download the report card.');
+        }
     }
-}
+
     // ============================================================
-    // 16. TAB SWITCHING
+    // 17. TAB SWITCHING
     // ============================================================
     function setupTabs() {
         const tabs = document.querySelectorAll('.report-tab');
@@ -1323,7 +1290,7 @@ function downloadReportCard() {
     }
 
     // ============================================================
-    // 17. INITIALIZE
+    // 18. INITIALIZE
     // ============================================================
     function init() {
         console.log('🔧 Initializing Academic Reports...');
@@ -1408,7 +1375,7 @@ function downloadReportCard() {
     }
 
     // ============================================================
-    // 18. EXPOSE FUNCTIONS
+    // 19. EXPOSE FUNCTIONS
     // ============================================================
     window.loadMyMarks = loadMyMarks;
     window.filterMyMarks = filterMyMarks;
@@ -1425,9 +1392,10 @@ function downloadReportCard() {
     window.calculatePoints = calculatePoints;
     window.calculateGPA = calculateGPA;
     window.PROGRAM = PROGRAM;
+    window.renderMyMarksCharts = renderMyMarksCharts;
 
     // ============================================================
-    // 19. AUTO-INIT
+    // 20. AUTO-INIT
     // ============================================================
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -1441,5 +1409,6 @@ function downloadReportCard() {
     console.log('   - filterMyMarks() - Filter marks');
     console.log('   - downloadReportCard() - Download report card PDF');
     console.log('   - downloadTranscriptPDF() - Download full transcript');
-    console.log('   - TVET Min Pass: 50% | Nursing Min Pass: 60%');
+    console.log('   - renderMyMarksCharts() - Render charts');
+    console.log('📊 TVET Min Pass: 50% | Nursing Min Pass: 60%');
 })();
