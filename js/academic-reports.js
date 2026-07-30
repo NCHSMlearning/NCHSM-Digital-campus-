@@ -74,7 +74,92 @@
     }
 
     // ============================================================
-    // 3. GENERATE SAMPLE GRADES (Fallback)
+    // 3. UNIT CODE MAPPING
+    // ============================================================
+    // Direct mapping for known units from units_catalog
+    const UNIT_CODE_MAP = {
+        'Medical Surgical Nursing II: Renal & Genito-Urinary Diseases': 'NCHSGN 203',
+        'Medical Surgical Nursing II: Gastrointestinal, Hepatobiliary Diseases': 'NCHSGN 201',
+        'Medical Surgical Nursing II: Orodental Nursing': 'NCHSGN 202',
+        'Medical Surgical Nursing II: Renal & Genito-Urinary': 'NCHSGN 203',
+        'Medical Surgical Nursing II: Gastrointestinal, Hepatobiliary': 'NCHSGN 201',
+        'Fundamentals of Nursing': 'NUR101',
+        'Anatomy and Physiology': 'NUR102',
+        'Anatomy & Physiology': 'NUR102',
+        'Pharmacology Basics': 'NUR103',
+        'Medical-Surgical Nursing I': 'NUR104',
+        'Community Health Nursing': 'NUR105',
+        'Maternal & Child Health': 'NUR106',
+        'Occupational Health & Safety': 'TVT101',
+        'Workshop Practice': 'TVT102',
+        'Technical Drawing': 'TVT103',
+        'Electrical Principles': 'TVT104',
+        'Mechanical Engineering': 'TVT105',
+        'Industrial Management': 'TVT106'
+    };
+
+    // Reverse mapping for looking up unit names from codes
+    const UNIT_NAME_MAP = {};
+    Object.keys(UNIT_CODE_MAP).forEach(key => {
+        UNIT_NAME_MAP[UNIT_CODE_MAP[key]] = key;
+    });
+
+    function getUnitCode(subjectName) {
+        if (!subjectName) return 'N/A';
+        
+        // Check direct mapping
+        if (UNIT_CODE_MAP[subjectName]) {
+            return UNIT_CODE_MAP[subjectName];
+        }
+        
+        // Check partial match for Medical Surgical Nursing II
+        if (subjectName.includes('Medical Surgical Nursing II:')) {
+            const specialty = subjectName.split(':')[1]?.trim() || '';
+            if (specialty.includes('Renal')) return 'NCHSGN 203';
+            if (specialty.includes('Gastrointestinal')) return 'NCHSGN 201';
+            if (specialty.includes('Orodental')) return 'NCHSGN 202';
+            if (specialty.includes('Hepatobiliary')) return 'NCHSGN 201';
+            return 'NCHSGN 2XX';
+        }
+        
+        // Check if it contains any known specialty
+        const lowerName = subjectName.toLowerCase();
+        if (lowerName.includes('renal')) return 'NCHSGN 203';
+        if (lowerName.includes('gastrointestinal')) return 'NCHSGN 201';
+        if (lowerName.includes('orodental')) return 'NCHSGN 202';
+        if (lowerName.includes('hepatobiliary')) return 'NCHSGN 201';
+        
+        // Generate from first letters as fallback
+        return generateCodeFromName(subjectName);
+    }
+
+    function generateCodeFromName(subjectName) {
+        if (!subjectName) return 'N/A';
+        
+        const words = subjectName.split(' ');
+        if (words.length === 1) {
+            return subjectName.substring(0, 6).toUpperCase();
+        }
+        
+        // For TVET courses
+        if (subjectName.includes('TVT')) {
+            const match = subjectName.match(/TVT(\d{3})/);
+            if (match) return `TVT${match[1]}`;
+        }
+        
+        // For Nursing courses
+        if (subjectName.includes('NUR') || subjectName.includes('Nursing')) {
+            const match = subjectName.match(/NUR(\d{3})/);
+            if (match) return `NUR${match[1]}`;
+        }
+        
+        // Generic: first letters of each word
+        const code = words.map(w => w[0]).join('').toUpperCase();
+        return code.length > 8 ? code.substring(0, 8) : code;
+    }
+
+    // ============================================================
+    // 4. GENERATE SAMPLE GRADES (Fallback)
     // ============================================================
     function generateSampleGrades() {
         const user = window.currentUserProfile || {};
@@ -121,7 +206,7 @@
     }
 
     // ============================================================
-    // 4. MY MARKS - STATE & FUNCTIONS
+    // 5. MY MARKS - STATE & FUNCTIONS
     // ============================================================
     let myMarksData = [];
     let myMarksFiltered = [];
@@ -175,15 +260,29 @@
             
             let marks = [];
             try {
+                // Fetch marks with unit codes from units_catalog
                 const result = await window.db.supabase
                     .from('student_marks')
-                    .select('*')
+                    .select(`
+                        *,
+                        units_catalog!left (
+                            unit_code,
+                            credits,
+                            unit_name
+                        )
+                    `)
                     .eq('admission_number', registrationNumber)
                     .eq('published', true)
                     .order('published_at', { ascending: false });
                 
                 if (!result.error && result.data) {
-                    marks = result.data;
+                    // Transform the data to include unit_code at the top level
+                    marks = result.data.map(mark => ({
+                        ...mark,
+                        unit_code: mark.units_catalog?.unit_code || getUnitCode(mark.subject_name),
+                        credits: mark.units_catalog?.credits || 3,
+                        full_unit_name: mark.units_catalog?.unit_name || mark.subject_name
+                    }));
                 }
             } catch (e) {
                 console.warn('Error fetching marks:', e);
@@ -193,6 +292,11 @@
                 myMarksData = marks;
             } else {
                 myMarksData = getDemoMarks(user.program);
+                // Add unit codes to demo data
+                myMarksData = myMarksData.map(mark => ({
+                    ...mark,
+                    unit_code: getUnitCode(mark.subject_name)
+                }));
             }
             
             myMarksFiltered = [...myMarksData];
@@ -235,76 +339,78 @@
         });
     }
 
+    // ============================================================
+    // 6. RENDER MY MARKS TABLE (FIXED VERSION)
+    // ============================================================
     function renderMyMarksTable() {
-    const tbody = document.getElementById('my_marks_table_body');
-    if (!tbody) return;
-    
-    const marks = myMarksFiltered;
-    if (!marks || marks.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                    No published marks found
-                </td>
-            </tr>
-        `;
-        document.getElementById('my_marks_count').textContent = '0 results';
-        return;
+        const tbody = document.getElementById('my_marks_table_body');
+        if (!tbody) return;
+        
+        const marks = myMarksFiltered;
+        if (!marks || marks.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                        No published marks found
+                    </td>
+                </tr>
+            `;
+            document.getElementById('my_marks_count').textContent = '0 results';
+            return;
+        }
+        
+        let html = '';
+        marks.forEach((mark, index) => {
+            // Determine pass/fail
+            const isPass = mark.grade !== 'FAIL' && mark.grade !== 'F' && mark.grade !== 'E';
+            const statusColor = isPass ? '#10b981' : '#dc2626';
+            const statusText = isPass ? '✅ Pass' : '❌ Fail';
+            
+            // Grade color
+            const gradeColor = getGradeColor(mark.grade);
+            
+            // FIXED: Get unit code - use database value or mapping
+            let unitCode = mark.unit_code || mark.subject_code;
+            
+            // If no unit code, use the mapping function
+            if (!unitCode && mark.subject_name) {
+                unitCode = getUnitCode(mark.subject_name);
+            }
+            
+            // If still no code, use a fallback
+            if (!unitCode) unitCode = 'N/A';
+            
+            const unitName = mark.subject_name || 'N/A';
+            const credits = mark.credits || 3;
+            
+            html += `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+                    onmouseover="this.style.background='#f8fafc'" 
+                    onmouseout="this.style.background='transparent'">
+                    <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
+                    <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
+                    <td style="padding: 10px 14px;">${escapeHtml(unitName)}</td>
+                    <td style="padding: 10px 14px; text-align: center;">${credits}</td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
+                            ${mark.grade || '-'}
+                        </span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${mark.points || 0.0}</td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 12px;">
+                            ${statusText}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+        document.getElementById('my_marks_count').textContent = `${marks.length} results`;
     }
-    
-    let html = '';
-    marks.forEach((mark, index) => {
-        // Determine pass/fail
-        const isPass = mark.grade !== 'FAIL' && mark.grade !== 'F' && mark.grade !== 'E';
-        const statusColor = isPass ? '#10b981' : '#dc2626';
-        const statusText = isPass ? '✅ Pass' : '❌ Fail';
-        
-        // Grade color
-        const gradeColor = getGradeColor(mark.grade);
-        
-        // Get unit code - use subject_code or generate from subject_name
-        const unitCode = mark.unit_code || mark.subject_code || generateUnitCode(mark.subject_name);
-        const unitName = mark.subject_name || 'N/A';
-        const credits = mark.credits || 3;
-        
-        html += `
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
-                onmouseover="this.style.background='#f8fafc'" 
-                onmouseout="this.style.background='transparent'">
-                <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
-                <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
-                <td style="padding: 10px 14px;">${escapeHtml(unitName)}</td>
-                <td style="padding: 10px 14px; text-align: center;">${credits}</td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
-                        ${mark.grade || '-'}
-                    </span>
-                </td>
-                <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${mark.points || 0.0}</td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 12px;">
-                        ${statusText}
-                    </span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    tbody.innerHTML = html;
-    document.getElementById('my_marks_count').textContent = `${marks.length} results`;
-}
 
-// Helper function to generate unit code from subject name
-function generateUnitCode(subjectName) {
-    if (!subjectName) return 'N/A';
-    const words = subjectName.split(' ');
-    if (words.length === 1) {
-        return subjectName.substring(0, 6).toUpperCase();
-    }
-    const code = words.map(w => w[0]).join('').toUpperCase();
-    return code.length > 6 ? code.substring(0, 6) : code;
-}
     function updateMyMarksStats() {
         const marks = myMarksData;
         const total = marks.length;
@@ -336,7 +442,7 @@ function generateUnitCode(subjectName) {
     }
 
     // ============================================================
-    // 5. SEMESTER REPORT
+    // 7. SEMESTER REPORT
     // ============================================================
     let gradeChart = null;
     let currentGrades = [];
@@ -361,7 +467,7 @@ function generateUnitCode(subjectName) {
                 
                 if (releasedExams.length > 0) {
                     grades = releasedExams.map(e => ({
-                        courseCode: e.unit_code || e.course_code || 'N/A',
+                        courseCode: e.unit_code || e.course_code || getUnitCode(e.exam_name || e.title),
                         courseName: e.exam_name || e.title || 'Exam',
                         credits: e.credits || 3,
                         cat1: e.cat1Display || e.cat_1_score || '--',
@@ -470,7 +576,7 @@ function generateUnitCode(subjectName) {
     }
 
     // ============================================================
-    // 6. YEARLY REPORT
+    // 8. YEARLY REPORT
     // ============================================================
     function loadYearlyReport() {
         const grades = currentGrades.length > 0 ? currentGrades : generateSampleGrades();
@@ -485,7 +591,7 @@ function generateUnitCode(subjectName) {
     }
 
     // ============================================================
-    // 7. FULL TRANSCRIPT
+    // 9. FULL TRANSCRIPT
     // ============================================================
     function loadTranscript() {
         const tbody = document.getElementById('transcript-table-body');
@@ -530,7 +636,7 @@ function generateUnitCode(subjectName) {
     }
 
     // ============================================================
-    // 8. COURSE PROGRESS
+    // 10. COURSE PROGRESS
     // ============================================================
     function loadCourseProgress() {
         const container = document.getElementById('course-progress-list');
@@ -566,7 +672,7 @@ function generateUnitCode(subjectName) {
     }
 
     // ============================================================
-    // 9. DOWNLOAD FULL TRANSCRIPT
+    // 11. DOWNLOAD FULL TRANSCRIPT
     // ============================================================
     function downloadTranscriptPDF() {
         const user = window.currentUserProfile || {};
@@ -651,7 +757,7 @@ function generateUnitCode(subjectName) {
     }
 
     // ============================================================
-    // 10. DOWNLOAD REPORT CARD (NEW)
+    // 12. DOWNLOAD REPORT CARD (FIXED VERSION)
     // ============================================================
     function downloadReportCard() {
         const user = window.currentUserProfile || {};
@@ -687,9 +793,17 @@ function generateUnitCode(subjectName) {
             const status = mark.final_score >= 60 ? 'PASS' : (mark.final_score > 0 ? 'FAIL' : 'PENDING');
             const statusColor = mark.final_score >= 60 ? '#10b981' : (mark.final_score > 0 ? '#dc2626' : '#f59e0b');
             
+            // FIXED: Get unit code
+            let unitCode = mark.unit_code || mark.subject_code;
+            if (!unitCode && mark.subject_name) {
+                unitCode = getUnitCode(mark.subject_name);
+            }
+            if (!unitCode) unitCode = 'N/A';
+            
             tableRows += `
                 <tr>
                     <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${index + 1}</td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${escapeHtml(unitCode)}</td>
                     <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(mark.subject_name || 'N/A')}</td>
                     <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${escapeHtml(mark.block || '-')}</td>
                     <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${mark.cat1_score || '-'}</td>
@@ -794,6 +908,7 @@ function generateUnitCode(subjectName) {
                     <thead>
                         <tr>
                             <th>#</th>
+                            <th>Unit Code</th>
                             <th>Subject/Unit</th>
                             <th>${blockLabel}</th>
                             <th style="text-align: center;">CAT 1</th>
@@ -849,7 +964,7 @@ function generateUnitCode(subjectName) {
     }
 
     // ============================================================
-    // 11. TAB SWITCHING
+    // 13. TAB SWITCHING
     // ============================================================
     function setupTabs() {
         const tabs = document.querySelectorAll('.report-tab');
@@ -890,7 +1005,7 @@ function generateUnitCode(subjectName) {
     }
 
     // ============================================================
-    // 12. INITIALIZE
+    // 14. INITIALIZE
     // ============================================================
     function init() {
         console.log('🔧 Initializing Academic Reports...');
@@ -926,6 +1041,12 @@ function generateUnitCode(subjectName) {
             });
         }
         
+        // Setup download report card button
+        const downloadReportCardBtn = document.getElementById('download-report-card');
+        if (downloadReportCardBtn) {
+            downloadReportCardBtn.addEventListener('click', downloadReportCard);
+        }
+        
         // Check if mymarks tab is active on load
         setTimeout(function() {
             const activeTab = document.querySelector('.report-tab.active');
@@ -937,8 +1058,21 @@ function generateUnitCode(subjectName) {
                 else if (reportType === 'progress') loadCourseProgress();
                 else if (reportType === 'mymarks') loadMyMarks();
             } else {
-                // Default to semester report
-                loadSemesterReport();
+                // Default to mymarks tab (changed from semester to mymarks)
+                const mymarksTab = document.querySelector('.report-tab[data-report="mymarks"]');
+                if (mymarksTab) {
+                    mymarksTab.classList.add('active');
+                    if (contents) {
+                        Object.keys(contents).forEach(key => {
+                            if (contents[key]) {
+                                contents[key].style.display = key === 'mymarks' ? 'block' : 'none';
+                            }
+                        });
+                    }
+                    loadMyMarks();
+                } else {
+                    loadSemesterReport();
+                }
             }
         }, 300);
         
@@ -946,7 +1080,7 @@ function generateUnitCode(subjectName) {
     }
 
     // ============================================================
-    // 13. EXPOSE FUNCTIONS
+    // 15. EXPOSE FUNCTIONS
     // ============================================================
     window.loadMyMarks = loadMyMarks;
     window.filterMyMarks = filterMyMarks;
@@ -956,9 +1090,11 @@ function generateUnitCode(subjectName) {
     window.loadCourseProgress = loadCourseProgress;
     window.downloadTranscriptPDF = downloadTranscriptPDF;
     window.downloadReportCard = downloadReportCard;
+    window.getUnitCode = getUnitCode;
+    window.UNIT_CODE_MAP = UNIT_CODE_MAP;
 
     // ============================================================
-    // 14. AUTO-INIT
+    // 16. AUTO-INIT
     // ============================================================
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -972,4 +1108,5 @@ function generateUnitCode(subjectName) {
     console.log('   - filterMyMarks() - Filter marks');
     console.log('   - downloadReportCard() - Download report card PDF');
     console.log('   - downloadTranscriptPDF() - Download full transcript');
+    console.log('   - getUnitCode(name) - Get unit code from subject name');
 })();
