@@ -1792,20 +1792,24 @@
             <option value="all">All Units</option>
         </select>
         <select id="my_marks_block_filter" class="form-select" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; min-width: 130px;">
-            <option value="all">All Blocks</option>
-            <option value="Introductory">Introductory</option>
-            <option value="Block 1">Block 1</option>
-            <option value="Block 2">Block 2</option>
-            <option value="Block 3">Block 3</option>
-            <option value="Block 4">Block 4</option>
-            <option value="Block 5">Block 5</option>
-            <option value="Final">Final</option>
-            <option value="Term 1">Term 1</option>
-            <option value="Term 2">Term 2</option>
-            <option value="Term 3">Term 3</option>
-            <option value="Term 4">Term 4</option>
-            <option value="Term 5">Term 5</option>
-            <option value="Term 6">Term 6</option>
+            <option value="all">All Blocks/Terms</option>
+            <optgroup label="📚 KRCHN Blocks">
+                <option value="Introductory">Introductory</option>
+                <option value="Block 1">Block 1</option>
+                <option value="Block 2">Block 2</option>
+                <option value="Block 3">Block 3</option>
+                <option value="Block 4">Block 4</option>
+                <option value="Block 5">Block 5</option>
+                <option value="Final">Final</option>
+            </optgroup>
+            <optgroup label="📖 TVET Terms">
+                <option value="Term 1">Term 1</option>
+                <option value="Term 2">Term 2</option>
+                <option value="Term 3">Term 3</option>
+                <option value="Term 4">Term 4</option>
+                <option value="Term 5">Term 5</option>
+                <option value="Term 6">Term 6</option>
+            </optgroup>
         </select>
         <select id="my_marks_year_filter" class="form-select" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; min-width: 120px;">
             <option value="all">All Years</option>
@@ -1821,19 +1825,19 @@
     <div style="background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
         <div style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-               <thead style="background: #0A3D62; color: white;">
-    <tr>
-        <th style="padding: 10px 14px; text-align: center; width: 50px;">#</th>
-        <th style="padding: 10px 14px; text-align: left; min-width: 100px;">Unit Code</th>
-        <th style="padding: 10px 14px; text-align: left; min-width: 150px;">Unit Name</th>
-        <th style="padding: 10px 14px; text-align: center; width: 60px;">Grade</th>
-        <th style="padding: 10px 14px; text-align: center; width: 80px;">Grade Points</th>
-        <th style="padding: 10px 14px; text-align: center; width: 100px;">Status</th>
-    </tr>
-</thead>
+                <thead style="background: #0A3D62; color: white;">
+                    <tr>
+                        <th style="padding: 10px 14px; text-align: center; width: 50px;">#</th>
+                        <th style="padding: 10px 14px; text-align: left; min-width: 100px;">Unit Code</th>
+                        <th style="padding: 10px 14px; text-align: left; min-width: 150px;">Unit Name</th>
+                        <th style="padding: 10px 14px; text-align: center; width: 60px;">Grade</th>
+                        <th style="padding: 10px 14px; text-align: center; width: 70px;">Grade Points</th>
+                        <th style="padding: 10px 14px; text-align: center; width: 100px;">Status</th>
+                    </tr>
+                </thead>
                 <tbody id="my_marks_table_body">
                     <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px;">
+                        <td colspan="6" style="text-align: center; padding: 40px;">
                             <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                             <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
                         </td>
@@ -1843,24 +1847,74 @@
         </div>
     </div>
     
-    <!-- Grading Scale -->
-    <div style="margin-top: 20px; background: white; border-radius: 8px; padding: 16px; border: 1px solid #e5e7eb;">
-        <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #0A3D62;">
-            <i class="fas fa-graduation-cap"></i> Grading Scale
+    <!-- ============================================================ -->
+    <!-- GRAPHS SECTION - AFTER MARKS TABLE                           -->
+    <!-- ============================================================ -->
+    <div id="my_marks_graphs_section" style="margin-top: 25px; display: none;">
+        <h4 style="margin: 0 0 15px 0; font-size: 16px; color: #0A3D62;">
+            <i class="fas fa-chart-bar"></i> Performance Graphs
         </h4>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 11px;">A (75-100%) → 4.0</span>
-            <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 11px;">B (65-74%) → 3.0</span>
-            <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 11px;">C (60-64%) → 2.0</span>
-            <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 11px;">D (Below 60%) → 0.0</span>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Grade Distribution Chart -->
+            <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <h5 style="margin: 0 0 10px 0; font-size: 14px; color: #475569; text-align: center;">
+                    <i class="fas fa-chart-pie"></i> Grade Distribution
+                </h5>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="myMarksGradeChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Performance vs Status Chart -->
+            <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <h5 style="margin: 0 0 10px 0; font-size: 14px; color: #475569; text-align: center;">
+                    <i class="fas fa-chart-line"></i> Performance Summary
+                </h5>
+                <div style="position: relative; height: 200px;">
+                    <canvas id="myMarksPerformanceChart"></canvas>
+                </div>
+            </div>
         </div>
-        <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; border-top: 1px solid #e5e7eb; padding-top: 10px;">
-            <span style="background: #10b981; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 11px;">DISTINCTION</span>
-            <span style="background: #3b82f6; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 11px;">CREDIT</span>
-            <span style="background: #f59e0b; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 11px;">PASS</span>
-            <span style="background: #dc2626; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 11px;">FAIL</span>
-            <span style="background: #94a3b8; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 11px;">PENDING</span>
-            <span style="font-size: 11px; color: #94a3b8; display: flex; align-items: center;">Minimum passing grade: C (60%)</span>
+        
+        <!-- Grading Scale Reference -->
+        <div style="margin-top: 20px; background: white; border-radius: 8px; padding: 16px; border: 1px solid #e5e7eb;">
+            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #0A3D62;">
+                <i class="fas fa-graduation-cap"></i> Grading Scale
+            </h4>
+            <div id="my_marks_tvet_scale" style="display: none; margin-bottom: 8px;">
+                <div style="font-weight: 600; color: #92400e; font-size: 12px; margin-bottom: 6px;">🔧 TVET Grading:</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 11px;">A (75-100%) → 4.0</span>
+                    <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 11px;">B (65-74%) → 3.0</span>
+                    <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 11px;">C (50-64%) → 2.0</span>
+                    <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 11px;">FAIL (Below 50%) → 0.0</span>
+                </div>
+                <div style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span style="background: #10b981; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">EXCELLENT</span>
+                    <span style="background: #3b82f6; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">GOOD</span>
+                    <span style="background: #f59e0b; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">SATISFACTORY</span>
+                    <span style="background: #ef4444; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">FAIL</span>
+                    <span style="background: #94a3b8; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">PENDING</span>
+                    <span style="font-size: 11px; color: #94a3b8; display: flex; align-items: center;">Min Pass: 50%</span>
+                </div>
+            </div>
+            <div id="my_marks_nursing_scale" style="display: none;">
+                <div style="font-weight: 600; color: #1e40af; font-size: 12px; margin-bottom: 6px;">🎓 Nursing Grading:</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 11px;">A (75-100%) → 4.0</span>
+                    <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 11px;">B (65-74%) → 3.0</span>
+                    <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 11px;">C (60-64%) → 2.0</span>
+                    <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 11px;">D (Below 60%) → 0.0</span>
+                </div>
+                <div style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span style="background: #10b981; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">DISTINCTION</span>
+                    <span style="background: #3b82f6; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">CREDIT</span>
+                    <span style="background: #f59e0b; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">PASS</span>
+                    <span style="background: #ef4444; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">FAIL</span>
+                    <span style="background: #94a3b8; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: white; font-size: 10px;">PENDING</span>
+                    <span style="font-size: 11px; color: #94a3b8; display: flex; align-items: center;">Min Pass: 60%</span>
+                </div>
+            </div>
         </div>
     </div>
     
