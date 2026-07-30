@@ -784,8 +784,8 @@
         }
     }
 
-   // ============================================================
-// 13. DOWNLOAD REPORT CARD (WITH ONLY GRADING SCALE)
+ // ============================================================
+// 13. DOWNLOAD REPORT CARD (WITH HOD SIGNATURE & STUDENT DECLARATION)
 // ============================================================
 function downloadReportCard() {
     const user = window.currentUserProfile || {};
@@ -955,6 +955,68 @@ function downloadReportCard() {
                     min-width: 20px;
                     text-align: center;
                 }
+                .signatures {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 40px;
+                    margin-top: 30px;
+                    padding-top: 20px;
+                    border-top: 1px solid #e5e7eb;
+                }
+                .signature-box {
+                    text-align: center;
+                }
+                .signature-box .line {
+                    border-bottom: 1px solid #1e293b;
+                    width: 200px;
+                    margin: 30px auto 8px auto;
+                }
+                .signature-box .label {
+                    font-size: 11px;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .signature-box .name {
+                    font-weight: 600;
+                    font-size: 14px;
+                    color: #0A3D62;
+                }
+                .declaration {
+                    margin-top: 30px;
+                    padding: 16px;
+                    background: #f8fafc;
+                    border-radius: 8px;
+                    border: 1px solid #e5e7eb;
+                    font-size: 13px;
+                    line-height: 1.6;
+                }
+                .declaration .title {
+                    font-weight: 700;
+                    color: #0A3D62;
+                    margin-bottom: 8px;
+                }
+                .declaration .checkbox {
+                    display: inline-block;
+                    width: 16px;
+                    height: 16px;
+                    border: 2px solid #0A3D62;
+                    border-radius: 3px;
+                    margin-right: 8px;
+                    vertical-align: middle;
+                }
+                .declaration .checkbox.checked {
+                    background: #0A3D62;
+                    position: relative;
+                }
+                .declaration .checkbox.checked::after {
+                    content: "✓";
+                    color: white;
+                    font-size: 12px;
+                    position: absolute;
+                    top: -2px;
+                    left: 2px;
+                }
                 .watermark {
                     position: fixed;
                     top: 50%;
@@ -976,6 +1038,7 @@ function downloadReportCard() {
                 }
                 @media (max-width: 768px) {
                     .student-info { grid-template-columns: 1fr 1fr; }
+                    .signatures { grid-template-columns: 1fr; gap: 20px; }
                     table { font-size: 11px; }
                     th, td { padding: 6px 8px; }
                 }
@@ -1051,8 +1114,36 @@ function downloadReportCard() {
                     </div>
                 </div>
                 
+                <!-- STUDENT DECLARATION -->
+                <div class="declaration">
+                    <div class="title">📋 Student Declaration</div>
+                    <p style="margin: 4px 0;">
+                        <span class="checkbox checked"></span> 
+                        I hereby confirm that the grades and information presented in this report card are accurate and reflect my academic performance.
+                    </p>
+                    <p style="margin: 4px 0; font-size: 12px; color: #64748b;">
+                        <i class="fas fa-info-circle"></i> I understand that this is an official document and any falsification of information will result in disciplinary action.
+                    </p>
+                </div>
+                
+                <!-- SIGNATURES -->
+                <div class="signatures">
+                    <div class="signature-box">
+                        <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
+                        <div class="line"></div>
+                        <div class="label">Student Signature</div>
+                        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Date: ${now}</div>
+                    </div>
+                    <div class="signature-box">
+                        <div class="name">Dr. Jane M. Wanjiru</div>
+                        <div class="line"></div>
+                        <div class="label">Head of Department (HOD)</div>
+                        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Date: ${now}</div>
+                    </div>
+                </div>
+                
                 <div class="footer">
-                    <p style="margin: 4px 0;"><strong>This is an official report card.</strong> For verification, contact the Registrar's Office.</p>
+                    <p style="margin: 4px 0;"><strong>This is an official report card.</strong> For verification, contact the Academic Office.</p>
                     <p style="margin: 4px 0;">NCHSM · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
                     <p style="margin: 4px 0; font-size: 11px; margin-top: 8px;">
                         <i class="fas fa-print"></i> Printed on ${now}
