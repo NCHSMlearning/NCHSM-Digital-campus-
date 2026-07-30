@@ -1,7 +1,6 @@
 // ============================================================
-// PUBLISHED MARKS - STUDENT VIEW (TVET & Nursing Compatible)
-// Uses SAME student_marks table as Marks Entry System
-// NO DEMO DATA - PRODUCTION READY
+// PUBLISHED MARKS - SUPER ADMIN (TVET & KRCHN Nursing)
+// FULLY INTEGRATED with Marks Entry System
 // ============================================================
 
 console.log('📊 Published Marks module loading...');
@@ -14,7 +13,8 @@ const PUBLISHED_STATE = {
     perPage: 20,
     user: null,
     userProgram: 'all',
-    isLoading: false
+    isLoading: false,
+    currentProgramFilter: 'all' // 'all', 'KRCHN', 'TVET'
 };
 
 // ============================================================
@@ -84,25 +84,6 @@ function escapeHtml(str) {
 }
 
 // ============================================================
-// GET CURRENT USER
-// ============================================================
-
-async function getCurrentUser() {
-    try {
-        const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
-        if (stored) {
-            return JSON.parse(stored);
-        }
-        if (window.currentUser) return window.currentUser;
-        if (window.currentUserProfile) return window.currentUserProfile;
-        return null;
-    } catch (e) {
-        console.error('Error getting user:', e);
-        return null;
-    }
-}
-
-// ============================================================
 // CHECK IF USER IS ADMIN
 // ============================================================
 
@@ -124,14 +105,34 @@ function isUserAdmin() {
                 }
             } catch (e) {}
         }
-        return false;
+        return true; // Super Admin by default
     } catch (e) {
-        return false;
+        return true;
     }
 }
 
 // ============================================================
-// LOAD PUBLISHED MARKS - FROM DATABASE ONLY
+// GET CURRENT USER
+// ============================================================
+
+async function getCurrentUser() {
+    try {
+        const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
+        if (stored) {
+            const user = JSON.parse(stored);
+            if (user) return user;
+        }
+        if (window.currentUser) return window.currentUser;
+        if (window.currentUserProfile) return window.currentUserProfile;
+        return { id: 'superadmin', name: 'Super Admin', role: 'superadmin', program: 'all' };
+    } catch (e) {
+        console.error('Error getting user:', e);
+        return { id: 'superadmin', name: 'Super Admin', role: 'superadmin', program: 'all' };
+    }
+}
+
+// ============================================================
+// LOAD PUBLISHED MARKS - FROM DATABASE
 // ============================================================
 
 async function loadPublishedMarks() {
@@ -146,60 +147,43 @@ async function loadPublishedMarks() {
         const user = await getCurrentUser();
         PUBLISHED_STATE.user = user;
         
-        // Get student registration number
-        let studentRegNumber = user?.student_id || user?.admission_number || user?.user_id || user?.id;
-        const isAdmin = isUserAdmin();
-        
         let marks = [];
         
         try {
             let query = window.sb.from('student_marks').select('*');
             
-            if (isAdmin) {
-                // ✅ ADMIN VIEW - Show ALL marks from database
-                console.log('👑 Admin view - fetching all marks from database');
-                
-                const programFilter = document.getElementById('pm_program_filter')?.value;
-                if (programFilter && programFilter !== 'all') {
-                    query = query.eq('program', programFilter);
+            // Apply program filter if set
+            if (PUBLISHED_STATE.currentProgramFilter !== 'all') {
+                if (PUBLISHED_STATE.currentProgramFilter === 'KRCHN') {
+                    query = query.eq('program', 'KRCHN');
+                } else if (PUBLISHED_STATE.currentProgramFilter === 'TVET') {
+                    // TVET includes all non-KRCHN programs
+                    query = query.neq('program', 'KRCHN');
                 }
-                
-                const blockFilter = document.getElementById('pm_block_filter')?.value;
-                if (blockFilter && blockFilter !== 'all') {
-                    query = query.eq('block', blockFilter);
-                }
-                
-                const yearFilter = document.getElementById('pm_year_filter')?.value;
-                if (yearFilter && yearFilter !== 'all') {
-                    query = query.eq('academic_year', yearFilter);
-                }
-                
-                query = query.order('created_at', { ascending: false });
-                
-            } else if (studentRegNumber) {
-                // ✅ STUDENT VIEW - Show ONLY their marks
-                console.log('👨‍🎓 Student view - fetching marks for:', studentRegNumber);
-                query = query.eq('admission_number', studentRegNumber);
-            } else {
-                // No user - show nothing
-                console.warn('No user found, showing empty state');
-                PUBLISHED_STATE.marks = [];
-                PUBLISHED_STATE.filtered = [];
-                renderPublishedMarks();
-                updateStats([]);
-                updateBadge([]);
-                if (typeof window.hideLoading === 'function') window.hideLoading();
-                PUBLISHED_STATE.isLoading = false;
-                return;
             }
+            
+            // Apply other filters from UI
+            const programFilter = document.getElementById('pm_program_filter')?.value;
+            if (programFilter && programFilter !== 'all' && PUBLISHED_STATE.currentProgramFilter === 'all') {
+                query = query.eq('program', programFilter);
+            }
+            
+            const blockFilter = document.getElementById('pm_block_filter')?.value;
+            if (blockFilter && blockFilter !== 'all') {
+                query = query.eq('block', blockFilter);
+            }
+            
+            const yearFilter = document.getElementById('pm_year_filter')?.value;
+            if (yearFilter && yearFilter !== 'all') {
+                query = query.eq('academic_year', yearFilter);
+            }
+            
+            query = query.order('created_at', { ascending: false });
             
             const { data, error } = await query;
             
             if (error) {
                 console.error('❌ Database error:', error);
-                if (typeof window.showNotification === 'function') {
-                    window.showNotification('Error loading marks: ' + error.message, 'error');
-                }
                 marks = [];
             } else if (data) {
                 marks = data;
@@ -213,7 +197,7 @@ async function loadPublishedMarks() {
         
         PUBLISHED_STATE.marks = marks;
         PUBLISHED_STATE.filtered = [...marks];
-        PUBLISHED_STATE.userProgram = user?.program || 'KRCHN';
+        PUBLISHED_STATE.userProgram = user?.program || 'all';
         
         // Update UI
         updateUserInfo(user);
@@ -221,6 +205,7 @@ async function loadPublishedMarks() {
         renderPublishedMarks();
         updateStats(marks);
         updateBadge(marks);
+        updateProgramCounts(marks);
         
         if (typeof window.hideLoading === 'function') window.hideLoading();
         PUBLISHED_STATE.isLoading = false;
@@ -238,6 +223,7 @@ async function loadPublishedMarks() {
         renderPublishedMarks();
         updateStats([]);
         updateBadge([]);
+        updateProgramCounts([]);
         if (typeof window.hideLoading === 'function') window.hideLoading();
         PUBLISHED_STATE.isLoading = false;
         if (typeof window.showNotification === 'function') {
@@ -253,15 +239,76 @@ async function loadPublishedMarks() {
 function updateUserInfo(user) {
     const programBadge = document.getElementById('pm_user_program_badge');
     if (programBadge) {
-        const program = user?.program || 'KRCHN';
-        const programName = getProgramDisplayName(program);
-        programBadge.textContent = `🎓 ${programName}`;
+        programBadge.textContent = '🎓 KRCHN Nursing & 🔧 TVET Programs';
     }
     
     const userNameEl = document.getElementById('pm_user_name');
     if (userNameEl) {
-        userNameEl.textContent = user?.full_name || user?.name || user?.email || 'Student';
+        userNameEl.textContent = user?.full_name || user?.name || 'Super Admin';
     }
+}
+
+// ============================================================
+// UPDATE PROGRAM COUNTS
+// ============================================================
+
+function updateProgramCounts(marks) {
+    const krchnCount = marks.filter(m => m.program === 'KRCHN').length;
+    const tvetCount = marks.filter(m => m.program !== 'KRCHN').length;
+    const publishedCount = marks.filter(m => m.published === true).length;
+    const draftCount = marks.filter(m => m.published !== true).length;
+    
+    const krchnEl = document.getElementById('pm_krchn_count');
+    const tvetEl = document.getElementById('pm_tvet_count');
+    const publishedEl = document.getElementById('pm_published_badge_count');
+    const draftEl = document.getElementById('pm_draft_count');
+    
+    if (krchnEl) krchnEl.textContent = krchnCount;
+    if (tvetEl) tvetEl.textContent = tvetCount;
+    if (publishedEl) publishedEl.textContent = publishedCount;
+    if (draftEl) draftEl.textContent = draftCount;
+}
+
+// ============================================================
+// FILTER BY PROGRAM TYPE
+// ============================================================
+
+function filterPublishedByProgram(programType) {
+    console.log('📊 Filtering by program:', programType);
+    
+    // Update button styles
+    document.querySelectorAll('.program-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.background = '#e5e7eb';
+        btn.style.color = '#475569';
+    });
+    
+    const activeBtn = document.getElementById(`pm_filter_${programType}`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.background = '#4C1D95';
+        activeBtn.style.color = 'white';
+    }
+    
+    // Update label
+    const labels = {
+        'all': 'All Programs',
+        'KRCHN': '🎓 KRCHN Nursing',
+        'TVET': '🔧 TVET Programs'
+    };
+    const labelEl = document.getElementById('pm_current_filter_label');
+    if (labelEl) labelEl.textContent = labels[programType] || 'All Programs';
+    
+    // Set filter and reload
+    PUBLISHED_STATE.currentProgramFilter = programType;
+    
+    // Update program filter dropdown
+    const programFilter = document.getElementById('pm_program_filter');
+    if (programFilter) {
+        programFilter.value = programType === 'all' ? 'all' : programType;
+    }
+    
+    loadPublishedMarks();
 }
 
 // ============================================================
@@ -292,12 +339,48 @@ function populateFilters(marks) {
         const currentValue = blockFilter.value;
         const uniqueBlocks = [...new Set(marks.map(m => m.block).filter(Boolean))];
         blockFilter.innerHTML = '<option value="all">All Blocks/Terms</option>';
-        uniqueBlocks.sort().forEach(block => {
-            const option = document.createElement('option');
-            option.value = block;
-            option.textContent = block;
-            blockFilter.appendChild(option);
-        });
+        
+        // Separate KRCHN blocks and TVET terms
+        const krchnBlocks = uniqueBlocks.filter(b => b && (b.includes('Block') || b === 'Introductory' || b === 'Final'));
+        const tvetTerms = uniqueBlocks.filter(b => b && b.includes('Term'));
+        const otherBlocks = uniqueBlocks.filter(b => b && !b.includes('Block') && !b.includes('Term') && b !== 'Introductory' && b !== 'Final');
+        
+        if (krchnBlocks.length > 0) {
+            const group = document.createElement('optgroup');
+            group.label = '📚 KRCHN Blocks';
+            krchnBlocks.sort().forEach(block => {
+                const option = document.createElement('option');
+                option.value = block;
+                option.textContent = block;
+                group.appendChild(option);
+            });
+            blockFilter.appendChild(group);
+        }
+        
+        if (tvetTerms.length > 0) {
+            const group = document.createElement('optgroup');
+            group.label = '📖 TVET Terms';
+            tvetTerms.sort().forEach(block => {
+                const option = document.createElement('option');
+                option.value = block;
+                option.textContent = block;
+                group.appendChild(option);
+            });
+            blockFilter.appendChild(group);
+        }
+        
+        if (otherBlocks.length > 0) {
+            const group = document.createElement('optgroup');
+            group.label = '📋 Other';
+            otherBlocks.sort().forEach(block => {
+                const option = document.createElement('option');
+                option.value = block;
+                option.textContent = block;
+                group.appendChild(option);
+            });
+            blockFilter.appendChild(group);
+        }
+        
         if (currentValue && uniqueBlocks.includes(currentValue)) {
             blockFilter.value = currentValue;
         }
@@ -346,6 +429,11 @@ function renderPublishedMarks() {
                 <i class="fas fa-share-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
                 <h3 style="color: #1e293b;">${marks.length > 0 ? 'No marks match the current filter' : 'No published marks found'}</h3>
                 <p style="color: #94a3b8;">${marks.length > 0 ? 'Try adjusting your filters' : 'Marks will appear here once published'}</p>
+                ${marks.length === 0 ? `
+                <button onclick="loadPublishedMarks()" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                ` : ''}
             </div>
         `;
         document.getElementById('pm_filter_count').textContent = '0';
@@ -362,6 +450,7 @@ function renderPublishedMarks() {
                 <span><i class="fas fa-list"></i> <strong>${totalCount}</strong> shown</span>
                 <span><i class="fas fa-check-circle" style="color: #10b981;"></i> <strong>${publishedCount}</strong> published</span>
                 <span><i class="fas fa-file-alt" style="color: #f59e0b;"></i> <strong>${marks.length - publishedCount}</strong> draft</span>
+                <span><i class="fas fa-tag" style="color: #8b5cf6;"></i> <span id="pm_display_program_count">${displayMarks.filter(m => m.program === 'KRCHN').length} KRCHN, ${displayMarks.filter(m => m.program !== 'KRCHN').length} TVET</span></span>
             </div>
             <span style="font-size: 11px; color: #94a3b8;">
                 <i class="fas fa-clock"></i> Updated: ${new Date().toLocaleTimeString()}
@@ -377,7 +466,8 @@ function renderPublishedMarks() {
                         <th style="padding: 8px 12px; text-align: left;">Unit</th>
                         <th style="padding: 8px 12px; text-align: center;">Score</th>
                         <th style="padding: 8px 12px; text-align: center;">Grade</th>
-                        <th style="padding: 8px 12px; text-align: center;">Block</th>
+                        <th style="padding: 8px 12px; text-align: center;">Block/Term</th>
+                        <th style="padding: 8px 12px; text-align: center;">Program</th>
                         <th style="padding: 8px 12px; text-align: center;">Status</th>
                         <th style="padding: 8px 12px; text-align: center;">Published</th>
                         ${isAdmin ? `<th style="padding: 8px 12px; text-align: center;">Action</th>` : ''}
@@ -397,6 +487,9 @@ function renderPublishedMarks() {
         const studentName = mark.student_name || 'Unknown';
         const subjectName = mark.subject_name || 'N/A';
         const blockDisplay = mark.block || '-';
+        const programDisplay = mark.program || 'N/A';
+        const programType = getProgramType(mark.program);
+        const programIcon = programType === 'KRCHN' ? '🎓' : '🔧';
         const score = mark.final_score || 0;
         const grade = mark.grade || '-';
         
@@ -413,6 +506,11 @@ function renderPublishedMarks() {
                     <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${escapeHtml(grade)}</span>
                 </td>
                 <td style="padding: 8px 12px; text-align: center;">${escapeHtml(blockDisplay)}</td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="background: ${programType === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                        ${programIcon} ${escapeHtml(programDisplay)}
+                    </span>
+                </td>
                 <td style="padding: 8px 12px; text-align: center;">
                     <span style="color: ${passStatus ? '#10b981' : '#dc2626'}; font-weight: 600; font-size: 12px;">
                         ${passStatus ? '✅ Pass' : '❌ Fail'}
@@ -520,12 +618,26 @@ function filterPublishedMarks() {
     
     let filtered = [...PUBLISHED_STATE.marks];
     
+    // Apply program type filter (from quick buttons)
+    if (PUBLISHED_STATE.currentProgramFilter === 'KRCHN') {
+        filtered = filtered.filter(m => m.program === 'KRCHN');
+    } else if (PUBLISHED_STATE.currentProgramFilter === 'TVET') {
+        filtered = filtered.filter(m => m.program !== 'KRCHN');
+    }
+    
+    // Apply subject filter
     if (subjectFilter !== 'all') filtered = filtered.filter(m => m.subject_name === subjectFilter);
-    if (programFilter !== 'all') filtered = filtered.filter(m => m.program === programFilter);
+    
+    // Apply program filter (from dropdown)
+    if (programFilter !== 'all' && PUBLISHED_STATE.currentProgramFilter === 'all') {
+        filtered = filtered.filter(m => m.program === programFilter);
+    }
+    
     if (blockFilter !== 'all') filtered = filtered.filter(m => m.block === blockFilter);
     if (yearFilter !== 'all') filtered = filtered.filter(m => m.academic_year === yearFilter);
     if (statusFilter === 'published') filtered = filtered.filter(m => m.published === true);
     else if (statusFilter === 'draft') filtered = filtered.filter(m => m.published !== true);
+    
     if (searchTerm) {
         filtered = filtered.filter(m => 
             (m.subject_name || '').toLowerCase().includes(searchTerm) ||
@@ -536,6 +648,7 @@ function filterPublishedMarks() {
     
     PUBLISHED_STATE.filtered = filtered;
     renderPublishedMarks();
+    updateProgramCounts(filtered);
 }
 
 // ============================================================
@@ -751,17 +864,24 @@ function closePublishModal() {
     if (modal) modal.style.display = 'none';
 }
 
-async function populatePublishUnits() {
+async function populatePublishUnits(programType) {
     const select = document.getElementById('publish_unit_select');
     if (!select) return;
     
     select.innerHTML = '<option value="">Loading units...</option>';
     
     try {
-        const { data: units, error } = await window.sb
-            .from('student_marks')
-            .select('subject_name')
-            .order('subject_name');
+        let query = window.sb.from('student_marks').select('subject_name, program, block').order('subject_name');
+        
+        if (programType && programType !== 'all') {
+            if (programType === 'KRCHN') {
+                query = query.eq('program', 'KRCHN');
+            } else if (programType === 'TVET') {
+                query = query.neq('program', 'KRCHN');
+            }
+        }
+        
+        const { data: units, error } = await query;
         
         if (error) throw error;
         
@@ -777,12 +897,14 @@ async function populatePublishUnits() {
         uniqueUnits.forEach(unit => {
             const option = document.createElement('option');
             option.value = unit;
-            option.textContent = unit;
+            const unitData = units.find(u => u.subject_name === unit);
+            const programIcon = unitData?.program === 'KRCHN' ? '🎓' : '🔧';
+            option.textContent = `${unit} (${programIcon} ${unitData?.program || 'N/A'})`;
             select.appendChild(option);
         });
         
         // Trigger preview update
-        updatePublishPreview();
+        setTimeout(updatePublishPreview, 100);
         
     } catch (error) {
         console.error('Error populating units:', error);
@@ -793,13 +915,20 @@ async function populatePublishUnits() {
     }
 }
 
+function updatePublishProgramOptions() {
+    const programType = document.getElementById('publish_program_type')?.value || 'all';
+    populatePublishUnits(programType);
+}
+
 async function updatePublishPreview() {
     const unit = document.getElementById('publish_unit_select')?.value;
-    const program = document.getElementById('publish_program_filter')?.value || 'all';
+    const programType = document.getElementById('publish_program_type')?.value || 'all';
     const block = document.getElementById('publish_block_filter')?.value || 'all';
+    const year = document.getElementById('publish_year_filter')?.value || 'all';
     const assessmentType = document.getElementById('publish_assessment_select')?.value || 'all';
     const previewStats = document.getElementById('publish_preview_stats');
     const countDisplay = document.getElementById('publish_count_preview');
+    const programPreview = document.getElementById('publish_program_preview');
     
     if (!unit) {
         if (previewStats) previewStats.style.display = 'none';
@@ -812,8 +941,15 @@ async function updatePublishPreview() {
             .select('id', { count: 'exact', head: true })
             .eq('subject_name', unit);
         
-        if (program !== 'all') query = query.eq('program', program);
+        if (programType !== 'all') {
+            if (programType === 'KRCHN') {
+                query = query.eq('program', 'KRCHN');
+            } else if (programType === 'TVET') {
+                query = query.neq('program', 'KRCHN');
+            }
+        }
         if (block !== 'all') query = query.eq('block', block);
+        if (year !== 'all') query = query.eq('academic_year', year);
         if (assessmentType !== 'all') query = query.eq('assessment_type', assessmentType);
         
         const { count, error } = await query;
@@ -822,6 +958,12 @@ async function updatePublishPreview() {
         if (previewStats) {
             previewStats.style.display = 'block';
             if (countDisplay) countDisplay.textContent = count || 0;
+            
+            const programLabel = programType === 'all' ? 'All Programs' : 
+                               programType === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET Programs';
+            if (programPreview) {
+                programPreview.textContent = `Program: ${programLabel} | Block: ${block === 'all' ? 'All' : block} | Year: ${year === 'all' ? 'All' : year}`;
+            }
         }
         
     } catch (error) {
@@ -831,8 +973,9 @@ async function updatePublishPreview() {
 
 async function confirmPublishMarks() {
     const unit = document.getElementById('publish_unit_select')?.value;
-    const program = document.getElementById('publish_program_filter')?.value || 'all';
+    const programType = document.getElementById('publish_program_type')?.value || 'all';
     const block = document.getElementById('publish_block_filter')?.value || 'all';
+    const year = document.getElementById('publish_year_filter')?.value || 'all';
     const assessmentType = document.getElementById('publish_assessment_select')?.value || 'all';
     
     if (!unit) {
@@ -842,7 +985,16 @@ async function confirmPublishMarks() {
         return;
     }
     
-    const confirmMsg = `⚠️ Publish ALL marks for "${unit}"?\n\nThis will make marks visible to ALL students in this unit.`;
+    let programLabel = 'ALL programs';
+    if (programType === 'KRCHN') programLabel = 'KRCHN Nursing';
+    else if (programType === 'TVET') programLabel = 'TVET Programs';
+    
+    const confirmMsg = `⚠️ Publish ALL marks for "${unit}"?\n\n` +
+        `Program: ${programLabel}\n` +
+        `Block: ${block === 'all' ? 'All' : block}\n` +
+        `Year: ${year === 'all' ? 'All' : year}\n\n` +
+        `This will make marks visible to ALL students.`;
+    
     if (!confirm(confirmMsg)) return;
     
     try {
@@ -857,8 +1009,15 @@ async function confirmPublishMarks() {
             })
             .eq('subject_name', unit);
         
-        if (program !== 'all') query = query.eq('program', program);
+        if (programType !== 'all') {
+            if (programType === 'KRCHN') {
+                query = query.eq('program', 'KRCHN');
+            } else if (programType === 'TVET') {
+                query = query.neq('program', 'KRCHN');
+            }
+        }
         if (block !== 'all') query = query.eq('block', block);
+        if (year !== 'all') query = query.eq('academic_year', year);
         if (assessmentType !== 'all') query = query.eq('assessment_type', assessmentType);
         
         const { data, error } = await query;
@@ -896,12 +1055,13 @@ function exportPublishedMarksToCSV() {
         return;
     }
     
-    const headers = ['Student Name', 'Admission Number', 'Subject/Unit', 'Block/Term', 'Year', 'Score', 'Grade', 'Points', 'Status', 'Published'];
+    const headers = ['Student Name', 'Admission Number', 'Subject/Unit', 'Block/Term', 'Program', 'Year', 'Score', 'Grade', 'Points', 'Status', 'Published'];
     const rows = marks.map(mark => [
         `"${(mark.student_name || '').replace(/"/g, '""')}"`,
         `"${(mark.admission_number || '').replace(/"/g, '""')}"`,
         `"${(mark.subject_name || '').replace(/"/g, '""')}"`,
         `"${(mark.block || '').replace(/"/g, '""')}"`,
+        `"${(mark.program || '').replace(/"/g, '""')}"`,
         `"${(mark.academic_year || '').replace(/"/g, '""')}"`,
         mark.final_score || 0,
         mark.grade || '-',
@@ -943,9 +1103,6 @@ function printPublishedMarks() {
         return;
     }
     
-    const programName = getProgramDisplayName(PUBLISHED_STATE.userProgram);
-    const blockLabel = getProgramType(PUBLISHED_STATE.userProgram) === 'TVET' ? 'Term' : 'Block';
-    
     const printWindow = window.open('', '_blank', 'width=1200,height=800');
     if (!printWindow) {
         if (typeof window.showNotification === 'function') {
@@ -957,6 +1114,8 @@ function printPublishedMarks() {
     let tableRows = '';
     marks.forEach((mark, index) => {
         const passStatus = mark.final_score >= 60;
+        const programType = getProgramType(mark.program);
+        const programIcon = programType === 'KRCHN' ? '🎓' : '🔧';
         tableRows += `
             <tr>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${index + 1}</td>
@@ -966,6 +1125,7 @@ function printPublishedMarks() {
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.final_score || 0}%</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.grade || '-'}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.block || '-'}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${programIcon} ${mark.program || 'N/A'}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${passStatus ? 'Pass' : 'Fail'}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.published ? '✅ Published' : '📝 Draft'}</td>
             </tr>
@@ -976,7 +1136,7 @@ function printPublishedMarks() {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Published Marks - ${programName}</title>
+            <title>Published Marks Report</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 20px; }
                 h1 { color: #0A3D62; border-bottom: 2px solid #0A3D62; padding-bottom: 10px; }
@@ -985,15 +1145,15 @@ function printPublishedMarks() {
                 th { background: #0A3D62; color: white; padding: 8px 10px; border: 1px solid #0A3D62; text-align: left; }
                 td { padding: 6px 10px; border: 1px solid #ddd; }
                 .footer { margin-top: 20px; text-align: center; font-size: 11px; color: #888; }
+                .print-date { text-align: right; color: #666; font-size: 11px; margin-bottom: 10px; }
             </style>
         </head>
         <body>
             <h1>📊 Published Marks Report</h1>
+            <div class="print-date">Generated: ${new Date().toLocaleString()}</div>
             <div class="header-info">
-                <p><strong>Program:</strong> ${programName}</p>
-                <p><strong>Student:</strong> ${PUBLISHED_STATE.user?.full_name || PUBLISHED_STATE.user?.name || 'Student'}</p>
                 <p><strong>Total Marks:</strong> ${marks.length} | <strong>Published:</strong> ${marks.filter(m => m.published).length}</p>
-                <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+                <p><strong>KRCHN:</strong> ${marks.filter(m => m.program === 'KRCHN').length} | <strong>TVET:</strong> ${marks.filter(m => m.program !== 'KRCHN').length}</p>
             </div>
             <table>
                 <thead>
@@ -1004,7 +1164,8 @@ function printPublishedMarks() {
                         <th>Unit</th>
                         <th>Score</th>
                         <th>Grade</th>
-                        <th>${blockLabel}</th>
+                        <th>Block/Term</th>
+                        <th>Program</th>
                         <th>Status</th>
                         <th>Published</th>
                     </tr>
@@ -1014,7 +1175,7 @@ function printPublishedMarks() {
                 </tbody>
             </table>
             <div class="footer">
-                <p>Generated from NCHSM Marks Management System</p>
+                <p>Generated from NCHSM Super Admin Dashboard</p>
             </div>
             <script>
                 window.onload = function() { window.print(); }
@@ -1054,6 +1215,47 @@ async function initPublishedMarks() {
         searchInput.addEventListener('input', filterPublishedMarks);
     }
     
+    // Set up program type filter buttons
+    const filterButtons = ['pm_filter_all', 'pm_filter_krchn', 'pm_filter_tvet'];
+    filterButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.removeEventListener('click', () => {});
+            // The onclick attribute handles this
+        }
+    });
+    
+    // Set up modal event listeners
+    const programTypeSelect = document.getElementById('publish_program_type');
+    if (programTypeSelect) {
+        programTypeSelect.removeEventListener('change', updatePublishProgramOptions);
+        programTypeSelect.addEventListener('change', updatePublishProgramOptions);
+    }
+    
+    const unitSelect = document.getElementById('publish_unit_select');
+    if (unitSelect) {
+        unitSelect.removeEventListener('change', updatePublishPreview);
+        unitSelect.addEventListener('change', updatePublishPreview);
+    }
+    
+    const blockFilter = document.getElementById('publish_block_filter');
+    if (blockFilter) {
+        blockFilter.removeEventListener('change', updatePublishPreview);
+        blockFilter.addEventListener('change', updatePublishPreview);
+    }
+    
+    const yearFilter = document.getElementById('publish_year_filter');
+    if (yearFilter) {
+        yearFilter.removeEventListener('change', updatePublishPreview);
+        yearFilter.addEventListener('change', updatePublishPreview);
+    }
+    
+    const assessmentSelect = document.getElementById('publish_assessment_select');
+    if (assessmentSelect) {
+        assessmentSelect.removeEventListener('change', updatePublishPreview);
+        assessmentSelect.addEventListener('change', updatePublishPreview);
+    }
+    
     // Load marks
     await loadPublishedMarks();
     
@@ -1074,6 +1276,7 @@ if (document.readyState === 'loading') {
 window.publishedMarks = {
     load: loadPublishedMarks,
     filter: filterPublishedMarks,
+    filterByProgram: filterPublishedByProgram,
     publishSingle: publishSingleStudentMarks,
     unpublishSingle: unpublishSingleStudentMarks,
     publishAll: publishAllFilteredMarks,
@@ -1083,6 +1286,8 @@ window.publishedMarks = {
     openModal: openPublishModal,
     closeModal: closePublishModal,
     confirmPublish: confirmPublishMarks,
+    updatePreview: updatePublishPreview,
+    populateUnits: populatePublishUnits,
     state: PUBLISHED_STATE
 };
 
@@ -1098,15 +1303,20 @@ window.closePublishModal = closePublishModal;
 window.confirmPublishMarks = confirmPublishMarks;
 window.filterPublishedMarks = filterPublishedMarks;
 window.loadPublishedMarks = loadPublishedMarks;
+window.filterPublishedByProgram = filterPublishedByProgram;
+window.updatePublishProgramOptions = updatePublishProgramOptions;
+window.updatePublishPreview = updatePublishPreview;
+window.populatePublishUnits = populatePublishUnits;
 
 console.log('✅ Published Marks module loaded successfully!');
 console.log('📊 Features:');
-console.log('   - ✅ Reads from student_marks table (same as Marks Entry)');
-console.log('   - ✅ Admin view: Shows ALL marks');
-console.log('   - ✅ Student view: Shows ONLY published marks');
+console.log('   - ✅ TVET & KRCHN Nursing support');
+console.log('   - ✅ Quick filter by program type');
 console.log('   - ✅ Individual publish/unpublish');
-console.log('   - ✅ Bulk publish via modal');
+console.log('   - ✅ Bulk publish with program filter');
 console.log('   - ✅ Publish/Unpublish all filtered');
 console.log('   - ✅ Export to CSV');
 console.log('   - ✅ Print functionality');
-console.log('   - ✅ NO DEMO DATA - production ready');
+console.log('   - ✅ Program type counts');
+console.log('   - ✅ Block/Term dual support');
+console.log('   - ✅ Production ready - NO DEMO DATA');
