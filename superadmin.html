@@ -722,7 +722,7 @@
                     </ul>
                 </li>
                 
-            <!-- ACADEMIC -->
+          <!-- ACADEMIC -->
 <li class="nav-dropdown" style="margin-bottom: 2px;">
     <a 
         href="#" 
@@ -822,6 +822,34 @@
                 <span>CATS/Exams</span>
             </a>
         </li>
+        
+        <!-- ✅ PUBLISHED MARKS - STUDENT VIEW (Supports both TVET & Nursing) -->
+        <li>
+            <a 
+                href="#" 
+                data-tab="publish-marks"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                    background: rgba(16,185,129,0.15);
+                    border-left: 3px solid #10b981;
+                "
+                onmouseover="this.style.background='rgba(16,185,129,0.3)'; this.style.color='white'"
+                onmouseout="this.style.background='rgba(16,185,129,0.15)'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-share-alt" style="width: 18px; text-align: center; font-size: 12px; color: #10b981;"></i>
+                <span>Published Marks</span>
+                <span id="publishedMarksBadge" style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">0</span>
+            </a>
+        </li>
+        
         <!-- ✅ MARKS ENTRY -->
         <li>
             <a 
@@ -848,6 +876,7 @@
                 <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
             </a>
         </li>
+        
         <!-- ✅ MARK ENTRY CONTROL -->
         <li>
             <a 
@@ -874,6 +903,7 @@
                 <span style="margin-left: auto; background: #fbbf24; padding: 0 8px; border-radius: 20px; font-size: 9px; color: #0A3D62; font-weight: 700;">ADMIN</span>
             </a>
         </li>
+        
         <!-- ✅ MARKS APPROVAL -->
         <li>
             <a 
@@ -3543,6 +3573,163 @@
             <div style="text-align: center; padding: 40px; color: #94a3b8;">
                 <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                 <p style="margin-top: 10px;">Loading pending marks...</p>
+            </div>
+        </div>
+    </div>
+</section>
+ <!-- ============================================ -->
+<!-- PUBLISHED MARKS - STUDENT VIEW              -->
+<!-- Supports both TVET & KRCHN Nursing Programs -->
+<!-- ============================================ -->
+<section id="publish-marks" class="tab-content">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #059669, #10b981); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(5,150,105,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-share-alt" style="color: #FDB913;"></i> Published Marks
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-graduation-cap"></i> 
+                <span id="pm_user_program_badge">🎓 KRCHN Nursing</span> &nbsp;|&nbsp; 
+                <i class="fas fa-user-graduate"></i> <span id="pm_user_name">Student</span>
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="loadPublishedMarks()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="exportPublishedMarksToCSV()" class="btn-action" style="background: white; color: #059669; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-download"></i> Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div class="card" style="border-top: 4px solid #059669;">
+            <h3 style="color: #059669; font-size: 12px;">📊 Total Marks</h3>
+            <p class="data" id="pm_total_marks" style="font-size: 28px; font-weight: 700; color: #059669;">0</p>
+            <p class="minor-data" style="font-size: 11px;">Published results</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #10b981;">
+            <h3 style="color: #10b981; font-size: 12px;">✅ Passed</h3>
+            <p class="data" id="pm_passed" style="font-size: 28px; font-weight: 700; color: #10b981;">0</p>
+            <p class="minor-data" style="font-size: 11px;">Above pass mark</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #ef4444;">
+            <h3 style="color: #dc2626; font-size: 12px;">❌ Failed</h3>
+            <p class="data" id="pm_failed" style="font-size: 28px; font-weight: 700; color: #dc2626;">0</p>
+            <p class="minor-data" style="font-size: 11px;">Below pass mark</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #8b5cf6;">
+            <h3 style="color: #6d28d9; font-size: 12px;">⭐ Average</h3>
+            <p class="data" id="pm_avg_score" style="font-size: 28px; font-weight: 700; color: #6d28d9;">0%</p>
+            <p class="minor-data" style="font-size: 11px;">Overall average</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+        <select id="pm_program_filter" onchange="filterPublishedMarks()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <option value="all">All Programs</option>
+            <option value="KRCHN">🎓 KRCHN Nursing</option>
+            <optgroup label="🎯 TVET Diploma Programs">
+                <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                <option value="DCH">Diploma in Community Health</option>
+                <option value="DHRIT">Diploma in Health Records and IT</option>
+                <option value="DSL">Diploma in Science Lab</option>
+                <option value="DSW">Diploma in Social Work</option>
+                <option value="DCJS">Diploma in Criminal Justice</option>
+                <option value="DHSS">Diploma in Health Support Services</option>
+                <option value="DICT">Diploma in ICT</option>
+                <option value="DME">Diploma in Medical Engineering</option>
+            </optgroup>
+            <optgroup label="📜 TVET Certificate Programs">
+                <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                <option value="CCH">Certificate in Community Health</option>
+                <option value="CHRIT">Certificate in Health Records and IT</option>
+                <option value="CPC">Certificate in Patient Care</option>
+                <option value="CSL">Certificate in Science Lab</option>
+                <option value="CSW">Certificate in Social Work</option>
+                <option value="CCJS">Certificate in Criminal Justice</option>
+                <option value="CAG">Certificate in Agriculture</option>
+                <option value="CHSS">Certificate in Health Support Services</option>
+                <option value="CICT">Certificate in ICT</option>
+            </optgroup>
+            <optgroup label="🔧 TVET Artisan Programs">
+                <option value="ACH">Artisan in Community Health</option>
+                <option value="AAG">Artisan in Agriculture</option>
+                <option value="ASW">Artisan in Social Work</option>
+            </optgroup>
+        </select>
+        <select id="pm_block_filter" onchange="filterPublishedMarks()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <option value="all">All Blocks</option>
+            <option value="Introductory">Introductory</option>
+            <option value="Block 1">Block 1</option>
+            <option value="Block 2">Block 2</option>
+            <option value="Block 3">Block 3</option>
+            <option value="Block 4">Block 4</option>
+            <option value="Block 5">Block 5</option>
+            <option value="Final">Final</option>
+        </select>
+        <select id="pm_year_filter" onchange="filterPublishedMarks()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
+            <option value="all">All Years</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+        </select>
+        <input type="text" id="pm_search" placeholder="🔍 Search unit..." onkeyup="filterPublishedMarks()" style="flex: 1; min-width: 150px; padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px;">
+        <span style="font-size: 13px; color: #64748b;">
+            <i class="fas fa-info-circle"></i> <span id="pm_filter_count">0</span> results
+        </span>
+    </div>
+
+    <!-- Grading System Reference - Supports both TVET & Nursing -->
+    <div style="background: white; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+            <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading System:</span>
+            <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 11px;">A (75-100%) → 4.0</span>
+            <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 11px;">B (65-74%) → 3.0</span>
+            <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 11px;">C (60-64%) → 2.0</span>
+            <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 11px;">D (Below 60%) → 0.0</span>
+            <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
+                <i class="fas fa-info-circle"></i> Applicable to all programs
+            </span>
+        </div>
+    </div>
+
+    <!-- Marks Table -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
+        <div id="publishedMarksContainer">
+            <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="margin-top: 10px;">Loading your published marks...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Section -->
+    <div id="pm_summary_section" style="display: none; margin-top: 25px; background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
+        <h3 style="margin: 0 0 15px 0; color: #1e293b;">
+            <i class="fas fa-chart-pie" style="color: #4C1D95;"></i> Performance Summary
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div style="padding: 15px; background: #f8fafc; border-radius: 8px; text-align: center;">
+                <span style="font-size: 12px; color: #94a3b8;">Units Attempted</span>
+                <div style="font-size: 24px; font-weight: 700; color: #1e293b;" id="pm_units_attempted">0</div>
+            </div>
+            <div style="padding: 15px; background: #f8fafc; border-radius: 8px; text-align: center;">
+                <span style="font-size: 12px; color: #94a3b8;">Units Passed</span>
+                <div style="font-size: 24px; font-weight: 700; color: #10b981;" id="pm_units_passed">0</div>
+            </div>
+            <div style="padding: 15px; background: #f8fafc; border-radius: 8px; text-align: center;">
+                <span style="font-size: 12px; color: #94a3b8;">Units Failed</span>
+                <div style="font-size: 24px; font-weight: 700; color: #dc2626;" id="pm_units_failed">0</div>
+            </div>
+            <div style="padding: 15px; background: #f8fafc; border-radius: 8px; text-align: center;">
+                <span style="font-size: 12px; color: #94a3b8;">Overall GPA</span>
+                <div style="font-size: 24px; font-weight: 700; color: #6d28d9;" id="pm_overall_gpa">0.0</div>
             </div>
         </div>
     </div>
@@ -8265,6 +8452,9 @@
 <!-- 3. SUPER ADMIN MARKS ENTRY MODULE -->
 <script src="./js/superadmin-marks-entry.js"></script>
 
+<!-- 4. ✅ PUBLISHED MARKS MODULE - TVET & Nursing Compatible -->
+<script src="./js/superadmin-published-marks.js"></script>
+
 <!-- ============================================ -->
 <!-- INITIALIZATION - AFTER ALL MODULES LOADED    -->
 <!-- ============================================ -->
@@ -8364,6 +8554,45 @@
             console.log('✅ Marks entry initialized');
         } else {
             console.warn('⚠️ Marks entry module not loaded');
+        }
+        
+        // ============================================
+        // 4. ✅ INITIALIZE PUBLISHED MARKS
+        // ============================================
+        if (typeof window.loadPublishedMarks === 'function') {
+            console.log('📊 Setting up Published Marks module...');
+            
+            // Add event listeners for filters
+            ['pm_program_filter', 'pm_block_filter', 'pm_year_filter'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', window.filterPublishedMarks);
+                }
+            });
+            
+            const searchInput = document.getElementById('pm_search');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', window.filterPublishedMarks);
+            }
+            
+            // Load published marks when tab is shown
+            const publishTab = document.querySelector('[data-tab="publish-marks"]');
+            if (publishTab) {
+                publishTab.addEventListener('click', function(e) {
+                    // Check if the tab is being activated
+                    setTimeout(window.loadPublishedMarks, 300);
+                });
+            }
+            
+            // Check if it's already the active tab
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab && activeTab.id === 'publish-marks') {
+                setTimeout(window.loadPublishedMarks, 500);
+            }
+            
+            console.log('✅ Published Marks module initialized');
+        } else {
+            console.warn('⚠️ Published Marks module not loaded - check if superadmin-published-marks.js exists');
         }
         
         console.log('✅ All modules initialized!');
