@@ -3577,9 +3577,10 @@
         </div>
     </div>
 </section>
- <!-- ============================================ -->
+<!-- ============================================ -->
 <!-- PUBLISHED MARKS - STUDENT VIEW              -->
-<!-- Supports both TVET & KRCHN Nursing Programs -->
+<!-- Uses SAME student_marks table as Marks Entry -->
+<!-- Supports both TVET (Terms) & KRCHN (Blocks) -->
 <!-- ============================================ -->
 <section id="publish-marks" class="tab-content">
     <!-- Header -->
@@ -3630,6 +3631,12 @@
 
     <!-- Filters -->
     <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+        <!-- Subject/Unit Filter -->
+        <select id="pm_subject_filter" onchange="filterPublishedMarks()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 180px;">
+            <option value="all">All Subjects/Units</option>
+        </select>
+        
+        <!-- Program Filter -->
         <select id="pm_program_filter" onchange="filterPublishedMarks()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
             <option value="all">All Programs</option>
             <option value="KRCHN">🎓 KRCHN Nursing</option>
@@ -3662,16 +3669,38 @@
                 <option value="ASW">Artisan in Social Work</option>
             </optgroup>
         </select>
+        
+        <!-- 🔥 DYNAMIC: Block/Term Filter - Shows Blocks for KRCHN, Terms for TVET -->
         <select id="pm_block_filter" onchange="filterPublishedMarks()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
-            <option value="all">All Blocks</option>
-            <option value="Introductory">Introductory</option>
+            <option value="all">All Blocks/Terms</option>
+            <!-- KRCHN Blocks -->
+            <option value="Introductory">Introductory Block</option>
             <option value="Block 1">Block 1</option>
             <option value="Block 2">Block 2</option>
             <option value="Block 3">Block 3</option>
             <option value="Block 4">Block 4</option>
             <option value="Block 5">Block 5</option>
-            <option value="Final">Final</option>
+            <option value="Final">Final Block</option>
+            <!-- TVET Terms -->
+            <option value="Term 1">Term 1</option>
+            <option value="Term 2">Term 2</option>
+            <option value="Term 3">Term 3</option>
+            <option value="Term 4">Term 4</option>
+            <option value="Term 5">Term 5</option>
+            <option value="Term 6">Term 6</option>
         </select>
+        
+        <!-- Assessment Type Filter -->
+        <select id="pm_assessment_filter" onchange="filterPublishedMarks()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <option value="all">All Assessments</option>
+            <option value="full">📊 Full (CAT1+CAT2+Exam)</option>
+            <option value="single_cat">📋 Single CAT (CAT+Exam)</option>
+            <option value="exam_only">📝 Exam Only</option>
+            <option value="cats_only">📚 CAT1+CAT2 Only</option>
+            <option value="cat_only">📄 CAT Only</option>
+        </select>
+        
+        <!-- Year Filter -->
         <select id="pm_year_filter" onchange="filterPublishedMarks()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
             <option value="all">All Years</option>
             <option value="2024">2024</option>
@@ -3679,13 +3708,16 @@
             <option value="2026">2026</option>
             <option value="2027">2027</option>
         </select>
-        <input type="text" id="pm_search" placeholder="🔍 Search unit..." onkeyup="filterPublishedMarks()" style="flex: 1; min-width: 150px; padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px;">
+        
+        <!-- Search -->
+        <input type="text" id="pm_search" placeholder="🔍 Search subject..." onkeyup="filterPublishedMarks()" style="flex: 1; min-width: 150px; padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px;">
+        
         <span style="font-size: 13px; color: #64748b;">
             <i class="fas fa-info-circle"></i> <span id="pm_filter_count">0</span> results
         </span>
     </div>
 
-    <!-- Grading System Reference - Supports both TVET & Nursing -->
+    <!-- Grading System Reference -->
     <div style="background: white; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
         <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
             <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading System:</span>
@@ -3734,7 +3766,6 @@
         </div>
     </div>
 </section>
-
     <!-- ============================================ -->
 <!-- TRANSCRIPT GENERATOR - TVET & KRCHN -->
 <!-- ============================================ -->
