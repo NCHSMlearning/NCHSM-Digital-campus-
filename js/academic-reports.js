@@ -116,19 +116,20 @@
     }
 
     function calculatePoints(grade) {
+        if (!grade) return 0;
         const points = {
             'A': 4.0,
             'B': 3.0,
             'C': 2.0,
             'D': 0.0
         };
-        return points[grade] || 0.0;
+        return points[grade] || 0;
     }
 
     function calculateGPA(marks) {
         if (!marks || marks.length === 0) return 0;
         const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
-        return totalPoints / marks.length;
+        return marks.length > 0 ? (totalPoints / marks.length) : 0;
     }
 
     // ============================================================
@@ -227,7 +228,7 @@
         
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 40px;">
+                <td colspan="6" style="text-align: center; padding: 40px;">
                     <div class="loading-spinner"></div>
                     <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
                 </td>
@@ -237,7 +238,7 @@
         try {
             const user = window.currentUserProfile || window.db?.currentUserProfile;
             if (!user) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
                 return;
             }
             
@@ -253,8 +254,12 @@
             const programEl = document.getElementById('my_marks_program');
             if (programEl) programEl.textContent = user.program || '-';
             
+            // Format Academic Year as 2025/2026
+            const currentYear = new Date().getFullYear();
+            const nextYear = currentYear + 1;
+            const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
             const academicYearEl = document.getElementById('my_marks_academic_year');
-            if (academicYearEl) academicYearEl.textContent = user.academic_year || user.intake_year || '2025';
+            if (academicYearEl) academicYearEl.textContent = academicYear;
             
             const blockLabel = PROGRAM.getBlockLabel(user.program);
             const headerEl = document.querySelector('#my_marks_table_body')?.closest('table')?.querySelector('th:nth-child(3)');
@@ -277,23 +282,18 @@
                     try {
                         const catalogResult = await window.db.supabase
                             .from('units_catalog')
-                            .select('unit_name, unit_code, credits')
+                            .select('unit_name, unit_code')
                             .in('unit_name', marks.map(m => m.subject_name));
                         
                         if (!catalogResult.error && catalogResult.data) {
                             const unitMap = {};
                             catalogResult.data.forEach(u => {
-                                unitMap[u.unit_name] = {
-                                    unit_code: u.unit_code,
-                                    credits: u.credits
-                                };
+                                unitMap[u.unit_name] = u.unit_code;
                             });
                             
                             marks = marks.map(mark => ({
                                 ...mark,
-                                unit_code: unitMap[mark.subject_name]?.unit_code || getUnitCode(mark.subject_name),
-                                credits: unitMap[mark.subject_name]?.credits || 3,
-                                // Recalculate grade and points based on correct scale
+                                unit_code: unitMap[mark.subject_name] || getUnitCode(mark.subject_name),
                                 grade: mark.grade || calculateGrade(mark.final_score),
                                 points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score))
                             }));
@@ -301,7 +301,6 @@
                             marks = marks.map(mark => ({
                                 ...mark,
                                 unit_code: getUnitCode(mark.subject_name),
-                                credits: 3,
                                 grade: mark.grade || calculateGrade(mark.final_score),
                                 points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score))
                             }));
@@ -311,7 +310,6 @@
                         marks = marks.map(mark => ({
                             ...mark,
                             unit_code: getUnitCode(mark.subject_name),
-                            credits: 3,
                             grade: mark.grade || calculateGrade(mark.final_score),
                             points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score))
                         }));
@@ -362,9 +360,7 @@
             }
             
             // Update GPA
-            const total = myMarksData.length;
-            const totalPoints = myMarksData.reduce((sum, m) => sum + (m.points || 0), 0);
-            const gpa = total > 0 ? (totalPoints / total) : 0;
+            const gpa = calculateGPA(myMarksData);
             const gpaEl = document.getElementById('my_marks_gpa');
             if (gpaEl) gpaEl.textContent = gpa.toFixed(2);
             
@@ -372,7 +368,7 @@
             
         } catch (error) {
             console.error('Error loading my marks:', error);
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
         }
     }
 
@@ -393,59 +389,58 @@
         });
     }
 
-   function renderMyMarksTable() {
-    const tbody = document.getElementById('my_marks_table_body');
-    if (!tbody) return;
-    
-    const marks = myMarksFiltered;
-    if (!marks || marks.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                    No published marks found
-                </td>
-            </tr>
-        `;
-        document.getElementById('my_marks_count').textContent = '0 results';
-        return;
-    }
-    
-    let html = '';
-    marks.forEach((mark, index) => {
-        const status = getGradingStatus(mark.final_score);
-        const statusColor = getStatusColor(status);
-        const gradeColor = getGradeColor(mark.grade);
-        const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-        const credits = mark.credits || 3;
-        const points = mark.points || calculatePoints(mark.grade) || 0;
+    function renderMyMarksTable() {
+        const tbody = document.getElementById('my_marks_table_body');
+        if (!tbody) return;
         
-        html += `
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
-                onmouseover="this.style.background='#f8fafc'" 
-                onmouseout="this.style.background='transparent'">
-                <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
-                <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
-                <td style="padding: 10px 14px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
-                <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${credits}</td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
-                        ${mark.grade || '-'}
-                    </span>
-                </td>
-                <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${points.toFixed(1)}</td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
-                        ${status}
-                    </span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    tbody.innerHTML = html;
-    document.getElementById('my_marks_count').textContent = `${marks.length} results`;
-}
+        const marks = myMarksFiltered;
+        if (!marks || marks.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                        No published marks found
+                    </td>
+                </tr>
+            `;
+            document.getElementById('my_marks_count').textContent = '0 results';
+            return;
+        }
+        
+        let html = '';
+        marks.forEach((mark, index) => {
+            const status = getGradingStatus(mark.final_score);
+            const statusColor = getStatusColor(status);
+            const gradeColor = getGradeColor(mark.grade);
+            const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
+            const points = mark.points || calculatePoints(mark.grade) || 0;
+            
+            html += `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+                    onmouseover="this.style.background='#f8fafc'" 
+                    onmouseout="this.style.background='transparent'">
+                    <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
+                    <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
+                    <td style="padding: 10px 14px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
+                            ${mark.grade || '-'}
+                        </span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${points.toFixed(1)}</td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
+                            ${status}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+        document.getElementById('my_marks_count').textContent = `${marks.length} results`;
+    }
+
     function filterMyMarks() {
         const subjectFilter = document.getElementById('my_marks_subject_filter')?.value || 'all';
         const blockFilter = document.getElementById('my_marks_block_filter')?.value || 'all';
@@ -782,401 +777,403 @@
             alert('Please allow popups to download the transcript.');
         }
     }
-// ============================================================
-// 13. DOWNLOAD REPORT CARD (WITH SIGNATURES & DECLARATION)
-// ============================================================
-function downloadReportCard() {
-    const user = window.currentUserProfile || {};
-    const marks = myMarksData || [];
-    
-    if (marks.length === 0) {
-        alert('No marks available to generate report card.');
-        return;
-    }
-    
-    const now = new Date().toLocaleDateString('en-KE', {
-        timeZone: 'Africa/Nairobi',
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-    });
-    
-    // Format Academic Year as 2025/2026
-    const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-    const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
-    
-    let tableRows = '';
-    marks.forEach((mark, index) => {
-        const status = getGradingStatus(mark.final_score);
-        const statusColor = getStatusColor(status);
-        const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
+
+    // ============================================================
+    // 13. DOWNLOAD REPORT CARD (WITH HOD SIGNATURE & STUDENT DECLARATION)
+    // ============================================================
+    function downloadReportCard() {
+        const user = window.currentUserProfile || {};
+        const marks = myMarksData || [];
         
-        tableRows += `
-            <tr>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${index + 1}</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(mark.subject_name || 'N/A')}</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${mark.credits || 3}</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700;">${mark.final_score || 0}%</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                    <span style="background: ${getGradeColor(mark.grade)}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${mark.grade || '-'}</span>
-                </td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                    <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">${status}</span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    const fullHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Report Card - ${escapeHtml(user.full_name || 'Student')}</title>
-            <style>
-                body { 
-                    font-family: 'Times New Roman', Times, serif; 
-                    padding: 40px; 
-                    color: #1e293b; 
-                    background: white;
-                    margin: 0;
-                }
-                .container {
-                    max-width: 1100px;
-                    margin: 0 auto;
-                    padding: 20px;
-                    border: 2px solid #0A3D62;
-                    border-radius: 12px;
-                    background: #ffffff;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-                }
-                .header { 
-                    text-align: center; 
-                    border-bottom: 3px solid #0A3D62; 
-                    padding-bottom: 20px; 
-                    margin-bottom: 20px;
-                }
-                .header .logo {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 20px;
-                    margin-bottom: 10px;
-                }
-                .header .logo img {
-                    max-height: 80px;
-                    width: auto;
-                }
-                .header .school { 
-                    font-size: 18px; 
-                    font-weight: 700;
-                    color: #0A3D62;
-                    letter-spacing: 2px;
-                }
-                .header .motto {
-                    font-size: 13px;
-                    color: #64748b;
-                    font-style: italic;
-                    margin-top: 4px;
-                }
-                .header .subtitle { 
-                    font-size: 14px; 
-                    color: #64748b; 
-                    margin: 4px 0; 
-                }
-                .student-info { 
-                    display: grid; 
-                    grid-template-columns: 1fr 1fr 1fr; 
-                    gap: 10px; 
-                    margin: 20px 0; 
-                    padding: 16px; 
-                    background: #f8fafc; 
-                    border-radius: 8px; 
-                    border: 1px solid #e5e7eb; 
-                }
-                .student-info .label { 
-                    font-size: 11px; 
-                    color: #94a3b8; 
-                    text-transform: uppercase; 
-                    letter-spacing: 0.5px;
-                }
-                .student-info .value { 
-                    font-weight: 600; 
-                    font-size: 15px; 
-                    color: #0A3D62;
-                }
-                table { 
-                    width: 100%; 
-                    border-collapse: collapse; 
-                    margin: 20px 0; 
-                    font-size: 13px;
-                }
-                th { 
-                    background: #0A3D62; 
-                    color: white; 
-                    padding: 10px 12px; 
-                    text-align: left; 
-                    font-size: 12px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                td { 
-                    padding: 8px 12px; 
-                    border-bottom: 1px solid #e5e7eb; 
-                    font-size: 13px; 
-                }
-                .footer { 
-                    text-align: center; 
-                    margin-top: 30px; 
-                    padding-top: 20px; 
-                    border-top: 1px solid #e5e7eb; 
-                    font-size: 12px; 
-                    color: #94a3b8; 
-                }
-                .grading-scale { 
-                    margin-top: 20px; 
-                    padding: 16px; 
-                    background: #f8fafc; 
-                    border-radius: 8px; 
-                    border: 1px solid #e5e7eb; 
-                }
-                .grading-scale .scale-item { 
-                    display: inline-block; 
-                    margin: 4px 12px; 
-                    font-size: 13px; 
-                }
-                .grading-scale .grade-box { 
-                    padding: 2px 10px; 
-                    border-radius: 4px; 
-                    font-weight: 700; 
-                    color: white; 
-                    display: inline-block;
-                    min-width: 20px;
-                    text-align: center;
-                }
-                .signatures {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 40px;
-                    margin-top: 30px;
-                    padding-top: 20px;
-                    border-top: 1px solid #e5e7eb;
-                }
-                .signature-box {
-                    text-align: center;
-                }
-                .signature-box .line {
-                    border-bottom: 1px solid #1e293b;
-                    width: 200px;
-                    margin: 30px auto 8px auto;
-                }
-                .signature-box .label {
-                    font-size: 11px;
-                    color: #94a3b8;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                .signature-box .name {
-                    font-weight: 600;
-                    font-size: 14px;
-                    color: #0A3D62;
-                    min-height: 20px;
-                }
-                .declaration {
-                    margin-top: 30px;
-                    padding: 16px;
-                    background: #f8fafc;
-                    border-radius: 8px;
-                    border: 1px solid #e5e7eb;
-                    font-size: 13px;
-                    line-height: 1.6;
-                }
-                .declaration .title {
-                    font-weight: 700;
-                    color: #0A3D62;
-                    margin-bottom: 8px;
-                }
-                .declaration .checkbox {
-                    display: inline-block;
-                    width: 16px;
-                    height: 16px;
-                    border: 2px solid #0A3D62;
-                    border-radius: 3px;
-                    margin-right: 8px;
-                    vertical-align: middle;
-                }
-                .declaration .checkbox.checked {
-                    background: #0A3D62;
-                    position: relative;
-                }
-                .declaration .checkbox.checked::after {
-                    content: "✓";
-                    color: white;
-                    font-size: 12px;
-                    position: absolute;
-                    top: -2px;
-                    left: 2px;
-                }
-                .watermark {
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%) rotate(-45deg);
-                    font-size: 80px;
-                    color: rgba(10, 61, 98, 0.05);
-                    font-weight: 700;
-                    pointer-events: none;
-                    z-index: 0;
-                    white-space: nowrap;
-                }
-                .no-print { display: block; }
-                @media print { 
-                    body { padding: 20px; } 
-                    .no-print { display: none; }
-                    .container { border: 2px solid #0A3D62; box-shadow: none; }
-                    .header .logo img { max-height: 70px; }
-                }
-                @media (max-width: 768px) {
-                    .student-info { grid-template-columns: 1fr 1fr; }
-                    .signatures { grid-template-columns: 1fr; gap: 20px; }
-                    table { font-size: 11px; }
-                    th, td { padding: 6px 8px; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="watermark">NCHSM</div>
-            <div class="container">
-                <div class="header">
-                    <div class="logo">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="max-height: 80px; width: auto;">
-                        <div>
-                            <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                            <div class="motto">"Excellence in Health Sciences Education"</div>
-                            <div class="subtitle">Student Report Card</div>
+        if (marks.length === 0) {
+            alert('No marks available to generate report card.');
+            return;
+        }
+        
+        const now = new Date().toLocaleDateString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+        
+        // Format Academic Year as 2025/2026
+        const currentYear = new Date().getFullYear();
+        const nextYear = currentYear + 1;
+        const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
+        
+        let tableRows = '';
+        marks.forEach((mark, index) => {
+            const status = getGradingStatus(mark.final_score);
+            const statusColor = getStatusColor(status);
+            const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
+            const points = mark.points || calculatePoints(mark.grade) || 0;
+            
+            tableRows += `
+                <tr>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${index + 1}</td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                        <span style="background: ${getGradeColor(mark.grade)}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${mark.grade || '-'}</span>
+                    </td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 600;">${points.toFixed(1)}</td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">${status}</span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        const gpa = calculateGPA(marks);
+        
+        const fullHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Report Card - ${escapeHtml(user.full_name || 'Student')}</title>
+                <style>
+                    body { 
+                        font-family: 'Times New Roman', Times, serif; 
+                        padding: 40px; 
+                        color: #1e293b; 
+                        background: white;
+                        margin: 0;
+                    }
+                    .container {
+                        max-width: 1100px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        border: 2px solid #0A3D62;
+                        border-radius: 12px;
+                        background: #ffffff;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                    }
+                    .header { 
+                        text-align: center; 
+                        border-bottom: 3px solid #0A3D62; 
+                        padding-bottom: 20px; 
+                        margin-bottom: 20px;
+                    }
+                    .header .logo {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 20px;
+                        margin-bottom: 10px;
+                    }
+                    .header .logo img {
+                        max-height: 80px;
+                        width: auto;
+                    }
+                    .header .school { 
+                        font-size: 18px; 
+                        font-weight: 700;
+                        color: #0A3D62;
+                        letter-spacing: 2px;
+                    }
+                    .header .motto {
+                        font-size: 13px;
+                        color: #64748b;
+                        font-style: italic;
+                        margin-top: 4px;
+                    }
+                    .header .subtitle { 
+                        font-size: 14px; 
+                        color: #64748b; 
+                        margin: 4px 0; 
+                    }
+                    .student-info { 
+                        display: grid; 
+                        grid-template-columns: 1fr 1fr 1fr; 
+                        gap: 10px; 
+                        margin: 20px 0; 
+                        padding: 16px; 
+                        background: #f8fafc; 
+                        border-radius: 8px; 
+                        border: 1px solid #e5e7eb; 
+                    }
+                    .student-info .label { 
+                        font-size: 11px; 
+                        color: #94a3b8; 
+                        text-transform: uppercase; 
+                        letter-spacing: 0.5px;
+                    }
+                    .student-info .value { 
+                        font-weight: 600; 
+                        font-size: 15px; 
+                        color: #0A3D62;
+                    }
+                    table { 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin: 20px 0; 
+                        font-size: 13px;
+                    }
+                    th { 
+                        background: #0A3D62; 
+                        color: white; 
+                        padding: 10px 12px; 
+                        text-align: left; 
+                        font-size: 12px;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    td { 
+                        padding: 8px 12px; 
+                        border-bottom: 1px solid #e5e7eb; 
+                        font-size: 13px; 
+                    }
+                    .footer { 
+                        text-align: center; 
+                        margin-top: 30px; 
+                        padding-top: 20px; 
+                        border-top: 1px solid #e5e7eb; 
+                        font-size: 12px; 
+                        color: #94a3b8; 
+                    }
+                    .grading-scale { 
+                        margin-top: 20px; 
+                        padding: 16px; 
+                        background: #f8fafc; 
+                        border-radius: 8px; 
+                        border: 1px solid #e5e7eb; 
+                    }
+                    .grading-scale .scale-item { 
+                        display: inline-block; 
+                        margin: 4px 12px; 
+                        font-size: 13px; 
+                    }
+                    .grading-scale .grade-box { 
+                        padding: 2px 10px; 
+                        border-radius: 4px; 
+                        font-weight: 700; 
+                        color: white; 
+                        display: inline-block;
+                        min-width: 20px;
+                        text-align: center;
+                    }
+                    .signatures {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 40px;
+                        margin-top: 30px;
+                        padding-top: 20px;
+                        border-top: 1px solid #e5e7eb;
+                    }
+                    .signature-box {
+                        text-align: center;
+                    }
+                    .signature-box .line {
+                        border-bottom: 1px solid #1e293b;
+                        width: 200px;
+                        margin: 30px auto 8px auto;
+                    }
+                    .signature-box .label {
+                        font-size: 11px;
+                        color: #94a3b8;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .signature-box .name {
+                        font-weight: 600;
+                        font-size: 14px;
+                        color: #0A3D62;
+                        min-height: 20px;
+                    }
+                    .declaration {
+                        margin-top: 30px;
+                        padding: 16px;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        border: 1px solid #e5e7eb;
+                        font-size: 13px;
+                        line-height: 1.6;
+                    }
+                    .declaration .title {
+                        font-weight: 700;
+                        color: #0A3D62;
+                        margin-bottom: 8px;
+                    }
+                    .declaration .checkbox {
+                        display: inline-block;
+                        width: 16px;
+                        height: 16px;
+                        border: 2px solid #0A3D62;
+                        border-radius: 3px;
+                        margin-right: 8px;
+                        vertical-align: middle;
+                    }
+                    .declaration .checkbox.checked {
+                        background: #0A3D62;
+                        position: relative;
+                    }
+                    .declaration .checkbox.checked::after {
+                        content: "✓";
+                        color: white;
+                        font-size: 12px;
+                        position: absolute;
+                        top: -2px;
+                        left: 2px;
+                    }
+                    .watermark {
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%) rotate(-45deg);
+                        font-size: 80px;
+                        color: rgba(10, 61, 98, 0.05);
+                        font-weight: 700;
+                        pointer-events: none;
+                        z-index: 0;
+                        white-space: nowrap;
+                    }
+                    .no-print { display: block; }
+                    @media print { 
+                        body { padding: 20px; } 
+                        .no-print { display: none; }
+                        .container { border: 2px solid #0A3D62; box-shadow: none; }
+                        .header .logo img { max-height: 70px; }
+                    }
+                    @media (max-width: 768px) {
+                        .student-info { grid-template-columns: 1fr 1fr; }
+                        .signatures { grid-template-columns: 1fr; gap: 20px; }
+                        table { font-size: 11px; }
+                        th, td { padding: 6px 8px; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="watermark">NCHSM</div>
+                <div class="container">
+                    <div class="header">
+                        <div class="logo">
+                            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="max-height: 80px; width: auto;">
+                            <div>
+                                <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
+                                <div class="motto">"Excellence in Health Sciences Education"</div>
+                                <div class="subtitle">Student Report Card</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                            <i class="fas fa-calendar-alt"></i> Generated: ${now}
                         </div>
                     </div>
-                    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-                        <i class="fas fa-calendar-alt"></i> Generated: ${now}
+                    
+                    <div class="student-info">
+                        <div>
+                            <div class="label">Student Name</div>
+                            <div class="value">${escapeHtml(user.full_name || 'Student')}</div>
+                        </div>
+                        <div>
+                            <div class="label">Admission Number</div>
+                            <div class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div>
+                        </div>
+                        <div>
+                            <div class="label">Program</div>
+                            <div class="value">${escapeHtml(user.program || 'KRCHN')}</div>
+                        </div>
+                        <div>
+                            <div class="label">Academic Year</div>
+                            <div class="value">${escapeHtml(academicYear)}</div>
+                        </div>
+                        <div>
+                            <div class="label">Cumulative GPA</div>
+                            <div class="value" style="color: #6d28d9; font-size: 20px;">${gpa.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="text-align: center; width: 40px;">#</th>
+                                <th style="min-width: 100px;">Unit Code</th>
+                                <th style="min-width: 150px;">Unit Name</th>
+                                <th style="text-align: center; width: 60px;">Grade</th>
+                                <th style="text-align: center; width: 70px;">Grade Points</th>
+                                <th style="text-align: center; width: 100px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                    
+                    <div class="grading-scale">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #0A3D62;">📊 Grading Scale:</div>
+                        <div>
+                            <span class="scale-item"><span class="grade-box" style="background: #10b981;">A</span> 75-100% → 4.0</span>
+                            <span class="scale-item"><span class="grade-box" style="background: #3b82f6;">B</span> 65-74% → 3.0</span>
+                            <span class="scale-item"><span class="grade-box" style="background: #f59e0b;">C</span> 60-64% → 2.0</span>
+                            <span class="scale-item"><span class="grade-box" style="background: #ef4444;">D</span> Below 60% → 0.0</span>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                            <i class="fas fa-info-circle"></i> Minimum passing grade: C (60%)
+                        </div>
+                    </div>
+                    
+                    <!-- STUDENT DECLARATION -->
+                    <div class="declaration">
+                        <div class="title">📋 Student Declaration</div>
+                        <p style="margin: 4px 0;">
+                            <span class="checkbox checked"></span> 
+                            I hereby confirm that the grades and information presented in this report card are accurate and reflect my academic performance.
+                        </p>
+                        <p style="margin: 4px 0; font-size: 12px; color: #64748b;">
+                            <i class="fas fa-info-circle"></i> I understand that this is an official document and any falsification of information will result in disciplinary action.
+                        </p>
+                    </div>
+                    
+                    <!-- SIGNATURES -->
+                    <div class="signatures">
+                        <div class="signature-box">
+                            <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
+                            <div class="line"></div>
+                            <div class="label">Student Signature</div>
+                            <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Date: ${now}</div>
+                        </div>
+                        <div class="signature-box">
+                            <div class="name" style="color: #94a3b8; font-weight: 400;">_________________________</div>
+                            <div class="line"></div>
+                            <div class="label">Head of Department (HOD)</div>
+                            <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Date: _____________</div>
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        <p style="margin: 4px 0;"><strong>This is an official report card.</strong> For verification, contact the Academic Office.</p>
+                        <p style="margin: 4px 0;">NCHSM · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
+                        <p style="margin: 4px 0; font-size: 11px; margin-top: 8px;">
+                            <i class="fas fa-print"></i> Printed on ${now}
+                        </p>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 20px;" class="no-print">
+                        <button onclick="window.print()" style="padding: 12px 40px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+                            <i class="fas fa-print"></i> 🖨️ Print Report Card
+                        </button>
+                        <button onclick="window.close()" style="padding: 12px 40px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
+                            <i class="fas fa-times"></i> Close
+                        </button>
                     </div>
                 </div>
-                
-                <div class="student-info">
-                    <div>
-                        <div class="label">Student Name</div>
-                        <div class="value">${escapeHtml(user.full_name || 'Student')}</div>
-                    </div>
-                    <div>
-                        <div class="label">Admission Number</div>
-                        <div class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div>
-                    </div>
-                    <div>
-                        <div class="label">Program</div>
-                        <div class="value">${escapeHtml(user.program || 'KRCHN')}</div>
-                    </div>
-                    <div>
-                        <div class="label">Academic Year</div>
-                        <div class="value">${escapeHtml(academicYear)}</div>
-                    </div>
-                    <div>
-                        <div class="label">Overall GPA</div>
-                        <div class="value" style="color: #6d28d9; font-size: 20px;">${calculateGPA(marks).toFixed(2)}</div>
-                    </div>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="text-align: center; width: 40px;">#</th>
-                            <th style="min-width: 100px;">Unit Code</th>
-                            <th style="min-width: 150px;">Unit Name</th>
-                            <th style="text-align: center; width: 60px;">Credits</th>
-                            <th style="text-align: center; width: 70px;">Score</th>
-                            <th style="text-align: center; width: 60px;">Grade</th>
-                            <th style="text-align: center; width: 100px;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-                
-                <div class="grading-scale">
-                    <div style="font-weight: 600; margin-bottom: 8px; color: #0A3D62;">📊 Grading Scale:</div>
-                    <div>
-                        <span class="scale-item"><span class="grade-box" style="background: #10b981;">A</span> 75-100% → 4.0</span>
-                        <span class="scale-item"><span class="grade-box" style="background: #3b82f6;">B</span> 65-74% → 3.0</span>
-                        <span class="scale-item"><span class="grade-box" style="background: #f59e0b;">C</span> 60-64% → 2.0</span>
-                        <span class="scale-item"><span class="grade-box" style="background: #ef4444;">D</span> Below 60% → 0.0</span>
-                    </div>
-                    <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
-                        <i class="fas fa-info-circle"></i> Minimum passing grade: C (60%)
-                    </div>
-                </div>
-                
-                <!-- STUDENT DECLARATION -->
-                <div class="declaration">
-                    <div class="title">📋 Student Declaration</div>
-                    <p style="margin: 4px 0;">
-                        <span class="checkbox checked"></span> 
-                        I hereby confirm that the grades and information presented in this report card are accurate and reflect my academic performance.
-                    </p>
-                    <p style="margin: 4px 0; font-size: 12px; color: #64748b;">
-                        <i class="fas fa-info-circle"></i> I understand that this is an official document and any falsification of information will result in disciplinary action.
-                    </p>
-                </div>
-                
-                <!-- SIGNATURES -->
-                <div class="signatures">
-                    <div class="signature-box">
-                        <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
-                        <div class="line"></div>
-                        <div class="label">Student Signature</div>
-                        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Date: ${now}</div>
-                    </div>
-                    <div class="signature-box">
-                        <div class="name" style="color: #94a3b8; font-weight: 400;">_________________________</div>
-                        <div class="line"></div>
-                        <div class="label">Head of Department (HOD)</div>
-                        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Date: _____________</div>
-                    </div>
-                </div>
-                
-                <div class="footer">
-                    <p style="margin: 4px 0;"><strong>This is an official report card.</strong> For verification, contact the Academic Office.</p>
-                    <p style="margin: 4px 0;">NCHSM · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
-                    <p style="margin: 4px 0; font-size: 11px; margin-top: 8px;">
-                        <i class="fas fa-print"></i> Printed on ${now}
-                    </p>
-                </div>
-                
-                <div style="text-align: center; margin-top: 20px;" class="no-print">
-                    <button onclick="window.print()" style="padding: 12px 40px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
-                        <i class="fas fa-print"></i> 🖨️ Print Report Card
-                    </button>
-                    <button onclick="window.close()" style="padding: 12px 40px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
-                        <i class="fas fa-times"></i> Close
-                    </button>
-                </div>
-            </div>
-        </body>
-        </html>
-    `;
-    
-    const printWindow = window.open('', '_blank', 'width=1000,height=800');
-    if (printWindow) {
-        printWindow.document.write(fullHtml);
-        printWindow.document.close();
-        setTimeout(() => {
-            printWindow.print();
-        }, 1000);
-    } else {
-        alert('Please allow popups to download the report card.');
+            </body>
+            </html>
+        `;
+        
+        const printWindow = window.open('', '_blank', 'width=1000,height=800');
+        if (printWindow) {
+            printWindow.document.write(fullHtml);
+            printWindow.document.close();
+            setTimeout(() => {
+                printWindow.print();
+            }, 1000);
+        } else {
+            alert('Please allow popups to download the report card.');
+        }
     }
-}
 
     // ============================================================
     // 14. TAB SWITCHING
