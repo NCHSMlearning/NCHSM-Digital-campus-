@@ -393,60 +393,59 @@
         });
     }
 
-    function renderMyMarksTable() {
-        const tbody = document.getElementById('my_marks_table_body');
-        if (!tbody) return;
-        
-        const marks = myMarksFiltered;
-        if (!marks || marks.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                        <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                        No published marks found
-                    </td>
-                </tr>
-            `;
-            document.getElementById('my_marks_count').textContent = '0 results';
-            return;
-        }
-        
-        let html = '';
-        marks.forEach((mark, index) => {
-            const status = getGradingStatus(mark.final_score);
-            const statusColor = getStatusColor(status);
-            const gradeColor = getGradeColor(mark.grade);
-            const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-            const credits = mark.credits || 3;
-            const score = mark.final_score || 0;
-            
-            html += `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
-                    onmouseover="this.style.background='#f8fafc'" 
-                    onmouseout="this.style.background='transparent'">
-                    <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
-                    <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
-                    <td style="padding: 10px 14px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
-                    <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${credits}</td>
-                    <td style="padding: 10px 14px; text-align: center; font-weight: 700;">${score}%</td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
-                            ${mark.grade || '-'}
-                        </span>
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
-                            ${status}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        tbody.innerHTML = html;
-        document.getElementById('my_marks_count').textContent = `${marks.length} results`;
+   function renderMyMarksTable() {
+    const tbody = document.getElementById('my_marks_table_body');
+    if (!tbody) return;
+    
+    const marks = myMarksFiltered;
+    if (!marks || marks.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                    No published marks found
+                </td>
+            </tr>
+        `;
+        document.getElementById('my_marks_count').textContent = '0 results';
+        return;
     }
-
+    
+    let html = '';
+    marks.forEach((mark, index) => {
+        const status = getGradingStatus(mark.final_score);
+        const statusColor = getStatusColor(status);
+        const gradeColor = getGradeColor(mark.grade);
+        const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
+        const credits = mark.credits || 3;
+        const points = mark.points || calculatePoints(mark.grade) || 0;
+        
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+                onmouseover="this.style.background='#f8fafc'" 
+                onmouseout="this.style.background='transparent'">
+                <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
+                <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
+                <td style="padding: 10px 14px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${credits}</td>
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
+                        ${mark.grade || '-'}
+                    </span>
+                </td>
+                <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${points.toFixed(1)}</td>
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
+                        ${status}
+                    </span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    document.getElementById('my_marks_count').textContent = `${marks.length} results`;
+}
     function filterMyMarks() {
         const subjectFilter = document.getElementById('my_marks_subject_filter')?.value || 'all';
         const blockFilter = document.getElementById('my_marks_block_filter')?.value || 'all';
