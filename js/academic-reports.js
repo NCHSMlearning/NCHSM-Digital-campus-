@@ -727,400 +727,374 @@
         }
     }
 
-    // ============================================================
-    // 11. DOWNLOAD REPORT CARD (FIXED WITH UNIT CODES & LOGO)
-    // ============================================================
-    function downloadReportCard() {
-        const user = window.currentUserProfile || {};
-        const marks = myMarksData || [];
+   // ============================================================
+// 11. DOWNLOAD REPORT CARD (WITH LOGO & CLEAN STATS)
+// ============================================================
+function downloadReportCard() {
+    const user = window.currentUserProfile || {};
+    const marks = myMarksData || [];
+    
+    if (marks.length === 0) {
+        alert('No marks available to generate report card.');
+        return;
+    }
+    
+    // Calculate stats - Only Total, Passed, Failed
+    const total = marks.length;
+    const passed = marks.filter(m => m.final_score >= 60).length;
+    const failed = marks.filter(m => m.final_score > 0 && m.final_score < 60).length;
+    const avg = total > 0 ? (marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / total) : 0;
+    const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
+    const gpa = total > 0 ? (totalPoints / total) : 0;
+    const programType = PROGRAM.isTVET(user.program) ? 'TVET' : 'KRCHN';
+    const blockLabel = PROGRAM.getBlockLabel(user.program);
+    const now = new Date().toLocaleDateString('en-KE', {
+        timeZone: 'Africa/Nairobi',
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    });
+    
+    // Build table rows - NO CAT/Exam columns
+    let tableRows = '';
+    marks.forEach((mark, index) => {
+        const status = mark.final_score >= 60 ? 'PASS' : 'FAIL';
+        const statusColor = mark.final_score >= 60 ? '#10b981' : '#dc2626';
+        const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
         
-        if (marks.length === 0) {
-            alert('No marks available to generate report card.');
-            return;
-        }
-        
-        // Calculate stats
-        const total = marks.length;
-        const passed = marks.filter(m => m.final_score >= 60).length;
-        const failed = marks.filter(m => m.final_score > 0 && m.final_score < 60).length;
-        const pending = marks.filter(m => m.final_score === 0 || m.final_score === null).length;
-        const avg = total > 0 ? (marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / total) : 0;
-        const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
-        const gpa = total > 0 ? (totalPoints / total) : 0;
-        const grade = calculateLetterGrade(avg);
-        const programType = PROGRAM.isTVET(user.program) ? 'TVET' : 'KRCHN';
-        const blockLabel = PROGRAM.getBlockLabel(user.program);
-        const now = new Date().toLocaleDateString('en-KE', {
-            timeZone: 'Africa/Nairobi',
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-        });
-        
-        // Build table rows with unit codes
-        let tableRows = '';
-        marks.forEach((mark, index) => {
-            const status = mark.final_score >= 60 ? 'PASS' : (mark.final_score > 0 ? 'FAIL' : 'PENDING');
-            const statusColor = mark.final_score >= 60 ? '#10b981' : (mark.final_score > 0 ? '#dc2626' : '#f59e0b');
-            const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-            
-            tableRows += `
-                <tr>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${index + 1}</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(mark.subject_name || 'N/A')}</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${mark.credits || 3}</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${mark.cat1_score || '-'}</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${mark.cat2_score || '-'}</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${mark.exam_score || '-'}</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700; color: ${statusColor};">${mark.final_score || 0}%</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                        <span style="background: ${getGradeColor(mark.grade)}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${mark.grade || '-'}</span>
-                    </td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 600;">${mark.points || 0.0}</td>
-                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">${status}</span>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        // Build full HTML with logo
-        const fullHtml = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Report Card - ${escapeHtml(user.full_name || 'Student')}</title>
-                <style>
-                    body { 
-                        font-family: 'Times New Roman', Times, serif; 
-                        padding: 40px; 
-                        color: #1e293b; 
-                        background: white;
-                        margin: 0;
-                    }
-                    .container {
-                        max-width: 1100px;
-                        margin: 0 auto;
-                        padding: 20px;
-                        border: 2px solid #0A3D62;
-                        border-radius: 12px;
-                        background: #ffffff;
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-                    }
-                    .header { 
-                        text-align: center; 
-                        border-bottom: 3px solid #0A3D62; 
-                        padding-bottom: 20px; 
-                        margin-bottom: 20px;
-                        position: relative;
-                    }
-                    .header .logo {
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 20px;
-                        margin-bottom: 10px;
-                    }
-                    .header .logo img {
-                        max-height: 80px;
-                        width: auto;
-                    }
-                    .header .logo-placeholder {
-                        width: 80px;
-                        height: 80px;
-                        background: #0A3D62;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: white;
-                        font-size: 32px;
-                        font-weight: bold;
-                    }
-                    .header h1 { 
-                        font-size: 28px; 
-                        margin: 0; 
-                        color: #0A3D62;
-                        letter-spacing: 1px;
-                    }
-                    .header .subtitle { 
-                        font-size: 14px; 
-                        color: #64748b; 
-                        margin: 4px 0; 
-                    }
-                    .header .school { 
-                        font-size: 18px; 
-                        font-weight: 700;
-                        color: #0A3D62;
-                        letter-spacing: 2px;
-                    }
-                    .header .motto {
-                        font-size: 13px;
-                        color: #64748b;
-                        font-style: italic;
-                        margin-top: 4px;
-                    }
-                    .student-info { 
-                        display: grid; 
-                        grid-template-columns: 1fr 1fr 1fr; 
-                        gap: 10px; 
-                        margin: 20px 0; 
-                        padding: 16px; 
-                        background: #f8fafc; 
-                        border-radius: 8px; 
-                        border: 1px solid #e5e7eb; 
-                    }
-                    .student-info .label { 
-                        font-size: 11px; 
-                        color: #94a3b8; 
-                        text-transform: uppercase; 
-                        letter-spacing: 0.5px;
-                    }
-                    .student-info .value { 
-                        font-weight: 600; 
-                        font-size: 15px; 
-                        color: #0A3D62;
-                    }
-                    table { 
-                        width: 100%; 
-                        border-collapse: collapse; 
-                        margin: 20px 0; 
-                        font-size: 13px;
-                    }
-                    th { 
-                        background: #0A3D62; 
-                        color: white; 
-                        padding: 10px 12px; 
-                        text-align: left; 
-                        font-size: 12px;
-                        text-transform: uppercase;
-                        letter-spacing: 0.5px;
-                    }
-                    th[style*="text-align: center"] {
-                        text-align: center !important;
-                    }
-                    td { 
-                        padding: 8px 12px; 
-                        border-bottom: 1px solid #e5e7eb; 
-                        font-size: 13px; 
-                    }
-                    .summary { 
-                        display: grid; 
-                        grid-template-columns: repeat(4, 1fr); 
-                        gap: 16px; 
-                        margin: 20px 0; 
-                    }
-                    .summary-card { 
-                        background: #f8fafc; 
-                        padding: 16px; 
-                        border-radius: 8px; 
-                        text-align: center; 
-                        border: 1px solid #e5e7eb; 
-                    }
-                    .summary-card .value { 
-                        font-size: 24px; 
-                        font-weight: 700; 
-                        color: #0A3D62; 
-                    }
-                    .summary-card .label { 
-                        font-size: 11px; 
-                        color: #94a3b8; 
-                        text-transform: uppercase; 
-                        letter-spacing: 0.5px;
-                        margin-top: 4px;
-                    }
-                    .summary-card .value.pass { color: #10b981; }
-                    .summary-card .value.fail { color: #dc2626; }
-                    .summary-card .value.pending { color: #f59e0b; }
-                    .footer { 
-                        text-align: center; 
-                        margin-top: 30px; 
-                        padding-top: 20px; 
-                        border-top: 1px solid #e5e7eb; 
-                        font-size: 12px; 
-                        color: #94a3b8; 
-                    }
-                    .grading-scale { 
-                        margin-top: 20px; 
-                        padding: 16px; 
-                        background: #f8fafc; 
-                        border-radius: 8px; 
-                        border: 1px solid #e5e7eb; 
-                    }
-                    .grading-scale .scale-item { 
-                        display: inline-block; 
-                        margin: 4px 12px; 
-                        font-size: 13px; 
-                    }
-                    .grading-scale .grade-box { 
-                        padding: 2px 10px; 
-                        border-radius: 4px; 
-                        font-weight: 700; 
-                        color: white; 
-                        display: inline-block;
-                        min-width: 20px;
-                        text-align: center;
-                    }
-                    .watermark {
-                        position: fixed;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%) rotate(-45deg);
-                        font-size: 80px;
-                        color: rgba(10, 61, 98, 0.05);
-                        font-weight: 700;
-                        pointer-events: none;
-                        z-index: 0;
-                        white-space: nowrap;
-                    }
-                    @media print { 
-                        body { padding: 20px; } 
-                        .no-print { display: none; }
-                        .container { border: 2px solid #0A3D62; box-shadow: none; }
-                        .header .logo img { max-height: 70px; }
-                    }
-                    @media (max-width: 768px) {
-                        .student-info { grid-template-columns: 1fr 1fr; }
-                        .summary { grid-template-columns: 1fr 1fr; }
-                        table { font-size: 11px; }
-                        th, td { padding: 6px 8px; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="watermark">NCHSM</div>
-                <div class="container">
-                    <div class="header">
-                        <div class="logo">
-                            <div class="logo-placeholder">🏥</div>
-                            <div>
-                                <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                                <div class="motto">"Excellence in Health Sciences Education"</div>
-                                <div class="subtitle">Student Report Card</div>
-                            </div>
-                        </div>
-                        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-                            <i class="fas fa-calendar-alt"></i> Generated: ${now}
+        tableRows += `
+            <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${index + 1}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${mark.credits || 3}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700;">${mark.final_score || 0}%</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                    <span style="background: ${getGradeColor(mark.grade)}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${mark.grade || '-'}</span>
+                </td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 600;">${mark.points || 0.0}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                    <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">${status}</span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    // Build full HTML with logo
+    const fullHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Report Card - ${escapeHtml(user.full_name || 'Student')}</title>
+            <style>
+                body { 
+                    font-family: 'Times New Roman', Times, serif; 
+                    padding: 40px; 
+                    color: #1e293b; 
+                    background: white;
+                    margin: 0;
+                }
+                .container {
+                    max-width: 1100px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    border: 2px solid #0A3D62;
+                    border-radius: 12px;
+                    background: #ffffff;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                }
+                .header { 
+                    text-align: center; 
+                    border-bottom: 3px solid #0A3D62; 
+                    padding-bottom: 20px; 
+                    margin-bottom: 20px;
+                }
+                .header .logo {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 20px;
+                    margin-bottom: 10px;
+                }
+                .header .logo img {
+                    max-height: 80px;
+                    width: auto;
+                }
+                .header h1 { 
+                    font-size: 28px; 
+                    margin: 0; 
+                    color: #0A3D62;
+                    letter-spacing: 1px;
+                }
+                .header .subtitle { 
+                    font-size: 14px; 
+                    color: #64748b; 
+                    margin: 4px 0; 
+                }
+                .header .school { 
+                    font-size: 18px; 
+                    font-weight: 700;
+                    color: #0A3D62;
+                    letter-spacing: 2px;
+                }
+                .header .motto {
+                    font-size: 13px;
+                    color: #64748b;
+                    font-style: italic;
+                    margin-top: 4px;
+                }
+                .student-info { 
+                    display: grid; 
+                    grid-template-columns: 1fr 1fr 1fr; 
+                    gap: 10px; 
+                    margin: 20px 0; 
+                    padding: 16px; 
+                    background: #f8fafc; 
+                    border-radius: 8px; 
+                    border: 1px solid #e5e7eb; 
+                }
+                .student-info .label { 
+                    font-size: 11px; 
+                    color: #94a3b8; 
+                    text-transform: uppercase; 
+                    letter-spacing: 0.5px;
+                }
+                .student-info .value { 
+                    font-weight: 600; 
+                    font-size: 15px; 
+                    color: #0A3D62;
+                }
+                table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin: 20px 0; 
+                    font-size: 13px;
+                }
+                th { 
+                    background: #0A3D62; 
+                    color: white; 
+                    padding: 10px 12px; 
+                    text-align: left; 
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                th[style*="text-align: center"] {
+                    text-align: center !important;
+                }
+                td { 
+                    padding: 8px 12px; 
+                    border-bottom: 1px solid #e5e7eb; 
+                    font-size: 13px; 
+                }
+                .summary { 
+                    display: grid; 
+                    grid-template-columns: repeat(3, 1fr); 
+                    gap: 16px; 
+                    margin: 20px 0; 
+                }
+                .summary-card { 
+                    background: #f8fafc; 
+                    padding: 16px; 
+                    border-radius: 8px; 
+                    text-align: center; 
+                    border: 1px solid #e5e7eb; 
+                }
+                .summary-card .value { 
+                    font-size: 24px; 
+                    font-weight: 700; 
+                    color: #0A3D62; 
+                }
+                .summary-card .label { 
+                    font-size: 11px; 
+                    color: #94a3b8; 
+                    text-transform: uppercase; 
+                    letter-spacing: 0.5px;
+                    margin-top: 4px;
+                }
+                .summary-card .value.pass { color: #10b981; }
+                .summary-card .value.fail { color: #dc2626; }
+                .footer { 
+                    text-align: center; 
+                    margin-top: 30px; 
+                    padding-top: 20px; 
+                    border-top: 1px solid #e5e7eb; 
+                    font-size: 12px; 
+                    color: #94a3b8; 
+                }
+                .grading-scale { 
+                    margin-top: 20px; 
+                    padding: 16px; 
+                    background: #f8fafc; 
+                    border-radius: 8px; 
+                    border: 1px solid #e5e7eb; 
+                }
+                .grading-scale .scale-item { 
+                    display: inline-block; 
+                    margin: 4px 12px; 
+                    font-size: 13px; 
+                }
+                .grading-scale .grade-box { 
+                    padding: 2px 10px; 
+                    border-radius: 4px; 
+                    font-weight: 700; 
+                    color: white; 
+                    display: inline-block;
+                    min-width: 20px;
+                    text-align: center;
+                }
+                .watermark {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%) rotate(-45deg);
+                    font-size: 80px;
+                    color: rgba(10, 61, 98, 0.05);
+                    font-weight: 700;
+                    pointer-events: none;
+                    z-index: 0;
+                    white-space: nowrap;
+                }
+                .no-print { display: block; }
+                @media print { 
+                    body { padding: 20px; } 
+                    .no-print { display: none; }
+                    .container { border: 2px solid #0A3D62; box-shadow: none; }
+                    .header .logo img { max-height: 70px; }
+                }
+                @media (max-width: 768px) {
+                    .student-info { grid-template-columns: 1fr 1fr; }
+                    .summary { grid-template-columns: 1fr 1fr; }
+                    table { font-size: 11px; }
+                    th, td { padding: 6px 8px; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="watermark">NCHSM</div>
+            <div class="container">
+                <div class="header">
+                    <div class="logo">
+                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="max-height: 80px; width: auto;">
+                        <div>
+                            <div class="school">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
+                            <div class="motto">"Excellence in Health Sciences Education"</div>
+                            <div class="subtitle">Student Report Card</div>
                         </div>
                     </div>
-                    
-                    <div class="student-info">
-                        <div>
-                            <div class="label">Student Name</div>
-                            <div class="value">${escapeHtml(user.full_name || 'Student')}</div>
-                        </div>
-                        <div>
-                            <div class="label">Admission Number</div>
-                            <div class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div>
-                        </div>
-                        <div>
-                            <div class="label">Program</div>
-                            <div class="value">${escapeHtml(user.program || 'KRCHN')} (${programType})</div>
-                        </div>
-                        <div>
-                            <div class="label">Current ${blockLabel}</div>
-                            <div class="value">${escapeHtml(user.block || 'N/A')}</div>
-                        </div>
-                        <div>
-                            <div class="label">Intake Year</div>
-                            <div class="value">${escapeHtml(user.intake_year || 'N/A')}</div>
-                        </div>
-                        <div>
-                            <div class="label">Overall GPA</div>
-                            <div class="value" style="color: #6d28d9; font-size: 20px;">${gpa.toFixed(2)}</div>
-                        </div>
-                    </div>
-                    
-                    <div class="summary">
-                        <div class="summary-card">
-                            <div class="value">${total}</div>
-                            <div class="label">Total Units</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="value pass">${passed}</div>
-                            <div class="label">Passed</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="value fail">${failed}</div>
-                            <div class="label">Failed</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="value pending">${pending}</div>
-                            <div class="label">Pending</div>
-                        </div>
-                    </div>
-                    
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="text-align: center; width: 40px;">#</th>
-                                <th style="min-width: 100px;">Unit Code</th>
-                                <th style="min-width: 150px;">Subject/Unit</th>
-                                <th style="text-align: center; width: 60px;">Credits</th>
-                                <th style="text-align: center; width: 50px;">CAT 1</th>
-                                <th style="text-align: center; width: 50px;">CAT 2</th>
-                                <th style="text-align: center; width: 50px;">Exam</th>
-                                <th style="text-align: center; width: 60px;">Total</th>
-                                <th style="text-align: center; width: 50px;">Grade</th>
-                                <th style="text-align: center; width: 60px;">Points</th>
-                                <th style="text-align: center; width: 70px;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableRows}
-                        </tbody>
-                    </table>
-                    
-                    <div class="grading-scale">
-                        <div style="font-weight: 600; margin-bottom: 8px; color: #0A3D62;">📊 Grading Scale:</div>
-                        <div>
-                            <span class="scale-item"><span class="grade-box" style="background: #10b981;">A</span> 75-100% → 4.0</span>
-                            <span class="scale-item"><span class="grade-box" style="background: #3b82f6;">B</span> 65-74% → 3.0</span>
-                            <span class="scale-item"><span class="grade-box" style="background: #f59e0b;">C</span> 60-64% → 2.0</span>
-                            <span class="scale-item"><span class="grade-box" style="background: #ef4444;">D</span> Below 60% → 0.0</span>
-                        </div>
-                        <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
-                            <i class="fas fa-info-circle"></i> Minimum passing grade: C (60%)
-                        </div>
-                    </div>
-                    
-                    <div class="footer">
-                        <p style="margin: 4px 0;"><strong>This is an official report card.</strong> For verification, contact the Registrar's Office.</p>
-                        <p style="margin: 4px 0;">NCHSM · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743 · Email: info@nchsm.ac.ke</p>
-                        <p style="margin: 4px 0; font-size: 11px; margin-top: 8px;">
-                            <i class="fas fa-print"></i> Printed on ${now} · ${new Date().toLocaleTimeString('en-KE', {timeZone: 'Africa/Nairobi'})}
-                        </p>
-                    </div>
-                    
-                    <div style="text-align: center; margin-top: 20px;" class="no-print">
-                        <button onclick="window.print()" style="padding: 12px 40px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
-                            <i class="fas fa-print"></i> 🖨️ Print Report Card
-                        </button>
-                        <button onclick="window.close()" style="padding: 12px 40px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px; transition: all 0.3s;">
-                            <i class="fas fa-times"></i> Close
-                        </button>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                        <i class="fas fa-calendar-alt"></i> Generated: ${now}
                     </div>
                 </div>
-            </body>
-            </html>
-        `;
-        
-        // Open in new window for printing/PDF
-        const printWindow = window.open('', '_blank', 'width=1000,height=800');
-        if (printWindow) {
-            printWindow.document.write(fullHtml);
-            printWindow.document.close();
-            setTimeout(() => {
-                printWindow.print();
-            }, 1000);
-        } else {
-            alert('Please allow popups to download the report card.');
-        }
+                
+                <div class="student-info">
+                    <div>
+                        <div class="label">Student Name</div>
+                        <div class="value">${escapeHtml(user.full_name || 'Student')}</div>
+                    </div>
+                    <div>
+                        <div class="label">Admission Number</div>
+                        <div class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div>
+                    </div>
+                    <div>
+                        <div class="label">Program</div>
+                        <div class="value">${escapeHtml(user.program || 'KRCHN')} (${programType})</div>
+                    </div>
+                    <div>
+                        <div class="label">Current ${blockLabel}</div>
+                        <div class="value">${escapeHtml(user.block || 'N/A')}</div>
+                    </div>
+                    <div>
+                        <div class="label">Intake Year</div>
+                        <div class="value">${escapeHtml(user.intake_year || 'N/A')}</div>
+                    </div>
+                    <div>
+                        <div class="label">Overall GPA</div>
+                        <div class="value" style="color: #6d28d9; font-size: 20px;">${gpa.toFixed(2)}</div>
+                    </div>
+                </div>
+                
+                <div class="summary">
+                    <div class="summary-card">
+                        <div class="value">${total}</div>
+                        <div class="label">Total Units</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="value pass">${passed}</div>
+                        <div class="label">Passed</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="value fail">${failed}</div>
+                        <div class="label">Failed</div>
+                    </div>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: center; width: 40px;">#</th>
+                            <th style="min-width: 100px;">Unit Code</th>
+                            <th style="min-width: 150px;">Subject/Unit</th>
+                            <th style="text-align: center; width: 60px;">Credits</th>
+                            <th style="text-align: center; width: 70px;">Total</th>
+                            <th style="text-align: center; width: 60px;">Grade</th>
+                            <th style="text-align: center; width: 60px;">Points</th>
+                            <th style="text-align: center; width: 70px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+                
+                <div class="grading-scale">
+                    <div style="font-weight: 600; margin-bottom: 8px; color: #0A3D62;">📊 Grading Scale:</div>
+                    <div>
+                        <span class="scale-item"><span class="grade-box" style="background: #10b981;">A</span> 75-100% → 4.0</span>
+                        <span class="scale-item"><span class="grade-box" style="background: #3b82f6;">B</span> 65-74% → 3.0</span>
+                        <span class="scale-item"><span class="grade-box" style="background: #f59e0b;">C</span> 60-64% → 2.0</span>
+                        <span class="scale-item"><span class="grade-box" style="background: #ef4444;">D</span> Below 60% → 0.0</span>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                        <i class="fas fa-info-circle"></i> Minimum passing grade: C (60%)
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p style="margin: 4px 0;"><strong>This is an official report card.</strong> For verification, contact the Registrar's Office.</p>
+                    <p style="margin: 4px 0;">NCHSM · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
+                    <p style="margin: 4px 0; font-size: 11px; margin-top: 8px;">
+                        <i class="fas fa-print"></i> Printed on ${now}
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;" class="no-print">
+                    <button onclick="window.print()" style="padding: 12px 40px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
+                        <i class="fas fa-print"></i> 🖨️ Print Report Card
+                    </button>
+                    <button onclick="window.close()" style="padding: 12px 40px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px; transition: all 0.3s;">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    // Open in new window for printing/PDF
+    const printWindow = window.open('', '_blank', 'width=1000,height=800');
+    if (printWindow) {
+        printWindow.document.write(fullHtml);
+        printWindow.document.close();
+        setTimeout(() => {
+            printWindow.print();
+        }, 1000);
+    } else {
+        alert('Please allow popups to download the report card.');
     }
-
+}
     // ============================================================
     // 12. TAB SWITCHING
     // ============================================================
