@@ -1477,8 +1477,8 @@
         }
     }
 
- // ============================================================
-// 15. DOWNLOAD REPORT CARD - PROFESSIONAL WITH BALANCED MARGINS
+// ============================================================
+// 15. DOWNLOAD REPORT CARD - PROPERLY CENTERED
 // ============================================================
 function downloadReportCard() {
     console.log('📊 Downloading Professional Report Card...');
@@ -1550,9 +1550,6 @@ function downloadReportCard() {
     let passed = 0;
     let failed = 0;
     let pending = 0;
-    let distinction = 0;
-    let credit = 0;
-    let pass = 0;
     
     marks.forEach(m => {
         const points = m.points || 0;
@@ -1567,14 +1564,6 @@ function downloadReportCard() {
             pending++;
         } else {
             passed++;
-        }
-        
-        if (status === 'DISTINCTION' || status === 'EXCELLENT') {
-            distinction++;
-        } else if (status === 'CREDIT' || status === 'GOOD') {
-            credit++;
-        } else if (status === 'PASS' || status === 'SATISFACTORY') {
-            pass++;
         }
     });
     
@@ -1662,67 +1651,60 @@ function downloadReportCard() {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page {
             size: A4 portrait;
-            margin: 12mm 15mm;
+            margin: 10mm 12mm;
         }
         body { 
             font-family: 'Times New Roman', 'Georgia', serif; 
             background: #ffffff; 
             font-size: 10px;
             margin: 0;
-            padding: 0;
+            padding: 20px;
             color: #1e293b;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
         }
         .container { 
-            max-width: 780px;
+            max-width: 700px;
             width: 100%;
             margin: 0 auto; 
-            padding: 25px 30px;
+            padding: 20px 25px;
             background: #ffffff;
             border: 2px solid #0A3D62;
             border-radius: 6px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
         }
         
         /* HEADER */
         .header { 
             text-align: center; 
             border-bottom: 3px double #0A3D62;
-            padding-bottom: 12px;
-            margin-bottom: 14px;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
         }
         .header-top {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         .header-top img { 
-            max-height: 45px; 
+            max-height: 40px; 
             width: auto; 
         }
         .header .school { 
-            font-size: 17px; 
+            font-size: 16px; 
             font-weight: 700; 
             color: #0A3D62; 
-            letter-spacing: 0.5px;
             font-family: 'Georgia', serif;
         }
         .header .motto { 
             font-size: 8px; 
             color: #64748b; 
             font-style: italic; 
-            letter-spacing: 0.5px;
         }
         .header .subtitle { 
             font-size: 13px; 
             color: #0A3D62; 
             font-weight: 700;
-            margin-top: 4px;
+            margin-top: 3px;
             letter-spacing: 1.5px;
             font-family: 'Georgia', serif;
         }
@@ -1737,8 +1719,8 @@ function downloadReportCard() {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr 1fr;
             gap: 6px;
-            margin: 6px 0 12px 0;
-            padding: 10px 14px;
+            margin: 6px 0 10px 0;
+            padding: 8px 12px;
             background: #f8fafc;
             border-radius: 6px;
             border: 1px solid #e2e8f0;
@@ -1758,7 +1740,7 @@ function downloadReportCard() {
             font-weight: 600; 
             font-size: 10px; 
             color: #0A3D62; 
-            margin-top: 2px;
+            margin-top: 1px;
         }
         
         /* SUMMARY CARDS */
@@ -1766,12 +1748,12 @@ function downloadReportCard() {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 6px;
-            margin: 6px 0 12px 0;
+            margin: 6px 0 10px 0;
         }
         .summary-card {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            background: #f8fafc;
             border-radius: 6px;
-            padding: 10px 12px;
+            padding: 8px 10px;
             text-align: center;
             border: 1px solid #e2e8f0;
         }
@@ -1787,7 +1769,7 @@ function downloadReportCard() {
             text-transform: uppercase;
             letter-spacing: 0.5px;
             font-weight: 600;
-            margin-top: 2px;
+            margin-top: 1px;
         }
         .summary-card .value.grade-a { color: #10b981; }
         .summary-card .value.grade-b { color: #3b82f6; }
@@ -1798,13 +1780,13 @@ function downloadReportCard() {
         table { 
             width: 100%; 
             border-collapse: collapse; 
-            margin: 6px 0 10px 0;
+            margin: 6px 0 8px 0;
             font-size: 9px;
         }
         thead th { 
             background: #0A3D62; 
             color: white; 
-            padding: 7px 8px; 
+            padding: 6px 8px; 
             text-align: left; 
             font-size: 7px; 
             text-transform: uppercase; 
@@ -1822,7 +1804,7 @@ function downloadReportCard() {
         /* GRADING SCALE */
         .grading-scale {
             margin: 6px 0 8px 0;
-            padding: 8px 12px;
+            padding: 6px 12px;
             background: #f8fafc;
             border-radius: 6px;
             border: 1px solid #e2e8f0;
@@ -1832,14 +1814,13 @@ function downloadReportCard() {
             font-size: 8px;
             color: #0A3D62;
             text-align: center;
-            margin-bottom: 4px;
-            letter-spacing: 0.5px;
+            margin-bottom: 3px;
         }
         
         /* DECLARATION */
         .declaration {
             margin: 6px 0 8px 0;
-            padding: 8px 14px;
+            padding: 6px 12px;
             background: #f8fafc;
             border-radius: 6px;
             border: 1px solid #e2e8f0;
@@ -1849,7 +1830,6 @@ function downloadReportCard() {
             font-weight: 700;
             color: #0A3D62;
             font-size: 8px;
-            letter-spacing: 0.5px;
         }
         .declaration .checkbox {
             display: inline-block;
@@ -1885,8 +1865,8 @@ function downloadReportCard() {
         }
         .signature-box .line {
             border-bottom: 2px solid #1e293b;
-            width: 140px;
-            margin: 10px auto 3px auto;
+            width: 130px;
+            margin: 8px auto 2px auto;
         }
         .signature-box .label {
             font-size: 7px;
@@ -1934,32 +1914,28 @@ function downloadReportCard() {
         
         .no-print { text-align: center; margin-top: 8px; }
         .no-print button {
-            padding: 6px 20px;
+            padding: 5px 18px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
             font-size: 10px;
-            transition: all 0.2s;
         }
         .no-print .btn-print {
             background: #0A3D62;
             color: white;
         }
-        .no-print .btn-print:hover { background: #1a5a7a; }
         .no-print .btn-close {
             background: #e2e8f0;
             color: #475569;
             margin-left: 6px;
         }
-        .no-print .btn-close:hover { background: #cbd5e1; }
         
         @media print {
             body { padding: 0; background: white; }
-            .container { border: 2px solid #0A3D62; border-radius: 0; padding: 20px 25px; box-shadow: none; max-width: 100%; }
+            .container { border: 2px solid #0A3D62; border-radius: 0; padding: 15px 20px; max-width: 100%; }
             .no-print { display: none !important; }
             .watermark { display: none; }
-            .summary-card { background: #f8fafc; }
             thead th { background: #0A3D62 !important; color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             td span { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
@@ -2031,7 +2007,7 @@ function downloadReportCard() {
                 <tr>
                     <th style="text-align: center; width: 25px;">#</th>
                     <th style="min-width: 65px;">Unit Code</th>
-                    <th style="min-width: 130px;">Unit Name</th>
+                    <th style="min-width: 120px;">Unit Name</th>
                     <th style="text-align: center; width: 45px;">Grade</th>
                     <th style="text-align: center; width: 45px;">Points</th>
                     <th style="text-align: center; width: 65px;">Status</th>
@@ -2086,7 +2062,7 @@ function downloadReportCard() {
 </html>
     `;
     
-    const printWindow = window.open('', '_blank', 'width=800,height=1050');
+    const printWindow = window.open('', '_blank', 'width=750,height=1050');
     if (printWindow) {
         printWindow.document.write(fullHtml);
         printWindow.document.close();
