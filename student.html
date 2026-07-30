@@ -1459,297 +1459,298 @@
         </div>
     </div>
     
-    <!-- ========== REPORT TABS WITH INLINE STYLES ========== -->
-    <div class="report-tabs" style="display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; padding: 10px; background: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0;">
-        
-        <!-- Semester Report -->
-        <button class="report-tab" data-report="semester" style="
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            padding: 10px 22px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: 500; 
-            font-size: 14px; 
-            transition: all 0.3s ease; 
-            border: 2px solid transparent; 
-            background: #ffffff; 
-            color: #475569; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
-            <i class="fas fa-calendar-alt" style="color: #64748b;"></i> Semester Report
-        </button>
-        
-        <!-- Yearly Summary -->
-        <button class="report-tab" data-report="yearly" style="
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            padding: 10px 22px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: 500; 
-            font-size: 14px; 
-            transition: all 0.3s ease; 
-            border: 2px solid transparent; 
-            background: #ffffff; 
-            color: #475569; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
-            <i class="fas fa-chart-bar" style="color: #64748b;"></i> Yearly Summary
-        </button>
-        
-        <!-- Full Transcript -->
-        <button class="report-tab" data-report="transcript" style="
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            padding: 10px 22px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: 500; 
-            font-size: 14px; 
-            transition: all 0.3s ease; 
-            border: 2px solid transparent; 
-            background: #ffffff; 
-            color: #475569; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
-            <i class="fas fa-file-alt" style="color: #64748b;"></i> Full Transcript
-        </button>
-        
-        <!-- Course Progress -->
-        <button class="report-tab" data-report="progress" style="
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            padding: 10px 22px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: 500; 
-            font-size: 14px; 
-            transition: all 0.3s ease; 
-            border: 2px solid transparent; 
-            background: #ffffff; 
-            color: #475569; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
-            <i class="fas fa-tasks" style="color: #64748b;"></i> Course Progress
-        </button>
-        
-        <!-- My Marks - ACTIVE -->
-        <button class="report-tab active" data-report="mymarks" style="
-            display: inline-flex; 
-            align-items: center; 
-            gap: 8px; 
-            padding: 10px 22px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: 600; 
-            font-size: 14px; 
-            transition: all 0.3s ease; 
-            border: 2px solid #0A3D62; 
-            background: #0A3D62; 
-            color: #ffffff; 
-            box-shadow: 0 4px 12px rgba(10, 61, 98, 0.3);
-        " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10, 61, 98, 0.4)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(10, 61, 98, 0.3)'">
-            <i class="fas fa-file-alt" style="color: #ffffff;"></i> 📄 My Marks
-        </button>
-        
+  <!-- ========== REPORT TABS WITH INLINE STYLES ========== -->
+<div class="report-tabs" style="display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; padding: 10px; background: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0;">
+    
+    <!-- Semester Report -->
+    <button class="report-tab" data-report="semester" style="
+        display: inline-flex; 
+        align-items: center; 
+        gap: 8px; 
+        padding: 10px 22px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        font-weight: 500; 
+        font-size: 14px; 
+        transition: all 0.3s ease; 
+        border: 2px solid transparent; 
+        background: #ffffff; 
+        color: #475569; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
+        <i class="fas fa-calendar-alt" style="color: #64748b;"></i> Semester Report
+    </button>
+    
+    <!-- Yearly Summary -->
+    <button class="report-tab" data-report="yearly" style="
+        display: inline-flex; 
+        align-items: center; 
+        gap: 8px; 
+        padding: 10px 22px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        font-weight: 500; 
+        font-size: 14px; 
+        transition: all 0.3s ease; 
+        border: 2px solid transparent; 
+        background: #ffffff; 
+        color: #475569; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
+        <i class="fas fa-chart-bar" style="color: #64748b;"></i> Yearly Summary
+    </button>
+    
+    <!-- Full Transcript -->
+    <button class="report-tab" data-report="transcript" style="
+        display: inline-flex; 
+        align-items: center; 
+        gap: 8px; 
+        padding: 10px 22px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        font-weight: 500; 
+        font-size: 14px; 
+        transition: all 0.3s ease; 
+        border: 2px solid transparent; 
+        background: #ffffff; 
+        color: #475569; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
+        <i class="fas fa-file-alt" style="color: #64748b;"></i> Full Transcript
+    </button>
+    
+    <!-- Course Progress -->
+    <button class="report-tab" data-report="progress" style="
+        display: inline-flex; 
+        align-items: center; 
+        gap: 8px; 
+        padding: 10px 22px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        font-weight: 500; 
+        font-size: 14px; 
+        transition: all 0.3s ease; 
+        border: 2px solid transparent; 
+        background: #ffffff; 
+        color: #475569; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    " onmouseover="if(!this.classList.contains('active')){this.style.background='#e2e8f0';this.style.color='#0A3D62';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'}" onmouseout="if(!this.classList.contains('active')){this.style.background='#ffffff';this.style.color='#475569';this.style.transform='none';this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)'}">
+        <i class="fas fa-tasks" style="color: #64748b;"></i> Course Progress
+    </button>
+    
+    <!-- ✅ My Performance - ACTIVE (CHANGED FROM "My Marks") -->
+    <button class="report-tab active" data-report="mymarks" style="
+        display: inline-flex; 
+        align-items: center; 
+        gap: 8px; 
+        padding: 10px 22px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        font-weight: 600; 
+        font-size: 14px; 
+        transition: all 0.3s ease; 
+        border: 2px solid #0A3D62; 
+        background: #0A3D62; 
+        color: #ffffff; 
+        box-shadow: 0 4px 12px rgba(10, 61, 98, 0.3);
+    " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(10, 61, 98, 0.4)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 4px 12px rgba(10, 61, 98, 0.3)'">
+        <i class="fas fa-chart-line" style="color: #ffffff;"></i> 📊 My Performance
+    </button>
+    
+</div>
+    
+<!-- ========== SEMESTER REPORT ========== -->
+<div id="semester-report" class="report-content" style="display: none;">
+    <div class="report-filter">
+        <div class="filter-group">
+            <label><i class="fas fa-calendar"></i> Select Semester:</label>
+            <select id="semester-filter" class="modern-select">
+                <option value="2024-2025">2024/2025 - Semester 2</option>
+                <option value="2024-2025-1">2024/2025 - Semester 1</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label><i class="fas fa-chart-simple"></i> GPA Type:</label>
+            <select id="gpa-type" class="modern-select">
+                <option value="semester">Semester GPA</option>
+                <option value="cumulative">Cumulative GPA</option>
+            </select>
+        </div>
+        <button id="refresh-report" class="btn-refresh" onclick="window.loadSemesterReport?.()"><i class="fas fa-sync-alt"></i> Load Report</button>
     </div>
     
-    <!-- ========== SEMESTER REPORT ========== -->
-    <div id="semester-report" class="report-content" style="display: none;">
-        <div class="report-filter">
-            <div class="filter-group">
-                <label><i class="fas fa-calendar"></i> Select Semester:</label>
-                <select id="semester-filter" class="modern-select">
-                    <option value="2024-2025">2024/2025 - Semester 2</option>
-                    <option value="2024-2025-1">2024/2025 - Semester 1</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label><i class="fas fa-chart-simple"></i> GPA Type:</label>
-                <select id="gpa-type" class="modern-select">
-                    <option value="semester">Semester GPA</option>
-                    <option value="cumulative">Cumulative GPA</option>
-                </select>
-            </div>
-            <button id="refresh-report" class="btn-refresh" onclick="window.loadSemesterReport?.()"><i class="fas fa-sync-alt"></i> Load Report</button>
-        </div>
-        
-        <div class="gpa-summary">
-            <div class="gpa-card">
-                <div class="gpa-icon semester"><i class="fas fa-calendar-week"></i></div>
-                <div class="gpa-info">
-                    <span class="gpa-label">Semester GPA</span>
-                    <span class="gpa-value" id="semester-gpa">3.45</span>
-                    <span class="gpa-grade" id="semester-grade">B+</span>
-                </div>
-            </div>
-            <div class="gpa-card">
-                <div class="gpa-icon cumulative"><i class="fas fa-chart-line"></i></div>
-                <div class="gpa-info">
-                    <span class="gpa-label">Cumulative GPA</span>
-                    <span class="gpa-value" id="cumulative-gpa">3.28</span>
-                    <span class="gpa-grade" id="cumulative-grade">B</span>
-                </div>
-            </div>
-            <div class="gpa-card">
-                <div class="gpa-icon credits"><i class="fas fa-star"></i></div>
-                <div class="gpa-info">
-                    <span class="gpa-label">Total Credits</span>
-                    <span class="gpa-value" id="total-credits-earned">87</span>
-                    <span class="gpa-grade">Attempted: 96</span>
-                </div>
-            </div>
-            <div class="gpa-card">
-                <div class="gpa-icon rank"><i class="fas fa-trophy"></i></div>
-                <div class="gpa-info">
-                    <span class="gpa-label">Class Rank</span>
-                    <span class="gpa-value" id="class-rank">15</span>
-                    <span class="gpa-grade">/ 120 students</span>
-                </div>
+    <div class="gpa-summary">
+        <div class="gpa-card">
+            <div class="gpa-icon semester"><i class="fas fa-calendar-week"></i></div>
+            <div class="gpa-info">
+                <span class="gpa-label">Semester GPA</span>
+                <span class="gpa-value" id="semester-gpa">3.45</span>
+                <span class="gpa-grade" id="semester-grade">B+</span>
             </div>
         </div>
-        
-        <div class="grades-section">
-            <h3><i class="fas fa-table-list"></i> Course Grades</h3>
-            <div class="table-container">
-                <table class="grades-table">
-                    <thead>
-                        <tr>
-                            <th>Course Code</th>
-                            <th>Course Name</th>
-                            <th>Credits</th>
-                            <th>CAT 1</th>
-                            <th>CAT 2</th>
-                            <th>Final</th>
-                            <th>Total</th>
-                            <th>Grade</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="grades-table-body">
-                        <tr><td colspan="9"><div class="loading-spinner"></div> Loading grades...</td></tr>
-                    </tbody>
-                </table>
+        <div class="gpa-card">
+            <div class="gpa-icon cumulative"><i class="fas fa-chart-line"></i></div>
+            <div class="gpa-info">
+                <span class="gpa-label">Cumulative GPA</span>
+                <span class="gpa-value" id="cumulative-gpa">3.28</span>
+                <span class="gpa-grade" id="cumulative-grade">B</span>
             </div>
         </div>
-        
-        <div class="performance-section">
-            <h3><i class="fas fa-chart-pie"></i> Performance Analysis</h3>
-            <div class="chart-container">
-                <canvas id="grade-distribution-chart" width="400" height="200"></canvas>
+        <div class="gpa-card">
+            <div class="gpa-icon credits"><i class="fas fa-star"></i></div>
+            <div class="gpa-info">
+                <span class="gpa-label">Total Credits</span>
+                <span class="gpa-value" id="total-credits-earned">87</span>
+                <span class="gpa-grade">Attempted: 96</span>
+            </div>
+        </div>
+        <div class="gpa-card">
+            <div class="gpa-icon rank"><i class="fas fa-trophy"></i></div>
+            <div class="gpa-info">
+                <span class="gpa-label">Class Rank</span>
+                <span class="gpa-value" id="class-rank">15</span>
+                <span class="gpa-grade">/ 120 students</span>
             </div>
         </div>
     </div>
     
-    <!-- ========== YEARLY REPORT ========== -->
-    <div id="yearly-report" class="report-content" style="display:none;">
-        <div class="yearly-summary">
-            <div class="year-selector">
-                <select id="year-filter" class="modern-select">
-                    <option value="2024">2024 Academic Year</option>
-                    <option value="2023">2023 Academic Year</option>
-                </select>
-            </div>
-            <div class="yearly-stats">
-                <div class="stat-card">
-                    <div class="stat-value" id="year-gpa">3.45</div>
-                    <div class="stat-label">Year GPA</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="year-credits">48</div>
-                    <div class="stat-label">Credits Earned</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="year-courses">12</div>
-                    <div class="stat-label">Courses Completed</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="year-awards">2</div>
-                    <div class="stat-label">Achievements</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- ========== FULL TRANSCRIPT ========== -->
-    <div id="transcript-report" class="report-content" style="display:none;">
-        <div class="transcript-header">
-            <div class="institution-info">
-                <h3>Nakuru College of Health Sciences and Management</h3>
-                <p>Academic Transcript - <span id="student-name-display">Student Name</span></p>
-                <p>Program: <span id="program-display">KRCHN</span> | Student ID: <span id="student-id-display">KRCHN/119/026</span></p>
-            </div>
-        </div>
-        <div class="transcript-table-container">
-            <table class="transcript-table">
+    <div class="grades-section">
+        <h3><i class="fas fa-table-list"></i> Course Grades</h3>
+        <div class="table-container">
+            <table class="grades-table">
                 <thead>
                     <tr>
-                        <th>Year/Semester</th>
                         <th>Course Code</th>
                         <th>Course Name</th>
                         <th>Credits</th>
+                        <th>CAT 1</th>
+                        <th>CAT 2</th>
+                        <th>Final</th>
+                        <th>Total</th>
                         <th>Grade</th>
-                        <th>Points</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
-                <tbody id="transcript-table-body">
-                    <tr><td colspan="6">Loading transcript...</td></tr>
+                <tbody id="grades-table-body">
+                    <tr><td colspan="9"><div class="loading-spinner"></div> Loading grades...</td></tr>
                 </tbody>
             </table>
         </div>
-        <div class="transcript-summary">
-            <div class="summary-line"><strong>Total Credits Attempted:</strong> <span id="total-attempted">0</span></div>
-            <div class="summary-line"><strong>Total Credits Earned:</strong> <span id="total-earned">0</span></div>
-            <div class="summary-line"><strong>Cumulative GPA:</strong> <span id="transcript-cgpa">0.00</span></div>
-        </div>
     </div>
     
-    <!-- ========== COURSE PROGRESS ========== -->
-    <div id="progress-report" class="report-content" style="display:none;">
-        <div class="progress-summary">
-            <h3><i class="fas fa-chart-simple"></i> Course Completion Progress</h3>
-            <div class="overall-progress">
-                <div class="progress-circle">
-                    <svg viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="8"/>
-                        <circle cx="50" cy="50" r="45" fill="none" stroke="#4f46e5" stroke-width="8" stroke-dasharray="283" stroke-dashoffset="85" transform="rotate(-90 50 50)"/>
-                        <text x="50" y="55" text-anchor="middle" fill="#4f46e5" font-size="20" font-weight="bold">70%</text>
-                    </svg>
+    <div class="performance-section">
+        <h3><i class="fas fa-chart-pie"></i> Performance Analysis</h3>
+        <div class="chart-container">
+            <canvas id="grade-distribution-chart" width="400" height="200"></canvas>
+        </div>
+    </div>
+</div>
+    
+<!-- ========== YEARLY REPORT ========== -->
+<div id="yearly-report" class="report-content" style="display:none;">
+    <div class="yearly-summary">
+        <div class="year-selector">
+            <select id="year-filter" class="modern-select">
+                <option value="2024">2024 Academic Year</option>
+                <option value="2023">2023 Academic Year</option>
+            </select>
+        </div>
+        <div class="yearly-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="year-gpa">3.45</div>
+                <div class="stat-label">Year GPA</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="year-credits">48</div>
+                <div class="stat-label">Credits Earned</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="year-courses">12</div>
+                <div class="stat-label">Courses Completed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="year-awards">2</div>
+                <div class="stat-label">Achievements</div>
+            </div>
+        </div>
+    </div>
+</div>
+    
+<!-- ========== FULL TRANSCRIPT ========== -->
+<div id="transcript-report" class="report-content" style="display:none;">
+    <div class="transcript-header">
+        <div class="institution-info">
+            <h3>Nakuru College of Health Sciences and Management</h3>
+            <p>Academic Transcript - <span id="student-name-display">Student Name</span></p>
+            <p>Program: <span id="program-display">KRCHN</span> | Student ID: <span id="student-id-display">KRCHN/119/026</span></p>
+        </div>
+    </div>
+    <div class="transcript-table-container">
+        <table class="transcript-table">
+            <thead>
+                <tr>
+                    <th>Year/Semester</th>
+                    <th>Course Code</th>
+                    <th>Course Name</th>
+                    <th>Credits</th>
+                    <th>Grade</th>
+                    <th>Points</th>
+                </tr>
+            </thead>
+            <tbody id="transcript-table-body">
+                <tr><td colspan="6">Loading transcript...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="transcript-summary">
+        <div class="summary-line"><strong>Total Credits Attempted:</strong> <span id="total-attempted">0</span></div>
+        <div class="summary-line"><strong>Total Credits Earned:</strong> <span id="total-earned">0</span></div>
+        <div class="summary-line"><strong>Cumulative GPA:</strong> <span id="transcript-cgpa">0.00</span></div>
+    </div>
+</div>
+    
+<!-- ========== COURSE PROGRESS ========== -->
+<div id="progress-report" class="report-content" style="display:none;">
+    <div class="progress-summary">
+        <h3><i class="fas fa-chart-simple"></i> Course Completion Progress</h3>
+        <div class="overall-progress">
+            <div class="progress-circle">
+                <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#4f46e5" stroke-width="8" stroke-dasharray="283" stroke-dashoffset="85" transform="rotate(-90 50 50)"/>
+                    <text x="50" y="55" text-anchor="middle" fill="#4f46e5" font-size="20" font-weight="bold">70%</text>
+                </svg>
+            </div>
+            <div class="progress-details">
+                <p>Overall Completion: <strong>70%</strong></p>
+                <p>Completed Courses: <strong id="completed-courses-progress">18</strong>/<span id="total-courses-progress">26</span></p>
+            </div>
+        </div>
+        <div class="course-progress-list" id="course-progress-list">
+            <div class="progress-item">
+                <div class="progress-header">
+                    <span class="course-name">Anatomy & Physiology</span>
+                    <span class="progress-percent">85%</span>
                 </div>
-                <div class="progress-details">
-                    <p>Overall Completion: <strong>70%</strong></p>
-                    <p>Completed Courses: <strong id="completed-courses-progress">18</strong>/<span id="total-courses-progress">26</span></p>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:85%"></div>
                 </div>
             </div>
-            <div class="course-progress-list" id="course-progress-list">
-                <div class="progress-item">
-                    <div class="progress-header">
-                        <span class="course-name">Anatomy & Physiology</span>
-                        <span class="progress-percent">85%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width:85%"></div>
-                    </div>
+            <div class="progress-item">
+                <div class="progress-header">
+                    <span class="course-name">Medical-Surgical Nursing</span>
+                    <span class="progress-percent">72%</span>
                 </div>
-                <div class="progress-item">
-                    <div class="progress-header">
-                        <span class="course-name">Medical-Surgical Nursing</span>
-                        <span class="progress-percent">72%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width:72%"></div>
-                    </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:72%"></div>
                 </div>
             </div>
         </div>
     </div>
-  <!-- ============================================================ -->
-<!-- ✅ MY MARKS TAB - PUBLISHED MARKS / TRANSCRIPT              -->
+</div>
+  
+<!-- ============================================================ -->
+<!-- ✅ MY PERFORMANCE TAB - PUBLISHED MARKS / TRANSCRIPT         -->
 <!-- ============================================================ -->
 <div id="mymarks-report" class="report-content" style="display: block;">
     
@@ -1945,7 +1946,7 @@
     </div>
     
 </div>
-<!-- END MY MARKS TAB -->
+<!-- END MY PERFORMANCE TAB -->
 </section>
 <!-- END ACADEMIC REPORTS -->
 <!-- ==================== ATTENDANCE TAB ==================== -->
