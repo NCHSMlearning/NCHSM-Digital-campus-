@@ -56,10 +56,56 @@ const LecturerDashboard = {
     assignedStudents: [],
     isRefreshing: false,
     refreshInterval: null,
+    currentProgram: null, // ✅ Added to store current program
+    
+    // ─── GET CURRENT PROGRAM ───
+    getCurrentProgram() {
+        try {
+            // 1. Try from profile
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (profile?.program) {
+                this.currentProgram = profile.program;
+                localStorage.setItem('lecturerProgram', profile.program);
+                return profile.program;
+            }
+            
+            // 2. Try from department
+            if (profile?.department) {
+                this.currentProgram = profile.department;
+                localStorage.setItem('lecturerProgram', profile.department);
+                return profile.department;
+            }
+            
+            // 3. Try from localStorage
+            const stored = localStorage.getItem('lecturerProgram');
+            if (stored) {
+                this.currentProgram = stored;
+                return stored;
+            }
+            
+            // 4. Try from window variable
+            if (window.lecturerProgram) {
+                this.currentProgram = window.lecturerProgram;
+                return window.lecturerProgram;
+            }
+            
+            // 5. Final fallback
+            console.warn('⚠️ No program found, using KRCHN as fallback');
+            this.currentProgram = 'KRCHN';
+            return 'KRCHN';
+        } catch (e) {
+            console.warn('⚠️ Error getting program:', e);
+            this.currentProgram = 'KRCHN';
+            return 'KRCHN';
+        }
+    },
     
     // ─── INIT ───
     async init() {
         console.log('📊 Initializing Lecturer Dashboard...');
+        const program = this.getCurrentProgram();
+        console.log(`📚 Current Program: ${program}`);
+        
         try {
             await this.resolveLecturerId();
             await this.loadAssignedUnits();
@@ -79,12 +125,47 @@ const LecturerDashboard = {
             this.setupEventListeners();
             this.startAutoRefresh();
             this.updateLastUpdated();
+            this.updateProgramBadge();
             console.log('✅ Lecturer Dashboard initialized');
             console.log(`📚 ${this.assignedUnits.length} assigned units`);
             console.log(`👨‍🎓 ${this.assignedStudents.length} assigned students`);
+            console.log(`🎯 Program: ${this.currentProgram}`);
         } catch (error) {
             console.error('❌ Dashboard initialization error:', error);
         }
+    },
+    
+    // ─── UPDATE PROGRAM BADGE ───
+    updateProgramBadge() {
+        const program = this.getCurrentProgram();
+        
+        // Update sidebar program badge
+        const badge = document.getElementById('userProgramBadge');
+        if (badge) {
+            badge.textContent = program;
+        }
+        
+        // Update program display in attendance section
+        const programDisplay = document.getElementById('programDisplayName');
+        if (programDisplay) {
+            programDisplay.textContent = program;
+        }
+        
+        // Update program subtitle
+        const subtitle = document.getElementById('programSubtitle');
+        if (subtitle) {
+            subtitle.textContent = `Program: ${program}`;
+        }
+        
+        // Update program badge in dashboard header
+        const programBadge = document.querySelector('.program-badge');
+        if (programBadge) {
+            programBadge.textContent = program;
+        }
+        
+        // Store for other parts of the app
+        window.lecturerProgram = program;
+        localStorage.setItem('lecturerProgram', program);
     },
     
     // ─── RESOLVE LECTURER ID ───
@@ -140,6 +221,7 @@ const LecturerDashboard = {
             if (!profile) return;
             
             const fullName = profile.full_name;
+            const program = this.getCurrentProgram();
             
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
@@ -152,10 +234,11 @@ const LecturerDashboard = {
                 return;
             }
             
-            const krchnUnits = assignments?.filter(u => u.program === 'KRCHN') || [];
-            this.assignedUnits = krchnUnits.length > 0 ? krchnUnits : (assignments || []);
+            // Filter by current program
+            const programUnits = assignments?.filter(u => u.program === program) || [];
+            this.assignedUnits = programUnits.length > 0 ? programUnits : (assignments || []);
             
-            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units`);
+            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for program ${program}`);
             
         } catch (error) {
             console.error('Failed to load assigned units:', error);
@@ -169,8 +252,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
+            const program = this.getCurrentProgram(); // ✅ FIXED
             
             const unitNames = this.assignedUnits.map(u => u.subject_name);
             
@@ -203,7 +285,8 @@ const LecturerDashboard = {
                 .from('consolidated_user_profiles_table')
                 .select('user_id, student_id, full_name, program, block, intake_year, email, phone, gender')
                 .in('user_id', studentIds)
-                .eq('role', 'student');
+                .eq('role', 'student')
+                .eq('program', program); // ✅ FIXED: Filter by program
             
             if (studentError) {
                 console.error('Error loading student profiles:', studentError);
@@ -225,7 +308,7 @@ const LecturerDashboard = {
                 unit_count: (enrollmentMap[s.user_id] || []).length
             }));
             
-            console.log(`👨‍🎓 Loaded ${this.assignedStudents.length} assigned students`);
+            console.log(`👨‍🎓 Loaded ${this.assignedStudents.length} assigned students for program ${program}`);
             
         } catch (error) {
             console.error('Failed to load assigned students:', error);
@@ -236,11 +319,10 @@ const LecturerDashboard = {
     // ─── LOAD METRICS ───
     async loadMetrics() {
         try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
-            
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
+            
+            const program = this.getCurrentProgram(); // ✅ FIXED
             
             this.metrics.totalStudents = this.assignedStudents.length || 0;
             this.metrics.totalCourses = this.assignedUnits.length || 0;
@@ -291,7 +373,8 @@ const LecturerDashboard = {
                 const { data: marks } = await supabase
                     .from('student_marks')
                     .select('final_score')
-                    .in('student_id', studentIds);
+                    .in('student_id', studentIds)
+                    .eq('program', program); // ✅ FIXED: Filter by program
                 
                 const validScores = marks?.filter(m => m.final_score > 0) || [];
                 if (validScores.length > 0) {
@@ -367,11 +450,10 @@ const LecturerDashboard = {
     // ─── LOAD ATTENDANCE METRICS ───
     async loadAttendanceMetrics() {
         try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
-            
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
+            
+            const program = this.getCurrentProgram(); // ✅ FIXED
             
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
@@ -492,8 +574,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
+            const program = this.getCurrentProgram(); // ✅ FIXED
             
             const studentIds = this.assignedStudents.map(s => s.user_id);
             
@@ -579,6 +660,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
+            const program = this.getCurrentProgram();
             const studentIds = this.assignedStudents.map(s => s.user_id);
             
             if (studentIds.length === 0) {
@@ -590,13 +672,15 @@ const LecturerDashboard = {
             const { data: attendance } = await supabase
                 .from('geo_attendance_logs')
                 .select('student_id, attendance_status')
-                .in('student_id', studentIds);
+                .in('student_id', studentIds)
+                .eq('program', program);
             
             // Get marks data
             const { data: marks } = await supabase
                 .from('student_marks')
                 .select('student_id, final_score')
-                .in('student_id', studentIds);
+                .in('student_id', studentIds)
+                .eq('program', program);
             
             // Calculate risk scores
             const riskMap = {};
@@ -702,6 +786,7 @@ const LecturerDashboard = {
     // ─── UPDATE WELCOME BANNER ───
     updateWelcomeBanner() {
         const profile = window.lecturerDB?.getCurrentUserProfile();
+        const program = this.getCurrentProgram();
         const welcomeHeader = document.getElementById('welcomeHeader');
         const welcomeBannerText = document.getElementById('welcomeBannerText');
         const studentCountDisplay = document.getElementById('studentCountDisplay');
@@ -741,6 +826,12 @@ const LecturerDashboard = {
                 minute: '2-digit'
             });
         }
+        
+        // Update program subtitle
+        const subtitle = document.getElementById('programSubtitle');
+        if (subtitle) {
+            subtitle.textContent = `Program: ${program}`;
+        }
     },
     
     // ─── LOAD COURSE PROGRESS ───
@@ -752,8 +843,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
+            const program = this.getCurrentProgram();
             
             const unitNames = this.assignedUnits.map(u => u.subject_name);
             
@@ -821,6 +911,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
+            const program = this.getCurrentProgram();
             const studentIds = this.assignedStudents.map(s => s.user_id);
             
             if (studentIds.length === 0) {
@@ -832,6 +923,7 @@ const LecturerDashboard = {
                 .from('student_marks')
                 .select('student_id, student_name, final_score, subject_name')
                 .in('student_id', studentIds)
+                .eq('program', program)
                 .order('final_score', { ascending: false })
                 .limit(5);
             
@@ -881,6 +973,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
+            const program = this.getCurrentProgram();
             const studentIds = this.assignedStudents.map(s => s.user_id);
             
             if (studentIds.length === 0) {
@@ -892,6 +985,7 @@ const LecturerDashboard = {
                 .from('geo_attendance_logs')
                 .select('student_id, student_name, attendance_status, check_in_time')
                 .in('student_id', studentIds)
+                .eq('program', program)
                 .eq('attendance_status', 'Absent')
                 .gte('check_in_time', new Date(Date.now() - 7*24*60*60*1000).toISOString());
             
@@ -1034,8 +1128,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
+            const program = this.getCurrentProgram(); // ✅ FIXED
             
             const activities = [];
             
@@ -1176,12 +1269,10 @@ const LecturerDashboard = {
         console.log('📊 Loading lecturer charts...');
         
         try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
-            
-            const program = profile.program || profile.department || 'KRCHN';
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
+            
+            const program = this.getCurrentProgram(); // ✅ FIXED
             
             // Get students in this program
             const { data: students } = await supabase
@@ -1238,7 +1329,8 @@ const LecturerDashboard = {
                 const { data: marks } = await supabase
                     .from('student_marks')
                     .select('*')
-                    .in('student_id', studentIds);
+                    .in('student_id', studentIds)
+                    .eq('program', program);
                 marksData = marks || [];
             }
             
@@ -1403,6 +1495,9 @@ const LecturerDashboard = {
         console.log('🔄 Refreshing dashboard...');
         
         try {
+            // Refresh program first
+            this.getCurrentProgram();
+            
             await this.resolveLecturerId();
             await this.loadAssignedUnits();
             await this.loadAssignedStudents();
@@ -1419,6 +1514,7 @@ const LecturerDashboard = {
             await this.loadRecentActivity();
             await this.loadCharts();
             this.updateLastUpdated();
+            this.updateProgramBadge();
             
             if (window.LecturerUI) {
                 window.LecturerUI.showNotification('Dashboard refreshed successfully!', 'success');
