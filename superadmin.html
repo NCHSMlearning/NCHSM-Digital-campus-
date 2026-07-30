@@ -3743,36 +3743,41 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 25px;">
-        <div class="card" style="border-top: 4px solid #059669; text-align: center;">
-            <h3 style="color: #059669; font-size: 11px; text-transform: uppercase;">Total Marks</h3>
-            <p class="data" id="pm_total_marks" style="font-size: 28px; font-weight: 700; color: #059669;">0</p>
-            <p class="minor-data" style="font-size: 11px;">All programs</p>
+    <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div class="card" style="border-top: 4px solid #059669; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #059669; font-size: 10px; text-transform: uppercase; margin: 0;">Total Marks</h3>
+            <p class="data" id="pm_total_marks" style="font-size: 24px; font-weight: 700; color: #059669; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">All programs</p>
         </div>
-        <div class="card" style="border-top: 4px solid #10b981; text-align: center;">
-            <h3 style="color: #10b981; font-size: 11px; text-transform: uppercase;">Passed</h3>
-            <p class="data" id="pm_passed" style="font-size: 28px; font-weight: 700; color: #10b981;">0</p>
-            <p class="minor-data" style="font-size: 11px;">Above pass mark</p>
+        <div class="card" style="border-top: 4px solid #10b981; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #10b981; font-size: 10px; text-transform: uppercase; margin: 0;">Passed</h3>
+            <p class="data" id="pm_passed" style="font-size: 24px; font-weight: 700; color: #10b981; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Above pass mark</p>
         </div>
-        <div class="card" style="border-top: 4px solid #ef4444; text-align: center;">
-            <h3 style="color: #dc2626; font-size: 11px; text-transform: uppercase;">Failed</h3>
-            <p class="data" id="pm_failed" style="font-size: 28px; font-weight: 700; color: #dc2626;">0</p>
-            <p class="minor-data" style="font-size: 11px;">Below pass mark</p>
+        <div class="card" style="border-top: 4px solid #ef4444; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #dc2626; font-size: 10px; text-transform: uppercase; margin: 0;">Failed</h3>
+            <p class="data" id="pm_failed" style="font-size: 24px; font-weight: 700; color: #dc2626; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Below pass mark</p>
         </div>
-        <div class="card" style="border-top: 4px solid #8b5cf6; text-align: center;">
-            <h3 style="color: #6d28d9; font-size: 11px; text-transform: uppercase;">Average</h3>
-            <p class="data" id="pm_avg_score" style="font-size: 28px; font-weight: 700; color: #6d28d9;">0%</p>
-            <p class="minor-data" style="font-size: 11px;">Overall average</p>
+        <div class="card" style="border-top: 4px solid #f59e0b; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #d97706; font-size: 10px; text-transform: uppercase; margin: 0;">Pending</h3>
+            <p class="data" id="pm_pending" style="font-size: 24px; font-weight: 700; color: #d97706; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Not attempted</p>
         </div>
-        <div class="card" style="border-top: 4px solid #f59e0b; text-align: center;">
-            <h3 style="color: #d97706; font-size: 11px; text-transform: uppercase;">Published</h3>
-            <p class="data" id="pm_published_count" style="font-size: 28px; font-weight: 700; color: #d97706;">0</p>
-            <p class="minor-data" style="font-size: 11px;">Visible to students</p>
+        <div class="card" style="border-top: 4px solid #8b5cf6; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #6d28d9; font-size: 10px; text-transform: uppercase; margin: 0;">Average</h3>
+            <p class="data" id="pm_avg_score" style="font-size: 24px; font-weight: 700; color: #6d28d9; margin: 4px 0;">0%</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Overall average</p>
+        </div>
+        <div class="card" style="border-top: 4px solid #f59e0b; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #d97706; font-size: 10px; text-transform: uppercase; margin: 0;">Published</h3>
+            <p class="data" id="pm_published_count" style="font-size: 24px; font-weight: 700; color: #d97706; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Visible to students</p>
         </div>
     </div>
 
     <!-- Quick Filter by Program Type -->
-    <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+    <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
         <button onclick="filterPublishedByProgram('all')" id="pm_filter_all" class="program-filter-btn active" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
             <i class="fas fa-globe"></i> All Programs
         </button>
@@ -3785,6 +3790,29 @@
         <span id="pm_program_badge" style="background: #f1f5f9; padding: 6px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #475569; margin-left: auto;">
             Showing: <span id="pm_current_filter_label">All Programs</span>
         </span>
+    </div>
+
+    <!-- Grading System Reference - UPDATED with TVET & Nursing -->
+    <div style="background: white; border-radius: 8px; padding: 10px 16px; margin-bottom: 15px; border: 1px solid #e5e7eb;">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center; font-size: 12px;">
+            <span style="font-weight: 700; color: #475569;">📊 Grading Systems:</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: #92400e; font-size: 11px;">🔧 TVET</span>
+                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A 75-100% → 4.0</span>
+                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B 65-74% → 3.0</span>
+                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C 50-64% → 2.0</span>
+                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">FAIL Below 50% → 0.0</span>
+                <span style="color: #94a3b8; font-size: 10px;">| Min Pass: 50%</span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: #1e40af; font-size: 11px;">🎓 Nursing</span>
+                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A 75-100% → 4.0</span>
+                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B 65-74% → 3.0</span>
+                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C 60-64% → 2.0</span>
+                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">D Below 60% → 0.0</span>
+                <span style="color: #94a3b8; font-size: 10px;">| Min Pass: 60%</span>
+            </div>
+        </div>
     </div>
 
     <!-- Filters -->
@@ -3830,7 +3858,7 @@
             </optgroup>
         </select>
         
-        <!-- Block/Term Filter - Shows both Block (KRCHN) and Term (TVET) -->
+        <!-- Block/Term Filter -->
         <select id="pm_block_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
             <option value="all">All Blocks/Terms</option>
             <optgroup label="📚 KRCHN Blocks">
@@ -3890,17 +3918,6 @@
         </span>
     </div>
 
-    <!-- Grading System Reference -->
-    <div style="background: white; border-radius: 8px; padding: 10px 16px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 12px;">
-            <span style="font-weight: 700; color: #475569;">📊 Grading System (All Programs):</span>
-            <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46;">A (75-100%) → 4.0</span>
-            <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #1e40af;">B (65-74%) → 3.0</span>
-            <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e;">C (60-64%) → 2.0</span>
-            <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b;">D (&lt;60%) → 0.0</span>
-        </div>
-    </div>
-
     <!-- ============================================================ -->
     <!-- MARKS TABLE                                                  -->
     <!-- ============================================================ -->
@@ -3936,7 +3953,7 @@
         <h3 style="margin: 0 0 15px 0; color: #1e293b; font-size: 16px;">
             <i class="fas fa-chart-pie" style="color: #4C1D95;"></i> Performance Summary
         </h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
             <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px;">
                 <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Units Attempted</span>
                 <div style="font-size: 24px; font-weight: 700; color: #1e293b;" id="pm_units_attempted">0</div>
@@ -3952,6 +3969,22 @@
             <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px;">
                 <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Overall GPA</span>
                 <div style="font-size: 24px; font-weight: 700; color: #6d28d9;" id="pm_overall_gpa">0.0</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: #d1fae5; border-radius: 8px;">
+                <span style="font-size: 11px; color: #065f46; text-transform: uppercase;">EXCELLENT</span>
+                <div style="font-size: 24px; font-weight: 700; color: #065f46;" id="pm_excellent">0</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: #dbeafe; border-radius: 8px;">
+                <span style="font-size: 11px; color: #1e40af; text-transform: uppercase;">GOOD/CREDIT</span>
+                <div style="font-size: 24px; font-weight: 700; color: #1e40af;" id="pm_good">0</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: #fef3c7; border-radius: 8px;">
+                <span style="font-size: 11px; color: #92400e; text-transform: uppercase;">SATISFACTORY</span>
+                <div style="font-size: 24px; font-weight: 700; color: #92400e;" id="pm_satisfactory">0</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: #fee2e2; border-radius: 8px;">
+                <span style="font-size: 11px; color: #991b1b; text-transform: uppercase;">FAIL</span>
+                <div style="font-size: 24px; font-weight: 700; color: #991b1b;" id="pm_fail_count">0</div>
             </div>
         </div>
     </div>
