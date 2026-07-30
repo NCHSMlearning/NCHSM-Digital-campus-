@@ -127,7 +127,29 @@
     }
 
     // ============================================================
-    // 4. GENERATE SAMPLE GRADES (Fallback)
+    // 4. GRADING STATUS HELPER
+    // ============================================================
+    function getGradingStatus(score) {
+        if (score === null || score === undefined || score === 0) return 'PENDING';
+        if (score >= 75) return 'DISTINCTION';
+        if (score >= 65) return 'CREDIT';
+        if (score >= 60) return 'PASS';
+        return 'FAIL';
+    }
+
+    function getStatusColor(status) {
+        const colors = {
+            'DISTINCTION': '#10b981',
+            'CREDIT': '#3b82f6',
+            'PASS': '#f59e0b',
+            'FAIL': '#dc2626',
+            'PENDING': '#94a3b8'
+        };
+        return colors[status] || '#94a3b8';
+    }
+
+    // ============================================================
+    // 5. GENERATE SAMPLE GRADES (Fallback)
     // ============================================================
     function generateSampleGrades() {
         const user = window.currentUserProfile || {};
@@ -174,7 +196,7 @@
     }
 
     // ============================================================
-    // 5. MY MARKS - STATE & FUNCTIONS
+    // 6. MY MARKS - STATE & FUNCTIONS
     // ============================================================
     let myMarksData = [];
     let myMarksFiltered = [];
@@ -200,7 +222,7 @@
         
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 40px;">
+                <td colspan="8" style="text-align: center; padding: 40px;">
                     <div class="loading-spinner"></div>
                     <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
                 </td>
@@ -210,7 +232,7 @@
         try {
             const user = window.currentUserProfile || window.db?.currentUserProfile;
             if (!user) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
                 return;
             }
             
@@ -291,11 +313,10 @@
             
             myMarksFiltered = [...myMarksData];
             
-            // Populate subject filter
             const subjectFilter = document.getElementById('my_marks_subject_filter');
             if (subjectFilter) {
                 const subjects = [...new Set(myMarksData.map(m => m.subject_name).filter(Boolean))];
-                subjectFilter.innerHTML = '<option value="all">All Subjects</option>';
+                subjectFilter.innerHTML = '<option value="all">All Units</option>';
                 subjects.sort().forEach(subject => {
                     const option = document.createElement('option');
                     option.value = subject;
@@ -304,7 +325,6 @@
                 });
             }
             
-            // Populate academic year filter
             const yearFilter = document.getElementById('my_marks_year_filter');
             if (yearFilter) {
                 const years = [...new Set(myMarksData.map(m => m.academic_year || m.year || '2025').filter(Boolean))];
@@ -322,7 +342,7 @@
             
         } catch (error) {
             console.error('Error loading my marks:', error);
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
         }
     }
 
@@ -351,7 +371,7 @@
         if (!marks || marks.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
                         <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
                         No published marks found
                     </td>
@@ -363,9 +383,8 @@
         
         let html = '';
         marks.forEach((mark, index) => {
-            const isPass = mark.final_score >= 60;
-            const statusColor = isPass ? '#10b981' : '#dc2626';
-            const statusText = isPass ? '✅ Pass' : '❌ Fail';
+            const status = getGradingStatus(mark.final_score);
+            const statusColor = getStatusColor(status);
             const gradeColor = getGradeColor(mark.grade);
             const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
             const credits = mark.credits || 3;
@@ -385,8 +404,8 @@
                     </td>
                     <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${mark.points || 0.0}</td>
                     <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 12px;">
-                            ${statusText}
+                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
+                            ${status}
                         </span>
                     </td>
                 </tr>
@@ -443,7 +462,7 @@
     }
 
     // ============================================================
-    // 6. SEMESTER REPORT
+    // 7. SEMESTER REPORT
     // ============================================================
     let gradeChart = null;
     let currentGrades = [];
@@ -570,7 +589,7 @@
     }
 
     // ============================================================
-    // 7. YEARLY REPORT
+    // 8. YEARLY REPORT
     // ============================================================
     function loadYearlyReport() {
         const grades = currentGrades.length > 0 ? currentGrades : generateSampleGrades();
@@ -585,7 +604,7 @@
     }
 
     // ============================================================
-    // 8. FULL TRANSCRIPT
+    // 9. FULL TRANSCRIPT
     // ============================================================
     function loadTranscript() {
         const tbody = document.getElementById('transcript-table-body');
@@ -630,7 +649,7 @@
     }
 
     // ============================================================
-    // 9. COURSE PROGRESS
+    // 10. COURSE PROGRESS
     // ============================================================
     function loadCourseProgress() {
         const container = document.getElementById('course-progress-list');
@@ -666,7 +685,7 @@
     }
 
     // ============================================================
-    // 10. DOWNLOAD FULL TRANSCRIPT
+    // 11. DOWNLOAD FULL TRANSCRIPT
     // ============================================================
     function downloadTranscriptPDF() {
         const user = window.currentUserProfile || {};
@@ -712,7 +731,7 @@
                 </div>
                 
                 <table>
-                    <thead><tr><th>Block/Term</th><th>Course Code</th><th>Course Name</th><th>Credits</th><th>Grade</th><th>Points</th></tr></thead>
+                    <thead><tr><th>Block/Term</th><th>Unit Code</th><th>Unit Name</th><th>Credits</th><th>Grade</th><th>Points</th></tr></thead>
                     <tbody>
         `;
         
@@ -751,7 +770,7 @@
     }
 
     // ============================================================
-    // 11. DOWNLOAD REPORT CARD (WITH LOGO, NO CAT/Exam, NO PENDING)
+    // 12. DOWNLOAD REPORT CARD (WITH GRADING STATUS: DISTINCTION, CREDIT, PASS, FAIL)
     // ============================================================
     function downloadReportCard() {
         const user = window.currentUserProfile || {};
@@ -781,8 +800,8 @@
         
         let tableRows = '';
         marks.forEach((mark, index) => {
-            const status = mark.final_score >= 60 ? 'PASS' : 'FAIL';
-            const statusColor = mark.final_score >= 60 ? '#10b981' : '#dc2626';
+            const status = getGradingStatus(mark.final_score);
+            const statusColor = getStatusColor(status);
             const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
             
             tableRows += `
@@ -957,6 +976,26 @@
                         min-width: 20px;
                         text-align: center;
                     }
+                    .grading-status {
+                        margin-top: 12px;
+                        padding: 12px;
+                        background: #f8fafc;
+                        border-radius: 8px;
+                        border: 1px solid #e5e7eb;
+                    }
+                    .grading-status .status-item {
+                        display: inline-block;
+                        margin: 4px 12px;
+                        font-size: 13px;
+                    }
+                    .grading-status .status-box {
+                        padding: 2px 10px;
+                        border-radius: 4px;
+                        font-weight: 600;
+                        color: white;
+                        display: inline-block;
+                        font-size: 11px;
+                    }
                     .watermark {
                         position: fixed;
                         top: 50%;
@@ -1048,12 +1087,12 @@
                             <tr>
                                 <th style="text-align: center; width: 40px;">#</th>
                                 <th style="min-width: 100px;">Unit Code</th>
-                                <th style="min-width: 150px;">Subject/Unit</th>
+                                <th style="min-width: 150px;">Unit Name</th>
                                 <th style="text-align: center; width: 60px;">Credits</th>
                                 <th style="text-align: center; width: 70px;">Total</th>
                                 <th style="text-align: center; width: 60px;">Grade</th>
                                 <th style="text-align: center; width: 60px;">Points</th>
-                                <th style="text-align: center; width: 70px;">Status</th>
+                                <th style="text-align: center; width: 100px;">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1068,6 +1107,17 @@
                             <span class="scale-item"><span class="grade-box" style="background: #3b82f6;">B</span> 65-74% → 3.0</span>
                             <span class="scale-item"><span class="grade-box" style="background: #f59e0b;">C</span> 60-64% → 2.0</span>
                             <span class="scale-item"><span class="grade-box" style="background: #ef4444;">D</span> Below 60% → 0.0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="grading-status">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #0A3D62;">📋 Grading Status:</div>
+                        <div>
+                            <span class="status-item"><span class="status-box" style="background: #10b981;">DISTINCTION</span> 75-100%</span>
+                            <span class="status-item"><span class="status-box" style="background: #3b82f6;">CREDIT</span> 65-74%</span>
+                            <span class="status-item"><span class="status-box" style="background: #f59e0b;">PASS</span> 60-64%</span>
+                            <span class="status-item"><span class="status-box" style="background: #dc2626;">FAIL</span> Below 60%</span>
+                            <span class="status-item"><span class="status-box" style="background: #94a3b8;">PENDING</span> Not Attempted</span>
                         </div>
                         <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
                             <i class="fas fa-info-circle"></i> Minimum passing grade: C (60%)
@@ -1108,7 +1158,7 @@
     }
 
     // ============================================================
-    // 12. TAB SWITCHING
+    // 13. TAB SWITCHING
     // ============================================================
     function setupTabs() {
         const tabs = document.querySelectorAll('.report-tab');
@@ -1148,7 +1198,7 @@
     }
 
     // ============================================================
-    // 13. INITIALIZE
+    // 14. INITIALIZE
     // ============================================================
     function init() {
         console.log('🔧 Initializing Academic Reports...');
@@ -1233,7 +1283,7 @@
     }
 
     // ============================================================
-    // 14. EXPOSE FUNCTIONS
+    // 15. EXPOSE FUNCTIONS
     // ============================================================
     window.loadMyMarks = loadMyMarks;
     window.filterMyMarks = filterMyMarks;
@@ -1245,9 +1295,10 @@
     window.downloadReportCard = downloadReportCard;
     window.getUnitCode = getUnitCode;
     window.UNIT_CODE_MAP = UNIT_CODE_MAP;
+    window.getGradingStatus = getGradingStatus;
 
     // ============================================================
-    // 15. AUTO-INIT
+    // 16. AUTO-INIT
     // ============================================================
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
