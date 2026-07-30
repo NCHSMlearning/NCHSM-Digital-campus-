@@ -1443,10 +1443,7 @@
         </div>
     </div>
 
-</section>
-<!-- END EXAMS & GRADES -->
-
-  <!-- ==================== ACADEMIC REPORTS TAB ==================== -->
+<!-- ==================== ACADEMIC REPORTS TAB ==================== -->
 <section id="academic-reports" class="tab-content" hidden>
     <div class="reports-header">
         <div class="header-content">
@@ -1465,7 +1462,6 @@
         <button class="report-tab" data-report="yearly"><i class="fas fa-chart-bar"></i> Yearly Summary</button>
         <button class="report-tab" data-report="transcript"><i class="fas fa-file-alt"></i> Full Transcript</button>
         <button class="report-tab" data-report="progress"><i class="fas fa-tasks"></i> Course Progress</button>
-        <!-- ✅ NEW: My Marks Tab -->
         <button class="report-tab" data-report="mymarks"><i class="fas fa-file-alt" style="color: #4C1D95;"></i> 📄 My Marks</button>
     </div>
     
@@ -1660,7 +1656,7 @@
     </div>
     
     <!-- ============================================================ -->
-    <!-- ✅ NEW: MY MARKS TAB - PUBLISHED MARKS / TRANSCRIPT          -->
+    <!-- ✅ MY MARKS TAB - PUBLISHED MARKS / TRANSCRIPT              -->
     <!-- ============================================================ -->
     <div id="mymarks-report" class="report-content" style="display:none;">
         
@@ -1736,6 +1732,9 @@
             </select>
             <input type="text" id="my_marks_search" placeholder="🔍 Search..." style="flex: 1; min-width: 120px; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
             <span style="font-size: 12px; color: #94a3b8;" id="my_marks_count">0 results</span>
+            <button onclick="loadMyMarks()" style="padding: 6px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
         </div>
         
         <!-- Marks Table -->
