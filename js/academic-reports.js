@@ -783,9 +783,8 @@
             alert('Please allow popups to download the transcript.');
         }
     }
-
- // ============================================================
-// 13. DOWNLOAD REPORT CARD (WITH HOD SIGNATURE & STUDENT DECLARATION)
+// ============================================================
+// 13. DOWNLOAD REPORT CARD (WITH SIGNATURES & DECLARATION)
 // ============================================================
 function downloadReportCard() {
     const user = window.currentUserProfile || {};
@@ -803,7 +802,11 @@ function downloadReportCard() {
         day: 'numeric',
         year: 'numeric'
     });
-    const academicYear = user.academic_year || user.intake_year || '2025';
+    
+    // Format Academic Year as 2025/2026
+    const currentYear = new Date().getFullYear();
+    const nextYear = currentYear + 1;
+    const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
     
     let tableRows = '';
     marks.forEach((mark, index) => {
@@ -981,6 +984,7 @@ function downloadReportCard() {
                     font-weight: 600;
                     font-size: 14px;
                     color: #0A3D62;
+                    min-height: 20px;
                 }
                 .declaration {
                     margin-top: 30px;
@@ -1135,10 +1139,10 @@ function downloadReportCard() {
                         <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Date: ${now}</div>
                     </div>
                     <div class="signature-box">
-                        <div class="name">Dr. Jane M. Wanjiru</div>
+                        <div class="name" style="color: #94a3b8; font-weight: 400;">_________________________</div>
                         <div class="line"></div>
                         <div class="label">Head of Department (HOD)</div>
-                        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Date: ${now}</div>
+                        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Date: _____________</div>
                     </div>
                 </div>
                 
