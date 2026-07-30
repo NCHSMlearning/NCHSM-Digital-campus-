@@ -3577,9 +3577,9 @@
         </div>
     </div>
 </section>
-<!-- ============================================ -->
-<!-- PUBLISHED MARKS - WITH INDIVIDUAL PUBLISH    -->
-<!-- ============================================ -->
+<!-- ============================================================ -->
+<!-- PUBLISHED MARKS - WITH INDIVIDUAL PUBLISH                    -->
+<!-- ============================================================ -->
 <section id="publish-marks" class="tab-content">
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #059669, #10b981); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(5,150,105,0.3);">
@@ -3603,6 +3603,9 @@
             </button>
             <button onclick="exportPublishedMarksToCSV()" class="btn-action" style="background: white; color: #059669; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
                 <i class="fas fa-download"></i> Export CSV
+            </button>
+            <button onclick="printPublishedMarks()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-print"></i> Print
             </button>
         </div>
     </div>
@@ -3690,6 +3693,15 @@
             <option value="Term 6">Term 6</option>
         </select>
         
+        <select id="pm_year_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 120px;">
+            <option value="all">All Years</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        
         <select id="pm_status_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 120px;">
             <option value="all">All Status</option>
             <option value="published">✅ Published</option>
@@ -3769,6 +3781,124 @@
         </div>
     </div>
 </section>
+
+<!-- ============================================================ -->
+<!-- BULK PUBLISH MODAL - Place OUTSIDE the section, at the end   -->
+<!-- ============================================================ -->
+<div id="publishModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center;">
+    <div style="background: white; border-radius: 16px; padding: 30px; max-width: 550px; width: 92%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); position: relative;">
+        
+        <!-- Close Button -->
+        <button onclick="closePublishModal()" style="position: absolute; top: 14px; right: 18px; background: none; border: none; font-size: 26px; color: #94a3b8; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#1e293b'" onmouseout="this.style.color='#94a3b8'">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <!-- Header -->
+        <div style="margin-bottom: 24px;">
+            <h2 style="color: #0A3D62; margin: 0 0 4px 0; font-weight: 700;">
+                <i class="fas fa-share-alt" style="color: #10b981;"></i> Bulk Publish Marks
+            </h2>
+            <p style="color: #64748b; margin: 0; font-size: 14px;">
+                Publish marks for all students in a selected unit
+            </p>
+        </div>
+        
+        <!-- Body -->
+        <div style="margin-bottom: 24px;">
+            <!-- Unit Selection -->
+            <div style="margin-bottom: 16px;">
+                <label for="publish_unit_select" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 6px; font-size: 14px;">
+                    <i class="fas fa-book"></i> Select Unit *
+                </label>
+                <select id="publish_unit_select" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="">-- Select Unit --</option>
+                </select>
+            </div>
+            
+            <!-- Assessment Type Selection -->
+            <div style="margin-bottom: 16px;">
+                <label for="publish_assessment_select" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 6px; font-size: 14px;">
+                    <i class="fas fa-clipboard-check"></i> Assessment Type
+                </label>
+                <select id="publish_assessment_select" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="all">All Assessments</option>
+                    <option value="full">Full Assessment</option>
+                    <option value="cat1">CAT 1 Only</option>
+                    <option value="cat2">CAT 2 Only</option>
+                    <option value="exam">Exam Only</option>
+                </select>
+            </div>
+            
+            <!-- Program Filter (optional) -->
+            <div style="margin-bottom: 16px;">
+                <label for="publish_program_filter" style="display: block; font-weight: 600; color: #1e293b; margin-bottom: 6px; font-size: 14px;">
+                    <i class="fas fa-graduation-cap"></i> Program (Optional)
+                </label>
+                <select id="publish_program_filter" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
+                    <option value="all">All Programs</option>
+                    <option value="KRCHN">🎓 KRCHN Nursing</option>
+                    <optgroup label="🎯 TVET Diploma Programs">
+                        <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                        <option value="DCH">Diploma in Community Health</option>
+                        <option value="DHRIT">Diploma in Health Records and IT</option>
+                        <option value="DSL">Diploma in Science Lab</option>
+                        <option value="DSW">Diploma in Social Work</option>
+                        <option value="DCJS">Diploma in Criminal Justice</option>
+                        <option value="DHSS">Diploma in Health Support Services</option>
+                        <option value="DICT">Diploma in ICT</option>
+                        <option value="DME">Diploma in Medical Engineering</option>
+                    </optgroup>
+                    <optgroup label="📜 TVET Certificate Programs">
+                        <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                        <option value="CCH">Certificate in Community Health</option>
+                        <option value="CHRIT">Certificate in Health Records and IT</option>
+                        <option value="CPC">Certificate in Patient Care</option>
+                        <option value="CSL">Certificate in Science Lab</option>
+                        <option value="CSW">Certificate in Social Work</option>
+                        <option value="CCJS">Certificate in Criminal Justice</option>
+                        <option value="CAG">Certificate in Agriculture</option>
+                        <option value="CHSS">Certificate in Health Support Services</option>
+                        <option value="CICT">Certificate in ICT</option>
+                    </optgroup>
+                    <optgroup label="🔧 TVET Artisan Programs">
+                        <option value="ACH">Artisan in Community Health</option>
+                        <option value="AAG">Artisan in Agriculture</option>
+                        <option value="ASW">Artisan in Social Work</option>
+                    </optgroup>
+                </select>
+            </div>
+            
+            <!-- Preview Count -->
+            <div id="publish_preview_stats" style="margin-top: 16px; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #10b981; display: none;">
+                <p style="margin: 0; font-size: 14px; color: #065f46;">
+                    <i class="fas fa-info-circle"></i>
+                    <strong><span id="publish_count_preview">0</span></strong> marks will be published for this unit
+                </p>
+            </div>
+            
+            <!-- Warning Message -->
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 8px; margin-top: 16px;">
+                <p style="margin: 0; font-size: 13px; color: #92400e; display: flex; align-items: flex-start; gap: 10px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 18px; margin-top: 1px;"></i>
+                    <span>
+                        <strong>Warning:</strong> This will publish marks for ALL students in the selected unit. 
+                        This action cannot be undone for individual students.
+                    </span>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer Buttons -->
+        <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+            <button onclick="closePublishModal()" style="padding: 10px 24px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#cbd5e1'" onmouseout="this.style.background='#e2e8f0'">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button onclick="confirmPublishMarks()" style="padding: 10px 24px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                <i class="fas fa-share-alt"></i> Publish Marks
+            </button>
+        </div>
+    </div>
+</div>
     <!-- ============================================ -->
 <!-- TRANSCRIPT GENERATOR - TVET & KRCHN -->
 <!-- ============================================ -->
