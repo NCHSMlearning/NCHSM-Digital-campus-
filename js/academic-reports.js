@@ -236,58 +236,75 @@
     }
 
     function renderMyMarksTable() {
-        const tbody = document.getElementById('my_marks_table_body');
-        if (!tbody) return;
-        
-        const marks = myMarksFiltered;
-        if (!marks || marks.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="11" style="text-align: center; padding: 40px; color: #94a3b8;">
-                        <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                        No published marks found
-                    </td>
-                </tr>
-            `;
-            document.getElementById('my_marks_count').textContent = '0 results';
-            return;
-        }
-        
-        let html = '';
-        marks.forEach((mark, index) => {
-            const statusColor = mark.final_score >= 60 ? '#10b981' : '#dc2626';
-            const gradeColor = getGradeColor(mark.grade);
-            const pubDate = mark.published_at ? new Date(mark.published_at).toLocaleDateString() : '-';
-            const status = mark.final_score >= 60 ? 'Pass' : (mark.final_score > 0 ? 'Fail' : 'Pending');
-            
-            html += `
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 8px 14px; text-align: center;">${index + 1}</td>
-                    <td style="padding: 8px 14px;">
-                        <strong>${escapeHtml(mark.subject_name)}</strong>
-                        <div style="font-size: 11px; color: #94a3b8;">${escapeHtml(mark.admission_number || '')}</div>
-                    </td>
-                    <td style="padding: 8px 14px; text-align: center;">${escapeHtml(mark.block || '-')}</td>
-                    <td style="padding: 8px 14px; text-align: center;">${mark.cat1_score || '-'}</td>
-                    <td style="padding: 8px 14px; text-align: center;">${mark.cat2_score || '-'}</td>
-                    <td style="padding: 8px 14px; text-align: center;">${mark.exam_score || '-'}</td>
-                    <td style="padding: 8px 14px; text-align: center; font-weight: 700; color: ${statusColor};">${mark.final_score || 0}%</td>
-                    <td style="padding: 8px 14px; text-align: center;">
-                        <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${mark.grade || '-'}</span>
-                    </td>
-                    <td style="padding: 8px 14px; text-align: center;">${mark.points || 0.0}</td>
-                    <td style="padding: 8px 14px; text-align: center;">
-                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">${status}</span>
-                    </td>
-                    <td style="padding: 8px 14px; text-align: center; font-size: 12px; color: #94a3b8;">${pubDate}</td>
-                </tr>
-            `;
-        });
-        
-        tbody.innerHTML = html;
-        document.getElementById('my_marks_count').textContent = `${marks.length} results`;
+    const tbody = document.getElementById('my_marks_table_body');
+    if (!tbody) return;
+    
+    const marks = myMarksFiltered;
+    if (!marks || marks.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                    No published marks found
+                </td>
+            </tr>
+        `;
+        document.getElementById('my_marks_count').textContent = '0 results';
+        return;
     }
+    
+    let html = '';
+    marks.forEach((mark, index) => {
+        // Determine pass/fail
+        const isPass = mark.grade !== 'FAIL' && mark.grade !== 'F' && mark.grade !== 'E';
+        const statusColor = isPass ? '#10b981' : '#dc2626';
+        const statusText = isPass ? '✅ Pass' : '❌ Fail';
+        
+        // Grade color
+        const gradeColor = getGradeColor(mark.grade);
+        
+        // Get unit code - use subject_code or generate from subject_name
+        const unitCode = mark.unit_code || mark.subject_code || generateUnitCode(mark.subject_name);
+        const unitName = mark.subject_name || 'N/A';
+        const credits = mark.credits || 3;
+        
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+                onmouseover="this.style.background='#f8fafc'" 
+                onmouseout="this.style.background='transparent'">
+                <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
+                <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
+                <td style="padding: 10px 14px;">${escapeHtml(unitName)}</td>
+                <td style="padding: 10px 14px; text-align: center;">${credits}</td>
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
+                        ${mark.grade || '-'}
+                    </span>
+                </td>
+                <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${mark.points || 0.0}</td>
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 12px;">
+                        ${statusText}
+                    </span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    document.getElementById('my_marks_count').textContent = `${marks.length} results`;
+}
 
+// Helper function to generate unit code from subject name
+function generateUnitCode(subjectName) {
+    if (!subjectName) return 'N/A';
+    const words = subjectName.split(' ');
+    if (words.length === 1) {
+        return subjectName.substring(0, 6).toUpperCase();
+    }
+    const code = words.map(w => w[0]).join('').toUpperCase();
+    return code.length > 6 ? code.substring(0, 6) : code;
+}
     function updateMyMarksStats() {
         const marks = myMarksData;
         const total = marks.length;
