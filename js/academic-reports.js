@@ -222,7 +222,7 @@
         
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align: center; padding: 40px;">
+                <td colspan="7" style="text-align: center; padding: 40px;">
                     <div class="loading-spinner"></div>
                     <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
                 </td>
@@ -232,16 +232,21 @@
         try {
             const user = window.currentUserProfile || window.db?.currentUserProfile;
             if (!user) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
                 return;
             }
             
             const registrationNumber = user.student_id || user.admission_number || user.user_id;
             
-            document.getElementById('my_marks_student_name').textContent = user.full_name || 'Student';
-            document.getElementById('my_marks_admission').textContent = registrationNumber || '-';
-            document.getElementById('my_marks_program').textContent = user.program || '-';
-            document.getElementById('my_marks_academic_year').textContent = user.academic_year || user.intake_year || '2025';
+            // Update student info - only elements that exist
+            const nameEl = document.getElementById('my_marks_student_name');
+            if (nameEl) nameEl.textContent = user.full_name || 'Student';
+            
+            const admissionEl = document.getElementById('my_marks_admission');
+            if (admissionEl) admissionEl.textContent = registrationNumber || '-';
+            
+            const programEl = document.getElementById('my_marks_program');
+            if (programEl) programEl.textContent = user.program || '-';
             
             const blockLabel = PROGRAM.getBlockLabel(user.program);
             const headerEl = document.querySelector('#my_marks_table_body')?.closest('table')?.querySelector('th:nth-child(3)');
@@ -342,7 +347,7 @@
             
         } catch (error) {
             console.error('Error loading my marks:', error);
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
         }
     }
 
@@ -363,72 +368,62 @@
         });
     }
 
-   function renderMyMarksTable() {
-    const tbody = document.getElementById('my_marks_table_body');
-    if (!tbody) return;
-    
-    const marks = myMarksFiltered;
-    if (!marks || marks.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                    No published marks found
-                </td>
-            </tr>
-        `;
-        document.getElementById('my_marks_count').textContent = '0 results';
-        return;
+    function renderMyMarksTable() {
+        const tbody = document.getElementById('my_marks_table_body');
+        if (!tbody) return;
+        
+        const marks = myMarksFiltered;
+        if (!marks || marks.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                        No published marks found
+                    </td>
+                </tr>
+            `;
+            document.getElementById('my_marks_count').textContent = '0 results';
+            return;
+        }
+        
+        let html = '';
+        marks.forEach((mark, index) => {
+            const status = getGradingStatus(mark.final_score);
+            const statusColor = getStatusColor(status);
+            const gradeColor = getGradeColor(mark.grade);
+            const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
+            const credits = mark.credits || 3;
+            
+            html += `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+                    onmouseover="this.style.background='#f8fafc'" 
+                    onmouseout="this.style.background='transparent'">
+                    <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
+                    <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
+                    <td style="padding: 10px 14px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                    <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${credits}</td>
+                    <td style="padding: 10px 14px; text-align: center; font-weight: 700;">${mark.final_score || 0}%</td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
+                            ${mark.grade || '-'}
+                        </span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
+                            ${status}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+        document.getElementById('my_marks_count').textContent = `${marks.length} results`;
     }
-    
-    let html = '';
-    marks.forEach((mark, index) => {
-        const status = getGradingStatus(mark.final_score);
-        const statusColor = getStatusColor(status);
-        const gradeColor = getGradeColor(mark.grade);
-        const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-        const credits = mark.credits || 3;
-        
-        html += `
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
-                onmouseover="this.style.background='#f8fafc'" 
-                onmouseout="this.style.background='transparent'">
-                <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
-                <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
-                <td style="padding: 10px 14px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
-                <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${credits}</td>
-                <td style="padding: 10px 14px; text-align: center; font-weight: 700;">${mark.final_score || 0}%</td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
-                        ${mark.grade || '-'}
-                    </span>
-                </td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
-                        ${status}
-                    </span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    tbody.innerHTML = html;
-    document.getElementById('my_marks_count').textContent = `${marks.length} results`;
-}
+
     function updateMyMarksStats() {
-        const marks = myMarksData;
-        const total = marks.length;
-        const passed = marks.filter(m => m.final_score >= 60).length;
-        const failed = marks.filter(m => m.final_score > 0 && m.final_score < 60).length;
-        const avg = total > 0 ? (marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / total) : 0;
-        const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
-        const gpa = total > 0 ? (totalPoints / total) : 0;
-        
-        document.getElementById('my_marks_total').textContent = total;
-        document.getElementById('my_marks_passed').textContent = passed;
-        document.getElementById('my_marks_failed').textContent = failed;
-        document.getElementById('my_marks_avg').textContent = avg.toFixed(1) + '%';
-        document.getElementById('my_marks_gpa').textContent = gpa.toFixed(2);
+        // Stats removed - keeping function for compatibility
+        return;
     }
 
     function filterMyMarks() {
@@ -769,7 +764,7 @@
     }
 
     // ============================================================
-    // 12. DOWNLOAD REPORT CARD (WITH GRADING STATUS: DISTINCTION, CREDIT, PASS, FAIL)
+    // 12. DOWNLOAD REPORT CARD (WITH LOGO, NO POINTS, NO STATS)
     // ============================================================
     function downloadReportCard() {
         const user = window.currentUserProfile || {};
@@ -780,14 +775,6 @@
             return;
         }
         
-        const total = marks.length;
-        const passed = marks.filter(m => m.final_score >= 60).length;
-        const failed = marks.filter(m => m.final_score > 0 && m.final_score < 60).length;
-        const avg = total > 0 ? (marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / total) : 0;
-        const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
-        const gpa = total > 0 ? (totalPoints / total) : 0;
-        const programType = PROGRAM.isTVET(user.program) ? 'TVET' : 'KRCHN';
-        const blockLabel = PROGRAM.getBlockLabel(user.program);
         const now = new Date().toLocaleDateString('en-KE', {
             timeZone: 'Africa/Nairobi',
             weekday: 'long',
@@ -809,6 +796,7 @@
                     <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
                     <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(mark.subject_name || 'N/A')}</td>
                     <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${mark.credits || 3}</td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700;">${mark.final_score || 0}%</td>
                     <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
                         <span style="background: ${getGradeColor(mark.grade)}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${mark.grade || '-'}</span>
                     </td>
@@ -917,33 +905,6 @@
                         border-bottom: 1px solid #e5e7eb; 
                         font-size: 13px; 
                     }
-                    .summary { 
-                        display: grid; 
-                        grid-template-columns: repeat(3, 1fr); 
-                        gap: 16px; 
-                        margin: 20px 0; 
-                    }
-                    .summary-card { 
-                        background: #f8fafc; 
-                        padding: 16px; 
-                        border-radius: 8px; 
-                        text-align: center; 
-                        border: 1px solid #e5e7eb; 
-                    }
-                    .summary-card .value { 
-                        font-size: 24px; 
-                        font-weight: 700; 
-                        color: #0A3D62; 
-                    }
-                    .summary-card .label { 
-                        font-size: 11px; 
-                        color: #94a3b8; 
-                        text-transform: uppercase; 
-                        letter-spacing: 0.5px;
-                        margin-top: 4px;
-                    }
-                    .summary-card .value.pass { color: #10b981; }
-                    .summary-card .value.fail { color: #dc2626; }
                     .footer { 
                         text-align: center; 
                         margin-top: 30px; 
@@ -1014,7 +975,6 @@
                     }
                     @media (max-width: 768px) {
                         .student-info { grid-template-columns: 1fr 1fr; }
-                        .summary { grid-template-columns: 1fr 1fr; }
                         table { font-size: 11px; }
                         th, td { padding: 6px 8px; }
                     }
@@ -1048,34 +1008,11 @@
                         </div>
                         <div>
                             <div class="label">Program</div>
-                            <div class="value">${escapeHtml(user.program || 'KRCHN')} (${programType})</div>
-                        </div>
-                        <div>
-                            <div class="label">Current ${blockLabel}</div>
-                            <div class="value">${escapeHtml(user.block || 'N/A')}</div>
+                            <div class="value">${escapeHtml(user.program || 'KRCHN')}</div>
                         </div>
                         <div>
                             <div class="label">Academic Year</div>
                             <div class="value">${escapeHtml(academicYear)}</div>
-                        </div>
-                        <div>
-                            <div class="label">Overall GPA</div>
-                            <div class="value" style="color: #6d28d9; font-size: 20px;">${gpa.toFixed(2)}</div>
-                        </div>
-                    </div>
-                    
-                    <div class="summary">
-                        <div class="summary-card">
-                            <div class="value">${total}</div>
-                            <div class="label">Total Units</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="value pass">${passed}</div>
-                            <div class="label">Passed</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="value fail">${failed}</div>
-                            <div class="label">Failed</div>
                         </div>
                     </div>
                     
@@ -1086,9 +1023,8 @@
                                 <th style="min-width: 100px;">Unit Code</th>
                                 <th style="min-width: 150px;">Unit Name</th>
                                 <th style="text-align: center; width: 60px;">Credits</th>
-                                <th style="text-align: center; width: 70px;">Total</th>
+                                <th style="text-align: center; width: 70px;">Score</th>
                                 <th style="text-align: center; width: 60px;">Grade</th>
-                                <th style="text-align: center; width: 60px;">Points</th>
                                 <th style="text-align: center; width: 100px;">Status</th>
                             </tr>
                         </thead>
@@ -1130,10 +1066,10 @@
                     </div>
                     
                     <div style="text-align: center; margin-top: 20px;" class="no-print">
-                        <button onclick="window.print()" style="padding: 12px 40px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
+                        <button onclick="window.print()" style="padding: 12px 40px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
                             <i class="fas fa-print"></i> 🖨️ Print Report Card
                         </button>
-                        <button onclick="window.close()" style="padding: 12px 40px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px; transition: all 0.3s;">
+                        <button onclick="window.close()" style="padding: 12px 40px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
                             <i class="fas fa-times"></i> Close
                         </button>
                     </div>
