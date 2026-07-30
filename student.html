@@ -1446,17 +1446,347 @@
 </section>
 <!-- END EXAMS & GRADES -->
 
-  
-            <!-- ==================== ACADEMIC REPORTS TAB ==================== -->
-            <section id="academic-reports" class="tab-content" hidden>
-                <div class="reports-header"><div class="header-content"><h2><i class="fas fa-chart-line"></i> Academic Reports</h2><p class="subtitle">View your academic performance, transcripts, and progress reports</p></div><div class="header-actions"><button id="download-transcript-pdf" class="btn-primary"><i class="fas fa-download"></i> Download Full Transcript</button><button id="print-report" class="btn-secondary"><i class="fas fa-print"></i> Print Report</button></div></div>
-                <div class="report-tabs"><button class="report-tab active" data-report="semester"><i class="fas fa-calendar-alt"></i> Semester Report</button><button class="report-tab" data-report="yearly"><i class="fas fa-chart-bar"></i> Yearly Summary</button><button class="report-tab" data-report="transcript"><i class="fas fa-file-alt"></i> Full Transcript</button><button class="report-tab" data-report="progress"><i class="fas fa-tasks"></i> Course Progress</button></div>
-                <div id="semester-report" class="report-content active"><div class="report-filter"><div class="filter-group"><label><i class="fas fa-calendar"></i> Select Semester:</label><select id="semester-filter" class="modern-select"><option value="2024-2025">2024/2025 - Semester 2</option><option value="2024-2025-1">2024/2025 - Semester 1</option></select></div><div class="filter-group"><label><i class="fas fa-chart-simple"></i> GPA Type:</label><select id="gpa-type" class="modern-select"><option value="semester">Semester GPA</option><option value="cumulative">Cumulative GPA</option></select></div><button id="refresh-report" class="btn-refresh"><i class="fas fa-sync-alt"></i> Load Report</button></div><div class="gpa-summary"><div class="gpa-card"><div class="gpa-icon semester"><i class="fas fa-calendar-week"></i></div><div class="gpa-info"><span class="gpa-label">Semester GPA</span><span class="gpa-value" id="semester-gpa">3.45</span><span class="gpa-grade" id="semester-grade">B+</span></div></div><div class="gpa-card"><div class="gpa-icon cumulative"><i class="fas fa-chart-line"></i></div><div class="gpa-info"><span class="gpa-label">Cumulative GPA</span><span class="gpa-value" id="cumulative-gpa">3.28</span><span class="gpa-grade" id="cumulative-grade">B</span></div></div><div class="gpa-card"><div class="gpa-icon credits"><i class="fas fa-star"></i></div><div class="gpa-info"><span class="gpa-label">Total Credits</span><span class="gpa-value" id="total-credits-earned">87</span><span class="gpa-grade">Attempted: 96</span></div></div><div class="gpa-card"><div class="gpa-icon rank"><i class="fas fa-trophy"></i></div><div class="gpa-info"><span class="gpa-label">Class Rank</span><span class="gpa-value" id="class-rank">15</span><span class="gpa-grade">/ 120 students</span></div></div></div><div class="grades-section"><h3><i class="fas fa-table-list"></i> Course Grades</h3><div class="table-container"><table class="grades-table"><thead><tr><th>Course Code</th><th>Course Name</th><th>Credits</th><th>CAT 1</th><th>CAT 2</th><th>Final</th><th>Total</th><th>Grade</th><th>Status</th></tr></thead><tbody id="grades-table-body"><tr><td colspan="9"><div class="loading-spinner"></div> Loading grades...</td></tr></tbody></table></div></div><div class="performance-section"><h3><i class="fas fa-chart-pie"></i> Performance Analysis</h3><div class="chart-container"><canvas id="grade-distribution-chart" width="400" height="200"></canvas></div></div></div>
-                <div id="yearly-report" class="report-content" style="display:none;"><div class="yearly-summary"><div class="year-selector"><select id="year-filter" class="modern-select"><option value="2024">2024 Academic Year</option><option value="2023">2023 Academic Year</option></select></div><div class="yearly-stats"><div class="stat-card"><div class="stat-value" id="year-gpa">3.45</div><div class="stat-label">Year GPA</div></div><div class="stat-card"><div class="stat-value" id="year-credits">48</div><div class="stat-label">Credits Earned</div></div><div class="stat-card"><div class="stat-value" id="year-courses">12</div><div class="stat-label">Courses Completed</div></div><div class="stat-card"><div class="stat-value" id="year-awards">2</div><div class="stat-label">Achievements</div></div></div></div></div>
-                <div id="transcript-report" class="report-content" style="display:none;"><div class="transcript-header"><div class="institution-info"><h3>Nakuru College of Health Sciences and Management</h3><p>Academic Transcript - <span id="student-name-display">Student Name</span></p><p>Program: <span id="program-display">KRCHN</span> | Student ID: <span id="student-id-display">KRCHN/119/026</span></p></div></div><div class="transcript-table-container"><table class="transcript-table"><thead><tr><th>Year/Semester</th><th>Course Code</th><th>Course Name</th><th>Credits</th><th>Grade</th><th>Points</th></tr></thead><tbody id="transcript-table-body"><tr><td colspan="6">Loading transcript...</td></tr></tbody></table></div><div class="transcript-summary"><div class="summary-line"><strong>Total Credits Attempted:</strong> <span id="total-attempted">0</span></div><div class="summary-line"><strong>Total Credits Earned:</strong> <span id="total-earned">0</span></div><div class="summary-line"><strong>Cumulative GPA:</strong> <span id="transcript-cgpa">0.00</span></div></div></div>
-                <div id="progress-report" class="report-content" style="display:none;"><div class="progress-summary"><h3><i class="fas fa-chart-simple"></i> Course Completion Progress</h3><div class="overall-progress"><div class="progress-circle"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="8"/><circle cx="50" cy="50" r="45" fill="none" stroke="#4f46e5" stroke-width="8" stroke-dasharray="283" stroke-dashoffset="85" transform="rotate(-90 50 50)"/><text x="50" y="55" text-anchor="middle" fill="#4f46e5" font-size="20" font-weight="bold">70%</text></svg></div><div class="progress-details"><p>Overall Completion: <strong>70%</strong></p><p>Completed Courses: <strong id="completed-courses-progress">18</strong>/<span id="total-courses-progress">26</span></p></div></div><div class="course-progress-list" id="course-progress-list"><div class="progress-item"><div class="progress-header"><span class="course-name">Anatomy & Physiology</span><span class="progress-percent">85%</span></div><div class="progress-bar"><div class="progress-fill" style="width:85%"></div></div></div><div class="progress-item"><div class="progress-header"><span class="course-name">Medical-Surgical Nursing</span><span class="progress-percent">72%</span></div><div class="progress-bar"><div class="progress-fill" style="width:72%"></div></div></div></div></div></div>
-            </section>
-            <!-- END ACADEMIC REPORTS -->
+  <!-- ==================== ACADEMIC REPORTS TAB ==================== -->
+<section id="academic-reports" class="tab-content" hidden>
+    <div class="reports-header">
+        <div class="header-content">
+            <h2><i class="fas fa-chart-line"></i> Academic Reports</h2>
+            <p class="subtitle">View your academic performance, transcripts, and progress reports</p>
+        </div>
+        <div class="header-actions">
+            <button id="download-transcript-pdf" class="btn-primary"><i class="fas fa-download"></i> Download Full Transcript</button>
+            <button id="print-report" class="btn-secondary"><i class="fas fa-print"></i> Print Report</button>
+        </div>
+    </div>
+    
+    <!-- ========== REPORT TABS ========== -->
+    <div class="report-tabs">
+        <button class="report-tab active" data-report="semester"><i class="fas fa-calendar-alt"></i> Semester Report</button>
+        <button class="report-tab" data-report="yearly"><i class="fas fa-chart-bar"></i> Yearly Summary</button>
+        <button class="report-tab" data-report="transcript"><i class="fas fa-file-alt"></i> Full Transcript</button>
+        <button class="report-tab" data-report="progress"><i class="fas fa-tasks"></i> Course Progress</button>
+        <!-- ✅ NEW: My Marks Tab -->
+        <button class="report-tab" data-report="mymarks"><i class="fas fa-file-alt" style="color: #4C1D95;"></i> 📄 My Marks</button>
+    </div>
+    
+    <!-- ========== SEMESTER REPORT ========== -->
+    <div id="semester-report" class="report-content active">
+        <div class="report-filter">
+            <div class="filter-group">
+                <label><i class="fas fa-calendar"></i> Select Semester:</label>
+                <select id="semester-filter" class="modern-select">
+                    <option value="2024-2025">2024/2025 - Semester 2</option>
+                    <option value="2024-2025-1">2024/2025 - Semester 1</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-chart-simple"></i> GPA Type:</label>
+                <select id="gpa-type" class="modern-select">
+                    <option value="semester">Semester GPA</option>
+                    <option value="cumulative">Cumulative GPA</option>
+                </select>
+            </div>
+            <button id="refresh-report" class="btn-refresh"><i class="fas fa-sync-alt"></i> Load Report</button>
+        </div>
+        
+        <div class="gpa-summary">
+            <div class="gpa-card">
+                <div class="gpa-icon semester"><i class="fas fa-calendar-week"></i></div>
+                <div class="gpa-info">
+                    <span class="gpa-label">Semester GPA</span>
+                    <span class="gpa-value" id="semester-gpa">3.45</span>
+                    <span class="gpa-grade" id="semester-grade">B+</span>
+                </div>
+            </div>
+            <div class="gpa-card">
+                <div class="gpa-icon cumulative"><i class="fas fa-chart-line"></i></div>
+                <div class="gpa-info">
+                    <span class="gpa-label">Cumulative GPA</span>
+                    <span class="gpa-value" id="cumulative-gpa">3.28</span>
+                    <span class="gpa-grade" id="cumulative-grade">B</span>
+                </div>
+            </div>
+            <div class="gpa-card">
+                <div class="gpa-icon credits"><i class="fas fa-star"></i></div>
+                <div class="gpa-info">
+                    <span class="gpa-label">Total Credits</span>
+                    <span class="gpa-value" id="total-credits-earned">87</span>
+                    <span class="gpa-grade">Attempted: 96</span>
+                </div>
+            </div>
+            <div class="gpa-card">
+                <div class="gpa-icon rank"><i class="fas fa-trophy"></i></div>
+                <div class="gpa-info">
+                    <span class="gpa-label">Class Rank</span>
+                    <span class="gpa-value" id="class-rank">15</span>
+                    <span class="gpa-grade">/ 120 students</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grades-section">
+            <h3><i class="fas fa-table-list"></i> Course Grades</h3>
+            <div class="table-container">
+                <table class="grades-table">
+                    <thead>
+                        <tr>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th>Credits</th>
+                            <th>CAT 1</th>
+                            <th>CAT 2</th>
+                            <th>Final</th>
+                            <th>Total</th>
+                            <th>Grade</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="grades-table-body">
+                        <tr><td colspan="9"><div class="loading-spinner"></div> Loading grades...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="performance-section">
+            <h3><i class="fas fa-chart-pie"></i> Performance Analysis</h3>
+            <div class="chart-container">
+                <canvas id="grade-distribution-chart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ========== YEARLY REPORT ========== -->
+    <div id="yearly-report" class="report-content" style="display:none;">
+        <div class="yearly-summary">
+            <div class="year-selector">
+                <select id="year-filter" class="modern-select">
+                    <option value="2024">2024 Academic Year</option>
+                    <option value="2023">2023 Academic Year</option>
+                </select>
+            </div>
+            <div class="yearly-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="year-gpa">3.45</div>
+                    <div class="stat-label">Year GPA</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="year-credits">48</div>
+                    <div class="stat-label">Credits Earned</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="year-courses">12</div>
+                    <div class="stat-label">Courses Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="year-awards">2</div>
+                    <div class="stat-label">Achievements</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ========== FULL TRANSCRIPT ========== -->
+    <div id="transcript-report" class="report-content" style="display:none;">
+        <div class="transcript-header">
+            <div class="institution-info">
+                <h3>Nakuru College of Health Sciences and Management</h3>
+                <p>Academic Transcript - <span id="student-name-display">Student Name</span></p>
+                <p>Program: <span id="program-display">KRCHN</span> | Student ID: <span id="student-id-display">KRCHN/119/026</span></p>
+            </div>
+        </div>
+        <div class="transcript-table-container">
+            <table class="transcript-table">
+                <thead>
+                    <tr>
+                        <th>Year/Semester</th>
+                        <th>Course Code</th>
+                        <th>Course Name</th>
+                        <th>Credits</th>
+                        <th>Grade</th>
+                        <th>Points</th>
+                    </tr>
+                </thead>
+                <tbody id="transcript-table-body">
+                    <tr><td colspan="6">Loading transcript...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="transcript-summary">
+            <div class="summary-line"><strong>Total Credits Attempted:</strong> <span id="total-attempted">0</span></div>
+            <div class="summary-line"><strong>Total Credits Earned:</strong> <span id="total-earned">0</span></div>
+            <div class="summary-line"><strong>Cumulative GPA:</strong> <span id="transcript-cgpa">0.00</span></div>
+        </div>
+    </div>
+    
+    <!-- ========== COURSE PROGRESS ========== -->
+    <div id="progress-report" class="report-content" style="display:none;">
+        <div class="progress-summary">
+            <h3><i class="fas fa-chart-simple"></i> Course Completion Progress</h3>
+            <div class="overall-progress">
+                <div class="progress-circle">
+                    <svg viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#4f46e5" stroke-width="8" stroke-dasharray="283" stroke-dashoffset="85" transform="rotate(-90 50 50)"/>
+                        <text x="50" y="55" text-anchor="middle" fill="#4f46e5" font-size="20" font-weight="bold">70%</text>
+                    </svg>
+                </div>
+                <div class="progress-details">
+                    <p>Overall Completion: <strong>70%</strong></p>
+                    <p>Completed Courses: <strong id="completed-courses-progress">18</strong>/<span id="total-courses-progress">26</span></p>
+                </div>
+            </div>
+            <div class="course-progress-list" id="course-progress-list">
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="course-name">Anatomy & Physiology</span>
+                        <span class="progress-percent">85%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:85%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="course-name">Medical-Surgical Nursing</span>
+                        <span class="progress-percent">72%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:72%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ============================================================ -->
+    <!-- ✅ NEW: MY MARKS TAB - PUBLISHED MARKS / TRANSCRIPT          -->
+    <!-- ============================================================ -->
+    <div id="mymarks-report" class="report-content" style="display:none;">
+        
+        <!-- Student Info Card -->
+        <div class="transcript-student-card" style="
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            color: white;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        ">
+            <div>
+                <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase;">Student Name</div>
+                <div style="font-size: 16px; font-weight: 600;" id="my_marks_student_name">Loading...</div>
+            </div>
+            <div>
+                <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase;">Admission Number</div>
+                <div style="font-size: 16px; font-weight: 600;" id="my_marks_admission">-</div>
+            </div>
+            <div>
+                <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase;">Program</div>
+                <div style="font-size: 16px; font-weight: 600;" id="my_marks_program">-</div>
+            </div>
+            <div>
+                <div style="font-size: 11px; opacity: 0.7; text-transform: uppercase;">Overall GPA</div>
+                <div style="font-size: 16px; font-weight: 700; color: #FDB913;" id="my_marks_gpa">0.0</div>
+            </div>
+        </div>
+        
+        <!-- Stats -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px;">
+            <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb; text-align: center;">
+                <div style="font-size: 11px; color: #94a3b8;">Total Units</div>
+                <div style="font-size: 22px; font-weight: 700; color: #0A3D62;" id="my_marks_total">0</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb; text-align: center;">
+                <div style="font-size: 11px; color: #94a3b8;">Passed</div>
+                <div style="font-size: 22px; font-weight: 700; color: #10b981;" id="my_marks_passed">0</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb; text-align: center;">
+                <div style="font-size: 11px; color: #94a3b8;">Failed</div>
+                <div style="font-size: 22px; font-weight: 700; color: #dc2626;" id="my_marks_failed">0</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb; text-align: center;">
+                <div style="font-size: 11px; color: #94a3b8;">Average Score</div>
+                <div style="font-size: 22px; font-weight: 700; color: #6d28d9;" id="my_marks_avg">0%</div>
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div style="background: white; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <select id="my_marks_subject_filter" class="form-select" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; min-width: 150px;">
+                <option value="all">All Subjects</option>
+            </select>
+            <select id="my_marks_block_filter" class="form-select" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; min-width: 130px;">
+                <option value="all">All Blocks</option>
+                <option value="Introductory">Introductory</option>
+                <option value="Block 1">Block 1</option>
+                <option value="Block 2">Block 2</option>
+                <option value="Block 3">Block 3</option>
+                <option value="Block 4">Block 4</option>
+                <option value="Block 5">Block 5</option>
+                <option value="Final">Final</option>
+                <option value="Term 1">Term 1</option>
+                <option value="Term 2">Term 2</option>
+                <option value="Term 3">Term 3</option>
+                <option value="Term 4">Term 4</option>
+                <option value="Term 5">Term 5</option>
+                <option value="Term 6">Term 6</option>
+            </select>
+            <input type="text" id="my_marks_search" placeholder="🔍 Search..." style="flex: 1; min-width: 120px; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+            <span style="font-size: 12px; color: #94a3b8;" id="my_marks_count">0 results</span>
+        </div>
+        
+        <!-- Marks Table -->
+        <div style="background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                        <tr>
+                            <th style="padding: 10px 14px; text-align: left;">#</th>
+                            <th style="padding: 10px 14px; text-align: left;">Subject/Unit</th>
+                            <th style="padding: 10px 14px; text-align: center;">Block</th>
+                            <th style="padding: 10px 14px; text-align: center;">CAT 1</th>
+                            <th style="padding: 10px 14px; text-align: center;">CAT 2</th>
+                            <th style="padding: 10px 14px; text-align: center;">Exam</th>
+                            <th style="padding: 10px 14px; text-align: center;">Total</th>
+                            <th style="padding: 10px 14px; text-align: center;">Grade</th>
+                            <th style="padding: 10px 14px; text-align: center;">Points</th>
+                            <th style="padding: 10px 14px; text-align: center;">Status</th>
+                            <th style="padding: 10px 14px; text-align: center;">Published</th>
+                        </tr>
+                    </thead>
+                    <tbody id="my_marks_table_body">
+                        <tr>
+                            <td colspan="11" style="text-align: center; padding: 40px;">
+                                <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                                <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Grading Scale -->
+        <div style="margin-top: 20px; background: white; border-radius: 8px; padding: 16px; border: 1px solid #e5e7eb;">
+            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #0A3D62;">
+                <i class="fas fa-graduation-cap"></i> Grading Scale
+            </h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 11px;">A (75-100%) → 4.0</span>
+                <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 11px;">B (65-74%) → 3.0</span>
+                <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 11px;">C (60-64%) → 2.0</span>
+                <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 11px;">D (Below 60%) → 0.0</span>
+            </div>
+        </div>
+        
+    </div>
+    <!-- END MY MARKS TAB -->
+    
+</section>
+<!-- END ACADEMIC REPORTS -->
 
 <!-- ==================== ATTENDANCE TAB ==================== -->
 <section id="attendance" class="tab-content" hidden>
