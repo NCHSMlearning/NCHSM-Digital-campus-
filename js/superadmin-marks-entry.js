@@ -2709,3 +2709,478 @@ console.log('   - ✅ Student management with select all');
 console.log('   - ✅ Auto-approve on save for Admin');
 console.log('   - ✅ Export to CSV');
 console.log('   - ✅ Dynamic content toggle');
+// ============================================================
+// PUBLISH FUNCTIONS - Publish Marks from Marks Entry
+// ============================================================
+
+/**
+ * Publish ALL marks for the currently selected unit
+ */
+async function publishCurrentUnitMarks() {
+    const unit = me_currentUnit;
+    const block = me_currentBlock;
+    const program = me_currentProgram;
+    const year = me_currentYear;
+    const assessmentType = me_currentAssessmentType || 'full';
+    
+    if (!unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit first', 'warning');
+        }
+        return;
+    }
+    
+    // Get current marks count
+    const totalMarks = me_currentMarks?.length || 0;
+    if (totalMarks === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No marks found for this unit', 'warning');
+        }
+        return;
+    }
+    
+    // Confirm with user
+    const programLabel = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET Programs';
+    const confirmMsg = `⚠️ Publish ALL marks for "${unit}"?\n\n` +
+        `Program: ${programLabel}\n` +
+        `Block: ${block}\n` +
+        `Year: ${year}\n` +
+        `Students: ${totalMarks}\n\n` +
+        `This will make marks visible to ALL students in this unit.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    if (typeof showLoading === 'function') {
+        showLoading(`Publishing ${totalMarks} marks...`);
+    }
+    
+    try {
+        let query = window.sb
+            .from('student_marks')
+            .update({
+                published: true,
+                published_at: new Date().toISOString(),
+                published_by: window.currentUser?.id || null
+            })
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('academic_year', year);
+        
+        if (program) {
+            query = query.eq('program', program);
+        }
+        
+        if (assessmentType && assessmentType !== 'full') {
+            query = query.eq('assessment_type', assessmentType);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        const count = data?.length || 0;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ Published ${count} marks for "${unit}"!`, 'success');
+        }
+        
+        // Refresh the marks entry view
+        loadMarksEntry();
+        
+        // Also refresh the published marks view if it's loaded
+        if (typeof window.loadPublishedMarks === 'function') {
+            setTimeout(window.loadPublishedMarks, 500);
+        }
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error publishing marks:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error publishing marks: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// STUDENT PUBLISH MODAL FUNCTIONS
+// ============================================================
+
+let sp_students = [];
+let sp_selected = new Set();
+
+/**
+ * Open the student publish modal
+ */
+function openStudentPublishModal() {
+    const modal = document.getElementById('studentPublishModal');
+    if (!modal) {
+        if (typeof showNotification === 'function') {
+            showNotification('Modal not found', 'error');
+        }
+        return;
+    }
+    
+    // Update unit/block display
+    document.getElementById('sp_unit_display').textContent = `Unit: ${me_currentUnit || 'Not selected'}`;
+    document.getElementById('sp_block_display').textContent = `Block: ${me_currentBlock || 'Not selected'}`;
+    
+    // Load students
+    loadStudentPublishList();
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close the student publish modal
+ */
+function closeStudentPublishModal() {
+    document.getElementById('studentPublishModal').style.display = 'none';
+}
+
+/**
+ * Load students for the publish modal
+ */
+function loadStudentPublishList() {
+    const container = document.getElementById('sp_student_list');
+    if (!container) return;
+    
+    const marks = me_currentMarks || [];
+    sp_students = marks;
+    sp_selected = new Set();
+    
+    if (marks.length === 0) {
+        container.innerHTML = `
+            <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
+                <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                No students found for this unit
+            </td></tr>
+        `;
+        updateStudentPublishStats();
+        return;
+    }
+    
+    renderStudentPublishList(marks);
+    updateStudentPublishStats();
+}
+
+/**
+ * Render the student publish list with checkboxes
+ */
+function renderStudentPublishList(marks) {
+    const container = document.getElementById('sp_student_list');
+    if (!container) return;
+    
+    const searchTerm = document.getElementById('sp_search')?.value?.toLowerCase() || '';
+    
+    let filteredMarks = marks;
+    if (searchTerm) {
+        filteredMarks = marks.filter(m => 
+            (m.name || m.student_name || '').toLowerCase().includes(searchTerm) ||
+            (m.admission || m.admission_number || '').toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    let html = '';
+    filteredMarks.forEach((mark, index) => {
+        const admission = mark.admission || mark.admission_number || 'N/A';
+        const name = mark.name || mark.student_name || 'Unknown';
+        const score = mark.final || mark.final_score || 0;
+        const grade = mark.grade || '-';
+        const isPublished = mark.published === true;
+        const isPassing = score >= 60;
+        const isSelected = sp_selected.has(admission);
+        const gradeColor = getGradeColor(grade);
+        
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                <td style="padding: 8px 12px; text-align: center;">
+                    <input type="checkbox" class="sp-student-checkbox" data-admission="${admission}" 
+                           ${isSelected ? 'checked' : ''} ${isPublished ? 'disabled' : ''}
+                           onchange="toggleStudentSelection('${admission}', this.checked)" 
+                           style="width: 16px; height: 16px; cursor: ${isPublished ? 'not-allowed' : 'pointer'};">
+                </td>
+                <td style="padding: 8px 12px; font-weight: 500;">${escapeHtml(name)}</td>
+                <td style="padding: 8px 12px; font-size: 12px; color: #64748b;">${escapeHtml(admission)}</td>
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${isPassing ? '#10b981' : '#dc2626'};">${score}%</td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${escapeHtml(grade)}</span>
+                </td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="color: ${isPassing ? '#10b981' : '#dc2626'}; font-weight: 600; font-size: 12px;">
+                        ${isPassing ? '✅ Pass' : '❌ Fail'}
+                    </span>
+                </td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="color: ${isPublished ? '#10b981' : '#94a3b8'}; font-weight: 600; font-size: 12px;">
+                        ${isPublished ? '✅ Published' : '📝 Draft'}
+                    </span>
+                    ${isPublished ? `<br><span style="font-size: 10px; color: #94a3b8;">Already published</span>` : ''}
+                </td>
+            </tr>
+        `;
+    });
+    
+    container.innerHTML = html;
+    updateStudentPublishStats();
+}
+
+/**
+ * Toggle selection of a student
+ */
+function toggleStudentSelection(admission, checked) {
+    if (checked) {
+        sp_selected.add(admission);
+    } else {
+        sp_selected.delete(admission);
+    }
+    updateStudentPublishStats();
+}
+
+/**
+ * Select all students
+ */
+function selectAllStudents() {
+    const checkboxes = document.querySelectorAll('.sp-student-checkbox:not([disabled])');
+    checkboxes.forEach(cb => {
+        cb.checked = true;
+        sp_selected.add(cb.dataset.admission);
+    });
+    updateStudentPublishStats();
+}
+
+/**
+ * Deselect all students
+ */
+function deselectAllStudents() {
+    const checkboxes = document.querySelectorAll('.sp-student-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+        sp_selected.delete(cb.dataset.admission);
+    });
+    updateStudentPublishStats();
+}
+
+/**
+ * Select passing students (score >= 60)
+ */
+function selectPassingStudents() {
+    const marks = sp_students;
+    marks.forEach(m => {
+        const score = m.final || m.final_score || 0;
+        const admission = m.admission || m.admission_number || '';
+        if (score >= 60 && !m.published) {
+            sp_selected.add(admission);
+        }
+    });
+    renderStudentPublishList(sp_students);
+    updateStudentPublishStats();
+}
+
+/**
+ * Select failing students (score < 60)
+ */
+function selectFailingStudents() {
+    const marks = sp_students;
+    marks.forEach(m => {
+        const score = m.final || m.final_score || 0;
+        const admission = m.admission || m.admission_number || '';
+        if (score > 0 && score < 60 && !m.published) {
+            sp_selected.add(admission);
+        }
+    });
+    renderStudentPublishList(sp_students);
+    updateStudentPublishStats();
+}
+
+/**
+ * Toggle all checkboxes in the student list
+ */
+function toggleAllStudentCheckboxes() {
+    const selectAll = document.getElementById('sp_select_all');
+    const checkboxes = document.querySelectorAll('.sp-student-checkbox:not([disabled])');
+    const isChecked = selectAll?.checked || false;
+    
+    checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+        if (isChecked) {
+            sp_selected.add(cb.dataset.admission);
+        } else {
+            sp_selected.delete(cb.dataset.admission);
+        }
+    });
+    updateStudentPublishStats();
+}
+
+/**
+ * Filter the student list by search term
+ */
+function filterStudentPublishList() {
+    renderStudentPublishList(sp_students);
+}
+
+/**
+ * Update the stats in the student publish modal
+ */
+function updateStudentPublishStats() {
+    const total = sp_students.length;
+    const alreadyPublished = sp_students.filter(m => m.published === true).length;
+    const selectedCount = sp_selected.size;
+    const toPublish = selectedCount;
+    
+    document.getElementById('sp_total_count').textContent = total;
+    document.getElementById('sp_selected_count').textContent = selectedCount;
+    document.getElementById('sp_already_published').textContent = alreadyPublished;
+    document.getElementById('sp_to_publish').textContent = toPublish;
+    document.getElementById('sp_publish_summary').textContent = `${toPublish} students selected for publishing`;
+    document.getElementById('sp_publish_btn_count').textContent = toPublish;
+    
+    // Enable/disable publish button
+    const publishBtn = document.getElementById('sp_publish_btn');
+    if (publishBtn) {
+        publishBtn.disabled = toPublish === 0;
+        publishBtn.style.opacity = toPublish === 0 ? '0.5' : '1';
+        publishBtn.style.cursor = toPublish === 0 ? 'not-allowed' : 'pointer';
+    }
+}
+
+/**
+ * Publish the selected students
+ */
+async function publishSelectedStudents() {
+    const selectedAdmissions = Array.from(sp_selected);
+    
+    if (selectedAdmissions.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No students selected to publish', 'warning');
+        }
+        return;
+    }
+    
+    const unit = me_currentUnit;
+    const block = me_currentBlock;
+    const program = me_currentProgram;
+    const year = me_currentYear;
+    
+    if (!unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit first', 'warning');
+        }
+        return;
+    }
+    
+    const confirmMsg = `⚠️ Publish marks for ${selectedAdmissions.length} selected students?\n\n` +
+        `Unit: ${unit}\n` +
+        `Block: ${block}\n` +
+        `Program: ${program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET Programs'}\n` +
+        `Year: ${year}\n\n` +
+        `Only selected students will see their marks.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    if (typeof showLoading === 'function') {
+        showLoading(`Publishing ${selectedAdmissions.length} students...`);
+    }
+    
+    try {
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const admission of selectedAdmissions) {
+            try {
+                const { error } = await window.sb
+                    .from('student_marks')
+                    .update({
+                        published: true,
+                        published_at: new Date().toISOString(),
+                        published_by: window.currentUser?.id || null
+                    })
+                    .eq('admission_number', admission)
+                    .eq('subject_name', unit)
+                    .eq('block', block)
+                    .eq('academic_year', year);
+                
+                if (error) {
+                    console.error(`❌ Error publishing ${admission}:`, error);
+                    errorCount++;
+                } else {
+                    successCount++;
+                }
+            } catch (err) {
+                console.error(`❌ Error publishing ${admission}:`, err);
+                errorCount++;
+            }
+        }
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        closeStudentPublishModal();
+        
+        if (typeof showNotification === 'function') {
+            if (errorCount === 0) {
+                showNotification(`✅ Published ${successCount} students successfully!`, 'success');
+            } else {
+                showNotification(`⚠️ Published ${successCount} students, ${errorCount} errors`, 'warning');
+            }
+        }
+        
+        // Refresh the marks entry view
+        loadMarksEntry();
+        
+        // Also refresh the published marks view if it's loaded
+        if (typeof window.loadPublishedMarks === 'function') {
+            setTimeout(window.loadPublishedMarks, 500);
+        }
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error publishing selected students:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error publishing students: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// OVERRIDE UPDATE STATS TO INCLUDE PUBLISHED COUNT
+// ============================================================
+
+const originalUpdateStats = window.updateMarksEntryStats;
+
+window.updateMarksEntryStats = function(marks, assessmentType) {
+    // Call original function if it exists
+    if (typeof originalUpdateStats === 'function') {
+        originalUpdateStats(marks, assessmentType);
+    }
+    
+    // Update published count
+    const publishedEl = document.getElementById('me_published_count');
+    if (publishedEl && marks) {
+        const publishedCount = marks.filter(m => m.published === true).length;
+        publishedEl.textContent = publishedCount;
+    }
+};
+
+// ============================================================
+// EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
+
+window.publishCurrentUnitMarks = publishCurrentUnitMarks;
+window.openStudentPublishModal = openStudentPublishModal;
+window.closeStudentPublishModal = closeStudentPublishModal;
+window.loadStudentPublishList = loadStudentPublishList;
+window.renderStudentPublishList = renderStudentPublishList;
+window.toggleStudentSelection = toggleStudentSelection;
+window.selectAllStudents = selectAllStudents;
+window.deselectAllStudents = deselectAllStudents;
+window.selectPassingStudents = selectPassingStudents;
+window.selectFailingStudents = selectFailingStudents;
+window.toggleAllStudentCheckboxes = toggleAllStudentCheckboxes;
+window.filterStudentPublishList = filterStudentPublishList;
+window.updateStudentPublishStats = updateStudentPublishStats;
+window.publishSelectedStudents = publishSelectedStudents;
+
+console.log('✅ Publish functions added to Marks Entry!');
+console.log('📋 Available functions:');
+console.log('   - publishCurrentUnitMarks() - Publish ALL marks in current unit');
+console.log('   - openStudentPublishModal() - Open modal to select students');
+console.log('   - publishSelectedStudents() - Publish only selected students');
