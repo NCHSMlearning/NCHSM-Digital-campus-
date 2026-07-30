@@ -1,6 +1,7 @@
 // ============================================================
 // PUBLISHED MARKS - SUPER ADMIN (TVET & KRCHN Nursing)
 // FULLY INTEGRATED with Marks Entry System
+// ALIGNED WITH STUDENT GRADING SYSTEM
 // ============================================================
 
 console.log('📊 Published Marks module loading...');
@@ -64,12 +65,36 @@ function getProgramType(programCode) {
 
 function getGradeColor(grade) {
     const colors = {
-        'A': '#10b981', 'A-': '#34d399', 'B+': '#f59e0b',
-        'B': '#fbbf24', 'B-': '#fcd34d', 'C+': '#f97316',
-        'C': '#fb923c', 'C-': '#fca5a5', 'D': '#ef4444',
-        'D+': '#dc2626', 'F': '#991b1b', 'FAIL': '#991b1b', 'PASS': '#10b981'
+        'A': '#10b981',
+        'B': '#3b82f6',
+        'C': '#f59e0b',
+        'D': '#f97316',
+        'F': '#ef4444',
+        'FAIL': '#ef4444',
+        'PASS': '#10b981',
+        'REFERRAL': '#f97316',
+        'DISTINCTION': '#10b981',
+        'CREDIT': '#3b82f6',
+        'SATISFACTORY': '#f59e0b',
+        'GOOD': '#3b82f6',
+        'EXCELLENT': '#10b981'
     };
     return colors[grade] || '#6b7280';
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'EXCELLENT': '#10b981',
+        'GOOD': '#3b82f6',
+        'SATISFACTORY': '#f59e0b',
+        'FAIL': '#ef4444',
+        'PENDING': '#94a3b8',
+        'DISTINCTION': '#10b981',
+        'CREDIT': '#3b82f6',
+        'PASS': '#f59e0b',
+        'REFERRAL': '#f97316'
+    };
+    return colors[status] || '#94a3b8';
 }
 
 function getBlockTermLabel(program) {
@@ -81,6 +106,124 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+// ============================================================
+// TVET GRADING SYSTEM (per your specification)
+// Marks from | Marks to | Grade | Points | Comment
+// 0          | 49       | FAIL  | 0      | FAIL
+// 50         | 64       | C     | 2      | SATISFACTORY
+// 65         | 74       | B     | 3      | GOOD
+// 75         | 100      | A     | 4      | EXCELLENT
+// ============================================================
+
+function calculateTVETGrade(score) {
+    if (score === null || score === undefined || score === 0) return 'FAIL';
+    if (score >= 75) return 'A';
+    if (score >= 65) return 'B';
+    if (score >= 50) return 'C';
+    return 'FAIL';
+}
+
+function calculateTVETPoints(grade) {
+    if (!grade) return 0;
+    const points = {
+        'A': 4.0,
+        'B': 3.0,
+        'C': 2.0,
+        'FAIL': 0.0
+    };
+    return points[grade] || 0;
+}
+
+function getTVETComment(score) {
+    if (score === null || score === undefined || score === 0) return 'FAIL';
+    if (score >= 75) return 'EXCELLENT';
+    if (score >= 65) return 'GOOD';
+    if (score >= 50) return 'SATISFACTORY';
+    return 'FAIL';
+}
+
+function getTVETStatus(score) {
+    if (score === null || score === undefined || score === 0) return 'FAIL';
+    if (score >= 75) return 'EXCELLENT';
+    if (score >= 65) return 'GOOD';
+    if (score >= 50) return 'SATISFACTORY';
+    return 'FAIL';
+}
+
+// ============================================================
+// NURSING GRADING SYSTEM
+// A: 75-100%, B: 65-74%, C: 60-64%, D: Below 60%
+// ============================================================
+
+function calculateNursingGrade(score) {
+    if (score === null || score === undefined || score === 0) return 'D';
+    if (score >= 75) return 'A';
+    if (score >= 65) return 'B';
+    if (score >= 60) return 'C';
+    return 'D';
+}
+
+function calculateNursingPoints(grade) {
+    if (!grade) return 0;
+    const points = {
+        'A': 4.0,
+        'B': 3.0,
+        'C': 2.0,
+        'D': 0.0
+    };
+    return points[grade] || 0;
+}
+
+function getNursingStatus(score) {
+    if (score === null || score === undefined || score === 0) return 'PENDING';
+    if (score >= 75) return 'DISTINCTION';
+    if (score >= 65) return 'CREDIT';
+    if (score >= 60) return 'PASS';
+    return 'FAIL';
+}
+
+// ============================================================
+// MAIN GRADING FUNCTIONS (Auto-detect program)
+// ============================================================
+
+function calculateGrade(score, program) {
+    const isTVET = getProgramType(program) === 'TVET';
+    if (isTVET) {
+        return calculateTVETGrade(score);
+    }
+    return calculateNursingGrade(score);
+}
+
+function calculatePoints(grade, program) {
+    const isTVET = getProgramType(program) === 'TVET';
+    if (isTVET) {
+        return calculateTVETPoints(grade);
+    }
+    return calculateNursingPoints(grade);
+}
+
+function getGradingStatus(score, program) {
+    const isTVET = getProgramType(program) === 'TVET';
+    if (isTVET) {
+        return getTVETStatus(score);
+    }
+    return getNursingStatus(score);
+}
+
+function getGradeComment(score, program) {
+    const isTVET = getProgramType(program) === 'TVET';
+    if (isTVET) {
+        return getTVETComment(score);
+    }
+    return getNursingStatus(score);
+}
+
+function calculateGPA(marks) {
+    if (!marks || marks.length === 0) return 0;
+    const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
+    return marks.length > 0 ? (totalPoints / marks.length) : 0;
 }
 
 // ============================================================
@@ -195,6 +338,15 @@ async function loadPublishedMarks() {
             marks = [];
         }
         
+        // Process marks with correct grading
+        marks = marks.map(mark => ({
+            ...mark,
+            grade: mark.grade || calculateGrade(mark.final_score, mark.program),
+            points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, mark.program), mark.program),
+            status: getGradingStatus(mark.final_score, mark.program),
+            comment: getGradeComment(mark.final_score, mark.program)
+        }));
+        
         PUBLISHED_STATE.marks = marks;
         PUBLISHED_STATE.filtered = [...marks];
         PUBLISHED_STATE.userProgram = user?.program || 'all';
@@ -206,6 +358,7 @@ async function loadPublishedMarks() {
         updateStats(marks);
         updateBadge(marks);
         updateProgramCounts(marks);
+        updateGradingScaleDisplay();
         
         if (typeof window.hideLoading === 'function') window.hideLoading();
         PUBLISHED_STATE.isLoading = false;
@@ -270,6 +423,19 @@ function updateProgramCounts(marks) {
 }
 
 // ============================================================
+// UPDATE GRADING SCALE DISPLAY
+// ============================================================
+
+function updateGradingScaleDisplay() {
+    const programType = PUBLISHED_STATE.currentProgramFilter;
+    const tvetScale = document.getElementById('pm_tvet_scale');
+    const nursingScale = document.getElementById('pm_nursing_scale');
+    
+    if (tvetScale) tvetScale.style.display = (programType === 'all' || programType === 'TVET') ? 'inline-flex' : 'none';
+    if (nursingScale) nursingScale.style.display = (programType === 'all' || programType === 'KRCHN') ? 'inline-flex' : 'none';
+}
+
+// ============================================================
 // FILTER BY PROGRAM TYPE
 // ============================================================
 
@@ -307,6 +473,9 @@ function filterPublishedByProgram(programType) {
     if (programFilter) {
         programFilter.value = programType === 'all' ? 'all' : programType;
     }
+    
+    // Update grading scale display
+    updateGradingScaleDisplay();
     
     loadPublishedMarks();
 }
@@ -402,6 +571,23 @@ function populateFilters(marks) {
             programFilter.value = currentValue;
         }
     }
+    
+    // Year filter
+    const yearFilter = document.getElementById('pm_year_filter');
+    if (yearFilter) {
+        const currentValue = yearFilter.value;
+        const uniqueYears = [...new Set(marks.map(m => m.academic_year).filter(Boolean))];
+        yearFilter.innerHTML = '<option value="all">All Years</option>';
+        uniqueYears.sort().reverse().forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearFilter.appendChild(option);
+        });
+        if (currentValue && uniqueYears.includes(currentValue)) {
+            yearFilter.value = currentValue;
+        }
+    }
 }
 
 // ============================================================
@@ -440,37 +626,68 @@ function renderPublishedMarks() {
         return;
     }
     
-    const publishedCount = marks.filter(m => m.published === true).length;
+    const publishedCount = displayMarks.filter(m => m.published === true).length;
     const totalCount = displayMarks.length;
     const isAdmin = isUserAdmin();
     
+    // Get grading scale display
+    const hasTVET = displayMarks.some(m => getProgramType(m.program) === 'TVET');
+    const hasNursing = displayMarks.some(m => getProgramType(m.program) === 'KRCHN');
+    
+    let gradingScaleHTML = '';
+    if (hasTVET) {
+        gradingScaleHTML += `
+            <div style="display: inline-flex; gap: 8px; flex-wrap: wrap; font-size: 10px; padding: 2px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <span style="font-weight: 600; color: #0A3D62;">TVET:</span>
+                <span><span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">A</span> 75-100%</span>
+                <span><span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">B</span> 65-74%</span>
+                <span><span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">C</span> 50-64%</span>
+                <span><span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">FAIL</span> Below 50%</span>
+            </div>
+        `;
+    }
+    if (hasNursing) {
+        gradingScaleHTML += `
+            <div style="display: inline-flex; gap: 8px; flex-wrap: wrap; font-size: 10px; padding: 2px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e5e7eb; margin-left: 4px;">
+                <span style="font-weight: 600; color: #0A3D62;">Nursing:</span>
+                <span><span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">A</span> 75-100%</span>
+                <span><span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">B</span> 65-74%</span>
+                <span><span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">C</span> 60-64%</span>
+                <span><span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-weight: 700;">D</span> Below 60%</span>
+            </div>
+        `;
+    }
+    
     let html = `
-        <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 0 4px;">
-            <div style="display: flex; gap: 15px; flex-wrap: wrap; font-size: 12px; color: #64748b;">
+        <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; padding: 0 4px;">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: #64748b;">
                 <span><i class="fas fa-list"></i> <strong>${totalCount}</strong> shown</span>
                 <span><i class="fas fa-check-circle" style="color: #10b981;"></i> <strong>${publishedCount}</strong> published</span>
-                <span><i class="fas fa-file-alt" style="color: #f59e0b;"></i> <strong>${marks.length - publishedCount}</strong> draft</span>
-                <span><i class="fas fa-tag" style="color: #8b5cf6;"></i> <span id="pm_display_program_count">${displayMarks.filter(m => m.program === 'KRCHN').length} KRCHN, ${displayMarks.filter(m => m.program !== 'KRCHN').length} TVET</span></span>
+                <span><i class="fas fa-file-alt" style="color: #f59e0b;"></i> <strong>${displayMarks.length - publishedCount}</strong> draft</span>
+                <span><i class="fas fa-tag" style="color: #8b5cf6;"></i> ${displayMarks.filter(m => m.program === 'KRCHN').length} KRCHN, ${displayMarks.filter(m => m.program !== 'KRCHN').length} TVET</span>
             </div>
-            <span style="font-size: 11px; color: #94a3b8;">
-                <i class="fas fa-clock"></i> Updated: ${new Date().toLocaleTimeString()}
-            </span>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                ${gradingScaleHTML}
+                <span style="font-size: 10px; color: #94a3b8;">
+                    <i class="fas fa-clock"></i> ${new Date().toLocaleTimeString()}
+                </span>
+            </div>
         </div>
         <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                 <thead style="background: #0A3D62; color: white;">
                     <tr>
-                        <th style="padding: 8px 12px; text-align: left;">#</th>
-                        <th style="padding: 8px 12px; text-align: left;">Student</th>
-                        <th style="padding: 8px 12px; text-align: left;">Admission</th>
-                        <th style="padding: 8px 12px; text-align: left;">Unit</th>
-                        <th style="padding: 8px 12px; text-align: center;">Score</th>
-                        <th style="padding: 8px 12px; text-align: center;">Grade</th>
-                        <th style="padding: 8px 12px; text-align: center;">Block/Term</th>
-                        <th style="padding: 8px 12px; text-align: center;">Program</th>
-                        <th style="padding: 8px 12px; text-align: center;">Status</th>
-                        <th style="padding: 8px 12px; text-align: center;">Published</th>
-                        ${isAdmin ? `<th style="padding: 8px 12px; text-align: center;">Action</th>` : ''}
+                        <th style="padding: 6px 10px; text-align: left;">#</th>
+                        <th style="padding: 6px 10px; text-align: left;">Student</th>
+                        <th style="padding: 6px 10px; text-align: left;">Admission</th>
+                        <th style="padding: 6px 10px; text-align: left;">Unit</th>
+                        <th style="padding: 6px 10px; text-align: center;">Score</th>
+                        <th style="padding: 6px 10px; text-align: center;">Grade</th>
+                        <th style="padding: 6px 10px; text-align: center;">Block/Term</th>
+                        <th style="padding: 6px 10px; text-align: center;">Program</th>
+                        <th style="padding: 6px 10px; text-align: center;">Comment</th>
+                        <th style="padding: 6px 10px; text-align: center;">Published</th>
+                        ${isAdmin ? `<th style="padding: 6px 10px; text-align: center;">Action</th>` : ''}
                     </tr>
                 </thead>
                 <tbody>
@@ -480,58 +697,63 @@ function renderPublishedMarks() {
         const isPublished = mark.published === true;
         const statusColor = isPublished ? '#10b981' : '#94a3b8';
         const statusText = isPublished ? '✅ Published' : '📝 Draft';
-        const passStatus = mark.final_score >= 60;
-        const scoreColor = passStatus ? '#10b981' : '#dc2626';
+        const programType = getProgramType(mark.program);
+        const isTVET = programType === 'TVET';
+        const comment = mark.comment || getGradeComment(mark.final_score, mark.program);
+        const commentColor = getStatusColor(comment);
         const gradeColor = getGradeColor(mark.grade);
         const admissionDisplay = mark.admission_number || '-';
         const studentName = mark.student_name || 'Unknown';
         const subjectName = mark.subject_name || 'N/A';
         const blockDisplay = mark.block || '-';
         const programDisplay = mark.program || 'N/A';
-        const programType = getProgramType(mark.program);
-        const programIcon = programType === 'KRCHN' ? '🎓' : '🔧';
+        const programIcon = isTVET ? '🔧' : '🎓';
         const score = mark.final_score || 0;
         const grade = mark.grade || '-';
+        const points = mark.points || 0;
+        const gradeDisplay = grade + ' (' + points.toFixed(1) + ')';
         
         html += `
             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
                 onmouseover="this.style.background='#f8fafc'" 
                 onmouseout="this.style.background='transparent'">
-                <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
-                <td style="padding: 8px 12px; font-weight: 500;">${escapeHtml(studentName)}</td>
-                <td style="padding: 8px 12px; font-size: 12px; color: #64748b;">${escapeHtml(admissionDisplay)}</td>
-                <td style="padding: 8px 12px;"><strong>${escapeHtml(subjectName)}</strong></td>
-                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${scoreColor};">${score}%</td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${escapeHtml(grade)}</span>
+                <td style="padding: 6px 10px; text-align: center; color: #94a3b8;">${index + 1}</td>
+                <td style="padding: 6px 10px; font-weight: 500;">${escapeHtml(studentName)}</td>
+                <td style="padding: 6px 10px; font-size: 11px; color: #64748b;">${escapeHtml(admissionDisplay)}</td>
+                <td style="padding: 6px 10px;"><strong>${escapeHtml(subjectName)}</strong></td>
+                <td style="padding: 6px 10px; text-align: center; font-weight: 600; color: ${score >= (isTVET ? 50 : 60) ? '#10b981' : '#dc2626'};">${score}%</td>
+                <td style="padding: 6px 10px; text-align: center;">
+                    <span style="background: ${gradeColor}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 11px;">
+                        ${escapeHtml(gradeDisplay)}
+                    </span>
                 </td>
-                <td style="padding: 8px 12px; text-align: center;">${escapeHtml(blockDisplay)}</td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="background: ${programType === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                <td style="padding: 6px 10px; text-align: center; font-size: 11px;">${escapeHtml(blockDisplay)}</td>
+                <td style="padding: 6px 10px; text-align: center;">
+                    <span style="background: ${isTVET ? '#fef3c7' : '#dbeafe'}; padding: 2px 8px; border-radius: 10px; font-size: 10px;">
                         ${programIcon} ${escapeHtml(programDisplay)}
                     </span>
                 </td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="color: ${passStatus ? '#10b981' : '#dc2626'}; font-weight: 600; font-size: 12px;">
-                        ${passStatus ? '✅ Pass' : '❌ Fail'}
+                <td style="padding: 6px 10px; text-align: center;">
+                    <span style="background: ${commentColor}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 10px;">
+                        ${comment}
                     </span>
                 </td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="color: ${statusColor}; font-weight: 600; font-size: 12px;">${statusText}</span>
-                    ${isPublished ? `<br><span style="font-size: 10px; color: #94a3b8;">${mark.published_at ? new Date(mark.published_at).toLocaleDateString() : ''}</span>` : ''}
+                <td style="padding: 6px 10px; text-align: center;">
+                    <span style="color: ${statusColor}; font-weight: 600; font-size: 11px;">${statusText}</span>
+                    ${isPublished ? `<br><span style="font-size: 9px; color: #94a3b8;">${mark.published_at ? new Date(mark.published_at).toLocaleDateString() : ''}</span>` : ''}
                 </td>
                 ${isAdmin ? `
-                <td style="padding: 8px 12px; text-align: center; white-space: nowrap;">
+                <td style="padding: 6px 10px; text-align: center; white-space: nowrap;">
                     ${isPublished ? `
                         <button onclick="unpublishSingleStudentMarks('${escapeHtml(admissionDisplay)}', '${escapeHtml(subjectName)}')" 
-                                style="background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;"
+                                style="background: #dc2626; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; transition: all 0.2s;"
                                 onmouseover="this.style.background='#b91c1c'"
                                 onmouseout="this.style.background='#dc2626'">
                             <i class="fas fa-lock"></i> Unpublish
                         </button>
                     ` : `
                         <button onclick="publishSingleStudentMarks('${escapeHtml(admissionDisplay)}', '${escapeHtml(subjectName)}')" 
-                                style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;"
+                                style="background: #10b981; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; transition: all 0.2s;"
                                 onmouseover="this.style.background='#059669'"
                                 onmouseout="this.style.background='#10b981'">
                             <i class="fas fa-share-alt"></i> Publish
@@ -559,34 +781,63 @@ function renderPublishedMarks() {
 
 function updateStats(marks) {
     const total = marks.length;
-    const passed = marks.filter(m => m.final_score >= 60).length;
-    const failed = marks.filter(m => m.final_score > 0 && m.final_score < 60).length;
+    
+    // Pass/fail based on program type
+    const passed = marks.filter(m => {
+        const isTVET = getProgramType(m.program) === 'TVET';
+        const threshold = isTVET ? 50 : 60;
+        return m.final_score >= threshold;
+    }).length;
+    
+    const failed = marks.filter(m => {
+        const isTVET = getProgramType(m.program) === 'TVET';
+        const threshold = isTVET ? 50 : 60;
+        return m.final_score > 0 && m.final_score < threshold;
+    }).length;
+    
+    const pending = marks.filter(m => m.final_score === 0 || m.final_score === null).length;
     const published = marks.filter(m => m.published === true).length;
     const avg = total > 0 ? (marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / total) : 0;
     const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
     const gpa = total > 0 ? (totalPoints / total) : 0;
     
+    // Count by comment/status
+    const excellent = marks.filter(m => m.comment === 'EXCELLENT' || m.comment === 'DISTINCTION').length;
+    const good = marks.filter(m => m.comment === 'GOOD' || m.comment === 'CREDIT').length;
+    const satisfactory = marks.filter(m => m.comment === 'SATISFACTORY' || m.comment === 'PASS').length;
+    const fail = marks.filter(m => m.comment === 'FAIL' || m.comment === 'FAIL').length;
+    
     const elements = {
         total: document.getElementById('pm_total_marks'),
         passed: document.getElementById('pm_passed'),
         failed: document.getElementById('pm_failed'),
+        pending: document.getElementById('pm_pending'),
         avg: document.getElementById('pm_avg_score'),
         published: document.getElementById('pm_published_count'),
         attempted: document.getElementById('pm_units_attempted'),
         unitsPassed: document.getElementById('pm_units_passed'),
         unitsFailed: document.getElementById('pm_units_failed'),
-        overallGpa: document.getElementById('pm_overall_gpa')
+        overallGpa: document.getElementById('pm_overall_gpa'),
+        excellent: document.getElementById('pm_excellent'),
+        good: document.getElementById('pm_good'),
+        satisfactory: document.getElementById('pm_satisfactory'),
+        failCount: document.getElementById('pm_fail_count')
     };
     
     if (elements.total) elements.total.textContent = total;
     if (elements.passed) elements.passed.textContent = passed;
     if (elements.failed) elements.failed.textContent = failed;
+    if (elements.pending) elements.pending.textContent = pending;
     if (elements.avg) elements.avg.textContent = avg.toFixed(1) + '%';
     if (elements.published) elements.published.textContent = published;
     if (elements.attempted) elements.attempted.textContent = total;
     if (elements.unitsPassed) elements.unitsPassed.textContent = passed;
     if (elements.unitsFailed) elements.unitsFailed.textContent = failed;
     if (elements.overallGpa) elements.overallGpa.textContent = gpa.toFixed(2);
+    if (elements.excellent) elements.excellent.textContent = excellent;
+    if (elements.good) elements.good.textContent = good;
+    if (elements.satisfactory) elements.satisfactory.textContent = satisfactory;
+    if (elements.failCount) elements.failCount.textContent = fail;
     
     // Show summary section if there are marks
     const summarySection = document.getElementById('pm_summary_section');
@@ -649,6 +900,7 @@ function filterPublishedMarks() {
     PUBLISHED_STATE.filtered = filtered;
     renderPublishedMarks();
     updateProgramCounts(filtered);
+    updateGradingScaleDisplay();
 }
 
 // ============================================================
@@ -1055,20 +1307,27 @@ function exportPublishedMarksToCSV() {
         return;
     }
     
-    const headers = ['Student Name', 'Admission Number', 'Subject/Unit', 'Block/Term', 'Program', 'Year', 'Score', 'Grade', 'Points', 'Status', 'Published'];
-    const rows = marks.map(mark => [
-        `"${(mark.student_name || '').replace(/"/g, '""')}"`,
-        `"${(mark.admission_number || '').replace(/"/g, '""')}"`,
-        `"${(mark.subject_name || '').replace(/"/g, '""')}"`,
-        `"${(mark.block || '').replace(/"/g, '""')}"`,
-        `"${(mark.program || '').replace(/"/g, '""')}"`,
-        `"${(mark.academic_year || '').replace(/"/g, '""')}"`,
-        mark.final_score || 0,
-        mark.grade || '-',
-        mark.points || 0,
-        mark.final_score >= 60 ? 'Pass' : 'Fail',
-        mark.published ? 'Yes' : 'No'
-    ]);
+    const headers = ['Student Name', 'Admission Number', 'Subject/Unit', 'Block/Term', 'Program', 'Year', 'Score', 'Grade', 'Points', 'Comment', 'Status', 'Published'];
+    const rows = marks.map(mark => {
+        const isTVET = getProgramType(mark.program) === 'TVET';
+        const threshold = isTVET ? 50 : 60;
+        const status = mark.final_score >= threshold ? 'PASS' : 'FAIL';
+        const comment = mark.comment || getGradeComment(mark.final_score, mark.program);
+        return [
+            `"${(mark.student_name || '').replace(/"/g, '""')}"`,
+            `"${(mark.admission_number || '').replace(/"/g, '""')}"`,
+            `"${(mark.subject_name || '').replace(/"/g, '""')}"`,
+            `"${(mark.block || '').replace(/"/g, '""')}"`,
+            `"${(mark.program || '').replace(/"/g, '""')}"`,
+            `"${(mark.academic_year || '').replace(/"/g, '""')}"`,
+            mark.final_score || 0,
+            mark.grade || '-',
+            mark.points || 0,
+            `"${comment}"`,
+            status,
+            mark.published ? 'Yes' : 'No'
+        ];
+    });
     
     const csvContent = [
         headers.join(','),
@@ -1113,9 +1372,11 @@ function printPublishedMarks() {
     
     let tableRows = '';
     marks.forEach((mark, index) => {
-        const passStatus = mark.final_score >= 60;
-        const programType = getProgramType(mark.program);
-        const programIcon = programType === 'KRCHN' ? '🎓' : '🔧';
+        const isTVET = getProgramType(mark.program) === 'TVET';
+        const threshold = isTVET ? 50 : 60;
+        const status = mark.final_score >= threshold ? 'PASS' : 'FAIL';
+        const comment = mark.comment || getGradeComment(mark.final_score, mark.program);
+        const programIcon = isTVET ? '🔧' : '🎓';
         tableRows += `
             <tr>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${index + 1}</td>
@@ -1123,10 +1384,11 @@ function printPublishedMarks() {
                 <td style="padding: 6px 10px; border: 1px solid #ddd;">${mark.admission_number || '-'}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd;">${mark.subject_name || 'N/A'}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.final_score || 0}%</td>
-                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.grade || '-'}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.grade || '-'} (${mark.points || 0})</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.block || '-'}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${programIcon} ${mark.program || 'N/A'}</td>
-                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${passStatus ? 'Pass' : 'Fail'}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${comment}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${status}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.published ? '✅ Published' : '📝 Draft'}</td>
             </tr>
         `;
@@ -1141,11 +1403,12 @@ function printPublishedMarks() {
                 body { font-family: Arial, sans-serif; padding: 20px; }
                 h1 { color: #0A3D62; border-bottom: 2px solid #0A3D62; padding-bottom: 10px; }
                 .header-info { margin-bottom: 20px; color: #555; }
-                table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                th { background: #0A3D62; color: white; padding: 8px 10px; border: 1px solid #0A3D62; text-align: left; }
-                td { padding: 6px 10px; border: 1px solid #ddd; }
+                table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                th { background: #0A3D62; color: white; padding: 6px 8px; border: 1px solid #0A3D62; text-align: left; }
+                td { padding: 5px 8px; border: 1px solid #ddd; }
                 .footer { margin-top: 20px; text-align: center; font-size: 11px; color: #888; }
                 .print-date { text-align: right; color: #666; font-size: 11px; margin-bottom: 10px; }
+                .grading-scale { margin-top: 15px; padding: 10px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 11px; }
             </style>
         </head>
         <body>
@@ -1154,6 +1417,11 @@ function printPublishedMarks() {
             <div class="header-info">
                 <p><strong>Total Marks:</strong> ${marks.length} | <strong>Published:</strong> ${marks.filter(m => m.published).length}</p>
                 <p><strong>KRCHN:</strong> ${marks.filter(m => m.program === 'KRCHN').length} | <strong>TVET:</strong> ${marks.filter(m => m.program !== 'KRCHN').length}</p>
+                <p><strong>TVET Min Pass:</strong> 50% | <strong>Nursing Min Pass:</strong> 60%</p>
+            </div>
+            <div class="grading-scale">
+                <strong>📊 TVET Grading:</strong> A (75-100%) → 4.0 | B (65-74%) → 3.0 | C (50-64%) → 2.0 | FAIL (Below 50%) → 0.0 &nbsp;|&nbsp;
+                <strong>🎓 Nursing Grading:</strong> A (75-100%) → 4.0 | B (65-74%) → 3.0 | C (60-64%) → 2.0 | D (Below 60%) → 0.0
             </div>
             <table>
                 <thead>
@@ -1166,6 +1434,7 @@ function printPublishedMarks() {
                         <th>Grade</th>
                         <th>Block/Term</th>
                         <th>Program</th>
+                        <th>Comment</th>
                         <th>Status</th>
                         <th>Published</th>
                     </tr>
@@ -1215,16 +1484,6 @@ async function initPublishedMarks() {
         searchInput.addEventListener('input', filterPublishedMarks);
     }
     
-    // Set up program type filter buttons
-    const filterButtons = ['pm_filter_all', 'pm_filter_krchn', 'pm_filter_tvet'];
-    filterButtons.forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) {
-            btn.removeEventListener('click', () => {});
-            // The onclick attribute handles this
-        }
-    });
-    
     // Set up modal event listeners
     const programTypeSelect = document.getElementById('publish_program_type');
     if (programTypeSelect) {
@@ -1260,6 +1519,8 @@ async function initPublishedMarks() {
     await loadPublishedMarks();
     
     console.log('✅ Published Marks module initialized');
+    console.log('📊 TVET Grading: A (75-100%), B (65-74%), C (50-64%), FAIL (Below 50%)');
+    console.log('📊 Nursing Grading: A (75-100%), B (65-74%), C (60-64%), D (Below 60%)');
 }
 
 // Auto-initialize when DOM is ready
@@ -1311,6 +1572,8 @@ window.populatePublishUnits = populatePublishUnits;
 console.log('✅ Published Marks module loaded successfully!');
 console.log('📊 Features:');
 console.log('   - ✅ TVET & KRCHN Nursing support');
+console.log('   - ✅ TVET: A(75-100%), B(65-74%), C(50-64%), FAIL(Below 50%)');
+console.log('   - ✅ Nursing: A(75-100%), B(65-74%), C(60-64%), D(Below 60%)');
 console.log('   - ✅ Quick filter by program type');
 console.log('   - ✅ Individual publish/unpublish');
 console.log('   - ✅ Bulk publish with program filter');
