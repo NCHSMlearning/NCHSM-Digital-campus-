@@ -1,5 +1,5 @@
 // js/academic-reports.js - COMPLETE STUDENT VERSION
-// All tabs: Semester Report, Yearly Summary, Full Transcript, Course Progress, My Marks
+// All tabs: Semester Report, Yearly Summary, Full Transcript, Course Progress, My Performance
 // INCLUDES: Report Card Download Functionality, Charts, TVET/Nursing Support
 (function() {
     'use strict';
@@ -246,7 +246,7 @@
     }
 
     // ============================================================
-    // 8. MY MARKS - STATE & FUNCTIONS
+    // 8. MY PERFORMANCE - STATE & FUNCTIONS
     // ============================================================
     let myMarksData = [];
     let myMarksFiltered = [];
@@ -573,7 +573,7 @@
     }
 
     // ============================================================
-    // 10. RENDER CHARTS FOR MY MARKS
+    // 10. RENDER CHARTS FOR MY PERFORMANCE
     // ============================================================
     function renderMyMarksCharts() {
         const marks = myMarksFiltered || [];
@@ -1349,6 +1349,7 @@
                 else if (reportType === 'progress') loadCourseProgress();
                 else if (reportType === 'mymarks') loadMyMarks();
             } else {
+                // Default to My Performance tab
                 const myMarksTab = document.querySelector('.report-tab[data-report="mymarks"]');
                 if (myMarksTab) {
                     myMarksTab.classList.add('active');
@@ -1405,7 +1406,7 @@
 
     console.log('✅ Student Academic Reports Module loaded');
     console.log('📊 Available functions:');
-    console.log('   - loadMyMarks() - Load published marks');
+    console.log('   - loadMyMarks() - Load published marks (My Performance)');
     console.log('   - filterMyMarks() - Filter marks');
     console.log('   - downloadReportCard() - Download report card PDF');
     console.log('   - downloadTranscriptPDF() - Download full transcript');
