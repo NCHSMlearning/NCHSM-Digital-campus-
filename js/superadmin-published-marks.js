@@ -2,6 +2,7 @@
 // PUBLISHED MARKS - STUDENT VIEW (TVET & Nursing Compatible)
 // Uses SAME student_marks table as Marks Entry System
 // Supports TVET (Terms) & KRCHN (Blocks)
+// WITH INDIVIDUAL & BULK PUBLISH FUNCTIONALITY
 // ============================================================
 
 console.log('📊 Published Marks module loading...');
@@ -84,120 +85,178 @@ function escapeHtml(str) {
 }
 
 // ============================================================
-// DEMO DATA
+// GET CURRENT USER - MULTIPLE SOURCES
 // ============================================================
+async function getCurrentUser() {
+    // Try global currentUserProfile first
+    if (window.currentUserProfile && window.currentUserProfile.user_id) {
+        return window.currentUserProfile;
+    }
+    
+    // Try window.currentUser
+    if (window.currentUser && window.currentUser.id) {
+        return window.currentUser;
+    }
+    
+    // Try getCurrentUser function
+    if (typeof window.getCurrentUser === 'function') {
+        const user = window.getCurrentUser();
+        if (user) return user;
+    }
+    
+    // Try session storage
+    try {
+        const stored = sessionStorage.getItem('user') || localStorage.getItem('user');
+        if (stored) {
+            const user = JSON.parse(stored);
+            if (user) return user;
+        }
+    } catch (e) {}
+    
+    // Try Supabase session
+    if (window.sb) {
+        try {
+            const { data: { session } } = await window.sb.auth.getSession();
+            if (session?.user) {
+                const user = session.user;
+                // Try to get profile
+                const { data: profile } = await window.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+                if (profile) {
+                    return { ...user, ...profile };
+                }
+                return user;
+            }
+        } catch (e) {}
+    }
+    
+    return null;
+}
 
+// ============================================================
+// DEMO DATA - FALLBACK
+// ============================================================
 function getDemoMarksForProgram(program) {
-    if (program === 'KRCHN') {
+    const isTVET = getProgramType(program) === 'TVET';
+    
+    if (isTVET) {
         return [
-            { id: 1, admission_number: 'KRCHN/001/2025', student_name: 'Alice Mwangi', subject_name: 'Fundamentals of Nursing', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 18, cat2_score: 19, exam_score: 55, final_score: 92, grade: 'A', points: 4.0, status: 'Pass', published: true, published_date: '2025-01-15', assessment_type: 'full' },
-            { id: 2, admission_number: 'KRCHN/002/2025', student_name: 'Brian Ochieng', subject_name: 'Anatomy and Physiology', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 15, cat2_score: 16, exam_score: 48, final_score: 79, grade: 'B+', points: 3.5, status: 'Pass', published: true, published_date: '2025-01-15', assessment_type: 'full' },
-            { id: 3, admission_number: 'KRCHN/003/2025', student_name: 'Catherine Njeri', subject_name: 'Pharmacology', program: 'KRCHN', block: 'Block 1', year: '2025', cat1_score: 12, cat2_score: 14, exam_score: 40, final_score: 66, grade: 'B', points: 3.0, status: 'Pass', published: true, published_date: '2025-03-20', assessment_type: 'full' },
-            { id: 4, admission_number: 'KRCHN/004/2025', student_name: 'David Kamau', subject_name: 'Medical-Surgical Nursing', program: 'KRCHN', block: 'Block 1', year: '2025', cat1_score: 10, cat2_score: 12, exam_score: 35, final_score: 57, grade: 'D', points: 0.0, status: 'Fail', published: true, published_date: '2025-03-20', assessment_type: 'full' }
+            { id: 101, admission_number: 'TVET/001/2025', student_name: 'Demo Student', subject_name: 'Occupational Health & Safety', program: program, block: 'Term 1', year: '2025', cat1_score: 16, cat2_score: 18, exam_score: 45, final_score: 79, grade: 'B+', points: 3.5, status: 'Pass', published: true, published_at: '2025-01-15', assessment_type: 'full' },
+            { id: 102, admission_number: 'TVET/001/2025', student_name: 'Demo Student', subject_name: 'Communication Skills', program: program, block: 'Term 1', year: '2025', cat1_score: 14, cat2_score: 16, exam_score: 40, final_score: 70, grade: 'B', points: 3.0, status: 'Pass', published: true, published_at: '2025-01-15', assessment_type: 'full' },
+            { id: 103, admission_number: 'TVET/001/2025', student_name: 'Demo Student', subject_name: 'Mathematics', program: program, block: 'Term 2', year: '2025', cat1_score: 10, cat2_score: 12, exam_score: 30, final_score: 52, grade: 'D', points: 1.0, status: 'Fail', published: false, published_at: null, assessment_type: 'full' }
         ];
     }
+    
     return [
-        { id: 101, admission_number: 'DPOTT/001/2025', student_name: 'Peter Omondi', subject_name: 'Introduction to Perioperative Nursing', program: 'DPOTT', block: 'Term 1', year: '2025', cat1_score: 16, cat2_score: 18, exam_score: 45, final_score: 79, grade: 'B+', points: 3.5, status: 'Pass', published: true, published_date: '2025-01-15', assessment_type: 'full' },
-        { id: 102, admission_number: 'DPOTT/002/2025', student_name: 'Mary Akinyi', subject_name: 'Surgical Instrumentation', program: 'DPOTT', block: 'Term 1', year: '2025', cat1_score: 14, cat2_score: 15, exam_score: 40, final_score: 69, grade: 'B', points: 3.0, status: 'Pass', published: true, published_date: '2025-01-15', assessment_type: 'full' },
-        { id: 103, admission_number: 'DPOTT/003/2025', student_name: 'James Otieno', subject_name: 'Sterilization Techniques', program: 'DPOTT', block: 'Term 2', year: '2025', cat1_score: 11, cat2_score: 13, exam_score: 32, final_score: 56, grade: 'D', points: 0.0, status: 'Fail', published: true, published_date: '2025-03-20', assessment_type: 'full' }
+        { id: 1, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Fundamentals of Nursing', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 18, cat2_score: 19, exam_score: 55, final_score: 92, grade: 'A', points: 4.0, status: 'Pass', published: true, published_at: '2025-01-15', assessment_type: 'full' },
+        { id: 2, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Anatomy and Physiology', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 15, cat2_score: 16, exam_score: 48, final_score: 79, grade: 'B+', points: 3.5, status: 'Pass', published: true, published_at: '2025-01-15', assessment_type: 'full' },
+        { id: 3, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Pharmacology', program: 'KRCHN', block: 'Block 1', year: '2025', cat1_score: 12, cat2_score: 14, exam_score: 40, final_score: 66, grade: 'B', points: 3.0, status: 'Pass', published: true, published_at: '2025-03-20', assessment_type: 'full' },
+        { id: 4, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Medical-Surgical Nursing', program: 'KRCHN', block: 'Block 1', year: '2025', cat1_score: 10, cat2_score: 12, exam_score: 35, final_score: 57, grade: 'D', points: 1.0, status: 'Fail', published: false, published_at: null, assessment_type: 'full' }
     ];
 }
 
 // ============================================================
 // POPULATE FILTERS
 // ============================================================
-
-function populateSubjectFilter(subjects) {
+function populateSubjectFilter(marks) {
     const filter = document.getElementById('pm_subject_filter');
     if (!filter) return;
     const currentValue = filter.value;
-    filter.innerHTML = '<option value="all">All Subjects/Units</option>';
-    if (subjects && subjects.length > 0) {
-        const uniqueSubjects = [...new Set(subjects.map(m => m.subject_name).filter(Boolean))];
-        uniqueSubjects.sort();
-        uniqueSubjects.forEach(subject => {
-            const option = document.createElement('option');
-            option.value = subject;
-            option.textContent = subject;
-            filter.appendChild(option);
-        });
-    }
+    const uniqueSubjects = [...new Set(marks.map(m => m.subject_name).filter(Boolean))];
+    filter.innerHTML = '<option value="all">All Units</option>';
+    uniqueSubjects.sort().forEach(subject => {
+        const option = document.createElement('option');
+        option.value = subject;
+        option.textContent = subject;
+        filter.appendChild(option);
+    });
+    if (currentValue) filter.value = currentValue;
+}
+
+function populateBlockFilter(marks) {
+    const filter = document.getElementById('pm_block_filter');
+    if (!filter) return;
+    const currentValue = filter.value;
+    const uniqueBlocks = [...new Set(marks.map(m => m.block).filter(Boolean))];
+    filter.innerHTML = '<option value="all">All Blocks/Terms</option>';
+    uniqueBlocks.sort().forEach(block => {
+        const option = document.createElement('option');
+        option.value = block;
+        option.textContent = block;
+        filter.appendChild(option);
+    });
+    if (currentValue) filter.value = currentValue;
+}
+
+function populateProgramFilter(marks) {
+    const filter = document.getElementById('pm_program_filter');
+    if (!filter) return;
+    const currentValue = filter.value;
+    const uniquePrograms = [...new Set(marks.map(m => m.program).filter(Boolean))];
+    filter.innerHTML = '<option value="all">All Programs</option>';
+    uniquePrograms.sort().forEach(program => {
+        const option = document.createElement('option');
+        option.value = program;
+        option.textContent = getProgramDisplayName(program);
+        filter.appendChild(option);
+    });
+    if (currentValue) filter.value = currentValue;
+}
+
+function populateYearFilter(marks) {
+    const filter = document.getElementById('pm_year_filter');
+    if (!filter) return;
+    const currentValue = filter.value;
+    const uniqueYears = [...new Set(marks.map(m => m.year).filter(Boolean))];
+    filter.innerHTML = '<option value="all">All Years</option>';
+    uniqueYears.sort().reverse().forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        filter.appendChild(option);
+    });
     if (currentValue) filter.value = currentValue;
 }
 
 // ============================================================
-// LOAD PUBLISHED MARKS - FIXED FOR SUPER ADMIN
+// LOAD PUBLISHED MARKS
 // ============================================================
-
 async function loadPublishedMarks() {
     if (PUBLISHED_STATE.isLoading) return;
     
     try {
         PUBLISHED_STATE.isLoading = true;
-        
-        // Show loading in container
-        const container = document.getElementById('publishedMarksContainer');
-        if (container) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="margin-top: 10px;">Loading your published marks...</p>
-                </div>
-            `;
+        if (typeof window.showLoading === 'function') {
+            window.showLoading('Loading published marks...');
         }
         
-        // Get current user
         const user = await getCurrentUser();
-        
         if (!user) {
             console.warn('No user found, using demo data');
             loadDemoPublishedMarks();
             PUBLISHED_STATE.isLoading = false;
+            if (typeof window.hideLoading === 'function') window.hideLoading();
             return;
         }
         
-        // ✅ FIX: Get the registration number from student_id
-        // student_id contains values like "NCHSM/KRCHN/0139/03/26"
-        let registrationNumber = null;
+        // Get student registration number
+        let studentRegNumber = user.student_id || user.admission_number || user.user_id || user.id;
         
-        // Try multiple sources
-        if (user.student_id) {
-            registrationNumber = user.student_id;
-        } else if (user.user_metadata && user.user_metadata.student_id) {
-            registrationNumber = user.user_metadata.student_id;
-        } else if (user.raw_user_meta_data && user.raw_user_meta_data.student_id) {
-            registrationNumber = user.raw_user_meta_data.student_id;
-        } else if (user.id) {
-            registrationNumber = user.id;
-        }
-        
-        // If still no registration number, try to fetch from profile
-        if (!registrationNumber && user.id && window.sb) {
-            try {
-                const { data: profile } = await window.sb
-                    .from('consolidated_user_profiles_table')
-                    .select('student_id, admission_number')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
-                if (profile) {
-                    registrationNumber = profile.student_id || profile.admission_number;
-                }
-            } catch (e) {
-                console.warn('Error fetching profile:', e);
-            }
-        }
-        
-        if (!registrationNumber) {
-            console.warn('No registration number found, using demo data');
+        if (!studentRegNumber) {
+            console.warn('No student ID found, using demo data');
             loadDemoPublishedMarks();
             PUBLISHED_STATE.isLoading = false;
+            if (typeof window.hideLoading === 'function') window.hideLoading();
             return;
         }
         
         PUBLISHED_STATE.user = user;
         PUBLISHED_STATE.userProgram = user.program || 'KRCHN';
         
-        // Update header with user info
+        // Update header
         const programBadge = document.getElementById('pm_user_program_badge');
         if (programBadge) {
             const programName = getProgramDisplayName(PUBLISHED_STATE.userProgram);
@@ -210,38 +269,17 @@ async function loadPublishedMarks() {
             userNameEl.textContent = user.full_name || user.name || user.email || 'Student';
         }
         
-        // ✅ FIX: Query using admission_number with the registration number
+        // Fetch marks
         let marks = [];
-        let error = null;
-        
         try {
-            // Query using admission_number
             const result = await window.sb
                 .from('student_marks')
                 .select('*')
-                .eq('admission_number', registrationNumber)
-                .eq('published', true)
-                .order('published_at', { ascending: false });
+                .eq('admission_number', studentRegNumber)
+                .order('created_at', { ascending: false });
             
             if (result.error) {
-                error = result.error;
-                console.warn('Error fetching marks by admission_number:', error);
-                
-                // Fallback: try with student_id column if it exists
-                try {
-                    const result2 = await window.sb
-                        .from('student_marks')
-                        .select('*')
-                        .eq('student_id', registrationNumber)
-                        .eq('published', true)
-                        .order('published_at', { ascending: false });
-                    
-                    if (!result2.error && result2.data) {
-                        marks = result2.data;
-                    }
-                } catch (e2) {
-                    console.warn('Fallback query failed:', e2);
-                }
+                console.warn('Error fetching marks:', result.error);
             } else if (result.data) {
                 marks = result.data;
             }
@@ -252,32 +290,29 @@ async function loadPublishedMarks() {
         if (marks && marks.length > 0) {
             PUBLISHED_STATE.marks = marks;
         } else {
-            // Use demo data based on program
             PUBLISHED_STATE.marks = getDemoMarksForProgram(PUBLISHED_STATE.userProgram);
-            // Store as fallback
-            try {
-                localStorage.setItem(`published_marks_${registrationNumber}`, JSON.stringify(PUBLISHED_STATE.marks));
-            } catch (e) {}
         }
         
         PUBLISHED_STATE.filtered = [...PUBLISHED_STATE.marks];
         
-        // Populate subject filter
         populateSubjectFilter(PUBLISHED_STATE.marks);
-        
-        // Update UI
+        populateBlockFilter(PUBLISHED_STATE.marks);
+        populateProgramFilter(PUBLISHED_STATE.marks);
+        populateYearFilter(PUBLISHED_STATE.marks);
         renderPublishedMarks();
         updatePublishedStats();
         updatePublishedBadge();
         
+        if (typeof window.hideLoading === 'function') window.hideLoading();
         PUBLISHED_STATE.isLoading = false;
         
         if (PUBLISHED_STATE.marks.length > 0 && typeof window.showNotification === 'function') {
-            window.showNotification(`Loaded ${PUBLISHED_STATE.marks.length} published marks`, 'success');
+            window.showNotification(`Loaded ${PUBLISHED_STATE.marks.length} marks`, 'success');
         }
     } catch (error) {
         console.error('Error loading published marks:', error);
         loadDemoPublishedMarks();
+        if (typeof window.hideLoading === 'function') window.hideLoading();
         PUBLISHED_STATE.isLoading = false;
     }
 }
@@ -287,33 +322,20 @@ function loadDemoPublishedMarks() {
     PUBLISHED_STATE.marks = getDemoMarksForProgram(program);
     PUBLISHED_STATE.filtered = [...PUBLISHED_STATE.marks];
     populateSubjectFilter(PUBLISHED_STATE.marks);
+    populateBlockFilter(PUBLISHED_STATE.marks);
+    populateProgramFilter(PUBLISHED_STATE.marks);
+    populateYearFilter(PUBLISHED_STATE.marks);
     renderPublishedMarks();
     updatePublishedStats();
     updatePublishedBadge();
 }
 
-function getCurrentUserFallback() {
-    try {
-        const user = JSON.parse(sessionStorage.getItem('user') || 'null');
-        if (user) return user;
-        const localUser = JSON.parse(localStorage.getItem('user') || 'null');
-        if (localUser) return localUser;
-        return null;
-    } catch (e) {
-        return null;
-    }
-}
-
 // ============================================================
-// RENDER MARKS TABLE
+// RENDER PUBLISHED MARKS TABLE
 // ============================================================
-
 function renderPublishedMarks() {
     const container = document.getElementById('publishedMarksContainer');
-    if (!container) {
-        console.warn('Published marks container not found');
-        return;
-    }
+    if (!container) return;
     
     const marks = PUBLISHED_STATE.filtered;
     const programType = getProgramType(PUBLISHED_STATE.userProgram);
@@ -323,11 +345,8 @@ function renderPublishedMarks() {
         container.innerHTML = `
             <div style="text-align: center; padding: 60px 20px;">
                 <i class="fas fa-share-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                <h3 style="color: #1e293b;">No Published Marks</h3>
-                <p style="color: #94a3b8;">Your published marks will appear here once they are released.</p>
-                <p style="color: #94a3b8; font-size: 13px; margin-top: 8px;">
-                    <i class="fas fa-info-circle"></i> Check with your lecturer or academic office for updates.
-                </p>
+                <h3 style="color: #1e293b;">No Marks Found</h3>
+                <p style="color: #94a3b8;">No marks available. Use the "Bulk Publish" button to publish marks.</p>
             </div>
         `;
         const summarySection = document.getElementById('pm_summary_section');
@@ -337,89 +356,112 @@ function renderPublishedMarks() {
         return;
     }
     
-    function getAssessmentTypeLabel(type) {
-        const labels = {
-            'full': '📊 Full (CAT1+CAT2+Exam)',
-            'single_cat': '📋 Single CAT (CAT+Exam)',
-            'exam_only': '📝 Exam Only',
-            'cats_only': '📚 CAT1+CAT2 Only',
-            'cat_only': '📄 CAT Only'
-        };
-        return labels[type] || type || '📊 Full';
+    // Apply status filter
+    const statusFilter = document.getElementById('pm_status_filter')?.value || 'all';
+    let displayMarks = marks;
+    if (statusFilter === 'published') {
+        displayMarks = marks.filter(m => m.published === true);
+    } else if (statusFilter === 'draft') {
+        displayMarks = marks.filter(m => m.published !== true);
     }
     
-    let html = `
-        <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: #f8fafc; padding: 12px 16px; border-radius: 8px;">
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <span style="font-size: 13px; color: #475569;">
-                    <i class="fas fa-list"></i> <strong>${marks.length}</strong> published result(s)
-                </span>
-                <span style="font-size: 13px; color: #475569;">
-                    <i class="fas fa-check-circle" style="color: #10b981;"></i> <span id="pm_pass_count_display">${marks.filter(m => m.status === 'Pass' || m.status === 'PASS').length}</span> passed
-                </span>
-                <span style="font-size: 13px; color: #475569;">
-                    <i class="fas fa-times-circle" style="color: #dc2626;"></i> <span id="pm_fail_count_display">${marks.filter(m => m.status === 'Fail' || m.status === 'FAIL').length}</span> failed
-                </span>
+    if (displayMarks.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                <i class="fas fa-filter" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                <p>No ${statusFilter === 'published' ? 'published' : 'draft'} marks found</p>
             </div>
-            <span style="font-size: 12px; color: #94a3b8;">
-                <i class="fas fa-calendar"></i> Updated: ${new Date().toLocaleDateString()}
+        `;
+        document.getElementById('pm_filter_count').textContent = '0';
+        return;
+    }
+    
+    const publishedCount = marks.filter(m => m.published === true).length;
+    
+    let html = `
+        <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 0 4px;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; font-size: 12px; color: #64748b;">
+                <span><i class="fas fa-list"></i> <strong>${displayMarks.length}</strong> shown</span>
+                <span><i class="fas fa-check-circle" style="color: #10b981;"></i> <strong>${publishedCount}</strong> published</span>
+                <span><i class="fas fa-file-alt" style="color: #f59e0b;"></i> <strong>${marks.length - publishedCount}</strong> draft</span>
+            </div>
+            <span style="font-size: 11px; color: #94a3b8;">
+                <i class="fas fa-clock"></i> Updated: ${new Date().toLocaleTimeString()}
             </span>
         </div>
         <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead style="background: #0A3D62; color: white;">
                     <tr>
-                        <th style="padding: 12px 16px; text-align: left;">#</th>
-                        <th style="padding: 12px 16px; text-align: left;">Subject/Unit</th>
-                        <th style="padding: 12px 16px; text-align: center;">${blockLabel}</th>
-                        <th style="padding: 12px 16px; text-align: center;">Year</th>
-                        <th style="padding: 12px 16px; text-align: center;">Assessment Type</th>
-                        <th style="padding: 12px 16px; text-align: center;">CAT 1</th>
-                        <th style="padding: 12px 16px; text-align: center;">CAT 2</th>
-                        <th style="padding: 12px 16px; text-align: center;">Exam</th>
-                        <th style="padding: 12px 16px; text-align: center;">Total</th>
-                        <th style="padding: 12px 16px; text-align: center;">Grade</th>
-                        <th style="padding: 12px 16px; text-align: center;">Points</th>
-                        <th style="padding: 12px 16px; text-align: center;">Status</th>
-                        <th style="padding: 12px 16px; text-align: center;">Published</th>
+                        <th style="padding: 8px 12px; text-align: left;">#</th>
+                        <th style="padding: 8px 12px; text-align: left;">Student</th>
+                        <th style="padding: 8px 12px; text-align: left;">Admission</th>
+                        <th style="padding: 8px 12px; text-align: left;">Unit</th>
+                        <th style="padding: 8px 12px; text-align: center;">Score</th>
+                        <th style="padding: 8px 12px; text-align: center;">Grade</th>
+                        <th style="padding: 8px 12px; text-align: center;">${blockLabel}</th>
+                        <th style="padding: 8px 12px; text-align: center;">Status</th>
+                        <th style="padding: 8px 12px; text-align: center;">Published</th>
+                        <th style="padding: 8px 12px; text-align: center;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
-    marks.forEach((mark, index) => {
-        const statusColor = mark.status === 'Pass' || mark.status === 'PASS' ? '#10b981' : '#dc2626';
+    displayMarks.forEach((mark, index) => {
+        const isPublished = mark.published === true;
+        const statusColor = isPublished ? '#10b981' : '#94a3b8';
+        const statusText = isPublished ? '✅ Published' : '📝 Draft';
+        const passStatus = mark.status === 'Pass' || mark.status === 'PASS' || mark.final_score >= 60;
+        const scoreColor = passStatus ? '#10b981' : '#dc2626';
         const gradeColor = getGradeColor(mark.grade);
-        const pubDate = mark.published_date ? new Date(mark.published_date).toLocaleDateString() : '-';
-        const assessmentLabel = getAssessmentTypeLabel(mark.assessment_type);
+        const admissionDisplay = mark.admission_number || mark.student_id || '-';
+        const studentName = mark.student_name || 'Unknown';
+        const subjectName = mark.subject_name || 'N/A';
         const blockDisplay = mark.block || '-';
-        const cat1 = mark.cat1_score !== undefined && mark.cat1_score !== null ? mark.cat1_score : '-';
-        const cat2 = mark.cat2_score !== undefined && mark.cat2_score !== null ? mark.cat2_score : '-';
-        const exam = mark.exam_score !== undefined && mark.exam_score !== null ? mark.exam_score : '-';
-        const total = mark.final_score !== undefined && mark.final_score !== null ? mark.final_score : '-';
+        const score = mark.final_score || 0;
+        const grade = mark.grade || '-';
+        const safeAdmission = escapeHtml(admissionDisplay);
+        const safeSubject = escapeHtml(subjectName);
         
         html += `
-            <tr style="${index % 2 === 0 ? 'background: #f8fafc;' : ''} border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 12px 16px; text-align: center; font-weight: 600;">${index + 1}</td>
-                <td style="padding: 12px 16px;">
-                    <div><strong>${escapeHtml(mark.subject_name || 'N/A')}</strong></div>
-                    <div style="font-size: 11px; color: #64748b;">${escapeHtml(mark.admission_number || '')}</div>
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+                onmouseover="this.style.background='#f8fafc'" 
+                onmouseout="this.style.background='transparent'">
+                <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
+                <td style="padding: 8px 12px; font-weight: 500;">${escapeHtml(studentName)}</td>
+                <td style="padding: 8px 12px; font-size: 12px; color: #64748b;">${safeAdmission}</td>
+                <td style="padding: 8px 12px;"><strong>${safeSubject}</strong></td>
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${scoreColor};">${score}%</td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${escapeHtml(grade)}</span>
                 </td>
-                <td style="padding: 12px 16px; text-align: center;">${escapeHtml(blockDisplay)}</td>
-                <td style="padding: 12px 16px; text-align: center;">${escapeHtml(mark.year || '-')}</td>
-                <td style="padding: 12px 16px; text-align: center; font-size: 11px;">${assessmentLabel}</td>
-                <td style="padding: 12px 16px; text-align: center;">${cat1 !== '-' ? cat1 + '/30' : '-'}</td>
-                <td style="padding: 12px 16px; text-align: center;">${cat2 !== '-' ? cat2 + '/30' : '-'}</td>
-                <td style="padding: 12px 16px; text-align: center;">${exam !== '-' ? exam + '/70' : '-'}</td>
-                <td style="padding: 12px 16px; text-align: center; font-weight: 700; color: ${statusColor};">${total !== '-' ? total + '%' : '-'}</td>
-                <td style="padding: 12px 16px; text-align: center;">
-                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700;">${mark.grade || '-'}</span>
+                <td style="padding: 8px 12px; text-align: center;">${escapeHtml(blockDisplay)}</td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="color: ${passStatus ? '#10b981' : '#dc2626'}; font-weight: 600; font-size: 12px;">
+                        ${passStatus ? '✅ Pass' : '❌ Fail'}
+                    </span>
                 </td>
-                <td style="padding: 12px 16px; text-align: center;">${mark.points || 0.0}</td>
-                <td style="padding: 12px 16px; text-align: center;">
-                    <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 12px;">${mark.status || 'Pending'}</span>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="color: ${statusColor}; font-weight: 600; font-size: 12px;">${statusText}</span>
                 </td>
-                <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">${pubDate}</td>
+                <td style="padding: 8px 12px; text-align: center; white-space: nowrap;">
+                    ${isPublished ? `
+                        <button onclick="unpublishSingleStudentMarks('${safeAdmission.replace(/'/g, "\\'")}', '${safeSubject.replace(/'/g, "\\'")}')" 
+                                style="background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;"
+                                onmouseover="this.style.background='#b91c1c'"
+                                onmouseout="this.style.background='#dc2626'">
+                            <i class="fas fa-lock"></i> Unpublish
+                        </button>
+                    ` : `
+                        <button onclick="publishSingleStudentMarks('${safeAdmission.replace(/'/g, "\\'")}', '${safeSubject.replace(/'/g, "\\'")}')" 
+                                style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;"
+                                onmouseover="this.style.background='#059669'"
+                                onmouseout="this.style.background='#10b981'">
+                            <i class="fas fa-share-alt"></i> Publish
+                        </button>
+                    `}
+                </td>
             </tr>
         `;
     });
@@ -428,34 +470,21 @@ function renderPublishedMarks() {
                 </tbody>
             </table>
         </div>
-        <div style="padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 13px; color: #94a3b8;">
-            <span><i class="fas fa-list"></i> Showing ${marks.length} published result(s)</span>
-            <span><i class="fas fa-calendar"></i> Last updated: ${new Date().toLocaleString()}</span>
-        </div>
     `;
     
     container.innerHTML = html;
-    
-    const summarySection = document.getElementById('pm_summary_section');
-    if (summarySection) summarySection.style.display = 'block';
-    const filterCount = document.getElementById('pm_filter_count');
-    if (filterCount) filterCount.textContent = marks.length;
-    
-    const passDisplay = document.getElementById('pm_pass_count_display');
-    const failDisplay = document.getElementById('pm_fail_count_display');
-    if (passDisplay) passDisplay.textContent = marks.filter(m => m.status === 'Pass' || m.status === 'PASS').length;
-    if (failDisplay) failDisplay.textContent = marks.filter(m => m.status === 'Fail' || m.status === 'FAIL').length;
+    document.getElementById('pm_filter_count').textContent = displayMarks.length;
 }
 
 // ============================================================
 // UPDATE STATS & BADGE
 // ============================================================
-
 function updatePublishedStats() {
     const marks = PUBLISHED_STATE.marks;
     const total = marks.length;
-    const passed = marks.filter(m => m.status === 'Pass' || m.status === 'PASS').length;
-    const failed = marks.filter(m => m.status === 'Fail' || m.status === 'FAIL').length;
+    const passed = marks.filter(m => m.status === 'Pass' || m.status === 'PASS' || m.final_score >= 60).length;
+    const failed = marks.filter(m => m.status === 'Fail' || m.status === 'FAIL' || (m.final_score > 0 && m.final_score < 60)).length;
+    const published = marks.filter(m => m.published === true).length;
     const avg = total > 0 ? (marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / total) : 0;
     const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
     const gpa = total > 0 ? (totalPoints / total) : 0;
@@ -465,6 +494,7 @@ function updatePublishedStats() {
         passed: document.getElementById('pm_passed'),
         failed: document.getElementById('pm_failed'),
         avg: document.getElementById('pm_avg_score'),
+        published: document.getElementById('pm_published_count'),
         attempted: document.getElementById('pm_units_attempted'),
         unitsPassed: document.getElementById('pm_units_passed'),
         unitsFailed: document.getElementById('pm_units_failed'),
@@ -475,6 +505,7 @@ function updatePublishedStats() {
     if (elements.passed) elements.passed.textContent = passed;
     if (elements.failed) elements.failed.textContent = failed;
     if (elements.avg) elements.avg.textContent = avg.toFixed(1) + '%';
+    if (elements.published) elements.published.textContent = published;
     if (elements.attempted) elements.attempted.textContent = total;
     if (elements.unitsPassed) elements.unitsPassed.textContent = passed;
     if (elements.unitsFailed) elements.unitsFailed.textContent = failed;
@@ -484,103 +515,247 @@ function updatePublishedStats() {
 function updatePublishedBadge() {
     const badge = document.getElementById('publishedMarksBadge');
     if (badge) {
-        const count = PUBLISHED_STATE.marks.length;
+        const count = PUBLISHED_STATE.marks.filter(m => m.published === true).length;
         badge.textContent = count;
-        badge.style.display = count > 0 ? 'inline-block' : 'inline-block';
+        badge.style.display = 'inline-block';
         if (count === 0) badge.textContent = '0';
     }
 }
 
 // ============================================================
-// FILTER & EXPORT
+// FILTER FUNCTIONS
 // ============================================================
-
 function filterPublishedMarks() {
     const subjectFilter = document.getElementById('pm_subject_filter')?.value || 'all';
     const programFilter = document.getElementById('pm_program_filter')?.value || 'all';
     const blockFilter = document.getElementById('pm_block_filter')?.value || 'all';
-    const assessmentFilter = document.getElementById('pm_assessment_filter')?.value || 'all';
+    const statusFilter = document.getElementById('pm_status_filter')?.value || 'all';
     const yearFilter = document.getElementById('pm_year_filter')?.value || 'all';
     const searchTerm = document.getElementById('pm_search')?.value?.toLowerCase() || '';
     
     let filtered = [...PUBLISHED_STATE.marks];
+    
     if (subjectFilter !== 'all') filtered = filtered.filter(m => m.subject_name === subjectFilter);
     if (programFilter !== 'all') filtered = filtered.filter(m => m.program === programFilter);
     if (blockFilter !== 'all') filtered = filtered.filter(m => m.block === blockFilter);
-    if (assessmentFilter !== 'all') filtered = filtered.filter(m => m.assessment_type === assessmentFilter);
     if (yearFilter !== 'all') filtered = filtered.filter(m => m.year === yearFilter);
+    if (statusFilter === 'published') filtered = filtered.filter(m => m.published === true);
+    else if (statusFilter === 'draft') filtered = filtered.filter(m => m.published !== true);
     if (searchTerm) {
         filtered = filtered.filter(m => 
             (m.subject_name || '').toLowerCase().includes(searchTerm) ||
+            (m.student_name || '').toLowerCase().includes(searchTerm) ||
             (m.admission_number || '').toLowerCase().includes(searchTerm)
         );
     }
     
     PUBLISHED_STATE.filtered = filtered;
     renderPublishedMarks();
-    const filterCount = document.getElementById('pm_filter_count');
-    if (filterCount) filterCount.textContent = filtered.length;
 }
 
-function exportPublishedMarksToCSV() {
-    const marks = PUBLISHED_STATE.filtered;
-    if (!marks || marks.length === 0) {
+// ============================================================
+// INDIVIDUAL STUDENT PUBLISH FUNCTIONS
+// ============================================================
+
+/**
+ * Publish marks for a single student
+ */
+async function publishSingleStudentMarks(admissionNumber, subjectName) {
+    if (!admissionNumber || !subjectName) {
         if (typeof window.showNotification === 'function') {
-            window.showNotification('No marks to export', 'warning');
+            window.showNotification('Please select a student and subject', 'warning');
         }
         return;
     }
     
-    const programType = getProgramType(PUBLISHED_STATE.userProgram);
-    const blockLabel = programType === 'TVET' ? 'Term' : 'Block';
+    if (!confirm(`⚠️ Publish marks for student ${admissionNumber} in "${subjectName}"?`)) return;
     
-    const headers = ['Subject/Unit', 'Admission', blockLabel, 'Year', 'Assessment Type', 'CAT 1', 'CAT 2', 'Exam', 'Total', 'Grade', 'Points', 'Status', 'Published Date'];
-    const rows = marks.map(m => [
-        m.subject_name || '',
-        m.admission_number || '',
-        m.block || '',
-        m.year || '',
-        m.assessment_type || '',
-        m.cat1_score || '',
-        m.cat2_score || '',
-        m.exam_score || '',
-        m.final_score || '',
-        m.grade || '',
-        m.points || 0.0,
-        m.status || '',
-        m.published_date || ''
-    ]);
+    try {
+        if (typeof window.showLoading === 'function') window.showLoading('Publishing marks...');
+        
+        const { data, error } = await window.sb
+            .from('student_marks')
+            .update({
+                published: true,
+                published_at: new Date().toISOString(),
+                published_by: window.currentUser?.id || null
+            })
+            .eq('admission_number', admissionNumber)
+            .eq('subject_name', subjectName);
+        
+        if (error) throw error;
+        
+        const count = data?.length || 0;
+        
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`✅ Published ${count} mark(s) for ${admissionNumber}`, 'success');
+        }
+        
+        // Refresh
+        await loadPublishedMarks();
+        
+    } catch (error) {
+        console.error('Error publishing student marks:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('❌ Error: ' + error.message, 'error');
+        }
+    } finally {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+    }
+}
+
+/**
+ * Unpublish marks for a single student
+ */
+async function unpublishSingleStudentMarks(admissionNumber, subjectName) {
+    if (!admissionNumber || !subjectName) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('Please select a student and subject', 'warning');
+        }
+        return;
+    }
     
-    let csv = headers.join(',') + '\n';
-    rows.forEach(row => {
-        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
-    });
+    if (!confirm(`⚠️ Unpublish marks for student ${admissionNumber} in "${subjectName}"?`)) return;
     
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Published_Marks_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+        if (typeof window.showLoading === 'function') window.showLoading('Unpublishing marks...');
+        
+        const { data, error } = await window.sb
+            .from('student_marks')
+            .update({
+                published: false,
+                published_at: null,
+                published_by: null
+            })
+            .eq('admission_number', admissionNumber)
+            .eq('subject_name', subjectName);
+        
+        if (error) throw error;
+        
+        const count = data?.length || 0;
+        
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`🔒 Unpublished ${count} mark(s) for ${admissionNumber}`, 'info');
+        }
+        
+        // Refresh
+        await loadPublishedMarks();
+        
+    } catch (error) {
+        console.error('Error unpublishing student marks:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('❌ Error: ' + error.message, 'error');
+        }
+    } finally {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+    }
+}
+
+/**
+ * Publish all marks in the current filtered list
+ */
+async function publishAllFilteredMarks() {
+    const marks = PUBLISHED_STATE.filtered;
+    if (!marks || marks.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No marks to publish', 'warning');
+        }
+        return;
+    }
     
-    if (typeof window.showNotification === 'function') {
-        window.showNotification('Exported published marks successfully', 'success');
+    const count = marks.length;
+    if (!confirm(`⚠️ Publish ALL ${count} marks in the current filtered list?`)) return;
+    
+    try {
+        if (typeof window.showLoading === 'function') window.showLoading('Publishing marks...');
+        
+        let successCount = 0;
+        for (const mark of marks) {
+            const { error } = await window.sb
+                .from('student_marks')
+                .update({
+                    published: true,
+                    published_at: new Date().toISOString(),
+                    published_by: window.currentUser?.id || null
+                })
+                .eq('id', mark.id);
+            
+            if (!error) successCount++;
+        }
+        
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`✅ Published ${successCount} marks`, 'success');
+        }
+        
+        await loadPublishedMarks();
+        
+    } catch (error) {
+        console.error('Error publishing all marks:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('❌ Error: ' + error.message, 'error');
+        }
+    } finally {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+    }
+}
+
+/**
+ * Unpublish all marks in the current filtered list
+ */
+async function unpublishAllFilteredMarks() {
+    const marks = PUBLISHED_STATE.filtered;
+    if (!marks || marks.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No marks to unpublish', 'warning');
+        }
+        return;
+    }
+    
+    const count = marks.length;
+    if (!confirm(`⚠️ Unpublish ALL ${count} marks in the current filtered list?`)) return;
+    
+    try {
+        if (typeof window.showLoading === 'function') window.showLoading('Unpublishing marks...');
+        
+        let successCount = 0;
+        for (const mark of marks) {
+            const { error } = await window.sb
+                .from('student_marks')
+                .update({
+                    published: false,
+                    published_at: null,
+                    published_by: null
+                })
+                .eq('id', mark.id);
+            
+            if (!error) successCount++;
+        }
+        
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`🔒 Unpublished ${successCount} marks`, 'info');
+        }
+        
+        await loadPublishedMarks();
+        
+    } catch (error) {
+        console.error('Error unpublishing all marks:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('❌ Error: ' + error.message, 'error');
+        }
+    } finally {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
     }
 }
 
 // ============================================================
-// PUBLISH MARKS FUNCTIONS (Admin/Lecturer)
+// BULK PUBLISH MODAL FUNCTIONS
 // ============================================================
 
 function openPublishModal() {
     const modal = document.getElementById('publishModal');
     if (!modal) {
-        console.warn('Publish modal not found');
         if (typeof window.showNotification === 'function') {
-            window.showNotification('Publish modal not found. Please check HTML.', 'error');
+            window.showNotification('Publish modal not found', 'error');
         }
         return;
     }
@@ -637,7 +812,7 @@ async function confirmPublishMarks() {
         return;
     }
     
-    const confirmMsg = `⚠️ Publish marks for "${unit}"?\n\nThis will make marks visible to ALL students in this unit.`;
+    const confirmMsg = `⚠️ Publish ALL marks for "${unit}"?\n\nThis will make marks visible to ALL students in this unit.`;
     if (!confirm(confirmMsg)) return;
     
     try {
@@ -647,7 +822,7 @@ async function confirmPublishMarks() {
             .from('student_marks')
             .update({
                 published: true,
-                published_date: new Date().toISOString(),
+                published_at: new Date().toISOString(),
                 published_by: window.currentUser?.id || null
             })
             .eq('subject_name', unit);
@@ -662,7 +837,7 @@ async function confirmPublishMarks() {
         const count = data?.length || 0;
         
         if (typeof window.showNotification === 'function') {
-            window.showNotification(`✅ ${count} marks published for "${unit}"!`, 'success');
+            window.showNotification(`✅ Published ${count} marks for "${unit}"!`, 'success');
         }
         
         closePublishModal();
@@ -679,33 +854,246 @@ async function confirmPublishMarks() {
 }
 
 // ============================================================
-// EXPOSE FUNCTIONS TO GLOBAL SCOPE
+// EXPORT TO CSV
 // ============================================================
+function exportPublishedMarksToCSV() {
+    const marks = PUBLISHED_STATE.filtered;
+    if (!marks || marks.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No marks to export', 'warning');
+        }
+        return;
+    }
+    
+    // Define headers
+    const headers = ['Student Name', 'Admission Number', 'Subject/Unit', 'Block/Term', 'Year', 'Score', 'Grade', 'Points', 'Status', 'Published'];
+    
+    // Build CSV rows
+    const rows = marks.map(mark => [
+        `"${(mark.student_name || '').replace(/"/g, '""')}"`,
+        `"${(mark.admission_number || '').replace(/"/g, '""')}"`,
+        `"${(mark.subject_name || '').replace(/"/g, '""')}"`,
+        `"${(mark.block || '').replace(/"/g, '""')}"`,
+        `"${(mark.year || '').replace(/"/g, '""')}"`,
+        mark.final_score || 0,
+        mark.grade || '-',
+        mark.points || 0,
+        mark.status || (mark.final_score >= 60 ? 'Pass' : 'Fail'),
+        mark.published ? 'Yes' : 'No'
+    ]);
+    
+    // Combine headers and rows
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    // Create download
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `published_marks_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    if (typeof window.showNotification === 'function') {
+        window.showNotification(`✅ Exported ${marks.length} marks to CSV`, 'success');
+    }
+}
 
-window.loadPublishedMarks = loadPublishedMarks;
-window.filterPublishedMarks = filterPublishedMarks;
+// ============================================================
+// PRINT FUNCTION
+// ============================================================
+function printPublishedMarks() {
+    const marks = PUBLISHED_STATE.filtered;
+    if (!marks || marks.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No marks to print', 'warning');
+        }
+        return;
+    }
+    
+    const programName = getProgramDisplayName(PUBLISHED_STATE.userProgram);
+    const blockLabel = getProgramType(PUBLISHED_STATE.userProgram) === 'TVET' ? 'Term' : 'Block';
+    
+    // Create print window
+    const printWindow = window.open('', '_blank', 'width=1200,height=800');
+    if (!printWindow) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('Please allow popups to print', 'warning');
+        }
+        return;
+    }
+    
+    let tableRows = '';
+    marks.forEach((mark, index) => {
+        const passStatus = mark.status === 'Pass' || mark.status === 'PASS' || mark.final_score >= 60;
+        tableRows += `
+            <tr>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${index + 1}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd;">${mark.student_name || 'Unknown'}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd;">${mark.admission_number || '-'}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd;">${mark.subject_name || 'N/A'}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.final_score || 0}%</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.grade || '-'}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.block || '-'}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${passStatus ? 'Pass' : 'Fail'}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.published ? '✅ Published' : '📝 Draft'}</td>
+            </tr>
+        `;
+    });
+    
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Published Marks - ${programName}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                h1 { color: #0A3D62; border-bottom: 2px solid #0A3D62; padding-bottom: 10px; }
+                .header-info { margin-bottom: 20px; color: #555; }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                th { background: #0A3D62; color: white; padding: 8px 10px; border: 1px solid #0A3D62; text-align: left; }
+                td { padding: 6px 10px; border: 1px solid #ddd; }
+                .footer { margin-top: 20px; text-align: center; font-size: 11px; color: #888; }
+                .status-pass { color: #10b981; font-weight: bold; }
+                .status-fail { color: #dc2626; font-weight: bold; }
+                .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+                .badge-published { background: #10b981; color: white; }
+                .badge-draft { background: #94a3b8; color: white; }
+            </style>
+        </head>
+        <body>
+            <h1>📊 Published Marks Report</h1>
+            <div class="header-info">
+                <p><strong>Program:</strong> ${programName}</p>
+                <p><strong>Student:</strong> ${PUBLISHED_STATE.user?.full_name || PUBLISHED_STATE.user?.name || 'Student'}</p>
+                <p><strong>Admission:</strong> ${PUBLISHED_STATE.user?.admission_number || PUBLISHED_STATE.user?.student_id || '-'}</p>
+                <p><strong>Total Marks:</strong> ${marks.length} | <strong>Published:</strong> ${marks.filter(m => m.published).length}</p>
+                <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student</th>
+                        <th>Admission</th>
+                        <th>Unit</th>
+                        <th>Score</th>
+                        <th>Grade</th>
+                        <th>${blockLabel}</th>
+                        <th>Status</th>
+                        <th>Published</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+            <div class="footer">
+                <p>Generated from NCHSM Marks Management System</p>
+            </div>
+            <script>
+                window.onload = function() { window.print(); }
+            <\/script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+async function initPublishedMarks() {
+    console.log('📊 Initializing Published Marks module...');
+    
+    // Check if we're on the published marks page
+    const container = document.getElementById('publishedMarksContainer');
+    if (!container) {
+        console.log('Published marks container not found, skipping initialization');
+        return;
+    }
+    
+    // Load marks
+    await loadPublishedMarks();
+    
+    // Set up event listeners for filters
+    const filterSelectors = ['pm_subject_filter', 'pm_program_filter', 'pm_block_filter', 'pm_status_filter', 'pm_year_filter'];
+    filterSelectors.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', filterPublishedMarks);
+        }
+    });
+    
+    const searchInput = document.getElementById('pm_search');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterPublishedMarks);
+    }
+    
+    // Set up bulk action buttons
+    const publishAllBtn = document.getElementById('pm_publish_all_btn');
+    if (publishAllBtn) {
+        publishAllBtn.addEventListener('click', publishAllFilteredMarks);
+    }
+    
+    const unpublishAllBtn = document.getElementById('pm_unpublish_all_btn');
+    if (unpublishAllBtn) {
+        unpublishAllBtn.addEventListener('click', unpublishAllFilteredMarks);
+    }
+    
+    const exportBtn = document.getElementById('pm_export_csv_btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportPublishedMarksToCSV);
+    }
+    
+    const printBtn = document.getElementById('pm_print_btn');
+    if (printBtn) {
+        printBtn.addEventListener('click', printPublishedMarks);
+    }
+    
+    console.log('✅ Published Marks module initialized');
+}
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPublishedMarks);
+} else {
+    initPublishedMarks();
+}
+
+// ============================================================
+// EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
+window.publishedMarks = {
+    load: loadPublishedMarks,
+    filter: filterPublishedMarks,
+    publishSingle: publishSingleStudentMarks,
+    unpublishSingle: unpublishSingleStudentMarks,
+    publishAll: publishAllFilteredMarks,
+    unpublishAll: unpublishAllFilteredMarks,
+    export: exportPublishedMarksToCSV,
+    print: printPublishedMarks,
+    openModal: openPublishModal,
+    closeModal: closePublishModal,
+    confirmPublish: confirmPublishMarks,
+    state: PUBLISHED_STATE
+};
+
+// Also expose individual functions for inline onclick handlers
+window.publishSingleStudentMarks = publishSingleStudentMarks;
+window.unpublishSingleStudentMarks = unpublishSingleStudentMarks;
+window.publishAllFilteredMarks = publishAllFilteredMarks;
+window.unpublishAllFilteredMarks = unpublishAllFilteredMarks;
 window.exportPublishedMarksToCSV = exportPublishedMarksToCSV;
+window.printPublishedMarks = printPublishedMarks;
 window.openPublishModal = openPublishModal;
 window.closePublishModal = closePublishModal;
 window.confirmPublishMarks = confirmPublishMarks;
-window.populatePublishUnits = populatePublishUnits;
-window.getProgramDisplayName = getProgramDisplayName;
-window.getProgramType = getProgramType;
-window.getBlockTermLabel = getBlockTermLabel;
-window.getGradeColor = getGradeColor;
-window.PUBLISHED_STATE = PUBLISHED_STATE;
-window.escapeHtml = escapeHtml;
+window.filterPublishedMarks = filterPublishedMarks;
 
-if (typeof window.getCurrentUser === 'undefined') {
-    window.getCurrentUser = getCurrentUserFallback;
-}
-
-console.log('✅ Published Marks module loaded successfully!');
-console.log('📊 Data source: student_marks table (same as Marks Entry)');
-console.log('📊 Supports both TVET (Terms) and KRCHN (Blocks)');
-console.log('📊 Available functions:');
-console.log('   - loadPublishedMarks() - Load marks for student');
-console.log('   - filterPublishedMarks() - Filter displayed marks');
-console.log('   - exportPublishedMarksToCSV() - Export to CSV');
-console.log('   - openPublishModal() - Open publish modal (Admin)');
-console.log('   - confirmPublishMarks() - Confirm publish (Admin)');
+console.log('📊 Published Marks module loaded successfully!');
