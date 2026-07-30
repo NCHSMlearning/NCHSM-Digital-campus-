@@ -6,7 +6,7 @@
     console.log('📊 Student Academic Reports Module Loading...');
 
     // ============================================================
-    // 1. PROGRAM DETECTION - Simple & Clean
+    // 1. PROGRAM DETECTION
     // ============================================================
     const PROGRAM = {
         isTVET: function(programCode) {
@@ -73,7 +73,7 @@
     }
 
     // ============================================================
-    // 3. GENERATE SAMPLE GRADES
+    // 3. GENERATE SAMPLE GRADES (Fallback)
     // ============================================================
     function generateSampleGrades() {
         const user = window.currentUserProfile || {};
@@ -95,7 +95,7 @@
             { code: 'NUR106', name: 'Maternal & Child Health', block: 'Block 2' }
         ];
         
-        return courses.map((course, index) => {
+        return courses.map((course) => {
             const base = 65 + Math.random() * 30;
             const score = Math.min(99, Math.round(base * 10) / 10);
             const grade = calculateLetterGrade(score);
@@ -114,7 +114,7 @@
                 status: score >= 60 ? 'PASS' : 'FAIL',
                 blockTerm: course.block,
                 year: '2024',
-                examDate: `2024-${String(1 + (index % 6)).padStart(2, '0')}-15`
+                examDate: '2024-01-15'
             };
         });
     }
@@ -130,17 +130,13 @@
         
         if (isTVET) {
             return [
-                { id: 101, admission_number: 'TVET/001/2025', student_name: 'Student', subject_name: 'Occupational Health & Safety', program: program, block: 'Term 1', year: '2025', cat1_score: 16, cat2_score: 18, exam_score: 45, final_score: 79, grade: 'B+', points: 3.5, status: 'Pass', published_date: '2025-01-15' },
-                { id: 102, admission_number: 'TVET/001/2025', student_name: 'Student', subject_name: 'Workshop Practice', program: program, block: 'Term 1', year: '2025', cat1_score: 14, cat2_score: 15, exam_score: 40, final_score: 69, grade: 'B', points: 3.0, status: 'Pass', published_date: '2025-01-15' },
-                { id: 103, admission_number: 'TVET/001/2025', student_name: 'Student', subject_name: 'Technical Drawing', program: program, block: 'Term 2', year: '2025', cat1_score: 11, cat2_score: 13, exam_score: 32, final_score: 56, grade: 'D', points: 0.0, status: 'Fail', published_date: '2025-03-20' }
+                { id: 101, admission_number: 'TVET/001/2025', student_name: 'Student', subject_name: 'Occupational Health & Safety', program: program, block: 'Term 1', year: '2025', cat1_score: 16, cat2_score: 18, exam_score: 45, final_score: 79, grade: 'B+', points: 3.5, published: true, published_at: '2025-01-15', assessment_type: 'full' }
             ];
         }
         
         return [
-            { id: 1, admission_number: 'KRCHN/001/2025', student_name: 'Student', subject_name: 'Fundamentals of Nursing', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 18, cat2_score: 19, exam_score: 55, final_score: 92, grade: 'A', points: 4.0, status: 'Pass', published_date: '2025-01-15' },
-            { id: 2, admission_number: 'KRCHN/001/2025', student_name: 'Student', subject_name: 'Anatomy and Physiology', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 15, cat2_score: 16, exam_score: 48, final_score: 79, grade: 'B+', points: 3.5, status: 'Pass', published_date: '2025-01-15' },
-            { id: 3, admission_number: 'KRCHN/001/2025', student_name: 'Student', subject_name: 'Pharmacology', program: 'KRCHN', block: 'Block 1', year: '2025', cat1_score: 12, cat2_score: 14, exam_score: 40, final_score: 66, grade: 'B', points: 3.0, status: 'Pass', published_date: '2025-03-20' },
-            { id: 4, admission_number: 'KRCHN/001/2025', student_name: 'Student', subject_name: 'Medical-Surgical Nursing', program: 'KRCHN', block: 'Block 1', year: '2025', cat1_score: 10, cat2_score: 12, exam_score: 35, final_score: 57, grade: 'D', points: 0.0, status: 'Fail', published_date: '2025-03-20' }
+            { id: 1, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Fundamentals of Nursing', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 18, cat2_score: 19, exam_score: 55, final_score: 92, grade: 'A', points: 4.0, published: true, published_at: '2025-01-15', assessment_type: 'full' },
+            { id: 2, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Anatomy and Physiology', program: 'KRCHN', block: 'Introductory', year: '2025', cat1_score: 15, cat2_score: 16, exam_score: 48, final_score: 79, grade: 'B+', points: 3.5, published: true, published_at: '2025-01-15', assessment_type: 'full' }
         ];
     }
 
@@ -164,36 +160,42 @@
                 return;
             }
             
-            // Update student info
+            const registrationNumber = user.student_id || user.admission_number || user.user_id;
+            
             document.getElementById('my_marks_student_name').textContent = user.full_name || 'Student';
-            document.getElementById('my_marks_admission').textContent = user.student_id || user.user_id || '-';
+            document.getElementById('my_marks_admission').textContent = registrationNumber || '-';
             document.getElementById('my_marks_program').textContent = user.program || '-';
             
-            // Update block/term header
             const blockLabel = PROGRAM.getBlockLabel(user.program);
             const headerEl = document.querySelector('#my_marks_table_body')?.closest('table')?.querySelector('th:nth-child(3)');
             if (headerEl) headerEl.textContent = blockLabel;
             
-            // Populate block filter
             populateMyMarksBlockFilter(user.program);
             
-            // Fetch marks
             let marks = [];
             try {
                 const result = await window.db.supabase
                     .from('student_marks')
                     .select('*')
-                    .eq('admission_number', user.student_id || user.user_id)
+                    .eq('admission_number', registrationNumber)
                     .eq('published', true)
-                    .order('published_date', { ascending: false });
+                    .order('published_at', { ascending: false });
                 
-                if (!result.error && result.data) marks = result.data;
-            } catch (e) { /* use demo */ }
+                if (!result.error && result.data) {
+                    marks = result.data;
+                }
+            } catch (e) {
+                console.warn('Error fetching marks:', e);
+            }
             
-            myMarksData = marks.length > 0 ? marks : getDemoMarks(user.program);
+            if (marks && marks.length > 0) {
+                myMarksData = marks;
+            } else {
+                myMarksData = getDemoMarks(user.program);
+            }
+            
             myMarksFiltered = [...myMarksData];
             
-            // Populate subject filter
             const subjectFilter = document.getElementById('my_marks_subject_filter');
             if (subjectFilter) {
                 const subjects = [...new Set(myMarksData.map(m => m.subject_name).filter(Boolean))];
@@ -210,7 +212,7 @@
             updateMyMarksStats();
             
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error loading my marks:', error);
             tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
         }
     }
@@ -252,9 +254,10 @@
         
         let html = '';
         marks.forEach((mark, index) => {
-            const statusColor = mark.status === 'Pass' ? '#10b981' : '#dc2626';
+            const statusColor = mark.final_score >= 60 ? '#10b981' : '#dc2626';
             const gradeColor = getGradeColor(mark.grade);
-            const pubDate = mark.published_date ? new Date(mark.published_date).toLocaleDateString() : '-';
+            const pubDate = mark.published_at ? new Date(mark.published_at).toLocaleDateString() : '-';
+            const status = mark.final_score >= 60 ? 'Pass' : (mark.final_score > 0 ? 'Fail' : 'Pending');
             
             html += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -273,7 +276,7 @@
                     </td>
                     <td style="padding: 8px 14px; text-align: center;">${mark.points || 0.0}</td>
                     <td style="padding: 8px 14px; text-align: center;">
-                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">${mark.status || 'Pending'}</span>
+                        <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">${status}</span>
                     </td>
                     <td style="padding: 8px 14px; text-align: center; font-size: 12px; color: #94a3b8;">${pubDate}</td>
                 </tr>
@@ -287,8 +290,8 @@
     function updateMyMarksStats() {
         const marks = myMarksData;
         const total = marks.length;
-        const passed = marks.filter(m => m.status === 'Pass').length;
-        const failed = marks.filter(m => m.status === 'Fail').length;
+        const passed = marks.filter(m => m.final_score >= 60).length;
+        const failed = marks.filter(m => m.final_score > 0 && m.final_score < 60).length;
         const avg = total > 0 ? (marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / total) : 0;
         const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
         const gpa = total > 0 ? (totalPoints / total) : 0;
@@ -315,7 +318,7 @@
     }
 
     // ============================================================
-    // 5. SEMESTER REPORT FUNCTIONS
+    // 5. SEMESTER REPORT
     // ============================================================
     let gradeChart = null;
     let currentGrades = [];
@@ -327,26 +330,49 @@
         tbody.innerHTML = `<tr><td colspan="9"><div class="loading-spinner"></div> Loading grades...</td></tr>`;
         
         try {
-            // Get sample or real data
             const user = window.currentUserProfile || {};
-            const grades = generateSampleGrades();
-            currentGrades = grades;
+            let grades = [];
             
-            // Filter by semester if selected
-            const semesterFilter = document.getElementById('semester-filter')?.value || 'all';
-            let filteredGrades = grades;
-            if (semesterFilter !== 'all') {
-                // Simple filter logic - can be enhanced
-                filteredGrades = grades.slice(0, 4);
+            // Try to get real grades from exams module first
+            if (window.examsModule && window.examsModule.allExams) {
+                const exams = window.examsModule.allExams || [];
+                const releasedExams = exams.filter(e => 
+                    (e.isReleased === true || e.released === true) && 
+                    e.totalPercentage !== null && e.totalPercentage !== undefined
+                );
+                
+                if (releasedExams.length > 0) {
+                    grades = releasedExams.map(e => ({
+                        courseCode: e.unit_code || e.course_code || 'N/A',
+                        courseName: e.exam_name || e.title || 'Exam',
+                        credits: e.credits || 3,
+                        cat1: e.cat1Display || e.cat_1_score || '--',
+                        cat2: e.cat2Display || e.cat_2_score || '--',
+                        final: e.finalDisplay || e.final_score || '--',
+                        total: e.totalPercentage || 0,
+                        grade: calculateLetterGrade(e.totalPercentage || 0),
+                        gpa: calculateGPA(e.totalPercentage || 0),
+                        status: (e.totalPercentage || 0) >= 60 ? 'PASS' : 'FAIL',
+                        blockTerm: e.block_term || e.block || 'General',
+                        year: e.intake_year || '2024'
+                    }));
+                }
             }
             
+            // If no real grades, use sample data
+            if (grades.length === 0) {
+                grades = generateSampleGrades();
+            }
+            
+            currentGrades = grades;
+            
             // Calculate stats
-            const total = filteredGrades.length;
-            const totalScore = filteredGrades.reduce((sum, g) => sum + g.total, 0);
+            const total = grades.length;
+            const totalScore = grades.reduce((sum, g) => sum + g.total, 0);
             const avgScore = total > 0 ? (totalScore / total) : 0;
             const gpa = calculateGPA(avgScore);
             const grade = calculateLetterGrade(avgScore);
-            const passed = filteredGrades.filter(g => g.status === 'PASS').length;
+            const passed = grades.filter(g => g.status === 'PASS').length;
             
             // Update GPA cards
             document.getElementById('semester-gpa').textContent = gpa.toFixed(2);
@@ -358,7 +384,7 @@
             
             // Render table
             let html = '';
-            filteredGrades.forEach((g, i) => {
+            grades.forEach((g, i) => {
                 const statusColor = g.status === 'PASS' ? '#10b981' : '#dc2626';
                 const gradeColor = getGradeColor(g.grade);
                 
@@ -380,7 +406,7 @@
             tbody.innerHTML = html || '<tr><td colspan="9" style="text-align: center; padding: 40px;">No grades available</td></tr>';
             
             // Create chart
-            createGradeChart(filteredGrades);
+            createGradeChart(grades);
             
         } catch (error) {
             tbody.innerHTML = `<tr><td colspan="9" style="color: red; text-align: center; padding: 40px;">Error: ${error.message}</td></tr>`;
@@ -549,8 +575,6 @@
                     .summary-item { text-align: center; }
                     .summary-value { font-size: 28px; font-weight: bold; }
                     .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8; }
-                    .pass { color: #10b981; font-weight: bold; }
-                    .fail { color: #ef4444; font-weight: bold; }
                     @media print { body { padding: 20px; } }
                 </style>
             </head>
@@ -575,7 +599,6 @@
         `;
         
         grades.forEach(g => {
-            const statusClass = g.status === 'PASS' ? 'pass' : 'fail';
             html += `
                 <tr>
                     <td>${escapeHtml(g.blockTerm)}</td>
@@ -583,7 +606,7 @@
                     <td>${escapeHtml(g.courseName)}</td>
                     <td>${g.credits}</td>
                     <td>${g.grade}</td>
-                    <td class="${statusClass}">${(g.gpa * g.credits).toFixed(1)}</td>
+                    <td>${(g.gpa * g.credits).toFixed(1)}</td>
                 </tr>
             `;
         });
@@ -655,8 +678,6 @@
     // ============================================================
     function init() {
         console.log('🔧 Initializing Academic Reports...');
-        
-        // Setup tabs
         setupTabs();
         
         // Setup refresh button
@@ -685,36 +706,25 @@
         const printBtn = document.getElementById('print-report');
         if (printBtn) {
             printBtn.addEventListener('click', function() {
-                const content = document.querySelector('.report-content.active');
-                if (content) {
-                    const printWindow = window.open('', '_blank', 'width=900,height=700');
-                    if (printWindow) {
-                        printWindow.document.write(`
-                            <!DOCTYPE html>
-                            <html>
-                            <head><title>Academic Report</title>
-                            <style>
-                                body { font-family: Arial, sans-serif; padding: 40px; }
-                                table { width: 100%; border-collapse: collapse; }
-                                th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
-                                th { background: #f1f5f9; }
-                            </style>
-                            </head>
-                            <body>
-                                ${content.innerHTML}
-                                <p style="margin-top: 30px; text-align: center; color: #94a3b8;">Printed: ${new Date().toLocaleString()}</p>
-                            </body>
-                            </html>
-                        `);
-                        printWindow.document.close();
-                        setTimeout(() => printWindow.print(), 500);
-                    }
-                }
+                window.print();
             });
         }
         
-        // Load default tab (semester)
-        setTimeout(loadSemesterReport, 300);
+        // Check if mymarks tab is active on load
+        setTimeout(function() {
+            const activeTab = document.querySelector('.report-tab.active');
+            if (activeTab) {
+                const reportType = activeTab.dataset.report;
+                if (reportType === 'semester') loadSemesterReport();
+                else if (reportType === 'yearly') loadYearlyReport();
+                else if (reportType === 'transcript') loadTranscript();
+                else if (reportType === 'progress') loadCourseProgress();
+                else if (reportType === 'mymarks') loadMyMarks();
+            } else {
+                // Default to semester report
+                loadSemesterReport();
+            }
+        }, 300);
         
         console.log('✅ Academic Reports ready');
     }
@@ -725,7 +735,9 @@
     window.loadMyMarks = loadMyMarks;
     window.filterMyMarks = filterMyMarks;
     window.loadSemesterReport = loadSemesterReport;
+    window.loadYearlyReport = loadYearlyReport;
     window.loadTranscript = loadTranscript;
+    window.loadCourseProgress = loadCourseProgress;
     window.downloadTranscriptPDF = downloadTranscriptPDF;
 
     // ============================================================
