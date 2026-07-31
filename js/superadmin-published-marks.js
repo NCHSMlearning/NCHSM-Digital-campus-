@@ -1,8 +1,6 @@
 // ============================================================
 // PUBLISHED MARKS - SUPER ADMIN (TVET & KRCHN Nursing)
-// STUDENT GROUP VIEW - All marks per student grouped together
-// FULLY INTEGRATED with Marks Entry System
-// ALIGNED WITH STUDENT GRADING SYSTEM
+// WITH EMAIL NOTIFICATIONS INTEGRATION
 // ============================================================
 
 console.log('📊 Published Marks module loading...');
@@ -110,12 +108,211 @@ function escapeHtml(str) {
 }
 
 // ============================================================
+// EMAIL NOTIFICATION FUNCTIONS (Using your existing email system)
+// ============================================================
+
+/**
+ * Send email notification to a student when their marks are published
+ * Uses the existing sendExamPostedNotification pattern
+ */
+async function sendMarksPublishedEmail(studentEmail, studentName, program, block, marksCount, academicYear) {
+    try {
+        if (!studentEmail) {
+            console.warn('⚠️ No email address for student:', studentName);
+            return { success: false, error: 'No email address' };
+        }
+        
+        console.log(`📧 Sending marks published email to: ${studentEmail}`);
+        
+        const programType = getProgramType(program);
+        const programDisplay = getProgramDisplayName(program);
+        const blockLabel = programType === 'TVET' ? 'Term' : 'Block';
+        
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results Published - NCHSM</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background: #f0f4f8; }
+        .container { max-width: 580px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px; text-align: center; color: white; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header p { margin: 4px 0 0; opacity: 0.8; }
+        .body { padding: 30px 35px; }
+        .greeting { background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #10b981; }
+        .greeting p { margin: 0; font-size: 16px; color: #0A3D62; }
+        .details { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+        .details h4 { margin: 0 0 12px 0; color: #1e293b; }
+        .details table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .details td { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+        .details .label { color: #64748B; font-weight: 500; }
+        .details .value { color: #0A3D62; font-weight: 600; text-align: right; }
+        .details tr:last-child td { border-bottom: none; }
+        .btn { display: inline-block; background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; }
+        .footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }
+        .help { background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B; margin-top: 16px; }
+        .help p { margin: 0; color: #78350F; font-size: 13px; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .badge-success { background: #D1FAE5; color: #065F46; }
+        @media (max-width: 480px) { .body { padding: 20px; } .header { padding: 20px; } .details td { display: block; text-align: left; } .details .value { text-align: left; margin-top: 2px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>📊 Your Results Are Published!</h1>
+                <p>Nakuru College of Health Sciences and Management</p>
+            </div>
+            
+            <div class="body">
+                <div class="greeting">
+                    <p>👋 <strong>Dear ${escapeHtml(studentName || 'Student')}</strong></p>
+                    <p style="margin: 8px 0 0; color: #1e293b;">
+                        We are pleased to inform you that your academic results have been published.
+                        You can now view your marks in the student portal.
+                    </p>
+                </div>
+                
+                <div class="details">
+                    <h4>📋 Results Summary</h4>
+                    <table>
+                        <tr><td class="label">📚 Program</td><td class="value">${escapeHtml(programDisplay || program || 'N/A')}</td></tr>
+                        <tr><td class="label">📌 ${blockLabel}</td><td class="value">${escapeHtml(block || 'N/A')}</td></tr>
+                        <tr><td class="label">📅 Academic Year</td><td class="value">${escapeHtml(academicYear || '2025/2026')}</td></tr>
+                        <tr><td class="label">📊 Total Units Published</td><td class="value"><span class="badge badge-success">${marksCount}</span></td></tr>
+                        <tr><td class="label">📅 Published Date</td><td class="value">${new Date().toLocaleDateString('en-KE', {timeZone: 'Africa/Nairobi', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'})}</td></tr>
+                    </table>
+                </div>
+                
+                <div style="text-align: center; margin: 20px 0;">
+                    <a href="https://nchsm.co.ke/student.html#academic-reports" class="btn">
+                        📊 View My Results
+                    </a>
+                </div>
+                
+                <div class="help">
+                    <h5>💡 Need Help?</h5>
+                    <p>📧 portal.nchsm@gmail.com<br>📞 0790969743 | 0702432987</p>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
+                <p style="font-size:0.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p>
+                <p style="font-size:0.7rem; color: #94a3b8; margin-top: 8px;">This is an automated message from NCHSM Exam System.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+
+        // Use the existing email sending function from your script
+        // Try to use the Edge Function (same as exam notifications)
+        const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: studentEmail,
+                subject: `📊 Your Results Have Been Published - ${academicYear || '2025/2026'}`,
+                html: htmlContent,
+                from: 'NCHSM Academic Office <admin@nchsm.co.ke>'
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log(`✅ Email sent to ${studentEmail}`);
+            return { success: true, data };
+        } else {
+            console.error(`❌ Email failed for ${studentEmail}:`, data.error);
+            return { success: false, error: data.error || 'Email sending failed' };
+        }
+
+    } catch (error) {
+        console.error(`❌ Notification error for ${studentEmail}:`, error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Send marks published notifications to all students in a program/block
+ */
+async function notifyStudentsAboutPublishedMarks(students, block, program, marksCount, academicYear) {
+    try {
+        if (!students || students.length === 0) {
+            console.log('⚠️ No students to notify');
+            return { success: false, message: 'No students found' };
+        }
+
+        console.log(`📧 Sending notifications to ${students.length} students...`);
+        
+        let successCount = 0;
+        let failCount = 0;
+        let errors = [];
+
+        // Send in batches of 10 to avoid rate limiting
+        const batchSize = 10;
+        for (let i = 0; i < students.length; i += batchSize) {
+            const batch = students.slice(i, i + batchSize);
+            
+            await Promise.all(batch.map(async (student) => {
+                try {
+                    const result = await sendMarksPublishedEmail(
+                        student.email,
+                        student.full_name || student.student_name || 'Student',
+                        program,
+                        block,
+                        marksCount,
+                        academicYear
+                    );
+                    
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                        errors.push({ email: student.email, error: result.error });
+                    }
+                } catch (err) {
+                    console.error(`❌ Failed for ${student.email}:`, err);
+                    failCount++;
+                    errors.push({ email: student.email, error: err.message });
+                }
+            }));
+            
+            // Delay between batches
+            if (i + batchSize < students.length) {
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+
+        console.log(`✅ Notifications sent: ${successCount} success, ${failCount} failed`);
+        
+        return { 
+            success: true, 
+            successCount, 
+            failCount, 
+            total: students.length,
+            errors: errors.slice(0, 10) // Return first 10 errors
+        };
+        
+    } catch (error) {
+        console.error('❌ Error sending notifications:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================================
 // TVET GRADING SYSTEM
-// Marks from | Marks to | Grade | Points | Comment
-// 0          | 49       | FAIL  | 0      | FAIL
-// 50         | 64       | C     | 2      | SATISFACTORY
-// 65         | 74       | B     | 3      | GOOD
-// 75         | 100      | A     | 4      | EXCELLENT
 // ============================================================
 
 function calculateTVETGrade(score) {
@@ -155,7 +352,6 @@ function getTVETStatus(score) {
 
 // ============================================================
 // NURSING GRADING SYSTEM
-// A: 75-100%, B: 65-74%, C: 60-64%, D: Below 60%
 // ============================================================
 
 function calculateNursingGrade(score) {
@@ -186,7 +382,7 @@ function getNursingStatus(score) {
 }
 
 // ============================================================
-// MAIN GRADING FUNCTIONS (Auto-detect program)
+// MAIN GRADING FUNCTIONS
 // ============================================================
 
 function calculateGrade(score, program) {
@@ -352,7 +548,6 @@ async function loadPublishedMarks() {
         updateProgramCounts(marks);
         updateGradingScaleDisplay();
         
-        // Populate student filter
         populateStudentFilter(marks);
         
         if (typeof window.hideLoading === 'function') window.hideLoading();
@@ -387,7 +582,8 @@ function populateStudentFilter(marks) {
             students[key] = {
                 name: m.student_name || 'Unknown',
                 admission: m.admission_number || 'N/A',
-                program: m.program || 'N/A'
+                program: m.program || 'N/A',
+                email: m.student_email || null
             };
         }
     });
@@ -586,6 +782,23 @@ function populateFilters(marks) {
             programFilter.value = currentValue;
         }
     }
+    
+    // Year filter
+    const yearFilter = document.getElementById('pm_year_filter');
+    if (yearFilter) {
+        const currentValue = yearFilter.value;
+        const uniqueYears = [...new Set(marks.map(m => m.academic_year).filter(Boolean))];
+        yearFilter.innerHTML = '<option value="all">All Years</option>';
+        uniqueYears.sort().reverse().forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearFilter.appendChild(option);
+        });
+        if (currentValue && uniqueYears.includes(currentValue)) {
+            yearFilter.value = currentValue;
+        }
+    }
 }
 
 // ============================================================
@@ -767,7 +980,7 @@ function renderPublishedMarks() {
 }
 
 // ============================================================
-// PUBLISH ALL MARKS FOR A STUDENT
+// PUBLISH ALL MARKS FOR A STUDENT (WITH EMAIL NOTIFICATION)
 // ============================================================
 
 async function publishStudentAllMarks(admissionNumber) {
@@ -795,6 +1008,43 @@ async function publishStudentAllMarks(admissionNumber) {
         if (error) throw error;
         
         const count = data?.length || 0;
+        
+        // ✅ SEND EMAIL NOTIFICATION
+        if (data && data.length > 0) {
+            try {
+                // Get student details from the first mark
+                const firstMark = data[0];
+                const studentName = firstMark.student_name || 'Student';
+                const program = firstMark.program || 'KRCHN';
+                const block = firstMark.block || 'N/A';
+                const academicYear = firstMark.academic_year || '2025/2026';
+                
+                // Get student email from profile
+                const { data: profile } = await window.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('email')
+                    .eq('admission_number', admissionNumber)
+                    .or(`student_id.eq.${admissionNumber}`)
+                    .maybeSingle();
+                
+                if (profile?.email) {
+                    await sendMarksPublishedEmail(
+                        profile.email,
+                        studentName,
+                        program,
+                        block,
+                        count,
+                        academicYear
+                    );
+                    console.log(`✅ Email notification sent to ${profile.email}`);
+                } else {
+                    console.warn(`⚠️ No email found for student ${admissionNumber}`);
+                }
+            } catch (emailError) {
+                console.error('❌ Error sending email:', emailError);
+                // Don't fail the publish if email fails
+            }
+        }
         
         if (typeof window.showNotification === 'function') {
             window.showNotification(`✅ Published ${count} marks for ${admissionNumber}`, 'success');
@@ -883,7 +1133,6 @@ function viewStudentMarks(admissionNumber) {
     const isTVET = getProgramType(firstMark.program) === 'TVET';
     const threshold = isTVET ? 50 : 60;
     
-    // Create a modal to show student marks
     const modalHtml = `
         <div id="studentMarksModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
             <div style="background: white; border-radius: 12px; max-width: 800px; width: 100%; max-height: 80vh; overflow: auto; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
@@ -941,7 +1190,6 @@ function viewStudentMarks(admissionNumber) {
         `;
     });
     
-    // Calculate summary stats
     const totalUnits = marks.length;
     const passedUnits = marks.filter(m => m.final_score >= threshold).length;
     const failedUnits = marks.filter(m => m.final_score > 0 && m.final_score < threshold).length;
@@ -993,16 +1241,13 @@ function viewStudentMarks(admissionNumber) {
         </div>
     `;
     
-    // Remove existing modal if any
     const existingModal = document.getElementById('studentMarksModal');
     if (existingModal) existingModal.remove();
     
-    // Add modal to body
     const modalContainer = document.createElement('div');
     modalContainer.innerHTML = modalHtml;
     document.body.appendChild(modalContainer.firstElementChild);
     
-    // Close on click outside
     document.getElementById('studentMarksModal').addEventListener('click', function(e) {
         if (e.target === this) {
             closeStudentMarksModal();
@@ -1093,14 +1338,12 @@ function filterPublishedMarks() {
     
     let filtered = [...PUBLISHED_STATE.marks];
     
-    // Apply program type filter (from quick buttons)
     if (PUBLISHED_STATE.currentProgramFilter === 'KRCHN') {
         filtered = filtered.filter(m => m.program === 'KRCHN');
     } else if (PUBLISHED_STATE.currentProgramFilter === 'TVET') {
         filtered = filtered.filter(m => m.program !== 'KRCHN');
     }
     
-    // Apply student filter
     if (studentFilter !== 'all') {
         filtered = filtered.filter(m => 
             (m.admission_number || m.student_name || 'Unknown') === studentFilter
@@ -1130,7 +1373,7 @@ function filterPublishedMarks() {
 }
 
 // ============================================================
-// PUBLISH ALL FILTERED MARKS
+// PUBLISH ALL FILTERED MARKS (WITH EMAIL NOTIFICATIONS)
 // ============================================================
 
 async function publishAllFilteredMarks() {
@@ -1149,6 +1392,8 @@ async function publishAllFilteredMarks() {
         if (typeof window.showLoading === 'function') window.showLoading('Publishing marks...');
         
         let successCount = 0;
+        const publishedStudents = {};
+        
         for (const mark of marks) {
             const { error } = await window.sb
                 .from('student_marks')
@@ -1159,7 +1404,54 @@ async function publishAllFilteredMarks() {
                 })
                 .eq('id', mark.id);
             
-            if (!error) successCount++;
+            if (!error) {
+                successCount++;
+                
+                // Track which students were published
+                const key = mark.admission_number;
+                if (key && !publishedStudents[key]) {
+                    publishedStudents[key] = {
+                        admission: mark.admission_number,
+                        name: mark.student_name || 'Student',
+                        program: mark.program || 'KRCHN',
+                        block: mark.block || 'N/A',
+                        academic_year: mark.academic_year || '2025/2026',
+                        marks: []
+                    };
+                }
+                if (key) {
+                    publishedStudents[key].marks.push(mark);
+                }
+            }
+        }
+        
+        // ✅ SEND EMAIL NOTIFICATIONS TO ALL AFFECTED STUDENTS
+        console.log(`📧 Sending email notifications to ${Object.keys(publishedStudents).length} students...`);
+        
+        for (const [key, student] of Object.entries(publishedStudents)) {
+            try {
+                // Get student email from profile
+                const { data: profile } = await window.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('email')
+                    .eq('admission_number', key)
+                    .or(`student_id.eq.${key}`)
+                    .maybeSingle();
+                
+                if (profile?.email) {
+                    await sendMarksPublishedEmail(
+                        profile.email,
+                        student.name,
+                        student.program,
+                        student.block,
+                        student.marks.length,
+                        student.academic_year
+                    );
+                    console.log(`✅ Email sent to ${profile.email}`);
+                }
+            } catch (emailError) {
+                console.error(`❌ Error sending email to student ${key}:`, emailError);
+            }
         }
         
         if (typeof window.showNotification === 'function') {
@@ -1408,6 +1700,52 @@ async function confirmPublishMarks() {
         
         const count = data?.length || 0;
         
+        // ✅ SEND EMAIL NOTIFICATIONS FOR BULK PUBLISH
+        if (data && data.length > 0) {
+            console.log(`📧 Sending email notifications for ${count} marks...`);
+            
+            // Group by student
+            const studentMap = {};
+            data.forEach(mark => {
+                const key = mark.admission_number;
+                if (!studentMap[key]) {
+                    studentMap[key] = {
+                        name: mark.student_name || 'Student',
+                        program: mark.program || 'KRCHN',
+                        block: mark.block || 'N/A',
+                        academic_year: mark.academic_year || '2025/2026',
+                        marks: []
+                    };
+                }
+                studentMap[key].marks.push(mark);
+            });
+            
+            // Send email to each student
+            for (const [key, student] of Object.entries(studentMap)) {
+                try {
+                    const { data: profile } = await window.sb
+                        .from('consolidated_user_profiles_table')
+                        .select('email')
+                        .eq('admission_number', key)
+                        .or(`student_id.eq.${key}`)
+                        .maybeSingle();
+                    
+                    if (profile?.email) {
+                        await sendMarksPublishedEmail(
+                            profile.email,
+                            student.name,
+                            student.program,
+                            student.block,
+                            student.marks.length,
+                            student.academic_year
+                        );
+                    }
+                } catch (emailError) {
+                    console.error(`❌ Error sending email to ${key}:`, emailError);
+                }
+            }
+        }
+        
         if (typeof window.showNotification === 'function') {
             window.showNotification(`✅ Published ${count} marks for "${unit}"!`, 'success');
         }
@@ -1499,6 +1837,8 @@ function printPublishedMarks() {
     let tableRows = '';
     marks.forEach((mark, index) => {
         const isTVET = getProgramType(mark.program) === 'TVET';
+        const threshold = isTVET ? 50 : 60;
+        const status = mark.final_score >= threshold ? 'PASS' : 'FAIL';
         const comment = mark.comment || getGradeComment(mark.final_score, mark.program);
         const programIcon = isTVET ? '🔧' : '🎓';
         tableRows += `
@@ -1512,6 +1852,7 @@ function printPublishedMarks() {
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.block || '-'}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${programIcon} ${mark.program || 'N/A'}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${comment}</td>
+                <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${status}</td>
                 <td style="padding: 6px 10px; border: 1px solid #ddd; text-align: center;">${mark.published ? '✅ Published' : '📝 Draft'}</td>
             </tr>
         `;
@@ -1540,6 +1881,7 @@ function printPublishedMarks() {
             <div class="header-info">
                 <p><strong>Total Marks:</strong> ${marks.length} | <strong>Published:</strong> ${marks.filter(m => m.published).length}</p>
                 <p><strong>KRCHN:</strong> ${marks.filter(m => m.program === 'KRCHN').length} | <strong>TVET:</strong> ${marks.filter(m => m.program !== 'KRCHN').length}</p>
+                <p><strong>TVET Min Pass:</strong> 50% | <strong>Nursing Min Pass:</strong> 60%</p>
             </div>
             <div class="grading-scale">
                 <strong>📊 TVET Grading:</strong> A (75-100%) → 4.0 | B (65-74%) → 3.0 | C (50-64%) → 2.0 | FAIL (Below 50%) → 0.0 &nbsp;|&nbsp;
@@ -1557,6 +1899,7 @@ function printPublishedMarks() {
                         <th>Block/Term</th>
                         <th>Program</th>
                         <th>Comment</th>
+                        <th>Status</th>
                         <th>Published</th>
                     </tr>
                 </thead>
@@ -1642,6 +1985,7 @@ async function initPublishedMarks() {
     console.log('✅ Published Marks module initialized');
     console.log('📊 TVET Grading: A (75-100%), B (65-74%), C (50-64%), FAIL (Below 50%)');
     console.log('📊 Nursing Grading: A (75-100%), B (65-74%), C (60-64%), D (Below 60%)');
+    console.log('📧 Email notifications enabled when publishing marks');
 }
 
 // Auto-initialize when DOM is ready
@@ -1692,15 +2036,21 @@ window.filterPublishedByProgram = filterPublishedByProgram;
 window.updatePublishProgramOptions = updatePublishProgramOptions;
 window.updatePublishPreview = updatePublishPreview;
 window.populatePublishUnits = populatePublishUnits;
+window.sendMarksPublishedEmail = sendMarksPublishedEmail;
+window.notifyStudentsAboutPublishedMarks = notifyStudentsAboutPublishedMarks;
 
 console.log('✅ Published Marks module loaded successfully!');
 console.log('📊 Features:');
 console.log('   - ✅ TVET & KRCHN Nursing support');
-console.log('   - ✅ Student Group View');
-console.log('   - ✅ Publish/Unpublish all marks per student');
-console.log('   - ✅ View student marks detail');
+console.log('   - ✅ TVET: A(75-100%), B(65-74%), C(50-64%), FAIL(Below 50%)');
+console.log('   - ✅ Nursing: A(75-100%), B(65-74%), C(60-64%), D(Below 60%)');
 console.log('   - ✅ Quick filter by program type');
+console.log('   - ✅ Individual publish/unpublish');
 console.log('   - ✅ Bulk publish with program filter');
+console.log('   - ✅ Publish/Unpublish all filtered');
 console.log('   - ✅ Export to CSV');
 console.log('   - ✅ Print functionality');
-console.log('   - ✅ All functions working!');
+console.log('   - ✅ Program type counts');
+console.log('   - ✅ Block/Term dual support');
+console.log('   - ✅ Email notifications when publishing marks');
+console.log('   - ✅ Production ready - NO DEMO DATA');
