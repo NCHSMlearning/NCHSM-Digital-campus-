@@ -1,6 +1,6 @@
 // ============================================================
 // PUBLISHED MARKS - SUPER ADMIN (TVET & KRCHN Nursing)
-// COMPLETE FIXED VERSION - All errors resolved
+// COMPLETE FIXED VERSION - All functions exposed globally
 // ============================================================
 
 console.log('📊 Published Marks module loading...');
@@ -201,7 +201,7 @@ function getGradeComment(score, program) {
 
 function calculateGPA(marks) {
     if (!marks || marks.length === 0) return 0;
-    const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
+    const totalPoints = marks.reduce(function(sum, m) { return sum + (m.points || 0); }, 0);
     return marks.length > 0 ? (totalPoints / marks.length) : 0;
 }
 
@@ -237,11 +237,19 @@ async function getUnitProgram(subjectName) {
 // ============================================================
 
 async function cacheUnitPrograms(marks) {
-    const subjects = [...new Set(marks.map(m => m.subject_name).filter(Boolean))];
+    const subjects = [];
+    const subjectSet = {};
     
-    for (const subject of subjects) {
-        if (!PUBLISHED_STATE.unitProgramCache[subject]) {
-            await getUnitProgram(subject);
+    marks.forEach(function(m) {
+        if (m.subject_name && !subjectSet[m.subject_name]) {
+            subjectSet[m.subject_name] = true;
+            subjects.push(m.subject_name);
+        }
+    });
+    
+    for (var i = 0; i < subjects.length; i++) {
+        if (!PUBLISHED_STATE.unitProgramCache[subjects[i]]) {
+            await getUnitProgram(subjects[i]);
         }
     }
 }
@@ -313,7 +321,7 @@ async function loadPublishedMarks() {
                 marks = [];
             } else if (data) {
                 marks = data;
-                console.log(`📊 Loaded ${marks.length} marks from database`);
+                console.log('📊 Loaded ' + marks.length + ' marks from database');
             }
             
         } catch (e) {
@@ -347,7 +355,7 @@ async function loadPublishedMarks() {
         }
         
         PUBLISHED_STATE.marks = marks;
-        PUBLISHED_STATE.filtered = marks.slice(); // Copy array
+        PUBLISHED_STATE.filtered = marks.slice();
         PUBLISHED_STATE.userProgram = user?.program || 'all';
         
         updateUserInfo(user);
@@ -820,7 +828,7 @@ function renderPublishedMarks() {
 }
 
 // ============================================================
-// VIEW STUDENT MARKS DETAIL (FIXED - No const reassignment)
+// VIEW STUDENT MARKS DETAIL
 // ============================================================
 
 function viewStudentMarks(admissionNumber) {
@@ -994,6 +1002,11 @@ function viewStudentMarks(admissionNumber) {
     });
 }
 
+function closeStudentMarksModal() {
+    var modal = document.getElementById('studentMarksModal');
+    if (modal) modal.remove();
+}
+
 // ============================================================
 // PUBLISH SINGLE UNIT
 // ============================================================
@@ -1115,11 +1128,6 @@ async function unpublishSingleUnit(markId, subjectName, admissionNumber) {
     } finally {
         if (typeof window.hideLoading === 'function') window.hideLoading();
     }
-}
-
-function closeStudentMarksModal() {
-    var modal = document.getElementById('studentMarksModal');
-    if (modal) modal.remove();
 }
 
 // ============================================================
@@ -1629,74 +1637,6 @@ async function unpublishAllFilteredMarks() {
 }
 
 // ============================================================
-// INITIALIZATION
-// ============================================================
-
-async function initPublishedMarks() {
-    console.log('📊 Initializing Published Marks module...');
-    
-    var container = document.getElementById('publishedMarksContainer');
-    if (!container) {
-        console.log('Published marks container not found, skipping initialization');
-        return;
-    }
-    
-    var filterSelectors = ['pm_subject_filter', 'pm_program_filter', 'pm_block_filter', 'pm_status_filter', 'pm_student_filter'];
-    for (var i = 0; i < filterSelectors.length; i++) {
-        var id = filterSelectors[i];
-        var el = document.getElementById(id);
-        if (el) {
-            el.removeEventListener('change', filterPublishedMarks);
-            el.addEventListener('change', filterPublishedMarks);
-        }
-    }
-    
-    var searchInput = document.getElementById('pm_search');
-    if (searchInput) {
-        searchInput.removeEventListener('input', filterPublishedMarks);
-        searchInput.addEventListener('input', filterPublishedMarks);
-    }
-    
-    var programTypeSelect = document.getElementById('publish_program_type');
-    if (programTypeSelect) {
-        programTypeSelect.removeEventListener('change', updatePublishProgramOptions);
-        programTypeSelect.addEventListener('change', updatePublishProgramOptions);
-    }
-    
-    var unitSelect = document.getElementById('publish_unit_select');
-    if (unitSelect) {
-        unitSelect.removeEventListener('change', updatePublishPreview);
-        unitSelect.addEventListener('change', updatePublishPreview);
-    }
-    
-    var blockFilter = document.getElementById('publish_block_filter');
-    if (blockFilter) {
-        blockFilter.removeEventListener('change', updatePublishPreview);
-        blockFilter.addEventListener('change', updatePublishPreview);
-    }
-    
-    var yearFilter = document.getElementById('publish_year_filter');
-    if (yearFilter) {
-        yearFilter.removeEventListener('change', updatePublishPreview);
-        yearFilter.addEventListener('change', updatePublishPreview);
-    }
-    
-    var assessmentSelect = document.getElementById('publish_assessment_select');
-    if (assessmentSelect) {
-        assessmentSelect.removeEventListener('change', updatePublishPreview);
-        assessmentSelect.addEventListener('change', updatePublishPreview);
-    }
-    
-    await loadPublishedMarks();
-    
-    console.log('✅ Published Marks module initialized');
-    console.log('📊 TVET Grading: A (75-100%), B (65-74%), C (50-64%), FAIL (Below 50%)');
-    console.log('📊 Nursing Grading: A (75-100%), B (65-74%), C (60-64%), D (Below 60%)');
-    console.log('📧 Email notifications enabled when publishing marks');
-    console.log('📋 Per-unit publish/unpublish available in student view');
-}
-
-// ============================================================
 // BULK PUBLISH MODAL FUNCTIONS
 // ============================================================
 
@@ -2101,38 +2041,81 @@ function printPublishedMarks() {
 }
 
 // ============================================================
-// EXPOSE FUNCTIONS GLOBALLY
+// INITIALIZATION
 // ============================================================
 
-// Auto-initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPublishedMarks);
-} else {
-    initPublishedMarks();
+async function initPublishedMarks() {
+    console.log('📊 Initializing Published Marks module...');
+    
+    var container = document.getElementById('publishedMarksContainer');
+    if (!container) {
+        console.log('Published marks container not found, skipping initialization');
+        return;
+    }
+    
+    var filterSelectors = ['pm_subject_filter', 'pm_program_filter', 'pm_block_filter', 'pm_status_filter', 'pm_student_filter'];
+    for (var i = 0; i < filterSelectors.length; i++) {
+        var id = filterSelectors[i];
+        var el = document.getElementById(id);
+        if (el) {
+            el.removeEventListener('change', filterPublishedMarks);
+            el.addEventListener('change', filterPublishedMarks);
+        }
+    }
+    
+    var searchInput = document.getElementById('pm_search');
+    if (searchInput) {
+        searchInput.removeEventListener('input', filterPublishedMarks);
+        searchInput.addEventListener('input', filterPublishedMarks);
+    }
+    
+    var programTypeSelect = document.getElementById('publish_program_type');
+    if (programTypeSelect) {
+        programTypeSelect.removeEventListener('change', updatePublishProgramOptions);
+        programTypeSelect.addEventListener('change', updatePublishProgramOptions);
+    }
+    
+    var unitSelect = document.getElementById('publish_unit_select');
+    if (unitSelect) {
+        unitSelect.removeEventListener('change', updatePublishPreview);
+        unitSelect.addEventListener('change', updatePublishPreview);
+    }
+    
+    var blockFilter = document.getElementById('publish_block_filter');
+    if (blockFilter) {
+        blockFilter.removeEventListener('change', updatePublishPreview);
+        blockFilter.addEventListener('change', updatePublishPreview);
+    }
+    
+    var yearFilter = document.getElementById('publish_year_filter');
+    if (yearFilter) {
+        yearFilter.removeEventListener('change', updatePublishPreview);
+        yearFilter.addEventListener('change', updatePublishPreview);
+    }
+    
+    var assessmentSelect = document.getElementById('publish_assessment_select');
+    if (assessmentSelect) {
+        assessmentSelect.removeEventListener('change', updatePublishPreview);
+        assessmentSelect.addEventListener('change', updatePublishPreview);
+    }
+    
+    await loadPublishedMarks();
+    
+    console.log('✅ Published Marks module initialized');
+    console.log('📊 TVET Grading: A (75-100%), B (65-74%), C (50-64%), FAIL (Below 50%)');
+    console.log('📊 Nursing Grading: A (75-100%), B (65-74%), C (60-64%), D (Below 60%)');
+    console.log('📧 Email notifications enabled when publishing marks');
+    console.log('📋 Per-unit publish/unpublish available in student view');
 }
 
-// Expose functions globally
-window.publishedMarks = {
-    load: loadPublishedMarks,
-    filter: filterPublishedMarks,
-    filterByProgram: filterPublishedByProgram,
-    publishStudent: publishStudentAllMarks,
-    unpublishStudent: unpublishStudentAllMarks,
-    viewStudent: viewStudentMarks,
-    publishSingleUnit: publishSingleUnit,
-    unpublishSingleUnit: unpublishSingleUnit,
-    publishAll: publishAllFilteredMarks,
-    unpublishAll: unpublishAllFilteredMarks,
-    export: exportPublishedMarksToCSV,
-    print: printPublishedMarks,
-    openModal: openPublishModal,
-    closeModal: closePublishModal,
-    confirmPublish: confirmPublishMarks,
-    updatePreview: updatePublishPreview,
-    populateUnits: populatePublishUnits,
-    state: PUBLISHED_STATE
-};
+// ============================================================
+// FORCE EXPOSE ALL FUNCTIONS GLOBALLY
+// ============================================================
 
+// Make sure all functions are available globally
+window.loadPublishedMarks = loadPublishedMarks;
+window.filterPublishedMarks = filterPublishedMarks;
+window.filterPublishedByProgram = filterPublishedByProgram;
 window.publishStudentAllMarks = publishStudentAllMarks;
 window.unpublishStudentAllMarks = unpublishStudentAllMarks;
 window.viewStudentMarks = viewStudentMarks;
@@ -2146,13 +2129,24 @@ window.printPublishedMarks = printPublishedMarks;
 window.openPublishModal = openPublishModal;
 window.closePublishModal = closePublishModal;
 window.confirmPublishMarks = confirmPublishMarks;
-window.filterPublishedMarks = filterPublishedMarks;
-window.loadPublishedMarks = loadPublishedMarks;
-window.filterPublishedByProgram = filterPublishedByProgram;
 window.updatePublishProgramOptions = updatePublishProgramOptions;
 window.updatePublishPreview = updatePublishPreview;
 window.populatePublishUnits = populatePublishUnits;
 window.sendMarksPublishedEmail = sendMarksPublishedEmail;
+window.initPublishedMarks = initPublishedMarks;
+
+console.log('✅ Published Marks functions exposed globally');
+console.log('📊 Available: loadPublishedMarks, filterPublishedMarks, publishStudentAllMarks, etc.');
+
+// ============================================================
+// AUTO-INITIALIZE
+// ============================================================
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPublishedMarks);
+} else {
+    initPublishedMarks();
+}
 
 console.log('✅ Published Marks module loaded successfully!');
 console.log('📊 Features:');
