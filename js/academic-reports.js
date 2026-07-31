@@ -1,6 +1,7 @@
 // js/academic-reports.js - COMPLETE STUDENT VERSION
 // All tabs: Semester Report, Yearly Summary, Full Transcript, Course Progress, My Performance
-// INCLUDES: Report Card Download Functionality, Charts, TVET/Nursing Support
+// INCLUDES: LINE GRAPHS for Grade Points Progression
+// ============================================================
 (function() {
     'use strict';
     
@@ -308,7 +309,6 @@
             
             const registrationNumber = user.student_id || user.admission_number || user.user_id;
             const userProgram = user.program || '';
-            const isTVET = PROGRAM.isTVET(userProgram);
             
             // Update student info
             const nameEl = document.getElementById('my_marks_student_name');
@@ -344,41 +344,12 @@
                 if (!result.error && result.data && result.data.length > 0) {
                     marks = result.data;
                     
-                    try {
-                        const catalogResult = await window.db.supabase
-                            .from('units_catalog')
-                            .select('unit_name, unit_code')
-                            .in('unit_name', marks.map(m => m.subject_name));
-                        
-                        if (!catalogResult.error && catalogResult.data) {
-                            const unitMap = {};
-                            catalogResult.data.forEach(u => {
-                                unitMap[u.unit_name] = u.unit_code;
-                            });
-                            
-                            marks = marks.map(mark => ({
-                                ...mark,
-                                unit_code: unitMap[mark.subject_name] || getUnitCode(mark.subject_name),
-                                grade: mark.grade || calculateGrade(mark.final_score, userProgram),
-                                points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram)
-                            }));
-                        } else {
-                            marks = marks.map(mark => ({
-                                ...mark,
-                                unit_code: getUnitCode(mark.subject_name),
-                                grade: mark.grade || calculateGrade(mark.final_score, userProgram),
-                                points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram)
-                            }));
-                        }
-                    } catch (e) {
-                        console.warn('Error fetching catalog:', e);
-                        marks = marks.map(mark => ({
-                            ...mark,
-                            unit_code: getUnitCode(mark.subject_name),
-                            grade: mark.grade || calculateGrade(mark.final_score, userProgram),
-                            points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram)
-                        }));
-                    }
+                    marks = marks.map(mark => ({
+                        ...mark,
+                        unit_code: getUnitCode(mark.subject_name),
+                        grade: mark.grade || calculateGrade(mark.final_score, userProgram),
+                        points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram)
+                    }));
                 }
             } catch (e) {
                 console.warn('Error fetching marks:', e);
@@ -570,7 +541,7 @@
     }
 
     // ============================================================
-    // 9. RENDER CHARTS FOR MY PERFORMANCE
+    // 9. RENDER CHARTS FOR MY PERFORMANCE - LINE GRAPHS
     // ============================================================
     function renderMyMarksCharts() {
         const marks = myMarksFiltered || [];
@@ -583,25 +554,14 @@
         
         if (graphsSection) graphsSection.style.display = 'block';
         
-        // 1. Grade Distribution Chart
-        const gradeCounts = {};
-        marks.forEach(m => {
-            const grade = m.grade || 'N/A';
-            gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
-        });
+        const user = window.currentUserProfile || {};
+        const userProgram = user.program || '';
+        const isTVET = PROGRAM.isTVET(userProgram);
+        const threshold = isTVET ? 50 : 60;
         
-        const gradeLabels = Object.keys(gradeCounts).sort();
-        const gradeData = gradeLabels.map(g => gradeCounts[g]);
-        const gradeColors = {
-            'A': '#10b981',
-            'B': '#3b82f6',
-            'C': '#f59e0b',
-            'D': '#f97316',
-            'F': '#ef4444',
-            'FAIL': '#ef4444',
-            'N/A': '#94a3b8'
-        };
-        
+        // ============================================================
+        // 1. GRADE POINTS PROGRESSION - LINE CHART
+        // ============================================================
         const ctx1 = document.getElementById('myMarksGradeChart');
         if (ctx1) {
             if (window.myMarksGradeChartInstance) {
@@ -609,50 +569,128 @@
             }
             
             if (typeof Chart !== 'undefined') {
+                // Sort marks by block/term order
+                const sortedMarks = [...marks].sort((a, b) => {
+                    const blockOrder = {
+                        'Introductory': 0, 'Block 1': 1, 'Block 2': 2, 'Block 3': 3,
+                        'Block 4': 4, 'Block 5': 5, 'Final': 6,
+                        'Term 1': 1, 'Term 2': 2, 'Term 3': 3, 'Term 4': 4,
+                        'Term 5': 5, 'Term 6': 6
+                    };
+                    return (blockOrder[a.block] || 0) - (blockOrder[b.block] || 0);
+                });
+                
+                const labels = sortedMarks.map(m => m.unit_code || getUnitCode(m.subject_name) || 'N/A');
+                const pointsData = sortedMarks.map(m => m.points || 0);
+                
+                // Calculate GPA line (average points)
+                const avgPoints = pointsData.reduce((a, b) => a + b, 0) / pointsData.length || 0;
+                const gpaLine = pointsData.map(() => avgPoints);
+                
                 window.myMarksGradeChartInstance = new Chart(ctx1, {
-                    type: 'bar',
+                    type: 'line',
                     data: {
-                        labels: gradeLabels,
-                        datasets: [{
-                            label: 'Number of Units',
-                            data: gradeData,
-                            backgroundColor: gradeLabels.map(g => gradeColors[g] || '#6b7280'),
-                            borderColor: gradeLabels.map(g => gradeColors[g] || '#6b7280'),
-                            borderWidth: 1,
-                            borderRadius: 6
-                        }]
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Grade Points',
+                                data: pointsData,
+                                borderColor: '#4C1D95',
+                                backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.3,
+                                pointBackgroundColor: pointsData.map(p => {
+                                    if (p >= 4) return '#10b981';
+                                    if (p >= 3) return '#3b82f6';
+                                    if (p >= 2) return '#f59e0b';
+                                    return '#ef4444';
+                                }),
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointRadius: 6,
+                                pointHoverRadius: 8,
+                                spanGaps: false
+                            },
+                            {
+                                label: 'GPA (' + avgPoints.toFixed(2) + ')',
+                                data: gpaLine,
+                                borderColor: '#0A3D62',
+                                borderDash: [8, 4],
+                                borderWidth: 2,
+                                fill: false,
+                                tension: 0,
+                                pointRadius: 0,
+                                pointHoverRadius: 0
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                display: false
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 8,
+                                    font: {
+                                        size: 10,
+                                        weight: '600'
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.datasetIndex === 0) {
+                                            return 'Grade Points: ' + context.parsed.y.toFixed(1);
+                                        }
+                                        return 'GPA: ' + context.parsed.y.toFixed(2);
+                                    }
+                                }
                             }
                         },
                         scales: {
                             y: {
-                                beginAtZero: true,
+                                min: 0,
+                                max: 4.5,
                                 ticks: {
-                                    stepSize: 1
+                                    stepSize: 0.5,
+                                    font: { size: 9 }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Grade Points',
+                                    font: { size: 10, weight: '600' }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: { size: 8 },
+                                    maxRotation: 45,
+                                    minRotation: 30
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Units',
+                                    font: { size: 10, weight: '600' }
                                 }
                             }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
                         }
                     }
                 });
             }
         }
         
-        // 2. Performance Summary Chart
-        const user = window.currentUserProfile || {};
-        const userProgram = user.program || '';
-        const isTVET = PROGRAM.isTVET(userProgram);
-        const threshold = isTVET ? 50 : 60;
-        
-        const passed = marks.filter(m => m.final_score >= threshold).length;
-        const failed = marks.filter(m => m.final_score > 0 && m.final_score < threshold).length;
-        const pending = marks.filter(m => m.final_score === 0 || m.final_score === null).length;
-        
+        // ============================================================
+        // 2. PERFORMANCE SUMMARY - LINE CHART (Pass/Fail Trend)
+        // ============================================================
         const ctx2 = document.getElementById('myMarksPerformanceChart');
         if (ctx2) {
             if (window.myMarksPerformanceChartInstance) {
@@ -660,31 +698,131 @@
             }
             
             if (typeof Chart !== 'undefined') {
+                // Sort by block/term
+                const sortedMarks = [...marks].sort((a, b) => {
+                    const blockOrder = {
+                        'Introductory': 0, 'Block 1': 1, 'Block 2': 2, 'Block 3': 3,
+                        'Block 4': 4, 'Block 5': 5, 'Final': 6,
+                        'Term 1': 1, 'Term 2': 2, 'Term 3': 3, 'Term 4': 4,
+                        'Term 5': 5, 'Term 6': 6
+                    };
+                    return (blockOrder[a.block] || 0) - (blockOrder[b.block] || 0);
+                });
+                
+                const labels = sortedMarks.map(m => m.unit_code || getUnitCode(m.subject_name) || 'N/A');
+                const scoresData = sortedMarks.map(m => m.final_score || 0);
+                const passThreshold = isTVET ? 50 : 60;
+                const thresholdLine = scoresData.map(() => passThreshold);
+                const averageScore = scoresData.reduce((a, b) => a + b, 0) / scoresData.length || 0;
+                const avgLine = scoresData.map(() => averageScore);
+                
                 window.myMarksPerformanceChartInstance = new Chart(ctx2, {
-                    type: 'doughnut',
+                    type: 'line',
                     data: {
-                        labels: ['Passed', 'Failed', 'Pending'],
-                        datasets: [{
-                            data: [passed, failed, pending],
-                            backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
-                            borderWidth: 2,
-                            borderColor: '#ffffff'
-                        }]
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Score (%)',
+                                data: scoresData,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.3,
+                                pointBackgroundColor: scoresData.map(s => {
+                                    if (s >= passThreshold) return '#10b981';
+                                    return '#ef4444';
+                                }),
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointRadius: 6,
+                                pointHoverRadius: 8
+                            },
+                            {
+                                label: 'Pass Threshold (' + passThreshold + '%)',
+                                data: thresholdLine,
+                                borderColor: '#ef4444',
+                                borderDash: [8, 4],
+                                borderWidth: 2,
+                                fill: false,
+                                tension: 0,
+                                pointRadius: 0,
+                                pointHoverRadius: 0
+                            },
+                            {
+                                label: 'Average (' + averageScore.toFixed(1) + '%)',
+                                data: avgLine,
+                                borderColor: '#3b82f6',
+                                borderDash: [4, 4],
+                                borderWidth: 2,
+                                fill: false,
+                                tension: 0,
+                                pointRadius: 0,
+                                pointHoverRadius: 0
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                position: 'bottom',
+                                display: true,
+                                position: 'top',
                                 labels: {
-                                    padding: 10,
-                                    usePointStyle: true,
-                                    pointStyle: 'circle'
+                                    boxWidth: 12,
+                                    padding: 8,
+                                    font: {
+                                        size: 10,
+                                        weight: '600'
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.datasetIndex === 0) {
+                                            return 'Score: ' + context.parsed.y.toFixed(1) + '%';
+                                        }
+                                        return context.dataset.label;
+                                    }
                                 }
                             }
                         },
-                        cutout: '65%'
+                        scales: {
+                            y: {
+                                min: 0,
+                                max: 100,
+                                ticks: {
+                                    stepSize: 10,
+                                    font: { size: 9 },
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Score (%)',
+                                    font: { size: 10, weight: '600' }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: { size: 8 },
+                                    maxRotation: 45,
+                                    minRotation: 30
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Units',
+                                    font: { size: 10, weight: '600' }
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
                     }
                 });
             }
@@ -789,13 +927,15 @@
         const canvas = document.getElementById('grade-distribution-chart');
         if (!canvas) return;
         
+        // Use line chart for grade distribution
+        const gradeOrder = ['A', 'B', 'C', 'D', 'F', 'FAIL', 'N/A'];
         const gradeCounts = {};
         grades.forEach(g => {
             const grade = g.grade || 'N/A';
             gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
         });
         
-        const labels = Object.keys(gradeCounts).sort();
+        const labels = gradeOrder.filter(l => gradeCounts[l] !== undefined);
         const data = labels.map(l => gradeCounts[l]);
         const colors = {
             'A': '#10b981',
@@ -803,6 +943,7 @@
             'C': '#f59e0b',
             'D': '#f97316',
             'F': '#ef4444',
+            'FAIL': '#ef4444',
             'N/A': '#94a3b8'
         };
         
@@ -810,24 +951,45 @@
         
         if (typeof Chart !== 'undefined' && labels.length > 0) {
             gradeChart = new Chart(canvas, {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
                         label: 'Number of Courses',
                         data: data,
-                        backgroundColor: labels.map(l => colors[l] || '#6b7280'),
-                        borderWidth: 1,
-                        borderRadius: 8
+                        borderColor: '#4C1D95',
+                        backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: labels.map(l => colors[l] || '#6b7280'),
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
                     scales: {
-                        y: { beginAtZero: true, ticks: { stepSize: 1 } },
-                        x: { title: { display: true, text: 'Grade' } }
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                font: { size: 10 }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 10, weight: '600' }
+                            }
+                        }
                     }
                 }
             });
@@ -1477,195 +1639,231 @@
         }
     }
 
-// ============================================================
-// 15. DOWNLOAD REPORT CARD - PROPERLY CENTERED
-// ============================================================
-function downloadReportCard() {
-    console.log('📊 Downloading Professional Report Card...');
-    
-    const user = window.currentUserProfile || {};
-    const userProgram = user.program || '';
-    const isTVET = PROGRAM.isTVET(userProgram);
-    const programType = PROGRAM.getProgramType(userProgram);
-    
-    let marks = [];
-    
-    // Get marks from various sources
-    if (window.myMarksData && window.myMarksData.length > 0) {
-        marks = window.myMarksData;
-    } else if (window.myMarksFiltered && window.myMarksFiltered.length > 0) {
-        marks = window.myMarksFiltered;
-    } else if (window.PUBLISHED_STATE && window.PUBLISHED_STATE.marks && window.PUBLISHED_STATE.marks.length > 0) {
-        marks = window.PUBLISHED_STATE.marks;
-    } else if (window.me_currentMarks && window.me_currentMarks.length > 0) {
-        marks = window.me_currentMarks;
-    } else {
-        const tableRows = document.querySelectorAll('#my_marks_table_body tr');
-        if (tableRows && tableRows.length > 0 && tableRows[0].cells.length > 1) {
-            tableRows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length >= 6) {
-                    const unitCode = cells[1]?.textContent?.trim() || '';
-                    const unitName = cells[2]?.textContent?.trim() || '';
-                    const grade = cells[3]?.textContent?.trim() || '';
-                    const points = parseFloat(cells[4]?.textContent?.trim()) || 0;
-                    const status = cells[5]?.textContent?.trim() || '';
-                    
-                    if (unitName && unitName !== 'No published marks found') {
-                        marks.push({
-                            subject_name: unitName,
-                            unit_code: unitCode,
-                            grade: grade,
-                            points: points,
-                            status: status
-                        });
-                    }
-                }
-            });
-        }
-    }
-    
-    if (marks.length === 0) {
-        alert('No marks available to generate report card. Please load your marks first.');
-        return;
-    }
-    
-    console.log('📊 Generating report card for', marks.length, 'marks');
-    
-    const now = new Date().toLocaleDateString('en-KE', {
-        timeZone: 'Africa/Nairobi',
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-    });
-    
-    const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-    const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
-    
-    // Calculate GPA and stats
-    let totalPoints = 0;
-    let totalUnits = 0;
-    let passed = 0;
-    let failed = 0;
-    let pending = 0;
-    
-    marks.forEach(m => {
-        const points = m.points || 0;
-        const status = m.status || getGradingStatus(0, userProgram);
+    // ============================================================
+    // 15. DOWNLOAD REPORT CARD - WITH LINE GRAPH & PROFILE PICTURE
+    // ============================================================
+    function downloadReportCard() {
+        console.log('📊 Downloading Professional Report Card...');
         
-        totalPoints += points;
-        totalUnits++;
+        const user = window.currentUserProfile || {};
+        const userProgram = user.program || '';
+        const isTVET = PROGRAM.isTVET(userProgram);
+        const programType = PROGRAM.getProgramType(userProgram);
         
-        if (status === 'FAIL') {
-            failed++;
-        } else if (status === 'PENDING') {
-            pending++;
+        let marks = [];
+        
+        if (window.myMarksData && window.myMarksData.length > 0) {
+            marks = window.myMarksData;
+        } else if (window.myMarksFiltered && window.myMarksFiltered.length > 0) {
+            marks = window.myMarksFiltered;
+        } else if (window.PUBLISHED_STATE && window.PUBLISHED_STATE.marks && window.PUBLISHED_STATE.marks.length > 0) {
+            marks = window.PUBLISHED_STATE.marks;
+        } else if (window.me_currentMarks && window.me_currentMarks.length > 0) {
+            marks = window.me_currentMarks;
         } else {
-            passed++;
+            const tableRows = document.querySelectorAll('#my_marks_table_body tr');
+            if (tableRows && tableRows.length > 0 && tableRows[0].cells.length > 1) {
+                tableRows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 6) {
+                        const unitCode = cells[1]?.textContent?.trim() || '';
+                        const unitName = cells[2]?.textContent?.trim() || '';
+                        const grade = cells[3]?.textContent?.trim() || '';
+                        const points = parseFloat(cells[4]?.textContent?.trim()) || 0;
+                        const status = cells[5]?.textContent?.trim() || '';
+                        
+                        if (unitName && unitName !== 'No published marks found') {
+                            marks.push({
+                                subject_name: unitName,
+                                unit_code: unitCode,
+                                grade: grade,
+                                points: points,
+                                status: status
+                            });
+                        }
+                    }
+                });
+            }
         }
-    });
-    
-    const gpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
-    const grade = calculateGrade(gpa * 10, userProgram);
-    const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
-    
-    // Build table rows
-    let tableRows = '';
-    marks.forEach((mark, index) => {
-        const status = mark.status || getGradingStatus(0, userProgram);
-        const statusColor = getStatusColor(status);
-        const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-        const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
-        const gradeColor = getGradeColor(mark.grade);
-        const gradeDisplay = mark.grade || calculateGrade(0, userProgram) || '-';
         
-        tableRows += `
-            <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''}">
-                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
-                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 9px;">${escapeHtml(unitCode)}</td>
-                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; font-size: 9px; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}</td>
-                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 10px; display: inline-block; min-width: 28px;">
-                        ${escapeHtml(gradeDisplay)}
-                    </span>
-                </td>
-                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700; font-size: 10px; color: ${gradeColor};">
-                    ${points.toFixed(1)}
-                </td>
-                <td style="padding: 5px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                    <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 8px; display: inline-block;">
-                        ${status}
-                    </span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    // Grading scale HTML
-    let gradingScaleHTML = '';
-    if (isTVET) {
-        gradingScaleHTML = `
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 4px 0;">
-                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #065f46;">A (75-100%) → 4.0</span>
-                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #1e40af;">B (65-74%) → 3.0</span>
-                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #92400e;">C (50-64%) → 2.0</span>
-                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #991b1b;">FAIL (Below 50%) → 0.0</span>
-                <span style="font-size: 8px; color: #94a3b8;">| Min Pass: 50%</span>
-            </div>
-            <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
-                <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">EXCELLENT</span>
-                <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">GOOD</span>
-                <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">SATISFACTORY</span>
-                <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">FAIL</span>
-                <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">PENDING</span>
-            </div>
-        `;
-    } else {
-        gradingScaleHTML = `
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 4px 0;">
-                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #065f46;">A (75-100%) → 4.0</span>
-                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #1e40af;">B (65-74%) → 3.0</span>
-                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #92400e;">C (60-64%) → 2.0</span>
-                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 600; color: #991b1b;">D (Below 60%) → 0.0</span>
-                <span style="font-size: 8px; color: #94a3b8;">| Min Pass: 60%</span>
-            </div>
-            <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
-                <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">DISTINCTION</span>
-                <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">CREDIT</span>
-                <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">PASS</span>
-                <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">FAIL</span>
-                <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px; font-size: 7px;">PENDING</span>
-            </div>
-        `;
-    }
-    
-    const fullHtml = `
+        if (marks.length === 0) {
+            alert('No marks available to generate report card. Please load your marks first.');
+            return;
+        }
+        
+        console.log('📊 Generating report card for', marks.length, 'marks');
+        
+        // Get profile picture
+        let profilePicture = '';
+        if (user.passport_photo || user.profile_picture || user.photo_url) {
+            profilePicture = user.passport_photo || user.profile_picture || user.photo_url || '';
+            console.log('📸 Profile picture found');
+        } else {
+            console.log('📸 No profile picture found');
+        }
+        
+        const now = new Date().toLocaleDateString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+        
+        const currentYear = new Date().getFullYear();
+        const nextYear = currentYear + 1;
+        const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
+        
+        // Calculate GPA and stats
+        let totalPoints = 0;
+        let totalUnits = 0;
+        let passed = 0;
+        let failed = 0;
+        let pending = 0;
+        
+        marks.forEach(m => {
+            const points = m.points || 0;
+            const status = m.status || getGradingStatus(0, userProgram);
+            
+            totalPoints += points;
+            totalUnits++;
+            
+            if (status === 'FAIL') {
+                failed++;
+            } else if (status === 'PENDING') {
+                pending++;
+            } else {
+                passed++;
+            }
+        });
+        
+        const gpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
+        const grade = calculateGrade(gpa * 10, userProgram);
+        const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
+        
+        // Build table rows
+        let tableRows = '';
+        marks.forEach((mark, index) => {
+            const status = mark.status || getGradingStatus(0, userProgram);
+            const statusColor = getStatusColor(status);
+            const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
+            const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
+            const gradeColor = getGradeColor(mark.grade);
+            const gradeDisplay = mark.grade || calculateGrade(0, userProgram) || '-';
+            
+            tableRows += `
+                <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''}">
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 8px; color: #94a3b8;">${index + 1}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 8px;">${escapeHtml(unitCode)}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 8px; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                        <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 9px; display: inline-block; min-width: 26px;">
+                            ${escapeHtml(gradeDisplay)}
+                        </span>
+                    </td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700; font-size: 9px; color: ${gradeColor};">
+                        ${points.toFixed(1)}
+                    </td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                        <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 7px; display: inline-block;">
+                            ${status}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        // Generate data for line graph
+        const sortedMarks = [...marks].sort((a, b) => {
+            const blockOrder = {
+                'Introductory': 0, 'Block 1': 1, 'Block 2': 2, 'Block 3': 3,
+                'Block 4': 4, 'Block 5': 5, 'Final': 6,
+                'Term 1': 1, 'Term 2': 2, 'Term 3': 3, 'Term 4': 4,
+                'Term 5': 5, 'Term 6': 6
+            };
+            return (blockOrder[a.block] || 0) - (blockOrder[b.block] || 0);
+        });
+        
+        const graphLabels = sortedMarks.map(m => m.unit_code || getUnitCode(m.subject_name) || 'N/A');
+        const graphData = sortedMarks.map(m => m.points || 0);
+        const avgPoints = graphData.reduce((a, b) => a + b, 0) / graphData.length || 0;
+        
+        // Grading scale HTML
+        let gradingScaleHTML = '';
+        if (isTVET) {
+            gradingScaleHTML = `
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 4px 0;">
+                    <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #065f46;">A (75-100%) → 4.0</span>
+                    <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #1e40af;">B (65-74%) → 3.0</span>
+                    <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #92400e;">C (50-64%) → 2.0</span>
+                    <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #991b1b;">FAIL (Below 50%) → 0.0</span>
+                    <span style="font-size: 7px; color: #94a3b8;">| Min Pass: 50%</span>
+                </div>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
+                    <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">EXCELLENT</span>
+                    <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">GOOD</span>
+                    <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">SATISFACTORY</span>
+                    <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">FAIL</span>
+                    <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">PENDING</span>
+                </div>
+            `;
+        } else {
+            gradingScaleHTML = `
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 4px 0;">
+                    <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #065f46;">A (75-100%) → 4.0</span>
+                    <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #1e40af;">B (65-74%) → 3.0</span>
+                    <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #92400e;">C (60-64%) → 2.0</span>
+                    <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #991b1b;">D (Below 60%) → 0.0</span>
+                    <span style="font-size: 7px; color: #94a3b8;">| Min Pass: 60%</span>
+                </div>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
+                    <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">DISTINCTION</span>
+                    <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">CREDIT</span>
+                    <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">PASS</span>
+                    <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">FAIL</span>
+                    <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">PENDING</span>
+                </div>
+            `;
+        }
+        
+        // Profile picture HTML
+        let profilePictureHTML = '';
+        if (profilePicture) {
+            profilePictureHTML = `
+                <div style="text-align: center; margin-right: 12px; flex-shrink: 0;">
+                    <img src="${profilePicture}" alt="Student Photo" 
+                         style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #0A3D62; padding: 2px; background: white;"
+                         onerror="this.style.display='none'">
+                </div>
+            `;
+        }
+        
+        const fullHtml = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <title>Report Card - ${escapeHtml(user.full_name || 'Student')}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         @page {
             size: A4 portrait;
-            margin: 10mm 12mm;
+            margin: 8mm 10mm;
         }
         body { 
             font-family: 'Times New Roman', 'Georgia', serif; 
             background: #ffffff; 
             font-size: 10px;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             color: #1e293b;
         }
         .container { 
-            max-width: 700px;
+            max-width: 750px;
             width: 100%;
             margin: 0 auto; 
-            padding: 20px 25px;
+            padding: 16px 20px;
             background: #ffffff;
             border: 2px solid #0A3D62;
             border-radius: 6px;
@@ -1683,7 +1881,6 @@ function downloadReportCard() {
             align-items: center;
             justify-content: center;
             gap: 12px;
-            margin-bottom: 2px;
         }
         .header-top img { 
             max-height: 40px; 
@@ -1714,16 +1911,22 @@ function downloadReportCard() {
             margin-top: 2px;
         }
         
-        /* STUDENT INFO */
-        .student-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr;
-            gap: 6px;
+        /* STUDENT INFO WITH PHOTO */
+        .student-info-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             margin: 6px 0 10px 0;
             padding: 8px 12px;
             background: #f8fafc;
             border-radius: 6px;
             border: 1px solid #e2e8f0;
+        }
+        .student-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+            flex: 1;
         }
         .student-info .field { 
             display: flex;
@@ -1741,6 +1944,30 @@ function downloadReportCard() {
             font-size: 10px; 
             color: #0A3D62; 
             margin-top: 1px;
+        }
+        .student-photo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #0A3D62;
+            padding: 2px;
+            background: white;
+            flex-shrink: 0;
+        }
+        .student-photo-placeholder {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #0A3D62;
+            padding: 2px;
+            background: #e2e8f0;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #94a3b8;
         }
         
         /* SUMMARY CARDS */
@@ -1781,12 +2008,12 @@ function downloadReportCard() {
             width: 100%; 
             border-collapse: collapse; 
             margin: 6px 0 8px 0;
-            font-size: 9px;
+            font-size: 8px;
         }
         thead th { 
             background: #0A3D62; 
             color: white; 
-            padding: 6px 8px; 
+            padding: 5px 8px; 
             text-align: left; 
             font-size: 7px; 
             text-transform: uppercase; 
@@ -1795,11 +2022,32 @@ function downloadReportCard() {
         }
         thead th.center { text-align: center; }
         tbody td { 
-            padding: 5px 8px; 
+            padding: 4px 8px; 
             border-bottom: 1px solid #e5e7eb; 
-            font-size: 9px; 
+            font-size: 8px; 
         }
         tbody td.center { text-align: center; }
+        
+        /* LINE CHART */
+        .chart-container {
+            margin: 6px 0 8px 0;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        .chart-container .title {
+            font-weight: 700;
+            font-size: 8px;
+            color: #0A3D62;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+        .chart-container canvas {
+            width: 100% !important;
+            height: 120px !important;
+            max-height: 120px;
+        }
         
         /* GRADING SCALE */
         .grading-scale {
@@ -1897,21 +2145,6 @@ function downloadReportCard() {
         }
         .footer strong { color: #0A3D62; }
         
-        /* WATERMARK */
-        .watermark {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 60px;
-            color: rgba(10, 61, 98, 0.03);
-            font-weight: 700;
-            pointer-events: none;
-            z-index: 0;
-            white-space: nowrap;
-            font-family: 'Georgia', serif;
-        }
-        
         .no-print { text-align: center; margin-top: 8px; }
         .no-print button {
             padding: 5px 18px;
@@ -1921,23 +2154,17 @@ function downloadReportCard() {
             font-weight: 600;
             font-size: 10px;
         }
-        .no-print .btn-print {
-            background: #0A3D62;
-            color: white;
-        }
-        .no-print .btn-close {
-            background: #e2e8f0;
-            color: #475569;
-            margin-left: 6px;
-        }
+        .no-print .btn-print { background: #0A3D62; color: white; }
+        .no-print .btn-close { background: #e2e8f0; color: #475569; margin-left: 6px; }
         
         @media print {
             body { padding: 0; background: white; }
-            .container { border: 2px solid #0A3D62; border-radius: 0; padding: 15px 20px; max-width: 100%; }
+            .container { border: 2px solid #0A3D62; border-radius: 0; padding: 12px 16px; max-width: 100%; }
             .no-print { display: none !important; }
-            .watermark { display: none; }
             thead th { background: #0A3D62 !important; color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             td span { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .student-photo { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .chart-container canvas { height: 120px !important; }
         }
         
         .container { page-break-after: avoid; }
@@ -1946,7 +2173,6 @@ function downloadReportCard() {
     </style>
 </head>
 <body>
-    <div class="watermark">NCHSM</div>
     <div class="container">
         <!-- HEADER -->
         <div class="header">
@@ -1961,23 +2187,26 @@ function downloadReportCard() {
             <div class="date">Generated: ${now}</div>
         </div>
         
-        <!-- STUDENT INFO -->
-        <div class="student-info">
-            <div class="field">
-                <span class="label">👤 Student Name</span>
-                <span class="value">${escapeHtml(user.full_name || 'Student')}</span>
-            </div>
-            <div class="field">
-                <span class="label">🪪 Admission Number</span>
-                <span class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</span>
-            </div>
-            <div class="field">
-                <span class="label">🎓 Program</span>
-                <span class="value">${escapeHtml(userProgram || 'KRCHN')}</span>
-            </div>
-            <div class="field">
-                <span class="label">📅 Academic Year</span>
-                <span class="value">${escapeHtml(academicYear)}</span>
+        <!-- STUDENT INFO WITH PHOTO -->
+        <div class="student-info-wrapper">
+            ${profilePictureHTML}
+            <div class="student-info">
+                <div class="field">
+                    <span class="label">👤 Student Name</span>
+                    <span class="value">${escapeHtml(user.full_name || 'Student')}</span>
+                </div>
+                <div class="field">
+                    <span class="label">🪪 Admission Number</span>
+                    <span class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</span>
+                </div>
+                <div class="field">
+                    <span class="label">🎓 Program</span>
+                    <span class="value">${escapeHtml(userProgram || 'KRCHN')}</span>
+                </div>
+                <div class="field">
+                    <span class="label">📅 Academic Year</span>
+                    <span class="value">${escapeHtml(academicYear)}</span>
+                </div>
             </div>
         </div>
         
@@ -2015,6 +2244,12 @@ function downloadReportCard() {
             </thead>
             <tbody>${tableRows}</tbody>
         </table>
+        
+        <!-- LINE GRAPH - Grade Points Progression -->
+        <div class="chart-container">
+            <div class="title">📈 Grade Points Progression</div>
+            <canvas id="reportCardLineChart"></canvas>
+        </div>
         
         <!-- GRADING SCALE -->
         <div class="grading-scale">
@@ -2058,19 +2293,103 @@ function downloadReportCard() {
             <button class="btn-close" onclick="window.close()">Close</button>
         </div>
     </div>
+    
+    <script>
+        // Render the line chart
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('reportCardLineChart');
+            if (ctx) {
+                const labels = ${JSON.stringify(graphLabels)};
+                const data = ${JSON.stringify(graphData)};
+                const avgPoints = ${avgPoints.toFixed(2)};
+                
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Grade Points',
+                            data: data,
+                            borderColor: '#4C1D95',
+                            backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3,
+                            pointBackgroundColor: data.map(p => {
+                                if (p >= 4) return '#10b981';
+                                if (p >= 3) return '#3b82f6';
+                                if (p >= 2) return '#f59e0b';
+                                return '#ef4444';
+                            }),
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 1.5,
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }, {
+                            label: 'GPA (' + avgPoints.toFixed(2) + ')',
+                            data: data.map(() => avgPoints),
+                            borderColor: '#0A3D62',
+                            borderDash: [6, 4],
+                            borderWidth: 1.5,
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 10,
+                                    padding: 6,
+                                    font: {
+                                        size: 8,
+                                        weight: '600'
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                min: 0,
+                                max: 4.5,
+                                ticks: {
+                                    stepSize: 0.5,
+                                    font: { size: 8 }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: { size: 7 },
+                                    maxRotation: 30,
+                                    minRotation: 20
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    <\/script>
 </body>
 </html>
-    `;
-    
-    const printWindow = window.open('', '_blank', 'width=750,height=1050');
-    if (printWindow) {
-        printWindow.document.write(fullHtml);
-        printWindow.document.close();
-        setTimeout(() => { printWindow.print(); }, 600);
-    } else {
-        alert('Please allow popups to download the report card.');
+        `;
+        
+        const printWindow = window.open('', '_blank', 'width=750,height=1050');
+        if (printWindow) {
+            printWindow.document.write(fullHtml);
+            printWindow.document.close();
+            setTimeout(() => { printWindow.print(); }, 800);
+        } else {
+            alert('Please allow popups to download the report card.');
+        }
     }
-}
+
     // ============================================================
     // 16. TAB SWITCHING
     // ============================================================
@@ -2228,8 +2547,8 @@ function downloadReportCard() {
     console.log('📊 Available functions:');
     console.log('   - loadMyMarks() - Load published marks (My Performance)');
     console.log('   - filterMyMarks() - Filter marks');
-    console.log('   - downloadReportCard() - Download report card PDF (Portrait optimized)');
+    console.log('   - downloadReportCard() - Download report card PDF (with Line Graph)');
     console.log('   - downloadTranscriptPDF() - Download full transcript');
-    console.log('   - renderMyMarksCharts() - Render charts');
+    console.log('   - renderMyMarksCharts() - Render Line Charts');
     console.log('📊 TVET Min Pass: 50% | Nursing Min Pass: 60%');
 })();
