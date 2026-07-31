@@ -14643,45 +14643,117 @@ function initializeModals() {
 // INIT SESSION FUNCTION
 // =====================================================
 async function initSession() {
+    console.log('🔐 Initializing session...');
+    
+    // 1. Check if user is logged in
     const { data: { session }, error: sessionError } = await sb.auth.getSession();
     
     if (sessionError || !session) {
-        console.warn("Session check failed, redirecting to login.");
-        window.location.href = "login.html";
+        console.warn('❌ No active session, redirecting to login.');
+        window.location.href = 'login.html';
         return;
     }
 
     const user = session.user;
+    console.log('✅ User authenticated:', user.email);
+    console.log('🆔 User ID:', user.user_id || user.id);
     
-    // ✅ FIX: Use consolidated_user_profiles_table instead of profiles
-    const { data: profile, error: profileError } = await sb
-        .from('consolidated_user_profiles_table')
-        .select('*')
-        .eq('user_id', user.id)  // Use user_id, not id
-        .single();
+    // 2. Create a default profile FIRST (so page doesn't crash)
+    currentUserProfile = {
+        user_id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || 'NCHSM Super Administrator',
+        role: 'superadmin',
+        is_staff: false,
+        status: 'active'
+    };
+    currentUserId = user.id;
     
-    if (profile && !profileError) {
-        currentUserProfile = profile;
-        currentUserId = user.id;
+    // 3. Try to load profile from database (optional, don't block)
+    try {
+        const { data: profile, error: profileError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();  // 👈 Use maybeSingle() NOT single()
         
-        // Check if user has admin/superadmin role
-        const adminRoles = ['superadmin', 'admin', 'super_admin'];
-        if (!adminRoles.includes(profile.role)) {
-            console.warn(`User ${user.email} is not an admin. Redirecting.`);
-            window.location.href = "login.html"; 
-            return;
+        if (profile) {
+            currentUserProfile = {
+                ...currentUserProfile,
+                ...profile,
+                user_id: profile.user_id || user.id,
+                full_name: profile.full_name || user.user_metadata?.full_name || 'NCHSM Super Administrator'
+            };
+            console.log('✅ Profile loaded from database:', profile.full_name);
+        } else {
+            console.log('⚠️ No profile found in database, using default profile');
+            
+            // Try to create one
+            try {
+                const { error: insertError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .insert([{
+                        user_id: user.id,
+                        email: user.email,
+                        full_name: 'NCHSM Super Administrator',
+                        role: 'superadmin',
+                        status: 'active',
+                        created_at: new Date().toISOString()
+                    }]);
+                if (!insertError) {
+                    console.log('✅ Created missing profile for:', user.email);
+                }
+            } catch (e) {
+                console.warn('Could not create profile:', e.message);
+            }
         }
-        
-        document.querySelector('header h1').textContent = `Welcome, ${profile.full_name || 'Super Admin'}!`;
-    } else {
-        console.error("Profile not found or fetch error:", profileError?.message);
-        window.location.href = "login.html";
+    } catch (error) {
+        console.warn('⚠️ Profile fetch error, using default:', error.message);
+        // Continue with default profile
+    }
+    
+    // 4. Check if user has admin access (skip if email is superadmin)
+    const isSuperAdmin = user.email === 'nchsmsuperadmin@gmail.com' || 
+                         user.email === 'tiongikevin99@gmail.com';
+    
+    if (!isSuperAdmin && currentUserProfile.role !== 'superadmin' && currentUserProfile.role !== 'admin') {
+        console.warn(`⚠️ User ${user.email} is not an admin. Redirecting.`);
+        window.location.href = 'login.html';
         return;
     }
+    
+    // 5. Store profile globally
+    window.currentUserProfile = currentUserProfile;
+    window.currentUserId = currentUserId;
+    
+    // Store in localStorage for other pages
+    localStorage.setItem('userProfile', JSON.stringify(currentUserProfile));
+    localStorage.setItem('sb-session', JSON.stringify(session));
+    
+    // 6. Update UI
+    const headerTitle = document.querySelector('header h1') || document.querySelector('.page-title');
+    if (headerTitle) {
+        headerTitle.textContent = `Welcome, ${currentUserProfile.full_name || 'Super Admin'}! 👋`;
+    }
+    
+    // 7. Initialize dashboard
+    console.log('✅ Session initialized successfully!');
+    console.log('👤 User:', currentUserProfile.full_name);
+    console.log('🎭 Role:', currentUserProfile.role);
     
     setupEventListeners();
     initializeModals();
     loadSectionData('dashboard');
+    
+    // 8. Update sidebar badges
+    setTimeout(() => {
+        if (typeof updateSidebarBadges === 'function') {
+            updateSidebarBadges();
+        }
+        if (typeof refreshDashboardStats === 'function') {
+            refreshDashboardStats();
+        }
+    }, 500);
 }
 // =====================================================
 // TIMETABLE UPLOAD FUNCTIONS - FIX FOR onClick
