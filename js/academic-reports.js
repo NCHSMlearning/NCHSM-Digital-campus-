@@ -1,6 +1,6 @@
 // js/academic-reports.js - COMPLETE STUDENT VERSION
 // All tabs: Semester Report, Yearly Summary, Full Transcript, Course Progress, My Performance
-// INCLUDES: LINE GRAPHS for Grade Points Progression
+// INCLUDES: LINE GRAPHS, PROFILE PICTURE, DATABASE UNIT CODES
 // ============================================================
 (function() {
     'use strict';
@@ -41,56 +41,100 @@
     };
 
     // ============================================================
-    // 2. UNIT CODE MAPPING
+    // 2. UNIT CODE - FETCH FROM DATABASE
     // ============================================================
-    const UNIT_CODE_MAP = {
-        'Medical Surgical Nursing II: Renal & Genito-Urinary Diseases': 'NCHSGN 203',
-        'Medical Surgical Nursing II: Gastrointestinal, Hepatobiliary Diseases': 'NCHSGN 201',
-        'Medical Surgical Nursing II: Orodental Nursing': 'NCHSGN 202',
-        'Medical Surgical Nursing III: Endocrine Diseases': 'NCHSGN 209',
-        'Medical Surgical Nursing III: Neurological Disorders': 'NCHSGN 210',
-        'Fundamentals of Nursing': 'NUR101',
-        'Anatomy and Physiology': 'NUR102',
-        'Pharmacology Basics': 'NUR103',
-        'Medical-Surgical Nursing I': 'NUR104',
-        'Community Health Nursing': 'NUR105',
-        'Maternal & Child Health': 'NUR106',
-        'Occupational Health & Safety': 'TVT101',
-        'Workshop Practice': 'TVT102',
-        'Technical Drawing': 'TVT103',
-        'Electrical Principles': 'TVT104',
-        'Mechanical Engineering': 'TVT105',
-        'Industrial Management': 'TVT106'
-    };
+    let unitCodeCache = {};
 
+    /**
+     * Fetch unit codes from database and cache them
+     */
+    async function fetchUnitCodes() {
+        try {
+            const { data, error } = await window.db.supabase
+                .from('units_catalog')
+                .select('unit_name, unit_code');
+            
+            if (error) throw error;
+            
+            unitCodeCache = {};
+            data.forEach(item => {
+                unitCodeCache[item.unit_name] = item.unit_code;
+            });
+            
+            console.log(`📊 Cached ${Object.keys(unitCodeCache).length} unit codes`);
+            return unitCodeCache;
+        } catch (error) {
+            console.error('❌ Error fetching unit codes:', error);
+            return {};
+        }
+    }
+
+    /**
+     * Get unit code - with database lookup first
+     */
     function getUnitCode(subjectName) {
         if (!subjectName) return 'N/A';
         
-        if (UNIT_CODE_MAP[subjectName]) {
-            return UNIT_CODE_MAP[subjectName];
+        // ✅ First check cache (from database)
+        if (unitCodeCache[subjectName]) {
+            return unitCodeCache[subjectName];
         }
         
-        if (subjectName.includes('Medical Surgical Nursing II:')) {
+        // ✅ Try partial match in cache
+        for (const [name, code] of Object.entries(unitCodeCache)) {
+            if (subjectName.includes(name) || name.includes(subjectName)) {
+                return code;
+            }
+        }
+        
+        // ✅ Try to extract code from subject name pattern
+        if (subjectName.includes('Medical Surgical Nursing II')) {
             const specialty = subjectName.split(':')[1]?.trim() || '';
-            if (specialty.includes('Renal')) return 'NCHSGN 203';
             if (specialty.includes('Gastrointestinal') || specialty.includes('Hepatobiliary')) return 'NCHSGN 201';
             if (specialty.includes('Orodental')) return 'NCHSGN 202';
+            if (specialty.includes('Renal') || specialty.includes('Genito-Urinary')) return 'NCHSGN 203';
             return 'NCHSGN 2XX';
         }
         
-        if (subjectName.includes('Medical Surgical Nursing III:')) {
+        if (subjectName.includes('Medical Surgical Nursing III')) {
             const specialty = subjectName.split(':')[1]?.trim() || '';
             if (specialty.includes('Endocrine')) return 'NCHSGN 209';
             if (specialty.includes('Neurological')) return 'NCHSGN 210';
             return 'NCHSGN 2XX';
         }
         
+        if (subjectName.includes('Midwifery')) {
+            if (subjectName.includes('I')) return 'NCHSMW 110';
+            if (subjectName.includes('II')) return 'NCHSMW 123';
+            if (subjectName.includes('III')) return 'NCHSMW 205';
+            if (subjectName.includes('IV')) return 'NCHSMW 214';
+            return 'NCHSMW 2XX';
+        }
+        
+        if (subjectName.includes('Community Health')) {
+            if (subjectName.includes('I')) return 'NCHSCH 125';
+            return 'NCHSCH 2XX';
+        }
+        
+        // ✅ Try to create code from first letters (max 6 chars)
         const words = subjectName.split(' ');
         if (words.length === 1) {
             return subjectName.substring(0, 6).toUpperCase();
         }
-        const code = words.map(w => w[0]).join('').toUpperCase();
-        return code.length > 6 ? code.substring(0, 6) : code;
+        
+        // Take first letters of significant words (skip common words)
+        const skipWords = ['and', 'of', 'for', 'the', 'to', 'with', 'on', 'at'];
+        let code = words
+            .filter(w => !skipWords.includes(w.toLowerCase()))
+            .map(w => w[0])
+            .join('')
+            .toUpperCase();
+        
+        if (code.length > 6) {
+            code = code.substring(0, 6);
+        }
+        
+        return code || 'N/A';
     }
 
     // ============================================================
@@ -301,6 +345,9 @@
         `;
         
         try {
+            // ✅ FIRST: Fetch unit codes from database
+            await fetchUnitCodes();
+            
             const user = window.currentUserProfile || window.db?.currentUserProfile;
             if (!user) {
                 tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
@@ -344,12 +391,15 @@
                 if (!result.error && result.data && result.data.length > 0) {
                     marks = result.data;
                     
+                    // ✅ Process marks with unit codes from cache
                     marks = marks.map(mark => ({
                         ...mark,
                         unit_code: getUnitCode(mark.subject_name),
                         grade: mark.grade || calculateGrade(mark.final_score, userProgram),
                         points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram)
                     }));
+                    
+                    console.log(`📊 Loaded ${marks.length} marks with unit codes`);
                 }
             } catch (e) {
                 console.warn('Error fetching marks:', e);
@@ -609,8 +659,7 @@
                                 pointBorderColor: '#ffffff',
                                 pointBorderWidth: 2,
                                 pointRadius: 6,
-                                pointHoverRadius: 8,
-                                spanGaps: false
+                                pointHoverRadius: 8
                             },
                             {
                                 label: 'GPA (' + avgPoints.toFixed(2) + ')',
@@ -640,16 +689,6 @@
                                         weight: '600'
                                     }
                                 }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        if (context.datasetIndex === 0) {
-                                            return 'Grade Points: ' + context.parsed.y.toFixed(1);
-                                        }
-                                        return 'GPA: ' + context.parsed.y.toFixed(2);
-                                    }
-                                }
                             }
                         },
                         scales: {
@@ -659,11 +698,6 @@
                                 ticks: {
                                     stepSize: 0.5,
                                     font: { size: 9 }
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Grade Points',
-                                    font: { size: 10, weight: '600' }
                                 }
                             },
                             x: {
@@ -671,17 +705,8 @@
                                     font: { size: 8 },
                                     maxRotation: 45,
                                     minRotation: 30
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Units',
-                                    font: { size: 10, weight: '600' }
                                 }
                             }
-                        },
-                        interaction: {
-                            intersect: false,
-                            mode: 'index'
                         }
                     }
                 });
@@ -689,7 +714,7 @@
         }
         
         // ============================================================
-        // 2. PERFORMANCE SUMMARY - LINE CHART (Pass/Fail Trend)
+        // 2. PERFORMANCE SUMMARY - LINE CHART
         // ============================================================
         const ctx2 = document.getElementById('myMarksPerformanceChart');
         if (ctx2) {
@@ -698,7 +723,6 @@
             }
             
             if (typeof Chart !== 'undefined') {
-                // Sort by block/term
                 const sortedMarks = [...marks].sort((a, b) => {
                     const blockOrder = {
                         'Introductory': 0, 'Block 1': 1, 'Block 2': 2, 'Block 3': 3,
@@ -777,16 +801,6 @@
                                         weight: '600'
                                     }
                                 }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        if (context.datasetIndex === 0) {
-                                            return 'Score: ' + context.parsed.y.toFixed(1) + '%';
-                                        }
-                                        return context.dataset.label;
-                                    }
-                                }
                             }
                         },
                         scales: {
@@ -799,11 +813,6 @@
                                     callback: function(value) {
                                         return value + '%';
                                     }
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Score (%)',
-                                    font: { size: 10, weight: '600' }
                                 }
                             },
                             x: {
@@ -811,17 +820,8 @@
                                     font: { size: 8 },
                                     maxRotation: 45,
                                     minRotation: 30
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Units',
-                                    font: { size: 10, weight: '600' }
                                 }
                             }
-                        },
-                        interaction: {
-                            intersect: false,
-                            mode: 'index'
                         }
                     }
                 });
@@ -927,7 +927,6 @@
         const canvas = document.getElementById('grade-distribution-chart');
         if (!canvas) return;
         
-        // Use line chart for grade distribution
         const gradeOrder = ['A', 'B', 'C', 'D', 'F', 'FAIL', 'N/A'];
         const gradeCounts = {};
         grades.forEach(g => {
