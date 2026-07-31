@@ -1,6 +1,8 @@
 // ============================================================
 // PUBLISHED MARKS - SUPER ADMIN (TVET & KRCHN Nursing)
-// WITH EMAIL NOTIFICATIONS INTEGRATION
+// WITH EMAIL NOTIFICATIONS & PER-UNIT PUBLISH/UNPUBLISH
+// FULLY INTEGRATED with Marks Entry System
+// ALIGNED WITH STUDENT GRADING SYSTEM
 // ============================================================
 
 console.log('📊 Published Marks module loading...');
@@ -108,12 +110,11 @@ function escapeHtml(str) {
 }
 
 // ============================================================
-// EMAIL NOTIFICATION FUNCTIONS (Using your existing email system)
+// EMAIL NOTIFICATION FUNCTIONS
 // ============================================================
 
 /**
  * Send email notification to a student when their marks are published
- * Uses the existing sendExamPostedNotification pattern
  */
 async function sendMarksPublishedEmail(studentEmail, studentName, program, block, marksCount, academicYear) {
     try {
@@ -212,8 +213,7 @@ async function sendMarksPublishedEmail(studentEmail, studentName, program, block
 </html>
         `;
 
-        // Use the existing email sending function from your script
-        // Try to use the Edge Function (same as exam notifications)
+        // Use the Edge Function
         const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
             method: 'POST',
             headers: {
@@ -244,75 +244,13 @@ async function sendMarksPublishedEmail(studentEmail, studentName, program, block
     }
 }
 
-/**
- * Send marks published notifications to all students in a program/block
- */
-async function notifyStudentsAboutPublishedMarks(students, block, program, marksCount, academicYear) {
-    try {
-        if (!students || students.length === 0) {
-            console.log('⚠️ No students to notify');
-            return { success: false, message: 'No students found' };
-        }
-
-        console.log(`📧 Sending notifications to ${students.length} students...`);
-        
-        let successCount = 0;
-        let failCount = 0;
-        let errors = [];
-
-        // Send in batches of 10 to avoid rate limiting
-        const batchSize = 10;
-        for (let i = 0; i < students.length; i += batchSize) {
-            const batch = students.slice(i, i + batchSize);
-            
-            await Promise.all(batch.map(async (student) => {
-                try {
-                    const result = await sendMarksPublishedEmail(
-                        student.email,
-                        student.full_name || student.student_name || 'Student',
-                        program,
-                        block,
-                        marksCount,
-                        academicYear
-                    );
-                    
-                    if (result.success) {
-                        successCount++;
-                    } else {
-                        failCount++;
-                        errors.push({ email: student.email, error: result.error });
-                    }
-                } catch (err) {
-                    console.error(`❌ Failed for ${student.email}:`, err);
-                    failCount++;
-                    errors.push({ email: student.email, error: err.message });
-                }
-            }));
-            
-            // Delay between batches
-            if (i + batchSize < students.length) {
-                await new Promise(r => setTimeout(r, 1000));
-            }
-        }
-
-        console.log(`✅ Notifications sent: ${successCount} success, ${failCount} failed`);
-        
-        return { 
-            success: true, 
-            successCount, 
-            failCount, 
-            total: students.length,
-            errors: errors.slice(0, 10) // Return first 10 errors
-        };
-        
-    } catch (error) {
-        console.error('❌ Error sending notifications:', error);
-        return { success: false, error: error.message };
-    }
-}
-
 // ============================================================
 // TVET GRADING SYSTEM
+// Marks from | Marks to | Grade | Points | Comment
+// 0          | 49       | FAIL  | 0      | FAIL
+// 50         | 64       | C     | 2      | SATISFACTORY
+// 65         | 74       | B     | 3      | GOOD
+// 75         | 100      | A     | 4      | EXCELLENT
 // ============================================================
 
 function calculateTVETGrade(score) {
@@ -352,6 +290,7 @@ function getTVETStatus(score) {
 
 // ============================================================
 // NURSING GRADING SYSTEM
+// A: 75-100%, B: 65-74%, C: 60-64%, D: Below 60%
 // ============================================================
 
 function calculateNursingGrade(score) {
@@ -382,7 +321,7 @@ function getNursingStatus(score) {
 }
 
 // ============================================================
-// MAIN GRADING FUNCTIONS
+// MAIN GRADING FUNCTIONS (Auto-detect program)
 // ============================================================
 
 function calculateGrade(score, program) {
@@ -782,23 +721,6 @@ function populateFilters(marks) {
             programFilter.value = currentValue;
         }
     }
-    
-    // Year filter
-    const yearFilter = document.getElementById('pm_year_filter');
-    if (yearFilter) {
-        const currentValue = yearFilter.value;
-        const uniqueYears = [...new Set(marks.map(m => m.academic_year).filter(Boolean))];
-        yearFilter.innerHTML = '<option value="all">All Years</option>';
-        uniqueYears.sort().reverse().forEach(year => {
-            const option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
-            yearFilter.appendChild(option);
-        });
-        if (currentValue && uniqueYears.includes(currentValue)) {
-            yearFilter.value = currentValue;
-        }
-    }
 }
 
 // ============================================================
@@ -980,7 +902,321 @@ function renderPublishedMarks() {
 }
 
 // ============================================================
-// PUBLISH ALL MARKS FOR A STUDENT (WITH EMAIL NOTIFICATION)
+// VIEW STUDENT MARKS DETAIL (WITH PER-UNIT PUBLISH/UNPUBLISH)
+// ============================================================
+
+function viewStudentMarks(admissionNumber) {
+    if (!admissionNumber) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('Please select a student', 'warning');
+        }
+        return;
+    }
+    
+    const marks = PUBLISHED_STATE.marks.filter(m => m.admission_number === admissionNumber);
+    
+    if (marks.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No marks found for this student', 'warning');
+        }
+        return;
+    }
+    
+    const firstMark = marks[0];
+    const isTVET = getProgramType(firstMark.program) === 'TVET';
+    const threshold = isTVET ? 50 : 60;
+    
+    const modalHtml = `
+        <div id="studentMarksModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px);">
+            <div style="background: white; border-radius: 16px; max-width: 950px; width: 100%; max-height: 90vh; overflow: auto; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                
+                <!-- HEADER -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 3px solid #0A3D62; padding-bottom: 12px;">
+                    <div>
+                        <h3 style="margin: 0; color: #0A3D62; font-size: 20px;">
+                            <i class="fas fa-user-graduate"></i> ${escapeHtml(firstMark.student_name || 'Student')}
+                        </h3>
+                        <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">
+                            <i class="fas fa-id-card"></i> ${escapeHtml(firstMark.admission_number || 'N/A')} &nbsp;|&nbsp; 
+                            <i class="fas fa-graduation-cap"></i> ${escapeHtml(firstMark.program || 'N/A')} &nbsp;|&nbsp;
+                            <i class="fas fa-layer-group"></i> ${escapeHtml(firstMark.block || 'N/A')}
+                        </p>
+                    </div>
+                    <button onclick="closeStudentMarksModal()" style="background: #dc2626; color: white; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 18px; transition: all 0.2s;" 
+                            onmouseover="this.style.background='#b91c1c'" 
+                            onmouseout="this.style.background='#dc2626'">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- STUDENT SUMMARY -->
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">Total Units</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${marks.length}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">Passed</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #10b981;">${marks.filter(m => m.final_score >= threshold).length}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">Failed</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #dc2626;">${marks.filter(m => m.final_score > 0 && m.final_score < threshold).length}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">Pending</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${marks.filter(m => m.final_score === 0 || m.final_score === null).length}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">GPA</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${calculateGPA(marks).toFixed(2)}</div>
+                    </div>
+                </div>
+                
+                <!-- MARKS TABLE WITH PER-UNIT PUBLISH -->
+                <div style="overflow-x: auto; margin-bottom: 16px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead style="background: #0A3D62; color: white;">
+                            <tr>
+                                <th style="padding: 10px 12px; text-align: left; width: 40px;">#</th>
+                                <th style="padding: 10px 12px; text-align: left;">Subject/Unit</th>
+                                <th style="padding: 10px 12px; text-align: center; width: 60px;">Score</th>
+                                <th style="padding: 10px 12px; text-align: center; width: 50px;">Grade</th>
+                                <th style="padding: 10px 12px; text-align: center; width: 60px;">Points</th>
+                                <th style="padding: 10px 12px; text-align: center; width: 80px;">Status</th>
+                                <th style="padding: 10px 12px; text-align: center; width: 100px;">Published</th>
+                                <th style="padding: 10px 12px; text-align: center; width: 130px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+    
+    marks.forEach((mark, index) => {
+        const status = getGradingStatus(mark.final_score, mark.program);
+        const statusColor = getStatusColor(status);
+        const gradeColor = getGradeColor(mark.grade);
+        const isPublished = mark.published === true;
+        const publishColor = isPublished ? '#10b981' : '#94a3b8';
+        const publishText = isPublished ? '✅ Published' : '📝 Draft';
+        
+        const publishButton = isPublished ? `
+            <button onclick="unpublishSingleUnit('${escapeHtml(mark.id)}', '${escapeHtml(mark.subject_name)}', '${escapeHtml(firstMark.admission_number)}')" 
+                    style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; transition: all 0.2s; white-space: nowrap;"
+                    onmouseover="this.style.background='#b91c1c'" 
+                    onmouseout="this.style.background='#dc2626'">
+                <i class="fas fa-lock"></i> Unpublish
+            </button>
+        ` : `
+            <button onclick="publishSingleUnit('${escapeHtml(mark.id)}', '${escapeHtml(mark.subject_name)}', '${escapeHtml(firstMark.admission_number)}')" 
+                    style="background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; transition: all 0.2s; white-space: nowrap;"
+                    onmouseover="this.style.background='#059669'" 
+                    onmouseout="this.style.background='#10b981'">
+                <i class="fas fa-share-alt"></i> Publish
+            </button>
+        `;
+        
+        modalHtml += `
+            <tr style="border-bottom: 1px solid #f1f5f9; ${index % 2 === 0 ? 'background: #fafafa;' : ''}">
+                <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
+                <td style="padding: 8px 12px; font-weight: 500;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${mark.final_score >= threshold ? '#10b981' : '#dc2626'};">${mark.final_score || 0}%</td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 12px;">${mark.grade || '-'}</span>
+                </td>
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600;">${mark.points || 0}</td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="background: ${statusColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 600; font-size: 10px;">${status}</span>
+                </td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="color: ${publishColor}; font-weight: 600; font-size: 11px;">${publishText}</span>
+                </td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    ${publishButton}
+                </td>
+            </tr>
+        `;
+    });
+    
+    modalHtml += `
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- FOOTER ACTIONS -->
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button onclick="publishStudentAllMarks('${escapeHtml(admissionNumber)}'); closeStudentMarksModal();" 
+                                style="background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;"
+                                onmouseover="this.style.background='#059669'" 
+                                onmouseout="this.style.background='#10b981'">
+                            <i class="fas fa-check-double"></i> Publish All Units
+                        </button>
+                        <button onclick="unpublishStudentAllMarks('${escapeHtml(admissionNumber)}'); closeStudentMarksModal();" 
+                                style="background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;"
+                                onmouseover="this.style.background='#b91c1c'" 
+                                onmouseout="this.style.background='#dc2626'">
+                            <i class="fas fa-lock"></i> Unpublish All Units
+                        </button>
+                    </div>
+                    <button onclick="closeStudentMarksModal()" 
+                            style="background: #e5e7eb; color: #475569; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;"
+                            onmouseover="this.style.background='#d1d5db'" 
+                            onmouseout="this.style.background='#e5e7eb'">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+                
+            </div>
+        </div>
+    `;
+    
+    const existingModal = document.getElementById('studentMarksModal');
+    if (existingModal) existingModal.remove();
+    
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer.firstElementChild);
+    
+    document.getElementById('studentMarksModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeStudentMarksModal();
+        }
+    });
+}
+
+// ============================================================
+// PUBLISH SINGLE UNIT
+// ============================================================
+
+async function publishSingleUnit(markId, subjectName, admissionNumber) {
+    if (!markId) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('Invalid mark ID', 'error');
+        }
+        return;
+    }
+    
+    if (!confirm(`✅ Publish "${subjectName}" for student ${admissionNumber}?`)) return;
+    
+    try {
+        if (typeof window.showLoading === 'function') window.showLoading('Publishing unit...');
+        
+        const { data, error } = await window.sb
+            .from('student_marks')
+            .update({
+                published: true,
+                published_at: new Date().toISOString(),
+                published_by: window.currentUser?.id || null
+            })
+            .eq('id', markId)
+            .select();
+        
+        if (error) throw error;
+        
+        const publishedMark = data?.[0];
+        const count = data?.length || 0;
+        
+        if (publishedMark) {
+            try {
+                const studentName = publishedMark.student_name || 'Student';
+                const program = publishedMark.program || 'KRCHN';
+                const block = publishedMark.block || 'N/A';
+                const academicYear = publishedMark.academic_year || '2025/2026';
+                
+                const { data: profile } = await window.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('email')
+                    .eq('admission_number', admissionNumber)
+                    .or(`student_id.eq.${admissionNumber}`)
+                    .maybeSingle();
+                
+                if (profile?.email) {
+                    await sendMarksPublishedEmail(
+                        profile.email,
+                        studentName,
+                        program,
+                        block,
+                        1,
+                        academicYear
+                    );
+                    console.log(`✅ Email notification sent to ${profile.email}`);
+                } else {
+                    console.warn(`⚠️ No email found for student ${admissionNumber}`);
+                }
+            } catch (emailError) {
+                console.error('❌ Error sending email:', emailError);
+            }
+        }
+        
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`✅ Published "${subjectName}" successfully!`, 'success');
+        }
+        
+        await loadPublishedMarks();
+        viewStudentMarks(admissionNumber);
+        
+    } catch (error) {
+        console.error('Error publishing unit:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('❌ Error: ' + error.message, 'error');
+        }
+    } finally {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+    }
+}
+
+// ============================================================
+// UNPUBLISH SINGLE UNIT
+// ============================================================
+
+async function unpublishSingleUnit(markId, subjectName, admissionNumber) {
+    if (!markId) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('Invalid mark ID', 'error');
+        }
+        return;
+    }
+    
+    if (!confirm(`🔒 Unpublish "${subjectName}" for student ${admissionNumber}?`)) return;
+    
+    try {
+        if (typeof window.showLoading === 'function') window.showLoading('Unpublishing unit...');
+        
+        const { error } = await window.sb
+            .from('student_marks')
+            .update({
+                published: false,
+                published_at: null,
+                published_by: null
+            })
+            .eq('id', markId);
+        
+        if (error) throw error;
+        
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`🔒 Unpublished "${subjectName}"`, 'info');
+        }
+        
+        await loadPublishedMarks();
+        viewStudentMarks(admissionNumber);
+        
+    } catch (error) {
+        console.error('Error unpublishing unit:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('❌ Error: ' + error.message, 'error');
+        }
+    } finally {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+    }
+}
+
+function closeStudentMarksModal() {
+    const modal = document.getElementById('studentMarksModal');
+    if (modal) modal.remove();
+}
+
+// ============================================================
+// PUBLISH ALL MARKS FOR A STUDENT
 // ============================================================
 
 async function publishStudentAllMarks(admissionNumber) {
@@ -1009,17 +1245,14 @@ async function publishStudentAllMarks(admissionNumber) {
         
         const count = data?.length || 0;
         
-        // ✅ SEND EMAIL NOTIFICATION
         if (data && data.length > 0) {
             try {
-                // Get student details from the first mark
                 const firstMark = data[0];
                 const studentName = firstMark.student_name || 'Student';
                 const program = firstMark.program || 'KRCHN';
                 const block = firstMark.block || 'N/A';
                 const academicYear = firstMark.academic_year || '2025/2026';
                 
-                // Get student email from profile
                 const { data: profile } = await window.sb
                     .from('consolidated_user_profiles_table')
                     .select('email')
@@ -1042,7 +1275,6 @@ async function publishStudentAllMarks(admissionNumber) {
                 }
             } catch (emailError) {
                 console.error('❌ Error sending email:', emailError);
-                // Don't fail the publish if email fails
             }
         }
         
@@ -1106,158 +1338,6 @@ async function unpublishStudentAllMarks(admissionNumber) {
     } finally {
         if (typeof window.hideLoading === 'function') window.hideLoading();
     }
-}
-
-// ============================================================
-// VIEW STUDENT MARKS DETAIL
-// ============================================================
-
-function viewStudentMarks(admissionNumber) {
-    if (!admissionNumber) {
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('Please select a student', 'warning');
-        }
-        return;
-    }
-    
-    const marks = PUBLISHED_STATE.marks.filter(m => m.admission_number === admissionNumber);
-    
-    if (marks.length === 0) {
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('No marks found for this student', 'warning');
-        }
-        return;
-    }
-    
-    const firstMark = marks[0];
-    const isTVET = getProgramType(firstMark.program) === 'TVET';
-    const threshold = isTVET ? 50 : 60;
-    
-    const modalHtml = `
-        <div id="studentMarksModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;">
-            <div style="background: white; border-radius: 12px; max-width: 800px; width: 100%; max-height: 80vh; overflow: auto; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 2px solid #0A3D62; padding-bottom: 12px;">
-                    <div>
-                        <h3 style="margin: 0; color: #0A3D62;">
-                            <i class="fas fa-user-graduate"></i> ${escapeHtml(firstMark.student_name || 'Student')}
-                        </h3>
-                        <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">
-                            ${escapeHtml(firstMark.admission_number || 'N/A')} · ${escapeHtml(firstMark.program || 'N/A')}
-                        </p>
-                    </div>
-                    <button onclick="closeStudentMarksModal()" style="background: #dc2626; color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 16px;">×</button>
-                </div>
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                        <thead style="background: #0A3D62; color: white;">
-                            <tr>
-                                <th style="padding: 8px 12px; text-align: left;">#</th>
-                                <th style="padding: 8px 12px; text-align: left;">Unit</th>
-                                <th style="padding: 8px 12px; text-align: center;">Score</th>
-                                <th style="padding: 8px 12px; text-align: center;">Grade</th>
-                                <th style="padding: 8px 12px; text-align: center;">Points</th>
-                                <th style="padding: 8px 12px; text-align: center;">Status</th>
-                                <th style="padding: 8px 12px; text-align: center;">Published</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-    `;
-    
-    marks.forEach((mark, index) => {
-        const status = getGradingStatus(mark.final_score, mark.program);
-        const statusColor = getStatusColor(status);
-        const gradeColor = getGradeColor(mark.grade);
-        const isPublished = mark.published === true;
-        const publishColor = isPublished ? '#10b981' : '#94a3b8';
-        const publishText = isPublished ? '✅ Yes' : '📝 No';
-        
-        modalHtml += `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
-                <td style="padding: 8px 12px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
-                <td style="padding: 8px 12px; text-align: center; font-weight: 600;">${mark.final_score || 0}%</td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 12px;">${mark.grade || '-'}</span>
-                </td>
-                <td style="padding: 8px 12px; text-align: center; font-weight: 600;">${mark.points || 0}</td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="background: ${statusColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 600; font-size: 10px;">${status}</span>
-                </td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="color: ${publishColor}; font-weight: 600; font-size: 12px;">${publishText}</span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    const totalUnits = marks.length;
-    const passedUnits = marks.filter(m => m.final_score >= threshold).length;
-    const failedUnits = marks.filter(m => m.final_score > 0 && m.final_score < threshold).length;
-    const pendingUnits = marks.filter(m => m.final_score === 0 || m.final_score === null).length;
-    const avgScore = totalUnits > 0 ? (marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / totalUnits) : 0;
-    const gpa = calculateGPA(marks);
-    
-    modalHtml += `
-                        </tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
-                    <div style="text-align: center; background: #f8fafc; padding: 8px; border-radius: 6px;">
-                        <div style="font-size: 10px; color: #94a3b8;">Units</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #0A3D62;">${totalUnits}</div>
-                    </div>
-                    <div style="text-align: center; background: #d1fae5; padding: 8px; border-radius: 6px;">
-                        <div style="font-size: 10px; color: #065f46;">Passed</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #065f46;">${passedUnits}</div>
-                    </div>
-                    <div style="text-align: center; background: #fee2e2; padding: 8px; border-radius: 6px;">
-                        <div style="font-size: 10px; color: #991b1b;">Failed</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #991b1b;">${failedUnits}</div>
-                    </div>
-                    <div style="text-align: center; background: #fef3c7; padding: 8px; border-radius: 6px;">
-                        <div style="font-size: 10px; color: #92400e;">Pending</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #92400e;">${pendingUnits}</div>
-                    </div>
-                    <div style="text-align: center; background: #dbeafe; padding: 8px; border-radius: 6px;">
-                        <div style="font-size: 10px; color: #1e40af;">GPA</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #1e40af;">${gpa.toFixed(2)}</div>
-                    </div>
-                </div>
-                <div style="margin-top: 12px; text-align: center; display: flex; gap: 10px; justify-content: center;">
-                    <button onclick="publishStudentAllMarks('${escapeHtml(admissionNumber)}'); closeStudentMarksModal();" 
-                            style="background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-share-alt"></i> Publish All
-                    </button>
-                    <button onclick="unpublishStudentAllMarks('${escapeHtml(admissionNumber)}'); closeStudentMarksModal();" 
-                            style="background: #dc2626; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-lock"></i> Unpublish All
-                    </button>
-                    <button onclick="closeStudentMarksModal()" 
-                            style="background: #e5e7eb; color: #475569; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    const existingModal = document.getElementById('studentMarksModal');
-    if (existingModal) existingModal.remove();
-    
-    const modalContainer = document.createElement('div');
-    modalContainer.innerHTML = modalHtml;
-    document.body.appendChild(modalContainer.firstElementChild);
-    
-    document.getElementById('studentMarksModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeStudentMarksModal();
-        }
-    });
-}
-
-function closeStudentMarksModal() {
-    const modal = document.getElementById('studentMarksModal');
-    if (modal) modal.remove();
 }
 
 // ============================================================
@@ -1373,7 +1453,7 @@ function filterPublishedMarks() {
 }
 
 // ============================================================
-// PUBLISH ALL FILTERED MARKS (WITH EMAIL NOTIFICATIONS)
+// PUBLISH ALL FILTERED MARKS
 // ============================================================
 
 async function publishAllFilteredMarks() {
@@ -1406,8 +1486,6 @@ async function publishAllFilteredMarks() {
             
             if (!error) {
                 successCount++;
-                
-                // Track which students were published
                 const key = mark.admission_number;
                 if (key && !publishedStudents[key]) {
                     publishedStudents[key] = {
@@ -1425,12 +1503,8 @@ async function publishAllFilteredMarks() {
             }
         }
         
-        // ✅ SEND EMAIL NOTIFICATIONS TO ALL AFFECTED STUDENTS
-        console.log(`📧 Sending email notifications to ${Object.keys(publishedStudents).length} students...`);
-        
         for (const [key, student] of Object.entries(publishedStudents)) {
             try {
-                // Get student email from profile
                 const { data: profile } = await window.sb
                     .from('consolidated_user_profiles_table')
                     .select('email')
@@ -1700,11 +1774,7 @@ async function confirmPublishMarks() {
         
         const count = data?.length || 0;
         
-        // ✅ SEND EMAIL NOTIFICATIONS FOR BULK PUBLISH
         if (data && data.length > 0) {
-            console.log(`📧 Sending email notifications for ${count} marks...`);
-            
-            // Group by student
             const studentMap = {};
             data.forEach(mark => {
                 const key = mark.admission_number;
@@ -1720,7 +1790,6 @@ async function confirmPublishMarks() {
                 studentMap[key].marks.push(mark);
             });
             
-            // Send email to each student
             for (const [key, student] of Object.entries(studentMap)) {
                 try {
                     const { data: profile } = await window.sb
@@ -1979,13 +2048,13 @@ async function initPublishedMarks() {
         assessmentSelect.addEventListener('change', updatePublishPreview);
     }
     
-    // Load marks
     await loadPublishedMarks();
     
     console.log('✅ Published Marks module initialized');
     console.log('📊 TVET Grading: A (75-100%), B (65-74%), C (50-64%), FAIL (Below 50%)');
     console.log('📊 Nursing Grading: A (75-100%), B (65-74%), C (60-64%), D (Below 60%)');
     console.log('📧 Email notifications enabled when publishing marks');
+    console.log('📋 Per-unit publish/unpublish available in student view');
 }
 
 // Auto-initialize when DOM is ready
@@ -2006,6 +2075,8 @@ window.publishedMarks = {
     publishStudent: publishStudentAllMarks,
     unpublishStudent: unpublishStudentAllMarks,
     viewStudent: viewStudentMarks,
+    publishSingleUnit: publishSingleUnit,
+    unpublishSingleUnit: unpublishSingleUnit,
     publishAll: publishAllFilteredMarks,
     unpublishAll: unpublishAllFilteredMarks,
     export: exportPublishedMarksToCSV,
@@ -2023,6 +2094,8 @@ window.publishStudentAllMarks = publishStudentAllMarks;
 window.unpublishStudentAllMarks = unpublishStudentAllMarks;
 window.viewStudentMarks = viewStudentMarks;
 window.closeStudentMarksModal = closeStudentMarksModal;
+window.publishSingleUnit = publishSingleUnit;
+window.unpublishSingleUnit = unpublishSingleUnit;
 window.publishAllFilteredMarks = publishAllFilteredMarks;
 window.unpublishAllFilteredMarks = unpublishAllFilteredMarks;
 window.exportPublishedMarksToCSV = exportPublishedMarksToCSV;
@@ -2037,7 +2110,6 @@ window.updatePublishProgramOptions = updatePublishProgramOptions;
 window.updatePublishPreview = updatePublishPreview;
 window.populatePublishUnits = populatePublishUnits;
 window.sendMarksPublishedEmail = sendMarksPublishedEmail;
-window.notifyStudentsAboutPublishedMarks = notifyStudentsAboutPublishedMarks;
 
 console.log('✅ Published Marks module loaded successfully!');
 console.log('📊 Features:');
@@ -2045,12 +2117,14 @@ console.log('   - ✅ TVET & KRCHN Nursing support');
 console.log('   - ✅ TVET: A(75-100%), B(65-74%), C(50-64%), FAIL(Below 50%)');
 console.log('   - ✅ Nursing: A(75-100%), B(65-74%), C(60-64%), D(Below 60%)');
 console.log('   - ✅ Quick filter by program type');
-console.log('   - ✅ Individual publish/unpublish');
+console.log('   - ✅ Student Group View');
+console.log('   - ✅ Per-unit publish/unpublish in student view');
+console.log('   - ✅ Publish/Unpublish all per student');
 console.log('   - ✅ Bulk publish with program filter');
 console.log('   - ✅ Publish/Unpublish all filtered');
+console.log('   - ✅ Email notifications when publishing');
 console.log('   - ✅ Export to CSV');
 console.log('   - ✅ Print functionality');
 console.log('   - ✅ Program type counts');
 console.log('   - ✅ Block/Term dual support');
-console.log('   - ✅ Email notifications when publishing marks');
 console.log('   - ✅ Production ready - NO DEMO DATA');
