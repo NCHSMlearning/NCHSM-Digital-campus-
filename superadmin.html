@@ -3708,7 +3708,7 @@
     </div>
 </section>
 <!-- ============================================================ -->
-<!-- PUBLISHED MARKS - SUPER ADMIN (TVET & KRCHN Nursing)         -->
+<!-- PUBLISHED MARKS - SUPER ADMIN (Student Group View)           -->
 <!-- ============================================================ -->
 <section id="publish-marks" class="tab-content">
     <!-- Header -->
@@ -3750,29 +3750,19 @@
             <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">All programs</p>
         </div>
         <div class="card" style="border-top: 4px solid #10b981; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <h3 style="color: #10b981; font-size: 10px; text-transform: uppercase; margin: 0;">Passed</h3>
-            <p class="data" id="pm_passed" style="font-size: 24px; font-weight: 700; color: #10b981; margin: 4px 0;">0</p>
-            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Above pass mark</p>
+            <h3 style="color: #10b981; font-size: 10px; text-transform: uppercase; margin: 0;">Students</h3>
+            <p class="data" id="pm_total_students" style="font-size: 24px; font-weight: 700; color: #10b981; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Total students</p>
         </div>
         <div class="card" style="border-top: 4px solid #ef4444; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <h3 style="color: #dc2626; font-size: 10px; text-transform: uppercase; margin: 0;">Failed</h3>
-            <p class="data" id="pm_failed" style="font-size: 24px; font-weight: 700; color: #dc2626; margin: 4px 0;">0</p>
-            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Below pass mark</p>
-        </div>
-        <div class="card" style="border-top: 4px solid #f59e0b; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <h3 style="color: #d97706; font-size: 10px; text-transform: uppercase; margin: 0;">Pending</h3>
-            <p class="data" id="pm_pending" style="font-size: 24px; font-weight: 700; color: #d97706; margin: 4px 0;">0</p>
-            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Not attempted</p>
-        </div>
-        <div class="card" style="border-top: 4px solid #8b5cf6; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <h3 style="color: #6d28d9; font-size: 10px; text-transform: uppercase; margin: 0;">Average</h3>
-            <p class="data" id="pm_avg_score" style="font-size: 24px; font-weight: 700; color: #6d28d9; margin: 4px 0;">0%</p>
-            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Overall average</p>
+            <h3 style="color: #dc2626; font-size: 10px; text-transform: uppercase; margin: 0;">Passed</h3>
+            <p class="data" id="pm_passed" style="font-size: 24px; font-weight: 700; color: #dc2626; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Students passed</p>
         </div>
         <div class="card" style="border-top: 4px solid #f59e0b; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             <h3 style="color: #d97706; font-size: 10px; text-transform: uppercase; margin: 0;">Published</h3>
             <p class="data" id="pm_published_count" style="font-size: 24px; font-weight: 700; color: #d97706; margin: 4px 0;">0</p>
-            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Visible to students</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Students published</p>
         </div>
     </div>
 
@@ -3792,39 +3782,16 @@
         </span>
     </div>
 
-    <!-- Grading System Reference - UPDATED with TVET & Nursing -->
-    <div style="background: white; border-radius: 8px; padding: 10px 16px; margin-bottom: 15px; border: 1px solid #e5e7eb;">
-        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center; font-size: 12px;">
-            <span style="font-weight: 700; color: #475569;">📊 Grading Systems:</span>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: #92400e; font-size: 11px;">🔧 TVET</span>
-                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A 75-100% → 4.0</span>
-                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B 65-74% → 3.0</span>
-                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C 50-64% → 2.0</span>
-                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">FAIL Below 50% → 0.0</span>
-                <span style="color: #94a3b8; font-size: 10px;">| Min Pass: 50%</span>
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: #1e40af; font-size: 11px;">🎓 Nursing</span>
-                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A 75-100% → 4.0</span>
-                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B 65-74% → 3.0</span>
-                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C 60-64% → 2.0</span>
-                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">D Below 60% → 0.0</span>
-                <span style="color: #94a3b8; font-size: 10px;">| Min Pass: 60%</span>
-            </div>
-        </div>
-    </div>
-
     <!-- Filters -->
     <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-        <select id="pm_subject_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
-            <option value="all">All Units</option>
+        <select id="pm_student_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 200px;">
+            <option value="all">All Students</option>
         </select>
         
         <select id="pm_program_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 200px;">
             <option value="all">All Programs</option>
             <option value="KRCHN">🎓 KRCHN - Nursing</option>
-            <optgroup label="🎯 TVET Diploma Programs">
+            <optgroup label="🎯 TVET Programs">
                 <option value="DPOTT">📘 Diploma in Perioperative Theatre Technology</option>
                 <option value="DCH">📘 Diploma in Community Health</option>
                 <option value="DHRIT">📘 Diploma in Health Records and IT</option>
@@ -3834,8 +3801,6 @@
                 <option value="DHSS">📘 Diploma in Health Support Services</option>
                 <option value="DICT">📘 Diploma in ICT</option>
                 <option value="DME">📘 Diploma in Medical Engineering</option>
-            </optgroup>
-            <optgroup label="📜 TVET Certificate Programs">
                 <option value="CPOTT">📗 Certificate in Perioperative Theatre Technology</option>
                 <option value="CCH">📗 Certificate in Community Health</option>
                 <option value="CHRIT">📗 Certificate in Health Records and IT</option>
@@ -3846,19 +3811,14 @@
                 <option value="CAG">📗 Certificate in Agriculture</option>
                 <option value="CHSS">📗 Certificate in Health Support Services</option>
                 <option value="CICT">📗 Certificate in ICT</option>
-            </optgroup>
-            <optgroup label="🔧 TVET Artisan Programs">
                 <option value="ACH">🔧 Artisan in Community Health</option>
                 <option value="AAG">🔧 Artisan in Agriculture</option>
                 <option value="ASW">🔧 Artisan in Social Work & Community Development</option>
-            </optgroup>
-            <optgroup label="📊 Other TVET Programs">
                 <option value="CCA">📊 Certificate in Computer Applications</option>
                 <option value="PTE">📊 TVET/CDACC (PTE)</option>
             </optgroup>
         </select>
         
-        <!-- Block/Term Filter -->
         <select id="pm_block_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
             <option value="all">All Blocks/Terms</option>
             <optgroup label="📚 KRCHN Blocks">
@@ -3880,52 +3840,27 @@
             </optgroup>
         </select>
         
-        <select id="pm_year_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 120px;">
-            <option value="all">All Years</option>
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-            <option value="2027">2027</option>
-            <option value="2028">2028</option>
-        </select>
-        
         <select id="pm_status_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 120px;">
             <option value="all">All Status</option>
             <option value="published">✅ Published</option>
             <option value="draft">📝 Draft</option>
         </select>
         
-        <input type="text" id="pm_search" placeholder="🔍 Search..." onkeyup="filterPublishedMarks()" style="flex: 1; min-width: 120px; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+        <input type="text" id="pm_search" placeholder="🔍 Search student..." onkeyup="filterPublishedMarks()" style="flex: 1; min-width: 120px; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
         
         <span style="font-size: 12px; color: #94a3b8; white-space: nowrap;">
             <i class="fas fa-info-circle"></i> <span id="pm_filter_count">0</span> results
         </span>
     </div>
 
-    <!-- Program Type Badges -->
-    <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
-        <span style="background: #dbeafe; padding: 4px 14px; border-radius: 20px; font-size: 12px; color: #1e40af;">
-            <i class="fas fa-user-md"></i> KRCHN: <strong id="pm_krchn_count">0</strong>
-        </span>
-        <span style="background: #fef3c7; padding: 4px 14px; border-radius: 20px; font-size: 12px; color: #92400e;">
-            <i class="fas fa-tools"></i> TVET: <strong id="pm_tvet_count">0</strong>
-        </span>
-        <span style="background: #f3f4f6; padding: 4px 14px; border-radius: 20px; font-size: 12px; color: #6b7280;">
-            <i class="fas fa-file-alt"></i> Draft: <strong id="pm_draft_count">0</strong>
-        </span>
-        <span style="background: #d1fae5; padding: 4px 14px; border-radius: 20px; font-size: 12px; color: #065f46;">
-            <i class="fas fa-check-circle"></i> Published: <strong id="pm_published_badge_count">0</strong>
-        </span>
-    </div>
-
     <!-- ============================================================ -->
-    <!-- MARKS TABLE                                                  -->
+    <!-- STUDENT GROUP TABLE                                           -->
     <!-- ============================================================ -->
     <div style="background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
         <!-- Table Toolbar -->
         <div style="padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <span style="font-size: 12px; color: #64748b;">
-                <i class="fas fa-info-circle"></i> Click <strong>Publish</strong> next to a student to publish individually
+                <i class="fas fa-info-circle"></i> Click <strong>Publish/Unpublish</strong> next to a student to manage all their marks
             </span>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button onclick="publishAllFilteredMarks()" class="btn-action" style="background: #10b981; color: white; padding: 5px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">
@@ -3942,49 +3877,31 @@
             <div id="publishedMarksContainer">
                 <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
                     <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="margin-top: 10px;">Loading marks...</p>
+                    <p style="margin-top: 10px;">Loading students...</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Summary Section -->
-    <div id="pm_summary_section" style="display: none; margin-top: 25px; background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
-        <h3 style="margin: 0 0 15px 0; color: #1e293b; font-size: 16px;">
-            <i class="fas fa-chart-pie" style="color: #4C1D95;"></i> Performance Summary
-        </h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;">
-            <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px;">
-                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Units Attempted</span>
-                <div style="font-size: 24px; font-weight: 700; color: #1e293b;" id="pm_units_attempted">0</div>
+    <!-- Grading System Reference -->
+    <div style="margin-top: 20px; background: white; border-radius: 8px; padding: 10px 16px; border: 1px solid #e5e7eb;">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center; font-size: 12px;">
+            <span style="font-weight: 700; color: #475569;">📊 Grading Systems:</span>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: #92400e; font-size: 11px;">🔧 TVET</span>
+                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A 75-100% → 4.0</span>
+                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B 65-74% → 3.0</span>
+                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C 50-64% → 2.0</span>
+                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">FAIL Below 50% → 0.0</span>
+                <span style="color: #94a3b8; font-size: 10px;">| Min Pass: 50%</span>
             </div>
-            <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px;">
-                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Units Passed</span>
-                <div style="font-size: 24px; font-weight: 700; color: #10b981;" id="pm_units_passed">0</div>
-            </div>
-            <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px;">
-                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Units Failed</span>
-                <div style="font-size: 24px; font-weight: 700; color: #dc2626;" id="pm_units_failed">0</div>
-            </div>
-            <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px;">
-                <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Overall GPA</span>
-                <div style="font-size: 24px; font-weight: 700; color: #6d28d9;" id="pm_overall_gpa">0.0</div>
-            </div>
-            <div style="text-align: center; padding: 12px; background: #d1fae5; border-radius: 8px;">
-                <span style="font-size: 11px; color: #065f46; text-transform: uppercase;">EXCELLENT</span>
-                <div style="font-size: 24px; font-weight: 700; color: #065f46;" id="pm_excellent">0</div>
-            </div>
-            <div style="text-align: center; padding: 12px; background: #dbeafe; border-radius: 8px;">
-                <span style="font-size: 11px; color: #1e40af; text-transform: uppercase;">GOOD/CREDIT</span>
-                <div style="font-size: 24px; font-weight: 700; color: #1e40af;" id="pm_good">0</div>
-            </div>
-            <div style="text-align: center; padding: 12px; background: #fef3c7; border-radius: 8px;">
-                <span style="font-size: 11px; color: #92400e; text-transform: uppercase;">SATISFACTORY</span>
-                <div style="font-size: 24px; font-weight: 700; color: #92400e;" id="pm_satisfactory">0</div>
-            </div>
-            <div style="text-align: center; padding: 12px; background: #fee2e2; border-radius: 8px;">
-                <span style="font-size: 11px; color: #991b1b; text-transform: uppercase;">FAIL</span>
-                <div style="font-size: 24px; font-weight: 700; color: #991b1b;" id="pm_fail_count">0</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 600; color: #1e40af; font-size: 11px;">🎓 Nursing</span>
+                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A 75-100% → 4.0</span>
+                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B 65-74% → 3.0</span>
+                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C 60-64% → 2.0</span>
+                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">D Below 60% → 0.0</span>
+                <span style="color: #94a3b8; font-size: 10px;">| Min Pass: 60%</span>
             </div>
         </div>
     </div>
