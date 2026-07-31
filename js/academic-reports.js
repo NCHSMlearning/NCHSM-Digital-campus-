@@ -1,6 +1,6 @@
 // js/academic-reports.js - COMPLETE STUDENT VERSION
 // All tabs: Semester Report, Yearly Summary, Full Transcript, Course Progress, My Performance
-// INCLUDES: LINE GRAPHS, PROFILE PICTURE, DATABASE UNIT CODES
+// INCLUDES: LINE GRAPHS, PROFILE PICTURE, DATABASE UNIT CODES, FIXED GRADE DISPLAY
 // ============================================================
 (function() {
     'use strict';
@@ -45,9 +45,6 @@
     // ============================================================
     let unitCodeCache = {};
 
-    /**
-     * Fetch unit codes from database and cache them
-     */
     async function fetchUnitCodes() {
         try {
             const { data, error } = await window.db.supabase
@@ -69,25 +66,19 @@
         }
     }
 
-    /**
-     * Get unit code - with database lookup first
-     */
     function getUnitCode(subjectName) {
         if (!subjectName) return 'N/A';
         
-        // ✅ First check cache (from database)
         if (unitCodeCache[subjectName]) {
             return unitCodeCache[subjectName];
         }
         
-        // ✅ Try partial match in cache
         for (const [name, code] of Object.entries(unitCodeCache)) {
             if (subjectName.includes(name) || name.includes(subjectName)) {
                 return code;
             }
         }
         
-        // ✅ Try to extract code from subject name pattern
         if (subjectName.includes('Medical Surgical Nursing II')) {
             const specialty = subjectName.split(':')[1]?.trim() || '';
             if (specialty.includes('Gastrointestinal') || specialty.includes('Hepatobiliary')) return 'NCHSGN 201';
@@ -116,13 +107,11 @@
             return 'NCHSCH 2XX';
         }
         
-        // ✅ Try to create code from first letters (max 6 chars)
         const words = subjectName.split(' ');
         if (words.length === 1) {
             return subjectName.substring(0, 6).toUpperCase();
         }
         
-        // Take first letters of significant words (skip common words)
         const skipWords = ['and', 'of', 'for', 'the', 'to', 'with', 'on', 'at'];
         let code = words
             .filter(w => !skipWords.includes(w.toLowerCase()))
@@ -267,7 +256,24 @@
     }
 
     // ============================================================
-    // 7. GENERATE SAMPLE GRADES (Fallback)
+    // 7. GET GRADE FROM GPA - FIXED
+    // ============================================================
+    function getGradeFromGPA(gpa) {
+        if (gpa >= 3.75) return 'A';
+        if (gpa >= 3.0) return 'B';
+        if (gpa >= 2.0) return 'C';
+        return 'D';
+    }
+
+    function getGradeFromGPATVET(gpa) {
+        if (gpa >= 3.75) return 'A';
+        if (gpa >= 3.0) return 'B';
+        if (gpa >= 2.0) return 'C';
+        return 'FAIL';
+    }
+
+    // ============================================================
+    // 8. GENERATE SAMPLE GRADES (Fallback)
     // ============================================================
     function generateSampleGrades(program) {
         const isTVET = PROGRAM.isTVET(program);
@@ -311,7 +317,7 @@
     }
 
     // ============================================================
-    // 8. MY PERFORMANCE - STATE & FUNCTIONS
+    // 9. MY PERFORMANCE - STATE & FUNCTIONS
     // ============================================================
     let myMarksData = [];
     let myMarksFiltered = [];
@@ -345,7 +351,6 @@
         `;
         
         try {
-            // ✅ FIRST: Fetch unit codes from database
             await fetchUnitCodes();
             
             const user = window.currentUserProfile || window.db?.currentUserProfile;
@@ -357,7 +362,6 @@
             const registrationNumber = user.student_id || user.admission_number || user.user_id;
             const userProgram = user.program || '';
             
-            // Update student info
             const nameEl = document.getElementById('my_marks_student_name');
             if (nameEl) nameEl.textContent = user.full_name || 'Student';
             
@@ -391,7 +395,6 @@
                 if (!result.error && result.data && result.data.length > 0) {
                     marks = result.data;
                     
-                    // ✅ Process marks with unit codes from cache
                     marks = marks.map(mark => ({
                         ...mark,
                         unit_code: getUnitCode(mark.subject_name),
@@ -419,7 +422,6 @@
             
             myMarksFiltered = [...myMarksData];
             
-            // Populate subject filter
             const subjectFilter = document.getElementById('my_marks_subject_filter');
             if (subjectFilter) {
                 const subjects = [...new Set(myMarksData.map(m => m.subject_name).filter(Boolean))];
@@ -432,7 +434,6 @@
                 });
             }
             
-            // Populate year filter
             const yearFilter = document.getElementById('my_marks_year_filter');
             if (yearFilter) {
                 const years = [...new Set(myMarksData.map(m => m.academic_year || m.year || '2025').filter(Boolean))];
@@ -445,17 +446,12 @@
                 });
             }
             
-            // Update GPA
             const gpa = calculateGPA(myMarksData);
             const gpaEl = document.getElementById('my_marks_gpa');
             if (gpaEl) gpaEl.textContent = gpa.toFixed(2);
             
             renderMyMarksTable();
-            
-            // Show correct grading scale
             showGradingScale(userProgram, myMarksData);
-            
-            // Render charts after table
             setTimeout(renderMyMarksCharts, 300);
             
         } catch (error) {
@@ -586,12 +582,11 @@
         myMarksFiltered = filtered;
         renderMyMarksTable();
         document.getElementById('my_marks_count').textContent = `${filtered.length} results`;
-        
         setTimeout(renderMyMarksCharts, 200);
     }
 
     // ============================================================
-    // 9. RENDER CHARTS FOR MY PERFORMANCE - LINE GRAPHS
+    // 10. RENDER CHARTS FOR MY PERFORMANCE - LINE GRAPHS
     // ============================================================
     function renderMyMarksCharts() {
         const marks = myMarksFiltered || [];
@@ -609,9 +604,6 @@
         const isTVET = PROGRAM.isTVET(userProgram);
         const threshold = isTVET ? 50 : 60;
         
-        // ============================================================
-        // 1. GRADE POINTS PROGRESSION - LINE CHART
-        // ============================================================
         const ctx1 = document.getElementById('myMarksGradeChart');
         if (ctx1) {
             if (window.myMarksGradeChartInstance) {
@@ -619,7 +611,6 @@
             }
             
             if (typeof Chart !== 'undefined') {
-                // Sort marks by block/term order
                 const sortedMarks = [...marks].sort((a, b) => {
                     const blockOrder = {
                         'Introductory': 0, 'Block 1': 1, 'Block 2': 2, 'Block 3': 3,
@@ -632,8 +623,6 @@
                 
                 const labels = sortedMarks.map(m => m.unit_code || getUnitCode(m.subject_name) || 'N/A');
                 const pointsData = sortedMarks.map(m => m.points || 0);
-                
-                // Calculate GPA line (average points)
                 const avgPoints = pointsData.reduce((a, b) => a + b, 0) / pointsData.length || 0;
                 const gpaLine = pointsData.map(() => avgPoints);
                 
@@ -713,9 +702,6 @@
             }
         }
         
-        // ============================================================
-        // 2. PERFORMANCE SUMMARY - LINE CHART
-        // ============================================================
         const ctx2 = document.getElementById('myMarksPerformanceChart');
         if (ctx2) {
             if (window.myMarksPerformanceChartInstance) {
@@ -830,7 +816,7 @@
     }
 
     // ============================================================
-    // 10. SEMESTER REPORT
+    // 11. SEMESTER REPORT
     // ============================================================
     let gradeChart = null;
     let currentGrades = [];
@@ -996,7 +982,7 @@
     }
 
     // ============================================================
-    // 11. YEARLY REPORT
+    // 12. YEARLY REPORT
     // ============================================================
     function loadYearlyReport() {
         const user = window.currentUserProfile || {};
@@ -1013,7 +999,7 @@
     }
 
     // ============================================================
-    // 12. FULL TRANSCRIPT
+    // 13. FULL TRANSCRIPT
     // ============================================================
     function loadTranscript() {
         const tbody = document.getElementById('transcript-table-body');
@@ -1162,7 +1148,7 @@
     }
 
     // ============================================================
-    // 13. COURSE PROGRESS
+    // 14. COURSE PROGRESS
     // ============================================================
     function loadCourseProgress() {
         const container = document.getElementById('course-progress-list');
@@ -1201,7 +1187,7 @@
     }
 
     // ============================================================
-    // 14. DOWNLOAD FULL TRANSCRIPT
+    // 15. DOWNLOAD FULL TRANSCRIPT
     // ============================================================
     function downloadTranscriptPDF() {
         const user = window.currentUserProfile || {};
@@ -1639,10 +1625,10 @@
     }
 
     // ============================================================
-    // 15. DOWNLOAD REPORT CARD - WITH LINE GRAPH & PROFILE PICTURE
+    // 16. DOWNLOAD SEMESTER REPORT - REORDERED
     // ============================================================
     function downloadReportCard() {
-        console.log('📊 Downloading Professional Report Card...');
+        console.log('📊 Downloading Semester Report...');
         
         const user = window.currentUserProfile || {};
         const userProgram = user.program || '';
@@ -1686,19 +1672,15 @@
         }
         
         if (marks.length === 0) {
-            alert('No marks available to generate report card. Please load your marks first.');
+            alert('No marks available to generate semester report. Please load your marks first.');
             return;
         }
         
-        console.log('📊 Generating report card for', marks.length, 'marks');
+        console.log('📊 Generating semester report for', marks.length, 'marks');
         
-        // Get profile picture
         let profilePicture = '';
         if (user.passport_photo || user.profile_picture || user.photo_url) {
             profilePicture = user.passport_photo || user.profile_picture || user.photo_url || '';
-            console.log('📸 Profile picture found');
-        } else {
-            console.log('📸 No profile picture found');
         }
         
         const now = new Date().toLocaleDateString('en-KE', {
@@ -1713,7 +1695,6 @@
         const nextYear = currentYear + 1;
         const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
         
-        // Calculate GPA and stats
         let totalPoints = 0;
         let totalUnits = 0;
         let passed = 0;
@@ -1737,7 +1718,20 @@
         });
         
         const gpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
-        const grade = calculateGrade(gpa * 10, userProgram);
+        
+        let grade;
+        if (isTVET) {
+            if (gpa >= 3.75) grade = 'A';
+            else if (gpa >= 3.0) grade = 'B';
+            else if (gpa >= 2.0) grade = 'C';
+            else grade = 'FAIL';
+        } else {
+            if (gpa >= 3.75) grade = 'A';
+            else if (gpa >= 3.0) grade = 'B';
+            else if (gpa >= 2.0) grade = 'C';
+            else grade = 'D';
+        }
+        
         const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
         
         // Build table rows
@@ -1787,41 +1781,103 @@
         const graphData = sortedMarks.map(m => m.points || 0);
         const avgPoints = graphData.reduce((a, b) => a + b, 0) / graphData.length || 0;
         
-        // Grading scale HTML
+        // TABLE FORMAT GRADING SCALE
         let gradingScaleHTML = '';
         if (isTVET) {
             gradingScaleHTML = `
-                <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 4px 0;">
-                    <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #065f46;">A (75-100%) → 4.0</span>
-                    <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #1e40af;">B (65-74%) → 3.0</span>
-                    <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #92400e;">C (50-64%) → 2.0</span>
-                    <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #991b1b;">FAIL (Below 50%) → 0.0</span>
-                    <span style="font-size: 7px; color: #94a3b8;">| Min Pass: 50%</span>
-                </div>
-                <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
-                    <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">EXCELLENT</span>
-                    <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">GOOD</span>
-                    <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">SATISFACTORY</span>
-                    <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">FAIL</span>
-                    <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">PENDING</span>
-                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto;">
+                    <thead>
+                        <tr style="background: #0A3D62; color: white;">
+                            <th style="padding: 3px 6px; text-align: center;">Marks Range</th>
+                            <th style="padding: 3px 6px; text-align: center;">Grade</th>
+                            <th style="padding: 3px 6px; text-align: center;">Points</th>
+                            <th style="padding: 3px 6px; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background: #d1fae5;">
+                            <td style="padding: 3px 6px; text-align: center;">75 - 100%</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #065f46;">A</td>
+                            <td style="padding: 3px 6px; text-align: center;">4.0</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #065f46;">EXCELLENT</td>
+                        </tr>
+                        <tr style="background: #dbeafe;">
+                            <td style="padding: 3px 6px; text-align: center;">65 - 74%</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #1e40af;">B</td>
+                            <td style="padding: 3px 6px; text-align: center;">3.0</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #1e40af;">GOOD</td>
+                        </tr>
+                        <tr style="background: #fef3c7;">
+                            <td style="padding: 3px 6px; text-align: center;">50 - 64%</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #92400e;">C</td>
+                            <td style="padding: 3px 6px; text-align: center;">2.0</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #92400e;">SATISFACTORY</td>
+                        </tr>
+                        <tr style="background: #fee2e2;">
+                            <td style="padding: 3px 6px; text-align: center;">Below 50%</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #991b1b;">FAIL</td>
+                            <td style="padding: 3px 6px; text-align: center;">0.0</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
+                        </tr>
+                        <tr style="background: #f3f4f6;">
+                            <td style="padding: 3px 6px; text-align: center; font-style: italic;">No Score</td>
+                            <td style="padding: 3px 6px; text-align: center;">-</td>
+                            <td style="padding: 3px 6px; text-align: center;">-</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="4" style="padding: 3px 6px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 50%</td></tr>
+                    </tfoot>
+                </table>
             `;
         } else {
             gradingScaleHTML = `
-                <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; padding: 4px 0;">
-                    <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #065f46;">A (75-100%) → 4.0</span>
-                    <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #1e40af;">B (65-74%) → 3.0</span>
-                    <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #92400e;">C (60-64%) → 2.0</span>
-                    <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 7px; font-weight: 600; color: #991b1b;">D (Below 60%) → 0.0</span>
-                    <span style="font-size: 7px; color: #94a3b8;">| Min Pass: 60%</span>
-                </div>
-                <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;">
-                    <span style="background: #10b981; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">DISTINCTION</span>
-                    <span style="background: #3b82f6; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">CREDIT</span>
-                    <span style="background: #f59e0b; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">PASS</span>
-                    <span style="background: #ef4444; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">FAIL</span>
-                    <span style="background: #94a3b8; color: white; padding: 1px 6px; border-radius: 3px; font-size: 6px;">PENDING</span>
-                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto;">
+                    <thead>
+                        <tr style="background: #0A3D62; color: white;">
+                            <th style="padding: 3px 6px; text-align: center;">Marks Range</th>
+                            <th style="padding: 3px 6px; text-align: center;">Grade</th>
+                            <th style="padding: 3px 6px; text-align: center;">Points</th>
+                            <th style="padding: 3px 6px; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background: #d1fae5;">
+                            <td style="padding: 3px 6px; text-align: center;">75 - 100%</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #065f46;">A</td>
+                            <td style="padding: 3px 6px; text-align: center;">4.0</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #065f46;">DISTINCTION</td>
+                        </tr>
+                        <tr style="background: #dbeafe;">
+                            <td style="padding: 3px 6px; text-align: center;">65 - 74%</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #1e40af;">B</td>
+                            <td style="padding: 3px 6px; text-align: center;">3.0</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #1e40af;">CREDIT</td>
+                        </tr>
+                        <tr style="background: #fef3c7;">
+                            <td style="padding: 3px 6px; text-align: center;">60 - 64%</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #92400e;">C</td>
+                            <td style="padding: 3px 6px; text-align: center;">2.0</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #92400e;">PASS</td>
+                        </tr>
+                        <tr style="background: #fee2e2;">
+                            <td style="padding: 3px 6px; text-align: center;">Below 60%</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #991b1b;">D</td>
+                            <td style="padding: 3px 6px; text-align: center;">0.0</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
+                        </tr>
+                        <tr style="background: #f3f4f6;">
+                            <td style="padding: 3px 6px; text-align: center; font-style: italic;">No Score</td>
+                            <td style="padding: 3px 6px; text-align: center;">-</td>
+                            <td style="padding: 3px 6px; text-align: center;">-</td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="4" style="padding: 3px 6px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 60%</td></tr>
+                    </tfoot>
+                </table>
             `;
         }
         
@@ -1842,7 +1898,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Report Card - ${escapeHtml(user.full_name || 'Student')}</title>
+    <title>Semester Report - ${escapeHtml(user.full_name || 'Student')}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1969,39 +2025,6 @@
             color: #94a3b8;
         }
         
-        /* SUMMARY CARDS */
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-            margin: 6px 0 10px 0;
-        }
-        .summary-card {
-            background: #f8fafc;
-            border-radius: 6px;
-            padding: 8px 10px;
-            text-align: center;
-            border: 1px solid #e2e8f0;
-        }
-        .summary-card .value {
-            font-size: 18px;
-            font-weight: 700;
-            color: #0A3D62;
-            font-family: 'Georgia', serif;
-        }
-        .summary-card .label {
-            font-size: 7px;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-            margin-top: 1px;
-        }
-        .summary-card .value.grade-a { color: #10b981; }
-        .summary-card .value.grade-b { color: #3b82f6; }
-        .summary-card .value.grade-c { color: #f59e0b; }
-        .summary-card .value.grade-d { color: #ef4444; }
-        
         /* TABLE */
         table { 
             width: 100%; 
@@ -2048,20 +2071,41 @@
             max-height: 120px;
         }
         
-        /* GRADING SCALE */
-        .grading-scale {
+        /* GRADING SCALE TABLE */
+        .grading-scale-table {
             margin: 6px 0 8px 0;
             padding: 6px 12px;
             background: #f8fafc;
             border-radius: 6px;
             border: 1px solid #e2e8f0;
         }
-        .grading-scale .title {
+        .grading-scale-table .title {
             font-weight: 700;
             font-size: 8px;
             color: #0A3D62;
             text-align: center;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
+        }
+        .grading-scale-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 7px;
+            margin: 0 auto;
+        }
+        .grading-scale-table th {
+            background: #0A3D62;
+            color: white;
+            padding: 3px 6px;
+            text-align: center;
+            font-size: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .grading-scale-table td {
+            padding: 3px 6px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            font-size: 7px;
         }
         
         /* DECLARATION */
@@ -2182,7 +2226,7 @@
                     <div class="motto">"Excellence in Health Sciences Education"</div>
                 </div>
             </div>
-            <div class="subtitle">📊 ACADEMIC REPORT CARD</div>
+            <div class="subtitle">📊 SEMESTER REPORT</div>
             <div class="date">Generated: ${now}</div>
         </div>
         
@@ -2209,27 +2253,7 @@
             </div>
         </div>
         
-        <!-- SUMMARY -->
-        <div class="summary-grid">
-            <div class="summary-card">
-                <div class="value">${gpa.toFixed(2)}</div>
-                <div class="label">GPA</div>
-            </div>
-            <div class="summary-card">
-                <div class="value ${grade === 'A' ? 'grade-a' : grade === 'B' ? 'grade-b' : grade === 'C' ? 'grade-c' : 'grade-d'}">${grade}</div>
-                <div class="label">Grade</div>
-            </div>
-            <div class="summary-card">
-                <div class="value">${totalUnits}</div>
-                <div class="label">Units</div>
-            </div>
-            <div class="summary-card">
-                <div class="value">${passRate}%</div>
-                <div class="label">Pass Rate</div>
-            </div>
-        </div>
-        
-        <!-- MARKS TABLE -->
+        <!-- MARKS TABLE - FIRST -->
         <table>
             <thead>
                 <tr>
@@ -2244,19 +2268,39 @@
             <tbody>${tableRows}</tbody>
         </table>
         
-        <!-- LINE GRAPH - Grade Points Progression -->
+        <!-- SUMMARY CARDS - SECOND (After Units Table) -->
+        <div class="summary-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0;">
+            <div class="summary-card" style="background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0;">
+                <div class="value" style="font-size: 18px; font-weight: 700; color: #0A3D62;">${gpa.toFixed(2)}</div>
+                <div class="label" style="font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">GPA</div>
+            </div>
+            <div class="summary-card" style="background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0;">
+                <div class="value" style="font-size: 18px; font-weight: 700; color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div>
+                <div class="label" style="font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Grade</div>
+            </div>
+            <div class="summary-card" style="background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0;">
+                <div class="value" style="font-size: 18px; font-weight: 700; color: #0A3D62;">${totalUnits}</div>
+                <div class="label" style="font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Units</div>
+            </div>
+            <div class="summary-card" style="background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0;">
+                <div class="value" style="font-size: 18px; font-weight: 700; color: #0A3D62;">${passRate}%</div>
+                <div class="label" style="font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Pass Rate</div>
+            </div>
+        </div>
+        
+        <!-- GRADING SCALE - THIRD -->
+        <div class="grading-scale-table">
+            <div class="title">📊 Grading Scale (${programType})</div>
+            ${gradingScaleHTML}
+        </div>
+        
+        <!-- LINE GRAPH - FOURTH -->
         <div class="chart-container">
             <div class="title">📈 Grade Points Progression</div>
             <canvas id="reportCardLineChart"></canvas>
         </div>
         
-        <!-- GRADING SCALE -->
-        <div class="grading-scale">
-            <div class="title">📊 Grading Scale (${programType})</div>
-            ${gradingScaleHTML}
-        </div>
-        
-        <!-- DECLARATION -->
+        <!-- DECLARATION - FIFTH -->
         <div class="declaration">
             <span class="title">📋 Student Declaration:</span>
             <span class="checkbox"></span>
@@ -2288,13 +2332,12 @@
         
         <!-- PRINT BUTTONS -->
         <div class="no-print">
-            <button class="btn-print" onclick="window.print()">🖨️ Print Report Card</button>
+            <button class="btn-print" onclick="window.print()">🖨️ Print Semester Report</button>
             <button class="btn-close" onclick="window.close()">Close</button>
         </div>
     </div>
     
     <script>
-        // Render the line chart
         document.addEventListener('DOMContentLoaded', function() {
             const ctx = document.getElementById('reportCardLineChart');
             if (ctx) {
@@ -2385,12 +2428,12 @@
             printWindow.document.close();
             setTimeout(() => { printWindow.print(); }, 800);
         } else {
-            alert('Please allow popups to download the report card.');
+            alert('Please allow popups to download the semester report.');
         }
     }
 
     // ============================================================
-    // 16. TAB SWITCHING
+    // 17. TAB SWITCHING
     // ============================================================
     function setupTabs() {
         const tabs = document.querySelectorAll('.report-tab');
@@ -2430,7 +2473,7 @@
     }
 
     // ============================================================
-    // 17. INITIALIZE
+    // 18. INITIALIZE
     // ============================================================
     function init() {
         console.log('🔧 Initializing Academic Reports...');
@@ -2514,7 +2557,7 @@
     }
 
     // ============================================================
-    // 18. EXPOSE FUNCTIONS
+    // 19. EXPOSE FUNCTIONS
     // ============================================================
     window.loadMyMarks = loadMyMarks;
     window.filterMyMarks = filterMyMarks;
@@ -2525,7 +2568,6 @@
     window.downloadTranscriptPDF = downloadTranscriptPDF;
     window.downloadReportCard = downloadReportCard;
     window.getUnitCode = getUnitCode;
-    window.UNIT_CODE_MAP = UNIT_CODE_MAP;
     window.getGradingStatus = getGradingStatus;
     window.calculateGrade = calculateGrade;
     window.calculatePoints = calculatePoints;
@@ -2534,7 +2576,7 @@
     window.renderMyMarksCharts = renderMyMarksCharts;
 
     // ============================================================
-    // 19. AUTO-INIT
+    // 20. AUTO-INIT
     // ============================================================
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -2546,7 +2588,7 @@
     console.log('📊 Available functions:');
     console.log('   - loadMyMarks() - Load published marks (My Performance)');
     console.log('   - filterMyMarks() - Filter marks');
-    console.log('   - downloadReportCard() - Download report card PDF (with Line Graph)');
+    console.log('   - downloadReportCard() - Download semester report (with new order)');
     console.log('   - downloadTranscriptPDF() - Download full transcript');
     console.log('   - renderMyMarksCharts() - Render Line Charts');
     console.log('📊 TVET Min Pass: 50% | Nursing Min Pass: 60%');
