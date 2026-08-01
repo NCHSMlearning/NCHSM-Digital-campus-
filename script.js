@@ -1276,10 +1276,20 @@ function exportTableToCSV(tableId, filename) {
 }
 
 /*******************************************************
- * 7. DASHBOARD & WELCOME EDITOR
+ * 7. DASHBOARD & WELCOME EDITOR - COMPLETE
+ * ✅ All dashboard metrics
+ * ✅ Student statistics (KRCHN vs TVET)
+ * ✅ Welcome message editor
+ * ✅ Real-time updates
  *******************************************************/
 
-// Additional dashboard metrics functions
+// ============================================
+// 📊 DASHBOARD METRICS - ALL FUNCTIONS
+// ============================================
+
+/**
+ * Load ticket metrics for dashboard
+ */
 async function loadTicketMetricsForDashboard() {
     try {
         // Get all open tickets
@@ -1342,6 +1352,9 @@ async function loadTicketMetricsForDashboard() {
     }
 }
 
+/**
+ * Load fee summary for dashboard
+ */
 async function loadFeeSummaryForDashboard() {
     try {
         // Get total fee structure amount
@@ -1383,9 +1396,12 @@ async function loadFeeSummaryForDashboard() {
     }
 }
 
+/**
+ * Load pending messages count
+ */
 async function loadPendingMessagesCount() {
     try {
-        // Get unread messages count (notifications that haven't been read by admin)
+        // Get unread messages count
         const { count, error } = await sb
             .from('notifications')
             .select('*', { count: 'exact', head: true })
@@ -1400,84 +1416,38 @@ async function loadPendingMessagesCount() {
     }
 }
 
-async function loadDashboardData() {
-    // Total users
-    const { count: allUsersCount } = await sb
-        .from(USER_PROFILE_TABLE)
-        .select('user_id', { count: 'exact' });
-    const totalUsersEl = document.getElementById('totalUsers');
-    if (totalUsersEl) totalUsersEl.textContent = allUsersCount || 0;
+/**
+ * Load total daily check-ins
+ */
+async function loadTotalDailyCheckIns() {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0); 
+    const todayISO = today.toISOString();
     
-    // Total Daily Check-ins
-    await loadTotalDailyCheckIns(); 
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const tomorrowISO = tomorrow.toISOString();
 
-    // Pending approvals
-    const { count: pendingCount, error } = await sb
-      .from(USER_PROFILE_TABLE)
-      .select('user_id', { count: 'exact', head: true })
-      .eq('status', 'pending');
+    const checkInsElement = document.getElementById('totalDailyCheckIns');
+    if (!checkInsElement) return;
 
-    const pendingApprovalsEl = document.getElementById('pendingApprovals');
-    if (error) {
-      console.error('Error counting pending approvals:', error.message);
-      if (pendingApprovalsEl) pendingApprovalsEl.textContent = '0';
-    } else {
-      if (pendingApprovalsEl) pendingApprovalsEl.textContent = pendingCount || 0;
-    }
-
-    // Total students
-    const { count: studentsCount } = await sb
-        .from(USER_PROFILE_TABLE)
-        .select('user_id', { count: 'exact' })
-        .eq('role', 'student');
-    const totalStudentsEl = document.getElementById('totalStudents');
-    if (totalStudentsEl) totalStudentsEl.textContent = studentsCount || 0;
-
-    // Data Integrity Placeholder
-    const dataIntegrityEl = document.getElementById('dataIntegrityScore');
-    if (dataIntegrityEl) dataIntegrityEl.textContent = '98.5%';
-
-    // Overall check-in count
-    const { count: overallCheckIns } = await sb
+    const { count, error } = await sb
         .from('geo_attendance_logs')
-        .select('*', { count: 'exact', head: true });
-    const overallCheckInEl = document.getElementById('overallCheckInCount');
-    if (overallCheckInEl) overallCheckInEl.textContent = overallCheckIns || 0;
-
-    // Total courses count
-    const { count: coursesCount } = await sb
-        .from('courses')
-        .select('*', { count: 'exact', head: true });
-    const totalCoursesEl = document.getElementById('totalCourses');
-    if (totalCoursesEl) totalCoursesEl.textContent = coursesCount || 0;
-
-    // Total resources count (this month)
-    const firstDayOfMonth = new Date();
-    firstDayOfMonth.setDate(1);
-    firstDayOfMonth.setHours(0, 0, 0, 0);
-    const { count: resourcesCount } = await sb
-        .from('resources')
         .select('*', { count: 'exact', head: true })
-        .gte('created_at', firstDayOfMonth.toISOString());
-    const totalResourcesEl = document.getElementById('totalResources');
-    if (totalResourcesEl) totalResourcesEl.textContent = resourcesCount || 0;
+        .gte('check_in_time', todayISO)
+        .lt('check_in_time', tomorrowISO);
 
-    // Load Ticket Metrics for Dashboard
-    await loadTicketMetricsForDashboard();
-    
-    // Load Fee Summary for Dashboard
-    await loadFeeSummaryForDashboard();
-    
-    // Load Pending Messages Count
-    await loadPendingMessagesCount();
-    
-    // Load Welcome Message
-    loadStudentWelcomeMessage();
+    if (error) {
+        console.error('Error counting daily check-ins:', error.message);
+        checkInsElement.textContent = 'Error';
+    } else {
+        checkInsElement.textContent = count || 0;
+    }
 }
-// ============================================
-// LOAD STUDENT STATISTICS - NURSING VS TVET
-// ============================================
 
+/**
+ * Load student statistics - KRCHN vs TVET
+ */
 async function loadStudentStatistics() {
     console.log('📊 Loading student statistics...');
     
@@ -1615,54 +1585,298 @@ async function loadStudentStatistics() {
             `<tr><td colspan="7" style="padding: 30px; text-align: center; color: #dc2626;">❌ Error: ${error.message}</td></tr>`;
     }
 }
-async function loadTotalDailyCheckIns() {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0); 
-    const todayISO = today.toISOString();
-    
-    const tomorrow = new Date(today);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    const tomorrowISO = tomorrow.toISOString();
 
-    const checkInsElement = document.getElementById('totalDailyCheckIns');
-    if (!checkInsElement) return;
-
-    const { count, error } = await sb
-        .from('geo_attendance_logs')
-        .select('*', { count: 'exact', head: true })
-        .gte('check_in_time', todayISO)
-        .lt('check_in_time', tomorrowISO);
-
-    if (error) {
-        console.error('Error counting daily check-ins:', error.message);
-        checkInsElement.textContent = 'Error';
-    } else {
-        checkInsElement.textContent = count || 0;
+/**
+ * Load additional dashboard metrics
+ */
+async function loadAdditionalDashboardMetrics() {
+    try {
+        // Load Lecturers Count
+        const { count: lecturersCount, error: lecturersError } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('user_id', { count: 'exact' })
+            .eq('role', 'lecturer');
+        
+        if (!lecturersError) {
+            const el = document.getElementById('dashboardLecturersCount');
+            if (el) el.textContent = lecturersCount || 0;
+        }
+        
+        // Load Pending Marks
+        const { count: pendingMarks, error: pendingMarksError } = await sb
+            .from('exam_results')
+            .select('id', { count: 'exact' })
+            .eq('status', 'pending');
+        
+        if (!pendingMarksError) {
+            const el = document.getElementById('dashboardPendingMarks');
+            if (el) el.textContent = pendingMarks || 0;
+        }
+        
+        // Load Published Marks
+        const { count: publishedMarks, error: publishedMarksError } = await sb
+            .from('exam_results')
+            .select('id', { count: 'exact' })
+            .eq('status', 'published');
+        
+        if (!publishedMarksError) {
+            const el = document.getElementById('dashboardPublishedMarks');
+            if (el) el.textContent = publishedMarks || 0;
+        }
+        
+        // Load Pending Reviews
+        const { count: pendingReviews, error: pendingReviewsError } = await sb
+            .from('reviews')
+            .select('id', { count: 'exact' })
+            .eq('status', 'pending');
+        
+        if (!pendingReviewsError) {
+            const el = document.getElementById('dashboardPendingReviews');
+            if (el) el.textContent = pendingReviews || 0;
+        }
+        
+        // Load Total Programs
+        const { count: totalPrograms, error: totalProgramsError } = await sb
+            .from('programs')
+            .select('id', { count: 'exact' })
+            .eq('status', 'active');
+        
+        if (!totalProgramsError) {
+            const el = document.getElementById('dashboardTotalPrograms');
+            if (el) el.textContent = totalPrograms || 0;
+        }
+        
+        // Load Total Sessions (this week)
+        const startOfWeek = new Date();
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        const startOfWeekStr = startOfWeek.toISOString();
+        
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(endOfWeek.getDate() + 7);
+        const endOfWeekStr = endOfWeek.toISOString();
+        
+        const { count: totalSessions, error: totalSessionsError } = await sb
+            .from('sessions')
+            .select('id', { count: 'exact' })
+            .gte('start_time', startOfWeekStr)
+            .lt('start_time', endOfWeekStr);
+        
+        if (!totalSessionsError) {
+            const el = document.getElementById('dashboardTotalSessions');
+            if (el) el.textContent = totalSessions || 0;
+        }
+        
+        // Load System Alerts
+        const { count: systemAlerts, error: systemAlertsError } = await sb
+            .from('system_alerts')
+            .select('id', { count: 'exact' })
+            .eq('resolved', false);
+        
+        if (!systemAlertsError) {
+            const el = document.getElementById('dashboardSystemAlerts');
+            if (el) el.textContent = systemAlerts || 0;
+        }
+        
+        // Load Attendance Today (percentage)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString();
+        
+        const { count: totalStudents, error: totalStudentsError } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('user_id', { count: 'exact' })
+            .eq('role', 'student')
+            .eq('status', 'approved');
+        
+        const { count: presentToday, error: presentTodayError } = await sb
+            .from('geo_attendance_logs')
+            .select('user_id', { count: 'exact' })
+            .gte('check_in_time', todayStr)
+            .lt('check_in_time', tomorrowStr);
+        
+        if (!totalStudentsError && !presentTodayError && totalStudents > 0) {
+            const attendancePercent = Math.round((presentToday / totalStudents) * 100);
+            const el = document.getElementById('dashboardAttendanceToday');
+            if (el) el.textContent = attendancePercent + '%';
+        }
+        
+    } catch (error) {
+        console.error('Error loading additional dashboard metrics:', error);
     }
 }
 
-async function loadStudentWelcomeMessage() {
-    const { data } = await fetchData(SETTINGS_TABLE, '*', { key: MESSAGE_KEY });
-    const messageDiv = document.getElementById('student-welcome-message') || document.getElementById('live-preview');
-    if (!messageDiv) return;
+// ============================================
+// 🚀 MAIN DASHBOARD LOAD FUNCTION
+// ============================================
 
-    if (data && data.length > 0) {
-        messageDiv.innerHTML = data[0].value;
-    } else {
-        messageDiv.innerHTML = '<p>Welcome student! Please check in for attendance. (Default Message)</p>';
+async function loadDashboardData() {
+    console.log('📊 Loading dashboard data...');
+    
+    try {
+        // Total users
+        const { count: allUsersCount } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('user_id', { count: 'exact' });
+        const totalUsersEl = document.getElementById('totalUsers');
+        if (totalUsersEl) totalUsersEl.textContent = allUsersCount || 0;
+        
+        // Total Daily Check-ins
+        await loadTotalDailyCheckIns(); 
+
+        // Pending approvals
+        const { count: pendingCount, error } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('user_id', { count: 'exact', head: true })
+            .eq('status', 'pending');
+
+        const pendingApprovalsEl = document.getElementById('pendingApprovals');
+        if (error) {
+            console.error('Error counting pending approvals:', error.message);
+            if (pendingApprovalsEl) pendingApprovalsEl.textContent = '0';
+        } else {
+            if (pendingApprovalsEl) pendingApprovalsEl.textContent = pendingCount || 0;
+        }
+
+        // Total students
+        const { count: studentsCount } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('user_id', { count: 'exact' })
+            .eq('role', 'student');
+        const totalStudentsEl = document.getElementById('totalStudents');
+        if (totalStudentsEl) totalStudentsEl.textContent = studentsCount || 0;
+
+        // Data Integrity Placeholder
+        const dataIntegrityEl = document.getElementById('dataIntegrityScore');
+        if (dataIntegrityEl) dataIntegrityEl.textContent = '98.5%';
+
+        // Overall check-in count
+        const { count: overallCheckIns } = await sb
+            .from('geo_attendance_logs')
+            .select('*', { count: 'exact', head: true });
+        const overallCheckInEl = document.getElementById('overallCheckInCount');
+        if (overallCheckInEl) overallCheckInEl.textContent = overallCheckIns || 0;
+
+        // Total courses count
+        const { count: coursesCount } = await sb
+            .from('courses')
+            .select('*', { count: 'exact', head: true });
+        const totalCoursesEl = document.getElementById('totalCourses');
+        if (totalCoursesEl) totalCoursesEl.textContent = coursesCount || 0;
+
+        // Total resources count (this month)
+        const firstDayOfMonth = new Date();
+        firstDayOfMonth.setDate(1);
+        firstDayOfMonth.setHours(0, 0, 0, 0);
+        const { count: resourcesCount } = await sb
+            .from('resources')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', firstDayOfMonth.toISOString());
+        const totalResourcesEl = document.getElementById('totalResources');
+        if (totalResourcesEl) totalResourcesEl.textContent = resourcesCount || 0;
+
+        // KRCHN vs TVET Counts
+        const { count: krchnCount } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('user_id', { count: 'exact' })
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .eq('program', 'KRCHN');
+        
+        const { count: tvetCount } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('user_id', { count: 'exact' })
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .neq('program', 'KRCHN');
+        
+        const krchnDisplay = document.getElementById('krchnCountDisplay');
+        if (krchnDisplay) krchnDisplay.textContent = krchnCount || 0;
+        
+        const tvetDisplay = document.getElementById('tvetCountDisplay');
+        if (tvetDisplay) tvetDisplay.textContent = tvetCount || 0;
+        
+        // Staff count
+        const { count: staffCount } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('user_id', { count: 'exact' })
+            .in('role', ['lecturer', 'admin', 'superadmin']);
+        const staffDisplay = document.getElementById('totalStaffCountDisplay');
+        if (staffDisplay) staffDisplay.textContent = staffCount || 0;
+        
+        // Resources total
+        const { count: totalResourcesAll } = await sb
+            .from('resources')
+            .select('*', { count: 'exact', head: true });
+        const resourcesDisplay = document.getElementById('totalResourcesDisplay');
+        if (resourcesDisplay) resourcesDisplay.textContent = totalResourcesAll || 0;
+
+        // Active sessions (approximate - from auth sessions)
+        const activeSessionsEl = document.getElementById('activeSessions');
+        if (activeSessionsEl) {
+            try {
+                const { data: sessions } = await sb.auth.admin.listUsers();
+                const activeCount = sessions?.users?.filter(u => u.last_sign_in_at)?.length || 0;
+                activeSessionsEl.textContent = activeCount;
+            } catch (e) {
+                activeSessionsEl.textContent = 'N/A';
+            }
+        }
+
+        // Load all other metrics
+        await loadTicketMetricsForDashboard();
+        await loadFeeSummaryForDashboard();
+        await loadPendingMessagesCount();
+        await loadAdditionalDashboardMetrics();
+        await loadStudentStatistics();
+        
+        // Load Welcome Message
+        loadStudentWelcomeMessage();
+        
+        console.log('✅ Dashboard data loaded successfully');
+        
+    } catch (error) {
+        console.error('❌ Error loading dashboard data:', error);
+    }
+}
+
+// ============================================
+// 📝 WELCOME MESSAGE FUNCTIONS
+// ============================================
+
+async function loadStudentWelcomeMessage() {
+    try {
+        const { data } = await fetchData(SETTINGS_TABLE, '*', { key: MESSAGE_KEY });
+        const messageDiv = document.getElementById('student-welcome-message') || document.getElementById('live-preview');
+        if (!messageDiv) return;
+
+        if (data && data.length > 0) {
+            messageDiv.innerHTML = data[0].value;
+        } else {
+            messageDiv.innerHTML = '<p>Welcome student! Please check in for attendance. (Default Message)</p>';
+        }
+    } catch (error) {
+        console.error('Error loading welcome message:', error);
     }
 }
 
 async function loadWelcomeMessageForEdit() {
-    const { data } = await fetchData(SETTINGS_TABLE, '*', { key: MESSAGE_KEY });
-    const editor = document.getElementById('welcome-message-editor');
+    try {
+        const { data } = await fetchData(SETTINGS_TABLE, '*', { key: MESSAGE_KEY });
+        const editor = document.getElementById('welcome-message-editor');
 
-    if (data && data.length > 0) {
-        editor.value = data[0].value;
-    } else {
-        editor.value = '<p>Welcome student! Please check in for attendance. (Default Message)</p>';
+        if (data && data.length > 0) {
+            editor.value = data[0].value;
+        } else {
+            editor.value = '<p>Welcome student! Please check in for attendance. (Default Message)</p>';
+        }
+        loadStudentWelcomeMessage();
+    } catch (error) {
+        console.error('Error loading welcome message for edit:', error);
     }
-    loadStudentWelcomeMessage();
 }
 
 async function handleSaveWelcomeMessage(e) {
@@ -1710,6 +1924,142 @@ async function handleSaveWelcomeMessage(e) {
         setButtonLoading(submitButton, false, originalText);
     }
 }
+
+// ============================================
+// 🎂 BIRTHDAY FUNCTIONS
+// ============================================
+
+async function loadStudentBirthdays() {
+    try {
+        const today = new Date();
+        const month = today.getMonth() + 1;
+        const day = today.getDate();
+        
+        // Get all students
+        const { data: students, error } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('full_name, date_of_birth, student_id, program, email, profile_photo_url')
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .not('date_of_birth', 'is', null);
+        
+        if (error) throw error;
+        
+        // Filter students with birthdays today
+        const birthdayStudents = students.filter(s => {
+            if (!s.date_of_birth) return false;
+            const dob = new Date(s.date_of_birth);
+            return dob.getMonth() + 1 === month && dob.getDate() === day;
+        });
+        
+        const birthdayCountEl = document.getElementById('birthdayCount');
+        if (birthdayCountEl) birthdayCountEl.textContent = birthdayStudents.length;
+        
+        const listEl = document.getElementById('birthdayStudentsList');
+        const cardEl = document.getElementById('birthdayStudentCard');
+        
+        if (birthdayStudents.length > 0) {
+            if (listEl) listEl.style.display = 'none';
+            if (cardEl) {
+                cardEl.style.display = 'block';
+                const student = birthdayStudents[0];
+                document.getElementById('birthdayName').textContent = student.full_name || 'Student';
+                document.getElementById('birthdayDetails').textContent = 
+                    `${student.program || 'N/A'} • ${student.student_id || 'No ID'}`;
+                
+                // Calculate age
+                const dob = new Date(student.date_of_birth);
+                let age = today.getFullYear() - dob.getFullYear();
+                const m = today.getMonth() - dob.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+                document.getElementById('birthdayAge').textContent = `🎂 Turning ${age} years old today!`;
+            }
+            
+            // Show multiple birthdays in list
+            if (birthdayStudents.length > 1 && listEl) {
+                listEl.style.display = 'block';
+                let html = '<ul style="margin: 8px 0 0; padding-left: 20px; color: #0A3D62;">';
+                birthdayStudents.forEach(s => {
+                    html += `<li>${s.full_name} (${s.program || 'N/A'})</li>`;
+                });
+                html += '</ul>';
+                listEl.innerHTML = html;
+            }
+        } else {
+            if (listEl) {
+                listEl.style.display = 'block';
+                listEl.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">🎉 No birthdays today</p>';
+            }
+            if (cardEl) cardEl.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Error loading birthdays:', error);
+        const listEl = document.getElementById('birthdayStudentsList');
+        if (listEl) listEl.innerHTML = '<p style="color: #dc2626;">Error loading birthdays</p>';
+    }
+}
+
+// ============================================
+// 🔄 AUTO-REFRESH DASHBOARD
+// ============================================
+
+let dashboardRefreshInterval = null;
+
+function startDashboardAutoRefresh(intervalMs = 60000) {
+    if (dashboardRefreshInterval) {
+        clearInterval(dashboardRefreshInterval);
+    }
+    dashboardRefreshInterval = setInterval(() => {
+        console.log('🔄 Auto-refreshing dashboard...');
+        loadDashboardData();
+        loadStudentBirthdays();
+    }, intervalMs);
+}
+
+function stopDashboardAutoRefresh() {
+    if (dashboardRefreshInterval) {
+        clearInterval(dashboardRefreshInterval);
+        dashboardRefreshInterval = null;
+    }
+}
+
+// ============================================
+// 🚀 INITIALIZE DASHBOARD
+// ============================================
+
+async function initDashboard() {
+    console.log('📊 Initializing dashboard...');
+    
+    await loadDashboardData();
+    await loadStudentBirthdays();
+    
+    // Start auto-refresh every 60 seconds
+    startDashboardAutoRefresh(60000);
+    
+    console.log('✅ Dashboard initialized');
+}
+
+// ============================================
+// ✅ EXPOSE FUNCTIONS TO GLOBAL SCOPE
+// ============================================
+
+window.loadDashboardData = loadDashboardData;
+window.loadStudentStatistics = loadStudentStatistics;
+window.loadStudentBirthdays = loadStudentBirthdays;
+window.loadTotalDailyCheckIns = loadTotalDailyCheckIns;
+window.loadTicketMetricsForDashboard = loadTicketMetricsForDashboard;
+window.loadFeeSummaryForDashboard = loadFeeSummaryForDashboard;
+window.loadPendingMessagesCount = loadPendingMessagesCount;
+window.loadAdditionalDashboardMetrics = loadAdditionalDashboardMetrics;
+window.loadStudentWelcomeMessage = loadStudentWelcomeMessage;
+window.loadWelcomeMessageForEdit = loadWelcomeMessageForEdit;
+window.handleSaveWelcomeMessage = handleSaveWelcomeMessage;
+window.initDashboard = initDashboard;
+window.startDashboardAutoRefresh = startDashboardAutoRefresh;
+window.stopDashboardAutoRefresh = stopDashboardAutoRefresh;
+
+console.log('✅ Dashboard module loaded successfully');
 
 // ============================================
 // SYSTEM HEALTH MONITORING - ENHANCED WITH CLEANUP
