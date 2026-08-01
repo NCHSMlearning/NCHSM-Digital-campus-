@@ -5507,7 +5507,6 @@
         </form>
     </div>
 </div>
-
 <!-- ============================================================ -->
 <!-- ⏳ TAB 2: PENDING APPROVALS - COMPLETE TVET SUPPORT           -->
 <!-- ============================================================ -->
@@ -5528,7 +5527,6 @@
             <button onclick="exportTableToCSV('pending-table-body', 'Pending_Approvals_Export.csv')" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-download"></i> Export
             </button>
-            <!-- ✅ FIX 3: approveAllPending now calls loadPendingApprovals -->
             <button onclick="approveAllPending()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-check-double"></i> Approve All
             </button>
@@ -5576,7 +5574,6 @@
                 <option value="approved">✅ Approved</option>
             </select>
             
-            <!-- ✅ FIX 4: filterPendingApprovals and resetPendingFilters now exist -->
             <button onclick="filterPendingApprovals()" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-filter"></i> Filter
             </button>
@@ -5589,7 +5586,6 @@
     <!-- Pending Table -->
     <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
         <div style="overflow-x: auto;">
-            <!-- ✅ FIX 2: Both IDs exist -->
             <table id="pending-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
