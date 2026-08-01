@@ -287,8 +287,22 @@ async function loadPublishedMarks() {
     
     try {
         PUBLISHED_STATE.isLoading = true;
-        if (typeof window.showLoading === 'function') {
-            window.showLoading('Loading published marks...');
+        
+        // Show loading only in the published marks container
+        var container = document.getElementById('publishedMarksContainer');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px;"></div>
+                    <p style="color: #64748b;">Loading published marks...</p>
+                </div>
+                <style>
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>
+            `;
         }
         
         var user = await getCurrentUser();
@@ -386,7 +400,6 @@ async function loadPublishedMarks() {
         updateGradingScaleDisplay();
         populateStudentFilter(processedMarks);
         
-        if (typeof window.hideLoading === 'function') window.hideLoading();
         PUBLISHED_STATE.isLoading = false;
         
     } catch (error) {
@@ -397,7 +410,6 @@ async function loadPublishedMarks() {
         updateStats([]);
         updateBadge([]);
         updateProgramCounts([]);
-        if (typeof window.hideLoading === 'function') window.hideLoading();
         PUBLISHED_STATE.isLoading = false;
     }
 }
