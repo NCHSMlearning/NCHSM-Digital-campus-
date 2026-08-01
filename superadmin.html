@@ -5154,6 +5154,8 @@
             </section>
 <!-- ============================================================ -->
 <!-- 👥 TAB 1: MANAGE USERS - COMPLETE TVET PROGRAM SUPPORT        -->
+<!-- WITH DOCUMENT UPLOAD (Profile, KCSE, ID, Certificates)        -->
+<!-- AND WORKING SEARCH                                            -->
 <!-- ============================================================ -->
 <section id="users" class="tab-content">
     <!-- Modern Header -->
@@ -5222,16 +5224,18 @@
         </div>
     </div>
 
-    <!-- Filter Bar - Complete TVET Support -->
+    <!-- Filter Bar - Complete TVET Support with Search -->
     <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+            <!-- ✅ SEARCH BAR - Working with debounce -->
             <div style="flex: 1; min-width: 180px; position: relative;">
                 <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
                 <input type="text" id="user-search" placeholder="🔍 Search by name, email or ID..." 
-                       style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.2s;">
+                       style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.2s;" 
+                       oninput="searchUsersDebounced()">
             </div>
             
-            <select id="user-role-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
+            <select id="user-role-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;" onchange="filterUsers()">
                 <option value="all">All Roles</option>
                 <option value="student">👨‍🎓 Student</option>
                 <option value="lecturer">👨‍🏫 Lecturer</option>
@@ -5239,7 +5243,7 @@
                 <option value="superadmin">⭐ Super Admin</option>
             </select>
             
-            <select id="user-status-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
+            <select id="user-status-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;" onchange="filterUsers()">
                 <option value="all">All Status</option>
                 <option value="approved">✅ Approved</option>
                 <option value="pending">⏳ Pending</option>
@@ -5247,7 +5251,7 @@
             </select>
             
             <!-- ✅ Program Filter - Complete TVET Programs -->
-            <select id="user-program-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 220px;">
+            <select id="user-program-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 220px;" onchange="filterUsers()">
                 <option value="all">📚 All Programs</option>
                 
                 <optgroup label="🎓 Nursing Programs">
@@ -5292,7 +5296,7 @@
             </select>
             
             <!-- ✅ Block Filter - Terms for TVET -->
-            <select id="user-block-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <select id="user-block-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;" onchange="filterUsers()">
                 <option value="all">📅 All Blocks/Terms</option>
                 <optgroup label="🎓 Nursing Blocks">
                     <option value="Block 1">Block 1</option>
@@ -5314,7 +5318,7 @@
             </select>
             
             <!-- ✅ Program Type Filter -->
-            <select id="user-program-type-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <select id="user-program-type-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;" onchange="filterUsers()">
                 <option value="all">🏫 All Types</option>
                 <option value="nursing">🎓 Nursing (KRCHN)</option>
                 <option value="diploma">🎓 TVET Diplomas</option>
@@ -5374,6 +5378,9 @@
                             📸 Photo
                         </th>
                         <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
+                            📎 Docs
+                        </th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
                             <i class="fas fa-circle"></i> Status
                         </th>
                         <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
@@ -5383,7 +5390,7 @@
                 </thead>
                 <tbody id="users-table-body">
                     <tr>
-                        <td colspan="12" style="padding: 60px 20px; text-align: center; color: #94a3b8;">
+                        <td colspan="13" style="padding: 60px 20px; text-align: center; color: #94a3b8;">
                             <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
                             <p style="margin: 0;">Loading users...</p>
                         </td>
@@ -5465,7 +5472,109 @@
             </label>
         </div>
     </div>
-</section><!-- ============================================================ -->
+</section>
+
+<!-- ============================================================ -->
+<!-- 📄 DOCUMENT UPLOAD MODAL - Upload Profile, KCSE, ID, Certs   -->
+<!-- ============================================================ -->
+<div id="documentUploadModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 650px; width: 95%; background: white; border-radius: 16px; padding: 30px; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
+            <h3 style="margin: 0; color: #4C1D95;">
+                <i class="fas fa-upload"></i> Upload Documents
+            </h3>
+            <button onclick="closeModal('documentUploadModal')" 
+                    style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        
+        <form id="documentUploadForm" onsubmit="event.preventDefault(); uploadUserDocuments();">
+            <input type="hidden" id="doc_user_id">
+            
+            <div style="margin-bottom: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <p style="margin: 0; font-weight: 600; color: #1e293b;">
+                    <i class="fas fa-user"></i> User: <span id="doc_user_name_display">Loading...</span>
+                </p>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">
+                    <i class="fas fa-id-card"></i> ID: <span id="doc_user_id_display">Loading...</span>
+                </p>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <!-- Profile Photo -->
+                <div style="border: 2px dashed #e5e7eb; border-radius: 12px; padding: 15px; text-align: center; transition: all 0.3s; cursor: pointer;" 
+                     onmouseover="this.style.borderColor='#4C1D95'"
+                     onmouseout="this.style.borderColor='#e5e7eb'"
+                     onclick="document.getElementById('doc_profile_photo').click()">
+                    <i class="fas fa-camera" style="font-size: 28px; color: #4C1D95;"></i>
+                    <p style="margin: 8px 0 4px 0; font-weight: 600; font-size: 13px;">Profile Photo</p>
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8;">JPG, PNG, GIF</p>
+                    <input type="file" id="doc_profile_photo" accept="image/*" style="display: none;" onchange="previewDocument('profile_photo')">
+                    <div id="profile_photo_preview" style="margin-top: 8px;"></div>
+                </div>
+                
+                <!-- KCSE Certificate -->
+                <div style="border: 2px dashed #e5e7eb; border-radius: 12px; padding: 15px; text-align: center; transition: all 0.3s; cursor: pointer;"
+                     onmouseover="this.style.borderColor='#4C1D95'"
+                     onmouseout="this.style.borderColor='#e5e7eb'"
+                     onclick="document.getElementById('doc_kcse').click()">
+                    <i class="fas fa-file-pdf" style="font-size: 28px; color: #4C1D95;"></i>
+                    <p style="margin: 8px 0 4px 0; font-weight: 600; font-size: 13px;">📄 KCSE Certificate</p>
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8;">PDF, JPG, PNG</p>
+                    <input type="file" id="doc_kcse" accept=".pdf,image/*" style="display: none;" onchange="previewDocument('kcse')">
+                    <div id="kcse_preview" style="margin-top: 8px;"></div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <!-- ID/Passport -->
+                <div style="border: 2px dashed #e5e7eb; border-radius: 12px; padding: 15px; text-align: center; transition: all 0.3s; cursor: pointer;"
+                     onmouseover="this.style.borderColor='#4C1D95'"
+                     onmouseout="this.style.borderColor='#e5e7eb'"
+                     onclick="document.getElementById('doc_id').click()">
+                    <i class="fas fa-id-card" style="font-size: 28px; color: #4C1D95;"></i>
+                    <p style="margin: 8px 0 4px 0; font-weight: 600; font-size: 13px;">🪪 ID/Passport</p>
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8;">PDF, JPG, PNG</p>
+                    <input type="file" id="doc_id" accept=".pdf,image/*" style="display: none;" onchange="previewDocument('id')">
+                    <div id="id_preview" style="margin-top: 8px;"></div>
+                </div>
+                
+                <!-- Additional Certificate -->
+                <div style="border: 2px dashed #e5e7eb; border-radius: 12px; padding: 15px; text-align: center; transition: all 0.3s; cursor: pointer;"
+                     onmouseover="this.style.borderColor='#4C1D95'"
+                     onmouseout="this.style.borderColor='#e5e7eb'"
+                     onclick="document.getElementById('doc_certificate').click()">
+                    <i class="fas fa-certificate" style="font-size: 28px; color: #4C1D95;"></i>
+                    <p style="margin: 8px 0 4px 0; font-weight: 600; font-size: 13px;">📜 Additional Certificate</p>
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8;">PDF, JPG, PNG</p>
+                    <input type="file" id="doc_certificate" accept=".pdf,image/*" style="display: none;" onchange="previewDocument('certificate')">
+                    <div id="certificate_preview" style="margin-top: 8px;"></div>
+                </div>
+            </div>
+            
+            <!-- Other Documents -->
+            <div style="border: 2px dashed #e5e7eb; border-radius: 12px; padding: 15px; text-align: center; transition: all 0.3s; cursor: pointer; margin-bottom: 15px;"
+                 onmouseover="this.style.borderColor='#4C1D95'"
+                 onmouseout="this.style.borderColor='#e5e7eb'"
+                 onclick="document.getElementById('doc_other').click()">
+                <i class="fas fa-folder-open" style="font-size: 28px; color: #4C1D95;"></i>
+                <p style="margin: 8px 0 4px 0; font-weight: 600; font-size: 13px;">📁 Other Documents</p>
+                <p style="margin: 0; font-size: 11px; color: #94a3b8;">Any additional documents (PDF, JPG, PNG, DOC)</p>
+                <input type="file" id="doc_other" accept=".pdf,.doc,.docx,image/*" style="display: none;" onchange="previewDocument('other')">
+                <div id="other_preview" style="margin-top: 8px;"></div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                <button type="button" onclick="closeModal('documentUploadModal')" style="padding: 10px 24px; background: #e5e7eb; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    Cancel
+                </button>
+                <button type="submit" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-upload"></i> Upload Documents
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+                 <!-- ============================================================ -->
 <!-- ⏳ TAB 2: PENDING APPROVALS - COMPLETE TVET SUPPORT           -->
 <!-- ============================================================ -->
 <section id="pending" class="tab-content">
@@ -5484,6 +5593,9 @@
             </button>
             <button onclick="exportTableToCSV('pending-table-body', 'Pending_Approvals_Export.csv')" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-download"></i> Export
+            </button>
+            <button onclick="approveAllPending()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-check-double"></i> Approve All
             </button>
         </div>
     </div>
@@ -5530,10 +5642,11 @@
             <div style="flex: 1; min-width: 180px; position: relative;">
                 <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
                 <input type="text" id="pending-search" placeholder="🔍 Search by name, email or ID..." 
-                       style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.2s;">
+                       style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.2s;" 
+                       onkeyup="filterPendingApprovals()">
             </div>
             
-            <select id="pending-program-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 200px;">
+            <select id="pending-program-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 200px;" onchange="filterPendingApprovals()">
                 <option value="all">📚 All Programs</option>
                 
                 <optgroup label="🎓 Nursing Programs">
@@ -5577,13 +5690,21 @@
                 </optgroup>
             </select>
             
-            <select id="pending-program-type-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <select id="pending-program-type-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;" onchange="filterPendingApprovals()">
                 <option value="all">🏫 All Types</option>
                 <option value="nursing">🎓 Nursing (KRCHN)</option>
                 <option value="diploma">🎓 TVET Diplomas</option>
                 <option value="certificate">🎓 TVET Certificates</option>
                 <option value="artisan">🎓 TVET Artisan</option>
                 <option value="tvet">🔧 All TVET</option>
+            </select>
+            
+            <select id="pending-doc-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;" onchange="filterPendingApprovals()">
+                <option value="all">📄 All Docs</option>
+                <option value="pending">⏳ Pending</option>
+                <option value="uploaded">📤 Uploaded</option>
+                <option value="verified">✅ Verified</option>
+                <option value="rejected">❌ Rejected</option>
             </select>
             
             <button onclick="filterPendingApprovals()" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
@@ -5652,8 +5773,9 @@
         </div>
     </div>
 </section>
-       <!-- ============================================================ -->
-<!-- ➕ TAB 3: ENROLL ACCOUNTS - MODERN                           -->
+
+<!-- ============================================================ -->
+<!-- ➕ TAB 3: ENROLL ACCOUNTS - COMPLETE TVET SUPPORT             -->
 <!-- ============================================================ -->
 <section id="enroll" class="tab-content">
     <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(16,185,129,0.3);">
@@ -5662,7 +5784,7 @@
                 <i class="fas fa-user-plus"></i> Enroll Accounts
             </h2>
             <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
-                <i class="fas fa-graduation-cap"></i> Create new student, lecturer, or admin accounts
+                <i class="fas fa-graduation-cap"></i> Create new student, lecturer, or admin accounts (KRCHN & TVET)
             </p>
         </div>
     </div>
@@ -5757,14 +5879,14 @@
                     </label>
                     <select id="account-intake" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #f8fafc;">
                         <option value="">-- Select Intake --</option>
-                        <optgroup label="KRCHN Intakes">
+                        <optgroup label="🎓 KRCHN Intakes">
                             <option value="March 2024">March 2024</option>
                             <option value="March 2025">March 2025</option>
                             <option value="March 2026" selected>March 2026</option>
                             <option value="March 2027">March 2027</option>
                             <option value="March 2028">March 2028</option>
                         </optgroup>
-                        <optgroup label="TVET Intakes">
+                        <optgroup label="🔧 TVET Intakes">
                             <option value="January 2024 Intake">January 2024</option>
                             <option value="March 2024 Intake">March 2024</option>
                             <option value="May 2024 Intake">May 2024</option>
@@ -5800,6 +5922,9 @@
                     <select id="account-block-term" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #f8fafc;">
                         <option value="">-- Select Block/Term --</option>
                     </select>
+                    <div id="block-hint" style="font-size: 11px; color: #6b7280; margin-top: 3px;">
+                        💡 Select a program first to see available blocks/terms
+                    </div>
                 </div>
             </div>
             
@@ -5831,14 +5956,14 @@
                 </label>
                 <select id="promote_intake" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
                     <option value="">-- Select Intake --</option>
-                    <optgroup label="KRCHN Intakes">
+                    <optgroup label="🎓 KRCHN Intakes">
                         <option value="March 2024">March 2024</option>
                         <option value="March 2025">March 2025</option>
                         <option value="March 2026">March 2026</option>
                         <option value="March 2027">March 2027</option>
                         <option value="March 2028">March 2028</option>
                     </optgroup>
-                    <optgroup label="TVET Intakes">
+                    <optgroup label="🔧 TVET Intakes">
                         <option value="January 2024 Intake">January 2024</option>
                         <option value="March 2024 Intake">March 2024</option>
                         <option value="May 2024 Intake">May 2024</option>
