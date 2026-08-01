@@ -5358,19 +5358,13 @@ async function handleManualAttendance(e) {
     }
 }
 
-// ============================================================
-// LOAD ATTENDANCE - WITH TVET/KRCHN SUPPORT
-// ============================================================
-
 async function loadAttendance() {
-    const todayBody = document.getElementById('attendance-table-body') || document.getElementById('attendance-table');
-    const pastBody = document.getElementById('past-attendance-table-body') || document.getElementById('past-attendance-table');
+    var todayBody = document.getElementById('attendance-table-body') || document.getElementById('attendance-table');
+    var pastBody = document.getElementById('past-attendance-table-body') || document.getElementById('past-attendance-table');
     
     if (!todayBody || !pastBody) return;
     
-    // ✅ CHECK: Make sure sb is available
     if (typeof sb === 'undefined' || !sb) {
-        console.error('❌ Supabase client (sb) not available');
         todayBody.innerHTML = '<tr><td colspan="9" style="color: red;">❌ Database connection error. Please refresh the page.</td></tr>';
         pastBody.innerHTML = '<tr><td colspan="8" style="color: red;">❌ Database connection error. Please refresh the page.</td></tr>';
         return;
@@ -5379,15 +5373,36 @@ async function loadAttendance() {
     todayBody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading today\'s records...</td></tr>';
     pastBody.innerHTML = '<tr><td colspan="8"><div class="loading-spinner"></div> Loading history...</td></tr>';
 
-    const todayISO = new Date().toISOString().slice(0,10);
+    var todayISO = new Date().toISOString().slice(0,10);
     
-    const searchTerm = document.getElementById('attendance_search')?.value?.toLowerCase() || '';
-    const programFilter = document.getElementById('attendance_program_filter')?.value || 'all';
-    const typeFilter = document.getElementById('attendance_type_filter')?.value || 'all';
-    const statusFilter = document.getElementById('attendance_status_filter')?.value || 'all';
+    // Get filter values safely - NO OPTIONAL CHAINING
+    var searchTerm = '';
+    var programFilter = 'all';
+    var typeFilter = 'all';
+    var statusFilter = 'all';
+    
+    var searchInput = document.getElementById('attendance_search');
+    if (searchInput) {
+        searchTerm = searchInput.value.toLowerCase() || '';
+    }
+    
+    var programFilterEl = document.getElementById('attendance_program_filter');
+    if (programFilterEl) {
+        programFilter = programFilterEl.value || 'all';
+    }
+    
+    var typeFilterEl = document.getElementById('attendance_type_filter');
+    if (typeFilterEl) {
+        typeFilter = typeFilterEl.value || 'all';
+    }
+    
+    var statusFilterEl = document.getElementById('attendance_status_filter');
+    if (statusFilterEl) {
+        statusFilter = statusFilterEl.value || 'all';
+    }
 
     try {
-        const { data: allRecords, error } = await sb
+        var result = await sb
             .from('geo_attendance_logs')
             .select(`
                 *,
@@ -5401,118 +5416,143 @@ async function loadAttendance() {
             `)
             .order('check_in_time', { ascending: false });
 
-        if (error) { 
-            todayBody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td></tr>`;
-            pastBody.innerHTML = `<tr><td colspan="8" style="color: red;">Error: ${error.message}</td></tr>`;
+        if (result.error) { 
+            todayBody.innerHTML = '<tr><td colspan="9" style="color: red;">Error: ' + result.error.message + '</td></tr>';
+            pastBody.innerHTML = '<tr><td colspan="8" style="color: red;">Error: ' + result.error.message + '</td></tr>';
             return;
         }
+
+        var allRecords = result.data || [];
 
         if (!allRecords || allRecords.length === 0) {
             todayBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: #6b7280;">📭 No check-in records for today.</td></tr>';
             pastBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #6b7280;">📭 No past attendance history found.</td></tr>';
-            document.getElementById('todayCount')?.textContent = '0';
-            document.getElementById('pastCount')?.textContent = '0';
-            document.getElementById('attendanceTotalCount')?.textContent = '0';
+            
+            // ✅ FIXED: Use proper if checks, NOT optional chaining
+            var todayCountEl = document.getElementById('todayCount');
+            if (todayCountEl) {
+                todayCountEl.textContent = '0';
+            }
+            
+            var pastCountEl = document.getElementById('pastCount');
+            if (pastCountEl) {
+                pastCountEl.textContent = '0';
+            }
+            
+            var totalCountEl = document.getElementById('attendanceTotalCount');
+            if (totalCountEl) {
+                totalCountEl.textContent = '0';
+            }
+            
             return;
         }
 
-        let todayHtml = '';
-        let pastHtml = '';
-        let todayCount = 0;
-        let pastCount = 0;
+        var todayHtml = '';
+        var pastHtml = '';
+        var todayCount = 0;
+        var pastCount = 0;
 
-        allRecords.forEach(r => {
-            const userProfile = r[USER_PROFILE_TABLE];
-            const userName = userProfile?.full_name || 'N/A User';
-            const userProgram = userProfile?.program || r.program || 'N/A';
-            const userBlock = userProfile?.block || r.block_term || 'N/A';
+        for (var i = 0; i < allRecords.length; i++) {
+            var r = allRecords[i];
+            var userProfile = r[USER_PROFILE_TABLE];
             
-            const isTVET = isTVETProgram(userProgram);
-            const blockLabel = isTVET ? 'Term' : 'Block';
-            const programBadge = isTVET ? '🔧 TVET' : '🎓 KRCHN';
-            const programColor = isTVET ? '#f59e0b' : '#2563eb';
-            const programBg = isTVET ? '#fef3c7' : '#dbeafe';
+            var userName = 'N/A User';
+            var userProgram = 'N/A';
+            var userBlock = 'N/A';
             
-            const dateTime = new Date(r.check_in_time).toLocaleString();
-            const targetDetail = r.target_name || r.department || r.location_name || 'N/A Target';
-            const locationDisplay = r.location_friendly_name || r.location_name || r.department || 'N/A';
-            const geoStatus = (r.latitude && r.longitude) ? '✅ Geo-Logged' : '📝 Manual';
+            if (userProfile) {
+                userName = userProfile.full_name || 'N/A User';
+                userProgram = userProfile.program || r.program || 'N/A';
+                userBlock = userProfile.block || r.block_term || 'N/A';
+            } else {
+                userProgram = r.program || 'N/A';
+                userBlock = r.block_term || 'N/A';
+            }
+            
+            var isTVET = isTVETProgram(userProgram);
+            var blockLabel = isTVET ? 'Term' : 'Block';
+            var programBadge = isTVET ? '🔧 TVET' : '🎓 KRCHN';
+            var programColor = isTVET ? '#f59e0b' : '#2563eb';
+            var programBg = isTVET ? '#fef3c7' : '#dbeafe';
+            
+            var dateTime = new Date(r.check_in_time).toLocaleString();
+            var targetDetail = r.target_name || r.department || r.location_name || 'N/A Target';
+            var locationDisplay = r.location_friendly_name || r.location_name || r.department || 'N/A';
+            var geoStatus = (r.latitude && r.longitude) ? '✅ Geo-Logged' : '📝 Manual';
 
-            if (searchTerm && !userName.toLowerCase().includes(searchTerm)) return;
-            if (programFilter === 'krchn' && isTVET) return;
-            if (programFilter === 'tvet' && !isTVET) return;
-            if (typeFilter !== 'all' && r.session_type !== typeFilter) return;
-            if (statusFilter === 'verified' && !r.is_verified) return;
-            if (statusFilter === 'pending' && r.is_verified) return;
+            // Apply filters
+            if (searchTerm && !userName.toLowerCase().includes(searchTerm)) continue;
+            if (programFilter === 'krchn' && isTVET) continue;
+            if (programFilter === 'tvet' && !isTVET) continue;
+            if (typeFilter !== 'all' && r.session_type !== typeFilter) continue;
+            if (statusFilter === 'verified' && !r.is_verified) continue;
+            if (statusFilter === 'pending' && r.is_verified) continue;
 
-            let actionsHtml = '';
-            const mapAvailable = r.latitude && r.longitude;
-            const mapAction = mapAvailable ? `showMap(${r.latitude},${r.longitude},'${locationDisplay.replace(/'/g,"\\'")}','${userName.replace(/'/g,"\\'")}','${dateTime.replace(/'/g,"\\'")}')` : '';
+            var actionsHtml = '';
+            var mapAvailable = r.latitude && r.longitude;
+            
+            if (mapAvailable) {
+                actionsHtml += '<button class="btn btn-map btn-small" onclick="showMap(' + r.latitude + ',' + r.longitude + ',\'' + locationDisplay.replace(/'/g,"\\'") + '\',\'' + userName.replace(/'/g,"\\'") + '\',\'' + dateTime.replace(/'/g,"\\'") + '\')">🗺️ View Map</button>';
+            }
 
-            actionsHtml += `<button class="btn btn-map btn-small" ${mapAvailable ? '' : 'disabled'} onclick="${mapAction}">🗺️ View Map</button>`;
-
-            const isToday = new Date(r.check_in_time).toISOString().slice(0,10) === todayISO;
-            const statusDisplay = r.is_verified ? '✅ Verified' : '⏳ Pending';
-            const statusColor = r.is_verified ? '#059669' : '#f59e0b';
-            const statusBg = r.is_verified ? '#d1fae5' : '#fef3c7';
+            var isToday = new Date(r.check_in_time).toISOString().slice(0,10) === todayISO;
+            var statusDisplay = r.is_verified ? '✅ Verified' : '⏳ Pending';
+            var statusColor = r.is_verified ? '#059669' : '#f59e0b';
+            var statusBg = r.is_verified ? '#d1fae5' : '#fef3c7';
 
             if (isToday) {
                 if (!r.is_verified) {
-                    actionsHtml += `<button class="btn btn-approve btn-small" onclick="approveAttendanceRecord('${r.id}')" style="margin-left:5px; background: #10b981; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer;">✅ Approve</button>`;
+                    actionsHtml += '<button class="btn btn-approve btn-small" onclick="approveAttendanceRecord(\'' + r.id + '\')" style="margin-left:5px; background: #10b981; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer;">✅ Approve</button>';
                 }
                 todayCount++;
             } else {
                 pastCount++;
             }
             
-            actionsHtml += `<button class="btn btn-delete btn-small" onclick="deleteAttendanceRecord('${r.id}')" style="margin-left:5px; background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer;">🗑️ Delete</button>`;
+            actionsHtml += '<button class="btn btn-delete btn-small" onclick="deleteAttendanceRecord(\'' + r.id + '\')" style="margin-left:5px; background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer;">🗑️ Delete</button>';
 
-            const rowHtml = `
-                <tr>
-                    <td><strong>${userName}</strong></td>
-                    <td>${r.session_type || 'N/A'}</td>
-                    <td>
-                        <span style="background: ${programBg}; color: ${programColor}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">
-                            ${programBadge}
-                        </span>
-                        <br>
-                        <small style="color: #6b7280;">${blockLabel}: ${userBlock}</small>
-                    </td>
-                    <td>${targetDetail}</td>
-                    <td>${locationDisplay}</td>
-                    <td>${dateTime}</td>
-                    <td>${geoStatus}</td>
-                    <td>
-                        <span style="background: ${statusBg}; color: ${statusColor}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                            ${statusDisplay}
-                        </span>
-                    </td>
-                    <td>${actionsHtml}</td>
-                </tr>
-            `;
+            var rowHtml = '<tr>' +
+                '<td><strong>' + userName + '</strong></td>' +
+                '<td>' + (r.session_type || 'N/A') + '</td>' +
+                '<td><span style="background: ' + programBg + '; color: ' + programColor + '; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">' + programBadge + '</span><br><small style="color: #6b7280;">' + blockLabel + ': ' + userBlock + '</small></td>' +
+                '<td>' + targetDetail + '</td>' +
+                '<td>' + locationDisplay + '</td>' +
+                '<td>' + dateTime + '</td>' +
+                '<td>' + geoStatus + '</td>' +
+                '<td><span style="background: ' + statusBg + '; color: ' + statusColor + '; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">' + statusDisplay + '</span></td>' +
+                '<td>' + actionsHtml + '</td>' +
+                '</tr>';
 
             if (isToday) {
                 todayHtml += rowHtml;
             } else {
                 pastHtml += rowHtml;
             }
-        });
+        }
 
-        const todayCountEl = document.getElementById('todayCount');
-        const pastCountEl = document.getElementById('pastCount');
-        const totalCountEl = document.getElementById('attendanceTotalCount');
+        // ✅ FIXED: Use proper if checks
+        var todayCountEl = document.getElementById('todayCount');
+        if (todayCountEl) {
+            todayCountEl.textContent = todayCount;
+        }
         
-        if (todayCountEl) todayCountEl.textContent = todayCount;
-        if (pastCountEl) pastCountEl.textContent = pastCount;
-        if (totalCountEl) totalCountEl.textContent = allRecords.length;
+        var pastCountEl = document.getElementById('pastCount');
+        if (pastCountEl) {
+            pastCountEl.textContent = pastCount;
+        }
+        
+        var totalCountEl = document.getElementById('attendanceTotalCount');
+        if (totalCountEl) {
+            totalCountEl.textContent = allRecords.length;
+        }
 
         todayBody.innerHTML = todayHtml || '<tr><td colspan="9" style="text-align: center; padding: 30px; color: #6b7280;">📭 No check-in records for today.</td></tr>';
         pastBody.innerHTML = pastHtml || '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #6b7280;">📭 No past attendance history found.</td></tr>';
         
     } catch (error) {
         console.error('Error loading attendance:', error);
-        todayBody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td></tr>`;
-        pastBody.innerHTML = `<tr><td colspan="8" style="color: red;">Error: ${error.message}</td></tr>`;
+        todayBody.innerHTML = '<tr><td colspan="9" style="color: red;">Error: ' + error.message + '</td></tr>';
+        pastBody.innerHTML = '<tr><td colspan="8" style="color: red;">Error: ' + error.message + '</td></tr>';
     }
 }
 // ============================================================
