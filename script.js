@@ -3084,14 +3084,14 @@ async function loadAllUsers(page = 1, filters = {}) {
         return;
     }
     
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="13" style="padding: 60px 20px; text-align: center;">
-                <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p style="color: #6b7280; margin: 0;">Loading users...</p>
-            </td>
-        </tr>
-    `;
+   tbody.innerHTML = `
+    <tr>
+        <td colspan="13" style="padding: 60px 20px; text-align: center;">
+            <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="color: #6b7280; margin: 0;">Loading users...</p>
+        </td>
+    </tr>
+`;
     
     try {
         const supabase = getSb();
@@ -3189,6 +3189,7 @@ async function loadAllUsers(page = 1, filters = {}) {
 
 // ============================================
 // 📊 RENDER USERS TABLE - COMPLETE TVET SUPPORT
+// WITH STUDENT/STAFF ID COLUMN (NO USER ID)
 // ============================================
 
 function renderUsersTable(users, docCache = {}) {
@@ -3242,12 +3243,31 @@ function renderUsersTable(users, docCache = {}) {
         const blockBadgeBg = isTVET ? '#fef3c7' : '#e0e7ff';
         const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
 
+        // ✅ Student ID / Staff ID based on role (NO USER ID)
+        let idDisplay = 'N/A';
+        let idLabel = 'ID';
+        if (u.role === 'student') {
+            idDisplay = u.student_id || 'N/A';
+            idLabel = 'Student ID';
+        } else if (u.role === 'lecturer' || u.role === 'admin' || u.role === 'superadmin') {
+            idDisplay = u.staff_id || 'N/A';
+            idLabel = 'Staff ID';
+        } else {
+            idDisplay = 'N/A';
+            idLabel = 'ID';
+        }
+
         html += `
             <tr style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" 
                 onmouseover="this.style.background='#f8fafc'" 
                 onmouseout="this.style.background='white'">
-                <td style="padding: 10px 14px;">
-                    <code style="font-size: 11px; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">${escapeHtml(u.user_id.substring(0, 8))}...</code>
+                <!-- ✅ NEW: Student/Staff ID Column (NO USER ID) -->
+                <td style="padding: 10px 14px; text-align: center; font-weight: 600; font-size: 13px;">
+                    ${escapeHtml(idDisplay)}
+                    <br>
+                    <small style="font-size: 9px; color: #94a3b8; font-weight: 400;">
+                        ${idLabel}
+                    </small>
                 </td>
                 <td style="padding: 10px 14px; font-weight: 500;">${escapeHtml(u.full_name)}</td>
                 <td style="padding: 10px 14px; font-size: 13px; color: #475569;">${escapeHtml(u.email)}</td>
