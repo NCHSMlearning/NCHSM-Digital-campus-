@@ -2694,7 +2694,7 @@ async function loadAllUsers(page = 1, filters = {}) {
     }
 }
 // ============================================
-// 📊 RENDER USERS TABLE - FIXED TBODY ID
+// 📊 RENDER USERS TABLE - COMPLETE TVET SUPPORT
 // ============================================
 
 function renderUsersTable(users, docCache = {}) {
@@ -2708,7 +2708,7 @@ function renderUsersTable(users, docCache = {}) {
     if (!users || users.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" style="text-align:center; padding: 60px 20px; color: #94a3b8;">
+                <td colspan="12" style="text-align:center; padding: 60px 20px; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 40px; display: block; margin-bottom: 12px; opacity: 0.3;"></i>
                     No users found
                     <br>
@@ -2726,13 +2726,6 @@ function renderUsersTable(users, docCache = {}) {
         const kcseStatus = userDocs['kcse'] || 'pending';
         const idStatus = userDocs['id'] || 'pending';
         
-        const statusColors = {
-            'pending': 'badge-warning',
-            'uploaded': 'badge-info',
-            'verified': 'badge-success',
-            'rejected': 'badge-danger'
-        };
-        
         const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
             .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
 
@@ -2741,11 +2734,23 @@ function renderUsersTable(users, docCache = {}) {
         const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
         const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
         
+        // ✅ Get program display name and type
         const programName = getProgramDisplayName(u.program);
         const programType = getProgramType(u.program);
-        const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-        const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+        const isTVET = programType === 'TVET';
+        const programBadgeClass = isTVET ? 'badge-tvet' : 'badge-krchn';
+        const programIcon = isTVET ? 'fa-tools' : 'fa-graduation-cap';
         
+        // ✅ BLOCK/TERM DISPLAY - Proper label based on program type
+        const blockLabel = isTVET ? 'Term' : 'Block';
+        const blockValue = u.block || u.current_block || 'Not assigned';
+        const blockDisplay = blockValue !== 'Not assigned' ? `${blockLabel}: ${blockValue}` : 'Not assigned';
+        
+        // ✅ Block badge color based on program type
+        const blockBadgeColor = isTVET ? '#f59e0b' : '#4C1D95';
+        const blockBadgeBg = isTVET ? '#fef3c7' : '#e0e7ff';
+        
+        // ✅ Intake display
         const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
 
         html += `
@@ -2766,11 +2771,17 @@ function renderUsersTable(users, docCache = {}) {
                 </td>
                 <td style="padding: 10px 14px;">
                     <div style="font-weight: 500; font-size: 13px;">${escapeHtml(programName)}</div>
-                    <div style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${programType === 'TVET' ? '#fef3c7' : '#dbeafe'}; color: ${programType === 'TVET' ? '#92400e' : '#1e40af'}; margin-top: 2px;">
+                    <div style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${programBadgeBg}; color: ${isTVET ? '#92400e' : '#1e40af'}; margin-top: 2px;">
                         <i class="fas ${programIcon}"></i> ${programType}
                     </div>
                 </td>
                 <td style="padding: 10px 14px; text-align: center; font-size: 13px;">${escapeHtml(intakeDisplay)}</td>
+                <td style="padding: 10px 14px; text-align: center;">
+                    <span style="display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${blockBadgeBg}; color: ${blockBadgeColor}; border: 1px solid ${blockBadgeColor}33;">
+                        <i class="fas ${isTVET ? 'fa-calendar-alt' : 'fa-layer-group'}"></i> 
+                        ${escapeHtml(blockDisplay)}
+                    </span>
+                </td>
                 <td style="padding: 10px 14px; text-align: center;">
                     <span style="cursor:pointer; font-size: 11px; padding: 2px 10px; border-radius: 12px; background: ${kcseStatus === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${kcseStatus === 'pending' ? '#92400e' : '#065f46'};" 
                           onclick="viewDocument('${escapeHtml(u.user_id)}','kcse')">
@@ -4052,7 +4063,7 @@ async function deleteProfile(userId, fullName, isRejection = false) {
     }
 }
 // ============================================
-// OPEN EDIT USER MODAL - PRESERVED
+// OPEN EDIT USER MODAL - COMPLETE TVET SUPPORT
 // ============================================
 
 async function openEditUserModal(userId) {
@@ -4072,6 +4083,7 @@ async function openEditUserModal(userId) {
             return;
         }
 
+        // Basic Info
         document.getElementById('edit_user_id').value = user.user_id;
         document.getElementById('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
         document.getElementById('edit_user_name').value = user.full_name || '';
@@ -4083,6 +4095,7 @@ async function openEditUserModal(userId) {
         document.getElementById('edit_user_national_id').value = user.national_id || '';
         document.getElementById('edit_user_address').value = user.address || '';
 
+        // Academic Info
         document.getElementById('edit_user_role').value = user.role || 'student';
         document.getElementById('edit_user_student_id').value = user.student_id || '';
         document.getElementById('edit_user_intake_year').value = user.intake_year || '';
@@ -4091,25 +4104,40 @@ async function openEditUserModal(userId) {
         document.getElementById('edit_user_guardian_phone').value = user.guardian_phone || '';
         document.getElementById('edit_user_status').value = user.status || 'pending';
 
+        // Document Status
         document.getElementById('edit_user_doc_kcse').value = user.doc_kcse || 'pending';
         document.getElementById('edit_user_doc_id').value = user.doc_id || 'pending';
 
+        // ✅ Program & Block/Term with TVET Support
         const editUserProgram = document.getElementById('edit_user_program');
         const editUserBlock = document.getElementById('edit_user_block');
+        const blockLabel = document.getElementById('edit_block_label');
 
         if (editUserProgram) {
+            // Populate program dropdown
             updateProgramDropdown(editUserProgram);
             editUserProgram.value = user.program || 'KRCHN';
             
+            // ✅ Check if TVET and update label
+            const isTVET = isTVETProgram(user.program);
+            if (blockLabel) {
+                blockLabel.textContent = isTVET ? '📚 Term *' : '📖 Block *';
+                blockLabel.style.color = isTVET ? '#f59e0b' : '#4C1D95';
+            }
+            
+            // Trigger change to update block/term options
             const changeEvent = new Event('change', { bubbles: true });
             editUserProgram.dispatchEvent(changeEvent);
             
+            // Set the block/term value after options are populated
             setTimeout(() => {
                 if (editUserBlock) {
                     updateBlockTermOptions('edit_user_program', 'edit_user_block');
                     setTimeout(() => {
-                        editUserBlock.value = user.current_block || user.block || 'Introductory';
-                        console.log('✅ Block/Term set to:', user.current_block || user.block);
+                        // ✅ Use block or term based on what's available
+                        const blockValue = user.block || user.current_block || user.term || 'Introductory';
+                        editUserBlock.value = blockValue;
+                        console.log('✅ Block/Term set to:', blockValue);
                     }, 50);
                 }
             }, 100);
@@ -4129,7 +4157,7 @@ async function openEditUserModal(userId) {
 }
 
 // ============================================
-// HANDLE EDIT USER - PRESERVED
+// HANDLE EDIT USER - COMPLETE TVET SUPPORT
 // ============================================
 
 async function handleEditUser(e) {
@@ -4147,17 +4175,25 @@ async function handleEditUser(e) {
         const userId = document.getElementById('edit_user_id').value;
         if (!userId) throw new Error('User ID is missing.');
 
+        // ✅ Get program and determine type
+        const program = document.getElementById('edit_user_program').value || null;
+        const isTVET = isTVETProgram(program);
+        const blockValue = document.getElementById('edit_user_block').value || 'Introductory';
+
         const updatedData = {
             full_name: document.getElementById('edit_user_name').value.trim(),
             email: document.getElementById('edit_user_email').value.trim(),
             phone: document.getElementById('edit_user_phone').value.trim() || null,
             alt_phone: document.getElementById('edit_user_alt_phone').value.trim() || null,
             role: document.getElementById('edit_user_role').value,
-            program: document.getElementById('edit_user_program').value || null,
+            program: program,
             student_id: document.getElementById('edit_user_student_id').value.trim() || null,
             intake_year: document.getElementById('edit_user_intake_year').value.trim() || null,
             intake_month: document.getElementById('edit_user_intake_month').value || null,
-            current_block: document.getElementById('edit_user_block').value || 'Introductory',
+            // ✅ Save to BOTH fields for compatibility
+            block: blockValue,
+            current_block: blockValue,
+            term: isTVET ? blockValue : null,  // TVET uses term
             status: document.getElementById('edit_user_status').value,
             gender: document.getElementById('edit_user_gender').value || null,
             date_of_birth: document.getElementById('edit_user_dob').value || null,
@@ -4167,6 +4203,8 @@ async function handleEditUser(e) {
             guardian_phone: document.getElementById('edit_user_guardian_phone').value.trim() || null,
             doc_kcse: document.getElementById('edit_user_doc_kcse').value || 'pending',
             doc_id: document.getElementById('edit_user_doc_id').value || 'pending',
+            // ✅ Add program type for easy filtering
+            program_type: isTVET ? 'TVET' : 'KRCHN',
             updated_at: new Date().toISOString()
         };
 
@@ -4205,8 +4243,8 @@ async function handleEditUser(e) {
             }
         }
 
-        await logAudit('USER_EDIT', `Edited profile for user ${updatedData.full_name}`, userId, 'SUCCESS');
-        showFeedback('✅ User profile updated successfully!', 'success');
+        await logAudit('USER_EDIT', `Edited profile for user ${updatedData.full_name} (${updatedData.program_type})`, userId, 'SUCCESS');
+        showFeedback(`✅ User profile updated successfully! (${updatedData.program_type})`, 'success');
 
         document.getElementById('userEditModal').style.display = 'none';
         document.getElementById('edit_user_new_password').value = '';
