@@ -623,7 +623,6 @@ async function loadSectionData(tabId) {
             break;
             
         case 'users': 
-            // ✅ FIX: Call initManageUsers to populate filters AND load users
             if (typeof initManageUsers === 'function') {
                 await initManageUsers();
             } else {
@@ -637,7 +636,6 @@ async function loadSectionData(tabId) {
             
         case 'enroll': 
             loadStudents(); 
-            // Initialize enrollment dropdowns
             updateProgramDropdown($('account-program'));
             updateBlockTermOptions('account-program', 'account-block-term');
             updateBlockTermOptions('promote_intake', 'promote_from_block');
@@ -645,17 +643,14 @@ async function loadSectionData(tabId) {
             break;
             
         // ============================================================
-        // 📚 UNITS MANAGEMENT - RENAMED FROM "courses"
+        // 📚 UNIT CATALOG - Manage units (Add/Edit/Delete)
         // ============================================================
         case 'units':
-        case 'unit-management':  // Keep both for compatibility
-            console.log('📚 Loading Units Management...');
+            console.log('📚 Loading Unit Catalog...');
             if (typeof loadAllUnits === 'function') {
                 loadAllUnits();
             } else if (typeof loadUnits === 'function') {
                 loadUnits();
-            } else {
-                loadCourses(); // Fallback for backward compatibility
             }
             // Initialize unit form dropdowns
             const unitProgramSelect = document.getElementById('new_unit_program');
@@ -671,6 +666,13 @@ async function loadSectionData(tabId) {
             if (typeof loadUnitBlocks === 'function') {
                 loadUnitBlocks();
             }
+            break;
+            
+        // ============================================================
+        // 📋 UNIT REGISTRATIONS & APPROVALS - Student registrations
+        // ============================================================
+        case 'unit-management':
+            console.log('📋 Loading Unit Registrations & Approvals...');
             // Load registration stats
             if (typeof loadUnitRegistrationStats === 'function') {
                 loadUnitRegistrationStats();
@@ -705,7 +707,6 @@ async function loadSectionData(tabId) {
             loadAttendance(); 
             updateProgramDropdown($('att_program'));
             populateAttendanceSelects(); 
-            // ✅ Update block/term options for attendance filter
             if (typeof updateAttendanceBlockOptions === 'function') {
                 setTimeout(updateAttendanceBlockOptions, 200);
             }
@@ -829,36 +830,27 @@ async function loadSectionData(tabId) {
         // ========== MARKS ENTRY ==========
         case 'marks-entry':
             console.log('📊 Loading Marks Entry section...');
-            // Initialize program dropdown
             const meProgramSelect = document.getElementById('me_program_select');
             if (meProgramSelect) {
-                // Update the program dropdown with all options
                 if (typeof updateProgramDropdown === 'function') {
                     updateProgramDropdown(meProgramSelect);
                 }
-                
-                // If a program is already selected, load blocks
                 if (meProgramSelect.value) {
                     if (typeof loadMEBlocks === 'function') {
                         loadMEBlocks();
                     }
                 } else {
-                    // Set default to KRCHN
                     meProgramSelect.value = 'KRCHN';
                     if (typeof loadMEBlocks === 'function') {
                         loadMEBlocks();
                     }
                 }
             }
-            
-            // Set default year to current
             const meYearSelect = document.getElementById('me_year_select');
             if (meYearSelect && !meYearSelect.value) {
                 const currentYear = new Date().getFullYear();
                 meYearSelect.value = String(currentYear);
             }
-            
-            // Show a message if no data
             const container = document.getElementById('me_marks_container');
             if (container && !container.innerHTML.includes('Select Program')) {
                 container.innerHTML = `
@@ -983,7 +975,6 @@ async function loadSectionData(tabId) {
         // ====================================================
         default:
             console.log(`📋 Loading tab: ${tabId}`);
-            // Try to call a function with the same name
             const funcName = 'load' + tabId.charAt(0).toUpperCase() + tabId.slice(1).replace(/-/g, '');
             if (typeof window[funcName] === 'function') {
                 window[funcName]();
