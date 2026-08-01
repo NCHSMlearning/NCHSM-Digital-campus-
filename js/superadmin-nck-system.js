@@ -1,6 +1,6 @@
 // ============================================
 // NCK XY FORMS & ASSESSMENT SYSTEM
-// COMPLETE UPDATED SCRIPT - MATCHES YOUR HTML
+// COMPLETE UPDATED SCRIPT - ALL BUTTONS WORKING
 // WITH BLOCK 1, FAST ENTRY, PUBLISH, COLUMNS
 // ============================================
 
@@ -56,13 +56,36 @@ const CLINICAL_GROUPS = [
 ];
 
 // ============================================
-// LOAD FUNCTIONS
+// MAIN LOAD FUNCTIONS - REFRESH DATA
 // ============================================
 
 function loadNCKSystemData() {
     console.log('🏥 Loading NCK System...');
     loadNCKStats();
     loadNCKData();
+}
+
+// REFRESH DATA BUTTON - Main refresh function
+async function refreshNCKData() {
+    console.log('🔄 Refreshing NCK data...');
+    showLoading('Refreshing NCK data...');
+    
+    try {
+        // Clear caches
+        currentNCKMarksMap = {};
+        currentNCKStudentsList = [];
+        
+        // Reload everything
+        await loadNCKStats();
+        await loadNCKData();
+        
+        showNotification('✅ NCK data refreshed successfully!', false);
+    } catch (err) {
+        console.error('❌ Refresh error:', err);
+        showNotification('Error refreshing data: ' + err.message, true);
+    } finally {
+        hideLoading();
+    }
 }
 
 async function loadNCKStats() {
@@ -80,7 +103,8 @@ async function loadNCKStats() {
         }
 
         const totalStudents = students?.length || 0;
-        document.getElementById('nck_total_students').textContent = totalStudents;
+        const totalEl = document.getElementById('nck_total_students');
+        if (totalEl) totalEl.textContent = totalStudents;
 
         // Get NCK marks
         const { data: nckMarks, error: nError } = await sb
@@ -108,10 +132,17 @@ async function loadNCKStats() {
             const avgScore = scoredCount > 0 ? (totalScore / scoredCount).toFixed(1) : 0;
             const passRate = scoredCount > 0 ? ((passedCount / scoredCount) * 100).toFixed(1) : 0;
 
-            document.getElementById('nck_pass_rate').textContent = `${passRate}%`;
-            document.getElementById('nck_avg_score').textContent = `${avgScore}%`;
-            document.getElementById('nck_at_risk').textContent = scoredCount - passedCount;
-            document.getElementById('nck_published_count').textContent = publishedCount;
+            const passRateEl = document.getElementById('nck_pass_rate');
+            if (passRateEl) passRateEl.textContent = `${passRate}%`;
+            
+            const avgScoreEl = document.getElementById('nck_avg_score');
+            if (avgScoreEl) avgScoreEl.textContent = `${avgScore}%`;
+            
+            const atRiskEl = document.getElementById('nck_at_risk');
+            if (atRiskEl) atRiskEl.textContent = scoredCount - passedCount;
+            
+            const publishedEl = document.getElementById('nck_published_count');
+            if (publishedEl) publishedEl.textContent = publishedCount;
         }
 
     } catch (err) {
@@ -121,9 +152,13 @@ async function loadNCKStats() {
 
 async function loadNCKData() {
     // Get filter values
-    currentNCKBlock = document.getElementById('nck_block_select')?.value || 'Introductory';
-    currentNCKSheetType = document.getElementById('nck_sheet_select')?.value || 'XY_FORMS';
-    currentNCKProgram = document.getElementById('nck_program_select')?.value || 'KRCHN';
+    const blockSelect = document.getElementById('nck_block_select');
+    const sheetSelect = document.getElementById('nck_sheet_select');
+    const programSelect = document.getElementById('nck_program_select');
+
+    currentNCKBlock = blockSelect?.value || 'Introductory';
+    currentNCKSheetType = sheetSelect?.value || 'XY_FORMS';
+    currentNCKProgram = programSelect?.value || 'KRCHN';
 
     const container = document.getElementById('nck_table_container');
     const placeholder = document.getElementById('nckPlaceholder');
@@ -169,6 +204,9 @@ async function loadNCKData() {
                 <div style="text-align: center; padding: 40px; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 32px;"></i>
                     <p style="margin-top: 10px;">No students found for ${currentNCKBlock} - ${currentNCKProgram}</p>
+                    <button onclick="loadNCKData()" style="background: #4C1D95; padding: 10px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px;">
+                        <i class="fas fa-sync-alt"></i> Try Again
+                    </button>
                 </div>
             `;
             if (placeholder) placeholder.style.display = 'block';
@@ -179,8 +217,11 @@ async function loadNCKData() {
         currentNCKStudentsList = students;
         console.log(`✅ Found ${students.length} students`);
 
-        document.getElementById('nck_student_count').textContent = students.length;
-        document.getElementById('nck_block_students').textContent = students.length;
+        const studentCountEl = document.getElementById('nck_student_count');
+        if (studentCountEl) studentCountEl.textContent = students.length;
+        
+        const blockStudentsEl = document.getElementById('nck_block_students');
+        if (blockStudentsEl) blockStudentsEl.textContent = students.length;
 
         // Get NCK marks
         const { data: marks, error: mError } = await sb
@@ -222,9 +263,14 @@ async function loadNCKData() {
 
         currentNCKColumns = columns;
 
-        document.getElementById('nck_column_count').textContent = columns.length;
-        document.getElementById('nck_column_count_2').textContent = columns.length;
-        document.getElementById('nck_block_columns').textContent = columns.length;
+        const columnCountEl = document.getElementById('nck_column_count');
+        if (columnCountEl) columnCountEl.textContent = columns.length;
+        
+        const columnCount2El = document.getElementById('nck_column_count_2');
+        if (columnCount2El) columnCount2El.textContent = columns.length;
+        
+        const blockColumnsEl = document.getElementById('nck_block_columns');
+        if (blockColumnsEl) blockColumnsEl.textContent = columns.length;
 
         // Update titles
         updateBlockDisplay();
@@ -244,6 +290,9 @@ async function loadNCKData() {
             <div style="text-align: center; padding: 40px; color: #dc2626;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 32px;"></i>
                 <p style="margin-top: 10px;">Error: ${err.message}</p>
+                <button onclick="loadNCKData()" style="background: #4C1D95; padding: 10px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px;">
+                    <i class="fas fa-sync-alt"></i> Retry
+                </button>
             </div>
         `;
     }
@@ -599,9 +648,14 @@ function openColumnManager() {
 }
 
 function updateColumnCounts() {
-    document.getElementById('nck_column_count').textContent = currentNCKColumns.length;
-    document.getElementById('nck_column_count_2').textContent = currentNCKColumns.length;
-    document.getElementById('nck_block_columns').textContent = currentNCKColumns.length;
+    const colCountEl = document.getElementById('nck_column_count');
+    if (colCountEl) colCountEl.textContent = currentNCKColumns.length;
+    
+    const colCount2El = document.getElementById('nck_column_count_2');
+    if (colCount2El) colCount2El.textContent = currentNCKColumns.length;
+    
+    const blockColumnsEl = document.getElementById('nck_block_columns');
+    if (blockColumnsEl) blockColumnsEl.textContent = currentNCKColumns.length;
 }
 
 // ============================================
@@ -647,7 +701,7 @@ function updateNCKAverage(studentId) {
 }
 
 // ============================================
-// SAVE FUNCTIONS
+// SAVE FUNCTIONS - SAVE ALL BUTTON
 // ============================================
 
 async function saveAllNCKMarks() {
@@ -724,7 +778,7 @@ async function saveAllNCKMarks() {
 }
 
 // ============================================
-// PUBLISH FUNCTIONS
+// PUBLISH FUNCTIONS - PUBLISH ALL BUTTON
 // ============================================
 
 async function publishAllNCKMarks() {
@@ -939,8 +993,11 @@ function openFastEntryMode() {
     }
 
     // Setup buttons
-    document.getElementById('saveNextBtn').onclick = applyFastEntry;
-    document.getElementById('saveStayBtn').onclick = applyFastEntryAndStay;
+    const saveNextBtn = document.getElementById('saveNextBtn');
+    if (saveNextBtn) saveNextBtn.onclick = applyFastEntry;
+    
+    const saveStayBtn = document.getElementById('saveStayBtn');
+    if (saveStayBtn) saveStayBtn.onclick = applyFastEntryAndStay;
 
     // Keyboard shortcuts
     document.addEventListener('keydown', handleFastEntryKeyboard);
@@ -991,9 +1048,14 @@ function loadFastEntryFields(studentIdx) {
     const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
     const status = avg > 0 ? (avg >= 60 ? 'PASS' : 'FAIL') : 'PENDING';
 
-    document.getElementById('currentAvgDisplay').innerHTML = avg.toFixed(1);
-    document.getElementById('currentStatusDisplay').innerHTML = 
-        `<span style="background: ${status === 'PASS' ? '#d1fae5' : (status === 'FAIL' ? '#fee2e2' : '#fef3c7')}; padding: 4px 12px; border-radius: 12px; font-weight: 600; color: ${status === 'PASS' ? '#065f46' : (status === 'FAIL' ? '#991b1b' : '#92400e')};">${status}</span>`;
+    const avgDisplay = document.getElementById('currentAvgDisplay');
+    if (avgDisplay) avgDisplay.innerHTML = avg.toFixed(1);
+    
+    const statusDisplay = document.getElementById('currentStatusDisplay');
+    if (statusDisplay) {
+        statusDisplay.innerHTML = 
+            `<span style="background: ${status === 'PASS' ? '#d1fae5' : (status === 'FAIL' ? '#fee2e2' : '#fef3c7')}; padding: 4px 12px; border-radius: 12px; font-weight: 600; color: ${status === 'PASS' ? '#065f46' : (status === 'FAIL' ? '#991b1b' : '#92400e')};">${status}</span>`;
+    }
 
     // Build fields
     const container = document.getElementById('fastEntryFields');
@@ -1055,9 +1117,14 @@ function updateFastPreview(studentIdx) {
     const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
     const status = avg > 0 ? (avg >= 60 ? 'PASS' : 'FAIL') : 'PENDING';
 
-    document.getElementById('currentAvgDisplay').innerHTML = avg.toFixed(1);
-    document.getElementById('currentStatusDisplay').innerHTML = 
-        `<span style="background: ${status === 'PASS' ? '#d1fae5' : (status === 'FAIL' ? '#fee2e2' : '#fef3c7')}; padding: 4px 12px; border-radius: 12px; font-weight: 600; color: ${status === 'PASS' ? '#065f46' : (status === 'FAIL' ? '#991b1b' : '#92400e')};">${status}</span>`;
+    const avgDisplay = document.getElementById('currentAvgDisplay');
+    if (avgDisplay) avgDisplay.innerHTML = avg.toFixed(1);
+    
+    const statusDisplay = document.getElementById('currentStatusDisplay');
+    if (statusDisplay) {
+        statusDisplay.innerHTML = 
+            `<span style="background: ${status === 'PASS' ? '#d1fae5' : (status === 'FAIL' ? '#fee2e2' : '#fef3c7')}; padding: 4px 12px; border-radius: 12px; font-weight: 600; color: ${status === 'PASS' ? '#065f46' : (status === 'FAIL' ? '#991b1b' : '#92400e')};">${status}</span>`;
+    }
 }
 
 function handleFastEntryKey(event, colIdx) {
@@ -1213,7 +1280,7 @@ function fillDownNCKValues() {
 }
 
 // ============================================
-// EXPORT
+// EXPORT - EXPORT CSV BUTTON
 // ============================================
 
 async function exportNCKData() {
@@ -1498,6 +1565,9 @@ function hideLoading() {
             margin: 0;
             cursor: pointer;
         }
+        .modal {
+            animation: fadeIn 0.3s ease;
+        }
     `;
     document.head.appendChild(styles);
 })();
@@ -1517,12 +1587,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================================
-// GLOBAL EXPOSURE
+// GLOBAL EXPOSURE - ALL FUNCTIONS
 // ============================================
 
 window.loadNCKSystemData = loadNCKSystemData;
 window.loadNCKData = loadNCKData;
 window.loadNCKStats = loadNCKStats;
+window.refreshNCKData = refreshNCKData;
 window.buildNCKTable = buildNCKTable;
 window.updateNCKAverage = updateNCKAverage;
 window.saveAllNCKMarks = saveAllNCKMarks;
@@ -1561,3 +1632,4 @@ window.handleFastEntryKeyboard = handleFastEntryKeyboard;
 window.saveSingleStudentMarks = saveSingleStudentMarks;
 
 console.log('✅ NCK System module loaded successfully!');
+console.log('📊 Available functions:', Object.keys(window).filter(k => k.includes('NCK') || k.includes('nck') || k === 'refreshNCKData'));
