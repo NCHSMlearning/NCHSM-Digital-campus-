@@ -2837,7 +2837,6 @@ async function loadAllUsers(page = 1, filters = {}) {
 // ============================================
 
 function renderUsersTable(users, docCache = {}) {
-    // ✅ FIX: Use the correct tbody ID
     const tbody = document.getElementById('users-table-body');
     if (!tbody) {
         console.error('❌ users-table-body not found');
@@ -2877,7 +2876,8 @@ function renderUsersTable(users, docCache = {}) {
         const programName = getProgramDisplayName(u.program);
         const programType = getProgramType(u.program);
         const isTVET = programType === 'TVET';
-        const programBadgeClass = isTVET ? 'badge-tvet' : 'badge-krchn';
+        const programBadgeBg = isTVET ? '#fef3c7' : '#dbeafe';
+        const programBadgeColor = isTVET ? '#92400e' : '#1e40af';
         const programIcon = isTVET ? 'fa-tools' : 'fa-graduation-cap';
         
         // ✅ BLOCK/TERM DISPLAY - Proper label based on program type
@@ -2910,7 +2910,7 @@ function renderUsersTable(users, docCache = {}) {
                 </td>
                 <td style="padding: 10px 14px;">
                     <div style="font-weight: 500; font-size: 13px;">${escapeHtml(programName)}</div>
-                    <div style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${programBadgeBg}; color: ${isTVET ? '#92400e' : '#1e40af'}; margin-top: 2px;">
+                    <div style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${programBadgeBg}; color: ${programBadgeColor}; margin-top: 2px;">
                         <i class="fas ${programIcon}"></i> ${programType}
                     </div>
                 </td>
