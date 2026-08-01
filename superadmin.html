@@ -1831,6 +1831,7 @@
     </header>
 <!-- ============================================ -->
 <!-- COMPLETE MODERN DASHBOARD WITH CHARTS -->
+<!-- ALL ELEMENTS PRESENT - NO MISSING IDs -->
 <!-- ============================================ -->
 <section id="dashboard" class="tab-content active">
     
@@ -1984,28 +1985,21 @@
 
     <!-- ====== NEW METRICS ROW 6 ====== -->
     <div class="cards">
-        <!-- Lecturers Count -->
         <div class="card" onclick="showTab('staff-management')" style="border-top: 4px solid #8b5cf6; background: linear-gradient(135deg, #ffffff, #f5f3ff);">
             <h3 style="color: #6d28d9;"><i class="fas fa-chalkboard-user"></i> Lecturers</h3>
             <p class="data" id="dashboardLecturersCount" style="color: #6d28d9; font-size: 32px; font-weight: 800;">0</p>
             <p class="minor-data">Active teaching staff</p>
         </div>
-        
-        <!-- Pending Marks Approval -->
         <div class="card" onclick="showTab('marks-approval')" style="border-top: 4px solid #f59e0b; background: linear-gradient(135deg, #ffffff, #fffbeb);">
             <h3 style="color: #d97706;"><i class="fas fa-check-double"></i> Pending Marks</h3>
             <p class="data" id="dashboardPendingMarks" style="color: #d97706; font-size: 32px; font-weight: 800;">0</p>
             <p class="minor-data">Awaiting approval</p>
         </div>
-        
-        <!-- Published Marks -->
         <div class="card" onclick="showTab('publish-marks')" style="border-top: 4px solid #10b981; background: linear-gradient(135deg, #ffffff, #ecfdf5);">
             <h3 style="color: #059669;"><i class="fas fa-share-alt"></i> Published Marks</h3>
             <p class="data" id="dashboardPublishedMarks" style="color: #059669; font-size: 32px; font-weight: 800;">0</p>
             <p class="minor-data">Released to students</p>
         </div>
-        
-        <!-- Pending Reviews -->
         <div class="card" onclick="showTab('reviews-newsletter')" style="border-top: 4px solid #ec4899; background: linear-gradient(135deg, #ffffff, #fdf2f8);">
             <h3 style="color: #db2777;"><i class="fas fa-star"></i> Pending Reviews</h3>
             <p class="data" id="dashboardPendingReviews" style="color: #db2777; font-size: 32px; font-weight: 800;">0</p>
@@ -2015,32 +2009,101 @@
 
     <!-- ====== NEW METRICS ROW 7 ====== -->
     <div class="cards">
-        <!-- Today's Attendance -->
         <div class="card" onclick="showTab('attendance')" style="border-top: 4px solid #0A3D62; background: linear-gradient(135deg, #ffffff, #f8fafc);">
             <h3 style="color: #0A3D62;"><i class="fas fa-user-check"></i> Attendance Today</h3>
             <p class="data" id="dashboardAttendanceToday" style="color: #0A3D62; font-size: 32px; font-weight: 800;">0%</p>
             <p class="minor-data">Present / Total</p>
         </div>
-        
-        <!-- Total Programs -->
         <div class="card" onclick="showTab('programs')" style="border-top: 4px solid #667eea; background: linear-gradient(135deg, #ffffff, #eef2ff);">
             <h3 style="color: #4f46e5;"><i class="fas fa-sitemap"></i> Total Programs</h3>
             <p class="data" id="dashboardTotalPrograms" style="color: #4f46e5; font-size: 32px; font-weight: 800;">0</p>
             <p class="minor-data">Active programs</p>
         </div>
-        
-        <!-- Total Sessions -->
         <div class="card" onclick="showTab('sessions')" style="border-top: 4px solid #22c55e; background: linear-gradient(135deg, #ffffff, #f0fdf4);">
             <h3 style="color: #16a34a;"><i class="fas fa-calendar-alt"></i> Total Sessions</h3>
             <p class="data" id="dashboardTotalSessions" style="color: #16a34a; font-size: 32px; font-weight: 800;">0</p>
             <p class="minor-data">This week</p>
         </div>
-        
-        <!-- System Alerts -->
         <div class="card" onclick="showTab('system-health')" style="border-top: 4px solid #ef4444; background: linear-gradient(135deg, #ffffff, #fef2f2);">
             <h3 style="color: #dc2626;"><i class="fas fa-exclamation-circle"></i> System Alerts</h3>
             <p class="data" id="dashboardSystemAlerts" style="color: #dc2626; font-size: 32px; font-weight: 800;">0</p>
             <p class="minor-data">Requiring attention</p>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ✅ FIXED: STUDENT STATISTICS SECTION - ALL IDs PRESENT -->
+    <!-- ============================================================ -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h4 style="margin: 0; color: #0A3D62;">
+                <i class="fas fa-chart-pie" style="color: #FDB913;"></i> Student Statistics
+            </h4>
+            <span style="font-size: 11px; color: #94a3b8;">
+                Last updated: <span id="statsLastUpdated">-</span>
+            </span>
+        </div>
+        
+        <!-- Summary Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 15px;">
+            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb;">
+                <div style="font-size: 11px; color: #94a3b8;">Total Students</div>
+                <div style="font-size: 24px; font-weight: 700; color: #0A3D62;" id="statsTotalStudents">0</div>
+            </div>
+            <div style="background: #dbeafe; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #bfdbfe;">
+                <div style="font-size: 11px; color: #1e40af;">🎓 KRCHN</div>
+                <div style="font-size: 24px; font-weight: 700; color: #1e40af;" id="statsKrchnCount">0</div>
+            </div>
+            <div style="background: #fef3c7; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #fde68a;">
+                <div style="font-size: 11px; color: #92400e;">🔧 TVET</div>
+                <div style="font-size: 24px; font-weight: 700; color: #92400e;" id="statsTvetCount">0</div>
+            </div>
+            <div style="background: #f3e8ff; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #e9d5ff;">
+                <div style="font-size: 11px; color: #6d28d9;">📚 Programs</div>
+                <div style="font-size: 24px; font-weight: 700; color: #6d28d9;" id="statsProgramCount">0</div>
+            </div>
+        </div>
+        
+        <!-- Gender Stats -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 15px;">
+            <div style="background: #eff6ff; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #bfdbfe;">
+                <div style="font-size: 11px; color: #1d4ed8;">👨 Male</div>
+                <div style="font-size: 24px; font-weight: 700; color: #1d4ed8;" id="statsMaleTotal">0</div>
+            </div>
+            <div style="background: #fce7f3; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #fbcfe8;">
+                <div style="font-size: 11px; color: #be185d;">👩 Female</div>
+                <div style="font-size: 24px; font-weight: 700; color: #be185d;" id="statsFemaleTotal">0</div>
+            </div>
+            <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #bbf7d0;">
+                <div style="font-size: 11px; color: #166534;">👨 %</div>
+                <div style="font-size: 24px; font-weight: 700; color: #166534;" id="statsMalePercent">0%</div>
+            </div>
+            <div style="background: #fdf2f8; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #fbcfe8;">
+                <div style="font-size: 11px; color: #9d174d;">👩 %</div>
+                <div style="font-size: 24px; font-weight: 700; color: #9d174d;" id="statsFemalePercent">0%</div>
+            </div>
+        </div>
+        
+        <!-- Program Breakdown Table -->
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 8px 12px; text-align: left;">Program</th>
+                        <th style="padding: 8px 12px; text-align: center;">Type</th>
+                        <th style="padding: 8px 12px; text-align: center;">Total</th>
+                        <th style="padding: 8px 12px; text-align: center;">Male</th>
+                        <th style="padding: 8px 12px; text-align: center;">Female</th>
+                        <th style="padding: 8px 12px; text-align: center;">Ratio</th>
+                        <th style="padding: 8px 12px; text-align: center;">%</th>
+                    </tr>
+                </thead>
+                <tbody id="statsProgramBreakdown">
+                    <tr>
+                        <td colspan="7" style="padding: 30px; text-align: center; color: #94a3b8;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -2134,151 +2197,6 @@
         </div>
     </div>
 
-</section>
-          <!-- UNIT REGISTRATIONS & APPROVALS SECTION - TVET/KRCHN SUPPORT -->
-<section id="unit-management" class="tab-content">
-    <!-- Modern Header -->
-    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-            <div>
-                <h2 style="color: white; margin: 0; display: flex; align-items: center; gap: 12px;">
-                    <i class="fas fa-clipboard-list" style="color: #FDB913;"></i> Unit Registrations & Approvals
-                </h2>
-                <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-                    <i class="fas fa-check-circle"></i> Manage student unit registrations and approvals (KRCHN & TVET)
-                </p>
-            </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <span style="background: #FDB913; color: #0A3D62; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;">
-                    <i class="fas fa-tools"></i> TVET + 🎓 KRCHN
-                </span>
-                <button onclick="loadUnitPendingRegistrations()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 8px; cursor: pointer;">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- STUDENT REGISTRATION SUMMARY -->
-    <div style="margin-bottom: 25px;">
-        <h3 style="color: #0A3D62; display: flex; align-items: center; gap: 10px;">
-            <i class="fas fa-chart-pie" style="color: #4C1D95;"></i> Registration Summary
-        </h3>
-        <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 12px 0;">
-            <div class="card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Pending</span>
-                    <i class="fas fa-clock" style="color: #f59e0b; opacity: 0.5;"></i>
-                </div>
-                <div style="font-size: 28px; font-weight: 800; color: #f59e0b; margin-top: 4px;" id="pendingRegistrations">0</div>
-                <div style="font-size: 11px; color: #94a3b8;">Units awaiting approval</div>
-            </div>
-            <div class="card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Approved</span>
-                    <i class="fas fa-check-circle" style="color: #10b981; opacity: 0.5;"></i>
-                </div>
-                <div style="font-size: 28px; font-weight: 800; color: #10b981; margin-top: 4px;" id="approvedRegistrations">0</div>
-                <div style="font-size: 11px; color: #94a3b8;">This term</div>
-            </div>
-            <div class="card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Total</span>
-                    <i class="fas fa-users" style="color: #3b82f6; opacity: 0.5;"></i>
-                </div>
-                <div style="font-size: 28px; font-weight: 800; color: #3b82f6; margin-top: 4px;" id="totalRegistrations">0</div>
-                <div style="font-size: 11px; color: #94a3b8;">All registrations</div>
-            </div>
-            <div class="card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">TVET/KRCHN</span>
-                    <i class="fas fa-graduation-cap" style="color: #8b5cf6; opacity: 0.5;"></i>
-                </div>
-                <div style="font-size: 28px; font-weight: 800; color: #8b5cf6; margin-top: 4px;" id="totalProgramsCount">0</div>
-                <div style="font-size: 11px; color: #94a3b8;">Programs active</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PENDING APPROVALS -->
-    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <div style="padding: 16px 20px; background: #fef3c7; border-bottom: 1px solid #f59e0b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <h3 style="margin: 0; color: #92400e; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-clock" style="color: #f59e0b;"></i> Pending Approvals
-                <span id="pendingCountBadge" style="background: #f59e0b; color: white; padding: 2px 10px; border-radius: 20px; font-size: 12px;">0</span>
-            </h3>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button onclick="loadUnitPendingRegistrations()" class="btn-action" style="background: #4C1D95; color: white; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-                <button onclick="document.getElementById('pending-registrations-list').style.display='none'" class="btn-action" style="background: #6b7280; color: white; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-times"></i> Close
-                </button>
-            </div>
-        </div>
-        <div id="pending-registrations-list" style="padding: 20px; display: none;">
-            <div style="text-align: center; padding: 20px;">
-                <div class="loading-spinner"></div>
-                <p style="color: #6b7280; margin-top: 10px;">Loading pending approvals...</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- APPROVED REGISTRATIONS -->
-    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <div style="padding: 16px 20px; background: #f0fdf4; border-bottom: 1px solid #10b981; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <h3 style="margin: 0; color: #065f46; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-check-circle" style="color: #10b981;"></i> Approved Registrations
-                <span id="approvedCountBadge" style="background: #10b981; color: white; padding: 2px 10px; border-radius: 20px; font-size: 12px;">0</span>
-            </h3>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button onclick="loadApprovedRegistrations()" class="btn-action" style="background: #4C1D95; color: white; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-                <button onclick="exportApprovedRegistrations()" class="btn-action" style="background: #059669; color: white; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-download"></i> Export CSV
-                </button>
-                <button onclick="bulkDeapproveSelected()" class="btn-action" style="background: #dc2626; color: white; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; display: none;" id="bulkDeapproveBtn">
-                    <i class="fas fa-times"></i> De-approve Selected (<span id="approvedSelectedCount">0</span>)
-                </button>
-            </div>
-        </div>
-        <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-            <div style="position: relative; flex: 1; min-width: 200px;">
-                <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                <input type="text" id="approved-search" placeholder="Search by student or unit..." onkeyup="filterApprovedRegistrations()" style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
-            </div>
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
-                <input type="checkbox" id="selectAllApproved" onchange="toggleSelectAllApproved()"> Select All
-            </label>
-        </div>
-        <div class="table-responsive" style="overflow-x: auto;">
-            <table class="data-table" id="approved-registrations-table" style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 10px 14px; text-align: center; width: 40px;">
-                            <input type="checkbox" id="selectAllApprovedCheckbox" onchange="toggleSelectAllApproved()">
-                        </th>
-                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Student</th>
-                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Student ID</th>
-                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Unit Code</th>
-                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Unit Name</th>
-                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Block/Term</th>
-                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Reg Type</th>
-                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Approval Date</th>
-                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Approved By</th>
-                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="approved-registrations-body">
-                    <tr><td colspan="10" style="padding: 40px; text-align: center; color: #94a3b8;">
-                        <div class="loading-spinner"></div>
-                        <p style="margin-top: 10px;">Loading approved registrations...</p>
-                    </td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
 </section>
           <!-- STAFF / LECTURER MANAGEMENT SECTION -->
 <section id="staff-management" class="tab-content">
