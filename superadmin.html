@@ -1857,7 +1857,7 @@
         <p style="margin: 0; color: #0A3D62; font-weight: 500;">Loading NCHSM Welcome Message...</p>
     </div>
 
-    <!-- ====== PRIMARY METRICS ROW 1 - ENHANCED WITH COLORS ====== -->
+    <!-- ====== PRIMARY METRICS ROW 1 ====== -->
     <div class="cards">
         <div class="card" onclick="showTab('users')" style="border-top: 4px solid #0A3D62; background: linear-gradient(135deg, #ffffff, #f8fafc);">
             <h3 style="color: #0A3D62;">Total Users</h3>
@@ -1881,7 +1881,7 @@
         </div>
     </div>
     
-    <!-- ====== PRIMARY METRICS ROW 2 - ENHANCED WITH COLORS ====== -->
+    <!-- ====== PRIMARY METRICS ROW 2 ====== -->
     <div class="cards">
         <div class="card" onclick="showTab('attendance')" style="border-top: 4px solid #2563eb; background: linear-gradient(135deg, #ffffff, #eff6ff);">
             <h3 style="color: #1d4ed8;">Today's Check-ins</h3>
@@ -1905,7 +1905,7 @@
         </div>
     </div>
     
-    <!-- ====== SECONDARY METRICS - ENHANCED WITH COLORS ====== -->
+    <!-- ====== SECONDARY METRICS ROW 3 ====== -->
     <div class="cards">
         <div class="card" onclick="showTab('system-health')" style="border-top: 4px solid #0A3D62; background: linear-gradient(135deg, #ffffff, #f8fafc);">
             <h3 style="color: #0A3D62;">System Uptime</h3>
@@ -1929,7 +1929,7 @@
         </div>
     </div>
     
-    <!-- ====== ADDITIONAL METRICS - ENHANCED WITH COLORS ====== -->
+    <!-- ====== ADDITIONAL METRICS ROW 4 ====== -->
     <div class="cards">
         <div class="card" onclick="showTab('unit-management')" style="border-top: 4px solid #0A3D62; background: linear-gradient(135deg, #ffffff, #f8fafc);">
             <h3 style="color: #0A3D62;"><i class="fas fa-book"></i> Total Units</h3>
@@ -1953,7 +1953,7 @@
         </div>
     </div>
     
-    <!-- ====== DATA INTEGRITY + QUICK STATS ====== -->
+    <!-- ====== DATA INTEGRITY + QUICK STATS ROW 5 ====== -->
     <div class="cards">
         <div class="card" onclick="showTab('system-health')" style="border-top: 4px solid #8b5cf6; background: linear-gradient(135deg, #ffffff, #f5f3ff);">
             <h3 style="color: #6d28d9;">Data Integrity Score</h3>
@@ -1982,6 +1982,68 @@
         </div>
     </div>
 
+    <!-- ====== NEW METRICS ROW 6 ====== -->
+    <div class="cards">
+        <!-- Lecturers Count -->
+        <div class="card" onclick="showTab('staff-management')" style="border-top: 4px solid #8b5cf6; background: linear-gradient(135deg, #ffffff, #f5f3ff);">
+            <h3 style="color: #6d28d9;"><i class="fas fa-chalkboard-user"></i> Lecturers</h3>
+            <p class="data" id="dashboardLecturersCount" style="color: #6d28d9; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Active teaching staff</p>
+        </div>
+        
+        <!-- Pending Marks Approval -->
+        <div class="card" onclick="showTab('marks-approval')" style="border-top: 4px solid #f59e0b; background: linear-gradient(135deg, #ffffff, #fffbeb);">
+            <h3 style="color: #d97706;"><i class="fas fa-check-double"></i> Pending Marks</h3>
+            <p class="data" id="dashboardPendingMarks" style="color: #d97706; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Awaiting approval</p>
+        </div>
+        
+        <!-- Published Marks -->
+        <div class="card" onclick="showTab('publish-marks')" style="border-top: 4px solid #10b981; background: linear-gradient(135deg, #ffffff, #ecfdf5);">
+            <h3 style="color: #059669;"><i class="fas fa-share-alt"></i> Published Marks</h3>
+            <p class="data" id="dashboardPublishedMarks" style="color: #059669; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Released to students</p>
+        </div>
+        
+        <!-- Pending Reviews -->
+        <div class="card" onclick="showTab('reviews-newsletter')" style="border-top: 4px solid #ec4899; background: linear-gradient(135deg, #ffffff, #fdf2f8);">
+            <h3 style="color: #db2777;"><i class="fas fa-star"></i> Pending Reviews</h3>
+            <p class="data" id="dashboardPendingReviews" style="color: #db2777; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Awaiting moderation</p>
+        </div>
+    </div>
+
+    <!-- ====== NEW METRICS ROW 7 ====== -->
+    <div class="cards">
+        <!-- Today's Attendance -->
+        <div class="card" onclick="showTab('attendance')" style="border-top: 4px solid #0A3D62; background: linear-gradient(135deg, #ffffff, #f8fafc);">
+            <h3 style="color: #0A3D62;"><i class="fas fa-user-check"></i> Attendance Today</h3>
+            <p class="data" id="dashboardAttendanceToday" style="color: #0A3D62; font-size: 32px; font-weight: 800;">0%</p>
+            <p class="minor-data">Present / Total</p>
+        </div>
+        
+        <!-- Total Programs -->
+        <div class="card" onclick="showTab('programs')" style="border-top: 4px solid #667eea; background: linear-gradient(135deg, #ffffff, #eef2ff);">
+            <h3 style="color: #4f46e5;"><i class="fas fa-sitemap"></i> Total Programs</h3>
+            <p class="data" id="dashboardTotalPrograms" style="color: #4f46e5; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Active programs</p>
+        </div>
+        
+        <!-- Total Sessions -->
+        <div class="card" onclick="showTab('sessions')" style="border-top: 4px solid #22c55e; background: linear-gradient(135deg, #ffffff, #f0fdf4);">
+            <h3 style="color: #16a34a;"><i class="fas fa-calendar-alt"></i> Total Sessions</h3>
+            <p class="data" id="dashboardTotalSessions" style="color: #16a34a; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">This week</p>
+        </div>
+        
+        <!-- System Alerts -->
+        <div class="card" onclick="showTab('system-health')" style="border-top: 4px solid #ef4444; background: linear-gradient(135deg, #ffffff, #fef2f2);">
+            <h3 style="color: #dc2626;"><i class="fas fa-exclamation-circle"></i> System Alerts</h3>
+            <p class="data" id="dashboardSystemAlerts" style="color: #dc2626; font-size: 32px; font-weight: 800;">0</p>
+            <p class="minor-data">Requiring attention</p>
+        </div>
+    </div>
+
     <!-- ====== QUICK ACTIONS ====== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin: 25px 0;">
         <button onclick="showTab('enroll')" style="background: #0A3D62; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
@@ -1998,6 +2060,9 @@
         </button>
         <button onclick="showTab('calendar')" style="background: #8b5cf6; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(139,92,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
             <i class="fas fa-calendar"></i> Schedule
+        </button>
+        <button onclick="showTab('marks-approval')" style="background: #f59e0b; color: #0A3D62; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(245,158,11,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+            <i class="fas fa-check-double"></i> Approve Marks
         </button>
     </div>
 
@@ -5169,7 +5234,7 @@
             </p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="loadAllUsersOptimized(1, USERS_STATE.filters)" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <button onclick="loadAllUsers(1, USERS_STATE.filters)" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
             <button onclick="showTab('enroll')" class="btn-action" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
@@ -5180,54 +5245,13 @@
 
     <!-- Stats Cards -->
     <div id="userStatsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #0A3D62; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Total</span>
-                <i class="fas fa-users" style="color: #0A3D62; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #0A3D62; margin-top: 4px;" id="userStatTotal">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Active</span>
-                <i class="fas fa-check-circle" style="color: #10b981; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #10b981; margin-top: 4px;" id="userStatActive">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Pending</span>
-                <i class="fas fa-clock" style="color: #f59e0b; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #f59e0b; margin-top: 4px;" id="userStatPending">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Students</span>
-                <i class="fas fa-user-graduate" style="color: #3b82f6; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #3b82f6; margin-top: 4px;" id="userStatStudents">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Lecturers</span>
-                <i class="fas fa-chalkboard-user" style="color: #8b5cf6; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #8b5cf6; margin-top: 4px;" id="userStatLecturers">0</div>
-        </div>
-        <div class="stat-card" style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #ef4444; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Admins</span>
-                <i class="fas fa-shield-alt" style="color: #ef4444; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 28px; font-weight: 800; color: #ef4444; margin-top: 4px;" id="userStatAdmins">0</div>
-        </div>
+        <!-- Stats will be populated by JavaScript -->
     </div>
 
     <!-- Filter Bar - Complete TVET Support with Search -->
     <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-            <!-- ✅ SEARCH BAR - Working with debounce -->
+            <!-- SEARCH BAR -->
             <div style="flex: 1; min-width: 180px; position: relative;">
                 <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
                 <input type="text" id="user-search" placeholder="🔍 Search by name, email or ID..." 
@@ -5250,74 +5274,17 @@
                 <option value="blocked">🚫 Blocked</option>
             </select>
             
-            <!-- ✅ Program Filter - Complete TVET Programs -->
+            <!-- Program Filter -->
             <select id="user-program-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 220px;" onchange="filterUsers()">
                 <option value="all">📚 All Programs</option>
-                
-                <optgroup label="🎓 Nursing Programs">
-                    <option value="KRCHN">KRCHN Nursing</option>
-                </optgroup>
-                
-                <optgroup label="🔧 TVET Diplomas">
-                    <option value="DPOTT">📋 Diploma in Perioperative Theatre Technology</option>
-                    <option value="DCH">📋 Diploma in Community Health</option>
-                    <option value="DHRIT">📋 Diploma in Health Records and IT</option>
-                    <option value="DSL">📋 Diploma in Science Lab</option>
-                    <option value="DSW">📋 Diploma in Social Work & Community Development</option>
-                    <option value="DCJS">📋 Diploma in Criminal Justice</option>
-                    <option value="DHSS">📋 Diploma in Health Support Services</option>
-                    <option value="DICT">📋 Diploma in ICT</option>
-                    <option value="DME">📋 Diploma in Medical Engineering</option>
-                </optgroup>
-                
-                <optgroup label="🔧 TVET Certificates">
-                    <option value="CPOTT">📋 Certificate in Perioperative Theatre Technology</option>
-                    <option value="CCH">📋 Certificate in Community Health</option>
-                    <option value="CHRIT">📋 Certificate in Health Records and IT</option>
-                    <option value="CPC">📋 Certificate in Patient Care</option>
-                    <option value="CSL">📋 Certificate in Science Lab</option>
-                    <option value="CSW">📋 Certificate in Social Work & Community Development</option>
-                    <option value="CCJS">📋 Certificate in Criminal Justice</option>
-                    <option value="CAG">📋 Certificate in Agriculture</option>
-                    <option value="CHSS">📋 Certificate in Health Support Services</option>
-                    <option value="CICT">📋 Certificate in ICT</option>
-                    <option value="CCA">📋 Certificate in Computer Applications</option>
-                </optgroup>
-                
-                <optgroup label="🔧 TVET Artisan">
-                    <option value="ACH">📋 Artisan in Community Health</option>
-                    <option value="AAG">📋 Artisan in Agriculture</option>
-                    <option value="ASW">📋 Artisan in Social Work & Community Development</option>
-                </optgroup>
-                
-                <optgroup label="🔧 Other TVET">
-                    <option value="PTE">📋 TVET/CDACC (PTE)</option>
-                </optgroup>
             </select>
             
-            <!-- ✅ Block Filter - Terms for TVET -->
+            <!-- Block Filter -->
             <select id="user-block-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;" onchange="filterUsers()">
                 <option value="all">📅 All Blocks/Terms</option>
-                <optgroup label="🎓 Nursing Blocks">
-                    <option value="Block 1">Block 1</option>
-                    <option value="Block 2">Block 2</option>
-                    <option value="Block 3">Block 3</option>
-                    <option value="Block 4">Block 4</option>
-                    <option value="Block 5">Block 5</option>
-                </optgroup>
-                <optgroup label="🔧 TVET Terms">
-                    <option value="Year 1 Term 1">Year 1 Term 1</option>
-                    <option value="Year 1 Term 2">Year 1 Term 2</option>
-                    <option value="Year 1 Term 3">Year 1 Term 3</option>
-                    <option value="Year 2 Term 1">Year 2 Term 1</option>
-                    <option value="Year 2 Term 2">Year 2 Term 2</option>
-                    <option value="Year 2 Term 3">Year 2 Term 3</option>
-                    <option value="Year 3 Term 1">Year 3 Term 1</option>
-                    <option value="Year 3 Term 2">Year 3 Term 2</option>
-                </optgroup>
             </select>
             
-            <!-- ✅ Program Type Filter -->
+            <!-- Program Type Filter -->
             <select id="user-program-type-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;" onchange="filterUsers()">
                 <option value="all">🏫 All Types</option>
                 <option value="nursing">🎓 Nursing (KRCHN)</option>
@@ -5341,7 +5308,7 @@
         </div>
     </div>
 
-    <!-- ✅ TABLE WITH COMPLETE TVET SUPPORT -->
+    <!-- TABLE WITH COMPLETE TVET SUPPORT -->
     <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <div style="overflow-x: auto;">
             <table id="users-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
@@ -5391,7 +5358,7 @@
                 <tbody id="users-table-body">
                     <tr>
                         <td colspan="13" style="padding: 60px 20px; text-align: center; color: #94a3b8;">
-                            <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+                            <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                             <p style="margin: 0;">Loading users...</p>
                         </td>
                     </tr>
@@ -5401,68 +5368,24 @@
     </div>
 
     <!-- Pagination -->
-    <div id="userPagination" style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 20px;
-        padding: 12px 0;
-        flex-wrap: wrap;
-        gap: 12px;
-        border-top: 1px solid #e5e7eb;
-    ">
-        <!-- Left: Showing info -->
-        <div style="
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: #64748b;
-            font-size: 13px;
-        ">
+    <div id="userPagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 12px 0; flex-wrap: wrap; gap: 12px; border-top: 1px solid #e5e7eb;">
+        <div style="display: flex; align-items: center; gap: 12px; color: #64748b; font-size: 13px;">
             <span id="paginationInfo">
                 <i class="fas fa-list"></i> 
                 Showing <strong id="paginationStart">1</strong> - <strong id="paginationEnd">20</strong> 
                 of <strong id="paginationTotal">0</strong> users
             </span>
-            <span style="
-                background: #f1f5f9;
-                padding: 2px 10px;
-                border-radius: 12px;
-                font-size: 11px;
-                color: #475569;
-            ">
+            <span style="background: #f1f5f9; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: #475569;">
                 <i class="fas fa-clock"></i> <span id="paginationSpeed">0.0</span>s
             </span>
         </div>
-
-        <!-- Center: Page buttons -->
-        <div style="
-            display: flex;
-            gap: 4px;
-            align-items: center;
-            flex-wrap: wrap;
-        " id="paginationButtons">
+        <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;" id="paginationButtons">
             <!-- Generated by JavaScript -->
         </div>
-
-        <!-- Right: Per page selector -->
         <div style="display: flex; align-items: center; gap: 8px;">
-            <label style="
-                font-size: 12px;
-                color: #64748b;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            ">
+            <label style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 6px;">
                 <i class="fas fa-eye"></i>
-                <select id="paginationPerPage" onchange="changePerPage(this.value)" style="
-                    padding: 4px 8px;
-                    border-radius: 6px;
-                    border: 1px solid #e2e8f0;
-                    font-size: 12px;
-                    background: white;
-                    cursor: pointer;
-                ">
+                <select id="paginationPerPage" onchange="changePerPage(this.value)" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; background: white; cursor: pointer;">
                     <option value="10">10</option>
                     <option value="20" selected>20</option>
                     <option value="50">50</option>
@@ -5477,7 +5400,7 @@
 <!-- ============================================================ -->
 <!-- 📄 DOCUMENT UPLOAD MODAL - Upload Profile, KCSE, ID, Certs   -->
 <!-- ============================================================ -->
-<div id="documentUploadModal" class="modal" style="display: none;">
+<div id="documentUploadModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 10000; padding: 20px; align-items: center; justify-content: center;">
     <div class="modal-content" style="max-width: 650px; width: 95%; background: white; border-radius: 16px; padding: 30px; max-height: 90vh; overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
             <h3 style="margin: 0; color: #4C1D95;">
@@ -5574,10 +5497,11 @@
         </form>
     </div>
 </div>
-                 <!-- ============================================================ -->
+
+<!-- ============================================================ -->
 <!-- ⏳ TAB 2: PENDING APPROVALS - COMPLETE TVET SUPPORT           -->
 <!-- ============================================================ -->
-<section id="pending" class="tab-content">
+<section id="pending" class="tab-content" style="display: none;">
     <div style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(245,158,11,0.3);">
         <div>
             <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
@@ -5588,7 +5512,7 @@
             </p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="loadPendingApprovalsOptimized()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <button onclick="loadPendingApprovals()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
             <button onclick="exportTableToCSV('pending-table-body', 'Pending_Approvals_Export.csv')" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600;">
@@ -5600,171 +5524,69 @@
         </div>
     </div>
 
-    <!-- Stats - Updated for TVET -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px;">
-        <div style="background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Pending</span>
-                <i class="fas fa-clock" style="color: #f59e0b; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 32px; font-weight: 800; color: #f59e0b; margin-top: 4px;" id="pendingCount">0</div>
-            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Awaiting approval</div>
+    <!-- Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px;" id="pendingStats">
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 24px; font-weight: 800; color: #f59e0b;" id="pendingCount">0</div>
+            <div style="font-size: 12px; color: #94a3b8;">⏳ Pending</div>
         </div>
-        <div style="background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Docs Pending</span>
-                <i class="fas fa-file-alt" style="color: #3b82f6; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 32px; font-weight: 800; color: #3b82f6; margin-top: 4px;" id="pendingDocsCount">0</div>
-            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Documents to verify</div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 24px; font-weight: 800; color: #3b82f6;" id="pendingDocsCount">0</div>
+            <div style="font-size: 12px; color: #94a3b8;">📄 Docs Pending</div>
         </div>
-        <div style="background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">TVET Pending</span>
-                <i class="fas fa-tools" style="color: #8b5cf6; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 32px; font-weight: 800; color: #8b5cf6; margin-top: 4px;" id="pendingTVETCount">0</div>
-            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">TVET students awaiting approval</div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 24px; font-weight: 800; color: #8b5cf6;" id="pendingTVETCount">0</div>
+            <div style="font-size: 12px; color: #94a3b8;">🔧 TVET</div>
         </div>
-        <div style="background: white; padding: 20px; border-radius: 12px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Nursing Pending</span>
-                <i class="fas fa-user-md" style="color: #10b981; opacity: 0.5;"></i>
-            </div>
-            <div style="font-size: 32px; font-weight: 800; color: #10b981; margin-top: 4px;" id="pendingNursingCount">0</div>
-            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">KRCHN students awaiting approval</div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 24px; font-weight: 800; color: #10b981;" id="pendingNursingCount">0</div>
+            <div style="font-size: 12px; color: #94a3b8;">🎓 Nursing</div>
         </div>
     </div>
 
     <!-- Filter Bar -->
-    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
         <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
             <div style="flex: 1; min-width: 180px; position: relative;">
                 <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                <input type="text" id="pending-search" placeholder="🔍 Search by name, email or ID..." 
-                       style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.2s;" 
-                       onkeyup="filterPendingApprovals()">
+                <input type="text" id="pending-search" placeholder="🔍 Search..." 
+                       style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
             </div>
-            
-            <select id="pending-program-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 200px;" onchange="filterPendingApprovals()">
+            <select id="pending-program-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 200px;">
                 <option value="all">📚 All Programs</option>
-                
-                <optgroup label="🎓 Nursing Programs">
-                    <option value="KRCHN">KRCHN Nursing</option>
-                </optgroup>
-                
-                <optgroup label="🔧 TVET Diplomas">
-                    <option value="DPOTT">📋 Diploma in Perioperative Theatre Technology</option>
-                    <option value="DCH">📋 Diploma in Community Health</option>
-                    <option value="DHRIT">📋 Diploma in Health Records and IT</option>
-                    <option value="DSL">📋 Diploma in Science Lab</option>
-                    <option value="DSW">📋 Diploma in Social Work & Community Development</option>
-                    <option value="DCJS">📋 Diploma in Criminal Justice</option>
-                    <option value="DHSS">📋 Diploma in Health Support Services</option>
-                    <option value="DICT">📋 Diploma in ICT</option>
-                    <option value="DME">📋 Diploma in Medical Engineering</option>
-                </optgroup>
-                
-                <optgroup label="🔧 TVET Certificates">
-                    <option value="CPOTT">📋 Certificate in Perioperative Theatre Technology</option>
-                    <option value="CCH">📋 Certificate in Community Health</option>
-                    <option value="CHRIT">📋 Certificate in Health Records and IT</option>
-                    <option value="CPC">📋 Certificate in Patient Care</option>
-                    <option value="CSL">📋 Certificate in Science Lab</option>
-                    <option value="CSW">📋 Certificate in Social Work & Community Development</option>
-                    <option value="CCJS">📋 Certificate in Criminal Justice</option>
-                    <option value="CAG">📋 Certificate in Agriculture</option>
-                    <option value="CHSS">📋 Certificate in Health Support Services</option>
-                    <option value="CICT">📋 Certificate in ICT</option>
-                    <option value="CCA">📋 Certificate in Computer Applications</option>
-                </optgroup>
-                
-                <optgroup label="🔧 TVET Artisan">
-                    <option value="ACH">📋 Artisan in Community Health</option>
-                    <option value="AAG">📋 Artisan in Agriculture</option>
-                    <option value="ASW">📋 Artisan in Social Work & Community Development</option>
-                </optgroup>
-                
-                <optgroup label="🔧 Other TVET">
-                    <option value="PTE">📋 TVET/CDACC (PTE)</option>
-                </optgroup>
             </select>
-            
-            <select id="pending-program-type-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;" onchange="filterPendingApprovals()">
-                <option value="all">🏫 All Types</option>
-                <option value="nursing">🎓 Nursing (KRCHN)</option>
-                <option value="diploma">🎓 TVET Diplomas</option>
-                <option value="certificate">🎓 TVET Certificates</option>
-                <option value="artisan">🎓 TVET Artisan</option>
-                <option value="tvet">🔧 All TVET</option>
-            </select>
-            
-            <select id="pending-doc-filter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;" onchange="filterPendingApprovals()">
-                <option value="all">📄 All Docs</option>
-                <option value="pending">⏳ Pending</option>
-                <option value="uploaded">📤 Uploaded</option>
-                <option value="verified">✅ Verified</option>
-                <option value="rejected">❌ Rejected</option>
-            </select>
-            
-            <button onclick="filterPendingApprovals()" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <button onclick="filterPendingApprovals()" style="background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-filter"></i> Filter
             </button>
-            
-            <button onclick="resetPendingFilters()" style="background: #e5e7eb; color: #475569; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+            <button onclick="resetPendingFilters()" style="background: #e5e7eb; color: #475569; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
                 <i class="fas fa-undo"></i> Reset
             </button>
         </div>
     </div>
 
-    <!-- Pending Table - Complete TVET Support -->
-    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+    <!-- Pending Table -->
+    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
         <div style="overflow-x: auto;">
             <table id="pending-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-user"></i> Name
-                        </th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-envelope"></i> Email
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-user-tag"></i> Role
-                        </th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-graduation-cap"></i> Program
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-calendar"></i> Intake
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-id-card"></i> Student ID
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-layer-group"></i> Block/Term
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            📄 KCSE
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            🪪 ID
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            📸 Photo
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-clock"></i> Registered
-                        </th>
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; white-space: nowrap;">
-                            <i class="fas fa-cog"></i> Actions
-                        </th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Name</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Email</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Role</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Intake</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Student ID</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">KCSE</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">ID</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Photo</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Registered</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="pending-table-body">
                     <tr>
-                        <td colspan="12" style="padding: 60px 20px; text-align: center; color: #94a3b8;">
-                            <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+                        <td colspan="11" style="padding: 60px 20px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #f59e0b; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                             <p style="margin: 0;">Loading pending approvals...</p>
                         </td>
                     </tr>
@@ -5777,7 +5599,7 @@
 <!-- ============================================================ -->
 <!-- ➕ TAB 3: ENROLL ACCOUNTS - COMPLETE TVET SUPPORT             -->
 <!-- ============================================================ -->
-<section id="enroll" class="tab-content">
+<section id="enroll" class="tab-content" style="display: none;">
     <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(16,185,129,0.3);">
         <div>
             <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
