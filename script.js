@@ -5363,16 +5363,24 @@ async function handleManualAttendance(e) {
 // ============================================================
 
 async function loadAttendance() {
-    const todayBody = document.getElementById('attendance-table-body') || $('attendance-table');
-    const pastBody = document.getElementById('past-attendance-table-body') || $('past-attendance-table');
+    const todayBody = document.getElementById('attendance-table-body') || document.getElementById('attendance-table');
+    const pastBody = document.getElementById('past-attendance-table-body') || document.getElementById('past-attendance-table');
+    
     if (!todayBody || !pastBody) return;
     
-    todayBody.innerHTML = '<tr><td colspan="8">Loading today\'s records...</td></tr>';
-    pastBody.innerHTML = '<tr><td colspan="7">Loading history...</td></tr>';
+    // ✅ CHECK: Make sure sb is available
+    if (typeof sb === 'undefined' || !sb) {
+        console.error('❌ Supabase client (sb) not available');
+        todayBody.innerHTML = '<tr><td colspan="9" style="color: red;">❌ Database connection error. Please refresh the page.</td></tr>';
+        pastBody.innerHTML = '<tr><td colspan="8" style="color: red;">❌ Database connection error. Please refresh the page.</td></tr>';
+        return;
+    }
+    
+    todayBody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading today\'s records...</td></tr>';
+    pastBody.innerHTML = '<tr><td colspan="8"><div class="loading-spinner"></div> Loading history...</td></tr>';
 
     const todayISO = new Date().toISOString().slice(0,10);
     
-    // Get filter values
     const searchTerm = document.getElementById('attendance_search')?.value?.toLowerCase() || '';
     const programFilter = document.getElementById('attendance_program_filter')?.value || 'all';
     const typeFilter = document.getElementById('attendance_type_filter')?.value || 'all';
@@ -5394,8 +5402,17 @@ async function loadAttendance() {
             .order('check_in_time', { ascending: false });
 
         if (error) { 
-            todayBody.innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`;
-            pastBody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
+            todayBody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td></tr>`;
+            pastBody.innerHTML = `<tr><td colspan="8" style="color: red;">Error: ${error.message}</td></tr>`;
+            return;
+        }
+
+        if (!allRecords || allRecords.length === 0) {
+            todayBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: #6b7280;">📭 No check-in records for today.</td></tr>';
+            pastBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #6b7280;">📭 No past attendance history found.</td></tr>';
+            document.getElementById('todayCount')?.textContent = '0';
+            document.getElementById('pastCount')?.textContent = '0';
+            document.getElementById('attendanceTotalCount')?.textContent = '0';
             return;
         }
 
@@ -5421,7 +5438,6 @@ async function loadAttendance() {
             const locationDisplay = r.location_friendly_name || r.location_name || r.department || 'N/A';
             const geoStatus = (r.latitude && r.longitude) ? '✅ Geo-Logged' : '📝 Manual';
 
-            // Apply filters
             if (searchTerm && !userName.toLowerCase().includes(searchTerm)) return;
             if (programFilter === 'krchn' && isTVET) return;
             if (programFilter === 'tvet' && !isTVET) return;
@@ -5482,21 +5498,23 @@ async function loadAttendance() {
             }
         });
 
-        // Update counts
-        document.getElementById('todayCount')?.textContent = todayCount;
-        document.getElementById('pastCount')?.textContent = pastCount;
-        document.getElementById('attendanceTotalCount')?.textContent = allRecords.length;
+        const todayCountEl = document.getElementById('todayCount');
+        const pastCountEl = document.getElementById('pastCount');
+        const totalCountEl = document.getElementById('attendanceTotalCount');
+        
+        if (todayCountEl) todayCountEl.textContent = todayCount;
+        if (pastCountEl) pastCountEl.textContent = pastCount;
+        if (totalCountEl) totalCountEl.textContent = allRecords.length;
 
         todayBody.innerHTML = todayHtml || '<tr><td colspan="9" style="text-align: center; padding: 30px; color: #6b7280;">📭 No check-in records for today.</td></tr>';
         pastBody.innerHTML = pastHtml || '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #6b7280;">📭 No past attendance history found.</td></tr>';
         
     } catch (error) {
         console.error('Error loading attendance:', error);
-        todayBody.innerHTML = `<tr><td colspan="8" style="color: red;">Error: ${error.message}</td></tr>`;
-        pastBody.innerHTML = `<tr><td colspan="7" style="color: red;">Error: ${error.message}</td></tr>`;
+        todayBody.innerHTML = `<tr><td colspan="9" style="color: red;">Error: ${error.message}</td></tr>`;
+        pastBody.innerHTML = `<tr><td colspan="8" style="color: red;">Error: ${error.message}</td></tr>`;
     }
 }
-
 // ============================================================
 // FILTER ATTENDANCE
 // ============================================================
