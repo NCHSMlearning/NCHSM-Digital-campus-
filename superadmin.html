@@ -2770,11 +2770,10 @@
         </div>
     </div>
 </section>
-       <!-- ============================================ -->
+      <!-- ============================================ -->
 <!-- NCK XY FORMS & ASSESSMENT SYSTEM             -->
-<!-- COMPLETE - UPDATED FOR YOUR SCHEMA          -->
-<!-- BLOCK NAMES: Introductory, Year 1 Term 1,   -->
-<!-- Block 2, Block 3, Block 4, Block 5          -->
+<!-- COMPLETE SECTION - WITH BLOCK 1              -->
+<!-- MATCHES YOUR ORIGINAL SYSTEM                 -->
 <!-- ============================================ -->
 
 <section id="nursing-system" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
@@ -2785,27 +2784,23 @@
     <div style="background: linear-gradient(135deg, #4C1D95, #7c3aed); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(76,29,149,0.3);">
         <div>
             <h2 style="color: white; margin: 0; font-weight: 700; font-size: 24px;">
-                <i class="fas fa-file-medical"></i> NCK XY Forms & Assessment
+                <i class="fas fa-file-medical"></i> NCK Score Sheet Entry
             </h2>
             <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
-                <i class="fas fa-stethoscope"></i> Clinical Evaluation (XY FORMS) & Written Assessments &nbsp;|&nbsp; 
-                <i class="fas fa-flag-checkered"></i> Pass Mark: 60% &nbsp;|&nbsp;
-                <span style="background: rgba(255,255,255,0.2); padding: 2px 12px; border-radius: 12px; font-size: 12px;">
-                    <i class="fas fa-layer-group"></i> Introductory = Foundation Block
-                </span>
+                <i class="fas fa-stethoscope"></i> Clinical evaluation (XY FORMS) & Assessment & Case
             </p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="publishAllNCKMarks()" class="btn-action" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; box-shadow: 0 2px 8px rgba(253,185,19,0.3);">
+            <button onclick="publishAllNCKMarks()" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; box-shadow: 0 2px 8px rgba(253,185,19,0.3);">
                 <i class="fas fa-share-alt"></i> 📤 Publish All
             </button>
-            <button onclick="openNCKStudentPublishModal()" class="btn-action" style="background: #8b5cf6; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; box-shadow: 0 2px 8px rgba(139,92,246,0.3);">
+            <button onclick="openNCKStudentPublishModal()" style="background: #8b5cf6; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; box-shadow: 0 2px 8px rgba(139,92,246,0.3);">
                 <i class="fas fa-user-check"></i> 👥 Select Students
             </button>
-            <button onclick="loadNCKData()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <button onclick="loadNCKData()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-sync-alt"></i> Refresh Data
             </button>
-            <button onclick="exportNCKData()" class="btn-action" style="background: white; color: #4C1D95; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+            <button onclick="exportNCKData()" style="background: white; color: #4C1D95; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
                 <i class="fas fa-download"></i> Export CSV
             </button>
         </div>
@@ -2843,12 +2838,11 @@
     </div>
 
     <!-- ======================================== -->
-    <!-- SELECTORS - UPDATED BLOCK NAMES          -->
+    <!-- SELECTORS - WITH BLOCK 1                 -->
     <!-- ======================================== -->
     <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
             
-            <!-- Block Notice -->
             <div style="grid-column: 1 / -1; background: #f3e8ff; padding: 10px 16px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #4C1D95;">
                 <span style="font-weight: 700; color: #4C1D95; font-size: 14px;">
                     <i class="fas fa-info-circle"></i> 
@@ -2864,9 +2858,9 @@
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-layer-group"></i> Block
                 </label>
-                <select id="nck_block_select" class="form-control" onchange="loadNCKData()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; cursor: pointer;">
+                <select id="nck_block_select" onchange="loadNCKData()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; cursor: pointer;">
                     <option value="Introductory" selected>⭐ Introductory - Foundation Block</option>
-                    <option value="Year 1 Term 1">📘 Year 1 Term 1</option>
+                    <option value="Block 1">📘 Block 1</option>
                     <option value="Block 2">📗 Block 2</option>
                     <option value="Block 3">📙 Block 3</option>
                     <option value="Block 4">📕 Block 4</option>
@@ -2881,7 +2875,7 @@
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-file"></i> Assessment Type
                 </label>
-                <select id="nck_sheet_select" class="form-control" onchange="loadNCKData()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; cursor: pointer;">
+                <select id="nck_sheet_select" onchange="loadNCKData()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; cursor: pointer;">
                     <option value="XY_FORMS" selected>📊 XY FORMS - Clinical Areas</option>
                     <option value="ASSESSMENT_CASE">📋 ASSESSMENT & CASE - Written</option>
                 </select>
@@ -2891,7 +2885,7 @@
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-users"></i> Program
                 </label>
-                <select id="nck_program_select" class="form-control" onchange="loadNCKData()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; cursor: pointer;">
+                <select id="nck_program_select" onchange="loadNCKData()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; cursor: pointer;">
                     <option value="KRCHN">🎓 KRCHN Nursing</option>
                     <optgroup label="🎯 TVET Diploma Programs">
                         <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
@@ -2929,11 +2923,11 @@
                     <i class="fas fa-bolt"></i> Quick Actions
                 </label>
                 <div style="display: flex; gap: 8px;">
-                    <button onclick="openFastEntryMode()" class="btn-action" style="background: #8b5cf6; color: white; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; flex: 1; font-size: 13px;">
-                        <i class="fas fa-bolt"></i> Fast Entry
+                    <button onclick="openFastEntryMode()" style="background: #8b5cf6; color: white; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; flex: 1; font-size: 13px;">
+                        <i class="fas fa-bolt"></i> Fast Entry Mode
                     </button>
-                    <button onclick="openColumnManager()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; flex: 1; font-size: 13px;">
-                        <i class="fas fa-columns"></i> Columns
+                    <button onclick="openColumnManager()" style="background: #4C1D95; color: white; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; flex: 1; font-size: 13px;">
+                        <i class="fas fa-columns"></i> Manage Columns
                     </button>
                 </div>
             </div>
@@ -2976,37 +2970,29 @@
     <!-- ======================================== -->
     <div id="nckDynamicContent" style="display: none;">
         
-        <!-- COLUMN MANAGEMENT SECTION -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
-                <div>
-                    <h3 style="margin: 0; color: #1e293b; font-size: 16px;">
-                        <i class="fas fa-columns" style="color: #4C1D95;"></i> Column Management
-                        <span style="font-size: 13px; font-weight: 400; color: #64748b; margin-left: 10px;">
-                            <span id="nck_column_count_2">0</span> visible columns
-                        </span>
-                    </h3>
-                </div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button onclick="addNewColumn()" style="background: #059669; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
-                        <i class="fas fa-plus"></i> Add Column
-                    </button>
-                    <button onclick="resetNCKColumns()" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                        <i class="fas fa-undo"></i> Reset
-                    </button>
-                    <button onclick="openNCKStudentPublishModal()" style="background: #8b5cf6; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
-                        <i class="fas fa-user-check"></i> Select Students
-                    </button>
-                </div>
+        <!-- QUICK ACTIONS BAR -->
+        <div style="margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, #667eea20, #764ba220); border-radius: 12px;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <strong><i class="fas fa-bolt"></i> Quick Actions:</strong>
+                <button onclick="openFastEntryMode()" style="padding: 5px 12px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-bolt"></i> Fast Entry Mode (Saves to DB instantly)
+                </button>
+                <button onclick="openColumnManager()" style="padding: 5px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-columns"></i> Manage Columns
+                </button>
+                <button onclick="fillDownNCKValues()" style="padding: 5px 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-arrow-down"></i> Fill Down
+                </button>
+                <button onclick="saveAllNCKMarks()" style="padding: 5px 12px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-save"></i> Save All
+                </button>
             </div>
-            <div id="nck_column_settings" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px;">
-                <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
-                    <i class="fas fa-spinner fa-spin"></i> Loading columns...
-                </div>
+            <div style="font-size: 12px; color: #666; margin-top: 8px;">
+                <i class="fas fa-info-circle"></i> Tip: Click on student name to edit all marks in popup
             </div>
         </div>
 
-        <!-- BLOCK INFORMATION - UPDATED -->
+        <!-- BLOCK INFORMATION -->
         <div id="nck_block_info" style="background: linear-gradient(135deg, #f3e8ff, #ede9fe); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #c4b5fd; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
             <span style="background: #4C1D95; color: white; padding: 4px 16px; border-radius: 20px; font-weight: 700; font-size: 14px;">
                 <i class="fas fa-star"></i> <span id="nck_current_block_label">Introductory</span>
@@ -3087,14 +3073,16 @@
     <div id="nckColumnModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 16px; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 0; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <div style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; padding: 20px 25px; border-radius: 16px 16px 0 0; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0;"><i class="fas fa-columns"></i> Column Management</h3>
+                <h3 style="margin: 0;"><i class="fas fa-columns"></i> Manage Columns</h3>
                 <button onclick="document.getElementById('nckColumnModal').style.display='none'" style="background: none; border: none; color: white; font-size: 28px; cursor: pointer;">&times;</button>
             </div>
             <div style="padding: 25px;">
                 <div style="background: #f3e8ff; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #4C1D95;">
                     <i class="fas fa-info-circle" style="color: #4C1D95;"></i> Toggle columns on/off. Click <strong>Add Column</strong> to create new assessment areas.
                 </div>
-                <div id="nckColumnList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 20px;"></div>
+                <div id="nckColumnList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 20px;">
+                    <!-- Column list dynamically generated -->
+                </div>
                 <hr>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <input type="text" id="nckNewColumnName" placeholder="New column name (e.g., 'MED4')" style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
@@ -3134,7 +3122,9 @@
                     <input type="text" id="nckStudentSearch" placeholder="Search students..." onkeyup="filterStudentList()" style="flex: 1; padding: 8px 14px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; min-width: 150px;">
                     <span id="nckSelectedCount" style="font-weight: 600; color: #059669; font-size: 14px;">0 selected</span>
                 </div>
-                <div id="nckStudentList" style="max-height: 350px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px;"></div>
+                <div id="nckStudentList" style="max-height: 350px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px;">
+                    <!-- Student list dynamically generated -->
+                </div>
                 <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
                     <button onclick="document.getElementById('nckPublishModal').style.display='none'" style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                         Cancel
@@ -3147,25 +3137,87 @@
         </div>
     </div>
 
-    <!-- FAST ENTRY MODAL -->
-    <div id="nckFastEntryModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
-        <div style="background: white; border-radius: 16px; width: 95%; max-width: 1400px; max-height: 92vh; overflow-y: auto; padding: 0; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-            <div style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; padding: 20px 25px; border-radius: 16px 16px 0 0; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0;"><i class="fas fa-bolt"></i> Fast Entry Mode</h3>
-                <button onclick="document.getElementById('nckFastEntryModal').style.display='none'" style="background: none; border: none; color: white; font-size: 28px; cursor: pointer;">&times;</button>
-            </div>
-            <div style="padding: 25px;">
-                <div style="background: #dbeafe; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
-                    <i class="fas fa-info-circle" style="color: #1e40af;"></i> Enter marks quickly. Use <strong>Tab</strong> to navigate between fields. Click <strong>Save All</strong> when done.
+    <!-- ======================================== -->
+    <!-- FAST ENTRY MODAL - FULL SCREEN           -->
+    <!-- ======================================== -->
+    <div id="nckFastEntryModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10001; overflow-y: auto; padding: 20px; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 24px; max-width: 1400px; width: 95%; max-height: 90vh; overflow-y: auto; margin: 20px auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            
+            <!-- Fast Entry Header -->
+            <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px 24px; border-radius: 24px 24px 0 0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <i class="fas fa-expand-alt" style="font-size: 20px;"></i>
+                    <span style="font-size: 20px; font-weight: 700;"><i class="fas fa-bolt"></i> Full Screen Fast Entry - XY FORMS</span>
                 </div>
-                <div id="nckFastEntryContainer" style="overflow-x: auto; max-height: 500px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px;"></div>
-                <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
-                    <button onclick="document.getElementById('nckFastEntryModal').style.display='none'" style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        Close
+                <div>
+                    <button onclick="closeFastEntryModal()" style="padding: 8px 20px; background: rgba(255,255,255,0.2); border: none; border-radius: 40px; color: white; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-times"></i> Close (ESC)
                     </button>
-                    <button onclick="saveFastEntryMarks()" style="background: #059669; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-save"></i> Save All
+                </div>
+            </div>
+            
+            <!-- Fast Entry Body -->
+            <div style="padding: 24px;">
+                
+                <!-- Student Selector -->
+                <div style="margin-bottom: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 2;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-user-graduate"></i> Select Student:
+                        </label>
+                        <select id="fastStudentSelect" style="width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 14px; font-weight: 500;">
+                            <!-- Students loaded dynamically -->
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-chart-line"></i> Current Average:
+                        </label>
+                        <div id="currentAvgDisplay" style="padding: 12px; background: #f0fdf4; border-radius: 12px; font-weight: bold; text-align: center; font-size: 18px;">0.00</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-flag-checkered"></i> Status:
+                        </label>
+                        <div id="currentStatusDisplay" style="padding: 12px; background: #fef3c7; border-radius: 12px; font-weight: bold; text-align: center;">PENDING</div>
+                    </div>
+                </div>
+                
+                <!-- Fast Entry Fields - Grouped by Clinical Area -->
+                <div id="fastEntryFields" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+                    <!-- Groups loaded dynamically -->
+                </div>
+                
+                <!-- Grading Information -->
+                <div style="border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; background: #fafafa; margin-top: 20px;">
+                    <h4 style="margin: 0 0 15px 0; color: #667eea; font-size: 16px;">
+                        <i class="fas fa-pen"></i> 📝 Grading Information
+                    </h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="font-size: 14px; font-weight: 500;">Graded By (Lecturer Name):</label>
+                        <input type="text" id="fast_graded" placeholder="Enter your name" style="flex: 1; margin-left: 20px; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                    </div>
+                </div>
+                
+                <!-- Footer Buttons -->
+                <div style="display: flex; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+                    <button id="saveNextBtn" style="flex: 1; padding: 14px; font-size: 16px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-save"></i> Save & Next Student (Enter)
                     </button>
+                    <button id="saveStayBtn" style="flex: 1; padding: 14px; font-size: 16px; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Save & Stay (Shift+Enter)
+                    </button>
+                    <button onclick="closeFastEntryModal()" style="flex: 0.5; padding: 14px; font-size: 16px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Close (ESC)
+                    </button>
+                </div>
+                
+                <!-- Keyboard Shortcuts -->
+                <div style="margin-top: 15px; text-align: center; font-size: 12px; color: #666; padding: 10px; background: #f8fafc; border-radius: 12px;">
+                    <i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> 
+                    <kbd style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">Enter</kbd> = Save & Next | 
+                    <kbd style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">Shift+Enter</kbd> = Save & Stay | 
+                    <kbd style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">ESC</kbd> = Close
                 </div>
             </div>
         </div>
