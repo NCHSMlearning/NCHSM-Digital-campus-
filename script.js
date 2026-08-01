@@ -621,6 +621,7 @@ async function loadSectionData(tabId) {
         case 'dashboard': 
             loadDashboardData(); 
             break;
+            
         case 'users': 
             // ✅ FIX: Call initManageUsers to populate filters AND load users
             if (typeof initManageUsers === 'function') {
@@ -629,9 +630,11 @@ async function loadSectionData(tabId) {
                 loadAllUsers(); 
             }
             break;
+            
         case 'pending': 
             loadPendingApprovals(); 
             break;
+            
         case 'enroll': 
             loadStudents(); 
             // Initialize enrollment dropdowns
@@ -639,58 +642,101 @@ async function loadSectionData(tabId) {
             updateBlockTermOptions('account-program', 'account-block-term');
             updateBlockTermOptions('promote_intake', 'promote_from_block');
             updateBlockTermOptions('promote_intake', 'promote_to_block');
-            break; 
-        case 'courses': 
-            loadCourses(); 
-            updateProgramDropdown($('course-program'));
-            updateBlockTermOptions('course-program', 'course-block');
             break;
+            
+        // ============================================================
+        // 📚 UNITS MANAGEMENT - RENAMED FROM "courses"
+        // ============================================================
+        case 'units':
+        case 'unit-management':  // Keep both for compatibility
+            console.log('📚 Loading Units Management...');
+            if (typeof loadAllUnits === 'function') {
+                loadAllUnits();
+            } else if (typeof loadUnits === 'function') {
+                loadUnits();
+            } else {
+                loadCourses(); // Fallback for backward compatibility
+            }
+            // Initialize unit form dropdowns
+            const unitProgramSelect = document.getElementById('new_unit_program');
+            if (unitProgramSelect && typeof updateProgramDropdown === 'function') {
+                updateProgramDropdown(unitProgramSelect);
+            }
+            // Populate block options based on selected program
+            if (typeof updateUnitBlockOptions === 'function') {
+                const program = unitProgramSelect?.value || 'KRCHN';
+                updateUnitBlockOptions(program);
+            }
+            // Load blocks for filter
+            if (typeof loadUnitBlocks === 'function') {
+                loadUnitBlocks();
+            }
+            // Load registration stats
+            if (typeof loadUnitRegistrationStats === 'function') {
+                loadUnitRegistrationStats();
+            }
+            // Load pending registrations
+            if (typeof loadUnitPendingRegistrations === 'function') {
+                loadUnitPendingRegistrations();
+            }
+            // Load approved registrations
+            if (typeof loadApprovedRegistrations === 'function') {
+                loadApprovedRegistrations();
+            }
+            break;
+            
         case 'programs': 
             loadAllPrograms(); 
             populateCourseSelector();
             break;
+            
         case 'sessions': 
             loadScheduledSessions(); 
             updateProgramDropdown($('new_session_program'));
             updateBlockTermOptions('new_session_program', 'new_session_block_term');
             populateSessionCourseSelects(); 
             break;
+            
         case 'reviews-newsletter': 
             initReviewsNewsletter(); 
             break;
+            
         case 'attendance': 
             loadAttendance(); 
             updateProgramDropdown($('att_program'));
             populateAttendanceSelects(); 
+            // ✅ Update block/term options for attendance filter
+            if (typeof updateAttendanceBlockOptions === 'function') {
+                setTimeout(updateAttendanceBlockOptions, 200);
+            }
             break;
+            
         case 'cats': 
             loadExams(); 
             updateProgramDropdown($('exam_program'));
             updateBlockTermOptions('exam_program', 'exam_block_term');
             populateExamCourseSelects(); 
             break;
+            
         case 'support-tickets': 
             loadAdminTickets(); 
             break;
+            
         case 'messages': 
             loadAdminMessages(); 
             updateProgramDropdown($('msg_program'));
             loadWelcomeMessageForEdit(); 
             break;
+            
         case 'calendar': 
             renderFullCalendar(); 
             break;
-        case 'unit-management': 
-            loadAllUnits(); 
-            loadUnitBlocks();
-            loadUnitRegistrationStats();
-            loadUnitPendingRegistrations(); 
-            loadApprovedRegistrations();
-            break;
+            
         case 'fee-accounts': 
             loadStudentAccounts();
             loadFeeStructure();
             break;
+            
         case 'resources': 
             if (typeof loadAllResources === 'function') {
                 loadAllResources();
@@ -700,51 +746,67 @@ async function loadSectionData(tabId) {
             updateProgramDropdown($('resource_program'));
             updateBlockTermOptions('resource_program', 'resource_block');
             break;
+            
         case 'welcome-editor': 
             loadWelcomeMessageForEdit(); 
-            break; 
+            break;
+            
         case 'audit': 
             loadAuditLogs(); 
-            break; 
+            break;
+            
         case 'security': 
             loadSystemStatus(); 
-            break; 
+            break;
+            
         case 'backup': 
             loadBackupHistory(); 
             break;
+            
         case 'system-health': 
             loadSystemHealth(); 
             break;
+            
         case 'user-analytics': 
             loadUserAnalytics(); 
             break;
+            
         case 'task-scheduler': 
             loadScheduledTasks(); 
             break;
+            
         case 'bulk-operations': 
             loadBulkOperations(); 
             break;
+            
         case 'api-management': 
             loadAPIKeys(); 
             break;
+            
         case 'notification-center': 
             loadNotifications(); 
             break;
+            
         case 'quick-actions': 
             loadQuickActions(); 
             break;
+            
         case 'security-2fa': 
             load2FASettings(); 
             break;
+            
         case 'session-management': 
             loadActiveSessions(); 
             break;
+            
         case 'error-tracking': 
             loadErrorLogs(); 
             break;
+            
         case 'data-visualization': 
             loadDataVisualization(); 
             break;
+            
         // ========== STAFF MANAGEMENT ==========
         case 'staff-management': 
             if (typeof initStaffManagement === 'function') {
@@ -753,6 +815,7 @@ async function loadSectionData(tabId) {
                 loadAllStaff();
             }
             break;
+            
         // ========== ADMIN APPROVALS ==========
         case 'admin-approvals':
             if (typeof loadAdminActions === 'function') {
@@ -762,6 +825,7 @@ async function loadSectionData(tabId) {
                 loadApprovalHistory();
             }
             break;
+            
         // ========== MARKS ENTRY ==========
         case 'marks-entry':
             console.log('📊 Loading Marks Entry section...');
@@ -806,6 +870,7 @@ async function loadSectionData(tabId) {
                 `;
             }
             break;
+            
         // ========== ENTRY CONTROL ==========
         case 'entry-control':
             console.log('🔒 Loading Entry Control Panel...');
@@ -824,7 +889,8 @@ async function loadSectionData(tabId) {
                 }
             }
             break;
-        // ========== MARKS APPROVAL - NEW ==========
+            
+        // ========== MARKS APPROVAL ==========
         case 'marks-approval':
             console.log('✅ Loading Marks Approval section...');
             if (typeof loadMarksApprovals === 'function') {
@@ -842,7 +908,89 @@ async function loadSectionData(tabId) {
                 }
             }
             break;
+            
+        // ========== PUBLISH MARKS ==========
+        case 'publish-marks':
+            console.log('📤 Loading Published Marks...');
+            if (typeof loadPublishedMarks === 'function') {
+                loadPublishedMarks();
+            } else {
+                console.warn('⚠️ loadPublishedMarks function not found');
+                const container = document.getElementById('publishedMarksContainer');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <div class="loading-spinner"></div>
+                            <p style="color: #6b7280; margin-top: 10px;">Loading published marks...</p>
+                        </div>
+                    `;
+                }
+            }
+            break;
+            
+        // ========== TRANSCRIPT GENERATOR ==========
+        case 'transcript-generator':
+            console.log('📄 Loading Transcript Generator...');
+            if (typeof loadTranscriptGenerator === 'function') {
+                loadTranscriptGenerator();
+            } else {
+                console.warn('⚠️ loadTranscriptGenerator function not found');
+                const container = document.getElementById('transcriptGeneratorContainer');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <div class="loading-spinner"></div>
+                            <p style="color: #6b7280; margin-top: 10px;">Loading transcript generator...</p>
+                        </div>
+                    `;
+                }
+            }
+            break;
+            
+        // ========== ANALYTICS MODULE ==========
+        case 'analytics-module':
+            console.log('📊 Loading Analytics Module...');
+            if (typeof loadAnalyticsModule === 'function') {
+                loadAnalyticsModule();
+            } else if (typeof loadExamAnalytics === 'function') {
+                loadExamAnalytics();
+            } else {
+                console.warn('⚠️ Analytics module function not found');
+                const container = document.getElementById('analyticsContainer');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px;">
+                            <div class="loading-spinner"></div>
+                            <p style="color: #6b7280; margin-top: 10px;">Loading analytics...</p>
+                        </div>
+                    `;
+                }
+            }
+            break;
+            
+        // ========== NURSING SYSTEM ==========
+        case 'nursing-system':
+            console.log('🏥 Loading Nursing School System...');
+            if (typeof loadNursingSystemData === 'function') {
+                loadNursingSystemData();
+            } else {
+                console.warn('⚠️ loadNursingSystemData function not found');
+            }
+            break;
+            
         // ====================================================
+        // DEFAULT - Try to load any function that matches
+        // ====================================================
+        default:
+            console.log(`📋 Loading tab: ${tabId}`);
+            // Try to call a function with the same name
+            const funcName = 'load' + tabId.charAt(0).toUpperCase() + tabId.slice(1).replace(/-/g, '');
+            if (typeof window[funcName] === 'function') {
+                window[funcName]();
+            } else {
+                console.warn(`⚠️ No handler found for tab: ${tabId}`);
+            }
+            break;
     }
 }
 /*******************************************************
@@ -4291,160 +4439,504 @@ window.handleEditUser = handleEditUser;
 console.log('✅ Users Management fully optimized and exposed to global scope!');
 
 /*******************************************************
- * 10. COURSES MANAGEMENT
+ * 10. UNIT MANAGEMENT - COMPLETE TVET/KRCHN SUPPORT
+ * Renamed from "Courses" to "Units" for accuracy
+ * Uses units_catalog table
  *******************************************************/
-async function handleAddCourse(e) {
+
+// ============================================================
+// ADD UNIT - COMPLETE TVET SUPPORT
+// ============================================================
+
+async function handleAddUnit(e) {
     e.preventDefault();
     const submitButton = e.submitter;
     const originalText = submitButton.textContent;
     setButtonLoading(submitButton, true, originalText);
 
-    const course_name = $('course-name').value.trim();
-    const unit_code = $('course-unit-code').value.trim(); 
-    const description = $('course-description').value.trim();
-    const target_program = $('course-program').value; 
-    const intake_year = $('course-intake').value; 
-    const block = $('course-block').value; 
+    const unit_code = document.getElementById('new_unit_code').value.trim();
+    const unit_name = document.getElementById('new_unit_name').value.trim();
+    const description = document.getElementById('new_unit_description')?.value.trim() || '';
+    const target_program = document.getElementById('new_unit_program').value;
+    const year = parseInt(document.getElementById('new_unit_year').value);
+    const block = document.getElementById('new_unit_block').value;
+    const credits = parseInt(document.getElementById('new_unit_credits').value) || 3;
+    const hours = parseInt(document.getElementById('new_unit_hours').value) || 30;
+    const unit_type = document.getElementById('new_unit_type').value;
+    const prerequisites = document.getElementById('new_unit_prerequisites').value.trim() || null;
     
-    if (!course_name || !target_program || !unit_code) {
-        showFeedback('Course Name, Unit Code, and Target Program are required.', 'error');
+    if (!unit_code || !unit_name || !target_program || !year || !block) {
+        showFeedback('Unit Code, Unit Name, Program, Year, and Block/Term are required.', 'error');
         setButtonLoading(submitButton, false, originalText);
         return;
     }
 
     try {
-        const { error } = await sb.from('courses').insert({ 
-            course_name, 
-            unit_code, 
-            description, 
-            target_program, 
-            intake_year, 
-            block,
-            status: 'Active'
-        });
+        // Check for duplicate unit_code
+        const { data: existing, error: checkError } = await sb
+            .from('units_catalog')
+            .select('unit_code')
+            .eq('unit_code', unit_code)
+            .maybeSingle();
+        
+        if (checkError) throw checkError;
+        
+        if (existing) {
+            showFeedback(`⚠️ Unit code "${unit_code}" already exists!`, 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return;
+        }
 
+        const unitData = {
+            unit_code: unit_code,
+            unit_name: unit_name,
+            description: description,
+            program: target_program,
+            year: year,
+            block: block,
+            credits: credits,
+            hours: hours,
+            unit_type: unit_type || 'Core',
+            prerequisites: prerequisites,
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        console.log('📤 Adding unit with data:', unitData);
+
+        const { error } = await sb.from('units_catalog').insert(unitData);
         if (error) throw error;
         
-        await logAudit('COURSE_ADD', `Successfully added course: ${unit_code} - ${course_name}.`, null, 'SUCCESS');
-        showFeedback('Course added successfully!', 'success');
-        e.target.reset();
-        loadCourses();
+        await logAudit('UNIT_ADD', `Successfully added unit: ${unit_code} - ${unit_name} (${target_program}, ${block})`, null, 'SUCCESS');
+        showFeedback(`✅ Unit "${unit_code} - ${unit_name}" added successfully!`, 'success');
+        
+        // Reset form
+        document.getElementById('add-unit-form')?.reset();
+        document.getElementById('new_unit_block').value = '';
+        document.getElementById('new_unit_description').value = '';
+        
+        // Refresh units list
+        if (typeof loadAllUnits === 'function') {
+            loadAllUnits();
+        } else {
+            loadUnits();
+        }
 
     } catch (error) {
-        await logAudit('COURSE_ADD', `Failed to add course ${unit_code}. Reason: ${error.message}`, null, 'FAILURE');
-        showFeedback(`Failed to add course: ${error.message}`, 'error');
+        await logAudit('UNIT_ADD', `Failed to add unit ${unit_code}. Reason: ${error.message}`, null, 'FAILURE');
+        showFeedback(`❌ Failed to add unit: ${error.message}`, 'error');
     } finally {
         setButtonLoading(submitButton, false, originalText);
     }
 }
 
-async function loadCourses() {
-    const tbody = $('courses-table');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="6">Loading courses...</td></tr>';
+// ============================================================
+// LOAD UNITS - COMPLETE TVET SUPPORT
+// ============================================================
 
-    const { data: courses, error } = await fetchData('courses', '*', {}, 'course_name', true);
-    if (error) { tbody.innerHTML = `<tr><td colspan="6">Error loading courses: ${error.message}</td></tr>`; return; }
+async function loadUnits() {
+    const tbody = document.getElementById('units-table-body');
+    if (!tbody) {
+        // Fallback to old ID if it exists
+        const oldTbody = document.getElementById('courses-table');
+        if (oldTbody) {
+            oldTbody.innerHTML = '<tr><td colspan="6">Loading units...</td></tr>';
+            // Use the old variable
+            const coursesTbody = oldTbody;
+            const { data: units, error } = await fetchData('units_catalog', '*', {}, 'unit_code', true);
+            if (error) { 
+                coursesTbody.innerHTML = `<tr><td colspan="6">Error loading units: ${error.message}</td></tr>`; 
+                return; 
+            }
+
+            coursesTbody.innerHTML = '';
+            units.forEach(u => {
+                const isTVET = isTVETProgram(u.program);
+                const blockLabel = isTVET ? 'Term' : 'Block';
+                const programType = getProgramType(u.program);
+                const programBadge = programType === 'TVET' 
+                    ? '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">🔧 TVET</span>'
+                    : '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">🎓 KRCHN</span>';
+
+                coursesTbody.innerHTML += `<tr>
+                    <td><strong>${escapeHtml(u.unit_code)}</strong></td>
+                    <td>${escapeHtml(u.unit_name)}</td>
+                    <td>
+                        ${escapeHtml(u.program || 'N/A')}
+                        ${programBadge}
+                    </td>
+                    <td>${escapeHtml(u.year || 'N/A')}</td>
+                    <td>${escapeHtml(blockLabel)}: ${escapeHtml(u.block || 'N/A')}</td>
+                    <td>
+                        <button class="btn-action" onclick="openEditUnitModal('${u.id}', '${escapeHtml(u.unit_code)}', '${escapeHtml(u.unit_name)}', '${escapeHtml(u.description || '')}', '${escapeHtml(u.program || '')}', '${u.year || ''}', '${escapeHtml(u.block || '')}', '${u.credits || 3}', '${u.hours || 0}', '${escapeHtml(u.unit_type || 'Core')}', '${escapeHtml(u.prerequisites || '')}')">Edit</button>
+                        <button class="btn btn-delete" onclick="deleteUnit('${u.id}', '${escapeHtml(u.unit_code)}')">Delete</button>
+                    </td>
+                </tr>`;
+            });
+            
+            filterTable('unit-search', 'courses-table', [0, 1, 3]);
+            return;
+        }
+        console.warn('⚠️ units-table-body not found');
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="7">Loading units...</td></tr>';
+
+    const { data: units, error } = await fetchData('units_catalog', '*', {}, 'unit_code', true);
+    if (error) { 
+        tbody.innerHTML = `<tr><td colspan="7">Error loading units: ${error.message}</td></tr>`; 
+        return; 
+    }
+
+    if (!units || units.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">No units found. Click "Add Unit" to create one.</td></tr>`;
+        return;
+    }
 
     tbody.innerHTML = '';
-    courses.forEach(c => {
-        const courseNameAttr = escapeHtml(c.course_name, true);
-        const unitCodeAttr = escapeHtml(c.unit_code || '', true);
-        const descriptionAttr = escapeHtml(c.description || '', true);
-        const programTypeAttr = escapeHtml(c.target_program || '', true); 
-        const intakeYearAttr = escapeHtml(c.intake_year || '', true);     
-        const blockAttr = escapeHtml(c.block || '', true);              
+    units.forEach(u => {
+        const isTVET = isTVETProgram(u.program);
+        const blockLabel = isTVET ? 'Term' : 'Block';
+        const programType = getProgramType(u.program);
+        const programDisplay = getProgramDisplayName(u.program);
+        const programBadge = programType === 'TVET' 
+            ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block;">🔧 TVET</span>'
+            : '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block;">🎓 KRCHN</span>';
+        
+        const typeColor = u.unit_type === 'Core' ? '#2563eb' : 
+                         u.unit_type === 'Elective' ? '#d97706' : 
+                         u.unit_type === 'Clinical' ? '#059669' : '#6b7280';
+        const typeBg = u.unit_type === 'Core' ? '#dbeafe' : 
+                       u.unit_type === 'Elective' ? '#fef3c7' : 
+                       u.unit_type === 'Clinical' ? '#d1fae5' : '#f3f4f6';
+        
+        const unitTypeBadge = `<span style="background: ${typeBg}; color: ${typeColor}; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">${escapeHtml(u.unit_type || 'Core')}</span>`;
+        
+        const statusBadge = u.status === 'active' 
+            ? '<span style="background: #d1fae5; color: #059669; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">✅ Active</span>'
+            : '<span style="background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">❌ Inactive</span>';
 
         tbody.innerHTML += `<tr>
-            <td>${escapeHtml(c.course_name)}</td>
-            <td>${escapeHtml(c.unit_code || 'N/A')}</td>
-            <td>${escapeHtml(c.target_program || 'N/A')}</td>
-            <td>${escapeHtml(c.intake_year || 'N/A')}</td>
-            <td>${escapeHtml(c.block || 'N/A')}</td>
+            <td><strong>${escapeHtml(u.unit_code)}</strong></td>
+            <td>${escapeHtml(u.unit_name)}</td>
             <td>
-                <button class="btn-action" onclick="openEditCourseModal('${c.id}', '${courseNameAttr}', '${unitCodeAttr}', '${descriptionAttr}', '${programTypeAttr}', '${intakeYearAttr}', '${blockAttr}')">Edit</button>
-                <button class="btn btn-delete" onclick="deleteCourse('${c.id}', '${unitCodeAttr}')">Delete</button>
+                <div style="font-weight: 500; font-size: 13px;">${escapeHtml(programDisplay)}</div>
+                ${programBadge}
+            </td>
+            <td>${escapeHtml(u.year || 'N/A')}</td>
+            <td>
+                <span style="background: ${isTVET ? '#fef3c7' : '#e0e7ff'}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; color: ${isTVET ? '#92400e' : '#1e40af'};">
+                    ${blockLabel}: ${escapeHtml(u.block || 'N/A')}
+                </span>
+            </td>
+            <td style="text-align: center;">
+                ${unitTypeBadge}
+                <br>
+                <small style="color: #6b7280;">${u.credits || 3} cr | ${u.hours || 0}h</small>
+            </td>
+            <td>${statusBadge}</td>
+            <td>
+                <button class="btn-action" onclick="openEditUnitModal('${u.id}', '${escapeHtml(u.unit_code)}', '${escapeHtml(u.unit_name)}', '${escapeHtml(u.description || '')}', '${escapeHtml(u.program || '')}', '${u.year || ''}', '${escapeHtml(u.block || '')}', '${u.credits || 3}', '${u.hours || 0}', '${escapeHtml(u.unit_type || 'Core')}', '${escapeHtml(u.prerequisites || '')}')">Edit</button>
+                <button class="btn btn-delete" onclick="deleteUnit('${u.id}', '${escapeHtml(u.unit_code)}')">Delete</button>
             </td>
         </tr>`;
     });
     
-    filterTable('course-search', 'courses-table', [0, 1, 3]); 
-    populateExamCourseSelects(courses);
-    populateSessionCourseSelects(courses);
-}
-
-async function deleteCourse(courseId, unitCode) {
-    if (!confirm(`Are you sure you want to delete course ${unitCode}? This cannot be undone.`)) return;
-    const { error } = await sb.from('courses').delete().eq('id', courseId);
-    if (error) { 
-        await logAudit('COURSE_DELETE', `Failed to delete course ID ${courseId}. Reason: ${error.message}`, courseId, 'FAILURE');
-        showFeedback(`Failed to delete course: ${error.message}`, 'error'); 
-    } 
-    else { 
-        await logAudit('COURSE_DELETE', `Successfully deleted course ${unitCode}.`, courseId, 'SUCCESS');
-        showFeedback('Course deleted successfully!', 'success'); 
-        loadCourses(); 
+    // Update count
+    const countEl = document.getElementById('unitCountDisplay');
+    if (countEl) countEl.textContent = units.length;
+    
+    // Filter functionality
+    const searchInput = document.getElementById('unit_search');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            filterUnitsTable(this.value);
+        });
     }
 }
 
-function openEditCourseModal(id, name, unit_code, description, target_program, intake_year, block) {
-    $('edit_course_id').value = id;
-    $('edit_course_name').value = name; 
-    $('edit_course_unit_code').value = unit_code; 
-    $('edit_course_description').value = description;
-    $('edit_course_program').value = target_program || ''; 
-    $('edit_course_intake').value = intake_year; 
-    
-    updateBlockTermOptions('edit_course_program', 'edit_course_block'); 
-    
-    setTimeout(() => {
-        $('edit_course_block').value = block;
-    }, 100);
+// ============================================================
+// FILTER UNITS TABLE
+// ============================================================
 
-    $('courseEditModal').style.display = 'flex'; 
+function filterUnitsTable(searchTerm) {
+    const rows = document.querySelectorAll('#units-table-body tr, #courses-table tbody tr');
+    const term = searchTerm?.toLowerCase() || '';
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+    });
 }
 
-async function handleEditCourse(e) {
+// ============================================================
+// DELETE UNIT
+// ============================================================
+
+async function deleteUnit(unitId, unitCode) {
+    if (!confirm(`⚠️ Are you sure you want to delete unit "${unitCode}"? This cannot be undone.`)) return;
+    
+    try {
+        // Check if unit has marks
+        const { data: marks, error: checkError } = await sb
+            .from('student_marks')
+            .select('id')
+            .eq('subject_name', unitCode)
+            .limit(1);
+        
+        if (checkError) {
+            console.warn('Could not check for marks:', checkError);
+        }
+        
+        if (marks && marks.length > 0) {
+            if (!confirm(`⚠️ This unit has ${marks.length} marks entries. Deleting it will remove all associated marks. Continue?`)) {
+                return;
+            }
+        }
+        
+        const { error } = await sb.from('units_catalog').delete().eq('id', unitId);
+        if (error) throw error;
+        
+        await logAudit('UNIT_DELETE', `Deleted unit ${unitCode}`, unitId, 'SUCCESS');
+        showFeedback(`✅ Unit "${unitCode}" deleted successfully!`, 'success');
+        
+        if (typeof loadAllUnits === 'function') {
+            loadAllUnits();
+        } else {
+            loadUnits();
+        }
+        
+    } catch (error) {
+        await logAudit('UNIT_DELETE', `Failed to delete unit ${unitCode}. Reason: ${error.message}`, unitId, 'FAILURE');
+        showFeedback(`❌ Failed to delete unit: ${error.message}`, 'error');
+    }
+}
+
+// ============================================================
+// OPEN EDIT UNIT MODAL - COMPLETE TVET SUPPORT
+// ============================================================
+
+function openEditUnitModal(id, unit_code, unit_name, description, program, year, block, credits, hours, unit_type, prerequisites) {
+    // Set values
+    document.getElementById('edit_unit_id').value = id;
+    document.getElementById('edit_unit_code').value = unit_code;
+    document.getElementById('edit_unit_name').value = unit_name;
+    document.getElementById('edit_unit_description').value = description || '';
+    document.getElementById('edit_unit_year').value = year || '';
+    document.getElementById('edit_unit_credits').value = credits || 3;
+    document.getElementById('edit_unit_hours').value = hours || 0;
+    document.getElementById('edit_unit_type').value = unit_type || 'Core';
+    document.getElementById('edit_unit_prerequisites').value = prerequisites || '';
+    
+    // Set program
+    const programSelect = document.getElementById('edit_unit_program');
+    if (programSelect) {
+        programSelect.value = program || 'KRCHN';
+        // Trigger change to update block options
+        const changeEvent = new Event('change', { bubbles: true });
+        programSelect.dispatchEvent(changeEvent);
+    }
+    
+    // Set block after options are populated
+    setTimeout(() => {
+        const blockSelect = document.getElementById('edit_unit_block');
+        if (blockSelect && block) {
+            blockSelect.value = block;
+        }
+    }, 200);
+    
+    // Show modal
+    const modal = document.getElementById('editUnitModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+// ============================================================
+// HANDLE EDIT UNIT - COMPLETE TVET SUPPORT
+// ============================================================
+
+async function handleEditUnit(e) {
     e.preventDefault();
     const submitButton = e.submitter;
     const originalText = submitButton.textContent;
     setButtonLoading(submitButton, true, originalText);
 
-    const id = $('edit_course_id').value;
-    const name = $('edit_course_name').value.trim();
-    const unit_code = $('edit_course_unit_code').value.trim(); 
-    const description = $('edit_course_description').value.trim();
-    const target_program = $('edit_course_program').value;
-    const intake_year = $('edit_course_intake').value;
-    const block = $('edit_course_block').value;
+    const id = document.getElementById('edit_unit_id').value;
+    const unit_code = document.getElementById('edit_unit_code').value.trim();
+    const unit_name = document.getElementById('edit_unit_name').value.trim();
+    const description = document.getElementById('edit_unit_description').value.trim() || '';
+    const program = document.getElementById('edit_unit_program').value;
+    const year = parseInt(document.getElementById('edit_unit_year').value);
+    const block = document.getElementById('edit_unit_block').value;
+    const credits = parseInt(document.getElementById('edit_unit_credits').value) || 3;
+    const hours = parseInt(document.getElementById('edit_unit_hours').value) || 0;
+    const unit_type = document.getElementById('edit_unit_type').value;
+    const prerequisites = document.getElementById('edit_unit_prerequisites').value.trim() || null;
     
+    if (!unit_code || !unit_name || !program || !year || !block) {
+        showFeedback('Unit Code, Unit Name, Program, Year, and Block/Term are required.', 'error');
+        setButtonLoading(submitButton, false, originalText);
+        return;
+    }
+
     try {
-        const updateData = { 
-            course_name: name, 
-            unit_code: unit_code, 
-            description: description, 
-            target_program: target_program,
-            intake_year: intake_year,
-            block: block
+        const updateData = {
+            unit_code: unit_code,
+            unit_name: unit_name,
+            description: description,
+            program: program,
+            year: year,
+            block: block,
+            credits: credits,
+            hours: hours,
+            unit_type: unit_type || 'Core',
+            prerequisites: prerequisites,
+            updated_at: new Date().toISOString()
         };
         
-        const { error } = await sb.from('courses').update(updateData).eq('id', id); 
-
+        const { error } = await sb.from('units_catalog').update(updateData).eq('id', id);
         if (error) throw error;
 
-        await logAudit('COURSE_EDIT', `Updated course ${unit_code}.`, id, 'SUCCESS');
-        showFeedback('Course updated successfully!', 'success');
-        $('courseEditModal').style.display = 'none';
-        loadCourses(); 
+        await logAudit('UNIT_EDIT', `Updated unit ${unit_code}`, id, 'SUCCESS');
+        showFeedback(`✅ Unit "${unit_code}" updated successfully!`, 'success');
+        
+        // Close modal
+        const modal = document.getElementById('editUnitModal');
+        if (modal) modal.style.display = 'none';
+        
+        // Refresh units list
+        if (typeof loadAllUnits === 'function') {
+            loadAllUnits();
+        } else {
+            loadUnits();
+        }
+        
     } catch (e) {
-        await logAudit('COURSE_EDIT', `Failed to update course ID ${id}. Reason: ${e.message}`, id, 'FAILURE');
-        showFeedback('Failed to update course: ' + (e.message || e), 'error');
+        await logAudit('UNIT_EDIT', `Failed to update unit ID ${id}. Reason: ${e.message}`, id, 'FAILURE');
+        showFeedback(`❌ Failed to update unit: ${e.message}`, 'error');
     } finally {
         setButtonLoading(submitButton, false, originalText);
     }
 }
 
+// ============================================================
+// EXPORT UNITS TO CSV
+// ============================================================
+
+function exportUnitsToCSV() {
+    const rows = document.querySelectorAll('#units-table-body tr, #courses-table tbody tr');
+    let csv = 'Unit Code,Unit Name,Program,Year,Block/Term,Type,Credits,Hours,Status\n';
+    
+    rows.forEach(row => {
+        if (row.style.display === 'none') return;
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 7) return;
+        
+        const unitCode = cells[0]?.textContent?.trim() || '';
+        const unitName = cells[1]?.textContent?.trim() || '';
+        const program = cells[2]?.textContent?.trim() || '';
+        const year = cells[3]?.textContent?.trim() || '';
+        const block = cells[4]?.textContent?.trim() || '';
+        const type = cells[5]?.textContent?.trim() || '';
+        const status = cells[6]?.textContent?.trim() || '';
+        
+        csv += `"${unitCode}","${unitName}","${program}","${year}","${block}","${type}","${status}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Units_Export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showFeedback('✅ Units exported successfully!', 'success');
+}
+
+// ============================================================
+// FILTER UNITS BY PROGRAM TYPE
+// ============================================================
+
+function filterUnitsByProgramType() {
+    const filter = document.getElementById('unit_program_type_filter')?.value || 'all';
+    const rows = document.querySelectorAll('#units-table-body tr, #courses-table tbody tr');
+    
+    rows.forEach(row => {
+        const programCell = row.querySelector('td:nth-child(3)') || row.cells[2];
+        if (!programCell) return;
+        
+        const programText = programCell.textContent || '';
+        const isTVET = programText.includes('TVET') || programText.includes('🔧');
+        const isKRCHN = programText.includes('KRCHN') || programText.includes('🎓');
+        
+        let show = true;
+        if (filter === 'krchn') show = isKRCHN;
+        else if (filter === 'tvet') show = isTVET;
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+// ============================================================
+// RESET UNIT FILTERS
+// ============================================================
+
+function resetUnitFilters() {
+    const search = document.getElementById('unit_search');
+    const program = document.getElementById('unit_filter_program');
+    const year = document.getElementById('unit_filter_year');
+    const block = document.getElementById('unit_filter_block');
+    const type = document.getElementById('unit_program_type_filter');
+    
+    if (search) search.value = '';
+    if (program) program.value = '';
+    if (year) year.value = '';
+    if (block) block.value = '';
+    if (type) type.value = 'all';
+    
+    // Show all rows
+    document.querySelectorAll('#units-table-body tr, #courses-table tbody tr').forEach(row => {
+        row.style.display = '';
+    });
+}
+
+// ============================================================
+// LEGACY SUPPORT - Keep old function names for compatibility
+// ============================================================
+
+// Alias for old "Courses" functions
+const handleAddCourse = handleAddUnit;
+const loadCourses = loadUnits;
+const deleteCourse = deleteUnit;
+const openEditCourseModal = openEditUnitModal;
+const handleEditCourse = handleEditUnit;
+const exportCoursesToCSV = exportUnitsToCSV;
+
+// ============================================================
+// EXPOSE FUNCTIONS TO GLOBAL SCOPE
+// ============================================================
+
+window.handleAddUnit = handleAddUnit;
+window.loadUnits = loadUnits;
+window.deleteUnit = deleteUnit;
+window.openEditUnitModal = openEditUnitModal;
+window.handleEditUnit = handleEditUnit;
+window.exportUnitsToCSV = exportUnitsToCSV;
+window.filterUnitsTable = filterUnitsTable;
+window.filterUnitsByProgramType = filterUnitsByProgramType;
+window.resetUnitFilters = resetUnitFilters;
+
+// Legacy aliases
+window.handleAddCourse = handleAddUnit;
+window.loadCourses = loadUnits;
+window.deleteCourse = deleteUnit;
+window.openEditCourseModal = openEditUnitModal;
+window.handleEditCourse = handleEditUnit;
+window.exportCoursesToCSV = exportUnitsToCSV;
+
+console.log('✅ Unit Management module loaded (TVET/KRCHN support)!');
 /*******************************************************
  * 11. SESSIONS & CLINICAL MANAGEMENT
  *******************************************************/
@@ -4580,8 +5072,13 @@ async function deleteSession(sessionId, sessionTitle) {
 }
 
 /*******************************************************
- * 12. ATTENDANCE MANAGEMENT
+ * 12. ATTENDANCE MANAGEMENT - COMPLETE TVET/KRCHN SUPPORT
  *******************************************************/
+
+// ============================================================
+// TOGGLE ATTENDANCE FIELDS - UPDATED
+// ============================================================
+
 function toggleAttendanceFields() {
     const sessionType = $('att_session_type')?.value;
     const departmentInput = $('att_department');
@@ -4590,34 +5087,87 @@ function toggleAttendanceFields() {
     if (!departmentInput) return;
 
     if (sessionType === 'clinical') {
-        departmentInput.placeholder = "Clinical Department/Area";
+        departmentInput.placeholder = "🏥 Clinical Department/Area";
         departmentInput.required = true;
         if (courseSelect) { courseSelect.required = false; courseSelect.value = ""; }
     } else if (sessionType === 'classroom') {
-        departmentInput.placeholder = "Classroom Location/Room (Optional)";
+        departmentInput.placeholder = "📚 Classroom Location/Room";
         departmentInput.required = false;
         if (courseSelect) courseSelect.required = true;
+    } else if (sessionType === 'virtual') {
+        departmentInput.placeholder = "💻 Virtual Platform (e.g., Zoom, Google Meet)";
+        departmentInput.required = false;
+        if (courseSelect) { courseSelect.required = false; courseSelect.value = ""; }
+    } else if (sessionType === 'call') {
+        departmentInput.placeholder = "📞 On Call - Department/Unit";
+        departmentInput.required = true;
+        if (courseSelect) { courseSelect.required = false; courseSelect.value = ""; }
     } else {
-        departmentInput.placeholder = "Location/Detail (Optional)";
+        departmentInput.placeholder = "📍 Location/Detail (Optional)";
         departmentInput.required = false;
         if (courseSelect) { courseSelect.required = false; courseSelect.value = ""; }
     }
 }
 
-async function populateAttendanceSelects() {
-    const { data: students } = await fetchData(USER_PROFILE_TABLE, 'user_id, full_name, role', { role: 'student' }, 'full_name', true);
-    populateSelect($('att_student_id'), students, 'user_id', 'full_name', 'Select Student');
+// ============================================================
+// POPULATE ATTENDANCE SELECTS - WITH TVET/KRCHN SUPPORT
+// ============================================================
 
-    const { data: courses } = await fetchData('courses', 'id, course_name', {}, 'course_name', true);
-    populateSelect($('att_course_id'), courses, 'id', 'course_name', 'Select Course (For Classroom)');
+async function populateAttendanceSelects() {
+    // Load students with program and block info
+    const { data: students } = await fetchData(
+        USER_PROFILE_TABLE, 
+        'user_id, full_name, program, block, role', 
+        { role: 'student', status: 'approved' }, 
+        'full_name', 
+        true
+    );
+    
+    const studentSelect = $('att_student_id');
+    if (studentSelect) {
+        studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+        if (students) {
+            students.forEach(s => {
+                const isTVET = isTVETProgram(s.program);
+                const blockLabel = isTVET ? 'Term' : 'Block';
+                const programDisplay = getProgramDisplayName(s.program);
+                const programBadge = isTVET ? '🔧' : '🎓';
+                const opt = document.createElement('option');
+                opt.value = s.user_id;
+                opt.textContent = `${s.full_name} (${programBadge} ${programDisplay} - ${blockLabel}: ${s.block || 'N/A'})`;
+                studentSelect.appendChild(opt);
+            });
+        }
+    }
+
+    // Load courses/units from units_catalog
+    const { data: units } = await fetchData('units_catalog', 'id, unit_code, unit_name, program', { status: 'active' }, 'unit_name', true);
+    const courseSelect = $('att_course_id');
+    if (courseSelect) {
+        courseSelect.innerHTML = '<option value="">-- Select Unit/Course --</option>';
+        if (units) {
+            units.forEach(u => {
+                const isTVET = isTVETProgram(u.program);
+                const programBadge = isTVET ? '🔧' : '🎓';
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = `${u.unit_code} - ${u.unit_name} (${programBadge} ${getProgramDisplayName(u.program)})`;
+                courseSelect.appendChild(opt);
+            });
+        }
+    }
 }
+
+// ============================================================
+// APPROVE ATTENDANCE RECORD
+// ============================================================
 
 async function approveAttendanceRecord(recordId) {
     if (!currentUserProfile?.id) {
         showFeedback('Error: Admin ID not found for verification.', 'error');
         return;
     }
-    if (!confirm('Approve this attendance record?')) return;
+    if (!confirm('✅ Approve this attendance record?')) return;
 
     try {
         const { error } = await sb
@@ -4631,29 +5181,37 @@ async function approveAttendanceRecord(recordId) {
 
         if (error) throw error;
         await logAudit('ATTENDANCE_APPROVE', `Approved attendance record ID ${recordId}.`, recordId, 'SUCCESS');
-        showFeedback('Attendance approved successfully!', 'success');
+        showFeedback('✅ Attendance approved successfully!', 'success');
         loadAttendance();
     } catch (err) {
         await logAudit('ATTENDANCE_APPROVE', `Failed to approve attendance ID ${recordId}. Reason: ${err.message}`, recordId, 'FAILURE');
         console.error('Approval failed:', err);
-        showFeedback(`Failed to approve record: ${err.message}`, 'error');
+        showFeedback(`❌ Failed to approve record: ${err.message}`, 'error');
     }
 }
 
+// ============================================================
+// DELETE ATTENDANCE RECORD
+// ============================================================
+
 async function deleteAttendanceRecord(recordId) {
-    if (!confirm('Permanently delete this attendance record?')) return;
+    if (!confirm('⚠️ Permanently delete this attendance record?')) return;
     try {
         const { error } = await sb.from('geo_attendance_logs').delete().eq('id', recordId);
         if (error) throw error;
         await logAudit('ATTENDANCE_DELETE', `Deleted attendance record ID ${recordId}.`, recordId, 'SUCCESS');
-        showFeedback('Attendance record deleted.', 'success');
+        showFeedback('🗑️ Attendance record deleted.', 'success');
         loadAttendance();
     } catch (err) {
         await logAudit('ATTENDANCE_DELETE', `Failed to delete attendance ID ${recordId}. Reason: ${err.message}`, recordId, 'FAILURE');
         console.error('Delete failed:', err);
-        showFeedback(`Failed to delete record: ${err.message}`, 'error');
+        showFeedback(`❌ Failed to delete record: ${err.message}`, 'error');
     }
 }
+
+// ============================================================
+// SHOW MAP
+// ============================================================
 
 function showMap(lat, lng, locationName, studentName, dateTime) {
     const modal = $('mapModal');
@@ -4685,9 +5243,13 @@ function showMap(lat, lng, locationName, studentName, dateTime) {
     }, 300);
 }
 
+// ============================================================
+// ADMIN CHECK-IN
+// ============================================================
+
 async function adminCheckIn() {
     if (!navigator.geolocation) {
-        showFeedback('Geolocation is not supported by this browser.', 'error');
+        showFeedback('❌ Geolocation is not supported by this browser.', 'error');
         return;
     }
 
@@ -4712,13 +5274,17 @@ async function adminCheckIn() {
         if (error) throw error;
 
         await logAudit('ADMIN_CHECKIN', `Admin self check-in at ${checkInData.location_name}`, null, 'SUCCESS');
-        showFeedback('Admin check-in recorded successfully!', 'success');
+        showFeedback('✅ Admin check-in recorded successfully!', 'success');
         loadAttendance();
     } catch (error) {
         await logAudit('ADMIN_CHECKIN', `Failed admin check-in: ${error.message}`, null, 'FAILURE');
-        showFeedback(`Check-in failed: ${error.message}`, 'error');
+        showFeedback(`❌ Check-in failed: ${error.message}`, 'error');
     }
 }
+
+// ============================================================
+// HANDLE MANUAL ATTENDANCE - WITH TVET SUPPORT
+// ============================================================
 
 async function handleManualAttendance(e) {
     e.preventDefault();
@@ -4730,6 +5296,8 @@ async function handleManualAttendance(e) {
     const session_type = $('att_session_type').value;
     const date = $('att_date').value;
     const time = $('att_time').value;
+    const program = $('att_program')?.value || null;
+    const block_term = $('att_block_term')?.value || null;
     const course_id = session_type === 'classroom' ? $('att_course_id').value : null;
     const department = $('att_department').value.trim() || null;
     const location_name = $('att_location').value.trim() || 'Manual Admin Entry';
@@ -4739,10 +5307,28 @@ async function handleManualAttendance(e) {
     else if (date) check_in_time = new Date(date).toISOString();
 
     if (!student_id || (session_type === 'classroom' && !course_id)) {
-        showFeedback('Please select a student and required fields.', 'error');
+        showFeedback('⚠️ Please select a student and required fields.', 'error');
         setButtonLoading(submitButton, false, originalText);
         return;
     }
+
+    // Get student program and block info
+    let studentProgram = program;
+    let studentBlock = block_term;
+    if (!studentProgram || !studentBlock) {
+        const { data: student } = await sb
+            .from(USER_PROFILE_TABLE)
+            .select('program, block')
+            .eq('user_id', student_id)
+            .single();
+        if (student) {
+            studentProgram = studentProgram || student.program;
+            studentBlock = studentBlock || student.block;
+        }
+    }
+    
+    const isTVET = isTVETProgram(studentProgram);
+    const blockLabel = isTVET ? 'Term' : 'Block';
 
     const attendanceData = {
         student_id,
@@ -4750,13 +5336,17 @@ async function handleManualAttendance(e) {
         check_in_time,
         department,
         course_id,
+        program: studentProgram,
+        block_term: studentBlock,
         is_manual_entry: true,
         latitude: null,
         longitude: null,
         location_name,
         ip_address: await getIPAddress(),
         device_id: getDeviceId(),
-        target_name: session_type === 'clinical' ? department : $('att_course_id')?.selectedOptions[0]?.text || null
+        target_name: session_type === 'clinical' ? department : 
+                     session_type === 'classroom' ? $('att_course_id')?.selectedOptions[0]?.text || null :
+                     department || location_name
     };
 
     try {
@@ -4764,96 +5354,244 @@ async function handleManualAttendance(e) {
         if (error) throw error;
         
         await logAudit('ATTENDANCE_MANUAL', `Recorded manual attendance for student ${student_id} for ${session_type}.`, data?.[0]?.id, 'SUCCESS');
-        showFeedback('Manual attendance recorded successfully!', 'success'); 
+        showFeedback(`✅ Manual attendance recorded successfully! (${isTVET ? 'TVET' : 'KRCHN'})`, 'success'); 
         e.target.reset(); 
         loadAttendance(); 
         toggleAttendanceFields(); 
 
     } catch (error) {
         await logAudit('ATTENDANCE_MANUAL', `Failed manual attendance for student ${student_id}. Reason: ${error.message}`, student_id, 'FAILURE');
-        showFeedback(`Failed to record attendance: ${error.message}`, 'error');
+        showFeedback(`❌ Failed to record attendance: ${error.message}`, 'error');
     } finally {
         setButtonLoading(submitButton, false, originalText);
     }
 }
 
+// ============================================================
+// LOAD ATTENDANCE - WITH TVET/KRCHN SUPPORT
+// ============================================================
+
 async function loadAttendance() {
-    const todayBody = $('attendance-table');
-    const pastBody = $('past-attendance-table');
+    const todayBody = document.getElementById('attendance-table-body') || $('attendance-table');
+    const pastBody = document.getElementById('past-attendance-table-body') || $('past-attendance-table');
     if (!todayBody || !pastBody) return;
     
-    todayBody.innerHTML = '<tr><td colspan="7">Loading today\'s records...</td></tr>';
-    pastBody.innerHTML = '<tr><td colspan="6">Loading history...</td></tr>';
+    todayBody.innerHTML = '<tr><td colspan="8">Loading today\'s records...</td></tr>';
+    pastBody.innerHTML = '<tr><td colspan="7">Loading history...</td></tr>';
 
     const todayISO = new Date().toISOString().slice(0,10);
+    
+    // Get filter values
+    const searchTerm = document.getElementById('attendance_search')?.value?.toLowerCase() || '';
+    const programFilter = document.getElementById('attendance_program_filter')?.value || 'all';
+    const typeFilter = document.getElementById('attendance_type_filter')?.value || 'all';
+    const statusFilter = document.getElementById('attendance_status_filter')?.value || 'all';
 
-    const { data: allRecords, error } = await sb
-        .from('geo_attendance_logs')
-        .select(`
-            *,
-            is_verified,
-            latitude,
-            longitude,
-            target_name,
-            ${USER_PROFILE_TABLE}:student_id(full_name, role)
-        `)
-        .order('check_in_time', { ascending: false });
+    try {
+        const { data: allRecords, error } = await sb
+            .from('geo_attendance_logs')
+            .select(`
+                *,
+                is_verified,
+                latitude,
+                longitude,
+                target_name,
+                program,
+                block_term,
+                ${USER_PROFILE_TABLE}:student_id(full_name, role, program, block)
+            `)
+            .order('check_in_time', { ascending: false });
 
-    if (error) { 
-        todayBody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
-        pastBody.innerHTML = `<tr><td colspan="6">Error: ${error.message}</td></tr>`;
-        return;
-    }
-
-    let todayHtml='', pastHtml='';
-
-    allRecords.forEach(r=>{
-        const userProfile = r[USER_PROFILE_TABLE];
-        const userName = userProfile?.full_name || 'N/A User';
-        const dateTime = new Date(r.check_in_time).toLocaleString();
-        const targetDetail = r.target_name || r.department || r.location_name || 'N/A Target';
-        const locationDisplay = r.location_friendly_name || r.location_name || r.department || 'N/A';
-        const geoStatus = (r.latitude && r.longitude)?'Yes (Geo-Logged)':'No (Manual)';
-
-        let actionsHtml = '';
-        const mapAvailable = r.latitude && r.longitude;
-        const mapAction = mapAvailable ? `showMap(${r.latitude},${r.longitude},'${locationDisplay.replace(/'/g,"\\'")}','${userName.replace(/'/g,"\\'")}','${dateTime.replace(/'/g,"\\'")}')` : '';
-
-        actionsHtml += `<button class="btn btn-map btn-small" ${mapAvailable?'':'disabled'} onclick="${mapAction}">View Map</button>`;
-
-        const isToday = new Date(r.check_in_time).toISOString().slice(0,10) === todayISO;
-        const statusDisplay = r.is_verified ? '✅ Verified' : 'Pending';
-
-        if (isToday){
-            if (!r.is_verified) actionsHtml += `<button class="btn btn-approve btn-small" onclick="approveAttendanceRecord('${r.id}')" style="margin-left:5px;">Approve</button>`;
+        if (error) { 
+            todayBody.innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`;
+            pastBody.innerHTML = `<tr><td colspan="7">Error: ${error.message}</td></tr>`;
+            return;
         }
+
+        let todayHtml = '';
+        let pastHtml = '';
+        let todayCount = 0;
+        let pastCount = 0;
+
+        allRecords.forEach(r => {
+            const userProfile = r[USER_PROFILE_TABLE];
+            const userName = userProfile?.full_name || 'N/A User';
+            const userProgram = userProfile?.program || r.program || 'N/A';
+            const userBlock = userProfile?.block || r.block_term || 'N/A';
+            
+            const isTVET = isTVETProgram(userProgram);
+            const blockLabel = isTVET ? 'Term' : 'Block';
+            const programBadge = isTVET ? '🔧 TVET' : '🎓 KRCHN';
+            const programColor = isTVET ? '#f59e0b' : '#2563eb';
+            const programBg = isTVET ? '#fef3c7' : '#dbeafe';
+            
+            const dateTime = new Date(r.check_in_time).toLocaleString();
+            const targetDetail = r.target_name || r.department || r.location_name || 'N/A Target';
+            const locationDisplay = r.location_friendly_name || r.location_name || r.department || 'N/A';
+            const geoStatus = (r.latitude && r.longitude) ? '✅ Geo-Logged' : '📝 Manual';
+
+            // Apply filters
+            if (searchTerm && !userName.toLowerCase().includes(searchTerm)) return;
+            if (programFilter === 'krchn' && isTVET) return;
+            if (programFilter === 'tvet' && !isTVET) return;
+            if (typeFilter !== 'all' && r.session_type !== typeFilter) return;
+            if (statusFilter === 'verified' && !r.is_verified) return;
+            if (statusFilter === 'pending' && r.is_verified) return;
+
+            let actionsHtml = '';
+            const mapAvailable = r.latitude && r.longitude;
+            const mapAction = mapAvailable ? `showMap(${r.latitude},${r.longitude},'${locationDisplay.replace(/'/g,"\\'")}','${userName.replace(/'/g,"\\'")}','${dateTime.replace(/'/g,"\\'")}')` : '';
+
+            actionsHtml += `<button class="btn btn-map btn-small" ${mapAvailable ? '' : 'disabled'} onclick="${mapAction}">🗺️ View Map</button>`;
+
+            const isToday = new Date(r.check_in_time).toISOString().slice(0,10) === todayISO;
+            const statusDisplay = r.is_verified ? '✅ Verified' : '⏳ Pending';
+            const statusColor = r.is_verified ? '#059669' : '#f59e0b';
+            const statusBg = r.is_verified ? '#d1fae5' : '#fef3c7';
+
+            if (isToday) {
+                if (!r.is_verified) {
+                    actionsHtml += `<button class="btn btn-approve btn-small" onclick="approveAttendanceRecord('${r.id}')" style="margin-left:5px; background: #10b981; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer;">✅ Approve</button>`;
+                }
+                todayCount++;
+            } else {
+                pastCount++;
+            }
+            
+            actionsHtml += `<button class="btn btn-delete btn-small" onclick="deleteAttendanceRecord('${r.id}')" style="margin-left:5px; background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer;">🗑️ Delete</button>`;
+
+            const rowHtml = `
+                <tr>
+                    <td><strong>${userName}</strong></td>
+                    <td>${r.session_type || 'N/A'}</td>
+                    <td>
+                        <span style="background: ${programBg}; color: ${programColor}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">
+                            ${programBadge}
+                        </span>
+                        <br>
+                        <small style="color: #6b7280;">${blockLabel}: ${userBlock}</small>
+                    </td>
+                    <td>${targetDetail}</td>
+                    <td>${locationDisplay}</td>
+                    <td>${dateTime}</td>
+                    <td>${geoStatus}</td>
+                    <td>
+                        <span style="background: ${statusBg}; color: ${statusColor}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                            ${statusDisplay}
+                        </span>
+                    </td>
+                    <td>${actionsHtml}</td>
+                </tr>
+            `;
+
+            if (isToday) {
+                todayHtml += rowHtml;
+            } else {
+                pastHtml += rowHtml;
+            }
+        });
+
+        // Update counts
+        document.getElementById('todayCount')?.textContent = todayCount;
+        document.getElementById('pastCount')?.textContent = pastCount;
+        document.getElementById('attendanceTotalCount')?.textContent = allRecords.length;
+
+        todayBody.innerHTML = todayHtml || '<tr><td colspan="9" style="text-align: center; padding: 30px; color: #6b7280;">📭 No check-in records for today.</td></tr>';
+        pastBody.innerHTML = pastHtml || '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #6b7280;">📭 No past attendance history found.</td></tr>';
         
-        actionsHtml += `<button class="btn btn-delete btn-small" onclick="deleteAttendanceRecord('${r.id}')" style="margin-left:10px;">Delete</button>`;
-
-        const rowHtml = `<tr>
-            <td>${userName}</td>
-            <td>${r.session_type || 'N/A'}</td>
-            <td>${targetDetail}</td>
-            <td>${locationDisplay}</td>
-            <td>${dateTime}</td>
-            <td>${geoStatus}</td>
-            <td>${actionsHtml}</td>
-        </tr>`;
-
-        if (isToday) todayHtml += rowHtml;
-        else pastHtml += `<tr>
-                <td>${userName}</td>
-                <td>${r.session_type || 'N/A'}</td>
-                <td>${targetDetail}</td>
-                <td>${dateTime}</td>
-                <td>${statusDisplay}</td>
-                <td>${actionsHtml.replace('View Map', 'View')}</td>
-            </tr>`;
-    });
-
-    todayBody.innerHTML = todayHtml||'<tr><td colspan="7">No check-in records for today.</td></tr>';
-    pastBody.innerHTML = pastHtml||'<tr><td colspan="6">No past attendance history found.</td></tr>';
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+        todayBody.innerHTML = `<tr><td colspan="8" style="color: red;">Error: ${error.message}</td></tr>`;
+        pastBody.innerHTML = `<tr><td colspan="7" style="color: red;">Error: ${error.message}</td></tr>`;
+    }
 }
+
+// ============================================================
+// FILTER ATTENDANCE
+// ============================================================
+
+function filterAttendance() {
+    loadAttendance();
+}
+
+function resetAttendanceFilters() {
+    const search = document.getElementById('attendance_search');
+    const program = document.getElementById('attendance_program_filter');
+    const type = document.getElementById('attendance_type_filter');
+    const status = document.getElementById('attendance_status_filter');
+    
+    if (search) search.value = '';
+    if (program) program.value = 'all';
+    if (type) type.value = 'all';
+    if (status) status.value = 'all';
+    
+    loadAttendance();
+}
+
+function refreshAttendance() {
+    loadAttendance();
+    showFeedback('🔄 Attendance data refreshed!', 'success');
+}
+
+function exportAllAttendance() {
+    // Export both today's and past records
+    exportTableToCSV('attendance-table-body', `Attendance_All_${new Date().toISOString().split('T')[0]}.csv`);
+    showFeedback('📥 Attendance exported!', 'success');
+}
+
+// ============================================================
+// UPDATE BLOCK/TERM DROPDOWN FOR ATTENDANCE FILTER
+// ============================================================
+
+async function updateAttendanceBlockOptions() {
+    const programSelect = document.getElementById('att_program');
+    const blockSelect = document.getElementById('att_block_term');
+    
+    if (!programSelect || !blockSelect) return;
+    
+    const program = programSelect.value;
+    const isTVET = isTVETProgram(program);
+    
+    blockSelect.innerHTML = '<option value="">-- Optional: Filter by Block/Term --</option>';
+    
+    if (isTVET) {
+        const terms = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
+        terms.forEach(term => {
+            const opt = document.createElement('option');
+            opt.value = term;
+            opt.textContent = `📚 ${term}`;
+            blockSelect.appendChild(opt);
+        });
+    } else if (program === 'KRCHN') {
+        const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        blocks.forEach(block => {
+            const opt = document.createElement('option');
+            opt.value = block;
+            opt.textContent = `📖 ${block}`;
+            blockSelect.appendChild(opt);
+        });
+    }
+}
+
+// ============================================================
+// EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
+
+window.toggleAttendanceFields = toggleAttendanceFields;
+window.populateAttendanceSelects = populateAttendanceSelects;
+window.approveAttendanceRecord = approveAttendanceRecord;
+window.deleteAttendanceRecord = deleteAttendanceRecord;
+window.showMap = showMap;
+window.adminCheckIn = adminCheckIn;
+window.handleManualAttendance = handleManualAttendance;
+window.loadAttendance = loadAttendance;
+window.filterAttendance = filterAttendance;
+window.resetAttendanceFilters = resetAttendanceFilters;
+window.refreshAttendance = refreshAttendance;
+window.exportAllAttendance = exportAllAttendance;
+window.updateAttendanceBlockOptions = updateAttendanceBlockOptions;
+
+console.log('✅ Attendance Management module loaded with TVET/KRCHN support!');
 /*******************************************************
  * 13. EXAMS/CATS MANAGEMENT - COMPLETE FIXED VERSION
  * WITH GRADING SYSTEM TAB
