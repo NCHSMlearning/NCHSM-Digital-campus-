@@ -1,20 +1,18 @@
 // ============================================
 // NCK XY FORMS & ASSESSMENT SYSTEM
-// COMPLETE SUPER ADMIN MODULE - FULL SCRIPT
-// MATCHES YOUR SUPABASE SCHEMA
+// COMPLETE WORKING VERSION
+// MATCHES YOUR ACTUAL SCHEMA
 // ============================================
 
 // ============================================
 // GLOBAL VARIABLES
 // ============================================
 
-let currentNCKData = [];
 let currentNCKStudentsList = [];
 let currentNCKColumns = [];
 let currentNCKSelectedStudents = new Set();
 let currentNCKSheetType = 'XY_FORMS';
-let currentNCKBlock = 'BLOCK_0';
-let currentNCKYear = '2025';
+let currentNCKBlock = 'Introductory';
 let currentNCKProgram = 'KRCHN';
 let currentNCKMarksMap = {};
 
@@ -30,7 +28,7 @@ const DEFAULT_XY_COLUMNS = [
     'RURALS', 'DISTRICT', 'SPECIAL'
 ];
 
-// Default columns for ASSESSMENT & CASE (12 written assessments)
+// Default columns for ASSESSMENT & CASE
 const DEFAULT_ASSESSMENT_COLUMNS = [
     'ANC WARD',
     'IMMUNIZATION ASSESSMENT',
@@ -47,7 +45,7 @@ const DEFAULT_ASSESSMENT_COLUMNS = [
 ];
 
 // ============================================
-// MAIN LOAD FUNCTIONS
+// LOAD FUNCTIONS
 // ============================================
 
 function loadNCKSystemData() {
@@ -58,7 +56,7 @@ function loadNCKSystemData() {
 
 async function loadNCKStats() {
     try {
-        // ✅ FIX: Get total students from profiles table
+        // Get total students
         const { data: students, error: sError } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id', { count: 'exact' })
@@ -73,10 +71,10 @@ async function loadNCKStats() {
         const totalStudents = students?.length || 0;
         document.getElementById('nck_total_students').textContent = totalStudents;
 
-        // ✅ FIX: Get NCK marks with specific columns
+        // Get NCK marks
         const { data: nckMarks, error: nError } = await sb
             .from('nck_marks')
-            .select('id, final_score, published, status');
+            .select('final_score, published, status');
 
         if (nError) {
             console.error('❌ Error loading NCK stats:', nError);
@@ -84,10 +82,7 @@ async function loadNCKStats() {
         }
 
         if (nckMarks) {
-            let totalScore = 0;
-            let scoredCount = 0;
-            let passedCount = 0;
-            let publishedCount = 0;
+            let totalScore = 0, scoredCount = 0, passedCount = 0, publishedCount = 0;
 
             nckMarks.forEach(m => {
                 const score = parseFloat(m.final_score) || 0;
@@ -96,9 +91,7 @@ async function loadNCKStats() {
                     scoredCount++;
                     if (score >= 60) passedCount++;
                 }
-                if (m.published === true || m.published === 'true') {
-                    publishedCount++;
-                }
+                if (m.published === true || m.published === 'true') publishedCount++;
             });
 
             const avgScore = scoredCount > 0 ? (totalScore / scoredCount).toFixed(1) : 0;
@@ -117,8 +110,7 @@ async function loadNCKStats() {
 
 async function loadNCKData() {
     // Get filter values
-    currentNCKYear = document.getElementById('nck_year_select')?.value || '2025';
-    currentNCKBlock = document.getElementById('nck_block_select')?.value || 'BLOCK_0';
+    currentNCKBlock = document.getElementById('nck_block_select')?.value || 'Introductory';
     currentNCKSheetType = document.getElementById('nck_sheet_select')?.value || 'XY_FORMS';
     currentNCKProgram = document.getElementById('nck_program_select')?.value || 'KRCHN';
 
@@ -131,7 +123,6 @@ async function loadNCKData() {
         return;
     }
 
-    // Show loading
     container.innerHTML = `
         <div style="text-align: center; padding: 40px; color: #94a3b8;">
             <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
@@ -140,24 +131,23 @@ async function loadNCKData() {
     `;
 
     try {
-        console.log(`📊 Loading NCK data: Block=${currentNCKBlock}, Sheet=${currentNCKSheetType}, Program=${currentNCKProgram}, Year=${currentNCKYear}`);
+        console.log(`📊 Loading: Block=${currentNCKBlock}, Sheet=${currentNCKSheetType}, Program=${currentNCKProgram}`);
 
-        // ✅ FIX 1: Get students from profiles table with correct column names
+        // Get students from profiles table
         const { data: students, error: sError } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, admission_number, block, program, year, status')
+            .select('student_id, full_name, admission_number, block, program, status, intake_year')
             .eq('role', 'student')
             .eq('status', 'approved')
             .eq('block', currentNCKBlock)
-            .eq('program', currentNCKProgram)
-            .eq('year', currentNCKYear);
+            .eq('program', currentNCKProgram);
 
         if (sError) {
             console.error('❌ Error loading students:', sError);
             container.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #dc2626;">
                     <i class="fas fa-exclamation-triangle" style="font-size: 32px;"></i>
-                    <p style="margin-top: 10px;">Error loading students: ${sError.message}</p>
+                    <p style="margin-top: 10px;">Error: ${sError.message}</p>
                 </div>
             `;
             return;
@@ -167,8 +157,7 @@ async function loadNCKData() {
             container.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 32px;"></i>
-                    <p style="margin-top: 10px;">No students found for this block/program/year</p>
-                    <p style="font-size: 13px; color: #6b7280;">Block: ${currentNCKBlock} | Program: ${currentNCKProgram} | Year: ${currentNCKYear}</p>
+                    <p style="margin-top: 10px;">No students found for ${currentNCKBlock} - ${currentNCKProgram}</p>
                 </div>
             `;
             if (placeholder) placeholder.style.display = 'block';
@@ -179,27 +168,24 @@ async function loadNCKData() {
         currentNCKStudentsList = students;
         console.log(`✅ Found ${students.length} students`);
 
-        // Update student count
-        updateElementText('nck_student_count', students.length);
-        updateElementText('nck_block_students', students.length);
+        document.getElementById('nck_student_count').textContent = students.length;
+        document.getElementById('nck_block_students').textContent = students.length;
 
-        // ✅ FIX 2: Get NCK marks with specific columns (not SELECT *)
+        // Get NCK marks
         const { data: marks, error: mError } = await sb
             .from('nck_marks')
-            .select('id, student_id, full_name, block, subject_name, program, scores, final_score, grade, status, graded_by, published, published_at, year, created_at, updated_at')
+            .select('id, student_id, full_name, block, subject_name, program, scores, final_score, grade, status, graded_by, published, published_at')
             .eq('block', currentNCKBlock)
             .eq('subject_name', currentNCKSheetType)
-            .eq('program', currentNCKProgram)
-            .eq('year', currentNCKYear);
+            .eq('program', currentNCKProgram);
 
         if (mError) {
             console.error('❌ Error loading NCK marks:', mError);
-            // Continue with empty marks
         }
 
         console.log(`✅ Found ${marks?.length || 0} NCK marks`);
 
-        // Build marks map by student_id
+        // Build marks map
         currentNCKMarksMap = {};
         if (marks) {
             marks.forEach(m => {
@@ -207,18 +193,14 @@ async function loadNCKData() {
             });
         }
 
-        // ✅ FIX 3: Determine columns based on sheet type
+        // Get columns
         let columns = [];
         const savedColumns = localStorage.getItem(`nck_columns_${currentNCKSheetType}_${currentNCKBlock}`);
         if (savedColumns) {
             try {
                 const parsed = JSON.parse(savedColumns);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    columns = parsed;
-                }
-            } catch (e) {
-                console.log('⚠️ Error parsing saved columns:', e);
-            }
+                if (Array.isArray(parsed) && parsed.length > 0) columns = parsed;
+            } catch (e) {}
         }
 
         if (columns.length === 0) {
@@ -229,10 +211,9 @@ async function loadNCKData() {
 
         currentNCKColumns = columns;
 
-        // Update column counts
-        updateElementText('nck_column_count', columns.length);
-        updateElementText('nck_column_count_2', columns.length);
-        updateElementText('nck_block_columns', columns.length);
+        document.getElementById('nck_column_count').textContent = columns.length;
+        document.getElementById('nck_column_count_2').textContent = columns.length;
+        document.getElementById('nck_block_columns').textContent = columns.length;
 
         // Update title
         const titleEl = document.getElementById('nck_table_title');
@@ -242,21 +223,18 @@ async function loadNCKData() {
                 : 'NCK Assessment & Case - Written Assessments';
         }
 
-        // Update legend visibility
-        const xyLegend = document.getElementById('nck_xy_legend');
-        const assessmentLegend = document.getElementById('nck_assessment_legend');
-        if (xyLegend && assessmentLegend) {
-            xyLegend.style.display = currentNCKSheetType === 'XY_FORMS' ? 'flex' : 'none';
-            assessmentLegend.style.display = currentNCKSheetType === 'ASSESSMENT_CASE' ? 'flex' : 'none';
+        // Update subtitle
+        const subtitleEl = document.getElementById('nck_table_subtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = `${currentNCKBlock}${currentNCKBlock === 'Introductory' ? ' - Introductory/Foundation Block' : ''}`;
         }
 
-        // ✅ FIX 4: Build the table
+        // Build table
         buildNCKTable(students, currentNCKMarksMap, columns);
 
         // Load column settings
         loadColumnSettings(columns);
 
-        // Show content
         if (placeholder) placeholder.style.display = 'none';
         if (dynamicContent) dynamicContent.style.display = 'block';
 
@@ -265,14 +243,14 @@ async function loadNCKData() {
         container.innerHTML = `
             <div style="text-align: center; padding: 40px; color: #dc2626;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 32px;"></i>
-                <p style="margin-top: 10px;">Error loading data: ${err.message}</p>
+                <p style="margin-top: 10px;">Error: ${err.message}</p>
             </div>
         `;
     }
 }
 
 // ============================================
-// TABLE BUILDING FUNCTIONS
+// TABLE BUILDING
 // ============================================
 
 function buildNCKTable(students, marksMap, columns) {
@@ -289,117 +267,72 @@ function buildNCKTable(students, marksMap, columns) {
         return;
     }
 
-    const columnCount = columns.length;
-    const tableWidth = 400 + (columnCount * 70);
     const isXYForms = currentNCKSheetType === 'XY_FORMS';
-
-    // Determine column groups for XY Forms
-    let columnGroups = [];
-    if (isXYForms) {
-        columnGroups = [
-            { name: '🏥 MEDICAL', count: 3, color: '#6d28d9' },
-            { name: '🤰 MCH', count: 3, color: '#7c3aed' },
-            { name: '🤱 MATERNITY', count: 3, color: '#8b5cf6' },
-            { name: '👶 PAEDIATRICS', count: 2, color: '#a78bfa' },
-            { name: '🔪 SURGERY', count: 3, color: '#7c3aed' },
-            { name: '🚑 OTHER', count: 8, color: '#6d28d9' }
-        ];
-    }
+    const tableWidth = 400 + (columns.length * 70);
 
     let html = `
         <table id="nck_marks_table" style="width: 100%; min-width: ${tableWidth}px; border-collapse: collapse; font-size: 13px;">
             <thead>
     `;
 
-    // First header row - Group names for XY Forms
-    if (isXYForms) {
-        html += `
-            <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white;">
-                <th style="position: sticky; left: 0; background: #4C1D95; padding: 8px 6px; text-align: center; min-width: 35px; z-index: 3;" rowspan="2">#</th>
-                <th style="position: sticky; left: 35px; background: #4C1D95; padding: 8px 6px; text-align: left; min-width: 160px; z-index: 3;" rowspan="2">Student Name</th>
-                <th style="position: sticky; left: 195px; background: #4C1D95; padding: 8px 6px; text-align: left; min-width: 120px; z-index: 3;" rowspan="2">Admission</th>
-        `;
+    // Header
+    html += `
+        <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white;">
+            <th style="position: sticky; left: 0; background: #4C1D95; padding: 10px 6px; text-align: center; min-width: 35px; z-index: 3;" rowspan="2">#</th>
+            <th style="position: sticky; left: 35px; background: #4C1D95; padding: 10px 6px; text-align: left; min-width: 160px; z-index: 3;" rowspan="2">Student Name</th>
+            <th style="position: sticky; left: 195px; background: #4C1D95; padding: 10px 6px; text-align: left; min-width: 120px; z-index: 3;" rowspan="2">Admission</th>
+    `;
 
-        let colIndex = 0;
-        for (const group of columnGroups) {
-            const colspan = group.count;
-            html += `<th colspan="${colspan}" style="text-align: center; padding: 6px 2px; font-size: 11px; background: ${group.color}; border: 1px solid rgba(255,255,255,0.1);">${group.name}</th>`;
-            colIndex += colspan;
-        }
+    // Column headers
+    columns.forEach(col => {
+        html += `<th style="padding: 10px 4px; text-align: center; min-width: 60px; font-size: 11px; background: #6d28d9; border: 1px solid rgba(255,255,255,0.1);" data-column="${escapeHtml(col)}">${escapeHtml(col)}</th>`;
+    });
 
-        html += `
-                <th style="padding: 8px 6px; text-align: center; background: #059669; min-width: 50px;" rowspan="2">Avg</th>
-                <th style="padding: 8px 6px; text-align: center; background: #FDB913; min-width: 70px;" rowspan="2">Status</th>
-                <th style="padding: 8px 6px; text-align: center; background: #4C1D95; min-width: 120px;" rowspan="2">Graded By</th>
-                <th style="padding: 8px 6px; text-align: center; background: #8b5cf6; min-width: 80px;" rowspan="2">📤 Publish</th>
-            </tr>
-            <tr style="background: #ede9fe; border-bottom: 2px solid #4C1D95;">
-                <th style="position: sticky; left: 0; background: #ede9fe; padding: 4px 2px; text-align: center; z-index: 2;"></th>
-                <th style="position: sticky; left: 35px; background: #ede9fe; padding: 4px 2px; text-align: left; z-index: 2;"></th>
-                <th style="position: sticky; left: 195px; background: #ede9fe; padding: 4px 2px; text-align: left; z-index: 2;"></th>
-        `;
+    html += `
+            <th style="padding: 10px 6px; text-align: center; background: #059669; min-width: 50px;" rowspan="2">Avg</th>
+            <th style="padding: 10px 6px; text-align: center; background: #FDB913; min-width: 70px;" rowspan="2">Status</th>
+            <th style="padding: 10px 6px; text-align: center; background: #4C1D95; min-width: 120px;" rowspan="2">Graded By</th>
+            <th style="padding: 10px 6px; text-align: center; background: #8b5cf6; min-width: 80px;" rowspan="2">📤 Publish</th>
+        </tr>
+        <tr style="background: #ede9fe; border-bottom: 2px solid #4C1D95;">
+            <th style="position: sticky; left: 0; background: #ede9fe; padding: 4px 2px; text-align: center; z-index: 2;"></th>
+            <th style="position: sticky; left: 35px; background: #ede9fe; padding: 4px 2px; text-align: left; z-index: 2;"></th>
+            <th style="position: sticky; left: 195px; background: #ede9fe; padding: 4px 2px; text-align: left; z-index: 2;"></th>
+    `;
 
-        // Column names for XY Forms
-        columns.forEach(col => {
-            html += `<th style="padding: 4px 2px; text-align: center; font-size: 10px; color: #4C1D95; border: 1px solid #e5e7eb;" data-column="${escapeHtml(col)}">${escapeHtml(col)}</th>`;
-        });
+    columns.forEach(col => {
+        html += `<th style="padding: 4px 2px; text-align: center; font-size: 10px; color: #4C1D95; border: 1px solid #e5e7eb;"></th>`;
+    });
 
-        html += `
-                <th style="padding: 4px 2px; text-align: center; font-size: 10px; background: #059669; color: white;"></th>
-                <th style="padding: 4px 2px; text-align: center; font-size: 10px; background: #FDB913; color: #0A3D62;"></th>
-                <th style="padding: 4px 2px; text-align: center; font-size: 10px; background: #4C1D95; color: white;"></th>
-                <th style="padding: 4px 2px; text-align: center; font-size: 10px; background: #8b5cf6; color: white;"></th>
-            </tr>
-        `;
-    } else {
-        // Assessment & Case - Single header row
-        html += `
-            <tr style="background: linear-gradient(135deg, #1e40af, #3b82f6); color: white;">
-                <th style="position: sticky; left: 0; background: #1e40af; padding: 10px 8px; text-align: center; min-width: 35px; z-index: 3;">#</th>
-                <th style="position: sticky; left: 35px; background: #1e40af; padding: 10px 8px; text-align: left; min-width: 180px; z-index: 3;">Student Name</th>
-                <th style="position: sticky; left: 215px; background: #1e40af; padding: 10px 8px; text-align: left; min-width: 120px; z-index: 3;">Admission</th>
-        `;
+    html += `
+            <th style="padding: 4px 2px; text-align: center; font-size: 10px; background: #059669; color: white;"></th>
+            <th style="padding: 4px 2px; text-align: center; font-size: 10px; background: #FDB913; color: #0A3D62;"></th>
+            <th style="padding: 4px 2px; text-align: center; font-size: 10px; background: #4C1D95; color: white;"></th>
+            <th style="padding: 4px 2px; text-align: center; font-size: 10px; background: #8b5cf6; color: white;"></th>
+        </tr>
+    </thead>
+    <tbody>
+    `;
 
-        columns.forEach(col => {
-            html += `<th style="padding: 10px 4px; text-align: center; min-width: 70px; font-size: 11px; background: #3b82f6;" data-column="${escapeHtml(col)}">${escapeHtml(col)}</th>`;
-        });
-
-        html += `
-                <th style="padding: 10px 8px; text-align: center; background: #059669; min-width: 50px;">Total</th>
-                <th style="padding: 10px 8px; text-align: center; background: #FDB913; min-width: 70px;">Avg</th>
-                <th style="padding: 10px 8px; text-align: center; background: #1e40af; min-width: 70px;">Status</th>
-                <th style="padding: 10px 8px; text-align: center; background: #1e40af; min-width: 120px;">Graded By</th>
-                <th style="padding: 10px 8px; text-align: center; background: #8b5cf6; min-width: 80px;">📤 Publish</th>
-            </tr>
-        `;
-    }
-
-    html += `</thead><tbody>`;
-
-    // Build rows
+    // Rows
     students.forEach((student, idx) => {
-        const mark = marksMap[student.student_id] || {};
+        const studentId = student.student_id || student.admission_number;
+        const mark = marksMap[studentId] || {};
         let scores = {};
         try {
             if (mark.scores) {
                 scores = typeof mark.scores === 'string' ? JSON.parse(mark.scores) : mark.scores;
             }
-        } catch (e) {
-            console.warn('⚠️ Error parsing scores for student:', student.student_id);
-        }
+        } catch (e) {}
 
         const gradedBy = mark.graded_by || '';
         const published = mark.published === true || mark.published === 'true';
 
-        // Calculate average and total
-        let totalScore = 0;
-        let scoredCount = 0;
+        // Calculate average
+        let totalScore = 0, scoredCount = 0;
         columns.forEach(col => {
             const val = parseFloat(scores[col]) || 0;
-            if (val > 0) {
-                totalScore += val;
-                scoredCount++;
-            }
+            if (val > 0) { totalScore += val; scoredCount++; }
         });
 
         const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
@@ -408,24 +341,20 @@ function buildNCKTable(students, marksMap, columns) {
         const bgColor = status === 'PASS' ? '#d1fae5' : (status === 'FAIL' ? '#fee2e2' : '#fef3c7');
         const textColor = status === 'PASS' ? '#065f46' : (status === 'FAIL' ? '#991b1b' : '#92400e');
 
-        const studentId = student.student_id || student.admission_number || 'unknown';
-        const studentName = student.full_name || student.name || 'Unknown Student';
-        const admission = student.admission_number || student.student_id || 'N/A';
-
         html += `
             <tr class="${statusClass}" data-student-id="${studentId}" style="border-bottom: 1px solid #e5e7eb;">
                 <td style="position: sticky; left: 0; background: white; padding: 6px 4px; text-align: center; font-weight: 500; z-index: 1;">${idx + 1}</td>
                 <td style="position: sticky; left: 35px; background: white; padding: 6px 4px; font-weight: 600; z-index: 1;">
-                    <span style="cursor: pointer; color: ${isXYForms ? '#4C1D95' : '#1e40af'}; text-decoration: underline;" onclick="editNCKStudent('${studentId}')">
-                        ${escapeHtml(studentName)} <i class="fas fa-edit" style="font-size: 10px;"></i>
+                    <span style="cursor: pointer; color: #4C1D95; text-decoration: underline;" onclick="editNCKStudent('${studentId}')">
+                        ${escapeHtml(student.full_name)} <i class="fas fa-edit" style="font-size: 10px;"></i>
                     </span>
                 </td>
                 <td style="position: sticky; left: 195px; background: white; padding: 6px 4px; font-weight: 500; z-index: 1; font-size: 12px; color: #64748b;">
-                    ${escapeHtml(admission)}
+                    ${escapeHtml(student.admission_number || studentId)}
                 </td>
         `;
 
-        // Add score inputs for each column
+        // Score inputs
         columns.forEach(col => {
             const val = scores[col] !== undefined && scores[col] !== null ? scores[col] : '';
             const hasValue = val !== '' && parseFloat(val) > 0;
@@ -446,19 +375,8 @@ function buildNCKTable(students, marksMap, columns) {
             `;
         });
 
-        // Add summary columns
-        if (isXYForms) {
-            html += `
-                <td style="font-weight: bold; text-align: center; background: ${bgColor}; font-size: 14px;" class="nck-avg-cell" id="nck_avg_${studentId}">${avg.toFixed(1)}</td>
-            `;
-        } else {
-            html += `
-                <td style="font-weight: bold; text-align: center; background: ${bgColor}; font-size: 14px;" class="nck-total-cell" id="nck_total_${studentId}">${totalScore}</td>
-                <td style="font-weight: bold; text-align: center; background: ${bgColor}; font-size: 14px;" class="nck-avg-cell" id="nck_avg_${studentId}">${avg.toFixed(1)}</td>
-            `;
-        }
-
         html += `
+                <td style="font-weight: bold; text-align: center; background: ${bgColor}; font-size: 14px;" class="nck-avg-cell" id="nck_avg_${studentId}">${avg.toFixed(1)}</td>
                 <td style="text-align: center;" class="nck-status-cell" id="nck_status_${studentId}">
                     <span style="background: ${bgColor}; color: ${textColor}; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 12px;">${status}</span>
                 </td>
@@ -475,12 +393,11 @@ function buildNCKTable(students, marksMap, columns) {
     });
 
     html += `</tbody></table>`;
-
     container.innerHTML = html;
 }
 
 // ============================================
-// COLUMN SETTINGS FUNCTIONS
+// COLUMN SETTINGS
 // ============================================
 
 function loadColumnSettings(columns) {
@@ -505,7 +422,6 @@ function toggleColumn(columnName) {
     const checkbox = document.getElementById(`col_${escapeHtml(columnName)}`);
     if (!checkbox) return;
 
-    // Update column visibility in table
     const inputs = document.querySelectorAll(`.nck-score-input[data-column="${columnName}"]`);
     const ths = document.querySelectorAll(`th[data-column="${columnName}"]`);
 
@@ -524,20 +440,18 @@ function removeColumn(columnName) {
 
     currentNCKColumns = currentNCKColumns.filter(col => col !== columnName);
 
-    // Remove from table
     const inputs = document.querySelectorAll(`.nck-score-input[data-column="${columnName}"]`);
     inputs.forEach(input => {
         const td = input.parentElement;
         if (td) td.remove();
     });
 
-    // Remove from settings
     const settingDiv = document.querySelector(`[id="col_${escapeHtml(columnName)}"]`)?.closest('div');
     if (settingDiv) settingDiv.remove();
 
-    updateElementText('nck_column_count', currentNCKColumns.length);
-    updateElementText('nck_column_count_2', currentNCKColumns.length);
-    updateElementText('nck_block_columns', currentNCKColumns.length);
+    document.getElementById('nck_column_count').textContent = currentNCKColumns.length;
+    document.getElementById('nck_column_count_2').textContent = currentNCKColumns.length;
+    document.getElementById('nck_block_columns').textContent = currentNCKColumns.length;
 
     saveColumnSettingsToStorage();
     showNotification(`Column "${columnName}" removed`, false);
@@ -556,16 +470,11 @@ function addNewColumn() {
 
     currentNCKColumns.push(cleanName);
 
-    // Add to table - find where to insert
+    // Add to table
     const table = document.getElementById('nck_marks_table');
     if (table) {
         const headerRow = table.querySelector('thead tr:last-child');
-        const firstDataRow = table.querySelector('tbody tr');
-        const rowCells = firstDataRow?.querySelectorAll('td') || [];
-
-        // Find position - before the Avg column
-        const avgIndex = Array.from(rowCells).findIndex(td => td.classList.contains('nck-avg-cell'));
-        const insertIndex = avgIndex > 0 ? avgIndex : rowCells.length - 4;
+        const rows = table.querySelectorAll('tbody tr');
 
         // Add to header
         if (headerRow) {
@@ -579,13 +488,12 @@ function addNewColumn() {
         }
 
         // Add to each row
-        const rows = table.querySelectorAll('tbody tr');
         rows.forEach(row => {
             const cells = row.querySelectorAll('td');
             const avgCell = cells[cells.length - 4];
+            const studentId = row.dataset.studentId || '';
             const td = document.createElement('td');
             td.style.cssText = 'padding: 4px 2px; text-align: center;';
-            const studentId = row.dataset.studentId || '';
             td.innerHTML = `
                 <input type="number" 
                        class="nck-score-input" 
@@ -615,23 +523,12 @@ function addNewColumn() {
         settingsContainer.appendChild(div);
     }
 
-    updateElementText('nck_column_count', currentNCKColumns.length);
-    updateElementText('nck_column_count_2', currentNCKColumns.length);
-    updateElementText('nck_block_columns', currentNCKColumns.length);
+    document.getElementById('nck_column_count').textContent = currentNCKColumns.length;
+    document.getElementById('nck_column_count_2').textContent = currentNCKColumns.length;
+    document.getElementById('nck_block_columns').textContent = currentNCKColumns.length;
 
     saveColumnSettingsToStorage();
     showNotification(`Column "${cleanName}" added!`, false);
-}
-
-function addNewColumnFromModal() {
-    const input = document.getElementById('nckNewColumnName');
-    if (!input || !input.value.trim()) {
-        showNotification('Please enter a column name', true);
-        return;
-    }
-    addNewColumn();
-    input.value = '';
-    document.getElementById('nckColumnModal').style.display = 'none';
 }
 
 function resetNCKColumns() {
@@ -642,9 +539,9 @@ function resetNCKColumns() {
         : [...DEFAULT_ASSESSMENT_COLUMNS];
 
     currentNCKColumns = defaultCols;
-    updateElementText('nck_column_count', currentNCKColumns.length);
-    updateElementText('nck_column_count_2', currentNCKColumns.length);
-    updateElementText('nck_block_columns', currentNCKColumns.length);
+    document.getElementById('nck_column_count').textContent = currentNCKColumns.length;
+    document.getElementById('nck_column_count_2').textContent = currentNCKColumns.length;
+    document.getElementById('nck_block_columns').textContent = currentNCKColumns.length;
 
     saveColumnSettingsToStorage();
     loadNCKData();
@@ -658,16 +555,9 @@ function saveColumnSettingsToStorage() {
     );
 }
 
-function saveColumnSettings() {
-    saveColumnSettingsToStorage();
-    showNotification('Column settings saved!', false);
-    document.getElementById('nckColumnModal').style.display = 'none';
-}
-
 function openColumnManager() {
     const modal = document.getElementById('nckColumnModal');
     if (modal) {
-        // Populate column list in modal
         const listContainer = document.getElementById('nckColumnList');
         if (listContainer) {
             let html = '';
@@ -686,14 +576,30 @@ function openColumnManager() {
     }
 }
 
+function addNewColumnFromModal() {
+    const input = document.getElementById('nckNewColumnName');
+    if (!input || !input.value.trim()) {
+        showNotification('Please enter a column name', true);
+        return;
+    }
+    addNewColumn();
+    input.value = '';
+    document.getElementById('nckColumnModal').style.display = 'none';
+}
+
+function saveColumnSettings() {
+    saveColumnSettingsToStorage();
+    showNotification('Column settings saved!', false);
+    document.getElementById('nckColumnModal').style.display = 'none';
+}
+
 // ============================================
-// AUTO-CALCULATION FUNCTIONS
+// AUTO-CALCULATION
 // ============================================
 
 function updateNCKAverage(studentId) {
     const inputs = document.querySelectorAll(`.nck-score-input[data-student="${studentId}"]`);
-    let totalScore = 0;
-    let scoredCount = 0;
+    let totalScore = 0, scoredCount = 0;
 
     inputs.forEach(input => {
         const val = parseFloat(input.value) || 0;
@@ -710,21 +616,12 @@ function updateNCKAverage(studentId) {
     const bgColor = status === 'PASS' ? '#d1fae5' : (status === 'FAIL' ? '#fee2e2' : '#fef3c7');
     const textColor = status === 'PASS' ? '#065f46' : (status === 'FAIL' ? '#991b1b' : '#92400e');
 
-    // Update average cell
     const avgCell = document.getElementById(`nck_avg_${studentId}`);
     if (avgCell) {
         avgCell.textContent = avg.toFixed(1);
         avgCell.style.background = bgColor;
     }
 
-    // Update total cell (for assessment)
-    const totalCell = document.getElementById(`nck_total_${studentId}`);
-    if (totalCell) {
-        totalCell.textContent = totalScore;
-        totalCell.style.background = bgColor;
-    }
-
-    // Update status cell
     const statusCell = document.getElementById(`nck_status_${studentId}`);
     if (statusCell) {
         statusCell.innerHTML = `
@@ -732,7 +629,6 @@ function updateNCKAverage(studentId) {
         `;
     }
 
-    // Update row class
     const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
     if (row) {
         row.className = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : 'pending-row');
@@ -751,8 +647,7 @@ async function saveAllNCKMarks() {
     }
 
     showLoading('Saving all NCK marks...');
-    let savedCount = 0;
-    let errorCount = 0;
+    let savedCount = 0, errorCount = 0;
 
     for (const student of students) {
         const studentId = student.student_id || student.admission_number;
@@ -765,14 +660,9 @@ async function saveAllNCKMarks() {
             scores[column] = val;
         });
 
-        // Calculate totals
-        let totalScore = 0;
-        let scoredCount = 0;
+        let totalScore = 0, scoredCount = 0;
         Object.values(scores).forEach(val => {
-            if (val > 0) {
-                totalScore += val;
-                scoredCount++;
-            }
+            if (val > 0) { totalScore += val; scoredCount++; }
         });
         const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
         const grade = calculateNursingGrade(avg);
@@ -782,12 +672,11 @@ async function saveAllNCKMarks() {
         const gradedBy = gradedInput?.value || window.currentUser?.full_name || 'Admin';
 
         try {
-            // ✅ FIX: Use upsert with proper conflict handling
             const { error } = await sb
                 .from('nck_marks')
                 .upsert({
                     student_id: studentId,
-                    full_name: student.full_name || student.name || 'Unknown',
+                    full_name: student.full_name || 'Unknown',
                     admission_number: student.admission_number || studentId,
                     block: currentNCKBlock,
                     subject_name: currentNCKSheetType,
@@ -797,10 +686,9 @@ async function saveAllNCKMarks() {
                     grade: grade,
                     status: status,
                     graded_by: gradedBy,
-                    year: currentNCKYear,
                     updated_at: new Date().toISOString()
                 }, { 
-                    onConflict: 'student_id, subject_name, block, program, year' 
+                    onConflict: 'student_id, subject_name, block, program' 
                 });
 
             if (error) {
@@ -840,7 +728,6 @@ async function publishAllNCKMarks() {
     showLoading(`Publishing ${studentCount} records...`);
 
     try {
-        // ✅ FIX: Update with correct where clause
         const { error } = await sb
             .from('nck_marks')
             .update({
@@ -850,8 +737,7 @@ async function publishAllNCKMarks() {
             })
             .eq('block', currentNCKBlock)
             .eq('subject_name', currentNCKSheetType)
-            .eq('program', currentNCKProgram)
-            .eq('year', currentNCKYear);
+            .eq('program', currentNCKProgram);
 
         if (error) throw error;
 
@@ -873,7 +759,6 @@ async function togglePublishNCK(studentId) {
     showLoading('Updating publish status...');
 
     try {
-        // Get current status
         const { data: current, error: getError } = await sb
             .from('nck_marks')
             .select('published')
@@ -881,7 +766,6 @@ async function togglePublishNCK(studentId) {
             .eq('block', currentNCKBlock)
             .eq('subject_name', currentNCKSheetType)
             .eq('program', currentNCKProgram)
-            .eq('year', currentNCKYear)
             .single();
 
         if (getError && getError.code !== 'PGRST116') throw getError;
@@ -898,8 +782,7 @@ async function togglePublishNCK(studentId) {
             .eq('student_id', studentId)
             .eq('block', currentNCKBlock)
             .eq('subject_name', currentNCKSheetType)
-            .eq('program', currentNCKProgram)
-            .eq('year', currentNCKYear);
+            .eq('program', currentNCKProgram);
 
         if (error) throw error;
 
@@ -921,20 +804,17 @@ function openNCKStudentPublishModal() {
         return;
     }
 
-    // Populate student list
     const listContainer = document.getElementById('nckStudentList');
     if (listContainer && currentNCKStudentsList) {
         let html = '';
         currentNCKStudentsList.forEach((student, idx) => {
             const studentId = student.student_id || student.admission_number;
-            const studentName = student.full_name || student.name || 'Unknown';
-            const admission = student.admission_number || studentId;
             html += `
                 <div class="student-item" style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px;">
                     <input type="checkbox" class="nck-student-checkbox" id="nck_student_${idx}" value="${studentId}">
                     <label for="nck_student_${idx}" style="margin: 0; cursor: pointer; flex: 1; display: flex; justify-content: space-between;">
-                        <span><strong>${escapeHtml(studentName)}</strong></span>
-                        <span style="color: #94a3b8; font-size: 12px;">${escapeHtml(admission)}</span>
+                        <span><strong>${escapeHtml(student.full_name)}</strong></span>
+                        <span style="color: #94a3b8; font-size: 12px;">${escapeHtml(student.admission_number || studentId)}</span>
                     </label>
                 </div>
             `;
@@ -971,8 +851,7 @@ async function publishSelectedStudents() {
             .in('student_id', studentIds)
             .eq('block', currentNCKBlock)
             .eq('subject_name', currentNCKSheetType)
-            .eq('program', currentNCKProgram)
-            .eq('year', currentNCKYear);
+            .eq('program', currentNCKProgram);
 
         if (error) throw error;
 
@@ -1017,7 +896,7 @@ function updateSelectedCount() {
 }
 
 // ============================================
-// FAST ENTRY FUNCTIONS
+// FAST ENTRY
 // ============================================
 
 function openFastEntryMode() {
@@ -1051,11 +930,10 @@ function openFastEntryMode() {
 
         currentNCKStudentsList.forEach((student, idx) => {
             const studentId = student.student_id || student.admission_number;
-            const studentName = student.full_name || student.name || 'Unknown';
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
                     <td style="padding: 4px 6px; text-align: center;">${idx + 1}</td>
-                    <td style="padding: 4px 6px; font-weight: 600;">${escapeHtml(studentName)}</td>
+                    <td style="padding: 4px 6px; font-weight: 600;">${escapeHtml(student.full_name)}</td>
             `;
             
             currentNCKColumns.forEach(col => {
@@ -1084,15 +962,11 @@ function openFastEntryMode() {
 
 function updateFastAverage(studentId) {
     const inputs = document.querySelectorAll(`.fast-score-input[data-student="${studentId}"]`);
-    let totalScore = 0;
-    let scoredCount = 0;
+    let totalScore = 0, scoredCount = 0;
 
     inputs.forEach(input => {
         const val = parseFloat(input.value) || 0;
-        if (val > 0) {
-            totalScore += val;
-            scoredCount++;
-        }
+        if (val > 0) { totalScore += val; scoredCount++; }
     });
 
     const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
@@ -1122,10 +996,8 @@ async function saveFastEntryMarks() {
     }
 
     showLoading('Saving fast entry marks...');
-    let savedCount = 0;
-    let errorCount = 0;
+    let savedCount = 0, errorCount = 0;
 
-    // Group inputs by student
     const studentData = {};
     inputs.forEach(input => {
         const studentId = input.dataset.student;
@@ -1139,14 +1011,9 @@ async function saveFastEntryMarks() {
         const student = currentNCKStudentsList.find(s => (s.student_id || s.admission_number) === studentId);
         if (!student) continue;
 
-        // Calculate totals
-        let totalScore = 0;
-        let scoredCount = 0;
+        let totalScore = 0, scoredCount = 0;
         Object.values(scores).forEach(val => {
-            if (val > 0) {
-                totalScore += val;
-                scoredCount++;
-            }
+            if (val > 0) { totalScore += val; scoredCount++; }
         });
         const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
         const grade = calculateNursingGrade(avg);
@@ -1157,7 +1024,7 @@ async function saveFastEntryMarks() {
                 .from('nck_marks')
                 .upsert({
                     student_id: studentId,
-                    full_name: student.full_name || student.name || 'Unknown',
+                    full_name: student.full_name || 'Unknown',
                     admission_number: student.admission_number || studentId,
                     block: currentNCKBlock,
                     subject_name: currentNCKSheetType,
@@ -1167,10 +1034,9 @@ async function saveFastEntryMarks() {
                     grade: grade,
                     status: status,
                     graded_by: window.currentUser?.full_name || 'Admin',
-                    year: currentNCKYear,
                     updated_at: new Date().toISOString()
                 }, { 
-                    onConflict: 'student_id, subject_name, block, program, year' 
+                    onConflict: 'student_id, subject_name, block, program' 
                 });
 
             if (error) {
@@ -1223,7 +1089,7 @@ function fillDownNCKValues() {
 }
 
 // ============================================
-// EXPORT FUNCTIONS
+// EXPORT
 // ============================================
 
 async function exportNCKData() {
@@ -1235,8 +1101,7 @@ async function exportNCKData() {
             .select('*')
             .eq('block', currentNCKBlock)
             .eq('subject_name', currentNCKSheetType)
-            .eq('program', currentNCKProgram)
-            .eq('year', currentNCKYear);
+            .eq('program', currentNCKProgram);
 
         if (error) {
             showNotification(`Error: ${error.message}`, true);
@@ -1248,8 +1113,7 @@ async function exportNCKData() {
             return;
         }
 
-        // Build CSV
-        const headers = ['Student ID', 'Full Name', 'Admission', 'Block', 'Subject', 'Program', 'Scores', 'Final Score', 'Grade', 'Status', 'Graded By', 'Published', 'Year'];
+        const headers = ['Student ID', 'Full Name', 'Admission', 'Block', 'Subject', 'Program', 'Scores', 'Final Score', 'Grade', 'Status', 'Graded By', 'Published'];
         const rows = marks.map(m => [
             m.student_id || '',
             m.full_name || '',
@@ -1262,8 +1126,7 @@ async function exportNCKData() {
             m.grade || '',
             m.status || '',
             m.graded_by || '',
-            m.published ? 'Yes' : 'No',
-            m.year || ''
+            m.published ? 'Yes' : 'No'
         ]);
 
         let csv = headers.join(',') + '\n';
@@ -1313,11 +1176,6 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-function updateElementText(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-}
-
 function editNCKStudent(studentId) {
     const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
     if (row) {
@@ -1328,10 +1186,6 @@ function editNCKStudent(studentId) {
         }, 2000);
     }
 }
-
-// ============================================
-// NOTIFICATION HELPERS (if not already defined)
-// ============================================
 
 function showNotification(message, isError = false) {
     const container = document.getElementById('notification-container') || document.body;
@@ -1387,7 +1241,6 @@ function showLoading(message = 'Loading...') {
     `;
     document.body.appendChild(overlay);
 
-    // Add keyframe animation if not exists
     if (!document.getElementById('nck-spinner-keyframes')) {
         const style = document.createElement('style');
         style.id = 'nck-spinner-keyframes';
@@ -1410,7 +1263,7 @@ function hideLoading() {
 }
 
 // ============================================
-// CSS STYLES (injected dynamically)
+// CSS STYLES
 // ============================================
 
 (function injectNCKStyles() {
@@ -1443,13 +1296,11 @@ function hideLoading() {
 })();
 
 // ============================================
-// AUTO-INIT ON PAGE LOAD
+// AUTO-INIT
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🏥 NCK System initializing...');
-    
-    // Check if we're on the right page
     const nckSection = document.getElementById('nursing-system');
     if (nckSection) {
         setTimeout(() => {
@@ -1459,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================================
-// MAKE ALL FUNCTIONS GLOBALLY ACCESSIBLE
+// GLOBAL EXPOSURE
 // ============================================
 
 window.loadNCKSystemData = loadNCKSystemData;
@@ -1494,4 +1345,3 @@ window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 
 console.log('✅ NCK System module loaded successfully!');
-console.log('📊 Available functions:', Object.keys(window).filter(k => k.startsWith('nck') || k.startsWith('loadNCK') || k.startsWith('save') || k.includes('NCK')));
