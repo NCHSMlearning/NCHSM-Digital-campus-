@@ -555,12 +555,15 @@ processExamsData(exams, grades) {
         'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
     ];
     
-    // Filter exams
+       // Filter exams
     const filteredExams = exams.filter(exam => {
         const rawExamBlock = exam.block || exam.block_term || 'General';
         const examBlock = blockMap[rawExamBlock] || rawExamBlock;
         const examIntake = exam.intake_year;
         const examProgram = exam.program_type || exam.target_program;
+        
+        // ✅ PERMANENT FIX: Always include Completed/Closed exams
+        const isCompleted = exam.status === 'Completed' || exam.status === 'Closed';
         
         const blockMatch = examBlock === studentBlock || 
                            examBlock === 'General' ||
@@ -582,7 +585,8 @@ processExamsData(exams, grades) {
                            !examProgram;
         }
         
-        return blockMatch && intakeMatch && programMatch;
+        // ✅ Include if matches filters OR is Completed/Closed
+        return (blockMatch && intakeMatch && programMatch) || isCompleted;
     });
     
     console.log(`✅ Showing ${filteredExams.length} exams (filtered from ${exams.length})`);
