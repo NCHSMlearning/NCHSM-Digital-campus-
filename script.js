@@ -1281,7 +1281,36 @@ function exportTableToCSV(tableId, filename) {
  * ✅ Student statistics (KRCHN vs TVET)
  * ✅ Welcome message editor
  * ✅ Real-time updates
+ * ✅ SAFE - All null checks added
  *******************************************************/
+
+// ============================================
+// 📊 HELPER FUNCTIONS - SAFE UPDATES
+// ============================================
+
+/**
+ * Safely set textContent on an element if it exists
+ */
+function safeSetText(id, value, defaultValue = '0') {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = value ?? defaultValue;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Safely set innerHTML on an element if it exists
+ */
+function safeSetHTML(id, html) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.innerHTML = html;
+        return true;
+    }
+    return false;
+}
 
 // ============================================
 // 📊 DASHBOARD METRICS - ALL FUNCTIONS
@@ -1299,15 +1328,9 @@ async function loadTicketMetricsForDashboard() {
             .eq('status', 'open');
         
         if (!openError && openTickets) {
-            // Open tickets count
-            const openCount = openTickets.length;
-            const dashboardOpenTickets = document.getElementById('dashboardOpenTickets');
-            if (dashboardOpenTickets) dashboardOpenTickets.textContent = openCount;
-            
-            // Urgent tickets count
+            safeSetText('dashboardOpenTickets', openTickets.length);
             const urgentCount = openTickets.filter(t => t.priority === 'urgent').length;
-            const dashboardUrgentTickets = document.getElementById('dashboardUrgentTickets');
-            if (dashboardUrgentTickets) dashboardUrgentTickets.textContent = urgentCount;
+            safeSetText('dashboardUrgentTickets', urgentCount);
         }
         
         // Get total units for dashboard
@@ -1316,8 +1339,7 @@ async function loadTicketMetricsForDashboard() {
             .select('id', { count: 'exact' });
         
         if (!unitsError && units) {
-            const dashboardTotalUnits = document.getElementById('dashboardTotalUnits');
-            if (dashboardTotalUnits) dashboardTotalUnits.textContent = units.length || 0;
+            safeSetText('dashboardTotalUnits', units.length || 0);
         }
         
         // Get pending unit registrations
@@ -1327,8 +1349,7 @@ async function loadTicketMetricsForDashboard() {
             .eq('status', 'pending');
         
         if (!pendingError) {
-            const dashboardPendingUnitReg = document.getElementById('dashboardPendingUnitReg');
-            if (dashboardPendingUnitReg) dashboardPendingUnitReg.textContent = pendingReg?.length || 0;
+            safeSetText('dashboardPendingUnitReg', pendingReg?.length || 0);
         }
         
         // Get upcoming exams (next 7 days)
@@ -1343,8 +1364,7 @@ async function loadTicketMetricsForDashboard() {
             .lte('exam_date', nextWeekStr);
         
         if (!examsError) {
-            const dashboardUpcomingExams = document.getElementById('dashboardUpcomingExams');
-            if (dashboardUpcomingExams) dashboardUpcomingExams.textContent = upcomingExams?.length || 0;
+            safeSetText('dashboardUpcomingExams', upcomingExams?.length || 0);
         }
         
     } catch (error) {
@@ -1357,42 +1377,35 @@ async function loadTicketMetricsForDashboard() {
  */
 async function loadFeeSummaryForDashboard() {
     try {
-        // Get total fee structure amount
         const { data: feeStructures, error: feeError } = await sb
             .from('fee_structure')
             .select('amount');
         
         if (feeError) {
             console.error('Error loading fee structures:', feeError);
-            const dashboardOutstandingFees = document.getElementById('dashboardOutstandingFees');
-            if (dashboardOutstandingFees) dashboardOutstandingFees.innerHTML = 'KES 0';
+            safeSetHTML('dashboardOutstandingFees', 'KES 0');
             return;
         }
         
         const totalFees = feeStructures ? feeStructures.reduce((sum, f) => sum + parseFloat(f.amount || 0), 0) : 0;
         
-        // Get total collected from fee_payments
         const { data: payments, error: paymentError } = await sb
             .from('fee_payments')
             .select('amount');
         
         if (paymentError) {
             console.error('Error loading payments:', paymentError);
-            const dashboardOutstandingFees = document.getElementById('dashboardOutstandingFees');
-            if (dashboardOutstandingFees) dashboardOutstandingFees.innerHTML = `KES ${totalFees.toLocaleString()}`;
+            safeSetHTML('dashboardOutstandingFees', `KES ${totalFees.toLocaleString()}`);
             return;
         }
         
         const totalCollected = payments ? payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) : 0;
         const outstanding = Math.max(0, totalFees - totalCollected);
-        
-        const dashboardOutstandingFees = document.getElementById('dashboardOutstandingFees');
-        if (dashboardOutstandingFees) dashboardOutstandingFees.innerHTML = `KES ${outstanding.toLocaleString()}`;
+        safeSetHTML('dashboardOutstandingFees', `KES ${outstanding.toLocaleString()}`);
         
     } catch (error) {
         console.error('Error loading fee summary:', error);
-        const dashboardOutstandingFees = document.getElementById('dashboardOutstandingFees');
-        if (dashboardOutstandingFees) dashboardOutstandingFees.innerHTML = 'KES 0';
+        safeSetHTML('dashboardOutstandingFees', 'KES 0');
     }
 }
 
@@ -1401,15 +1414,13 @@ async function loadFeeSummaryForDashboard() {
  */
 async function loadPendingMessagesCount() {
     try {
-        // Get unread messages count
         const { count, error } = await sb
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('is_read', false);
         
         if (!error) {
-            const dashboardPendingMessages = document.getElementById('dashboardPendingMessages');
-            if (dashboardPendingMessages) dashboardPendingMessages.textContent = count || 0;
+            safeSetText('dashboardPendingMessages', count || 0);
         }
     } catch (error) {
         console.error('Error loading pending messages:', error);
@@ -1420,13 +1431,9 @@ async function loadPendingMessagesCount() {
  * Load total daily check-ins
  */
 async function loadTotalDailyCheckIns() {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0); 
-    const todayISO = today.toISOString();
-    
-    const tomorrow = new Date(today);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    const tomorrowISO = tomorrow.toISOString();
+    // ✅ Use local date, not UTC
+    const todayStr = new Date().toISOString().split('T')[0];
+    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
     const checkInsElement = document.getElementById('totalDailyCheckIns');
     if (!checkInsElement) return;
@@ -1434,8 +1441,8 @@ async function loadTotalDailyCheckIns() {
     const { count, error } = await sb
         .from('geo_attendance_logs')
         .select('*', { count: 'exact', head: true })
-        .gte('check_in_time', todayISO)
-        .lt('check_in_time', tomorrowISO);
+        .gte('check_in_time', todayStr)
+        .lt('check_in_time', tomorrowStr);
 
     if (error) {
         console.error('Error counting daily check-ins:', error.message);
@@ -1446,13 +1453,12 @@ async function loadTotalDailyCheckIns() {
 }
 
 /**
- * Load student statistics - KRCHN vs TVET
+ * Load student statistics - KRCHN vs TVET - WITH NULL CHECKS
  */
 async function loadStudentStatistics() {
     console.log('📊 Loading student statistics...');
     
     try {
-        // Get ALL approved students
         const { data: students, error } = await sb
             .from('consolidated_user_profiles_table')
             .select('user_id, full_name, program, gender, role, status, intake_year, block')
@@ -1462,57 +1468,43 @@ async function loadStudentStatistics() {
         if (error) throw error;
         
         if (!students || students.length === 0) {
-            document.getElementById('statsTotalStudents').textContent = '0';
-            document.getElementById('statsKrchnCount').textContent = '0';
-            document.getElementById('statsTvetCount').textContent = '0';
-            document.getElementById('statsProgramCount').textContent = '0';
-            document.getElementById('statsMaleTotal').textContent = '0';
-            document.getElementById('statsFemaleTotal').textContent = '0';
-            document.getElementById('statsMalePercent').textContent = '0%';
-            document.getElementById('statsFemalePercent').textContent = '0%';
-            document.getElementById('statsProgramBreakdown').innerHTML = 
-                '<tr><td colspan="7" style="padding: 30px; text-align: center; color: #6b7280;">No students found</td></tr>';
+            safeSetText('statsTotalStudents', '0');
+            safeSetText('statsKrchnCount', '0');
+            safeSetText('statsTvetCount', '0');
+            safeSetText('statsProgramCount', '0');
+            safeSetText('statsMaleTotal', '0');
+            safeSetText('statsFemaleTotal', '0');
+            safeSetText('statsMalePercent', '0%');
+            safeSetText('statsFemalePercent', '0%');
+            safeSetHTML('statsProgramBreakdown', 
+                '<tr><td colspan="7" style="padding: 30px; text-align: center; color: #6b7280;">No students found</td></tr>'
+            );
             return;
         }
         
-        // Calculate statistics
         const totalStudents = students.length;
-        
-        // KRCHN vs TVET
-        const krchnStudents = students.filter(s => s.program === 'KRCHN');
-        const tvetStudents = students.filter(s => isTVETProgram(s.program));
-        const krchnCount = krchnStudents.length;
-        const tvetCount = tvetStudents.length;
-        
-        // Gender breakdown
-        const maleStudents = students.filter(s => s.gender === 'M' || s.gender === 'Male');
-        const femaleStudents = students.filter(s => s.gender === 'F' || s.gender === 'Female');
-        const maleCount = maleStudents.length;
-        const femaleCount = femaleStudents.length;
-        
-        // Gender percentages
+        const krchnCount = students.filter(s => s.program === 'KRCHN').length;
+        const tvetCount = students.filter(s => isTVETProgram(s.program)).length;
+        const maleCount = students.filter(s => s.gender === 'M' || s.gender === 'Male').length;
+        const femaleCount = students.filter(s => s.gender === 'F' || s.gender === 'Female').length;
         const malePercent = totalStudents > 0 ? Math.round((maleCount / totalStudents) * 100) : 0;
         const femalePercent = totalStudents > 0 ? Math.round((femaleCount / totalStudents) * 100) : 0;
+        const programCount = [...new Set(students.map(s => s.program).filter(p => p))].length;
         
-        // Get unique programs
-        const uniquePrograms = [...new Set(students.map(s => s.program).filter(p => p))];
-        const programCount = uniquePrograms.length;
+        safeSetText('statsTotalStudents', totalStudents);
+        safeSetText('statsKrchnCount', krchnCount);
+        safeSetText('statsTvetCount', tvetCount);
+        safeSetText('statsProgramCount', programCount);
+        safeSetText('statsMaleTotal', maleCount);
+        safeSetText('statsFemaleTotal', femaleCount);
+        safeSetText('statsMalePercent', malePercent + '%');
+        safeSetText('statsFemalePercent', femalePercent + '%');
         
-        // Update summary cards
-        document.getElementById('statsTotalStudents').textContent = totalStudents;
-        document.getElementById('statsKrchnCount').textContent = krchnCount;
-        document.getElementById('statsTvetCount').textContent = tvetCount;
-        document.getElementById('statsProgramCount').textContent = programCount;
-        document.getElementById('statsMaleTotal').textContent = maleCount;
-        document.getElementById('statsFemaleTotal').textContent = femaleCount;
-        document.getElementById('statsMalePercent').textContent = malePercent + '%';
-        document.getElementById('statsFemalePercent').textContent = femalePercent + '%';
-        
-        // Build program breakdown table
+        // Build program breakdown
         let html = '';
         const programData = [];
         
-        for (const programCode of uniquePrograms) {
+        for (const programCode of [...new Set(students.map(s => s.program).filter(p => p))]) {
             const progStudents = students.filter(s => s.program === programCode);
             const progTotal = progStudents.length;
             const progMale = progStudents.filter(s => s.gender === 'M' || s.gender === 'Male').length;
@@ -1525,7 +1517,6 @@ async function loadStudentStatistics() {
             const ratioDisplay = ratio === '∞' ? 'All M' : (ratio === '0' ? 'All F' : `${ratio}:1`);
             
             programData.push({
-                code: programCode,
                 name: progName,
                 type: progType,
                 total: progTotal,
@@ -1536,21 +1527,17 @@ async function loadStudentStatistics() {
             });
         }
         
-        // Sort by total (descending)
         programData.sort((a, b) => b.total - a.total);
         
-        function getProgramBadge(type) {
-            return type === 'KRCHN' 
+        for (const prog of programData) {
+            const badge = prog.type === 'KRCHN' 
                 ? '<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🎓 KRCHN</span>'
                 : '<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🔧 TVET</span>';
-        }
-        
-        for (const prog of programData) {
-            const barWidth = prog.percent;
+            
             html += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 10px 14px;"><strong>${escapeHtml(prog.name)}</strong></td>
-                    <td style="padding: 10px 14px; text-align: center;">${getProgramBadge(prog.type)}</td>
+                    <td style="padding: 10px 14px; text-align: center;">${badge}</td>
                     <td style="padding: 10px 14px; text-align: center;"><strong>${prog.total}</strong></td>
                     <td style="padding: 10px 14px; text-align: center;">👨 ${prog.male}</td>
                     <td style="padding: 10px 14px; text-align: center;">👩 ${prog.female}</td>
@@ -1558,36 +1545,30 @@ async function loadStudentStatistics() {
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div style="flex: 1; height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
-                                <div style="width: ${barWidth}%; height: 100%; background: linear-gradient(90deg, #4C1D95, #6d28d9); border-radius: 4px;"></div>
+                                <div style="width: ${prog.percent}%; height: 100%; background: linear-gradient(90deg, #4C1D95, #6d28d9); border-radius: 4px;"></div>
                             </div>
-                            <span style="font-size: 12px; font-weight: 600; min-width: 40px;">${barWidth}%</span>
+                            <span style="font-size: 12px; font-weight: 600; min-width: 40px;">${prog.percent}%</span>
                         </div>
                     </td>
                 </tr>
             `;
         }
         
-        document.getElementById('statsProgramBreakdown').innerHTML = html;
-        document.getElementById('statsLastUpdated').textContent = new Date().toLocaleTimeString();
+        safeSetHTML('statsProgramBreakdown', html);
+        safeSetText('statsLastUpdated', new Date().toLocaleTimeString());
         
-        console.log('✅ Student statistics loaded:', {
-            total: totalStudents,
-            krchn: krchnCount,
-            tvet: tvetCount,
-            male: maleCount,
-            female: femaleCount,
-            programs: programCount
-        });
+        console.log('✅ Student statistics loaded:', { totalStudents, krchnCount, tvetCount, maleCount, femaleCount, programCount });
         
     } catch (error) {
         console.error('Error loading student statistics:', error);
-        document.getElementById('statsProgramBreakdown').innerHTML = 
-            `<tr><td colspan="7" style="padding: 30px; text-align: center; color: #dc2626;">❌ Error: ${error.message}</td></tr>`;
+        safeSetHTML('statsProgramBreakdown', 
+            `<tr><td colspan="7" style="padding: 30px; text-align: center; color: #dc2626;">❌ Error: ${error.message}</td></tr>`
+        );
     }
 }
 
 /**
- * Load additional dashboard metrics
+ * Load additional dashboard metrics - WITH NULL CHECKS
  */
 async function loadAdditionalDashboardMetrics() {
     try {
@@ -1598,41 +1579,37 @@ async function loadAdditionalDashboardMetrics() {
             .eq('role', 'lecturer');
         
         if (!lecturersError) {
-            const el = document.getElementById('dashboardLecturersCount');
-            if (el) el.textContent = lecturersCount || 0;
+            safeSetText('dashboardLecturersCount', lecturersCount || 0);
         }
         
-        // Load Pending Marks
+        // Load Pending Marks - use correct table name
         const { count: pendingMarks, error: pendingMarksError } = await sb
-            .from('exam_results')
+            .from('exam_grades')  // ✅ Fixed: was 'exam_results'
             .select('id', { count: 'exact' })
             .eq('status', 'pending');
         
         if (!pendingMarksError) {
-            const el = document.getElementById('dashboardPendingMarks');
-            if (el) el.textContent = pendingMarks || 0;
+            safeSetText('dashboardPendingMarks', pendingMarks || 0);
         }
         
         // Load Published Marks
         const { count: publishedMarks, error: publishedMarksError } = await sb
-            .from('exam_results')
+            .from('exam_grades')  // ✅ Fixed: was 'exam_results'
             .select('id', { count: 'exact' })
             .eq('status', 'published');
         
         if (!publishedMarksError) {
-            const el = document.getElementById('dashboardPublishedMarks');
-            if (el) el.textContent = publishedMarks || 0;
+            safeSetText('dashboardPublishedMarks', publishedMarks || 0);
         }
         
         // Load Pending Reviews
         const { count: pendingReviews, error: pendingReviewsError } = await sb
-            .from('reviews')
+            .from('student_reviews')  // ✅ Fixed: was 'reviews'
             .select('id', { count: 'exact' })
             .eq('status', 'pending');
         
         if (!pendingReviewsError) {
-            const el = document.getElementById('dashboardPendingReviews');
-            if (el) el.textContent = pendingReviews || 0;
+            safeSetText('dashboardPendingReviews', pendingReviews || 0);
         }
         
         // Load Total Programs
@@ -1642,8 +1619,7 @@ async function loadAdditionalDashboardMetrics() {
             .eq('status', 'active');
         
         if (!totalProgramsError) {
-            const el = document.getElementById('dashboardTotalPrograms');
-            if (el) el.textContent = totalPrograms || 0;
+            safeSetText('dashboardTotalPrograms', totalPrograms || 0);
         }
         
         // Load Total Sessions (this week)
@@ -1657,14 +1633,13 @@ async function loadAdditionalDashboardMetrics() {
         const endOfWeekStr = endOfWeek.toISOString();
         
         const { count: totalSessions, error: totalSessionsError } = await sb
-            .from('sessions')
+            .from('scheduled_sessions')  // ✅ Fixed: was 'sessions'
             .select('id', { count: 'exact' })
-            .gte('start_time', startOfWeekStr)
-            .lt('start_time', endOfWeekStr);
+            .gte('session_date', startOfWeekStr)  // ✅ Fixed: was 'start_time'
+            .lt('session_date', endOfWeekStr);
         
         if (!totalSessionsError) {
-            const el = document.getElementById('dashboardTotalSessions');
-            if (el) el.textContent = totalSessions || 0;
+            safeSetText('dashboardTotalSessions', totalSessions || 0);
         }
         
         // Load System Alerts
@@ -1674,17 +1649,12 @@ async function loadAdditionalDashboardMetrics() {
             .eq('resolved', false);
         
         if (!systemAlertsError) {
-            const el = document.getElementById('dashboardSystemAlerts');
-            if (el) el.textContent = systemAlerts || 0;
+            safeSetText('dashboardSystemAlerts', systemAlerts || 0);
         }
         
         // Load Attendance Today (percentage)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayStr = today.toISOString();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString();
+        const todayStr = new Date().toISOString().split('T')[0];
+        const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
         
         const { count: totalStudents, error: totalStudentsError } = await sb
             .from(USER_PROFILE_TABLE)
@@ -1700,8 +1670,7 @@ async function loadAdditionalDashboardMetrics() {
         
         if (!totalStudentsError && !presentTodayError && totalStudents > 0) {
             const attendancePercent = Math.round((presentToday / totalStudents) * 100);
-            const el = document.getElementById('dashboardAttendanceToday');
-            if (el) el.textContent = attendancePercent + '%';
+            safeSetText('dashboardAttendanceToday', attendancePercent + '%');
         }
         
     } catch (error) {
@@ -1710,7 +1679,7 @@ async function loadAdditionalDashboardMetrics() {
 }
 
 // ============================================
-// 🚀 MAIN DASHBOARD LOAD FUNCTION
+// 🚀 MAIN DASHBOARD LOAD FUNCTION - WITH NULL CHECKS
 // ============================================
 
 async function loadDashboardData() {
@@ -1721,8 +1690,7 @@ async function loadDashboardData() {
         const { count: allUsersCount } = await sb
             .from(USER_PROFILE_TABLE)
             .select('user_id', { count: 'exact' });
-        const totalUsersEl = document.getElementById('totalUsers');
-        if (totalUsersEl) totalUsersEl.textContent = allUsersCount || 0;
+        safeSetText('totalUsers', allUsersCount || 0);
         
         // Total Daily Check-ins
         await loadTotalDailyCheckIns(); 
@@ -1733,12 +1701,11 @@ async function loadDashboardData() {
             .select('user_id', { count: 'exact', head: true })
             .eq('status', 'pending');
 
-        const pendingApprovalsEl = document.getElementById('pendingApprovals');
         if (error) {
             console.error('Error counting pending approvals:', error.message);
-            if (pendingApprovalsEl) pendingApprovalsEl.textContent = '0';
+            safeSetText('pendingApprovals', '0');
         } else {
-            if (pendingApprovalsEl) pendingApprovalsEl.textContent = pendingCount || 0;
+            safeSetText('pendingApprovals', pendingCount || 0);
         }
 
         // Total students
@@ -1746,26 +1713,22 @@ async function loadDashboardData() {
             .from(USER_PROFILE_TABLE)
             .select('user_id', { count: 'exact' })
             .eq('role', 'student');
-        const totalStudentsEl = document.getElementById('totalStudents');
-        if (totalStudentsEl) totalStudentsEl.textContent = studentsCount || 0;
+        safeSetText('totalStudents', studentsCount || 0);
 
         // Data Integrity Placeholder
-        const dataIntegrityEl = document.getElementById('dataIntegrityScore');
-        if (dataIntegrityEl) dataIntegrityEl.textContent = '98.5%';
+        safeSetText('dataIntegrityScore', '98.5%');
 
         // Overall check-in count
         const { count: overallCheckIns } = await sb
             .from('geo_attendance_logs')
             .select('*', { count: 'exact', head: true });
-        const overallCheckInEl = document.getElementById('overallCheckInCount');
-        if (overallCheckInEl) overallCheckInEl.textContent = overallCheckIns || 0;
+        safeSetText('overallCheckInCount', overallCheckIns || 0);
 
         // Total courses count
         const { count: coursesCount } = await sb
             .from('courses')
             .select('*', { count: 'exact', head: true });
-        const totalCoursesEl = document.getElementById('totalCourses');
-        if (totalCoursesEl) totalCoursesEl.textContent = coursesCount || 0;
+        safeSetText('totalCourses', coursesCount || 0);
 
         // Total resources count (this month)
         const firstDayOfMonth = new Date();
@@ -1775,8 +1738,7 @@ async function loadDashboardData() {
             .from('resources')
             .select('*', { count: 'exact', head: true })
             .gte('created_at', firstDayOfMonth.toISOString());
-        const totalResourcesEl = document.getElementById('totalResources');
-        if (totalResourcesEl) totalResourcesEl.textContent = resourcesCount || 0;
+        safeSetText('totalResources', resourcesCount || 0);
 
         // KRCHN vs TVET Counts
         const { count: krchnCount } = await sb
@@ -1785,6 +1747,7 @@ async function loadDashboardData() {
             .eq('role', 'student')
             .eq('status', 'approved')
             .eq('program', 'KRCHN');
+        safeSetText('krchnCountDisplay', krchnCount || 0);
         
         const { count: tvetCount } = await sb
             .from(USER_PROFILE_TABLE)
@@ -1792,29 +1755,22 @@ async function loadDashboardData() {
             .eq('role', 'student')
             .eq('status', 'approved')
             .neq('program', 'KRCHN');
-        
-        const krchnDisplay = document.getElementById('krchnCountDisplay');
-        if (krchnDisplay) krchnDisplay.textContent = krchnCount || 0;
-        
-        const tvetDisplay = document.getElementById('tvetCountDisplay');
-        if (tvetDisplay) tvetDisplay.textContent = tvetCount || 0;
+        safeSetText('tvetCountDisplay', tvetCount || 0);
         
         // Staff count
         const { count: staffCount } = await sb
             .from(USER_PROFILE_TABLE)
             .select('user_id', { count: 'exact' })
             .in('role', ['lecturer', 'admin', 'superadmin']);
-        const staffDisplay = document.getElementById('totalStaffCountDisplay');
-        if (staffDisplay) staffDisplay.textContent = staffCount || 0;
+        safeSetText('totalStaffCountDisplay', staffCount || 0);
         
         // Resources total
         const { count: totalResourcesAll } = await sb
             .from('resources')
             .select('*', { count: 'exact', head: true });
-        const resourcesDisplay = document.getElementById('totalResourcesDisplay');
-        if (resourcesDisplay) resourcesDisplay.textContent = totalResourcesAll || 0;
+        safeSetText('totalResourcesDisplay', totalResourcesAll || 0);
 
-        // Active sessions (approximate - from auth sessions)
+        // Active sessions
         const activeSessionsEl = document.getElementById('activeSessions');
         if (activeSessionsEl) {
             try {
@@ -1831,7 +1787,12 @@ async function loadDashboardData() {
         await loadFeeSummaryForDashboard();
         await loadPendingMessagesCount();
         await loadAdditionalDashboardMetrics();
-        await loadStudentStatistics();
+        
+        // ✅ Only call if elements exist
+        const statsExists = document.getElementById('statsTotalStudents') !== null;
+        if (statsExists) {
+            await loadStudentStatistics();
+        }
         
         // Load Welcome Message
         loadStudentWelcomeMessage();
@@ -1935,7 +1896,6 @@ async function loadStudentBirthdays() {
         const month = today.getMonth() + 1;
         const day = today.getDate();
         
-        // Get all students
         const { data: students, error } = await sb
             .from(USER_PROFILE_TABLE)
             .select('full_name, date_of_birth, student_id, program, email, profile_photo_url')
@@ -1945,15 +1905,13 @@ async function loadStudentBirthdays() {
         
         if (error) throw error;
         
-        // Filter students with birthdays today
         const birthdayStudents = students.filter(s => {
             if (!s.date_of_birth) return false;
             const dob = new Date(s.date_of_birth);
             return dob.getMonth() + 1 === month && dob.getDate() === day;
         });
         
-        const birthdayCountEl = document.getElementById('birthdayCount');
-        if (birthdayCountEl) birthdayCountEl.textContent = birthdayStudents.length;
+        safeSetText('birthdayCount', birthdayStudents.length);
         
         const listEl = document.getElementById('birthdayStudentsList');
         const cardEl = document.getElementById('birthdayStudentCard');
@@ -1963,19 +1921,16 @@ async function loadStudentBirthdays() {
             if (cardEl) {
                 cardEl.style.display = 'block';
                 const student = birthdayStudents[0];
-                document.getElementById('birthdayName').textContent = student.full_name || 'Student';
-                document.getElementById('birthdayDetails').textContent = 
-                    `${student.program || 'N/A'} • ${student.student_id || 'No ID'}`;
+                safeSetText('birthdayName', student.full_name || 'Student');
+                safeSetText('birthdayDetails', `${student.program || 'N/A'} • ${student.student_id || 'No ID'}`);
                 
-                // Calculate age
                 const dob = new Date(student.date_of_birth);
                 let age = today.getFullYear() - dob.getFullYear();
                 const m = today.getMonth() - dob.getMonth();
                 if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-                document.getElementById('birthdayAge').textContent = `🎂 Turning ${age} years old today!`;
+                safeSetText('birthdayAge', `🎂 Turning ${age} years old today!`);
             }
             
-            // Show multiple birthdays in list
             if (birthdayStudents.length > 1 && listEl) {
                 listEl.style.display = 'block';
                 let html = '<ul style="margin: 8px 0 0; padding-left: 20px; color: #0A3D62;">';
@@ -2034,7 +1989,6 @@ async function initDashboard() {
     await loadDashboardData();
     await loadStudentBirthdays();
     
-    // Start auto-refresh every 60 seconds
     startDashboardAutoRefresh(60000);
     
     console.log('✅ Dashboard initialized');
