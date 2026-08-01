@@ -1,4 +1,61 @@
 // ============================================================
+// ENSURE SUPABASE CLIENT IS AVAILABLE
+// ============================================================
+(function ensureSupabaseClient() {
+    // Check if sb is already defined globally
+    if (typeof sb !== 'undefined' && sb) {
+        window.sb = sb;
+        console.log('✅ sb already defined in analytics');
+        return;
+    }
+    
+    // Check if sb is on window
+    if (typeof window.sb !== 'undefined' && window.sb) {
+        console.log('✅ sb found on window in analytics');
+        return;
+    }
+    
+    console.warn('⚠️ sb not available, waiting...');
+    
+    // Wait for sb to become available
+    let attempts = 0;
+    const maxAttempts = 30;
+    
+    const waitForSb = setInterval(() => {
+        attempts++;
+        
+        if (typeof window.sb !== 'undefined' && window.sb) {
+            clearInterval(waitForSb);
+            console.log('✅ sb became available after', attempts, 'attempts in analytics');
+            // Auto-load analytics if it was waiting
+            if (typeof window.loadAnalyticsData === 'function') {
+                setTimeout(window.loadAnalyticsData, 200);
+            }
+            return;
+        }
+        
+        if (attempts >= maxAttempts) {
+            clearInterval(waitForSb);
+            console.error('❌ sb not available in analytics after', maxAttempts, 'attempts');
+            // Show error in UI
+            const placeholder = document.getElementById('analyticsPlaceholder');
+            if (placeholder) {
+                placeholder.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #dc2626;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 48px;"></i>
+                        <h3>Database Connection Error</h3>
+                        <p>Please refresh the page to reconnect.</p>
+                    </div>
+                `;
+            }
+        }
+    }, 200);
+})();
+
+// ✅ Use a local reference to sb that checks both
+const supabase = (typeof sb !== 'undefined') ? sb : window.sb;
+
+// ============================================================
 // SUPER ADMIN ANALYTICS MODULE - COMPLETE WITH EXACT GRADING SYSTEM
 // ============================================================
 
@@ -132,9 +189,20 @@ window.loadAnalyticsData = async function() {
     
     window.showAnalyticsLoading(true);
     
+    // ✅ Get the client
+    const client = supabase || window.sb;
+    if (!client) {
+        console.error('❌ Supabase client not available in loadAnalyticsData');
+        window.showAnalyticsLoading(false);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('Database connection error. Please refresh.', 'error');
+        }
+        return;
+    }
+    
     try {
         // 1. GET STUDENTS
-        let studentQuery = window.sb
+        let studentQuery = client
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('role', 'student')
@@ -162,7 +230,7 @@ window.loadAnalyticsData = async function() {
         
         // 2. GET MARKS
         const studentIds = students?.map(s => s.student_id) || [];
-        let marksQuery = window.sb
+        let marksQuery = client
             .from('student_marks')
             .select('*')
             .eq('academic_year', year)
@@ -177,7 +245,7 @@ window.loadAnalyticsData = async function() {
         console.log(`📊 Found ${marks?.length || 0} marks records`);
         
         // 3. GET NCK MARKS
-        const { data: nckMarks, error: nckError } = await window.sb
+        const { data: nckMarks, error: nckError } = await client
             .from('nck_marks')
             .select('*')
             .eq('academic_year', year);
