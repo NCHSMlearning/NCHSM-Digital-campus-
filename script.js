@@ -2392,6 +2392,7 @@ async function loadDataVisualization() {
  * ✅ Performance optimizations added
  * ✅ TVET/KRCHN fixes applied
  * ✅ Full program names everywhere
+ * ✅ Document upload functions added
  *******************************************************/
 
 // ============================================
@@ -2406,7 +2407,8 @@ const USERS_STATE = {
         status: 'all',
         program: 'all',
         block: 'all',
-        search: ''
+        search: '',
+        programType: 'all'
     },
     cache: {
         programs: null,
@@ -2416,6 +2418,14 @@ const USERS_STATE = {
 };
 
 let searchTimeout = null;
+
+// ============================================================
+// 🔥 HELPER: Get Supabase client
+// ============================================================
+function getSb() {
+    return window.sb || sb;
+}
+
 // ============================================================
 // 🔥 FIX: POPULATE PROGRAM AND BLOCK DROPDOWNS IN MANAGE USERS
 // ============================================================
@@ -2428,8 +2438,8 @@ async function populateUserProgramFilter() {
     if (!programFilter) return;
     
     try {
-        // Get distinct programs from user profiles
-        const { data: programs, error } = await sb
+        const supabase = getSb();
+        const { data: programs, error } = await supabase
             .from('consolidated_user_profiles_table')
             .select('program')
             .not('program', 'is', null)
@@ -2437,13 +2447,10 @@ async function populateUserProgramFilter() {
         
         if (error) throw error;
         
-        // Keep "All Programs" option
-        programFilter.innerHTML = '<option value="all">All Programs</option>';
+        programFilter.innerHTML = '<option value="all">📚 All Programs</option>';
         
-        // Get unique programs
         const uniquePrograms = [...new Set(programs.map(p => p.program).filter(Boolean))];
         
-        // Sort with KRCHN first, then TVET programs alphabetically
         uniquePrograms.sort((a, b) => {
             if (a === 'KRCHN') return -1;
             if (b === 'KRCHN') return 1;
@@ -2473,8 +2480,8 @@ async function populateUserBlockFilter() {
     if (!blockFilter) return;
     
     try {
-        // Get distinct blocks from user profiles
-        const { data: blocks, error } = await sb
+        const supabase = getSb();
+        const { data: blocks, error } = await supabase
             .from('consolidated_user_profiles_table')
             .select('block')
             .not('block', 'is', null)
@@ -2482,13 +2489,10 @@ async function populateUserBlockFilter() {
         
         if (error) throw error;
         
-        // Keep "All Blocks" option
-        blockFilter.innerHTML = '<option value="all">All Blocks</option>';
+        blockFilter.innerHTML = '<option value="all">📅 All Blocks/Terms</option>';
         
-        // Get unique blocks
         const uniqueBlocks = [...new Set(blocks.map(b => b.block).filter(Boolean))];
         
-        // Sort blocks in logical order
         const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
         uniqueBlocks.sort((a, b) => {
             const indexA = blockOrder.indexOf(a);
@@ -2521,16 +2525,15 @@ async function populateUserFilterDropdownsIfEmpty() {
     const programFilter = document.getElementById('user-program-filter');
     const blockFilter = document.getElementById('user-block-filter');
     
-    // Check if program filter needs populating
     if (programFilter && programFilter.options.length <= 1) {
         await populateUserProgramFilter();
     }
     
-    // Check if block filter needs populating
     if (blockFilter && blockFilter.options.length <= 1) {
         await populateUserBlockFilter();
     }
 }
+
 // ============================================
 // 📧 SEND APPROVAL EMAIL - UPDATED
 // ============================================
@@ -2538,7 +2541,6 @@ async function populateUserFilterDropdownsIfEmpty() {
 async function sendApprovalEmail(email, userName, role, program, intakeYear, block) {
     console.log('📧 Sending approval email to:', email);
     
-    // Get full program details
     const programDisplay = getProgramDisplayName(program) || program || 'N/A';
     const programType = getProgramType(program);
     const programLevel = getProgramLevel(program);
@@ -2726,17 +2728,15 @@ async function loadAllUsers(page = 1, filters = {}) {
     const startTime = performance.now();
     console.log('🚀 Loading users (optimized)...');
     
-    // ✅ FIX: Use the correct tbody ID
     const tbody = document.getElementById('users-table-body');
     if (!tbody) {
         console.error('❌ users-table-body not found');
         return;
     }
     
-    // Show loading state
     tbody.innerHTML = `
         <tr>
-            <td colspan="11" style="padding: 60px 20px; text-align: center;">
+            <td colspan="13" style="padding: 60px 20px; text-align: center;">
                 <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                 <p style="color: #6b7280; margin: 0;">Loading users...</p>
             </td>
@@ -2744,12 +2744,13 @@ async function loadAllUsers(page = 1, filters = {}) {
     `;
     
     try {
-        // ✅ FIRST: Populate filter dropdowns if they are empty
+        const supabase = getSb();
+        
         if (typeof populateUserFilterDropdownsIfEmpty === 'function') {
             await populateUserFilterDropdownsIfEmpty();
         }
         
-        let query = sb.from(USER_PROFILE_TABLE).select('*', { count: 'exact' });
+        let query = supabase.from(USER_PROFILE_TABLE).select('*', { count: 'exact' });
         
         if (filters.role && filters.role !== 'all') {
             query = query.eq('role', filters.role);
@@ -2762,6 +2763,11 @@ async function loadAllUsers(page = 1, filters = {}) {
         }
         if (filters.block && filters.block !== 'all') {
             query = query.eq('block', filters.block);
+        }
+        if (filters.programType === 'tvet') {
+            query = query.neq('program', 'KRCHN');
+        } else if (filters.programType === 'nursing') {
+            query = query.eq('program', 'KRCHN');
         }
         
         if (filters.search && filters.search.length > 1) {
@@ -2787,12 +2793,11 @@ async function loadAllUsers(page = 1, filters = {}) {
         USERS_STATE.total = count || 0;
         USERS_STATE.page = page;
         
-        // ✅ BATCH FETCH DOCUMENTS
         const userIds = users.map(u => u.user_id).filter(id => id);
         let docCache = {};
         
         if (userIds.length > 0) {
-            const { data: docs } = await sb
+            const { data: docs } = await supabase
                 .from('user_documents')
                 .select('user_id, document_type, status, file_path')
                 .in('user_id', userIds);
@@ -2810,7 +2815,6 @@ async function loadAllUsers(page = 1, filters = {}) {
         renderUserPagination(count || 0, page);
         updateUserStats(users, count);
         
-        // ✅ Store load time for display
         window._lastLoadTime = loadTime;
         
         return { users, total: count };
@@ -2819,7 +2823,7 @@ async function loadAllUsers(page = 1, filters = {}) {
         console.error('❌ Error loading users:', error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" style="padding: 40px 20px; text-align: center; color: #dc2626;">
+                <td colspan="13" style="padding: 40px 20px; text-align: center; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 8px;"></i>
                     Error: ${error.message}
                     <br>
@@ -2832,6 +2836,7 @@ async function loadAllUsers(page = 1, filters = {}) {
         return { users: [], total: 0 };
     }
 }
+
 // ============================================
 // 📊 RENDER USERS TABLE - COMPLETE TVET SUPPORT
 // ============================================
@@ -2846,7 +2851,7 @@ function renderUsersTable(users, docCache = {}) {
     if (!users || users.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="12" style="text-align:center; padding: 60px 20px; color: #94a3b8;">
+                <td colspan="13" style="text-align:center; padding: 60px 20px; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 40px; display: block; margin-bottom: 12px; opacity: 0.3;"></i>
                     No users found
                     <br>
@@ -2872,7 +2877,6 @@ function renderUsersTable(users, docCache = {}) {
         const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
         const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
         
-        // ✅ Get program display name and type
         const programName = getProgramDisplayName(u.program);
         const programType = getProgramType(u.program);
         const isTVET = programType === 'TVET';
@@ -2880,16 +2884,12 @@ function renderUsersTable(users, docCache = {}) {
         const programBadgeColor = isTVET ? '#92400e' : '#1e40af';
         const programIcon = isTVET ? 'fa-tools' : 'fa-graduation-cap';
         
-        // ✅ BLOCK/TERM DISPLAY - Proper label based on program type
         const blockLabel = isTVET ? 'Term' : 'Block';
         const blockValue = u.block || u.current_block || 'Not assigned';
         const blockDisplay = blockValue !== 'Not assigned' ? `${blockLabel}: ${blockValue}` : 'Not assigned';
         
-        // ✅ Block badge color based on program type
         const blockBadgeColor = isTVET ? '#f59e0b' : '#4C1D95';
         const blockBadgeBg = isTVET ? '#fef3c7' : '#e0e7ff';
-        
-        // ✅ Intake display
         const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
 
         html += `
@@ -2946,6 +2946,15 @@ function renderUsersTable(users, docCache = {}) {
                     }
                 </td>
                 <td style="padding: 10px 14px; text-align: center;">
+                    <button onclick="openDocumentUploadModal('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" 
+                            style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;"
+                            onmouseover="this.style.background='#7c3aed'" 
+                            onmouseout="this.style.background='#8b5cf6'"
+                            title="Upload Documents">
+                        <i class="fas fa-upload"></i>
+                    </button>
+                </td>
+                <td style="padding: 10px 14px; text-align: center;">
                     <span style="padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: ${statusClass === 'status-approved' ? '#d1fae5' : statusClass === 'status-danger' ? '#fee2e2' : '#fef3c7'}; color: ${statusClass === 'status-approved' ? '#065f46' : statusClass === 'status-danger' ? '#991b1b' : '#92400e'};">
                         ${statusText}
                     </span>
@@ -2967,6 +2976,7 @@ function renderUsersTable(users, docCache = {}) {
     
     tbody.innerHTML = html;
 }
+
 // ============================================
 // 📊 UPDATE USER STATS
 // ============================================
@@ -3104,11 +3114,21 @@ function filterUsers() {
     const statusFilter = document.getElementById('user-status-filter');
     const programFilter = document.getElementById('user-program-filter');
     const blockFilter = document.getElementById('user-block-filter');
+    const programTypeFilter = document.getElementById('user-program-type-filter');
     
     USERS_STATE.filters.role = roleFilter?.value || 'all';
     USERS_STATE.filters.status = statusFilter?.value || 'all';
     USERS_STATE.filters.program = programFilter?.value || 'all';
     USERS_STATE.filters.block = blockFilter?.value || 'all';
+    
+    const programType = programTypeFilter?.value || 'all';
+    if (programType === 'nursing') {
+        USERS_STATE.filters.programType = 'nursing';
+    } else if (programType === 'tvet') {
+        USERS_STATE.filters.programType = 'tvet';
+    } else {
+        USERS_STATE.filters.programType = 'all';
+    }
     
     USERS_STATE.page = 1;
     loadAllUsers(1, USERS_STATE.filters);
@@ -3119,12 +3139,12 @@ function filterUsers() {
 // ============================================
 
 function resetUserFilters() {
-    ['user-search', 'user-role-filter', 'user-status-filter', 'user-program-filter', 'user-block-filter'].forEach(id => {
+    ['user-search', 'user-role-filter', 'user-status-filter', 'user-program-filter', 'user-block-filter', 'user-program-type-filter'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
     
-    USERS_STATE.filters = { role: 'all', status: 'all', program: 'all', block: 'all', search: '' };
+    USERS_STATE.filters = { role: 'all', status: 'all', program: 'all', block: 'all', search: '', programType: 'all' };
     USERS_STATE.page = 1;
     loadAllUsers(1, USERS_STATE.filters);
 }
@@ -3135,8 +3155,10 @@ function resetUserFilters() {
 
 async function loadFilterOptions() {
     try {
+        const supabase = getSb();
+        
         if (!USERS_STATE.cache.programs) {
-            const { data: programs } = await sb
+            const { data: programs } = await supabase
                 .from(USER_PROFILE_TABLE)
                 .select('program', { distinct: true })
                 .order('program');
@@ -3144,7 +3166,7 @@ async function loadFilterOptions() {
         }
         
         if (!USERS_STATE.cache.blocks) {
-            const { data: blocks } = await sb
+            const { data: blocks } = await supabase
                 .from(USER_PROFILE_TABLE)
                 .select('block', { distinct: true })
                 .order('block');
@@ -3153,7 +3175,7 @@ async function loadFilterOptions() {
         
         const programFilter = document.getElementById('user-program-filter');
         if (programFilter) {
-            programFilter.innerHTML = '<option value="all">All Programs</option>';
+            programFilter.innerHTML = '<option value="all">📚 All Programs</option>';
             const sortedPrograms = [...USERS_STATE.cache.programs].sort((a, b) => {
                 const nameA = getProgramDisplayName(a);
                 const nameB = getProgramDisplayName(b);
@@ -3167,7 +3189,7 @@ async function loadFilterOptions() {
         
         const blockFilter = document.getElementById('user-block-filter');
         if (blockFilter) {
-            blockFilter.innerHTML = '<option value="all">All Blocks/Terms</option>';
+            blockFilter.innerHTML = '<option value="all">📅 All Blocks/Terms</option>';
             USERS_STATE.cache.blocks.forEach(b => {
                 blockFilter.innerHTML += `<option value="${b}">${b}</option>`;
             });
@@ -3183,16 +3205,17 @@ async function loadFilterOptions() {
 // ============================================
 
 async function loadPendingApprovals() {
-    const tbody = document.getElementById('pending-table');
+    const tbody = document.getElementById('pending-table-body');
     if (!tbody) {
-        console.error("Missing <tbody id='pending-table'> element in your HTML.");
+        console.error("Missing <tbody id='pending-table-body'> element in your HTML.");
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="11"><div class="loading-spinner"></div> Loading pending approvals...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12"><div class="loading-spinner"></div> Loading pending approvals...</td></tr>';
 
     try {
-        const { data: pending, error, count } = await sb
+        const supabase = getSb();
+        const { data: pending, error, count } = await supabase
             .from(USER_PROFILE_TABLE)
             .select('*', { count: 'exact' })
             .eq('status', 'pending')
@@ -3202,7 +3225,7 @@ async function loadPendingApprovals() {
         if (error) throw error;
 
         if (!pending || pending.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px;">✅ No pending approvals</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:30px;">✅ No pending approvals</td></tr>';
             return;
         }
 
@@ -3210,7 +3233,7 @@ async function loadPendingApprovals() {
         let docCache = {};
         
         if (userIds.length > 0) {
-            const { data: docs } = await sb
+            const { data: docs } = await supabase
                 .from('user_documents')
                 .select('user_id, document_type, status, file_path')
                 .in('user_id', userIds);
@@ -3228,13 +3251,6 @@ async function loadPendingApprovals() {
             const userDocs = docCache[u.user_id] || {};
             const kcseStatus = userDocs['kcse'] || 'pending';
             const idStatus = userDocs['id'] || 'pending';
-            
-            const statusColors = {
-                'pending': 'badge-warning',
-                'uploaded': 'badge-info',
-                'verified': 'badge-success',
-                'rejected': 'badge-danger'
-            };
             
             const escapedName = escapeHtml(u.full_name);
             const escapedUserId = escapeHtml(u.user_id);
@@ -3264,7 +3280,7 @@ async function loadPendingApprovals() {
                     <td>${escapeHtml(intakeDisplay)}</td>
                     <td>${escapedStudentId || 'N/A'}</td>
                     <td>
-                        <span class="badge ${statusColors[kcseStatus]}" 
+                        <span class="badge ${kcseStatus === 'pending' ? 'badge-warning' : 'badge-success'}" 
                               style="cursor:pointer; font-size:11px;" 
                               onclick="viewDocument('${escapedUserId}','kcse')">
                             ${kcseStatus.toUpperCase()}
@@ -3272,7 +3288,7 @@ async function loadPendingApprovals() {
                         </span>
                     </td>
                     <td>
-                        <span class="badge ${statusColors[idStatus]}" 
+                        <span class="badge ${idStatus === 'pending' ? 'badge-warning' : 'badge-success'}" 
                               style="cursor:pointer; font-size:11px;" 
                               onclick="viewDocument('${escapedUserId}','id')">
                             ${idStatus.toUpperCase()}
@@ -3309,7 +3325,7 @@ async function loadPendingApprovals() {
 
     } catch (error) {
         console.error('Error loading pending approvals:', error);
-        tbody.innerHTML = `<tr><td colspan="11" style="color:red;">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" style="color:red;">Error: ${error.message}</td></tr>`;
     }
 }
 
@@ -3329,7 +3345,8 @@ async function loadStudents() {
     tbody.innerHTML = '<tr><td colspan="9"><div class="loading-spinner"></div> Loading students...</td></tr>';
     
     try {
-        const { data: students, error } = await sb
+        const supabase = getSb();
+        const { data: students, error } = await supabase
             .from(USER_PROFILE_TABLE)
             .select('*')
             .eq('role', 'student')
@@ -3393,9 +3410,7 @@ async function loadStudents() {
 async function initManageUsers() {
     console.log('👥 Initializing Manage Users (optimized)...');
     
-    // 🔥 ADD THIS LINE - Populate filter dropdowns FIRST
-    await populateUserFilterDropdowns();
-    
+    await populateUserFilterDropdownsIfEmpty();
     await loadFilterOptions();
     await loadAllUsers(1, USERS_STATE.filters);
     await loadPendingApprovals();
@@ -3406,7 +3421,7 @@ async function initManageUsers() {
         searchInput.addEventListener('input', searchUsersDebounced);
     }
     
-    ['user-role-filter', 'user-status-filter', 'user-program-filter', 'user-block-filter'].forEach(id => {
+    ['user-role-filter', 'user-status-filter', 'user-program-filter', 'user-block-filter', 'user-program-type-filter'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('change', filterUsers);
@@ -3415,6 +3430,208 @@ async function initManageUsers() {
     
     console.log('✅ Manage Users initialized (optimized)');
 }
+
+// ============================================
+// 📄 DOCUMENT UPLOAD FUNCTIONS
+// ============================================
+
+/**
+ * Open document upload modal for a user
+ */
+function openDocumentUploadModal(userId, userName) {
+    const modal = document.getElementById('documentUploadModal');
+    if (!modal) {
+        console.error('❌ documentUploadModal not found');
+        showFeedback('Document upload modal not found. Please check the HTML.', 'error');
+        return;
+    }
+    
+    document.getElementById('doc_user_id').value = userId;
+    document.getElementById('doc_user_name_display').textContent = userName || 'Loading...';
+    document.getElementById('doc_user_id_display').textContent = userId ? userId.substring(0, 8) + '...' : 'N/A';
+    
+    ['profile_photo', 'kcse', 'id', 'certificate', 'other'].forEach(id => {
+        const preview = document.getElementById(id + '_preview');
+        if (preview) preview.innerHTML = '';
+        const input = document.getElementById('doc_' + id);
+        if (input) input.value = '';
+    });
+    
+    modal.style.display = 'flex';
+}
+window.openDocumentUploadModal = openDocumentUploadModal;
+
+/**
+ * Preview document before upload
+ */
+function previewDocument(type) {
+    const fileInput = document.getElementById('doc_' + type);
+    const previewDiv = document.getElementById(type + '_preview');
+    
+    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+        if (previewDiv) previewDiv.innerHTML = '';
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const fileName = file.name;
+    const fileSize = (file.size / 1024).toFixed(1);
+    
+    let previewHtml = `
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: #f1f5f9; border-radius: 4px; font-size: 12px; margin-top: 4px;">
+            <i class="fas fa-file" style="color: #4C1D95;"></i>
+            <span style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(fileName)}</span>
+            <span style="font-size: 10px; color: #64748b;">${fileSize}KB</span>
+        </div>
+    `;
+    
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (previewDiv) {
+                previewDiv.innerHTML = `
+                    <div style="margin-top: 4px;">
+                        <img src="${e.target.result}" style="max-width: 80px; max-height: 60px; border-radius: 4px; border: 1px solid #e5e7eb;">
+                        ${previewHtml}
+                    </div>
+                `;
+            }
+        };
+        reader.readAsDataURL(file);
+    } else {
+        if (previewDiv) {
+            previewDiv.innerHTML = previewHtml;
+        }
+    }
+}
+window.previewDocument = previewDocument;
+
+/**
+ * Upload user documents - FIXED with proper sb reference
+ */
+async function uploadUserDocuments() {
+    const userId = document.getElementById('doc_user_id').value;
+    if (!userId) {
+        showNotification('❌ User ID not found', 'error');
+        return;
+    }
+    
+    const supabase = getSb();
+    const fileTypes = ['profile_photo', 'kcse', 'id', 'certificate', 'other'];
+    let uploadedCount = 0;
+    let errorCount = 0;
+    
+    showLoading('Uploading documents...');
+    
+    for (const type of fileTypes) {
+        const input = document.getElementById('doc_' + type);
+        if (!input || !input.files || !input.files[0]) continue;
+        
+        const file = input.files[0];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${userId}_${type}_${Date.now()}.${fileExt}`;
+        const filePath = `${type}/${userId}/${fileName}`;
+        
+        try {
+            const { error: uploadError } = await supabase
+                .storage
+                .from('user-documents')
+                .upload(filePath, file);
+            
+            if (uploadError) throw uploadError;
+            
+            const { data: urlData } = supabase
+                .storage
+                .from('user-documents')
+                .getPublicUrl(filePath);
+            
+            const { error: dbError } = await supabase
+                .from('user_documents')
+                .insert({
+                    user_id: userId,
+                    document_type: type,
+                    file_path: filePath,
+                    file_url: urlData.publicUrl,
+                    file_name: file.name,
+                    status: 'uploaded',
+                    uploaded_at: new Date().toISOString()
+                });
+            
+            if (dbError) throw dbError;
+            
+            uploadedCount++;
+            
+            if (type === 'profile_photo') {
+                await supabase
+                    .from(USER_PROFILE_TABLE)
+                    .update({ profile_photo_url: urlData.publicUrl })
+                    .eq('user_id', userId);
+            }
+            
+            console.log(`✅ Uploaded ${type} for user ${userId}`);
+            
+        } catch (error) {
+            console.error(`❌ Error uploading ${type}:`, error);
+            errorCount++;
+        }
+    }
+    
+    hideLoading();
+    
+    if (uploadedCount > 0) {
+        showNotification(`✅ ${uploadedCount} documents uploaded successfully!`, 'success');
+        closeModal('documentUploadModal');
+        loadAllUsers(1, USERS_STATE.filters);
+    } else {
+        showNotification(`❌ No documents uploaded. Errors: ${errorCount}`, 'error');
+    }
+}
+window.uploadUserDocuments = uploadUserDocuments;
+
+/**
+ * View a document
+ */
+function viewDocument(userId, docType) {
+    console.log('📄 Viewing document:', { userId, docType });
+    
+    const supabase = getSb();
+    
+    if (docType === 'photo') {
+        supabase
+            .from(USER_PROFILE_TABLE)
+            .select('profile_photo_url')
+            .eq('user_id', userId)
+            .single()
+            .then(({ data, error }) => {
+                if (error || !data?.profile_photo_url) {
+                    showNotification('❌ No profile photo found', 'error');
+                    return;
+                }
+                window.open(data.profile_photo_url, '_blank');
+            });
+        return;
+    }
+    
+    supabase
+        .from('user_documents')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('document_type', docType)
+        .maybeSingle()
+        .then(({ data, error }) => {
+            if (error || !data) {
+                showNotification(`❌ No ${docType} document found`, 'error');
+                return;
+            }
+            if (data.file_url) {
+                window.open(data.file_url, '_blank');
+            } else {
+                showNotification('❌ Document URL not available', 'error');
+            }
+        });
+}
+window.viewDocument = viewDocument;
+
 // ============================================
 // 📝 ORIGINAL FUNCTIONS (PRESERVED WITH FIXES)
 // ============================================
@@ -3425,20 +3642,19 @@ async function handleAddAccount(e) {
     const originalText = submitButton.textContent;
     setButtonLoading(submitButton, true, originalText);
 
-    const name = $('account-name').value.trim();
-    const email = $('account-email').value.trim();
-    const password = $('account-password').value.trim();
-    const role = $('account-role').value;
-    const phone = $('account-phone').value.trim();
-    const programCode = $('account-program').value;
-    const intake_year = $('account-intake').value;
-    const block = $('account-block-term').value;
+    const name = document.getElementById('account-name').value.trim();
+    const email = document.getElementById('account-email').value.trim();
+    const password = document.getElementById('account-password').value.trim();
+    const role = document.getElementById('account-role').value;
+    const phone = document.getElementById('account-phone').value.trim();
+    const programCode = document.getElementById('account-program').value;
+    const intake_year = document.getElementById('account-intake').value;
+    const block = document.getElementById('account-block-term').value;
     
     const programType = getProgramType(programCode);
     const programName = getProgramDisplayName(programCode);
     const programLevel = getProgramLevel(programCode);
 
-    // ✅ FIX: TVET uses 'term', KRCHN uses 'block'
     const blockTermField = programType === 'TVET' ? 'term' : 'block';
     const blockTermValue = block;
 
@@ -3459,7 +3675,8 @@ async function handleAddAccount(e) {
     console.log('🎯 Enrolling user with data:', userData);
 
     try {
-        const { data: { user }, error: authError } = await sb.auth.signUp({
+        const supabase = getSb();
+        const { data: { user }, error: authError } = await supabase.auth.signUp({
             email, password, options: { data: userData }
         });
         
@@ -3472,10 +3689,10 @@ async function handleAddAccount(e) {
                 ...userData 
             };
             
-            const { error: insertError } = await sb.from(USER_PROFILE_TABLE).insert([profileData]);
+            const { error: insertError } = await supabase.from(USER_PROFILE_TABLE).insert([profileData]);
             
             if (insertError) {
-                await sb.auth.admin.deleteUser(user.id);
+                await supabase.auth.admin.deleteUser(user.id);
                 throw insertError;
             }
             
@@ -3530,10 +3747,10 @@ async function handleMassPromotion(e) {
     }
 
     try {
-        // ✅ FIX: Use correct field name based on program type
+        const supabase = getSb();
         const blockField = programType === 'TVET' ? 'term' : 'block';
         
-        const { data, error } = await sb
+        const { data, error } = await supabase
             .from(USER_PROFILE_TABLE)
             .update({ 
                 [blockField]: promote_to_block,
@@ -3591,7 +3808,8 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
     console.log('🎯 Opening approval check for user:', { userId, fullName, studentId });
     
     try {
-        const { data: user, error } = await sb
+        const supabase = getSb();
+        const { data: user, error } = await supabase
             .from(USER_PROFILE_TABLE)
             .select('*')
             .eq('user_id', userId)
@@ -3686,34 +3904,13 @@ function showApprovalModal(user) {
     `;
     
     modal.innerHTML = `
-        <div style="
-            background: white;
-            border-radius: 20px;
-            max-width: 800px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            animation: slideIn 0.3s ease;
-        ">
+        <div style="background: white; border-radius: 20px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
                 <div>
-                    <h2 style="margin: 0; color: #4C1D95;">
-                        <i class="fas fa-user-check"></i> Review & Edit User
-                    </h2>
-                    <p style="margin: 5px 0 0; color: #6b7280; font-size: 14px;">
-                        Edit fields below before approving
-                    </p>
+                    <h2 style="margin: 0; color: #4C1D95;"><i class="fas fa-user-check"></i> Review & Edit User</h2>
+                    <p style="margin: 5px 0 0; color: #6b7280; font-size: 14px;">Edit fields below before approving</p>
                 </div>
-                <button onclick="closeApprovalModal()" style="
-                    background: none;
-                    border: none;
-                    font-size: 28px;
-                    cursor: pointer;
-                    color: #6b7280;
-                    padding: 0 10px;
-                ">&times;</button>
+                <button onclick="closeApprovalModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280; padding: 0 10px;">&times;</button>
             </div>
             
             <form id="approvalForm" onsubmit="event.preventDefault(); confirmApproveUser();">
@@ -3804,39 +4001,10 @@ function showApprovalModal(user) {
                 </div>
                 
                 <div style="display: flex; gap: 12px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-                    <button type="submit" style="
-                        flex: 1;
-                        background: linear-gradient(135deg, #10b981, #059669);
-                        color: white;
-                        border: none;
-                        padding: 14px 20px;
-                        border-radius: 10px;
-                        font-size: 16px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        transition: all 0.3s;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 10px;
-                    ">
+                    <button type="submit" style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 14px 20px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
                         <i class="fas fa-check-circle"></i> Confirm & Approve
                     </button>
-                    <button type="button" onclick="closeApprovalModal()" style="
-                        flex: 0.5;
-                        background: #ef4444;
-                        color: white;
-                        border: none;
-                        padding: 14px 20px;
-                        border-radius: 10px;
-                        font-size: 16px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 10px;
-                    ">
+                    <button type="button" onclick="closeApprovalModal()" style="flex: 0.5; background: #ef4444; color: white; border: none; padding: 14px 20px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
                         <i class="fas fa-times"></i> Cancel
                     </button>
                 </div>
@@ -3910,6 +4078,7 @@ async function confirmApproveUser() {
     }
     
     try {
+        const supabase = getSb();
         const updateData = {
             full_name: fullName,
             email: email,
@@ -3924,7 +4093,7 @@ async function confirmApproveUser() {
         if (phone) updateData.phone = phone;
         if (intakeYear) updateData.intake_year = intakeYear;
         
-        const { error } = await sb
+        const { error } = await supabase
             .from(USER_PROFILE_TABLE)
             .update(updateData)
             .eq('user_id', userId);
@@ -3962,7 +4131,8 @@ async function updateUserRole(userId, newRole, fullName) {
     if (!confirm(`Change user ${fullName}'s role to ${newRole}?`)) return;
     
     try {
-        const { error } = await sb
+        const supabase = getSb();
+        const { error } = await supabase
             .from(USER_PROFILE_TABLE)
             .update({ 
                 role: newRole,
@@ -4038,8 +4208,9 @@ async function deleteProfile(userId, fullName, isRejection = false) {
     if (!confirm(`${action}: ${message}`)) return;
 
     try {
-        // ✅ STEP 1: Get the user's email before deleting
-        const { data: userProfile, error: fetchError } = await sb
+        const supabase = getSb();
+        
+        const { data: userProfile, error: fetchError } = await supabase
             .from(USER_PROFILE_TABLE)
             .select('user_id, email, full_name')
             .eq('user_id', userId)
@@ -4049,8 +4220,7 @@ async function deleteProfile(userId, fullName, isRejection = false) {
             console.warn('Could not fetch user details:', fetchError);
         }
 
-        // ✅ STEP 2: Delete from consolidated_user_profiles_table
-        const { error: profileError } = await sb
+        const { error: profileError } = await supabase
             .from(USER_PROFILE_TABLE)
             .delete()
             .eq('user_id', userId);
@@ -4069,20 +4239,16 @@ async function deleteProfile(userId, fullName, isRejection = false) {
 
         console.log('✅ Profile deleted from table');
 
-        // ✅ STEP 3: Delete from Supabase Auth (CRITICAL)
         let authDeleted = false;
-        let authError = null;
         
         try {
-            // ✅ Get the admin session token
-            const { data: { session }, error: sessionError } = await sb.auth.getSession();
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             
             if (sessionError || !session) {
                 console.warn('⚠️ No active session, cannot delete auth user');
                 throw new Error('No active session');
             }
             
-            // ✅ Call the admin delete user edge function
             const response = await fetch(
                 'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-delete-user',
                 {
@@ -4110,18 +4276,15 @@ async function deleteProfile(userId, fullName, isRejection = false) {
         } catch (authError) {
             console.warn('⚠️ Auth deletion failed:', authError.message);
             
-            // ✅ Try alternative method: Update password to lock out user
             try {
-                const { data: { session } } = await sb.auth.getSession();
+                const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
-                    // Lock the user out by setting a random password
-                    await sb.auth.admin.updateUserById(userId, {
+                    await supabase.auth.admin.updateUserById(userId, {
                         password: 'LOCKED_' + Date.now() + '_' + Math.random().toString(36)
                     });
                     console.log('🔒 Auth user locked out (password changed)');
-                    // Then try to delete again
                     try {
-                        await sb.auth.admin.deleteUser(userId);
+                        await supabase.auth.admin.deleteUser(userId);
                         authDeleted = true;
                         console.log('✅ Auth user deleted on retry');
                     } catch (retryError) {
@@ -4133,9 +4296,8 @@ async function deleteProfile(userId, fullName, isRejection = false) {
             }
         }
 
-        // ✅ STEP 4: Also delete user documents if they exist
         try {
-            const { error: docError } = await sb
+            const { error: docError } = await supabase
                 .from('user_documents')
                 .delete()
                 .eq('user_id', userId);
@@ -4149,7 +4311,6 @@ async function deleteProfile(userId, fullName, isRejection = false) {
             console.warn('Error deleting documents:', docErr);
         }
 
-        // ✅ STEP 5: Log the audit
         const auditDetails = isRejection 
             ? `Rejected user ${fullName} (pending approval)`
             : `Deleted user ${fullName}`;
@@ -4166,20 +4327,17 @@ async function deleteProfile(userId, fullName, isRejection = false) {
             auditStatus
         );
 
-        // ✅ STEP 6: Show feedback
         if (authDeleted) {
             showFeedback(`✅ ${action} successful! User ${fullName} has been removed.`, 'success');
         } else {
             showFeedback(`⚠️ Profile deleted, but auth user ${userProfile?.email || 'still exists'} may need manual cleanup.`, 'warning');
             
-            // Show instructions for manual cleanup
             console.log('🛠️ Manual cleanup instructions:');
             console.log(`1. Go to Supabase Dashboard → Authentication → Users`);
             console.log(`2. Find the user with email: ${userProfile?.email || 'unknown'}`);
             console.log(`3. Click "Delete" to remove the user`);
         }
 
-        // ✅ STEP 7: Refresh all tables
         loadPendingApprovals();
         loadAllUsers(1, USERS_STATE.filters);
         loadStudents();
@@ -4201,13 +4359,15 @@ async function deleteProfile(userId, fullName, isRejection = false) {
         showFeedback(`Unexpected error: ${err.message}`, 'error');
     }
 }
+
 // ============================================
 // OPEN EDIT USER MODAL - COMPLETE TVET SUPPORT
 // ============================================
 
 async function openEditUserModal(userId) {
     try {
-        const { data: user, error } = await sb
+        const supabase = getSb();
+        const { data: user, error } = await supabase
             .from(USER_PROFILE_TABLE)
             .select('*')
             .eq('user_id', userId)
@@ -4222,7 +4382,6 @@ async function openEditUserModal(userId) {
             return;
         }
 
-        // Basic Info
         document.getElementById('edit_user_id').value = user.user_id;
         document.getElementById('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
         document.getElementById('edit_user_name').value = user.full_name || '';
@@ -4234,7 +4393,6 @@ async function openEditUserModal(userId) {
         document.getElementById('edit_user_national_id').value = user.national_id || '';
         document.getElementById('edit_user_address').value = user.address || '';
 
-        // Academic Info
         document.getElementById('edit_user_role').value = user.role || 'student';
         document.getElementById('edit_user_student_id').value = user.student_id || '';
         document.getElementById('edit_user_intake_year').value = user.intake_year || '';
@@ -4243,37 +4401,30 @@ async function openEditUserModal(userId) {
         document.getElementById('edit_user_guardian_phone').value = user.guardian_phone || '';
         document.getElementById('edit_user_status').value = user.status || 'pending';
 
-        // Document Status
         document.getElementById('edit_user_doc_kcse').value = user.doc_kcse || 'pending';
         document.getElementById('edit_user_doc_id').value = user.doc_id || 'pending';
 
-        // ✅ Program & Block/Term with TVET Support
         const editUserProgram = document.getElementById('edit_user_program');
         const editUserBlock = document.getElementById('edit_user_block');
         const blockLabel = document.getElementById('edit_block_label');
 
         if (editUserProgram) {
-            // Populate program dropdown
             updateProgramDropdown(editUserProgram);
             editUserProgram.value = user.program || 'KRCHN';
             
-            // ✅ Check if TVET and update label
             const isTVET = isTVETProgram(user.program);
             if (blockLabel) {
                 blockLabel.textContent = isTVET ? '📚 Term *' : '📖 Block *';
                 blockLabel.style.color = isTVET ? '#f59e0b' : '#4C1D95';
             }
             
-            // Trigger change to update block/term options
             const changeEvent = new Event('change', { bubbles: true });
             editUserProgram.dispatchEvent(changeEvent);
             
-            // Set the block/term value after options are populated
             setTimeout(() => {
                 if (editUserBlock) {
                     updateBlockTermOptions('edit_user_program', 'edit_user_block');
                     setTimeout(() => {
-                        // ✅ Use block or term based on what's available
                         const blockValue = user.block || user.current_block || user.term || 'Introductory';
                         editUserBlock.value = blockValue;
                         console.log('✅ Block/Term set to:', blockValue);
@@ -4311,10 +4462,10 @@ async function handleEditUser(e) {
     setButtonLoading(submitButton, true, originalText);
 
     try {
+        const supabase = getSb();
         const userId = document.getElementById('edit_user_id').value;
         if (!userId) throw new Error('User ID is missing.');
 
-        // ✅ Get program and determine type
         const program = document.getElementById('edit_user_program').value || null;
         const isTVET = isTVETProgram(program);
         const blockValue = document.getElementById('edit_user_block').value || 'Introductory';
@@ -4329,10 +4480,10 @@ async function handleEditUser(e) {
             student_id: document.getElementById('edit_user_student_id').value.trim() || null,
             intake_year: document.getElementById('edit_user_intake_year').value.trim() || null,
             intake_month: document.getElementById('edit_user_intake_month').value || null,
-            // ✅ Save to BOTH fields for compatibility
             block: blockValue,
             current_block: blockValue,
-            term: isTVET ? blockValue : null,  // TVET uses term
+            term: isTVET ? blockValue : null,
+            program_type: isTVET ? 'TVET' : 'KRCHN',
             status: document.getElementById('edit_user_status').value,
             gender: document.getElementById('edit_user_gender').value || null,
             date_of_birth: document.getElementById('edit_user_dob').value || null,
@@ -4342,8 +4493,6 @@ async function handleEditUser(e) {
             guardian_phone: document.getElementById('edit_user_guardian_phone').value.trim() || null,
             doc_kcse: document.getElementById('edit_user_doc_kcse').value || 'pending',
             doc_id: document.getElementById('edit_user_doc_id').value || 'pending',
-            // ✅ Add program type for easy filtering
-            program_type: isTVET ? 'TVET' : 'KRCHN',
             updated_at: new Date().toISOString()
         };
 
@@ -4362,7 +4511,7 @@ async function handleEditUser(e) {
             return;
         }
 
-        const { error: profileError } = await sb
+        const { error: profileError } = await supabase
             .from(USER_PROFILE_TABLE)
             .update(updatedData)
             .eq('user_id', userId);
@@ -4370,7 +4519,7 @@ async function handleEditUser(e) {
         if (profileError) throw profileError;
 
         if (newPassword) {
-            const { error: pwError } = await sb.auth.admin.updateUserById(userId, {
+            const { error: pwError } = await supabase.auth.admin.updateUserById(userId, {
                 password: newPassword
             });
 
@@ -4426,9 +4575,12 @@ window.handleAddAccount = handleAddAccount;
 window.handleMassPromotion = handleMassPromotion;
 window.openEditUserModal = openEditUserModal;
 window.handleEditUser = handleEditUser;
+window.openDocumentUploadModal = openDocumentUploadModal;
+window.previewDocument = previewDocument;
+window.uploadUserDocuments = uploadUserDocuments;
+window.viewDocument = viewDocument;
 
 console.log('✅ Users Management fully optimized and exposed to global scope!');
-
 /*******************************************************
  * 10. UNIT MANAGEMENT - COMPLETE TVET/KRCHN SUPPORT
  * Renamed from "Courses" to "Units" for accuracy
