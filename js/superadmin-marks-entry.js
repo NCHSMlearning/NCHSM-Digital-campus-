@@ -1,5 +1,5 @@
 // ============================================================
-// TVET & NURSING GRADING SYSTEM - COMPLETE FIXED VERSION
+// TVET & NURSING GRADING SYSTEM - COMPLETE UPDATED VERSION
 // ============================================================
 
 // ============================================================
@@ -27,11 +27,11 @@ const GRADING_CONFIG = {
     
     // ✅ Nursing (KRCHN) - Academic Grading
     NURSING: {
-        CAT1_MAX: 20,
-        CAT2_MAX: 20,
-        EXAM_MAX: 60,
+        CAT1_MAX: 30,
+        CAT2_MAX: 30,
+        EXAM_MAX: 70,
         TOTAL_MAX: 100,
-        DISPLAY_NAME: 'Nursing (CAT1 20 + CAT2 20 + Exam 60 = 100 → %)',
+        DISPLAY_NAME: 'Nursing (CAT1 30 + CAT2 30 + Exam 70 = 100 → %)',
         PASS_MARK: 60,
         GRADE_TYPE: 'academic',
         GRADE_MAPPING: [
@@ -119,8 +119,10 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     
     let percentage;
     if (programType === 'NURSING') {
+        // Nursing: total is already out of 100
         percentage = total;
     } else {
+        // TVET: convert 160 to percentage
         percentage = (total / config.TOTAL_MAX) * 100;
     }
     
@@ -198,7 +200,7 @@ function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode)
 }
 
 // ============================================================
-// EXPORT ALL MARKS DATA - FIXED
+// EXPORT ALL MARKS DATA
 // ============================================================
 
 function exportAllMarksData() {
@@ -227,7 +229,7 @@ function exportAllMarksData() {
             result.cat1,
             result.cat2,
             result.exam,
-            result.total,
+            result.percentage > 0 ? result.percentage : '',
             result.percentage > 0 ? `${result.percentage}%` : '',
             result.percentage > 0 ? result.grade : '',
             result.percentage > 0 ? result.points : '',
@@ -431,11 +433,11 @@ async function loadMEUnits() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY - FIXED VERSION
+// LOAD MARKS ENTRY - COMPLETE WITH DYNAMIC COLUMN SUPPORT
 // ============================================================
 
 async function loadMarksEntry() {
-    console.log('📊 loadMarksEntry() called (FIXED VERSION)');
+    console.log('📊 loadMarksEntry() called');
     
     try {
         const program = document.getElementById('me_program_select')?.value;
@@ -589,6 +591,7 @@ async function loadMarksEntry() {
         await loadUnitColumnSettings();
         updateAssessmentTypeDisplay();
         showGradingSystemInfo(program);
+        updateGradingDisplay(program);
         
         console.log('✅ Marks loaded successfully!');
         
@@ -659,8 +662,31 @@ function showGradingSystemInfo(program) {
     `;
 }
 
+function updateGradingDisplay(program) {
+    console.log('📊 Updating grading display for:', program);
+    
+    const config = getGradingConfig(program);
+    const programType = getProgramType(program);
+    
+    const gradingTypeEl = document.getElementById('currentGradingType');
+    const gradingTypeLabel = document.getElementById('currentGradingTypeLabel');
+    
+    if (gradingTypeEl && gradingTypeLabel) {
+        gradingTypeEl.style.display = 'inline-block';
+        if (programType === 'NURSING') {
+            gradingTypeLabel.textContent = '🎓 Nursing (Academic)';
+            gradingTypeEl.style.background = '#dbeafe';
+            gradingTypeEl.style.color = '#1e40af';
+        } else {
+            gradingTypeLabel.textContent = '🔧 TVET (Competency-Based)';
+            gradingTypeEl.style.background = '#d1fae5';
+            gradingTypeEl.style.color = '#065f46';
+        }
+    }
+}
+
 // ============================================================
-// RENDER MARKS ENTRY TABLE
+// RENDER MARKS ENTRY TABLE - WITH DYNAMIC COLUMN SUPPORT
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
@@ -674,6 +700,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     const passing = marks.filter(m => m.isPassing);
     
+    // ✅ Determine which columns to show based on assessment type
     const showCat1 = assessmentType !== 'exam_only';
     const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
     const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
@@ -741,7 +768,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         const gradeInfo = getTVETGrade(percentage, config);
         const isPassing = percentage >= config.PASS_MARK;
         
-        // ✅ FIXED: Show converted score out of 100, not raw total
+        // ✅ Show converted score out of 100 for both TVET and Nursing
         const displayTotal = result.percentage > 0 ? result.percentage : '--';
         const displayPercentage = result.percentage > 0 ? `${result.percentage}%` : '--';
         const displayGrade = result.percentage > 0 ? result.grade : '--';
@@ -817,10 +844,11 @@ function updateMarksEntryRow(index) {
     const isPassing = result.isPassing;
     const gradeInfo = getTVETGrade(result.percentage, config);
     
+    // ✅ Update total with converted score out of 100
     const totalEl = document.getElementById(`me_total_${index}`);
     if (totalEl) {
-        totalEl.textContent = result.total > 0 ? result.total : '--';
-        totalEl.style.color = isPassing ? '#065f46' : (result.total > 0 ? '#991b1b' : '#f59e0b');
+        totalEl.textContent = result.percentage > 0 ? result.percentage : '--';
+        totalEl.style.color = isPassing ? '#065f46' : (result.percentage > 0 ? '#991b1b' : '#f59e0b');
     }
     
     const percentageEl = document.getElementById(`me_percentage_${index}`);
@@ -1102,7 +1130,7 @@ function exportMarksEntry() {
             result.cat1,
             result.cat2,
             result.exam,
-            result.total,
+            result.percentage > 0 ? result.percentage : '',
             result.percentage > 0 ? `${result.percentage}%` : '',
             result.percentage > 0 ? result.grade : '',
             result.percentage > 0 ? result.points : '',
@@ -1227,14 +1255,16 @@ function renderUnitColumns() {
         return;
     }
     
+    const config = getGradingConfig(me_currentProgram);
+    
     const defaultColumns = [
         { id: 'sno', label: '#', required: true },
         { id: 'admission', label: 'Admission', required: true },
         { id: 'name', label: 'Name', required: true },
-        { id: 'cat1', label: `CAT1 (0-${getGradingConfig(me_currentProgram).CAT1_MAX})`, required: false },
-        { id: 'cat2', label: `CAT2 (0-${getGradingConfig(me_currentProgram).CAT2_MAX})`, required: false },
-        { id: 'exam', label: `Exam (0-${getGradingConfig(me_currentProgram).EXAM_MAX})`, required: false },
-        { id: 'total', label: 'Total', required: false },
+        { id: 'cat1', label: `CAT1 (0-${config.CAT1_MAX})`, required: false },
+        { id: 'cat2', label: `CAT2 (0-${config.CAT2_MAX})`, required: false },
+        { id: 'exam', label: `Exam (0-${config.EXAM_MAX})`, required: false },
+        { id: 'total', label: 'Total (out of 100)', required: false },
         { id: 'percentage', label: '%', required: false },
         { id: 'grade', label: 'Grade', required: false },
         { id: 'points', label: 'Points', required: false },
@@ -2923,8 +2953,8 @@ function recalculateAllTotals() {
         
         const totalEl = document.getElementById(`me_total_${index}`);
         if (totalEl) {
-            totalEl.textContent = result.total > 0 ? result.total : '--';
-            totalEl.style.color = isPassing ? '#065f46' : (result.total > 0 ? '#991b1b' : '#f59e0b');
+            totalEl.textContent = result.percentage > 0 ? result.percentage : '--';
+            totalEl.style.color = isPassing ? '#065f46' : (result.percentage > 0 ? '#991b1b' : '#f59e0b');
         }
         
         const percentageEl = document.getElementById(`me_percentage_${index}`);
@@ -3068,6 +3098,7 @@ window.downloadCSV = downloadCSV;
 window.refreshMarksData = refreshMarksData;
 window.showGradingSystemInfo = showGradingSystemInfo;
 window.recalculateAllTotals = recalculateAllTotals;
+window.updateGradingDisplay = updateGradingDisplay;
 
 // Column management
 window.loadUnitColumnSettings = loadUnitColumnSettings;
@@ -3124,6 +3155,8 @@ window.updateAssessmentTypeDisplay = updateAssessmentTypeDisplay;
 window.escapeHtml = escapeHtml;
 
 console.log('✅ TVET & Nursing Marks Entry System FULLY LOADED!');
-console.log('📋 TVET Grading: E(0-49%) → C(50-64%) → B(65-79%) → A(80-100%) | Points: E=0, C=2, B=3, A=4');
-console.log('📋 Nursing Grading: D(0-59%) → C(60-64%) → B(65-74%) → A(75-100%) | Points: D=0.0, C=2.0, B=3.0, A=4.0');
-console.log('✅ exportAllMarksData() function is now available!');
+console.log('📋 TVET: E(0-49%) → C(50-64%) → B(65-79%) → A(80-100%) | Points: E=0, C=2, B=3, A=4');
+console.log('📋 Nursing: D(0-59%) → C(60-64%) → B(65-74%) → A(75-100%) | Points: D=0.0, C=2.0, B=3.0, A=4.0');
+console.log('📊 Nursing Max: CAT1=30, CAT2=30, Exam=70 (Total=100)');
+console.log('📊 TVET Max: CAT1=30, CAT2=30, Exam=100 (Total=160)');
+console.log('✅ exportAllMarksData() function is available!');
