@@ -1785,7 +1785,6 @@ window.renderConsolidatedMarksheet = function() {
         const score = m.final_score || 0;
         
         if (studentData[studentId] && unit && unit !== '') {
-            // Only store if unit exists in our unique list
             if (unitSet.has(unit)) {
                 studentData[studentId].units[unit] = score;
                 if (score > 0) {
@@ -1847,26 +1846,35 @@ window.renderConsolidatedMarksheet = function() {
         filtered = filtered.slice(0, parseInt(limit));
     }
     
-    // 8. Build table headers with dynamic unit columns - SHOW FULL NAMES
+    // 8. Build table headers with dynamic unit columns - FIXED HEADER
     const headerRow = document.querySelector('#consolidatedMarksheetTable thead tr');
     if (headerRow) {
-        // Remove existing dynamic unit columns (keep first 3 columns: #, Adm, Name)
-        while (headerRow.children.length > 8) {
+        // STEP 1: Clear ALL columns except the first 3 (#, Adm No., Learner Name)
+        while (headerRow.children.length > 3) {
             headerRow.removeChild(headerRow.lastChild);
         }
         
-        // Insert unit columns after Name column (index 3)
+        // STEP 2: Add all unit columns (APPEND, not insertBefore)
         units.forEach(unit => {
             const th = document.createElement('th');
             th.style.cssText = 'padding: 4px 6px; text-align: center; background: #0a66c2; color: white; font-size: 9px; min-width: 50px; white-space: nowrap;';
             // Show full unit name with smaller font
             th.innerHTML = `${unit} <span style="font-size: 7px; opacity: 0.7;">(*/100)</span>`;
             th.title = unit;
-            headerRow.insertBefore(th, headerRow.children[3]);
+            headerRow.appendChild(th);
+        });
+        
+        // STEP 3: Add Total, Avg, Grade, Points, Status columns
+        const fixedCols = ['Total', 'Avg', 'Grade', 'Points', 'Status'];
+        fixedCols.forEach(col => {
+            const th = document.createElement('th');
+            th.style.cssText = 'padding: 4px 6px; text-align: center; background: #0a66c2; color: white; font-size: 10px; min-width: 50px;';
+            th.textContent = col;
+            headerRow.appendChild(th);
         });
     }
     
-    // 9. Build table rows
+    // 9. Build table rows - FIXED to match headers
     if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="20" style="padding: 30px; text-align: center; color: #94a3b8;">No learners match your search</td></tr>';
         summary.style.display = 'none';
@@ -1899,7 +1907,7 @@ window.renderConsolidatedMarksheet = function() {
         html += `<td style="padding: 4px 6px; text-align: center; font-size: 11px; font-weight: 500;">${window.escapeHtml(student.student_id || 'N/A')}</td>`;
         html += `<td style="padding: 4px 6px; font-weight: 500; font-size: 12px; white-space: nowrap;">${window.escapeHtml(student.full_name || 'Unknown')}</td>`;
         
-        // Unit scores
+        // Unit scores - these now match the header order
         units.forEach(unit => {
             const score = data.units[unit];
             const displayScore = (score !== undefined && score !== null && score > 0) ? score : '__';
@@ -1908,7 +1916,7 @@ window.renderConsolidatedMarksheet = function() {
             html += `<td style="padding: 4px 6px; text-align: center; font-weight: 600; color: ${color}; font-size: 12px;">${displayScore}</td>`;
         });
         
-        // Total, Avg, Grade, Points, Status
+        // Total, Avg, Grade, Points, Status - these now match the header order
         html += `<td style="padding: 4px 6px; text-align: center; font-weight: 600; font-size: 12px;">${data.total}</td>`;
         html += `<td style="padding: 4px 6px; text-align: center; font-weight: 700; color: ${data.gradeColor}; font-size: 12px;">${avg}%</td>`;
         html += `<td style="padding: 4px 6px; text-align: center; font-weight: 700; color: ${data.gradeColor}; font-size: 13px;">${grade}</td>`;
