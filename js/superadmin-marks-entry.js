@@ -62,7 +62,7 @@ const NURSING_PROGRAMS = ['KRCHN'];
 
 function getProgramType(programCode) {
     if (!programCode) return 'TVET';
-    if (NURSING_PROGRAMS.includes(programCode)) return 'NURSING'; // ✅ CORRECT
+    if (NURSING_PROGRAMS.includes(programCode)) return 'NURSING';
     return 'TVET';
 }
 
@@ -113,16 +113,35 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     
     const clampedCat1 = Math.min(Math.max(c1, 0), config.CAT1_MAX);
     const clampedCat2 = Math.min(Math.max(c2, 0), config.CAT2_MAX);
-    const clampedExam = Math.min(Math.max(ex, 0), config.EXAM_MAX);
     
-    const total = clampedCat1 + clampedCat2 + clampedExam;
+    // ✅ FIX: For Nursing, exam is out of 70
+    let examMax = config.EXAM_MAX;
+    if (programType === 'NURSING') {
+        examMax = 70; // Nursing exam is always out of 70
+    }
+    const clampedExam = Math.min(Math.max(ex, 0), examMax);
+    
+    // ✅ FIX: For single_cat assessment, only CAT1 + Exam
+    const assessmentType = window.me_currentAssessmentType || 'full';
+    let total;
+    if (assessmentType === 'single_cat') {
+        total = clampedCat1 + clampedExam;
+    } else if (assessmentType === 'exam_only') {
+        total = clampedExam;
+    } else if (assessmentType === 'cats_only') {
+        total = clampedCat1 + clampedCat2;
+    } else if (assessmentType === 'cat_only') {
+        total = clampedCat1;
+    } else {
+        total = clampedCat1 + clampedCat2 + clampedExam;
+    }
     
     let percentage;
     if (programType === 'NURSING') {
-        // Nursing: total is already out of 100
+        // Nursing: total is already out of 100 (30 + 30 + 70 = 100)
         percentage = total;
     } else {
-        // TVET: convert 160 to percentage
+        // TVET: convert to percentage
         percentage = (total / config.TOTAL_MAX) * 100;
     }
     
@@ -134,7 +153,7 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
         cat2: clampedCat2,
         exam: clampedExam,
         total: total,
-        maxTotal: config.TOTAL_MAX,
+        maxTotal: programType === 'NURSING' ? 100 : config.TOTAL_MAX,
         percentage: roundedPercentage,
         grade: gradeInfo.grade,
         points: gradeInfo.points,
@@ -148,8 +167,8 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
         display: {
             cat1: `${clampedCat1}/${config.CAT1_MAX}`,
             cat2: `${clampedCat2}/${config.CAT2_MAX}`,
-            exam: `${clampedExam}/${config.EXAM_MAX}`,
-            total: `${total}/${config.TOTAL_MAX}`,
+            exam: `${clampedExam}/${examMax}`,
+            total: `${total}/${programType === 'NURSING' ? 100 : config.TOTAL_MAX}`,
             percentage: `${roundedPercentage}%`
         }
     };
@@ -178,7 +197,13 @@ function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode)
     let total = 0;
     let cat1Val = Math.min(Math.max(parseFloat(cat1) || 0, 0), config.CAT1_MAX);
     let cat2Val = Math.min(Math.max(parseFloat(cat2) || 0, 0), config.CAT2_MAX);
-    let examVal = Math.min(Math.max(parseFloat(exam) || 0, 0), config.EXAM_MAX);
+    
+    // ✅ FIX: For Nursing, exam is out of 70
+    let examMax = config.EXAM_MAX;
+    if (programType === 'NURSING') {
+        examMax = 70;
+    }
+    let examVal = Math.min(Math.max(parseFloat(exam) || 0, 0), examMax);
     
     switch(assessmentType) {
         case 'full': total = cat1Val + cat2Val + examVal; break;
@@ -315,6 +340,47 @@ function isUserAdmin() {
 }
 
 // ============================================================
+// SELECTED PROGRAM DISPLAY
+// ============================================================
+
+function updateSelectedProgramDisplay() {
+    const select = document.getElementById('me_program_select');
+    const selectedOption = select?.options[select?.selectedIndex];
+    const programValue = select?.value || '';
+    const programText = selectedOption?.text || 'None selected';
+    
+    const nameEl = document.getElementById('selectedProgramName');
+    if (nameEl) {
+        let displayText = programText.replace(/[^\w\s\-\(\)\.]/g, '').trim();
+        if (!displayText || displayText === 'Select Program' || displayText === '-- Select Program --') {
+            displayText = 'None selected';
+        }
+        nameEl.textContent = displayText;
+        nameEl.style.color = programValue ? '#1e293b' : '#94a3b8';
+    }
+    
+    const typeEl = document.getElementById('selectedProgramType');
+    if (typeEl) {
+        if (programValue === 'KRCHN') {
+            typeEl.innerHTML = '<i class="fas fa-graduation-cap"></i> Nursing (Academic)';
+            typeEl.style.background = '#dbeafe';
+            typeEl.style.color = '#1e40af';
+            typeEl.style.border = '1px solid #93c5fd';
+        } else if (programValue && programValue !== '') {
+            typeEl.innerHTML = '<i class="fas fa-tools"></i> TVET (Competency-Based)';
+            typeEl.style.background = '#d1fae5';
+            typeEl.style.color = '#065f46';
+            typeEl.style.border = '1px solid #86efac';
+        } else {
+            typeEl.innerHTML = '<i class="fas fa-info-circle"></i> None Selected';
+            typeEl.style.background = '#f3f4f6';
+            typeEl.style.color = '#6b7280';
+            typeEl.style.border = '1px solid #e5e7eb';
+        }
+    }
+}
+
+// ============================================================
 // LOAD BLOCKS
 // ============================================================
 
@@ -368,6 +434,8 @@ async function loadMEBlocks() {
             showNotification('Error loading blocks: ' + error.message, 'error');
         }
     }
+    
+    updateSelectedProgramDisplay();
 }
 
 // ============================================================
@@ -430,6 +498,8 @@ async function loadMEUnits() {
             showNotification('Error loading units: ' + error.message, 'error');
         }
     }
+    
+    updateSelectedProgramDisplay();
 }
 
 // ============================================================
@@ -592,6 +662,7 @@ async function loadMarksEntry() {
         updateAssessmentTypeDisplay();
         showGradingSystemInfo(program);
         updateGradingDisplay(program);
+        updateSelectedProgramDisplay();
         
         console.log('✅ Marks loaded successfully!');
         
@@ -747,7 +818,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                         <th style="padding: 10px 8px; text-align: left;">Name</th>
                         ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-${config.CAT1_MAX})</th>` : ''}
                         ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-${config.CAT2_MAX})</th>` : ''}
-                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${config.EXAM_MAX})</th>` : ''}
+                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${programType === 'NURSING' ? '70' : config.EXAM_MAX})</th>` : ''}
                         <th style="padding: 10px 8px; text-align: center;">Total (out of 100)</th>
                         <th style="padding: 10px 8px; text-align: center;">%</th>
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
@@ -768,7 +839,6 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         const gradeInfo = getTVETGrade(percentage, config);
         const isPassing = percentage >= config.PASS_MARK;
         
-        // ✅ Show converted score out of 100 for both TVET and Nursing
         const displayTotal = result.percentage > 0 ? result.percentage : '--';
         const displayPercentage = result.percentage > 0 ? `${result.percentage}%` : '--';
         const displayGrade = result.percentage > 0 ? result.grade : '--';
@@ -803,7 +873,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                 <input type="number" id="me_cat2_${i}" value="${cat2}" min="0" max="${config.CAT2_MAX}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
             ${showExam ? `<td style="padding: 8px; text-align: center;">
-                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${config.EXAM_MAX}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${programType === 'NURSING' ? 70 : config.EXAM_MAX}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
             <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.percentage > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
             <td id="me_percentage_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.percentage > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayPercentage}</td>
@@ -844,7 +914,6 @@ function updateMarksEntryRow(index) {
     const isPassing = result.isPassing;
     const gradeInfo = getTVETGrade(result.percentage, config);
     
-    // ✅ Update total with converted score out of 100
     const totalEl = document.getElementById(`me_total_${index}`);
     if (totalEl) {
         totalEl.textContent = result.percentage > 0 ? result.percentage : '--';
@@ -3099,6 +3168,7 @@ window.refreshMarksData = refreshMarksData;
 window.showGradingSystemInfo = showGradingSystemInfo;
 window.recalculateAllTotals = recalculateAllTotals;
 window.updateGradingDisplay = updateGradingDisplay;
+window.updateSelectedProgramDisplay = updateSelectedProgramDisplay;
 
 // Column management
 window.loadUnitColumnSettings = loadUnitColumnSettings;
@@ -3159,4 +3229,16 @@ console.log('📋 TVET: E(0-49%) → C(50-64%) → B(65-79%) → A(80-100%) | Po
 console.log('📋 Nursing: D(0-59%) → C(60-64%) → B(65-74%) → A(75-100%) | Points: D=0.0, C=2.0, B=3.0, A=4.0');
 console.log('📊 Nursing Max: CAT1=30, CAT2=30, Exam=70 (Total=100)');
 console.log('📊 TVET Max: CAT1=30, CAT2=30, Exam=100 (Total=160)');
+console.log('✅ Selected Program Display initialized!');
 console.log('✅ exportAllMarksData() function is available!');
+
+// Initialize selected program display on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        updateSelectedProgramDisplay();
+        const program = document.getElementById('me_program_select')?.value;
+        if (program) {
+            updateGradingDisplay(program);
+        }
+    }, 300);
+});
