@@ -1,7 +1,7 @@
 /**
  * STUDENT FINANCE MODULE
  * Handles student-facing finance functionality
- * Communicates with the standalone Finance Module
+ * Supports both KRCHN (Blocks) and TVET (Terms)
  */
 
 // ============================================================
@@ -16,15 +16,73 @@ const studentFinanceState = {
     feeStructure: [],
     paymentProgress: 0,
     lastUpdated: null,
-    isLoaded: false
+    isLoaded: false,
+    programType: 'KRCHN' // 'KRCHN' or 'TVET'
 };
+
+// ============================================================
+// PROGRAM TYPE DETECTION
+// ============================================================
+
+/**
+ * Detect if student is in Nursing (KRCHN) or TVET program
+ */
+function getProgramType(program) {
+    if (!program) return 'KRCHN'; // Default
+    
+    // KRCHN programs
+    const krchnPrograms = ['KRCHN'];
+    if (krchnPrograms.includes(program.toUpperCase())) {
+        return 'KRCHN';
+    }
+    
+    // TVET programs - all others are TVET
+    return 'TVET';
+}
+
+/**
+ * Get the correct period label based on program type
+ */
+function getPeriodLabel(programType) {
+    return programType === 'KRCHN' ? 'Block' : 'Term';
+}
+
+/**
+ * Get the correct period list based on program type
+ */
+function getPeriods(programType) {
+    if (programType === 'KRCHN') {
+        return ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+    } else {
+        return ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6'];
+    }
+}
+
+/**
+ * Get period display name (e.g., "Block 1" or "Term 1")
+ */
+function getPeriodDisplay(period, programType) {
+    if (!period) return '-';
+    
+    // If period already has the correct format, return it
+    if (programType === 'KRCHN' && period.includes('Block')) return period;
+    if (programType === 'TVET' && period.includes('Term')) return period;
+    
+    // Otherwise, format it
+    const label = getPeriodLabel(programType);
+    const number = period.replace(/\D/g, '');
+    if (number) {
+        return `${label} ${number}`;
+    }
+    return period;
+}
 
 // ============================================================
 // MAIN FUNCTIONS
 // ============================================================
 
 /**
- * Load student finance data
+ * Load student finance data from Supabase
  */
 async function loadStudentFinance() {
     try {
@@ -37,97 +95,222 @@ async function loadStudentFinance() {
             return;
         }
 
+        // Detect program type
+        const programType = getProgramType(user.program);
+        studentFinanceState.programType = programType;
+        
+        console.log('👤 User:', user.full_name || user.name);
+        console.log('📚 Program:', user.program);
+        console.log('🏷️ Program Type:', programType);
+        console.log(`📋 Using ${getPeriodLabel(programType)}s for this student`);
+
         // Show loading state
         showFinanceLoading();
 
-        // Fetch data from Finance Module API
-        const financeData = await fetchFinanceData(user);
+        // Fetch data from Supabase
+        const financeData = await fetchFinanceDataFromSupabase(user);
         
-        // Update UI with data
-        updateFinanceUI(financeData);
-        
-        studentFinanceState.isLoaded = true;
-        studentFinanceState.lastUpdated = new Date();
-        
-        console.log('✅ Finance data loaded successfully');
+        if (financeData) {
+            // Update UI with data
+            updateFinanceUI(financeData);
+            
+            studentFinanceState.isLoaded = true;
+            studentFinanceState.lastUpdated = new Date();
+            
+            console.log('✅ Finance data loaded successfully');
+        } else {
+            // If no data, show mock data for demo
+            console.log('📊 No data found, using mock data');
+            const mockData = getMockFinanceData(user);
+            updateFinanceUI(mockData);
+        }
         
     } catch (error) {
         console.error('Error loading finance:', error);
-        showFinanceError('Unable to load finance data. Please try again.');
-    }
-}
-
-/**
- * Fetch finance data from Finance Module API
- */
-async function fetchFinanceData(user) {
-    try {
-        // Check if finance module is available
-        const financeModuleUrl = getFinanceModuleUrl();
-        
-        // Try to fetch from Finance Module API
-        const response = await fetch(`${financeModuleUrl}/api/student/${user.id}`, {
-            headers: {
-                'Authorization': `Bearer ${getAuthToken()}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (response.ok) {
-            return await response.json();
+        // Use mock data as fallback
+        const user = window.currentUserProfile || window.currentUser;
+        if (user) {
+            const mockData = getMockFinanceData(user);
+            updateFinanceUI(mockData);
+            showToast('Using demo data - Connect to Supabase for real data', 'info');
+        } else {
+            showFinanceError('Unable to load finance data. Please try again.');
         }
-        
-        // Fallback: Use local data if Finance Module is not available
-        console.warn('Finance Module not available, using local data');
-        return getMockFinanceData(user);
-        
-    } catch (error) {
-        console.warn('Error fetching from Finance Module, using local data:', error);
-        return getMockFinanceData(user);
     }
 }
 
 /**
- * Get Finance Module URL
+ * Fetch finance data from Supabase
  */
-function getFinanceModuleUrl() {
-    // Check if finance module is on same domain or subdomain
-    const currentHost = window.location.hostname;
-    
-    // Try different possible locations
-    const possibleUrls = [
-        '/finance-module',
-        'https://finance.nchsm.co.ke',
-        'https://nchsm.co.ke/finance-module',
-        '../finance-module'
-    ];
-    
-    // Return the first one that works (or default)
-    return possibleUrls[0];
-}
-
-/**
- * Get authentication token
- */
-function getAuthToken() {
-    // Try to get token from various sources
+async function fetchFinanceDataFromSupabase(user) {
     try {
-        const user = JSON.parse(localStorage.getItem('finance_user') || 'null');
-        if (user && user.token) return user.token;
-        
-        const session = JSON.parse(localStorage.getItem('supabase.auth.token') || 'null');
-        if (session && session.access_token) return session.access_token;
-        
-        return null;
-    } catch (e) {
+        // Check if supabase is available
+        if (typeof supabase === 'undefined' || !supabase) {
+            console.warn('⚠️ Supabase not available');
+            return null;
+        }
+
+        const studentId = user.id;
+        const program = user.program || 'KRCHN';
+        const programType = getProgramType(program);
+        const periodLabel = getPeriodLabel(programType);
+
+        console.log('📊 Fetching data for student:', studentId);
+        console.log(`📋 Using ${periodLabel}s for fee structure`);
+
+        // 1. Get student account summary
+        let accountData = null;
+        try {
+            const { data, error } = await supabase
+                .from('finance_student_accounts')
+                .select('*')
+                .eq('student_id', studentId)
+                .single();
+            
+            if (!error && data) {
+                accountData = data;
+                console.log('✅ Account data found:', data);
+            } else {
+                console.log('ℹ️ No account data found, will use defaults');
+            }
+        } catch (e) {
+            console.log('ℹ️ Account table may not exist yet');
+        }
+
+        // 2. Get student payments
+        let paymentsData = [];
+        try {
+            const { data, error } = await supabase
+                .from('finance_payments')
+                .select('*')
+                .eq('student_id', studentId)
+                .order('payment_date', { ascending: false });
+
+            if (!error && data) {
+                paymentsData = data;
+                console.log('✅ Payments found:', data.length);
+            } else {
+                console.log('ℹ️ No payments found');
+            }
+        } catch (e) {
+            console.log('ℹ️ Payments table may not exist yet');
+        }
+
+        // 3. Get fee structure for student's program
+        let feeData = [];
+        try {
+            const { data, error } = await supabase
+                .from('finance_fee_structure')
+                .select('*')
+                .eq('program', program)
+                .eq('is_active', true)
+                .order('created_at', { ascending: true });
+
+            if (!error && data) {
+                feeData = data;
+                console.log(`✅ Fee structure found: ${data.length} ${periodLabel}s`);
+            } else {
+                console.log(`ℹ️ No fee structure found for program: ${program}`);
+            }
+        } catch (e) {
+            console.log('ℹ️ Fee structure table may not exist yet');
+        }
+
+        // Build the data object
+        const totalDue = accountData?.total_fees_due || feeData.reduce((sum, f) => sum + f.amount, 0) || 0;
+        const totalPaid = accountData?.total_paid || paymentsData.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0) || 0;
+        const balance = totalDue - totalPaid;
+
+        // Format payments with correct period labels
+        const formattedPayments = paymentsData.map(p => {
+            let period = p.period || 'Term 1';
+            // If period doesn't match program type, convert it
+            if (programType === 'KRCHN' && !period.includes('Block') && !period.includes('Introductory')) {
+                // Convert "Term X" to "Block X"
+                const num = period.replace(/\D/g, '');
+                period = num ? `Block ${num}` : 'Introductory';
+            } else if (programType === 'TVET' && !period.includes('Term')) {
+                // Convert "Block X" to "Term X"
+                const num = period.replace(/\D/g, '');
+                period = num ? `Term ${num}` : 'Term 1';
+            }
+            
+            return {
+                date: p.payment_date || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                description: p.notes || `${period} Fees`,
+                period: period,
+                amount: p.amount || 0,
+                method: p.payment_method || 'Cash',
+                reference: p.reference_number || '-',
+                status: p.status || 'pending'
+            };
+        });
+
+        // Format fee structure with correct period labels
+        const formattedFees = feeData.map(f => {
+            let block = f.block_term || 'Block 1';
+            // If block doesn't match program type, convert it
+            if (programType === 'KRCHN' && !block.includes('Block') && !block.includes('Introductory')) {
+                const num = block.replace(/\D/g, '');
+                block = num ? `Block ${num}` : 'Introductory';
+            } else if (programType === 'TVET' && !block.includes('Term')) {
+                const num = block.replace(/\D/g, '');
+                block = num ? `Term ${num}` : 'Term 1';
+            }
+            
+            return {
+                block: block,
+                amount: f.amount || 0,
+                description: f.description || `Tuition fees`
+            };
+        });
+
+        // If no fee structure, create default based on program type
+        if (formattedFees.length === 0) {
+            const defaultBlocks = getPeriods(programType);
+            const defaultAmount = programType === 'KRCHN' ? 60000 : 45000;
+            defaultBlocks.forEach(block => {
+                formattedFees.push({
+                    block: block,
+                    amount: defaultAmount,
+                    description: `${block} Tuition Fees`
+                });
+            });
+        }
+
+        return {
+            balance: balance,
+            totalPaid: totalPaid,
+            totalDue: totalDue,
+            outstanding: Math.max(balance, 0),
+            paymentProgress: totalDue > 0 ? (totalPaid / totalDue * 100) : 100,
+            payments: formattedPayments,
+            feeStructure: formattedFees,
+            programType: programType,
+            periodLabel: periodLabel,
+            student: {
+                name: user.full_name || user.name || 'Student',
+                id: user.studentId || user.id || 'N/A',
+                program: program,
+                intake: user.intake || '2026'
+            }
+        };
+
+    } catch (error) {
+        console.error('❌ Error fetching from Supabase:', error);
         return null;
     }
 }
 
 /**
- * Get mock finance data (for testing)
+ * Get mock finance data (for testing/fallback)
  */
 function getMockFinanceData(user) {
+    const programType = getProgramType(user?.program);
+    const periodLabel = getPeriodLabel(programType);
+    const periods = getPeriods(programType);
+    const amount = programType === 'KRCHN' ? 60000 : 45000;
+    
     return {
         balance: 45000,
         totalPaid: 135000,
@@ -137,8 +320,8 @@ function getMockFinanceData(user) {
         payments: [
             { 
                 date: '2026-07-31', 
-                description: 'Term 2 Fees - Block 2', 
-                period: 'Term 2', 
+                description: `${periods[1]} Fees`, 
+                period: periods[1], 
                 amount: 45000, 
                 method: 'M-Pesa', 
                 reference: 'MPESA-7845', 
@@ -146,8 +329,8 @@ function getMockFinanceData(user) {
             },
             { 
                 date: '2026-07-15', 
-                description: 'Term 2 Fees - Block 2', 
-                period: 'Term 2', 
+                description: `${periods[1]} Fees`, 
+                period: periods[1], 
                 amount: 30000, 
                 method: 'Bank Transfer', 
                 reference: 'BT-5678', 
@@ -155,8 +338,8 @@ function getMockFinanceData(user) {
             },
             { 
                 date: '2026-07-01', 
-                description: 'Term 1 Fees - Block 1', 
-                period: 'Term 1', 
+                description: `${periods[0]} Fees`, 
+                period: periods[0], 
                 amount: 60000, 
                 method: 'Cash', 
                 reference: 'CASH-1234', 
@@ -164,25 +347,26 @@ function getMockFinanceData(user) {
             },
             { 
                 date: '2026-06-15', 
-                description: 'Term 1 Fees - Block 1', 
-                period: 'Term 1', 
+                description: `${periods[0]} Fees`, 
+                period: periods[0], 
                 amount: 30000, 
                 method: 'M-Pesa', 
                 reference: 'MPESA-9012', 
                 status: 'pending' 
             },
         ],
-        feeStructure: [
-            { block: 'Introductory', amount: 60000, description: 'Foundation Block Tuition' },
-            { block: 'Block 1', amount: 60000, description: 'Block 1 Tuition' },
-            { block: 'Block 2', amount: 60000, description: 'Block 2 Tuition' },
-            { block: 'Block 3', amount: 60000, description: 'Block 3 Tuition' },
-        ],
+        feeStructure: periods.map(period => ({
+            block: period,
+            amount: amount,
+            description: `${period} Tuition Fees`
+        })),
+        programType: programType,
+        periodLabel: periodLabel,
         student: {
-            name: user.full_name || user.name || 'Student',
-            id: user.studentId || user.id || 'N/A',
-            program: user.program || 'KRCHN',
-            intake: user.intake || '2026'
+            name: user?.full_name || user?.name || 'Student',
+            id: user?.studentId || user?.id || 'N/A',
+            program: user?.program || 'KRCHN',
+            intake: user?.intake || '2026'
         }
     };
 }
@@ -246,6 +430,9 @@ function showFinanceError(message) {
 function updateFinanceUI(data) {
     if (!data) return;
     
+    // Update program type indicator
+    updateProgramTypeIndicator(data);
+    
     // Update balance
     updateBalance(data);
     
@@ -259,10 +446,44 @@ function updateFinanceUI(data) {
     renderFeeStructure(data.feeStructure || []);
     
     // Update last updated
-    document.getElementById('financeLastUpdated').textContent = new Date().toLocaleString();
+    const lastUpdated = document.getElementById('financeLastUpdated');
+    if (lastUpdated) {
+        lastUpdated.textContent = new Date().toLocaleString();
+    }
     
     // Update badge
     updateFinanceBadge(data);
+}
+
+/**
+ * Update program type indicator in UI
+ */
+function updateProgramTypeIndicator(data) {
+    const programType = data.programType || 'KRCHN';
+    const periodLabel = data.periodLabel || 'Block';
+    
+    // Update the period labels in the UI
+    const periodLabels = document.querySelectorAll('.period-label');
+    periodLabels.forEach(el => {
+        el.textContent = periodLabel;
+    });
+    
+    // Update filter dropdown
+    const periodFilter = document.getElementById('financePeriodFilter');
+    if (periodFilter) {
+        // Keep the existing options but update display
+        const options = periodFilter.querySelectorAll('option');
+        options.forEach(opt => {
+            if (opt.value && opt.value !== 'all') {
+                const num = opt.value.replace(/\D/g, '');
+                if (num) {
+                    opt.textContent = `${periodLabel} ${num}`;
+                }
+            }
+        });
+    }
+    
+    console.log(`📋 Using "${periodLabel}" terminology for this student`);
 }
 
 /**
@@ -276,18 +497,28 @@ function updateBalance(data) {
     const progress = data.paymentProgress || (totalDue > 0 ? (totalPaid / totalDue * 100) : 100);
     
     // Update balance
-    document.getElementById('studentBalanceDisplay').textContent = `KES ${balance.toLocaleString()}`;
-    document.getElementById('studentTotalPaid').textContent = `KES ${totalPaid.toLocaleString()}`;
-    document.getElementById('studentTotalDue').textContent = `KES ${totalDue.toLocaleString()}`;
-    document.getElementById('studentOutstanding').textContent = `KES ${outstanding.toLocaleString()}`;
+    const balanceDisplay = document.getElementById('studentBalanceDisplay');
+    if (balanceDisplay) balanceDisplay.textContent = `KES ${balance.toLocaleString()}`;
+    
+    const totalPaidDisplay = document.getElementById('studentTotalPaid');
+    if (totalPaidDisplay) totalPaidDisplay.textContent = `KES ${totalPaid.toLocaleString()}`;
+    
+    const totalDueDisplay = document.getElementById('studentTotalDue');
+    if (totalDueDisplay) totalDueDisplay.textContent = `KES ${totalDue.toLocaleString()}`;
+    
+    const outstandingDisplay = document.getElementById('studentOutstanding');
+    if (outstandingDisplay) outstandingDisplay.textContent = `KES ${outstanding.toLocaleString()}`;
     
     // Update status
     updateBalanceStatus(balance);
     
     // Update progress
     const progressPercent = Math.min(Math.round(progress), 100);
-    document.getElementById('paymentProgressFill').style.width = `${progressPercent}%`;
-    document.getElementById('paymentProgressText').textContent = `${progressPercent}%`;
+    const progressFill = document.getElementById('paymentProgressFill');
+    if (progressFill) progressFill.style.width = `${progressPercent}%`;
+    
+    const progressText = document.getElementById('paymentProgressText');
+    if (progressText) progressText.textContent = `${progressPercent}%`;
 }
 
 /**
@@ -322,11 +553,20 @@ function updateStats(data) {
     const pending = payments.filter(p => p.status === 'pending').length;
     const overdue = payments.filter(p => p.status === 'failed' || p.status === 'overdue').length;
     
-    document.getElementById('financePaidCount').textContent = paid;
-    document.getElementById('financePendingCount').textContent = pending;
-    document.getElementById('financeOverdueCount').textContent = overdue;
-    document.getElementById('financeTotalTransactions').textContent = payments.length;
-    document.getElementById('paymentRecordCount').textContent = `${payments.length} records`;
+    const paidEl = document.getElementById('financePaidCount');
+    if (paidEl) paidEl.textContent = paid;
+    
+    const pendingEl = document.getElementById('financePendingCount');
+    if (pendingEl) pendingEl.textContent = pending;
+    
+    const overdueEl = document.getElementById('financeOverdueCount');
+    if (overdueEl) overdueEl.textContent = overdue;
+    
+    const transactionsEl = document.getElementById('financeTotalTransactions');
+    if (transactionsEl) transactionsEl.textContent = payments.length;
+    
+    const recordCount = document.getElementById('paymentRecordCount');
+    if (recordCount) recordCount.textContent = `${payments.length} records`;
 }
 
 /**
@@ -414,7 +654,8 @@ function renderFeeStructure(fees) {
         </div>
     `;
     
-    document.getElementById('feeStructureTotal').textContent = `Total: KES ${total.toLocaleString()}`;
+    const totalEl = document.getElementById('feeStructureTotal');
+    if (totalEl) totalEl.textContent = `Total: KES ${total.toLocaleString()}`;
 }
 
 /**
@@ -474,7 +715,8 @@ function filterStudentPayments() {
     
     // Re-render with filtered data
     renderPayments(filtered);
-    document.getElementById('paymentRecordCount').textContent = `${filtered.length} records`;
+    const recordCount = document.getElementById('paymentRecordCount');
+    if (recordCount) recordCount.textContent = `${filtered.length} records`;
 }
 
 // ============================================================
@@ -485,6 +727,9 @@ function filterStudentPayments() {
  * Initiate payment
  */
 function initiatePayment() {
+    const programType = studentFinanceState.programType || 'KRCHN';
+    const periodLabel = getPeriodLabel(programType);
+    
     Swal.fire({
         title: '💰 Make Payment',
         html: `
@@ -507,12 +752,9 @@ function initiatePayment() {
                 </div>
                 
                 <div style="margin-bottom: 12px;">
-                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Payment Period</label>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Payment ${periodLabel}</label>
                     <select id="paymentPeriodSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #f8fafc;">
-                        <option value="Term 1">Term 1</option>
-                        <option value="Term 2" selected>Term 2</option>
-                        <option value="Term 3">Term 3</option>
-                        <option value="Full Year">Full Year</option>
+                        ${getPeriods(programType).map(p => `<option value="${p}">${p}</option>`).join('')}
                     </select>
                 </div>
                 
@@ -552,7 +794,7 @@ function initiatePayment() {
                     <div style="text-align: left;">
                         <p><strong>Amount:</strong> KES ${amount.toLocaleString()}</p>
                         <p><strong>Method:</strong> ${method}</p>
-                        <p><strong>Period:</strong> ${period}</p>
+                        <p><strong>${periodLabel}:</strong> ${period}</p>
                         <p style="margin-top: 12px; color: #64748b; font-size: 14px;">Please wait while we redirect you to complete the payment...</p>
                     </div>
                 `,
@@ -650,6 +892,30 @@ function viewStudentInvoice() {
 }
 
 // ============================================================
+// TOAST NOTIFICATIONS
+// ============================================================
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('financeToastContainer');
+    if (!container) {
+        console.log(`[${type}] ${message}`);
+        return;
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = `finance-toast finance-toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// ============================================================
 // COMMUNICATION WITH FINANCE MODULE
 // ============================================================
 
@@ -684,6 +950,53 @@ function listenForFinanceUpdates() {
 // AUTO-LOAD ON TAB ACTIVATION
 // ============================================================
 
-// Listen for tab changes
+// Listen for tab changes to load finance data
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if finance
+    // Check if finance tab exists and load data when shown
+    const financeTab = document.querySelector('a[data-tab="finance"]');
+    if (financeTab) {
+        financeTab.addEventListener('click', function() {
+            setTimeout(loadStudentFinance, 300);
+        });
+    }
+    
+    // Listen for app ready event
+    document.addEventListener('appReady', function() {
+        console.log('📱 App ready, loading student finance...');
+        setTimeout(loadStudentFinance, 800);
+    });
+    
+    // Also load if already on finance tab
+    const currentTab = document.querySelector('.tab-content.active');
+    if (currentTab && currentTab.id === 'finance') {
+        setTimeout(loadStudentFinance, 500);
+    }
+    
+    // Setup filter listeners
+    const paymentFilter = document.getElementById('financePaymentFilter');
+    if (paymentFilter) paymentFilter.addEventListener('change', filterStudentPayments);
+    
+    const periodFilter = document.getElementById('financePeriodFilter');
+    if (periodFilter) periodFilter.addEventListener('change', filterStudentPayments);
+    
+    const searchInput = document.getElementById('financeSearch');
+    if (searchInput) searchInput.addEventListener('keyup', filterStudentPayments);
+    
+    // Listen for finance updates
+    listenForFinanceUpdates();
+    
+    // Add spin animation style if not exists
+    if (!document.getElementById('financeSpinStyle')) {
+        const style = document.createElement('style');
+        style.id = 'financeSpinStyle';
+        style.textContent = `
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+});
+
+console.log('✅ Student Finance module loaded');
+console.log('📊 Supports KRCHN (Blocks) and TVET (Terms)');
