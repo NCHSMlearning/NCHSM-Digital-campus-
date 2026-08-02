@@ -1,7 +1,7 @@
 /**
  * FINANCE MODULE - MAIN APPLICATION
  * Core application logic for the finance dashboard
- * Matches Super Admin design and functionality
+ * Uses financeAPI for all Supabase operations
  */
 
 // ============================================================
@@ -18,8 +18,12 @@ let allTransactions = [];
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
     console.log('💰 Finance Module starting...');
-    console.log('🔗 Supabase URL:', FINANCE_CONFIG.SUPABASE_URL);
-    console.log('📊 Tables:', Object.keys(FINANCE_CONFIG.TABLES));
+    
+    // HIDE .html EXTENSION
+    if (window.location.pathname.endsWith('.html')) {
+        const cleanPath = window.location.pathname.replace(/\.html$/, '');
+        window.history.replaceState({}, '', cleanPath);
+    }
     
     // Set current date
     updateCurrentDate();
@@ -45,9 +49,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // DATE HELPERS
 // ============================================================
 
-/**
- * Update current date display
- */
 function updateCurrentDate() {
     const dateDisplay = document.getElementById('currentDate');
     if (dateDisplay) {
@@ -57,9 +58,6 @@ function updateCurrentDate() {
     }
 }
 
-/**
- * Format date
- */
 function formatDate(dateString) {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -68,9 +66,6 @@ function formatDate(dateString) {
     return date.toLocaleDateString('en-KE', options);
 }
 
-/**
- * Format date time
- */
 function formatDateTime(dateString) {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -79,9 +74,6 @@ function formatDateTime(dateString) {
     return date.toLocaleDateString('en-KE', options);
 }
 
-/**
- * Format currency
- */
 function formatCurrency(amount) {
     if (amount === null || amount === undefined) return 'KES 0';
     return 'KES ' + parseFloat(amount).toLocaleString();
@@ -91,9 +83,6 @@ function formatCurrency(amount) {
 // USER AUTHENTICATION
 // ============================================================
 
-/**
- * Get current finance user from storage
- */
 function getFinanceUser() {
     try {
         let user = JSON.parse(localStorage.getItem('finance_user') || 'null');
@@ -107,9 +96,6 @@ function getFinanceUser() {
     }
 }
 
-/**
- * Check if user is authenticated
- */
 function isFinanceAuthenticated() {
     const user = getFinanceUser();
     if (!user) return false;
@@ -121,9 +107,6 @@ function isFinanceAuthenticated() {
 // TAB NAVIGATION
 // ============================================================
 
-/**
- * Initialize finance tabs
- */
 function initFinanceTabs() {
     const tabLinks = document.querySelectorAll('.finance-nav a[data-tab]');
     
@@ -136,11 +119,7 @@ function initFinanceTabs() {
     });
 }
 
-/**
- * Show finance tab
- */
 function showFinanceTab(tabId) {
-    // Update nav links
     document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('data-tab') === tabId) {
@@ -148,7 +127,6 @@ function showFinanceTab(tabId) {
         }
     });
     
-    // Update tab contents
     document.querySelectorAll('.finance-tab-content').forEach(tab => {
         tab.classList.remove('active');
         if (tab.id === `tab-${tabId}`) {
@@ -156,13 +134,9 @@ function showFinanceTab(tabId) {
         }
     });
     
-    // Load tab data if needed
     loadTabData(tabId);
 }
 
-/**
- * Load data for specific tab
- */
 function loadTabData(tabId) {
     switch(tabId) {
         case 'dashboard':
@@ -178,7 +152,6 @@ function loadTabData(tabId) {
             loadFeeStructure();
             break;
         case 'reports':
-            // Report data loaded on demand
             break;
         case 'transactions':
             loadTransactions();
@@ -193,9 +166,6 @@ function loadTabData(tabId) {
 // SIDEBAR
 // ============================================================
 
-/**
- * Toggle sidebar for mobile
- */
 function toggleSidebar() {
     const sidebar = document.getElementById('financeSidebar');
     if (sidebar) {
@@ -203,9 +173,6 @@ function toggleSidebar() {
     }
 }
 
-/**
- * Logout finance user
- */
 function logoutFinance() {
     if (confirm('Are you sure you want to logout?')) {
         localStorage.removeItem('finance_user');
@@ -217,9 +184,6 @@ function logoutFinance() {
     }
 }
 
-/**
- * Go to main dashboard
- */
 function goToMainDashboard() {
     window.location.href = '/home';
 }
@@ -239,9 +203,6 @@ document.addEventListener('click', function(e) {
 // LOAD ALL DATA
 // ============================================================
 
-/**
- * Load all data
- */
 async function loadAllData() {
     await loadDashboardData();
     await loadAccounts();
@@ -255,17 +216,12 @@ async function loadAllData() {
 // DASHBOARD
 // ============================================================
 
-/**
- * Load dashboard data
- */
 async function loadDashboardData() {
     console.log('📊 Loading dashboard data...');
     
     try {
-        // Get dashboard stats
-        const stats = await getDashboardStats();
+        const stats = await window.financeAPI.getDashboardStats();
         
-        // Update stats
         document.getElementById('totalStudents').textContent = stats.totalStudents || 0;
         document.getElementById('totalCollected').textContent = formatCurrency(stats.totalCollected || 0);
         document.getElementById('outstandingBalance').textContent = formatCurrency(stats.outstandingBalance || 0);
@@ -273,14 +229,10 @@ async function loadDashboardData() {
         document.getElementById('todayPayments').textContent = formatCurrency(stats.todayPayments || 0);
         document.getElementById('totalTransactions').textContent = stats.totalTransactions || 0;
         
-        // Update badges
         document.getElementById('dashboardBadge').textContent = stats.overdueAccounts || 0;
         document.getElementById('accountsBadge').textContent = stats.totalStudents || 0;
         
-        // Load recent transactions
         await loadRecentTransactions();
-        
-        // Initialize charts
         await loadCharts();
         
         console.log('✅ Dashboard loaded');
@@ -291,114 +243,16 @@ async function loadDashboardData() {
     }
 }
 
-/**
- * Get dashboard stats from Supabase
- */
-async function getDashboardStats() {
-    try {
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            console.error('Supabase not available');
-            return getMockStats();
-        }
-
-        // Total students
-        const { count: totalStudents } = await supabase
-            .from(FINANCE_CONFIG.TABLES.USER_PROFILES)
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'student');
-
-        // Total collected (completed payments)
-        const { data: payments } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .select('amount')
-            .eq('status', 'completed');
-
-        const totalCollected = payments ? payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
-
-        // Outstanding balance
-        const { data: accounts } = await supabase
-            .from(FINANCE_CONFIG.TABLES.STUDENT_ACCOUNTS)
-            .select('balance')
-            .gt('balance', 0);
-
-        const outstanding = accounts ? accounts.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0) : 0;
-        const overdueCount = accounts ? accounts.length : 0;
-
-        // Today's payments
-        const today = new Date().toISOString().split('T')[0];
-        const { data: todayPayments } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .select('amount')
-            .eq('payment_date', today)
-            .eq('status', 'completed');
-
-        const todayTotal = todayPayments ? todayPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
-
-        // Total transactions
-        const { count: totalTransactions } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .select('*', { count: 'exact', head: true });
-
-        return {
-            totalStudents: totalStudents || 0,
-            totalCollected: totalCollected,
-            outstandingBalance: outstanding,
-            overdueAccounts: overdueCount,
-            todayPayments: todayTotal,
-            totalTransactions: totalTransactions || 0
-        };
-
-    } catch (error) {
-        console.error('Error getting dashboard stats:', error);
-        return getMockStats();
-    }
-}
-
-/**
- * Get mock stats (fallback)
- */
-function getMockStats() {
-    return {
-        totalStudents: 230,
-        totalCollected: 580505,
-        outstandingBalance: 2450000,
-        overdueAccounts: 45,
-        todayPayments: 45000,
-        totalTransactions: 876
-    };
-}
-
-/**
- * Load recent transactions
- */
 async function loadRecentTransactions() {
     try {
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            showMockRecentTransactions();
-            return;
-        }
-
-        const { data: transactions, error } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .select('*')
-            .order('payment_date', { ascending: false })
-            .limit(10);
-
-        if (error) throw error;
-
+        const transactions = await window.financeAPI.getPayments({ limit: 10 });
         renderRecentTransactions(transactions || []);
-
     } catch (error) {
         console.error('❌ Error loading recent transactions:', error);
         showMockRecentTransactions();
     }
 }
 
-/**
- * Show mock recent transactions
- */
 function showMockRecentTransactions() {
     const mockData = [
         { payment_date: '2026-07-31', student_name: 'Jane Doe', program: 'KRCHN', amount: 45000, payment_method: 'M-Pesa', status: 'completed' },
@@ -408,9 +262,6 @@ function showMockRecentTransactions() {
     renderRecentTransactions(mockData);
 }
 
-/**
- * Render recent transactions
- */
 function renderRecentTransactions(transactions) {
     const tbody = document.getElementById('recentTransactions');
     if (!tbody) return;
@@ -446,12 +297,8 @@ function renderRecentTransactions(transactions) {
     }).join('');
 }
 
-/**
- * Load charts
- */
 async function loadCharts() {
     try {
-        // Destroy existing charts
         if (monthlyChart) {
             monthlyChart.destroy();
             monthlyChart = null;
@@ -461,34 +308,19 @@ async function loadCharts() {
             statusChart = null;
         }
 
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            // Show empty charts with mock data
-            initMockCharts();
-            return;
-        }
-
-        // Get monthly data
-        const { data: monthlyData, error: monthlyError } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .select('payment_date, amount')
-            .eq('status', 'completed');
-
-        // Process monthly data
+        const payments = await window.financeAPI.getPayments({ limit: 500 });
+        
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const monthlyTotals = new Array(12).fill(0);
+        
+        payments.forEach(p => {
+            if (p.payment_date) {
+                const date = new Date(p.payment_date);
+                const month = date.getMonth();
+                monthlyTotals[month] += parseFloat(p.amount) || 0;
+            }
+        });
 
-        if (!monthlyError && monthlyData) {
-            monthlyData.forEach(p => {
-                if (p.payment_date) {
-                    const date = new Date(p.payment_date);
-                    const month = date.getMonth();
-                    monthlyTotals[month] += parseFloat(p.amount) || 0;
-                }
-            });
-        }
-
-        // Monthly chart
         const monthlyCtx = document.getElementById('monthlyCollectionsChart');
         if (monthlyCtx) {
             monthlyChart = new Chart(monthlyCtx, {
@@ -518,42 +350,35 @@ async function loadCharts() {
             });
         }
 
-        // Get status data
-        const { data: statusData, error: statusError } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .select('status');
+        const statusCounts = { completed: 0, pending: 0, failed: 0, refunded: 0 };
+        payments.forEach(p => {
+            if (statusCounts[p.status] !== undefined) statusCounts[p.status]++;
+        });
 
-        if (!statusError && statusData) {
-            const statusCounts = { completed: 0, pending: 0, failed: 0, refunded: 0 };
-            statusData.forEach(p => {
-                if (statusCounts[p.status] !== undefined) statusCounts[p.status]++;
-            });
-
-            const statusCtx = document.getElementById('paymentStatusChart');
-            if (statusCtx) {
-                statusChart = new Chart(statusCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
-                        datasets: [{
-                            data: [statusCounts.completed, statusCounts.pending, statusCounts.failed, statusCounts.refunded],
-                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-                            borderWidth: 0,
-                        }]
+        const statusCtx = document.getElementById('paymentStatusChart');
+        if (statusCtx) {
+            statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
+                    datasets: [{
+                        data: [statusCounts.completed, statusCounts.pending, statusCounts.failed, statusCounts.refunded],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
+                        }
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
-                            }
-                        },
-                        cutout: '60%'
-                    }
-                });
-            }
+                    cutout: '60%'
+                }
+            });
         }
 
         console.log('✅ Charts loaded');
@@ -564,9 +389,6 @@ async function loadCharts() {
     }
 }
 
-/**
- * Initialize mock charts (fallback)
- */
 function initMockCharts() {
     const monthlyCtx = document.getElementById('monthlyCollectionsChart');
     if (monthlyCtx && !monthlyChart) {
@@ -624,9 +446,6 @@ function initMockCharts() {
     }
 }
 
-/**
- * Refresh all finance data
- */
 function refreshFinanceData() {
     showToast('Refreshing data...', 'info');
     loadAllData();
@@ -639,31 +458,14 @@ function refreshFinanceData() {
 // STUDENT ACCOUNTS
 // ============================================================
 
-/**
- * Load student accounts
- */
 async function loadAccounts() {
     console.log('📊 Loading student accounts...');
     
     try {
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            showMockAccounts();
-            return;
-        }
-
-        const { data: accounts, error } = await supabase
-            .from(FINANCE_CONFIG.TABLES.STUDENT_ACCOUNTS)
-            .select('*')
-            .order('student_name', { ascending: true });
-
-        if (error) throw error;
-
+        const accounts = await window.financeAPI.getStudentAccounts();
         allAccounts = accounts || [];
         renderAccounts(allAccounts);
-        
         console.log('✅ Student accounts loaded:', allAccounts.length);
-
     } catch (error) {
         console.error('❌ Error loading accounts:', error);
         showMockAccounts();
@@ -671,9 +473,6 @@ async function loadAccounts() {
     }
 }
 
-/**
- * Show mock accounts (fallback)
- */
 function showMockAccounts() {
     const mockAccounts = [
         { student_id: '001', student_name: 'Jane Doe', program: 'KRCHN', intake_year: '2026', total_fees_due: 180000, total_paid: 135000, balance: 45000 },
@@ -684,9 +483,6 @@ function showMockAccounts() {
     renderAccounts(mockAccounts);
 }
 
-/**
- * Render accounts table
- */
 function renderAccounts(accounts) {
     const tbody = document.getElementById('accountsTableBody');
     if (!tbody) return;
@@ -734,9 +530,6 @@ function renderAccounts(accounts) {
     }).join('');
 }
 
-/**
- * Filter accounts
- */
 function filterAccounts() {
     const search = document.getElementById('accountSearch')?.value?.toLowerCase() || '';
     const statusFilter = document.getElementById('accountStatusFilter')?.value || 'all';
@@ -769,9 +562,6 @@ function filterAccounts() {
     renderAccounts(filtered);
 }
 
-/**
- * Reset account filters
- */
 function resetAccountFilters() {
     document.getElementById('accountSearch').value = '';
     document.getElementById('accountStatusFilter').value = 'all';
@@ -779,17 +569,11 @@ function resetAccountFilters() {
     renderAccounts(allAccounts);
 }
 
-/**
- * Refresh accounts
- */
 function refreshAccounts() {
     loadAccounts();
     showToast('Accounts refreshed!', 'success');
 }
 
-/**
- * View student account
- */
 function viewStudentAccount(studentId) {
     const modal = document.getElementById('studentAccountModal');
     if (!modal) return;
@@ -849,9 +633,6 @@ function viewStudentAccount(studentId) {
     }, 500);
 }
 
-/**
- * View student payments
- */
 function viewStudentPayments(studentId) {
     showToast('Viewing payments for student...', 'info');
     showFinanceTab('payments');
@@ -871,25 +652,10 @@ function viewStudentPayments(studentId) {
 // PAYMENTS
 // ============================================================
 
-/**
- * Load student dropdown for payment form
- */
 async function loadStudentDropdown() {
     try {
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            loadMockStudentDropdown();
-            return;
-        }
-
-        const { data: students, error } = await supabase
-            .from(FINANCE_CONFIG.TABLES.USER_PROFILES)
-            .select('id, full_name, student_id, email')
-            .eq('role', 'student')
-            .order('full_name', { ascending: true });
-
-        if (error) throw error;
-
+        const students = await window.financeAPI.getStudents();
+        
         const select = document.getElementById('paymentStudent');
         if (!select) return;
 
@@ -910,9 +676,6 @@ async function loadStudentDropdown() {
     }
 }
 
-/**
- * Load mock student dropdown (fallback)
- */
 function loadMockStudentDropdown() {
     const select = document.getElementById('paymentStudent');
     if (!select) return;
@@ -926,31 +689,14 @@ function loadMockStudentDropdown() {
     `;
 }
 
-/**
- * Load payments
- */
 async function loadPayments() {
     console.log('💳 Loading payments...');
     
     try {
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            showMockPayments();
-            return;
-        }
-
-        const { data: payments, error } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .select('*')
-            .order('payment_date', { ascending: false });
-
-        if (error) throw error;
-
+        const payments = await window.financeAPI.getPayments();
         allPayments = payments || [];
         renderPayments(allPayments);
-        
         console.log('✅ Payments loaded:', allPayments.length);
-
     } catch (error) {
         console.error('❌ Error loading payments:', error);
         showMockPayments();
@@ -958,9 +704,6 @@ async function loadPayments() {
     }
 }
 
-/**
- * Show mock payments (fallback)
- */
 function showMockPayments() {
     const mockPayments = [
         { id: '1', payment_date: '2026-07-31', student_name: 'Jane Doe', program: 'KRCHN', amount: 45000, payment_method: 'M-Pesa', reference_number: 'MPESA-7845', period: 'Term 2', status: 'completed' },
@@ -971,9 +714,6 @@ function showMockPayments() {
     renderPayments(mockPayments);
 }
 
-/**
- * Render payments table
- */
 function renderPayments(payments) {
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
@@ -1017,9 +757,6 @@ function renderPayments(payments) {
     }).join('');
 }
 
-/**
- * Record payment
- */
 async function recordPayment() {
     const studentId = document.getElementById('paymentStudent')?.value;
     const amount = parseFloat(document.getElementById('paymentAmount')?.value);
@@ -1040,44 +777,28 @@ async function recordPayment() {
     }
 
     try {
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            showToast('Payment recorded successfully! (Demo)', 'success');
-            document.getElementById('paymentForm')?.reset();
-            document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
-            loadAllData();
+        const student = allAccounts.find(a => a.student_id === studentId) || 
+                       (await window.financeAPI.getStudents()).find(s => s.id === studentId);
+        
+        if (!student) {
+            showToast('Student not found. Please select a valid student.', 'error');
             return;
         }
 
-        // Get student details
-        const { data: student, error: studentError } = await supabase
-            .from(FINANCE_CONFIG.TABLES.USER_PROFILES)
-            .select('full_name, email, program')
-            .eq('id', studentId)
-            .single();
-
-        if (studentError) throw studentError;
-
         const paymentData = {
-            student_id: studentId,
-            student_name: student.full_name || 'Student',
-            student_email: student.email,
+            studentId: studentId,
+            studentName: student.student_name || student.full_name || 'Student',
+            studentEmail: student.email || student.student_email || '',
             program: student.program || 'KRCHN',
             amount: amount,
-            payment_method: method,
-            reference_number: reference || 'TXN-' + Date.now().toString().slice(-8),
-            payment_date: date,
-            period: period || 'Term 1',
-            status: 'completed',
-            notes: notes,
-            recorded_by_name: getFinanceUser()?.name || 'System'
+            method: method,
+            reference: reference,
+            date: date,
+            period: period,
+            notes: notes
         };
 
-        const { error } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .insert([paymentData]);
-
-        if (error) throw error;
+        await window.financeAPI.recordPayment(paymentData);
 
         showToast(`Payment of ${formatCurrency(amount)} recorded successfully!`, 'success');
         
@@ -1092,9 +813,6 @@ async function recordPayment() {
     }
 }
 
-/**
- * View payment details
- */
 function viewPaymentDetails(paymentId) {
     const modal = document.getElementById('paymentDetailModal');
     if (!modal) return;
@@ -1142,32 +860,15 @@ function viewPaymentDetails(paymentId) {
     }, 500);
 }
 
-/**
- * Delete payment
- */
 async function deletePayment(paymentId) {
     if (!confirm('Are you sure you want to delete this payment? This action cannot be undone.')) {
         return;
     }
 
     try {
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            showToast('Payment deleted successfully! (Demo)', 'success');
-            loadAllData();
-            return;
-        }
-
-        const { error } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .delete()
-            .eq('id', paymentId);
-
-        if (error) throw error;
-
+        await window.financeAPI.deletePayment(paymentId);
         showToast('Payment deleted successfully.', 'success');
         loadAllData();
-
     } catch (error) {
         console.error('Error deleting payment:', error);
         showToast('Error deleting payment: ' + error.message, 'error');
@@ -1178,31 +879,13 @@ async function deletePayment(paymentId) {
 // FEE STRUCTURE
 // ============================================================
 
-/**
- * Load fee structure
- */
 async function loadFeeStructure() {
     console.log('📋 Loading fee structure...');
     
     try {
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            showMockFeeStructure();
-            return;
-        }
-
-        const { data: fees, error } = await supabase
-            .from(FINANCE_CONFIG.TABLES.FEE_STRUCTURE)
-            .select('*')
-            .eq('is_active', true)
-            .order('created_at', { ascending: true });
-
-        if (error) throw error;
-
+        const fees = await window.financeAPI.getFeeStructure();
         renderFeeStructure(fees || []);
-        
         console.log('✅ Fee structure loaded:', fees?.length || 0);
-
     } catch (error) {
         console.error('❌ Error loading fee structure:', error);
         showMockFeeStructure();
@@ -1210,9 +893,6 @@ async function loadFeeStructure() {
     }
 }
 
-/**
- * Show mock fee structure (fallback)
- */
 function showMockFeeStructure() {
     const mockFees = [
         { id: '1', program: 'KRCHN', block_term: 'Introductory', intake_year: '2026', amount: 60000, description: 'Tuition fees for Introductory Block' },
@@ -1224,9 +904,6 @@ function showMockFeeStructure() {
     renderFeeStructure(mockFees);
 }
 
-/**
- * Render fee structure
- */
 function renderFeeStructure(fees) {
     const tbody = document.getElementById('feeStructureTableBody');
     if (!tbody) return;
@@ -1262,9 +939,6 @@ function renderFeeStructure(fees) {
     `).join('');
 }
 
-/**
- * Save fee structure
- */
 function saveFeeStructure() {
     const program = document.getElementById('feeProgram')?.value;
     const block = document.getElementById('feeBlock')?.value;
@@ -1282,9 +956,6 @@ function saveFeeStructure() {
     loadFeeStructure();
 }
 
-/**
- * Refresh fee structure
- */
 function refreshFeeStructure() {
     loadFeeStructure();
     showToast('Fee structure refreshed!', 'success');
@@ -1294,31 +965,14 @@ function refreshFeeStructure() {
 // TRANSACTIONS
 // ============================================================
 
-/**
- * Load transactions
- */
 async function loadTransactions() {
     console.log('📋 Loading transactions...');
     
     try {
-        const supabase = window.supabase || window.sb;
-        if (!supabase) {
-            showMockTransactions();
-            return;
-        }
-
-        const { data: transactions, error } = await supabase
-            .from(FINANCE_CONFIG.TABLES.PAYMENTS)
-            .select('*')
-            .order('payment_date', { ascending: false });
-
-        if (error) throw error;
-
+        const transactions = await window.financeAPI.getTransactions();
         allTransactions = transactions || [];
         renderTransactions(allTransactions);
-        
         console.log('✅ Transactions loaded:', allTransactions.length);
-
     } catch (error) {
         console.error('❌ Error loading transactions:', error);
         showMockTransactions();
@@ -1326,9 +980,6 @@ async function loadTransactions() {
     }
 }
 
-/**
- * Show mock transactions (fallback)
- */
 function showMockTransactions() {
     const mockTransactions = [
         { id: 'TXN-001', payment_date: '2026-07-31 14:30', student_name: 'Jane Doe', program: 'KRCHN', amount: 45000, payment_method: 'M-Pesa', reference_number: 'MPESA-7845', status: 'completed' },
@@ -1338,9 +989,6 @@ function showMockTransactions() {
     renderTransactions(mockTransactions);
 }
 
-/**
- * Render transactions
- */
 function renderTransactions(transactions) {
     const tbody = document.getElementById('transactionsTableBody');
     if (!tbody) return;
@@ -1381,9 +1029,6 @@ function renderTransactions(transactions) {
     }).join('');
 }
 
-/**
- * Filter transactions
- */
 function filterTransactions() {
     const search = document.getElementById('transactionSearch')?.value?.toLowerCase() || '';
     const statusFilter = document.getElementById('transactionStatusFilter')?.value || 'all';
@@ -1415,9 +1060,6 @@ function filterTransactions() {
     renderTransactions(filtered);
 }
 
-/**
- * Reset transaction filters
- */
 function resetTransactionFilters() {
     document.getElementById('transactionSearch').value = '';
     document.getElementById('transactionStatusFilter').value = 'all';
@@ -1426,9 +1068,6 @@ function resetTransactionFilters() {
     renderTransactions(allTransactions);
 }
 
-/**
- * View transaction
- */
 function viewTransaction(transactionId) {
     showToast('Viewing transaction: ' + transactionId, 'info');
 }
@@ -1437,9 +1076,6 @@ function viewTransaction(transactionId) {
 // SETTINGS
 // ============================================================
 
-/**
- * Load settings
- */
 function loadSettings() {
     const status = localStorage.getItem('finance_module_status') || 'active';
     const currency = localStorage.getItem('finance_currency') || 'KES';
@@ -1452,9 +1088,6 @@ function loadSettings() {
     document.getElementById('lateFee').value = lateFee;
 }
 
-/**
- * Save settings
- */
 function saveSettings() {
     const status = document.getElementById('moduleStatus').value;
     const currency = document.getElementById('defaultCurrency').value;
@@ -1473,9 +1106,6 @@ function saveSettings() {
 // REPORTS
 // ============================================================
 
-/**
- * Generate report
- */
 function generateReport() {
     showToast('Generating report...', 'info');
     document.getElementById('reportContent').innerHTML = `
@@ -1493,16 +1123,10 @@ function generateReport() {
     `;
 }
 
-/**
- * Export report to PDF
- */
 function exportReportToPDF() {
     showToast('Exporting PDF...', 'info');
 }
 
-/**
- * Export report to CSV
- */
 function exportReportToCSV() {
     showToast('Exporting CSV...', 'info');
 }
@@ -1511,44 +1135,26 @@ function exportReportToCSV() {
 // EXPORT FUNCTIONS
 // ============================================================
 
-/**
- * Export accounts to CSV
- */
 function exportAccountsToCSV() {
     showToast('Exporting accounts to CSV...', 'info');
 }
 
-/**
- * Export payments to CSV
- */
 function exportPaymentsToCSV() {
     showToast('Exporting payments to CSV...', 'info');
 }
 
-/**
- * Export all data
- */
 function exportAllData() {
     showToast('Exporting all data...', 'info');
 }
 
-/**
- * Backup data
- */
 function backupData() {
     showToast('Backup created!', 'success');
 }
 
-/**
- * Clear cache
- */
 function clearCache() {
     showToast('Cache cleared!', 'success');
 }
 
-/**
- * Reset module
- */
 function resetModule() {
     if (confirm('Are you sure you want to reset the module? This cannot be undone!')) {
         showToast('Module reset!', 'warning');
@@ -1559,9 +1165,6 @@ function resetModule() {
 // TOAST NOTIFICATIONS
 // ============================================================
 
-/**
- * Show toast notification
- */
 function showToast(message, type = 'info') {
     const container = document.getElementById('financeToastContainer');
     if (!container) return;
@@ -1583,9 +1186,6 @@ function showToast(message, type = 'info') {
 // MODAL HELPERS
 // ============================================================
 
-/**
- * Close modal
- */
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.remove('active');
