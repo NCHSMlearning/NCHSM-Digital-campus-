@@ -1,5 +1,6 @@
 // ============================================================
 // TVET & NURSING GRADING SYSTEM - COMPLETE UPDATED VERSION
+// WITH DIRECT KRCHN DETECTION (No conflict with script.js)
 // ============================================================
 
 // ============================================================
@@ -57,23 +58,22 @@ const TVET_PROGRAMS = [
 const NURSING_PROGRAMS = ['KRCHN'];
 
 // ============================================================
-// DETECT PROGRAM TYPE
+// DETECT PROGRAM TYPE - DIRECT (No conflict with script.js)
 // ============================================================
 
 function getProgramType(programCode) {
     if (!programCode) return 'TVET';
-    if (NURSING_PROGRAMS.includes(programCode)) return 'NURSING';
+    // ✅ Direct check - no conflict with script.js
+    if (programCode === 'KRCHN') return 'NURSING';
     return 'TVET';
 }
 
 function getGradingConfig(programCode) {
-    const type = getProgramType(programCode);
-    const config = GRADING_CONFIG[type];
-    if (!config) {
-        console.warn(`⚠️ No grading config found for: ${programCode}, using TVET fallback`);
-        return GRADING_CONFIG.TVET;
+    // ✅ Direct check - no conflict with script.js
+    if (programCode === 'KRCHN') {
+        return GRADING_CONFIG.NURSING;
     }
-    return config;
+    return GRADING_CONFIG.TVET;
 }
 
 // ============================================================
@@ -104,8 +104,9 @@ function getTVETGradeBgColor(grade, programCode) {
 }
 
 function calculateTVETMarks(cat1, cat2, exam, programCode) {
-    const config = getGradingConfig(programCode);
-    const programType = getProgramType(programCode);
+    // ✅ Direct check - no conflict with script.js
+    const isNursing = programCode === 'KRCHN';
+    const config = isNursing ? GRADING_CONFIG.NURSING : GRADING_CONFIG.TVET;
     
     const c1 = parseFloat(cat1) || 0;
     const c2 = parseFloat(cat2) || 0;
@@ -114,14 +115,10 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     const clampedCat1 = Math.min(Math.max(c1, 0), config.CAT1_MAX);
     const clampedCat2 = Math.min(Math.max(c2, 0), config.CAT2_MAX);
     
-    // ✅ FIX: For Nursing, exam is out of 70
-    let examMax = config.EXAM_MAX;
-    if (programType === 'NURSING') {
-        examMax = 70; // Nursing exam is always out of 70
-    }
+    // Nursing exam is out of 70, TVET is out of 100
+    const examMax = isNursing ? 70 : config.EXAM_MAX;
     const clampedExam = Math.min(Math.max(ex, 0), examMax);
     
-    // ✅ FIX: For single_cat assessment, only CAT1 + Exam
     const assessmentType = window.me_currentAssessmentType || 'full';
     let total;
     if (assessmentType === 'single_cat') {
@@ -137,7 +134,7 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     }
     
     let percentage;
-    if (programType === 'NURSING') {
+    if (isNursing) {
         // Nursing: total is already out of 100 (30 + 30 + 70 = 100)
         percentage = total;
     } else {
@@ -153,14 +150,14 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
         cat2: clampedCat2,
         exam: clampedExam,
         total: total,
-        maxTotal: programType === 'NURSING' ? 100 : config.TOTAL_MAX,
+        maxTotal: isNursing ? 100 : config.TOTAL_MAX,
         percentage: roundedPercentage,
         grade: gradeInfo.grade,
         points: gradeInfo.points,
         status: gradeInfo.status,
         comment: gradeInfo.comment,
         isPassing: roundedPercentage >= config.PASS_MARK,
-        programType: programType,
+        programType: isNursing ? 'NURSING' : 'TVET',
         config: config,
         gradeType: config.GRADE_TYPE,
         gradeInfo: gradeInfo,
@@ -168,7 +165,7 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
             cat1: `${clampedCat1}/${config.CAT1_MAX}`,
             cat2: `${clampedCat2}/${config.CAT2_MAX}`,
             exam: `${clampedExam}/${examMax}`,
-            total: `${total}/${programType === 'NURSING' ? 100 : config.TOTAL_MAX}`,
+            total: `${total}/${isNursing ? 100 : config.TOTAL_MAX}`,
             percentage: `${roundedPercentage}%`
         }
     };
@@ -191,18 +188,15 @@ function getMarksEntryGrade(score, programCode) {
 }
 
 function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode) {
-    const config = getGradingConfig(programCode);
-    const programType = getProgramType(programCode);
+    const isNursing = programCode === 'KRCHN';
+    const config = isNursing ? GRADING_CONFIG.NURSING : GRADING_CONFIG.TVET;
     
     let total = 0;
     let cat1Val = Math.min(Math.max(parseFloat(cat1) || 0, 0), config.CAT1_MAX);
     let cat2Val = Math.min(Math.max(parseFloat(cat2) || 0, 0), config.CAT2_MAX);
     
-    // ✅ FIX: For Nursing, exam is out of 70
-    let examMax = config.EXAM_MAX;
-    if (programType === 'NURSING') {
-        examMax = 70;
-    }
+    // Nursing exam is out of 70, TVET is out of 100
+    const examMax = isNursing ? 70 : config.EXAM_MAX;
     let examVal = Math.min(Math.max(parseFloat(exam) || 0, 0), examMax);
     
     switch(assessmentType) {
@@ -215,7 +209,7 @@ function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode)
     }
     
     let percentage;
-    if (programType === 'NURSING') {
+    if (isNursing) {
         percentage = total;
     } else {
         percentage = (total / config.TOTAL_MAX) * 100;
@@ -550,8 +544,10 @@ async function loadMarksEntry() {
         me_currentYear = year;
         me_currentAssessmentType = assessmentType;
         
+        // ✅ Direct config check - no conflict with script.js
         const config = getGradingConfig(program);
-        const programType = getProgramType(program);
+        const isNursing = program === 'KRCHN';
+        const programType = isNursing ? 'NURSING' : 'TVET';
         
         console.log(`📊 Program: ${program} (${programType}) - ${config.DISPLAY_NAME}`);
         
@@ -561,7 +557,7 @@ async function loadMarksEntry() {
                     <div class="loading-spinner"></div>
                     <p style="color: #6b7280; margin-top: 10px;">
                         Loading marks for ${unitCode || unit}...
-                        <br><small style="color: #94a3b8;">${programType === 'NURSING' ? '🎓 Nursing' : '🔧 TVET'} | ${config.DISPLAY_NAME}</small>
+                        <br><small style="color: #94a3b8;">${isNursing ? '🎓 Nursing' : '🔧 TVET'} | ${config.DISPLAY_NAME}</small>
                     </p>
                 </div>
             `;
@@ -693,7 +689,8 @@ async function loadMarksEntry() {
 
 function showGradingSystemInfo(program) {
     const config = getGradingConfig(program);
-    const programType = getProgramType(program);
+    const isNursing = program === 'KRCHN';
+    const programType = isNursing ? 'NURSING' : 'TVET';
     
     let container = document.getElementById('gradingSystemInfo');
     if (!container) {
@@ -705,8 +702,8 @@ function showGradingSystemInfo(program) {
         }
     }
     
-    const icon = programType === 'NURSING' ? '🎓' : '🔧';
-    const typeLabel = programType === 'NURSING' ? 'Nursing (KRCHN)' : 'TVET';
+    const icon = isNursing ? '🎓' : '🔧';
+    const typeLabel = isNursing ? 'Nursing (KRCHN)' : 'TVET';
     const gradeType = config.GRADE_TYPE === 'competency' ? 'Competency-Based' : 'Academic';
     
     let gradeLegend = '';
@@ -719,14 +716,14 @@ function showGradingSystemInfo(program) {
     });
     
     container.innerHTML = `
-        <div style="background:${programType === 'NURSING' ? '#eff6ff' : '#f0fdf4'};padding:12px 16px;border-radius:8px;border:1px solid ${programType === 'NURSING' ? '#93c5fd' : '#86efac'};margin-bottom:16px;">
+        <div style="background:${isNursing ? '#eff6ff' : '#f0fdf4'};padding:12px 16px;border-radius:8px;border:1px solid ${isNursing ? '#93c5fd' : '#86efac'};margin-bottom:16px;">
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                 <span style="font-weight:700;color:#1e293b;">${icon} ${typeLabel}</span>
                 <span style="font-size:12px;color:#475569;background:white;padding:2px 10px;border-radius:12px;">${gradeType}</span>
                 <span style="font-size:12px;color:#475569;">Pass: ≥${config.PASS_MARK}%</span>
                 <span style="font-size:11px;color:#6b7280;background:white;padding:2px 10px;border-radius:12px;">${config.FORMULA}</span>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid ${programType === 'NURSING' ? '#dbeafe' : '#d1fae5'};">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid ${isNursing ? '#dbeafe' : '#d1fae5'};">
                 ${gradeLegend}
             </div>
         </div>
@@ -737,14 +734,14 @@ function updateGradingDisplay(program) {
     console.log('📊 Updating grading display for:', program);
     
     const config = getGradingConfig(program);
-    const programType = getProgramType(program);
+    const isNursing = program === 'KRCHN';
     
     const gradingTypeEl = document.getElementById('currentGradingType');
     const gradingTypeLabel = document.getElementById('currentGradingTypeLabel');
     
     if (gradingTypeEl && gradingTypeLabel) {
         gradingTypeEl.style.display = 'inline-block';
-        if (programType === 'NURSING') {
+        if (isNursing) {
             gradingTypeLabel.textContent = '🎓 Nursing (Academic)';
             gradingTypeEl.style.background = '#dbeafe';
             gradingTypeEl.style.color = '#1e40af';
@@ -765,7 +762,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     if (!container) return;
     
     const config = getGradingConfig(program);
-    const programType = getProgramType(program);
+    const isNursing = program === 'KRCHN';
     const isCompetency = config.GRADE_TYPE === 'competency';
     
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
@@ -775,6 +772,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     const showCat1 = assessmentType !== 'exam_only';
     const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
     const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
+    
+    // ✅ Nursing exam max is 70, TVET is 100
+    const examMax = isNursing ? 70 : config.EXAM_MAX;
     
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
@@ -818,7 +818,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                         <th style="padding: 10px 8px; text-align: left;">Name</th>
                         ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-${config.CAT1_MAX})</th>` : ''}
                         ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-${config.CAT2_MAX})</th>` : ''}
-                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${programType === 'NURSING' ? '70' : config.EXAM_MAX})</th>` : ''}
+                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${examMax})</th>` : ''}
                         <th style="padding: 10px 8px; text-align: center;">Total (out of 100)</th>
                         <th style="padding: 10px 8px; text-align: center;">%</th>
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
@@ -873,7 +873,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                 <input type="number" id="me_cat2_${i}" value="${cat2}" min="0" max="${config.CAT2_MAX}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
             ${showExam ? `<td style="padding: 8px; text-align: center;">
-                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${programType === 'NURSING' ? 70 : config.EXAM_MAX}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${examMax}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
             <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.percentage > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
             <td id="me_percentage_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.percentage > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayPercentage}</td>
@@ -1325,6 +1325,8 @@ function renderUnitColumns() {
     }
     
     const config = getGradingConfig(me_currentProgram);
+    const isNursing = me_currentProgram === 'KRCHN';
+    const examMax = isNursing ? 70 : config.EXAM_MAX;
     
     const defaultColumns = [
         { id: 'sno', label: '#', required: true },
@@ -1332,7 +1334,7 @@ function renderUnitColumns() {
         { id: 'name', label: 'Name', required: true },
         { id: 'cat1', label: `CAT1 (0-${config.CAT1_MAX})`, required: false },
         { id: 'cat2', label: `CAT2 (0-${config.CAT2_MAX})`, required: false },
-        { id: 'exam', label: `Exam (0-${config.EXAM_MAX})`, required: false },
+        { id: 'exam', label: `Exam (0-${examMax})`, required: false },
         { id: 'total', label: 'Total (out of 100)', required: false },
         { id: 'percentage', label: '%', required: false },
         { id: 'grade', label: 'Grade', required: false },
@@ -3242,3 +3244,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 300);
 });
+
+// ============================================================
+// ⭐ FORCE OVERRIDE - Ensures our functions win over script.js
+// ============================================================
+
+console.log('🔧 Force overriding getProgramType from script.js...');
+
+// Make sure NURSING_PROGRAMS is on window
+window.NURSING_PROGRAMS = ['KRCHN'];
+
+// Override the global functions (overwriting script.js versions)
+window.getProgramType = function(programCode) {
+    if (!programCode) return 'TVET';
+    if (window.NURSING_PROGRAMS && window.NURSING_PROGRAMS.includes(programCode)) {
+        return 'NURSING';
+    }
+    return 'TVET';
+};
+
+window.getGradingConfig = function(programCode) {
+    // Direct check for KRCHN
+    if (programCode === 'KRCHN') {
+        return window.GRADING_CONFIG.NURSING;
+    }
+    return window.GRADING_CONFIG.TVET;
+};
+
+// Test
+console.log('🧪 getProgramType("KRCHN"):', window.getProgramType('KRCHN'));
+console.log('🧪 getGradingConfig("KRCHN").EXAM_MAX:', window.getGradingConfig('KRCHN').EXAM_MAX);
+
+console.log('✅ Marks Entry functions forcefully registered!');
