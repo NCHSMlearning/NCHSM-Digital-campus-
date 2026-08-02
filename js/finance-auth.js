@@ -1,46 +1,75 @@
 /**
- * FINANCE MODULE - AUTHENTICATION
- * Handles login, logout, and session management
+ * FINANCE MODULE - AUTHENTICATION (FIXED - NO INFINITE LOOP)
  */
 
 // ===== CHECK AUTHENTICATION ON PAGE LOAD =====
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if we're on the login page
-    const isLoginPage = window.location.pathname.includes('financelogin.html') || 
-                        window.location.pathname.includes('/financelogin');
+    // Get current page name
+    const currentPage = window.location.pathname.split('/').pop();
+    const isLoginPage = currentPage === 'financelogin.html' || currentPage === '';
+    const isFinancePage = currentPage === 'finance.html';
     
-    // Check if we're on the finance dashboard
-    const isFinancePage = window.location.pathname.includes('finance.html') || 
-                          window.location.pathname.includes('/finance');
+    console.log('📍 Current page:', currentPage);
+    console.log('🔐 Is login page:', isLoginPage);
+    console.log('🔐 Is finance page:', isFinancePage);
     
-    // If on login page and already authenticated, redirect to dashboard
-    if (isLoginPage && isFinanceAuthenticated()) {
+    // Check authentication status
+    const isAuth = isFinanceAuthenticated();
+    console.log('🔑 Authenticated:', isAuth);
+    
+    // If on login page and authenticated, redirect to dashboard
+    if (isLoginPage && isAuth) {
+        console.log('➡️ Redirecting to finance.html (already logged in)');
         window.location.href = 'finance.html';
         return;
     }
     
-    // If on finance page and not authenticated, redirect to login
-    if (isFinancePage && !isFinanceAuthenticated()) {
+    // If on finance page and NOT authenticated, redirect to login
+    if (isFinancePage && !isAuth) {
+        console.log('➡️ Redirecting to financelogin.html (not logged in)');
         window.location.href = 'financelogin.html';
         return;
     }
     
     // If on finance page and authenticated, load user data
-    if (isFinancePage && isFinanceAuthenticated()) {
+    if (isFinancePage && isAuth) {
+        console.log('✅ Loading finance dashboard');
         loadFinanceUser();
         resetSessionTimeout();
+        // Initialize dashboard if function exists
+        if (typeof loadDashboardData === 'function') {
+            loadDashboardData();
+        }
     }
     
-    // Setup login form
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
+    // If on login page and not authenticated, show login form
+    if (isLoginPage && !isAuth) {
+        console.log('✅ Showing login form');
+        // Setup login form
+        setupLoginForm();
     }
 });
 
-// ===== LOGIN HANDLER =====
+// ===== SETUP LOGIN FORM =====
+function setupLoginForm() {
+    const loginForm = document.getElementById('loginForm');
+    if (!loginForm) {
+        console.warn('⚠️ Login form not found');
+        return;
+    }
+    
+    // Remove existing listeners to prevent duplicates
+    const newForm = loginForm.cloneNode(true);
+    loginForm.parentNode.replaceChild(newForm, loginForm);
+    
+    newForm.addEventListener('submit', handleLogin);
+    console.log('✅ Login form setup complete');
+}
+
+// ===== HANDLE LOGIN =====
 async function handleLogin(e) {
     e.preventDefault();
+    console.log('🔐 Login attempt');
     
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
@@ -50,7 +79,7 @@ async function handleLogin(e) {
     const errorText = document.getElementById('errorText');
     
     // Reset error
-    errorDiv.classList.remove('show');
+    if (errorDiv) errorDiv.classList.remove('show');
     
     // Validate
     if (!email || !password) {
@@ -59,11 +88,13 @@ async function handleLogin(e) {
     }
     
     // Show loading
-    loginBtn.classList.add('loading');
-    loginBtn.disabled = true;
+    if (loginBtn) {
+        loginBtn.classList.add('loading');
+        loginBtn.disabled = true;
+    }
     
     try {
-        // Simulate API call - replace with actual API
+        // Simulate API call
         const response = await simulateLogin(email, password);
         
         if (response.success) {
@@ -82,7 +113,6 @@ async function handleLogin(e) {
                 sessionStorage.setItem('finance_user', JSON.stringify(userData));
             }
             
-            // Show success
             showToast('Login successful! Redirecting...', 'success');
             
             // Redirect to dashboard
@@ -98,12 +128,14 @@ async function handleLogin(e) {
         console.error('Login error:', error);
         showLoginError('Network error. Please check your connection.');
     } finally {
-        loginBtn.classList.remove('loading');
-        loginBtn.disabled = false;
+        if (loginBtn) {
+            loginBtn.classList.remove('loading');
+            loginBtn.disabled = false;
+        }
     }
 }
 
-// ===== SIMULATE LOGIN (DEMO) =====
+// ===== SIMULATE LOGIN =====
 async function simulateLogin(email, password) {
     return new Promise((resolve) => {
         setTimeout(() => {
@@ -156,7 +188,7 @@ async function simulateLogin(email, password) {
             } else {
                 resolve({
                     success: false,
-                    message: 'Invalid email or password.'
+                    message: 'Invalid email or password. Try admin@nchsm.ac.ke / admin123'
                 });
             }
         }, 800);
@@ -172,52 +204,6 @@ function showLoginError(message) {
         errorDiv.classList.add('show');
     } else {
         alert(message);
-    }
-}
-
-// ===== LOAD FINANCE USER =====
-function loadFinanceUser() {
-    const user = getCurrentFinanceUser();
-    if (!user) return;
-    
-    // Update UI elements
-    const nameDisplay = document.getElementById('userNameDisplay');
-    const roleDisplay = document.getElementById('userRoleDisplay');
-    const sidebarRole = document.getElementById('sidebarUserRole');
-    const connectionStatus = document.getElementById('connectionStatus');
-    
-    if (nameDisplay) nameDisplay.textContent = user.name || 'User';
-    
-    if (roleDisplay) {
-        const roleMap = {
-            'superadmin': 'Super Admin',
-            'admin': 'Administrator',
-            'finance_officer': 'Finance Officer',
-            'student': 'Student'
-        };
-        roleDisplay.textContent = roleMap[user.role] || user.role || 'User';
-    }
-    
-    if (sidebarRole) {
-        sidebarRole.textContent = roleDisplay ? roleDisplay.textContent : 'User';
-    }
-    
-    if (connectionStatus) {
-        connectionStatus.textContent = 'Online';
-        connectionStatus.style.color = '#22c55e';
-    }
-    
-    // Update date
-    updateCurrentDate();
-}
-
-// ===== UPDATE CURRENT DATE =====
-function updateCurrentDate() {
-    const dateDisplay = document.getElementById('currentDate');
-    if (dateDisplay) {
-        const now = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        dateDisplay.textContent = now.toLocaleDateString('en-KE', options);
     }
 }
 
@@ -247,15 +233,13 @@ function isFinanceAuthenticated() {
     // Check if token exists
     if (!user.token) return false;
     
-    // Optional: Check if token is expired
+    // Check if token is expired (24 hours)
     if (user.loginTime) {
         const loginTime = new Date(user.loginTime);
         const now = new Date();
         const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
         
-        // Token expires after 24 hours
         if (hoursDiff > 24) {
-            // Clear expired session
             localStorage.removeItem('finance_user');
             sessionStorage.removeItem('finance_user');
             return false;
@@ -265,21 +249,54 @@ function isFinanceAuthenticated() {
     return true;
 }
 
-// ===== LOGOUT =====
-function logoutFinance() {
-    // Clear storage
-    localStorage.removeItem('finance_user');
-    sessionStorage.removeItem('finance_user');
+// ===== LOAD FINANCE USER =====
+function loadFinanceUser() {
+    const user = getCurrentFinanceUser();
+    if (!user) return;
     
-    showToast('Logged out successfully', 'info');
+    console.log('👤 Loading user:', user.name);
     
-    // Redirect to login
-    setTimeout(() => {
-        window.location.href = 'financelogin.html';
-    }, 500);
+    // Update UI elements
+    const nameDisplay = document.getElementById('userNameDisplay');
+    const roleDisplay = document.getElementById('userRoleDisplay');
+    const sidebarRole = document.getElementById('sidebarUserRole');
+    const connectionStatus = document.getElementById('connectionStatus');
+    
+    if (nameDisplay) nameDisplay.textContent = user.name || 'User';
+    
+    if (roleDisplay) {
+        const roleMap = {
+            'superadmin': 'Super Admin',
+            'admin': 'Administrator',
+            'finance_officer': 'Finance Officer',
+            'student': 'Student'
+        };
+        roleDisplay.textContent = roleMap[user.role] || user.role || 'User';
+    }
+    
+    if (sidebarRole) {
+        sidebarRole.textContent = roleDisplay ? roleDisplay.textContent : 'User';
+    }
+    
+    if (connectionStatus) {
+        connectionStatus.textContent = 'Online';
+        connectionStatus.style.color = '#22c55e';
+    }
+    
+    updateCurrentDate();
 }
 
-// ===== TOGGLE PASSWORD VISIBILITY =====
+// ===== UPDATE CURRENT DATE =====
+function updateCurrentDate() {
+    const dateDisplay = document.getElementById('currentDate');
+    if (dateDisplay) {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateDisplay.textContent = now.toLocaleDateString('en-KE', options);
+    }
+}
+
+// ===== TOGGLE PASSWORD =====
 function togglePassword() {
     const passwordInput = document.getElementById('loginPassword');
     const toggleIcon = document.getElementById('toggleIcon');
@@ -295,53 +312,20 @@ function togglePassword() {
     }
 }
 
-// ===== SHOW FORGOT PASSWORD =====
-function showForgotPassword() {
-    const modal = document.getElementById('forgotModal');
-    if (modal) modal.classList.add('active');
-}
-
-// ===== CLOSE FORGOT PASSWORD =====
-function closeForgotModal() {
-    const modal = document.getElementById('forgotModal');
-    if (modal) modal.classList.remove('active');
-}
-
-// ===== SEND RESET LINK =====
-function sendResetLink() {
-    const email = document.getElementById('forgotEmail');
-    if (!email || !email.value.trim()) {
-        showToast('Please enter your email address.', 'warning');
-        return;
-    }
-    
-    showToast('Password reset link sent to your email.', 'success');
-    closeForgotModal();
-}
-
-// ===== SHOW HELP =====
-function showHelp() {
-    showToast('Contact support at support@nchsm.ac.ke or call +254 700 000 000', 'info');
-}
-
-// ===== GO TO MAIN DASHBOARD =====
-function goToMainDashboard() {
-    window.location.href = '/index.html';
-}
-
-// ===== TOGGLE SIDEBAR =====
-function toggleSidebar() {
-    const sidebar = document.getElementById('financeSidebar');
-    if (sidebar) {
-        sidebar.classList.toggle('open');
-    }
+// ===== LOGOUT =====
+function logoutFinance() {
+    localStorage.removeItem('finance_user');
+    sessionStorage.removeItem('finance_user');
+    showToast('Logged out successfully', 'info');
+    setTimeout(() => {
+        window.location.href = 'financelogin.html';
+    }, 500);
 }
 
 // ===== SHOW TOAST =====
 function showToast(message, type = 'info') {
     const container = document.getElementById('financeToastContainer');
     if (!container) {
-        // Fallback: alert
         console.log(`[${type}] ${message}`);
         return;
     }
@@ -380,10 +364,44 @@ function resetSessionTimeout() {
         if (isFinanceAuthenticated()) {
             showToast('Your session is about to expire. Please save your work.', 'warning');
         }
-    }, 30 * 60 * 1000); // 30 minutes
+    }, 30 * 60 * 1000);
 }
 
-// ===== CLOSE MODAL ON OUTSIDE CLICK =====
+// ===== MODAL HELPERS =====
+function showForgotPassword() {
+    const modal = document.getElementById('forgotModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeForgotModal() {
+    const modal = document.getElementById('forgotModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function sendResetLink() {
+    const email = document.getElementById('forgotEmail');
+    if (!email || !email.value.trim()) {
+        showToast('Please enter your email address.', 'warning');
+        return;
+    }
+    showToast('Password reset link sent to your email.', 'success');
+    closeForgotModal();
+}
+
+function showHelp() {
+    showToast('Contact support at support@nchsm.ac.ke or call +254 700 000 000', 'info');
+}
+
+function goToMainDashboard() {
+    window.location.href = '/index.html';
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('financeSidebar');
+    if (sidebar) sidebar.classList.toggle('open');
+}
+
+// ===== CLOSE MODALS =====
 document.addEventListener('click', function(e) {
     document.querySelectorAll('.finance-modal.active').forEach(modal => {
         if (e.target === modal) {
@@ -392,7 +410,6 @@ document.addEventListener('click', function(e) {
     });
 });
 
-// ===== CLOSE MODAL ON ESC =====
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         document.querySelectorAll('.finance-modal.active').forEach(modal => {
@@ -401,15 +418,5 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// ===== INITIALIZE SESSION TIMEOUT =====
-if (isFinanceAuthenticated()) {
-    resetSessionTimeout();
-    
-    // Reset timeout on user activity
-    document.addEventListener('click', resetSessionTimeout);
-    document.addEventListener('keydown', resetSessionTimeout);
-    document.addEventListener('mousemove', resetSessionTimeout);
-}
-
 console.log('✅ Finance Auth loaded successfully');
-console.log('📊 User authenticated:', isFinanceAuthenticated());
+console.log('🔑 Authenticated:', isFinanceAuthenticated());
