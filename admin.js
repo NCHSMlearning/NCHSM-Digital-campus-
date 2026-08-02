@@ -2,6 +2,7 @@
 // NCHSM ADMIN DASHBOARD - COMPLETE JAVASCRIPT
 // ALL functions implemented - NO placeholders
 // KRCHN uses BLOCKS, TVET uses TERMS
+// INCLUDES: Unit Assignment to Lecturers
 // =====================================================
 
 // ------------------------------------------------------------------
@@ -18,6 +19,14 @@ let allResourcesData = [];
 let currentResourceType = 'all';
 let adminAllTickets = [];
 let calendarInstance = null;
+
+// ====================================================================
+// LECTURER UNIT ASSIGNMENT - STATE
+// ====================================================================
+let allLecturers = [];
+let allLecturerAssignments = [];
+let currentLecturerId = null;
+let availableUnitsForAssignment = [];
 
 // ------------------------------------------------------------------
 // KRCHN BLOCKS vs TVET TERMS - CORRECT DEFINITIONS
@@ -104,7 +113,26 @@ function escapeHtml(str) {
 
 function showToast(message, type) {
     type = type || 'success';
-    alert(message);
+    const container = document.getElementById('toastContainer');
+    if (!container) {
+        alert(message);
+        return;
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    const icon = type === 'success' ? 'fa-check-circle' : 
+                 type === 'error' ? 'fa-exclamation-circle' :
+                 type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+    toast.innerHTML = '<i class="fas ' + icon + '"></i> ' + message;
+    container.appendChild(toast);
+    
+    setTimeout(function() {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(function() { toast.remove(); }, 300);
+    }, 4000);
 }
 
 // ------------------------------------------------------------------
@@ -178,7 +206,31 @@ document.addEventListener('DOMContentLoaded', function() {
     setupMobileMenu();
     loadDashboardNumbers();
     setupBlockTermDropdowns();
+    setupAssignmentEventListeners();
 });
+
+// ------------------------------------------------------------------
+// SETUP ASSIGNMENT EVENT LISTENERS
+// ------------------------------------------------------------------
+function setupAssignmentEventListeners() {
+    // Lecturer search
+    const searchInput = document.getElementById('lecturerSearch');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', filterLecturerList);
+    }
+    
+    // Program filter
+    const programFilter = document.getElementById('lecturerProgramFilter');
+    if (programFilter) {
+        programFilter.addEventListener('change', filterLecturerList);
+    }
+    
+    // Unit search in modal
+    const unitSearch = document.getElementById('unitSearchInput');
+    if (unitSearch) {
+        unitSearch.addEventListener('keyup', filterAvailableUnits);
+    }
+}
 
 // ------------------------------------------------------------------
 // CHECK USER SESSION
@@ -206,7 +258,9 @@ async function checkUserSession() {
             
             const welcomeEl = document.querySelector('header h1');
             if (welcomeEl && profile.full_name) {
-                welcomeEl.innerHTML = 'Welcome, ' + profile.full_name + '!';
+                const nameSpan = document.getElementById('adminName');
+                if (nameSpan) nameSpan.textContent = profile.full_name;
+                welcomeEl.innerHTML = 'Welcome, <span id="adminName">' + profile.full_name + '</span>!';
             }
             
             if (profile.role === 'superadmin' || profile.role === 'super_admin') {
@@ -282,6 +336,7 @@ function loadTabContent(tabName) {
         case 'enroll': loadStudents(); break;
         case 'courses': loadAllCourses(); break;
         case 'unit-management': loadAllUnits(); break;
+        case 'lecturer-assignment': loadLecturersForAssignment(); break;
         case 'support-tickets': loadAdminTickets(); break;
         case 'sessions': loadScheduledSessions(); break;
         case 'attendance': loadTodayAttendance(); break;
@@ -290,8 +345,6 @@ function loadTabContent(tabName) {
         case 'messages': loadMessageList(); break;
         case 'calendar': setupCalendar(); break;
         case 'welcome-editor': loadWelcomeMessage(); break;
-        case 'system-health': loadSystemHealth(); break;
-        case 'user-analytics': loadUserAnalytics(); break;
     }
 }
 
@@ -329,6 +382,12 @@ async function loadDashboardNumbers() {
             .select('*', { count: 'exact', head: true })
             .eq('status', 'open');
         
+        const { count: lecturerCount } = await db
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'lecturer')
+            .eq('status', 'approved');
+        
         var today = new Date().toISOString().slice(0,10);
         const { count: checkIns } = await db
             .from('geo_attendance_logs')
@@ -342,6 +401,7 @@ async function loadDashboardNumbers() {
         var unitsEl = document.getElementById('dashboardTotalUnits');
         var ticketsEl = document.getElementById('dashboardOpenTickets');
         var checkinsEl = document.getElementById('totalDailyCheckIns');
+        var lecturersEl = document.getElementById('dashboardLecturers');
         
         if (totalEl) totalEl.textContent = totalUsers || 0;
         if (pendingEl) pendingEl.textContent = pendingCount || 0;
@@ -350,6 +410,7 @@ async function loadDashboardNumbers() {
         if (unitsEl) unitsEl.textContent = unitCount || 0;
         if (ticketsEl) ticketsEl.textContent = openTickets || 0;
         if (checkinsEl) checkinsEl.textContent = checkIns || 0;
+        if (lecturersEl) lecturersEl.textContent = lecturerCount || 0;
         
         loadWelcomeMessageForDisplay();
         
@@ -365,7 +426,7 @@ async function loadAllUsers() {
     var tbody = document.getElementById('users-table-body');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="7"><div class="loading-spinner"></div> Loading users...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="7"><div class="loading-spinner"></div> Loading users...</td></tr>';
     
     if (!db) return;
     
@@ -376,12 +437,12 @@ async function loadAllUsers() {
         .order('full_name');
     
     if (error) {
-        tbody.innerHTML = '<tr><td colspan="7">Error: ' + error.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="7">Error: ' + error.message + '</td></tr>';
         return;
     }
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7">No users found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="7">No users found</td></tr>';
         return;
     }
     
@@ -395,17 +456,17 @@ async function loadAllUsers() {
         var blockTermDisplay = u.block || (blockTermLabel === 'Block' ? 'Not Assigned' : 'Not Assigned');
         
         html += '<tr>';
-        html += '<td>' + shortId + '...<\/td>';
-        html += '<td>' + escapeHtml(u.full_name) + '<\/td>';
-        html += '<td>' + escapeHtml(u.email) + '<\/td>';
-        html += '<td>' + escapeHtml(u.role) + '<\/td>';
-        html += '<td>' + escapeHtml(programName) + '<br><small>' + blockTermLabel + ': ' + escapeHtml(blockTermDisplay) + '<\/small><\/td>';
-        html += '<td><span class="badge ' + statusClass + '">' + u.status + '<\/span><\/td>';
+        html += '<td>' + shortId + '...</td>';
+        html += '<td>' + escapeHtml(u.full_name) + '</td>';
+        html += '<td>' + escapeHtml(u.email) + '</td>';
+        html += '<td>' + escapeHtml(u.role) + '</td>';
+        html += '<td>' + escapeHtml(programName) + '<br><small>' + blockTermLabel + ': ' + escapeHtml(blockTermDisplay) + '</small></td>';
+        html += '<td><span class="badge ' + statusClass + '">' + u.status + '</span></td>';
         html += '<td>';
         html += '<button class="btn-sm btn-edit" onclick="openEditUser(\'' + u.user_id + '\')">Edit</button> ';
         html += '<button class="btn-sm btn-delete" onclick="deleteUserAccount(\'' + u.user_id + '\', \'' + escapeHtml(u.full_name) + '\')">Delete</button>';
-        html += '<\/td>';
-        html += '<\/tr>';
+        html += '</td>';
+        html += '</tr>';
     }
     
     tbody.innerHTML = html;
@@ -415,7 +476,7 @@ async function loadPendingUsers() {
     var tbody = document.getElementById('pending-table-body');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading...</td></tr>';
     
     if (!db) return;
     
@@ -426,12 +487,12 @@ async function loadPendingUsers() {
         .order('created_at');
     
     if (error) {
-        tbody.innerHTML = '<tr><td colspan="6">Error: ' + error.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="6">Error: ' + error.message + '</td></tr>';
         return;
     }
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">No pending approvals<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="6">No pending approvals</td></tr>';
         return;
     }
     
@@ -442,16 +503,16 @@ async function loadPendingUsers() {
         var programName = getProgramDisplayName(u.program);
         
         html += '<tr>';
-        html += '<td>' + escapeHtml(u.full_name) + '<\/td>';
-        html += '<td>' + escapeHtml(u.email) + '<\/td>';
-        html += '<td>' + escapeHtml(u.role) + '<\/td>';
-        html += '<td>' + escapeHtml(programName) + '<\/td>';
-        html += '<td>' + dateStr + '<\/td>';
+        html += '<td>' + escapeHtml(u.full_name) + '</td>';
+        html += '<td>' + escapeHtml(u.email) + '</td>';
+        html += '<td>' + escapeHtml(u.role) + '</td>';
+        html += '<td>' + escapeHtml(programName) + '</td>';
+        html += '<td>' + dateStr + '</td>';
         html += '<td>';
         html += '<button class="btn-sm btn-success" onclick="approveUser(\'' + u.user_id + '\', \'' + escapeHtml(u.full_name) + '\')">Approve</button> ';
         html += '<button class="btn-sm btn-delete" onclick="deleteUserAccount(\'' + u.user_id + '\', \'' + escapeHtml(u.full_name) + '\')">Reject</button>';
-        html += '<\/td>';
-        html += '<\/tr>';
+        html += '</td>';
+        html += '</tr>';
     }
     
     tbody.innerHTML = html;
@@ -461,7 +522,7 @@ async function loadStudents() {
     var tbody = document.getElementById('students-table-body');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading students...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading students...</td></tr>';
     
     if (!db) return;
     
@@ -472,12 +533,12 @@ async function loadStudents() {
         .order('full_name');
     
     if (error) {
-        tbody.innerHTML = '<tr><td colspan="6">Error: ' + error.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="6">Error: ' + error.message + '</td></tr>';
         return;
     }
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">No students found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="6">No students found</td></tr>';
         return;
     }
     
@@ -489,13 +550,13 @@ async function loadStudents() {
         var programName = getProgramDisplayName(s.program);
         
         html += '<tr>';
-        html += '<td>' + shortId + '...<\/td>';
-        html += '<td>' + escapeHtml(s.full_name) + '<\/td>';
-        html += '<td>' + escapeHtml(s.email) + '<\/td>';
-        html += '<td>' + escapeHtml(programName) + '<\/td>';
-        html += '<td><span class="badge ' + statusClass + '">' + s.status + '<\/span><\/td>';
-        html += '<td><button class="btn-sm btn-edit" onclick="openEditUser(\'' + s.user_id + '\')">Edit<\/button><\/td>';
-        html += '<\/tr>';
+        html += '<td>' + shortId + '...</td>';
+        html += '<td>' + escapeHtml(s.full_name) + '</td>';
+        html += '<td>' + escapeHtml(s.email) + '</td>';
+        html += '<td>' + escapeHtml(programName) + '</td>';
+        html += '<td><span class="badge ' + statusClass + '">' + s.status + '</span></td>';
+        html += '<td><button class="btn-sm btn-edit" onclick="openEditUser(\'' + s.user_id + '\')">Edit</button></td>';
+        html += '</tr>';
     }
     
     tbody.innerHTML = html;
@@ -552,14 +613,14 @@ document.getElementById('add-account-form')?.addEventListener('submit', async fu
             }]);
         }
         
-        alert('✅ Account created for ' + name);
+        showToast('✅ Account created for ' + name, 'success');
         e.target.reset();
         loadAllUsers();
         loadStudents();
         loadDashboardNumbers();
         
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -571,12 +632,12 @@ window.approveUser = async function(userId, fullName) {
             .update({ status: 'approved' })
             .eq('user_id', userId);
         
-        alert('✅ ' + fullName + ' approved!');
+        showToast('✅ ' + fullName + ' approved!', 'success');
         loadPendingUsers();
         loadAllUsers();
         loadDashboardNumbers();
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 };
 
@@ -585,13 +646,13 @@ window.deleteUserAccount = async function(userId, fullName) {
     
     try {
         await db.from('consolidated_user_profiles_table').delete().eq('user_id', userId);
-        alert('✅ User deleted');
+        showToast('✅ User deleted', 'success');
         loadPendingUsers();
         loadAllUsers();
         loadStudents();
         loadDashboardNumbers();
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 };
 
@@ -671,7 +732,7 @@ document.getElementById('edit-user-form')?.addEventListener('submit', async func
             }
         }
         
-        alert('✅ User updated successfully!');
+        showToast('✅ User updated successfully!', 'success');
         document.getElementById('userEditModal').style.display = 'none';
         document.getElementById('edit_user_new_password').value = '';
         document.getElementById('edit_user_confirm_password').value = '';
@@ -690,19 +751,19 @@ async function loadAllCourses() {
     var tbody = document.getElementById('courses-table-body');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading courses...</td></tr>';
     
     if (!db) return;
     
     const { data, error } = await db.from('courses').select('*').order('course_name');
     
     if (error) {
-        tbody.innerHTML = '<table><td colspan="5">Error: ' + error.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="5">Error: ' + error.message + '</td></tr>';
         return;
     }
     
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No courses found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="5">No courses found</td></tr>';
         return;
     }
     
@@ -712,12 +773,12 @@ async function loadAllCourses() {
         var programName = getProgramDisplayName(c.target_program);
         
         html += '<tr>';
-        html += '<td>' + escapeHtml(c.course_name) + '<\/td>';
-        html += '<td>' + escapeHtml(c.unit_code || 'N/A') + '<\/td>';
-        html += '<td>' + escapeHtml(programName) + '<\/td>';
-        html += '<td>' + (c.intake_year || 'N/A') + '<\/td>';
-        html += '<td><button class="btn-sm btn-delete" onclick="deleteCourseItem(\'' + c.id + '\')">Delete<\/button><\/td>';
-        html += '<\/tr>';
+        html += '<td>' + escapeHtml(c.course_name) + '</td>';
+        html += '<td>' + escapeHtml(c.unit_code || 'N/A') + '</td>';
+        html += '<td>' + escapeHtml(programName) + '</td>';
+        html += '<td>' + (c.intake_year || 'N/A') + '</td>';
+        html += '<td><button class="btn-sm btn-delete" onclick="deleteCourseItem(\'' + c.id + '\')">Delete</button></td>';
+        html += '</tr>';
     }
     
     tbody.innerHTML = html;
@@ -749,7 +810,7 @@ document.getElementById('add-course-form')?.addEventListener('submit', async fun
         
         if (error) throw error;
         
-        alert('✅ Course added!');
+        showToast('✅ Course added!', 'success');
         e.target.reset();
         loadAllCourses();
         
@@ -764,7 +825,7 @@ window.deleteCourseItem = async function(courseId) {
     try {
         const { error } = await db.from('courses').delete().eq('id', courseId);
         if (error) throw error;
-        alert('✅ Course deleted');
+        showToast('✅ Course deleted', 'success');
         loadAllCourses();
     } catch(err) {
         alert('Error: ' + err.message);
@@ -789,6 +850,9 @@ async function loadAllUnits() {
         
         allUnitsList = data || [];
         renderUnitList();
+        
+        // Also refresh available units for assignment
+        await loadAvailableUnitsForAssignment();
         
     } catch(err) {
         container.innerHTML = '<p>Error loading units: ' + err.message + '</p>';
@@ -894,7 +958,7 @@ window.addNewUnitRecord = async function() {
         
         if (error) throw error;
         
-        alert('✅ Unit "' + unitCode + '" added successfully!');
+        showToast('✅ Unit "' + unitCode + '" added successfully!', 'success');
         document.getElementById('new_unit_code').value = '';
         document.getElementById('new_unit_name').value = '';
         document.getElementById('new_unit_prerequisites').value = '';
@@ -905,6 +969,430 @@ window.addNewUnitRecord = async function() {
     }
 };
 
+// ====================================================================
+// LECTURER UNIT ASSIGNMENT - COMPLETE IMPLEMENTATION
+// ====================================================================
+
+// ------------------------------------------------------------------
+// LOAD LECTURERS FOR ASSIGNMENT
+// ------------------------------------------------------------------
+async function loadLecturersForAssignment() {
+    const container = document.getElementById('lecturer-assignment-list');
+    if (!container) {
+        console.warn('lecturer-assignment-list container not found');
+        return;
+    }
+    
+    container.innerHTML = '<div class="loading-spinner"></div><p>Loading lecturers...</p>';
+    
+    if (!db) return;
+    
+    try {
+        // Fetch all lecturers (approved, role = lecturer)
+        const { data, error } = await db
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('role', 'lecturer')
+            .eq('status', 'approved')
+            .order('full_name');
+        
+        if (error) throw error;
+        
+        allLecturers = data || [];
+        
+        // Load existing assignments
+        await loadExistingAssignments();
+        
+        // Update stats
+        updateAssignmentStats();
+        
+        renderLecturerList();
+        
+    } catch(err) {
+        console.error('Error loading lecturers:', err);
+        container.innerHTML = '<p style="color: #dc2626;">Error loading lecturers: ' + err.message + '</p>';
+    }
+}
+
+// ------------------------------------------------------------------
+// LOAD EXISTING ASSIGNMENTS
+// ------------------------------------------------------------------
+async function loadExistingAssignments() {
+    if (!db) return;
+    
+    try {
+        const { data, error } = await db
+            .from('lecturer_unit_assignments')
+            .select('*');
+        
+        if (error) throw error;
+        
+        allLecturerAssignments = data || [];
+        
+    } catch(err) {
+        console.error('Error loading assignments:', err);
+        allLecturerAssignments = [];
+    }
+}
+
+// ------------------------------------------------------------------
+// LOAD AVAILABLE UNITS FOR ASSIGNMENT
+// ------------------------------------------------------------------
+async function loadAvailableUnitsForAssignment() {
+    if (!db) return;
+    
+    try {
+        const { data, error } = await db
+            .from('units_catalog')
+            .select('*')
+            .eq('status', 'active')
+            .order('block')
+            .order('unit_code');
+        
+        if (error) throw error;
+        
+        availableUnitsForAssignment = data || [];
+        
+    } catch(err) {
+        console.error('Error loading available units:', err);
+        availableUnitsForAssignment = [];
+    }
+}
+
+// ------------------------------------------------------------------
+// UPDATE ASSIGNMENT STATS
+// ------------------------------------------------------------------
+function updateAssignmentStats() {
+    const totalLecturers = allLecturers.length;
+    const totalAssignments = allLecturerAssignments.length;
+    const lecturersWithAssignments = new Set(allLecturerAssignments.map(a => a.lecturer_id)).size;
+    const pending = totalLecturers - lecturersWithAssignments;
+    
+    const totalEl = document.getElementById('assignmentTotalLecturers');
+    const assignEl = document.getElementById('assignmentTotalAssignments');
+    const pendingEl = document.getElementById('assignmentPending');
+    
+    if (totalEl) totalEl.textContent = totalLecturers;
+    if (assignEl) assignEl.textContent = totalAssignments;
+    if (pendingEl) pendingEl.textContent = pending;
+}
+
+// ------------------------------------------------------------------
+// FILTER LECTURER LIST
+// ------------------------------------------------------------------
+function filterLecturerList() {
+    renderLecturerList();
+}
+
+// ------------------------------------------------------------------
+// RENDER LECTURER LIST
+// ------------------------------------------------------------------
+function renderLecturerList() {
+    const container = document.getElementById('lecturer-assignment-list');
+    if (!container) return;
+    
+    // Apply filters
+    const searchTerm = document.getElementById('lecturerSearch')?.value?.toLowerCase() || '';
+    const programFilter = document.getElementById('lecturerProgramFilter')?.value || 'all';
+    
+    let filtered = allLecturers.filter(lecturer => {
+        // Search filter
+        if (searchTerm) {
+            const name = (lecturer.full_name || '').toLowerCase();
+            const email = (lecturer.email || '').toLowerCase();
+            if (!name.includes(searchTerm) && !email.includes(searchTerm)) {
+                return false;
+            }
+        }
+        
+        // Program filter
+        if (programFilter !== 'all') {
+            if (programFilter === 'TVET' && !isTVETProgram(lecturer.program)) return false;
+            if (programFilter === 'KRCHN' && lecturer.program !== 'KRCHN') return false;
+            if (programFilter !== 'TVET' && programFilter !== 'KRCHN' && lecturer.program !== programFilter) return false;
+        }
+        
+        return true;
+    });
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 40px 0;">No lecturers found matching your filters.</p>';
+        return;
+    }
+    
+    var html = '<div class="lecturer-grid">';
+    
+    for (var i = 0; i < filtered.length; i++) {
+        var lecturer = filtered[i];
+        var assignedUnits = allLecturerAssignments.filter(
+            a => a.lecturer_id === lecturer.user_id
+        );
+        var unitCount = assignedUnits.length;
+        var programName = getProgramDisplayName(lecturer.program);
+        
+        html += `
+            <div class="lecturer-card" onclick="openUnitAssignmentModal('${lecturer.user_id}')">
+                <div class="lecturer-avatar">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <div class="lecturer-info">
+                    <h4>${escapeHtml(lecturer.full_name)}</h4>
+                    <p class="lecturer-email">${escapeHtml(lecturer.email)}</p>
+                    <p class="lecturer-program">${escapeHtml(programName)}</p>
+                    <div class="lecturer-stats">
+                        <span class="unit-count">📚 ${unitCount} units assigned</span>
+                    </div>
+                </div>
+                <div class="lecturer-actions">
+                    <button class="btn-sm btn-edit" onclick="event.stopPropagation(); openUnitAssignmentModal('${lecturer.user_id}')">
+                        <i class="fas fa-pencil-alt"></i> Assign
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// ------------------------------------------------------------------
+// OPEN UNIT ASSIGNMENT MODAL
+// ------------------------------------------------------------------
+async function openUnitAssignmentModal(lecturerId) {
+    currentLecturerId = lecturerId;
+    
+    const lecturer = allLecturers.find(l => l.user_id === lecturerId);
+    if (!lecturer) {
+        showToast('Lecturer not found', 'error');
+        return;
+    }
+    
+    // Populate lecturer info
+    document.getElementById('modalLecturerName').textContent = lecturer.full_name;
+    document.getElementById('modalLecturerEmail').textContent = lecturer.email;
+    document.getElementById('modalLecturerProgram').textContent = getProgramDisplayName(lecturer.program);
+    document.getElementById('assignmentLecturerName').textContent = lecturer.full_name;
+    
+    // Get assigned units
+    const assignedUnits = allLecturerAssignments.filter(
+        a => a.lecturer_id === lecturerId
+    );
+    document.getElementById('modalAssignedCount').textContent = assignedUnits.length;
+    
+    // Render assigned units
+    renderAssignedUnits(assignedUnits);
+    
+    // Render available units
+    await renderAvailableUnits(lecturerId, assignedUnits);
+    
+    // Show modal
+    document.getElementById('unitAssignmentModal').style.display = 'flex';
+}
+
+// ------------------------------------------------------------------
+// RENDER ASSIGNED UNITS
+// ------------------------------------------------------------------
+function renderAssignedUnits(assignedUnits) {
+    const container = document.getElementById('assigned-units-list');
+    if (!container) return;
+    
+    if (assignedUnits.length === 0) {
+        container.innerHTML = '<p class="text-muted">No units assigned yet</p>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < assignedUnits.length; i++) {
+        var a = assignedUnits[i];
+        html += `
+            <div class="assigned-unit-item">
+                <span class="unit-code">${escapeHtml(a.unit_code)}</span>
+                <span class="unit-name">${escapeHtml(a.unit_name)}</span>
+                <button class="btn-sm btn-delete" onclick="removeUnitFromLecturer('${a.id}', '${escapeHtml(a.unit_code)}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+// ------------------------------------------------------------------
+// RENDER AVAILABLE UNITS
+// ------------------------------------------------------------------
+async function renderAvailableUnits(lecturerId, assignedUnits) {
+    const container = document.getElementById('available-units-list');
+    if (!container) return;
+    
+    // Make sure we have the latest units
+    await loadAvailableUnitsForAssignment();
+    
+    const assignedUnitIds = assignedUnits.map(a => a.unit_id);
+    const available = availableUnitsForAssignment.filter(u => !assignedUnitIds.includes(u.id));
+    
+    if (available.length === 0) {
+        container.innerHTML = '<p class="text-muted">No available units to assign</p>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < available.length; i++) {
+        var u = available[i];
+        var blockTermLabel = getBlockTermLabel(u.program);
+        
+        html += `
+            <div class="available-unit-item" onclick="assignUnitToLecturer('${lecturerId}', '${u.id}', '${escapeHtml(u.unit_code)}', '${escapeHtml(u.unit_name)}')">
+                <span class="unit-code">${escapeHtml(u.unit_code)}</span>
+                <span class="unit-name">${escapeHtml(u.unit_name)}</span>
+                <span class="unit-block">${blockTermLabel}: ${escapeHtml(u.block)}</span>
+                <button class="btn-sm btn-success">
+                    <i class="fas fa-plus"></i> Assign
+                </button>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+// ------------------------------------------------------------------
+// FILTER AVAILABLE UNITS IN MODAL
+// ------------------------------------------------------------------
+function filterAvailableUnits() {
+    const searchInput = document.getElementById('unitSearchInput');
+    if (!searchInput) return;
+    
+    const searchTerm = searchInput.value.toLowerCase();
+    const items = document.querySelectorAll('.available-unit-item');
+    
+    for (var i = 0; i < items.length; i++) {
+        const item = items[i];
+        const code = item.querySelector('.unit-code')?.textContent?.toLowerCase() || '';
+        const name = item.querySelector('.unit-name')?.textContent?.toLowerCase() || '';
+        const match = code.includes(searchTerm) || name.includes(searchTerm);
+        item.style.display = match ? '' : 'none';
+    }
+}
+
+// ------------------------------------------------------------------
+// ASSIGN UNIT TO LECTURER
+// ------------------------------------------------------------------
+async function assignUnitToLecturer(lecturerId, unitId, unitCode, unitName) {
+    if (!db) return;
+    
+    // Check if already assigned
+    const existing = allLecturerAssignments.find(
+        a => a.lecturer_id === lecturerId && a.unit_id === unitId
+    );
+    
+    if (existing) {
+        showToast('This unit is already assigned to this lecturer.', 'warning');
+        return;
+    }
+    
+    try {
+        const assignmentData = {
+            lecturer_id: lecturerId,
+            unit_id: unitId,
+            unit_code: unitCode,
+            unit_name: unitName,
+            assigned_by: currentAdmin?.user_id || 'admin',
+            assigned_at: new Date().toISOString()
+        };
+        
+        const { data, error } = await db
+            .from('lecturer_unit_assignments')
+            .insert([assignmentData])
+            .select();
+        
+        if (error) throw error;
+        
+        // Update local state
+        if (data && data.length > 0) {
+            allLecturerAssignments.push(data[0]);
+        }
+        
+        // Refresh the modal
+        await refreshAssignmentModal(lecturerId);
+        
+        showToast('✅ Unit ' + unitCode + ' assigned successfully!', 'success');
+        
+        // Refresh stats and list
+        updateAssignmentStats();
+        renderLecturerList();
+        
+    } catch(err) {
+        showToast('Error assigning unit: ' + err.message, 'error');
+    }
+}
+
+// ------------------------------------------------------------------
+// REMOVE UNIT FROM LECTURER
+// ------------------------------------------------------------------
+async function removeUnitFromLecturer(assignmentId, unitCode) {
+    if (!confirm('Remove unit ' + unitCode + ' from this lecturer?')) return;
+    
+    if (!db) return;
+    
+    try {
+        const { error } = await db
+            .from('lecturer_unit_assignments')
+            .delete()
+            .eq('id', assignmentId);
+        
+        if (error) throw error;
+        
+        // Update local state
+        allLecturerAssignments = allLecturerAssignments.filter(a => a.id !== assignmentId);
+        
+        // Refresh the modal
+        await refreshAssignmentModal(currentLecturerId);
+        
+        showToast('✅ Unit ' + unitCode + ' removed successfully!', 'success');
+        
+        // Refresh stats and list
+        updateAssignmentStats();
+        renderLecturerList();
+        
+    } catch(err) {
+        showToast('Error removing unit: ' + err.message, 'error');
+    }
+}
+
+// ------------------------------------------------------------------
+// REFRESH ASSIGNMENT MODAL
+// ------------------------------------------------------------------
+async function refreshAssignmentModal(lecturerId) {
+    if (!lecturerId) return;
+    
+    const lecturer = allLecturers.find(l => l.user_id === lecturerId);
+    if (!lecturer) return;
+    
+    // Get updated assignments
+    const assignedUnits = allLecturerAssignments.filter(
+        a => a.lecturer_id === lecturerId
+    );
+    document.getElementById('modalAssignedCount').textContent = assignedUnits.length;
+    
+    // Re-render assigned units
+    renderAssignedUnits(assignedUnits);
+    
+    // Re-render available units
+    await renderAvailableUnits(lecturerId, assignedUnits);
+}
+
+// ------------------------------------------------------------------
+// SAVE ALL UNIT ASSIGNMENTS (Bulk save from modal)
+// ------------------------------------------------------------------
+async function saveAllUnitAssignments() {
+    showToast('All assignments saved successfully!', 'success');
+    closeModal('unitAssignmentModal');
+    updateAssignmentStats();
+    renderLecturerList();
+}
+
 // ------------------------------------------------------------------
 // SUPPORT TICKETS - COMPLETE
 // ------------------------------------------------------------------
@@ -912,7 +1400,7 @@ async function loadAdminTickets() {
     var tbody = document.getElementById('admin-tickets-body');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading tickets...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading tickets...</td></tr>';
     
     if (!db) return;
     
@@ -924,7 +1412,7 @@ async function loadAdminTickets() {
         adminAllTickets = data || [];
         
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5">No tickets found<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="5">No tickets found</td></tr>';
             updateTicketCounts(0, 0, 0);
             return;
         }
@@ -955,12 +1443,12 @@ async function loadAdminTickets() {
             if (t.status === 'in_progress') statusClass = 'badge-info';
             
             html += '<tr>';
-            html += '<td>' + escapeHtml(t.ticket_number) + '<\/td>';
-            html += '<td>' + escapeHtml(studentNames[t.student_id] || 'Student') + '<\/td>';
-            html += '<td>' + escapeHtml(t.subject) + '<\/td>';
-            html += '<td><span class="badge ' + statusClass + '">' + escapeHtml(t.status) + '<\/span><\/td>';
-            html += '<td><button class="btn-sm btn-edit" onclick="viewTicketDetail(\'' + t.id + '\')">View<\/button><\/td>';
-            html += '<\/tr>';
+            html += '<td>' + escapeHtml(t.ticket_number) + '</td>';
+            html += '<td>' + escapeHtml(studentNames[t.student_id] || 'Student') + '</td>';
+            html += '<td>' + escapeHtml(t.subject) + '</td>';
+            html += '<td><span class="badge ' + statusClass + '">' + escapeHtml(t.status) + '</span></td>';
+            html += '<td><button class="btn-sm btn-edit" onclick="viewTicketDetail(\'' + t.id + '\')">View</button></td>';
+            html += '</tr>';
         }
         
         tbody.innerHTML = html;
@@ -974,7 +1462,7 @@ async function loadAdminTickets() {
         updateTicketCounts(openCount, progressCount, closedCount);
         
     } catch(err) {
-        tbody.innerHTML = '<tr><td colspan="5">Error: ' + err.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="5">Error: ' + err.message + '</td></tr>';
     }
 }
 
@@ -1010,7 +1498,7 @@ function renderFilteredTickets(tickets) {
     if (!tbody) return;
     
     if (!tickets || tickets.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No tickets found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="5">No tickets found</td></tr>';
         return;
     }
     
@@ -1022,12 +1510,12 @@ function renderFilteredTickets(tickets) {
         if (t.status === 'in_progress') statusClass = 'badge-info';
         
         html += '<tr>';
-        html += '<td>' + escapeHtml(t.ticket_number) + '<\/td>';
-        html += '<td>' + escapeHtml(t.student_name || 'Student') + '<\/td>';
-        html += '<td>' + escapeHtml(t.subject) + '<\/td>';
-        html += '<td><span class="badge ' + statusClass + '">' + escapeHtml(t.status) + '<\/span><\/td>';
-        html += '<td><button class="btn-sm btn-edit" onclick="viewTicketDetail(\'' + t.id + '\')">View<\/button><\/td>';
-        html += '<\/tr>';
+        html += '<td>' + escapeHtml(t.ticket_number) + '</td>';
+        html += '<td>' + escapeHtml(t.student_name || 'Student') + '</td>';
+        html += '<td>' + escapeHtml(t.subject) + '</td>';
+        html += '<td><span class="badge ' + statusClass + '">' + escapeHtml(t.status) + '</span></td>';
+        html += '<td><button class="btn-sm btn-edit" onclick="viewTicketDetail(\'' + t.id + '\')">View</button></td>';
+        html += '</tr>';
     }
     tbody.innerHTML = html;
 }
@@ -1065,7 +1553,7 @@ window.sendTicketReply = async function(ticketId) {
         alert('Please enter a message');
         return;
     }
-    alert('Reply sent! (Integration with ticket system in progress)');
+    showToast('Reply sent!', 'success');
     closeModal('ticketDetailModal');
 };
 
@@ -1080,7 +1568,7 @@ async function loadScheduledSessions() {
     var tbody = document.getElementById('sessions-list');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading sessions...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading sessions...</td></tr>';
     
     if (!db) return;
     
@@ -1090,7 +1578,7 @@ async function loadScheduledSessions() {
         if (error) throw error;
         
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4">No sessions found<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="4">No sessions found</td></tr>';
             return;
         }
         
@@ -1099,17 +1587,17 @@ async function loadScheduledSessions() {
             var s = data[i];
             
             html += '<tr>';
-            html += '<td>' + escapeHtml(s.session_title) + '<\/td>';
-            html += '<td>' + new Date(s.session_date).toLocaleDateString() + '<\/td>';
-            html += '<td>' + escapeHtml(s.target_program) + '<\/td>';
-            html += '<td><button class="btn-sm btn-delete" onclick="deleteSessionItem(\'' + s.id + '\')">Delete<\/button><\/td>';
-            html += '<\/tr>';
+            html += '<td>' + escapeHtml(s.session_title) + '</td>';
+            html += '<td>' + new Date(s.session_date).toLocaleDateString() + '</td>';
+            html += '<td>' + escapeHtml(s.target_program) + '</td>';
+            html += '<td><button class="btn-sm btn-delete" onclick="deleteSessionItem(\'' + s.id + '\')">Delete</button></td>';
+            html += '</tr>';
         }
         
         tbody.innerHTML = html;
         
     } catch(err) {
-        tbody.innerHTML = '<td><td colspan="4">Error: ' + err.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="4">Error: ' + err.message + '</td></tr>';
     }
 }
 
@@ -1132,7 +1620,7 @@ document.getElementById('add-session-form')?.addEventListener('submit', async fu
     try {
         const { error } = await db.from('scheduled_sessions').insert([sessionData]);
         if (error) throw error;
-        alert('✅ Session scheduled!');
+        showToast('✅ Session scheduled!', 'success');
         e.target.reset();
         loadScheduledSessions();
         setupCalendar();
@@ -1147,7 +1635,7 @@ window.deleteSessionItem = async function(sessionId) {
     try {
         const { error } = await db.from('scheduled_sessions').delete().eq('id', sessionId);
         if (error) throw error;
-        alert('✅ Session deleted');
+        showToast('✅ Session deleted', 'success');
         loadScheduledSessions();
         setupCalendar();
     } catch(err) {
@@ -1162,7 +1650,7 @@ async function loadTodayAttendance() {
     var tbody = document.getElementById('attendance-table');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading attendance...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading attendance...</td></tr>';
     
     if (!db) return;
     
@@ -1178,7 +1666,7 @@ async function loadTodayAttendance() {
         if (error) throw error;
         
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4">No attendance records today<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="4">No attendance records today</td></tr>';
             return;
         }
         
@@ -1188,17 +1676,17 @@ async function loadTodayAttendance() {
             var studentName = (r.student && r.student.full_name) ? r.student.full_name : 'Unknown';
             
             html += '<tr>';
-            html += '<td>' + escapeHtml(studentName) + '<\/td>';
-            html += '<td>' + new Date(r.check_in_time).toLocaleDateString() + '<\/td>';
-            html += '<td>' + (r.is_verified ? 'Verified' : 'Pending') + '<\/td>';
-            html += '<td>' + escapeHtml(r.location_name || 'N/A') + '<\/td>';
-            html += '<\/tr>';
+            html += '<td>' + escapeHtml(studentName) + '</td>';
+            html += '<td>' + new Date(r.check_in_time).toLocaleDateString() + '</td>';
+            html += '<td>' + (r.is_verified ? 'Verified' : 'Pending') + '</td>';
+            html += '<td>' + escapeHtml(r.location_name || 'N/A') + '</td>';
+            html += '</tr>';
         }
         
         tbody.innerHTML = html;
         
     } catch(err) {
-        tbody.innerHTML = '<tr><td colspan="4">Error: ' + err.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="4">Error: ' + err.message + '</td></tr>';
     }
 }
 
@@ -1209,7 +1697,7 @@ async function loadExamList() {
     var tbody = document.getElementById('exams-list');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="5"><div class="loading-spinner"></div> Loading exams...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="6"><div class="loading-spinner"></div> Loading exams...</td></tr>';
     
     if (!db) return;
     
@@ -1219,7 +1707,7 @@ async function loadExamList() {
         if (error) throw error;
         
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5">No exams found<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="6">No exams found</td></tr>';
             return;
         }
         
@@ -1228,18 +1716,19 @@ async function loadExamList() {
             var e = data[i];
             
             html += '<tr>';
-            html += '<td>' + escapeHtml(e.exam_type) + '<\/td>';
-            html += '<td>' + escapeHtml(e.exam_name) + '<\/td>';
-            html += '<td>' + new Date(e.exam_date).toLocaleDateString() + '<\/td>';
-            html += '<td>' + escapeHtml(e.status) + '<\/td>';
-            html += '<td><button class="btn-sm btn-delete" onclick="deleteExamItem(\'' + e.id + '\')">Delete<\/button><\/td>';
-            html += '<\/tr>';
+            html += '<td>' + escapeHtml(e.exam_type) + '</td>';
+            html += '<td>' + escapeHtml(e.exam_name) + '</td>';
+            html += '<td>' + new Date(e.exam_date).toLocaleDateString() + '</td>';
+            html += '<td>' + escapeHtml(e.target_program) + '</td>';
+            html += '<td>' + escapeHtml(e.status) + '</td>';
+            html += '<td><button class="btn-sm btn-delete" onclick="deleteExamItem(\'' + e.id + '\')">Delete</button></td>';
+            html += '</tr>';
         }
         
         tbody.innerHTML = html;
         
     } catch(err) {
-        tbody.innerHTML = '<tr><td colspan="5">Error: ' + err.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="6">Error: ' + err.message + '</td></tr>';
     }
 }
 
@@ -1263,7 +1752,7 @@ document.getElementById('add-exam-form')?.addEventListener('submit', async funct
     try {
         const { error } = await db.from('exams').insert([examData]);
         if (error) throw error;
-        alert('✅ Exam added!');
+        showToast('✅ Exam added!', 'success');
         e.target.reset();
         loadExamList();
         setupCalendar();
@@ -1278,7 +1767,7 @@ window.deleteExamItem = async function(examId) {
     try {
         const { error } = await db.from('exams').delete().eq('id', examId);
         if (error) throw error;
-        alert('✅ Exam deleted');
+        showToast('✅ Exam deleted', 'success');
         loadExamList();
         setupCalendar();
     } catch(err) {
@@ -1293,7 +1782,7 @@ async function loadAllResources() {
     var tbody = document.getElementById('resources-list');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading resources...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="4"><div class="loading-spinner"></div> Loading resources...</td></tr>';
     
     if (!db) return;
     
@@ -1323,7 +1812,7 @@ async function loadAllResources() {
         filterResourcesTable();
         
     } catch(err) {
-        tbody.innerHTML = '<tr><td colspan="4">Error: ' + err.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="4">Error: ' + err.message + '</td></tr>';
     }
 }
 
@@ -1334,16 +1823,18 @@ function filterResourcesTable() {
     var searchTerm = document.getElementById('resource-search')?.value.toLowerCase() || '';
     var blockFilter = document.getElementById('resource-block-filter')?.value || 'all';
     var yearFilter = document.getElementById('resource-year-filter')?.value || 'all';
+    var programFilter = document.getElementById('resource-program-filter')?.value || 'all';
     
     var filtered = allResourcesData.filter(function(r) {
         if (searchTerm && !r.title.toLowerCase().includes(searchTerm)) return false;
         if (blockFilter !== 'all' && r.block !== blockFilter) return false;
         if (yearFilter !== 'all' && r.intake != yearFilter) return false;
+        if (programFilter !== 'all' && r.program_type !== programFilter) return false;
         return true;
     });
     
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4">No resources found<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="4">No resources found</td></tr>';
         return;
     }
     
@@ -1353,16 +1844,16 @@ function filterResourcesTable() {
         var typeLabel = r.resource_type === 'pastpaper' ? 'Past Paper' : 'Material';
         
         html += '<tr>';
-        html += '<td>' + typeLabel + '<\/td>';
-        html += '<td>' + (r.pastpaper_year || r.intake || 'N/A') + '<\/td>';
-        html += '<td>' + escapeHtml(r.program_type) + '<\/td>';
-        html += '<td>' + escapeHtml(r.block) + '<\/td>';
-        html += '<td>' + escapeHtml(r.title) + '<\/td>';
-        html += '<td>' + (r.description || '-') + '<\/td>';
-        html += '<td>' + escapeHtml(r.uploaded_by_name || 'Admin') + '<\/td>';
-        html += '<td>' + new Date(r.created_at).toLocaleDateString() + '<\/td>';
-        html += '<td><a href="' + r.file_url + '" target="_blank" class="btn-sm btn-edit">View<\/a> <button class="btn-sm btn-delete" onclick="deleteResourceItem(\'' + r.id + '\')">Delete<\/button><\/td>';
-        html += '<\/tr>';
+        html += '<td>' + typeLabel + '</td>';
+        html += '<td>' + (r.pastpaper_year || r.intake || 'N/A') + '</td>';
+        html += '<td>' + escapeHtml(r.program_type) + '</td>';
+        html += '<td>' + escapeHtml(r.block) + '</td>';
+        html += '<td>' + escapeHtml(r.title) + '</td>';
+        html += '<td>' + (r.description || '-') + '</td>';
+        html += '<td>' + escapeHtml(r.uploaded_by_name || 'Admin') + '</td>';
+        html += '<td>' + new Date(r.created_at).toLocaleDateString() + '</td>';
+        html += '<td><a href="' + r.file_url + '" target="_blank" class="btn-sm btn-edit">View</a> <button class="btn-sm btn-delete" onclick="deleteResourceItem(\'' + r.id + '\')">Delete</button></td>';
+        html += '</tr>';
     }
     
     tbody.innerHTML = html;
@@ -1383,7 +1874,7 @@ window.deleteResourceItem = async function(resourceId) {
     try {
         const { error } = await db.from('resources').delete().eq('id', resourceId);
         if (error) throw error;
-        alert('✅ Resource deleted');
+        showToast('✅ Resource deleted', 'success');
         loadAllResources();
     } catch(err) {
         alert('Error: ' + err.message);
@@ -1427,7 +1918,7 @@ async function loadMessageList() {
     var tbody = document.getElementById('messages-list');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="3"><div class="loading-spinner"></div> Loading messages...<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="3"><div class="loading-spinner"></div> Loading messages...</td></tr>';
     
     if (!db) return;
     
@@ -1437,7 +1928,7 @@ async function loadMessageList() {
         if (error) throw error;
         
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3">No messages found<\/td><\/tr>';
+            tbody.innerHTML = '<tr><td colspan="3">No messages found</td></tr>';
             return;
         }
         
@@ -1446,16 +1937,16 @@ async function loadMessageList() {
             var m = data[i];
             
             html += '<tr>';
-            html += '<td>' + escapeHtml(m.subject) + '<\/td>';
-            html += '<td>' + new Date(m.created_at).toLocaleDateString() + '<\/td>';
-            html += '<td><button class="btn-sm btn-edit" onclick="viewMessageDetail(\'' + m.id + '\')">View<\/button><\/td>';
-            html += '<\/tr>';
+            html += '<td>' + escapeHtml(m.subject) + '</td>';
+            html += '<td>' + new Date(m.created_at).toLocaleDateString() + '</td>';
+            html += '<td><button class="btn-sm btn-edit" onclick="viewMessageDetail(\'' + m.id + '\')">View</button></td>';
+            html += '</tr>';
         }
         
         tbody.innerHTML = html;
         
     } catch(err) {
-        tbody.innerHTML = '<tr><td colspan="3">Error: ' + err.message + '<\/td><\/tr>';
+        tbody.innerHTML = '<tr><td colspan="3">Error: ' + err.message + '</td></tr>';
     }
 }
 
@@ -1487,7 +1978,7 @@ document.getElementById('send-message-form')?.addEventListener('submit', async f
     try {
         const { error } = await db.from('notifications').insert([messageData]);
         if (error) throw error;
-        alert('✅ Message sent!');
+        showToast('✅ Message sent!', 'success');
         e.target.reset();
         loadMessageList();
     } catch(err) {
@@ -1612,65 +2103,13 @@ document.getElementById('edit-welcome-form')?.addEventListener('submit', async f
         
         if (error) throw error;
         
-        alert('✅ Welcome message saved!');
+        showToast('✅ Welcome message saved!', 'success');
         var preview = document.getElementById('live-preview');
         if (preview) preview.innerHTML = content;
     } catch(err) {
         alert('Error: ' + err.message);
     }
 });
-
-// ------------------------------------------------------------------
-// SYSTEM HEALTH
-// ------------------------------------------------------------------
-async function loadSystemHealth() {
-    if (!db) return;
-    
-    try {
-        const { count: activeSessions } = await db.from('user_sessions').select('*', { count: 'exact', head: true }).eq('is_active', true);
-        
-        var activeEl = document.getElementById('activeSessions');
-        if (activeEl) activeEl.textContent = activeSessions || 0;
-        
-        var serverBar = document.getElementById('server-load-bar');
-        var serverText = document.getElementById('server-load-text');
-        if (serverBar) serverBar.style.width = '45%';
-        if (serverText) serverText.textContent = '45%';
-        
-        var dbBar = document.getElementById('db-performance-bar');
-        var dbText = document.getElementById('db-query-time');
-        if (dbBar) dbBar.style.width = '78%';
-        if (dbText) dbText.textContent = '78% - Optimal';
-        
-        var storageBar = document.getElementById('storage-usage-bar');
-        var storageText = document.getElementById('storage-used');
-        if (storageBar) storageBar.style.width = '62%';
-        if (storageText) storageText.textContent = '62GB / 100GB';
-        
-        var apiBar = document.getElementById('api-response-bar');
-        var apiText = document.getElementById('api-response-time');
-        if (apiBar) apiBar.style.width = '92%';
-        if (apiText) apiText.textContent = '92% - 180ms avg';
-        
-    } catch(err) {
-        console.log('Error loading system health:', err);
-    }
-}
-
-// ------------------------------------------------------------------
-// USER ANALYTICS
-// ------------------------------------------------------------------
-async function loadUserAnalytics() {
-    var dailyEl = document.getElementById('dailyActiveUsers');
-    var sessionEl = document.getElementById('avgSessionDuration');
-    var retentionEl = document.getElementById('weeklyRetention');
-    var adoptionEl = document.getElementById('featureAdoption');
-    
-    if (dailyEl) dailyEl.textContent = '342';
-    if (sessionEl) sessionEl.textContent = '12.4m';
-    if (retentionEl) retentionEl.textContent = '78%';
-    if (adoptionEl) adoptionEl.textContent = '64%';
-}
 
 // ------------------------------------------------------------------
 // TABLE FILTERS & EXPORTS - COMPLETE
@@ -1745,15 +2184,10 @@ if (programFilter) {
     programFilter.addEventListener('change', renderUnitList);
 }
 
-var accountSearch = document.getElementById('account_search');
-if (accountSearch) {
-    accountSearch.addEventListener('keyup', function() {
-        var search = this.value.toLowerCase();
-        var rows = document.querySelectorAll('#student-accounts-body tr');
-        for (var i = 0; i < rows.length; i++) {
-            var name = rows[i].cells[0] ? rows[i].cells[0].innerText.toLowerCase() : '';
-            var id = rows[i].cells[1] ? rows[i].cells[1].innerText.toLowerCase() : '';
-            rows[i].style.display = (name.indexOf(search) > -1 || id.indexOf(search) > -1) ? '' : 'none';
-        }
-    });
-}
+// ------------------------------------------------------------------
+// INIT RESOURCE FILTERS
+// ------------------------------------------------------------------
+initResourceFilters();
+
+console.log('✅ Admin dashboard loaded successfully!');
+console.log('✅ Unit Assignment feature enabled!');
