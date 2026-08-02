@@ -12,6 +12,7 @@ let statusChart = null;
 let allAccounts = [];
 let allPayments = [];
 let allTransactions = [];
+let allFeeStructures = [];
 
 // ============================================================
 // INITIALIZATION
@@ -104,22 +105,41 @@ function isFinanceAuthenticated() {
 }
 
 // ============================================================
-// TAB NAVIGATION
+// TAB NAVIGATION - FIXED
 // ============================================================
 
 function initFinanceTabs() {
+    console.log('🔧 Initializing tabs...');
+    
+    // Get all nav links
     const tabLinks = document.querySelectorAll('.finance-nav a[data-tab]');
+    console.log('📋 Found nav links:', tabLinks.length);
     
     tabLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
+        // Remove any existing listeners
+        const newLink = link.cloneNode(true);
+        link.parentNode.replaceChild(newLink, link);
+        
+        const tabId = newLink.getAttribute('data-tab');
+        newLink.addEventListener('click', function(e) {
             e.preventDefault();
-            const tabId = this.getAttribute('data-tab');
+            e.stopPropagation();
+            console.log('🔗 Nav link clicked:', tabId);
             showFinanceTab(tabId);
         });
+        console.log('✅ Nav link attached:', tabId);
     });
+    
+    // Show dashboard by default
+    setTimeout(() => {
+        showFinanceTab('dashboard');
+    }, 100);
 }
 
 function showFinanceTab(tabId) {
+    console.log('📂 Opening tab:', tabId);
+    
+    // Update nav links
     document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('data-tab') === tabId) {
@@ -127,13 +147,23 @@ function showFinanceTab(tabId) {
         }
     });
     
-    document.querySelectorAll('.finance-tab-content').forEach(tab => {
+    // Hide all tabs
+    document.querySelectorAll('.finance-tab-content, .tab-content').forEach(tab => {
+        tab.style.display = 'none';
         tab.classList.remove('active');
-        if (tab.id === `tab-${tabId}`) {
-            tab.classList.add('active');
-        }
     });
     
+    // Show target tab
+    const target = document.getElementById(`tab-${tabId}`);
+    if (target) {
+        target.style.display = 'block';
+        target.classList.add('active');
+        console.log('✅ Tab opened:', tabId);
+    } else {
+        console.warn('⚠️ Tab not found:', tabId);
+    }
+    
+    // Load data for the tab
     loadTabData(tabId);
 }
 
@@ -163,13 +193,14 @@ function loadTabData(tabId) {
 }
 
 // ============================================================
-// SIDEBAR
+// SIDEBAR TOGGLE - FIXED
 // ============================================================
 
 function toggleSidebar() {
     const sidebar = document.getElementById('financeSidebar');
     if (sidebar) {
         sidebar.classList.toggle('open');
+        console.log('Sidebar open?', sidebar.classList.contains('open'));
     }
 }
 
@@ -188,6 +219,19 @@ function goToMainDashboard() {
     window.location.href = '/home';
 }
 
+// Fix toggle button
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.querySelector('.finance-mobile-toggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSidebar();
+        });
+        console.log('✅ Toggle button attached');
+    }
+});
+
 // Close sidebar on outside click (mobile)
 document.addEventListener('click', function(e) {
     const sidebar = document.getElementById('financeSidebar');
@@ -205,13 +249,13 @@ document.addEventListener('click', function(e) {
 
 async function loadAllData() {
     try {
-        // Check if financeAPI is available
         if (typeof window.financeAPI === 'undefined') {
             console.warn('⚠️ financeAPI not loaded yet, waiting...');
             setTimeout(loadAllData, 500);
             return;
         }
         
+        console.log('📊 Loading all data...');
         await loadDashboardData();
         await loadAccounts();
         await loadPayments();
@@ -220,24 +264,12 @@ async function loadAllData() {
         console.log('✅ All data loaded');
     } catch (error) {
         console.error('❌ Error loading data:', error);
-        // Show mock data if real data fails
-        loadMockData();
+        showToast('Error loading data. Please refresh.', 'error');
     }
 }
 
-function loadMockData() {
-    console.log('📊 Loading mock data...');
-    renderMockDashboard();
-    renderMockAccounts();
-    renderMockPayments();
-    renderMockFeeStructure();
-    renderMockTransactions();
-    initMockCharts();
-    showToast('Using demo data - Connect to Supabase for real data', 'info');
-}
-
 // ============================================================
-// DASHBOARD
+// DASHBOARD - REAL DATA
 // ============================================================
 
 async function loadDashboardData() {
@@ -249,6 +281,7 @@ async function loadDashboardData() {
         }
         
         const stats = await window.financeAPI.getDashboardStats();
+        console.log('📊 Stats received:', stats);
         
         document.getElementById('totalStudents').textContent = stats.totalStudents || 0;
         document.getElementById('totalCollected').textContent = formatCurrency(stats.totalCollected || 0);
@@ -267,28 +300,13 @@ async function loadDashboardData() {
         
     } catch (error) {
         console.error('❌ Error loading dashboard:', error);
-        renderMockDashboard();
-        showToast('Error loading dashboard data, using demo data', 'warning');
+        showToast('Error loading dashboard data', 'error');
     }
-}
-
-function renderMockDashboard() {
-    document.getElementById('totalStudents').textContent = '232';
-    document.getElementById('totalCollected').textContent = 'KES 2,845,000';
-    document.getElementById('outstandingBalance').textContent = 'KES 1,560,000';
-    document.getElementById('overdueAccounts').textContent = '23';
-    document.getElementById('todayPayments').textContent = 'KES 128,000';
-    document.getElementById('totalTransactions').textContent = '876';
-    document.getElementById('dashboardBadge').textContent = '23';
-    document.getElementById('accountsBadge').textContent = '232';
-    
-    renderMockRecentTransactions();
 }
 
 async function loadRecentTransactions() {
     try {
         if (typeof window.financeAPI === 'undefined') {
-            renderMockRecentTransactions();
             return;
         }
         
@@ -296,19 +314,7 @@ async function loadRecentTransactions() {
         renderRecentTransactions(transactions || []);
     } catch (error) {
         console.error('❌ Error loading recent transactions:', error);
-        renderMockRecentTransactions();
     }
-}
-
-function renderMockRecentTransactions() {
-    const mockData = [
-        { payment_date: '2026-07-31', student_name: 'Jane Doe', program: 'KRCHN', amount: 45000, payment_method: 'M-Pesa', status: 'completed' },
-        { payment_date: '2026-07-31', student_name: 'John Smith', program: 'DPOTT', amount: 32000, payment_method: 'Cash', status: 'completed' },
-        { payment_date: '2026-07-30', student_name: 'Mary Wanjiru', program: 'DCH', amount: 28000, payment_method: 'Bank Transfer', status: 'pending' },
-        { payment_date: '2026-07-30', student_name: 'Peter Ochieng', program: 'KRCHN', amount: 55000, payment_method: 'M-Pesa', status: 'completed' },
-        { payment_date: '2026-07-29', student_name: 'Sarah Kimani', program: 'DSW', amount: 21000, payment_method: 'Card', status: 'completed' },
-    ];
-    renderRecentTransactions(mockData);
 }
 
 function renderRecentTransactions(transactions) {
@@ -381,8 +387,7 @@ async function loadCharts() {
                     labels: months,
                     datasets: [{
                         label: 'Monthly Collections (KES)',
-                        data: monthlyTotals.length > 0 ? monthlyTotals : 
-                            [180000, 220000, 195000, 280000, 310000, 245000, 290000, 350000, 320000, 280000, 260000, 284500],
+                        data: monthlyTotals,
                         backgroundColor: 'rgba(76, 29, 149, 0.7)',
                         borderColor: '#4C1D95',
                         borderWidth: 2,
@@ -415,9 +420,7 @@ async function loadCharts() {
                 data: {
                     labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
                     datasets: [{
-                        data: statusCounts.completed > 0 || statusCounts.pending > 0 ? 
-                            [statusCounts.completed, statusCounts.pending, statusCounts.failed, statusCounts.refunded] :
-                            [65, 20, 10, 5],
+                        data: [statusCounts.completed, statusCounts.pending, statusCounts.failed, statusCounts.refunded],
                         backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
                         borderWidth: 0,
                     }]
@@ -440,64 +443,6 @@ async function loadCharts() {
 
     } catch (error) {
         console.error('❌ Error loading charts:', error);
-        initMockCharts();
-    }
-}
-
-function initMockCharts() {
-    const monthlyCtx = document.getElementById('monthlyCollectionsChart');
-    if (monthlyCtx && !monthlyChart) {
-        monthlyChart = new Chart(monthlyCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                datasets: [{
-                    label: 'Monthly Collections (KES)',
-                    data: [180000, 220000, 195000, 280000, 310000, 245000, 290000, 350000, 320000, 280000, 260000, 284500],
-                    backgroundColor: 'rgba(76, 29, 149, 0.7)',
-                    borderColor: '#4C1D95',
-                    borderWidth: 2,
-                    borderRadius: 4,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { callback: function(value) { return 'KES ' + (value / 1000).toFixed(0) + 'k'; } }
-                    }
-                }
-            }
-        });
-    }
-
-    const statusCtx = document.getElementById('paymentStatusChart');
-    if (statusCtx && !statusChart) {
-        statusChart = new Chart(statusCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
-                datasets: [{
-                    data: [65, 20, 10, 5],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-                    borderWidth: 0,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
-                    }
-                },
-                cutout: '60%'
-            }
-        });
     }
 }
 
@@ -510,7 +455,7 @@ function refreshFinanceData() {
 }
 
 // ============================================================
-// STUDENT ACCOUNTS
+// STUDENT ACCOUNTS - REAL DATA
 // ============================================================
 
 async function loadAccounts() {
@@ -518,7 +463,6 @@ async function loadAccounts() {
     
     try {
         if (typeof window.financeAPI === 'undefined') {
-            renderMockAccounts();
             return;
         }
         
@@ -528,21 +472,8 @@ async function loadAccounts() {
         console.log('✅ Student accounts loaded:', allAccounts.length);
     } catch (error) {
         console.error('❌ Error loading accounts:', error);
-        renderMockAccounts();
-        showToast('Error loading student accounts, using demo data', 'warning');
+        showToast('Error loading student accounts', 'error');
     }
-}
-
-function renderMockAccounts() {
-    const mockAccounts = [
-        { student_id: '001', student_name: 'Jane Doe', program: 'KRCHN', intake_year: '2026', total_fees_due: 180000, total_paid: 135000, balance: 45000 },
-        { student_id: '002', student_name: 'John Smith', program: 'DPOTT', intake_year: '2026', total_fees_due: 150000, total_paid: 150000, balance: 0 },
-        { student_id: '003', student_name: 'Mary Wanjiru', program: 'DCH', intake_year: '2025', total_fees_due: 160000, total_paid: 120000, balance: 40000 },
-        { student_id: '004', student_name: 'Peter Ochieng', program: 'KRCHN', intake_year: '2025', total_fees_due: 180000, total_paid: 180000, balance: 0 },
-        { student_id: '005', student_name: 'Sarah Kimani', program: 'DSW', intake_year: '2026', total_fees_due: 140000, total_paid: 98000, balance: 42000 },
-    ];
-    allAccounts = mockAccounts;
-    renderAccounts(mockAccounts);
 }
 
 function renderAccounts(accounts) {
@@ -711,13 +642,12 @@ function viewStudentPayments(studentId) {
 }
 
 // ============================================================
-// PAYMENTS
+// PAYMENTS - REAL DATA
 // ============================================================
 
 async function loadStudentDropdown() {
     try {
         if (typeof window.financeAPI === 'undefined') {
-            loadMockStudentDropdown();
             return;
         }
         
@@ -739,22 +669,7 @@ async function loadStudentDropdown() {
 
     } catch (error) {
         console.error('❌ Error loading student dropdown:', error);
-        loadMockStudentDropdown();
     }
-}
-
-function loadMockStudentDropdown() {
-    const select = document.getElementById('paymentStudent');
-    if (!select) return;
-    
-    select.innerHTML = `
-        <option value="">-- Select Student --</option>
-        <option value="1">Jane Doe (KRCHN/001)</option>
-        <option value="2">John Smith (DPOTT/023)</option>
-        <option value="3">Mary Wanjiru (DCH/045)</option>
-        <option value="4">Peter Ochieng (KRCHN/089)</option>
-        <option value="5">Sarah Kimani (DSW/012)</option>
-    `;
 }
 
 async function loadPayments() {
@@ -762,7 +677,6 @@ async function loadPayments() {
     
     try {
         if (typeof window.financeAPI === 'undefined') {
-            renderMockPayments();
             return;
         }
         
@@ -772,21 +686,8 @@ async function loadPayments() {
         console.log('✅ Payments loaded:', allPayments.length);
     } catch (error) {
         console.error('❌ Error loading payments:', error);
-        renderMockPayments();
-        showToast('Error loading payment history, using demo data', 'warning');
+        showToast('Error loading payment history', 'error');
     }
-}
-
-function renderMockPayments() {
-    const mockPayments = [
-        { id: '1', payment_date: '2026-07-31', student_name: 'Jane Doe', program: 'KRCHN', amount: 45000, payment_method: 'M-Pesa', reference_number: 'MPESA-7845', period: 'Term 2', status: 'completed' },
-        { id: '2', payment_date: '2026-07-31', student_name: 'John Smith', program: 'DPOTT', amount: 32000, payment_method: 'Cash', reference_number: 'CASH-1234', period: 'Term 2', status: 'completed' },
-        { id: '3', payment_date: '2026-07-30', student_name: 'Mary Wanjiru', program: 'DCH', amount: 28000, payment_method: 'Bank Transfer', reference_number: 'BT-5678', period: 'Term 2', status: 'pending' },
-        { id: '4', payment_date: '2026-07-30', student_name: 'Peter Ochieng', program: 'KRCHN', amount: 55000, payment_method: 'M-Pesa', reference_number: 'MPESA-9012', period: 'Term 2', status: 'completed' },
-        { id: '5', payment_date: '2026-07-29', student_name: 'Sarah Kimani', program: 'DSW', amount: 21000, payment_method: 'Card', reference_number: 'CRD-3456', period: 'Term 1', status: 'completed' },
-    ];
-    allPayments = mockPayments;
-    renderPayments(mockPayments);
 }
 
 function renderPayments(payments) {
@@ -853,15 +754,12 @@ async function recordPayment() {
 
     try {
         if (typeof window.financeAPI === 'undefined') {
-            showToast(`Demo: Payment of ${formatCurrency(amount)} recorded!`, 'success');
-            document.getElementById('paymentForm')?.reset();
-            document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+            showToast('Finance API not available', 'error');
             return;
         }
 
-        const student = allAccounts.find(a => a.student_id === studentId) || 
-                       (await window.financeAPI.getStudents()).find(s => s.id === studentId);
-        
+        // Get student details
+        const student = allAccounts.find(a => a.student_id === studentId);
         if (!student) {
             showToast('Student not found. Please select a valid student.', 'error');
             return;
@@ -869,8 +767,8 @@ async function recordPayment() {
 
         const paymentData = {
             studentId: studentId,
-            studentName: student.student_name || student.full_name || 'Student',
-            studentEmail: student.email || student.student_email || '',
+            studentName: student.student_name || 'Student',
+            studentEmail: student.student_email || '',
             program: student.program || 'KRCHN',
             amount: amount,
             method: method,
@@ -960,7 +858,7 @@ async function deletePayment(paymentId) {
 }
 
 // ============================================================
-// FEE STRUCTURE
+// FEE STRUCTURE - REAL DATA
 // ============================================================
 
 async function loadFeeStructure() {
@@ -968,30 +866,17 @@ async function loadFeeStructure() {
     
     try {
         if (typeof window.financeAPI === 'undefined') {
-            renderMockFeeStructure();
             return;
         }
         
         const fees = await window.financeAPI.getFeeStructure();
-        renderFeeStructure(fees || []);
-        console.log('✅ Fee structure loaded:', fees?.length || 0);
+        allFeeStructures = fees || [];
+        renderFeeStructure(allFeeStructures);
+        console.log('✅ Fee structure loaded:', allFeeStructures.length);
     } catch (error) {
         console.error('❌ Error loading fee structure:', error);
-        renderMockFeeStructure();
-        showToast('Error loading fee structure, using demo data', 'warning');
+        showToast('Error loading fee structure', 'error');
     }
-}
-
-function renderMockFeeStructure() {
-    const mockFees = [
-        { id: '1', program: 'KRCHN', block_term: 'Introductory', intake_year: '2026', amount: 60000, description: 'Tuition fees for Introductory Block' },
-        { id: '2', program: 'KRCHN', block_term: 'Block 1', intake_year: '2026', amount: 60000, description: 'Tuition fees for Block 1' },
-        { id: '3', program: 'KRCHN', block_term: 'Block 2', intake_year: '2026', amount: 60000, description: 'Tuition fees for Block 2' },
-        { id: '4', program: 'KRCHN', block_term: 'Block 3', intake_year: '2026', amount: 60000, description: 'Tuition fees for Block 3' },
-        { id: '5', program: 'DPOTT', block_term: 'Introductory', intake_year: '2026', amount: 50000, description: 'Tuition fees for Introductory Block' },
-        { id: '6', program: 'DCH', block_term: 'Introductory', intake_year: '2026', amount: 45000, description: 'Tuition fees for Introductory Block' },
-    ];
-    renderFeeStructure(mockFees);
 }
 
 function renderFeeStructure(fees) {
@@ -1052,7 +937,7 @@ function refreshFeeStructure() {
 }
 
 // ============================================================
-// TRANSACTIONS
+// TRANSACTIONS - REAL DATA
 // ============================================================
 
 async function loadTransactions() {
@@ -1060,7 +945,6 @@ async function loadTransactions() {
     
     try {
         if (typeof window.financeAPI === 'undefined') {
-            renderMockTransactions();
             return;
         }
         
@@ -1070,20 +954,8 @@ async function loadTransactions() {
         console.log('✅ Transactions loaded:', allTransactions.length);
     } catch (error) {
         console.error('❌ Error loading transactions:', error);
-        renderMockTransactions();
-        showToast('Error loading transactions, using demo data', 'warning');
+        showToast('Error loading transactions', 'error');
     }
-}
-
-function renderMockTransactions() {
-    const mockTransactions = [
-        { id: 'TXN-001', payment_date: '2026-07-31 14:30', student_name: 'Jane Doe', program: 'KRCHN', amount: 45000, payment_method: 'M-Pesa', reference_number: 'MPESA-7845', status: 'completed' },
-        { id: 'TXN-002', payment_date: '2026-07-31 11:15', student_name: 'John Smith', program: 'DPOTT', amount: 32000, payment_method: 'Cash', reference_number: 'CASH-1234', status: 'completed' },
-        { id: 'TXN-003', payment_date: '2026-07-30 16:45', student_name: 'Mary Wanjiru', program: 'DCH', amount: 28000, payment_method: 'Bank Transfer', reference_number: 'BT-5678', status: 'pending' },
-        { id: 'TXN-004', payment_date: '2026-07-30 09:20', student_name: 'Peter Ochieng', program: 'KRCHN', amount: 55000, payment_method: 'M-Pesa', reference_number: 'MPESA-9012', status: 'completed' },
-        { id: 'TXN-005', payment_date: '2026-07-29 13:00', student_name: 'Sarah Kimani', program: 'DSW', amount: 21000, payment_method: 'Card', reference_number: 'CRD-3456', status: 'completed' },
-    ];
-    renderTransactions(mockTransactions);
 }
 
 function renderTransactions(transactions) {
