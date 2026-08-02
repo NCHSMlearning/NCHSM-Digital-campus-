@@ -268,7 +268,19 @@
                     <span class="nav-badge-premium">📅</span>
                 </a>
             </li>
-            
+            <!-- ===== FINANCE (NEW) ===== -->
+<li role="none">
+    <a href="#" data-tab="finance" role="menuitem" onclick="event.preventDefault(); showTab('finance'); loadStudentFinance();">
+        <span class="nav-icon-wrapper">
+            <i class="fas fa-coins"></i>
+            <span class="nav-icon-bg"></span>
+        </span>
+        <span class="nav-text">My Finance</span>
+        <span class="nav-badge-premium" id="financeBadge" style="display: none;">
+            <span id="financeBadgeCount">0</span>
+        </span>
+    </a>
+</li>
             <!-- LEARNING HUB (DROPDOWN) -->
             <li role="none" class="has-dropdown-premium">
                 <a href="#" class="dropdown-toggle-premium" role="menuitem" aria-haspopup="true" aria-expanded="false">
@@ -3047,6 +3059,196 @@
         </div>
     </div>
 </section>
+
+<!-- ==================== FINANCE TAB - STUDENT VIEW ==================== -->
+<section id="finance" class="tab-content" hidden>
+    <div style="padding: 20px 0; max-width: 1200px; margin: 0 auto;">
+
+        <!-- ===== HEADER ===== -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+            <div>
+                <h2 style="margin: 0; font-size: clamp(1.1rem, 2.5vw, 1.8rem); color: #0A3D62;">
+                    <i class="fas fa-wallet" style="color: #FDB913;"></i> My Finance
+                </h2>
+                <p style="color: #64748b; font-size: clamp(0.75rem, 1.2vw, 0.95rem); margin: 4px 0 0 0;">
+                    View your account balance, payment history, and fee structure
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="loadStudentFinance()" style="background: #f1f5f9; color: #475569; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button onclick="downloadStudentStatement()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='#6d28d9'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px rgba(76,29,149,0.3)'" onmouseout="this.style.background='#4C1D95'; this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-file-pdf"></i> Statement
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== BALANCE CARD ===== -->
+        <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 24px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(10, 61, 98, 0.3); color: white;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                <div>
+                    <span style="font-size: 13px; opacity: 0.7; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Current Balance</span>
+                    <span style="font-size: 36px; font-weight: 700; display: block; margin: 4px 0;" id="studentBalanceDisplay">KES 0.00</span>
+                    <span style="font-size: 14px; padding: 4px 14px; border-radius: 20px; display: inline-block; font-weight: 600; background: #d1fae5; color: #059669;" id="balanceStatusDisplay">✅ Paid in Full</span>
+                </div>
+                <div style="display: flex; gap: 30px;">
+                    <div style="text-align: center;">
+                        <span style="font-size: 11px; opacity: 0.7; display: block; text-transform: uppercase;">Total Paid</span>
+                        <span style="font-size: 18px; font-weight: 600; display: block; margin-top: 2px;" id="studentTotalPaid">KES 0.00</span>
+                    </div>
+                    <div style="text-align: center;">
+                        <span style="font-size: 11px; opacity: 0.7; display: block; text-transform: uppercase;">Total Due</span>
+                        <span style="font-size: 18px; font-weight: 600; display: block; margin-top: 2px;" id="studentTotalDue">KES 0.00</span>
+                    </div>
+                    <div style="text-align: center;">
+                        <span style="font-size: 11px; opacity: 0.7; display: block; text-transform: uppercase;">Outstanding</span>
+                        <span style="font-size: 18px; font-weight: 600; display: block; margin-top: 2px; color: #dc2626;" id="studentOutstanding">KES 0.00</span>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.15);">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                    <span>Payment Progress</span>
+                    <span id="paymentProgressText">0%</span>
+                </div>
+                <div style="height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden;">
+                    <div style="height: 100%; border-radius: 4px; transition: width 0.6s ease; background: linear-gradient(90deg, #4C1D95, #7c3aed); width: 0%;" id="paymentProgressFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== STATS ROW ===== -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 25px;">
+            <div style="background: white; padding: 16px 18px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 14px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: #d1fae5; color: #059669;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div>
+                    <span style="font-size: 22px; font-weight: 700; color: #0b1124; display: block;" id="financePaidCount">0</span>
+                    <span style="font-size: 12px; color: #94a3b8;">Paid Invoices</span>
+                </div>
+            </div>
+            <div style="background: white; padding: 16px 18px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 14px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: #fef3c7; color: #d97706;">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div>
+                    <span style="font-size: 22px; font-weight: 700; color: #0b1124; display: block;" id="financePendingCount">0</span>
+                    <span style="font-size: 12px; color: #94a3b8;">Pending</span>
+                </div>
+            </div>
+            <div style="background: white; padding: 16px 18px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 14px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: #fee2e2; color: #dc2626;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <span style="font-size: 22px; font-weight: 700; color: #0b1124; display: block;" id="financeOverdueCount">0</span>
+                    <span style="font-size: 12px; color: #94a3b8;">Overdue</span>
+                </div>
+            </div>
+            <div style="background: white; padding: 16px 18px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 14px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: #dbeafe; color: #3b82f6;">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <div>
+                    <span style="font-size: 22px; font-weight: 700; color: #0b1124; display: block;" id="financeTotalTransactions">0</span>
+                    <span style="font-size: 12px; color: #94a3b8;">Transactions</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== FILTERS ===== -->
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; background: white; padding: 14px 18px; border-radius: 12px; border: 1px solid #e5e7eb;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; flex: 1;">
+                <select id="financePaymentFilter" onchange="filterStudentPayments()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
+                    <option value="all">All Payments</option>
+                    <option value="completed">✅ Completed</option>
+                    <option value="pending">⏳ Pending</option>
+                    <option value="failed">❌ Failed</option>
+                </select>
+                <select id="financePeriodFilter" onchange="filterStudentPayments()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
+                    <option value="all">All Periods</option>
+                    <option value="Term 1">Term 1</option>
+                    <option value="Term 2">Term 2</option>
+                    <option value="Term 3">Term 3</option>
+                    <option value="Full Year">Full Year</option>
+                </select>
+            </div>
+            <div style="position: relative; flex: 1; min-width: 150px;">
+                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                <input type="text" id="financeSearch" placeholder="Search payments..." onkeyup="filterStudentPayments()" style="width: 100%; padding: 8px 12px 8px 36px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+            </div>
+        </div>
+
+        <!-- ===== PAYMENT HISTORY ===== -->
+        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 25px;">
+            <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h4 style="margin: 0; color: #0A3D62;"><i class="fas fa-history"></i> Payment History</h4>
+                <span style="font-size: 13px; color: #94a3b8;" id="paymentRecordCount">0 records</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Date</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Description</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Period</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Amount</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Method</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Reference</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentPaymentHistory">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                                <p style="margin-top: 10px;">Loading payment history...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===== FEE STRUCTURE ===== -->
+        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 25px;">
+            <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h4 style="margin: 0; color: #0A3D62;"><i class="fas fa-file-invoice"></i> Fee Structure</h4>
+                <span style="font-weight: 600; color: #4C1D95;" id="feeStructureTotal">Total: KES 0.00</span>
+            </div>
+            <div id="studentFeeStructureDisplay" style="padding: 16px 20px;">
+                <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                    <div style="display: inline-block; width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 8px;">Loading fee structure...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== QUICK ACTIONS ===== -->
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+            <button onclick="initiatePayment()" style="background: #4C1D95; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.background='#6d28d9'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px rgba(76,29,149,0.3)'" onmouseout="this.style.background='#4C1D95'; this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-credit-card"></i> Make Payment
+            </button>
+            <button onclick="downloadStudentStatement()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <i class="fas fa-file-pdf"></i> Download Statement
+            </button>
+            <button onclick="viewStudentInvoice()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <i class="fas fa-receipt"></i> View Invoices
+            </button>
+        </div>
+
+        <!-- ===== LAST UPDATED ===== -->
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 12px 0; font-size: 12px; color: #94a3b8; border-top: 1px solid #e5e7eb;">
+            <span><i class="fas fa-clock"></i> Last updated: <span id="financeLastUpdated">Just now</span></span>
+            <span><i class="fas fa-lock" style="color: #10b981;"></i> Secured connection</span>
+        </div>
+
+    </div>
+</section>
+<!-- END FINANCE TAB -->
+                        
 <!-- ==================== NURSEIQ / TVETIQ TAB ==================== -->
 <section id="nurseiq" class="tab-content" hidden>
     <div class="nurseiq-container">
@@ -3216,32 +3418,32 @@
          </div>
      </div>
 <script src="code-protection.js"></script>
-       <!-- SCRIPTS -->
-    <script src="./js/database.js"></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/ui.js"></script>
-    <script src="./js/gamification.js"></script>
-    <script src="./js/dashboard.js"></script>
-    <script src="./js/profile.js"></script>
-    <script src="./js/attendance.js"></script>
-    <script src="./js/courses.js"></script>
-    <script src="./js/exams.js"></script>
-    <script src="./js/unit-registration.js"></script>
-    <script src="./js/resources.js"></script>
-    <script src="./js/calendar.js"></script>
-    <script src="./js/messages.js"></script>
-    <script src="./js/student-tickets.js"></script>
-    <script src="./js/nurseiq.js"></script>
-    <script src="./js/exam-card.js"></script>
-    <script src="./js/lecture-card.js"></script>
-    <script src="./js/academic-reports.js"></script>
-    <script src="./js/timetable-manager.js"></script>
-    <script src="./js/reviews-newsletter.js"></script>
-                       
-    <script src="js/cleanup.js"></script>
+      <!-- SCRIPTS -->
+<script src="./js/database.js"></script>
+<script src="./js/utils.js"></script>
+<script src="./js/ui.js"></script>
+<script src="./js/gamification.js"></script>
+<script src="./js/dashboard.js"></script>
+<script src="./js/profile.js"></script>
+<script src="./js/attendance.js"></script>
+<script src="./js/courses.js"></script>
+<script src="./js/exams.js"></script>
+<script src="./js/unit-registration.js"></script>
+<script src="./js/resources.js"></script>
+<script src="./js/calendar.js"></script>
+<script src="./js/messages.js"></script>
+<script src="./js/student-tickets.js"></script>
+<script src="./js/nurseiq.js"></script>
+<script src="./js/exam-card.js"></script>
+<script src="./js/lecture-card.js"></script>
+<script src="./js/academic-reports.js"></script>
+<script src="./js/timetable-manager.js"></script>
+<script src="./js/reviews-newsletter.js"></script>
+<!-- ===== NEW: STUDENT FINANCE MODULE ===== -->
+<script src="./js/student-finance.js"></script>
+                   
+<script src="js/cleanup.js"></script>
 <script src="./js/chatbot.js"></script>
-  
-
 
 <!-- MAIN NAVIGATION HANDLER -->
 <script>
@@ -3292,6 +3494,10 @@
         else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
         else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
         else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
+        // ===== NEW: FINANCE TAB =====
+        else if (tabId === 'finance' && typeof loadStudentFinance === 'function') {
+            setTimeout(loadStudentFinance, 300);
+        }
     }, 100);
 }
     
@@ -3429,131 +3635,138 @@
     window.showTab = showTab;
 })();
 </script>
-    <!-- INITIALIZATION SCRIPT -->
-    <script>
-    window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
-    
-    async function initializeApp() {
-        try {
-            console.log('🚀 Starting app initialization...');
-            if (!window.APP_CONFIG) throw new Error('Configuration not loaded.');
-            
-            const config = window.APP_CONFIG;
-            window.app.config = config;
-            
-            if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') throw new Error('SUPABASE_URL not configured');
-            if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') throw new Error('SUPABASE_ANON_KEY not configured');
-            
-            if (typeof window.db === 'undefined') throw new Error('Database module not loaded');
-            
-            const dbInstance = await window.db.initialize();
-            if (!dbInstance) throw new Error('Database initialization failed');
-            
-            console.log('✅ Database initialized');
-            
-            let userSession = null;
-            if (window.db.supabase) {
-                const { data, error } = await window.db.supabase.auth.getSession();
-                if (error) throw error;
-                userSession = data.session;
-            }
-            
-            if (!userSession) {
-                console.log('⚠️ No active session, redirecting...');
-                window.location.href = '/login';
-                return;
-            }
-            
-            window.db.currentUserId = userSession.user.id;
-            await window.db.loadUserProfile();
-            
-            console.log('✅ User authenticated');
-            
-            if (window.db.currentUserId && window.ui && window.ui.recordNewLogin) {
-                await window.ui.recordNewLogin(window.db.currentUserId);
-            }
-            
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) loadingScreen.style.display = 'none';
-            const appContent = document.getElementById('app-content');
-            if (appContent) appContent.style.display = 'block';
-            
-            window.supabase = window.db.supabase;
-            window.currentUserId = window.db.currentUserId;
-            window.currentUserProfile = window.db.currentUserProfile;
-            
-            const welcomeHeader = document.getElementById('welcome-header');
-            if (welcomeHeader && window.db.currentUserProfile?.full_name) {
-                welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
-            }
-            const headerName = document.getElementById('header-user-name');
-            if (headerName && window.db.currentUserProfile?.full_name) {
-                headerName.textContent = window.db.currentUserProfile.full_name;
-            }
-            if (window.db.currentUserProfile?.full_name) {
-                const nameForAvatar = window.db.currentUserProfile.full_name.replace(/\s+/g, '');
-                const headerPhoto = document.getElementById('header-profile-photo');
-                if (headerPhoto) headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
-            }
-            
-            if (typeof initUI === 'function') initUI();
-            if (typeof initProfileModule === 'function') setTimeout(() => initProfileModule(), 100);
-           if (typeof initDashboardModule === 'function') {
-    setTimeout(() => {
-        window.dashboardModule = initDashboardModule(window.db.supabase);
-        if (window.dashboardModule && window.currentUserId && window.currentUserProfile) {
-            window.dashboardModule.initialize(window.currentUserId, window.currentUserProfile);
+
+<!-- INITIALIZATION SCRIPT -->
+<script>
+window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
+
+async function initializeApp() {
+    try {
+        console.log('🚀 Starting app initialization...');
+        if (!window.APP_CONFIG) throw new Error('Configuration not loaded.');
+        
+        const config = window.APP_CONFIG;
+        window.app.config = config;
+        
+        if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') throw new Error('SUPABASE_URL not configured');
+        if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') throw new Error('SUPABASE_ANON_KEY not configured');
+        
+        if (typeof window.db === 'undefined') throw new Error('Database module not loaded');
+        
+        const dbInstance = await window.db.initialize();
+        if (!dbInstance) throw new Error('Database initialization failed');
+        
+        console.log('✅ Database initialized');
+        
+        let userSession = null;
+        if (window.db.supabase) {
+            const { data, error } = await window.db.supabase.auth.getSession();
+            if (error) throw error;
+            userSession = data.session;
         }
-        // Force dashboard visible
-        const dash = document.getElementById('dashboard');
-        if (dash) {
-            dash.style.display = 'block';
-            dash.classList.add('active');
+        
+        if (!userSession) {
+            console.log('⚠️ No active session, redirecting...');
+            window.location.href = '/login';
+            return;
         }
-    }, 200);
+        
+        window.db.currentUserId = userSession.user.id;
+        await window.db.loadUserProfile();
+        
+        console.log('✅ User authenticated');
+        
+        if (window.db.currentUserId && window.ui && window.ui.recordNewLogin) {
+            await window.ui.recordNewLogin(window.db.currentUserId);
+        }
+        
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        const appContent = document.getElementById('app-content');
+        if (appContent) appContent.style.display = 'block';
+        
+        window.supabase = window.db.supabase;
+        window.currentUserId = window.db.currentUserId;
+        window.currentUserProfile = window.db.currentUserProfile;
+        
+        const welcomeHeader = document.getElementById('welcome-header');
+        if (welcomeHeader && window.db.currentUserProfile?.full_name) {
+            welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
+        }
+        const headerName = document.getElementById('header-user-name');
+        if (headerName && window.db.currentUserProfile?.full_name) {
+            headerName.textContent = window.db.currentUserProfile.full_name;
+        }
+        if (window.db.currentUserProfile?.full_name) {
+            const nameForAvatar = window.db.currentUserProfile.full_name.replace(/\s+/g, '');
+            const headerPhoto = document.getElementById('header-profile-photo');
+            if (headerPhoto) headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
+        }
+        
+        if (typeof initUI === 'function') initUI();
+        if (typeof initProfileModule === 'function') setTimeout(() => initProfileModule(), 100);
+       if (typeof initDashboardModule === 'function') {
+setTimeout(() => {
+    window.dashboardModule = initDashboardModule(window.db.supabase);
+    if (window.dashboardModule && window.currentUserId && window.currentUserProfile) {
+        window.dashboardModule.initialize(window.currentUserId, window.currentUserProfile);
+    }
+    // Force dashboard visible
+    const dash = document.getElementById('dashboard');
+    if (dash) {
+        dash.style.display = 'block';
+        dash.classList.add('active');
+    }
+}, 200);
 }
-            
-            window.app.isInitialized = true;
-            window.app.supabase = window.db.supabase;
-            window.app.user = window.db.currentUserProfile;
-            
-            console.log('✅ Application initialized successfully');
-            document.dispatchEvent(new CustomEvent('appReady', {
-                detail: { userId: window.currentUserId, userProfile: window.currentUserProfile, database: window.db }
-            }));
-            
-        } catch (error) {
-            console.error('❌ Initialization failed:', error);
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) loadingScreen.style.display = 'none';
-            const appContent = document.getElementById('app-content');
-            if (appContent) appContent.style.display = 'block';
-            const welcomeSection = document.getElementById('welcome-section');
-            if (welcomeSection) welcomeSection.innerHTML = '<h2>Application Error</h2><p>' + error.message + '</p><button onclick="location.reload()" class="profile-button">Retry</button>';
+        
+        window.app.isInitialized = true;
+        window.app.supabase = window.db.supabase;
+        window.app.user = window.db.currentUserProfile;
+        
+        console.log('✅ Application initialized successfully');
+        document.dispatchEvent(new CustomEvent('appReady', {
+            detail: { userId: window.currentUserId, userProfile: window.currentUserProfile, database: window.db }
+        }));
+        
+        // ===== LOAD FINANCE DATA ON INIT =====
+        if (typeof loadStudentFinance === 'function') {
+            setTimeout(loadStudentFinance, 1000);
         }
+        
+    } catch (error) {
+        console.error('❌ Initialization failed:', error);
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        const appContent = document.getElementById('app-content');
+        if (appContent) appContent.style.display = 'block';
+        const welcomeSection = document.getElementById('welcome-section');
+        if (welcomeSection) welcomeSection.innerHTML = '<h2>Application Error</h2><p>' + error.message + '</p><button onclick="location.reload()" class="profile-button">Retry</button>';
     }
-    // FORCE DASHBOARD VISIBLE AFTER INITIALIZATION
+}
+// FORCE DASHBOARD VISIBLE AFTER INITIALIZATION
 setTimeout(function() {
-    const dashboard = document.getElementById('dashboard');
-    if (dashboard) {
-        dashboard.style.display = 'block';
-        dashboard.classList.add('active');
-        console.log('✅ Dashboard forced visible from initializeApp');
+const dashboard = document.getElementById('dashboard');
+if (dashboard) {
+    dashboard.style.display = 'block';
+    dashboard.classList.add('active');
+    console.log('✅ Dashboard forced visible from initializeApp');
+}
+// Hide other tabs
+document.querySelectorAll('.tab-content').forEach(tab => {
+    if (tab.id !== 'dashboard') {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
     }
-    // Hide other tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        if (tab.id !== 'dashboard') {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        }
-    });
+});
 }, 300);
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('📱 DOM ready, starting app initialization...');
-        document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
-        initializeApp();
-    });
-    </script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📱 DOM ready, starting app initialization...');
+    document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
+    initializeApp();
+});
+</script>
+
 <!-- FORCE UI UPDATE - FIXES DASHBOARD DISPLAY -->
 <script>
 (function forceUIUpdate() {
@@ -3623,7 +3836,8 @@ setTimeout(function() {
     }
 })();
 </script>
-        <script>
+
+<script>
 // ============================================
 // 🎨 THEME SWITCHER
 // ============================================
@@ -3649,6 +3863,7 @@ document.addEventListener('DOMContentLoaded', loadTheme);
 document.addEventListener('appReady', loadTheme);
 window.setTheme = setTheme;
 </script>                
+
 <script>
 // ========== PERMANENT SUPER FIX FOR LECTURE CARD ==========
 (function() {
@@ -3731,8 +3946,8 @@ window.setTheme = setTheme;
     setTimeout(installSuperFix, 3000);
 })();
 </script>
-                        
-    <!-- PWA Service Worker Registration -->
+                    
+<!-- PWA Service Worker Registration -->
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
