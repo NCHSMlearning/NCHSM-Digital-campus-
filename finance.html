@@ -795,6 +795,7 @@
         </div>
     </div>
 </section>
+            
             <!-- ============================================================ -->
             <!-- TAB 5: REPORTS                                               -->
             <!-- ============================================================ -->
@@ -1025,7 +1026,181 @@
     <!-- ============================================================ -->
     <!-- ===== MODALS ===== -->
     <!-- ============================================================ -->
-
+<!-- ===== FEE STRUCTURE MODAL ===== -->
+<div id="feeStructureModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 900px;">
+        <button class="modal-close" onclick="closeFeeStructureModal()">&times;</button>
+        <h3 style="color: #0A3D62; margin-bottom: 16px;" id="feeModalTitle">
+            <i class="fas fa-plus-circle"></i> Add Fee Structure
+        </h3>
+        
+        <form id="feeStructureForm" onsubmit="event.preventDefault(); saveFeeStructureFull();">
+            <input type="hidden" id="feeStructureId">
+            
+            <!-- Program Info -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                <div class="finance-form-group">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Program Name *</label>
+                    <input type="text" id="fee_program_name" class="form-control" placeholder="e.g., KRCHN Nursing" required>
+                </div>
+                <div class="finance-form-group">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Program Code</label>
+                    <input type="text" id="fee_program_code" class="form-control" placeholder="e.g., KRCHN">
+                </div>
+                <div class="finance-form-group">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Level</label>
+                    <select id="fee_level" class="form-control">
+                        <option value="Certificate">Certificate</option>
+                        <option value="Diploma">Diploma</option>
+                        <option value="Degree">Degree</option>
+                        <option value="Artisan">Artisan</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                <div class="finance-form-group">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Duration</label>
+                    <input type="text" id="fee_duration" class="form-control" placeholder="e.g., 4 Modules">
+                </div>
+                <div class="finance-form-group">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Mode</label>
+                    <select id="fee_mode" class="form-control">
+                        <option value="Physical">Physical</option>
+                        <option value="Online">Online</option>
+                        <option value="Physical/Online">Physical/Online</option>
+                    </select>
+                </div>
+                <div class="finance-form-group">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Intake Year</label>
+                    <select id="fee_intake_year" class="form-control">
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Fee Components -->
+            <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0; color: #0A3D62; font-size: 15px;">
+                        <i class="fas fa-list"></i> Fee Components
+                    </h4>
+                    <button type="button" onclick="addFeeComponentRow()" class="btn-action btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Add Component
+                    </button>
+                </div>
+                <div id="feeComponentsContainer">
+                    <!-- Dynamic rows -->
+                    <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE">
+                        <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000">
+                        <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE">
+                        <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
+                        <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE">
+                        <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
+                        <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600; color: #475569;">Total:</span>
+                    <span id="feeTotalPreview" style="font-size: 18px; font-weight: 700; color: #059669;">KES 0</span>
+                </div>
+            </div>
+            
+            <!-- Hostel & Optional Fees -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="finance-form-group">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Hostel Fee (Optional)</label>
+                    <input type="number" id="fee_hostel" class="form-control" placeholder="0" value="18000">
+                </div>
+                <div class="finance-form-group">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Status</label>
+                    <select id="fee_status" class="form-control">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Payment Info -->
+            <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
+                <h4 style="margin: 0 0 12px 0; color: #0A3D62; font-size: 15px;">
+                    <i class="fas fa-credit-card"></i> Payment Information
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="finance-form-group">
+                        <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">M-Pesa Paybill</label>
+                        <input type="text" id="fee_mpesa" class="form-control" value="BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo">
+                    </div>
+                    <div class="finance-form-group">
+                        <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Bank Details</label>
+                        <input type="text" id="fee_bank" class="form-control" value="Equity Bank | Branch: Nakuru | A/C: 0130200214036">
+                    </div>
+                    <div class="finance-form-group">
+                        <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Email</label>
+                        <input type="email" id="fee_email" class="form-control" value="nchsmfinance@gmail.com">
+                    </div>
+                    <div class="finance-form-group">
+                        <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">WhatsApp</label>
+                        <input type="text" id="fee_whatsapp" class="form-control" value="+254 103614355 | +254 703345771">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Terms -->
+            <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0; color: #0A3D62; font-size: 15px;">
+                        <i class="fas fa-file-contract"></i> Terms & Conditions
+                    </h4>
+                    <button type="button" onclick="addFeeTermRow()" class="btn-action btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Add Term
+                    </button>
+                </div>
+                <div id="feeTermsContainer">
+                    <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="form-control term-text" placeholder="Enter term" value="All fees are non-refundable once a student has commenced training.">
+                        <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="form-control term-text" placeholder="Enter term" value="Payments must be made via M-Pesa Pay bill or bank deposit only. CASH NOT ACCEPTED.">
+                        <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                <button type="button" onclick="closeFeeStructureModal()" class="btn-action btn-outline">
+                    Cancel
+                </button>
+                <button type="submit" class="btn-action btn-primary">
+                    <i class="fas fa-save"></i> Save Fee Structure
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
     <!-- Payment Detail Modal -->
     <div id="paymentDetailModal" class="modal-overlay">
         <div class="modal-content">
