@@ -143,6 +143,24 @@ window.getProgramDisplayName = function(programCode) {
 };
 
 // ============================================================
+// SCROLL TO SECTION - SMOOTH SCROLLING
+// ============================================================
+
+window.scrollToSection = function(sectionId) {
+    const element = document.getElementById(sectionId);
+    if (element) {
+        const offset = 80;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - offset;
+        
+        window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+        });
+    }
+};
+
+// ============================================================
 // TERMINOLOGY SWITCHER - TVET vs KRCHN
 // ============================================================
 
@@ -708,7 +726,7 @@ window.renderUnitRankingChart = function(marks) {
 };
 
 // ============================================================
-// RENDER GENDER CHART (NEW)
+// RENDER GENDER CHART
 // ============================================================
 
 window.renderGenderChart = function(students, marks) {
@@ -766,7 +784,7 @@ window.renderGenderChart = function(students, marks) {
 };
 
 // ============================================================
-// RENDER CAT VS EXAM CHART (NEW)
+// RENDER CAT VS EXAM CHART
 // ============================================================
 
 window.renderExamTypeChart = function(marks) {
@@ -817,7 +835,7 @@ window.renderExamTypeChart = function(marks) {
 };
 
 // ============================================================
-// RENDER GRADE BY EXAM CHART (NEW)
+// RENDER GRADE BY EXAM CHART
 // ============================================================
 
 window.renderGradeByExamChart = function(marks) {
@@ -865,7 +883,7 @@ window.renderGradeByExamChart = function(marks) {
 };
 
 // ============================================================
-// RENDER DIFFICULTY HEATMAP (NEW)
+// RENDER DIFFICULTY HEATMAP
 // ============================================================
 
 window.renderDifficultyHeatmap = function(marks) {
@@ -919,7 +937,7 @@ window.renderDifficultyHeatmap = function(marks) {
 };
 
 // ============================================================
-// RENDER PROGRESSION TABLE (NEW)
+// RENDER PROGRESSION TABLE
 // ============================================================
 
 window.renderProgressionTable = function(students, marks) {
@@ -955,7 +973,6 @@ window.renderProgressionTable = function(students, marks) {
             return bData && bData.count > 0 ? Math.round(bData.total / bData.count) : '-';
         });
         
-        // Calculate trend
         const validScores = scores.filter(s => s !== '-');
         let trend = '➡️', trendColor = '#94a3b8';
         if (validScores.length >= 2) {
@@ -1652,7 +1669,7 @@ window.renderBlockFilterStats = function(students, marks, selectedBlock) {
 };
 
 // ============================================================
-// TABLE SEARCH & FILTER (NEW)
+// TABLE SEARCH & FILTER
 // ============================================================
 
 window.filterAnalyticsTable = function() {
@@ -1697,105 +1714,6 @@ window.filterAnalyticsTable = function() {
         row.style.display = show ? '' : 'none';
     });
 };
-
-// ============================================================
-// REFRESH ANALYTICS DATA
-// ============================================================
-
-window.refreshAnalytics = function() {
-    console.log('🔄 Refreshing analytics...');
-    window.loadAnalyticsData();
-};
-
-// ============================================================
-// EXPORT ANALYTICS REPORT
-// ============================================================
-
-window.exportAnalyticsReport = function() {
-    console.log('📤 Exporting analytics report...');
-    
-    const totalStudents = document.getElementById('analytics_total_students')?.textContent || '0';
-    const passRate = document.getElementById('analytics_pass_rate')?.textContent || '0%';
-    const avgScore = document.getElementById('analytics_avg_score')?.textContent || '0%';
-    const atRisk = document.getElementById('analytics_at_risk')?.textContent || '0';
-    const program = document.getElementById('analytics_program_label')?.textContent || 'All';
-    const year = document.getElementById('analytics_year_select')?.value || '2025';
-    const block = document.getElementById('analytics_block_select')?.value || 'All';
-    
-    const report = `
-========================================
-📊 NCHSM ANALYTICS REPORT
-========================================
-Date: ${new Date().toLocaleString()}
-----------------------------------------
-📈 Summary Statistics:
-----------------------------------------
-Total Learners: ${totalStudents}
-Pass Rate: ${passRate}
-Average Score: ${avgScore}
-At Risk Learners: ${atRisk}
-----------------------------------------
-Programme: ${program}
-Year: ${year}
-Block: ${block}
-========================================
-Grading System:
-A (75-100%) → 4.0
-B (65-74%) → 3.0
-C (60-64%) → 2.0
-FAIL (0-59%) → 0.0
-========================================
-    `;
-    
-    const blob = new Blob([report], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `analytics_report_${new Date().toISOString().split('T')[0]}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-};
-
-// ============================================================
-// FILTER ANALYTICS BY PROGRAM
-// ============================================================
-
-window.filterAnalytics = function(program) {
-    console.log('🔍 Filtering analytics by:', program);
-    const select = document.getElementById('analytics_program_select');
-    if (select) {
-        select.value = program;
-        window.updateTerminology();
-        window.loadAnalyticsData();
-    }
-};
-
-// ============================================================
-// UPDATE ANALYTICS METRIC
-// ============================================================
-
-window.updateAnalyticsMetric = function() {
-    console.log('📊 Updating analytics metric...');
-    window.loadAnalyticsData();
-};
-
-// ============================================================
-// EXPOSE FUNCTIONS TO GLOBAL SCOPE
-// ============================================================
-
-window.loadAnalyticsData = window.loadAnalyticsData;
-window.refreshAnalytics = window.refreshAnalytics;
-window.exportAnalyticsReport = window.exportAnalyticsReport;
-window.filterAnalytics = window.filterAnalytics;
-window.updateAnalyticsMetric = window.updateAnalyticsMetric;
-window.filterAnalyticsTable = window.filterAnalyticsTable;
-window.updateTerminology = window.updateTerminology;
-window.getProgramDisplayName = window.getProgramDisplayName;
-window.getGradeInfo = window.getGradeInfo;
-window.calculateGrade = window.calculateGrade;
-window.calculateGradePoints = window.calculateGradePoints;
-window.escapeHtml = window.escapeHtml;
-
 
 // ============================================================
 // CONSOLIDATED MARKSHEET - RENDER (USES "UNITS" TERMINOLOGY)
@@ -2070,6 +1988,109 @@ window.printConsolidatedMarksheet = function() {
     printWindow.focus();
     printWindow.print();
 };
+
+// ============================================================
+// REFRESH ANALYTICS DATA
+// ============================================================
+
+window.refreshAnalytics = function() {
+    console.log('🔄 Refreshing analytics...');
+    window.loadAnalyticsData();
+};
+
+// ============================================================
+// EXPORT ANALYTICS REPORT
+// ============================================================
+
+window.exportAnalyticsReport = function() {
+    console.log('📤 Exporting analytics report...');
+    
+    const totalStudents = document.getElementById('analytics_total_students')?.textContent || '0';
+    const passRate = document.getElementById('analytics_pass_rate')?.textContent || '0%';
+    const avgScore = document.getElementById('analytics_avg_score')?.textContent || '0%';
+    const atRisk = document.getElementById('analytics_at_risk')?.textContent || '0';
+    const program = document.getElementById('analytics_program_label')?.textContent || 'All';
+    const year = document.getElementById('analytics_year_select')?.value || '2025';
+    const block = document.getElementById('analytics_block_select')?.value || 'All';
+    
+    const report = `
+========================================
+📊 NCHSM ANALYTICS REPORT
+========================================
+Date: ${new Date().toLocaleString()}
+----------------------------------------
+📈 Summary Statistics:
+----------------------------------------
+Total Learners: ${totalStudents}
+Pass Rate: ${passRate}
+Average Score: ${avgScore}
+At Risk Learners: ${atRisk}
+----------------------------------------
+Programme: ${program}
+Year: ${year}
+Block: ${block}
+========================================
+Grading System:
+A (75-100%) → 4.0
+B (65-74%) → 3.0
+C (60-64%) → 2.0
+FAIL (0-59%) → 0.0
+========================================
+    `;
+    
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics_report_${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+// ============================================================
+// FILTER ANALYTICS BY PROGRAM
+// ============================================================
+
+window.filterAnalytics = function(program) {
+    console.log('🔍 Filtering analytics by:', program);
+    const select = document.getElementById('analytics_program_select');
+    if (select) {
+        select.value = program;
+        window.updateTerminology();
+        window.loadAnalyticsData();
+    }
+};
+
+// ============================================================
+// UPDATE ANALYTICS METRIC
+// ============================================================
+
+window.updateAnalyticsMetric = function() {
+    console.log('📊 Updating analytics metric...');
+    window.loadAnalyticsData();
+};
+
+// ============================================================
+// EXPOSE FUNCTIONS TO GLOBAL SCOPE
+// ============================================================
+
+window.loadAnalyticsData = window.loadAnalyticsData;
+window.refreshAnalytics = window.refreshAnalytics;
+window.exportAnalyticsReport = window.exportAnalyticsReport;
+window.filterAnalytics = window.filterAnalytics;
+window.updateAnalyticsMetric = window.updateAnalyticsMetric;
+window.filterAnalyticsTable = window.filterAnalyticsTable;
+window.updateTerminology = window.updateTerminology;
+window.scrollToSection = window.scrollToSection;
+window.getProgramDisplayName = window.getProgramDisplayName;
+window.getGradeInfo = window.getGradeInfo;
+window.calculateGrade = window.calculateGrade;
+window.calculateGradePoints = window.calculateGradePoints;
+window.escapeHtml = window.escapeHtml;
+window.renderConsolidatedMarksheet = window.renderConsolidatedMarksheet;
+window.exportConsolidatedMarksheet = window.exportConsolidatedMarksheet;
+window.printConsolidatedMarksheet = window.printConsolidatedMarksheet;
+
 console.log('✅ Super Admin Analytics Module Loaded Successfully!');
 console.log('📊 Grading System: A(75-100)→4, B(65-74)→3, C(60-64)→2, FAIL(0-59)→0');
 console.log('📊 Available functions:');
@@ -2080,3 +2101,7 @@ console.log('   - filterAnalytics(program)');
 console.log('   - updateAnalyticsMetric()');
 console.log('   - filterAnalyticsTable()');
 console.log('   - updateTerminology()');
+console.log('   - scrollToSection(sectionId)');
+console.log('   - renderConsolidatedMarksheet()');
+console.log('   - exportConsolidatedMarksheet()');
+console.log('   - printConsolidatedMarksheet()');
