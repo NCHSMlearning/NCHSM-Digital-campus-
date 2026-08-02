@@ -105,18 +105,16 @@ function isFinanceAuthenticated() {
 }
 
 // ============================================================
-// TAB NAVIGATION - FIXED
+// TAB NAVIGATION
 // ============================================================
 
 function initFinanceTabs() {
     console.log('🔧 Initializing tabs...');
     
-    // Get all nav links
     const tabLinks = document.querySelectorAll('.finance-nav a[data-tab]');
     console.log('📋 Found nav links:', tabLinks.length);
     
     tabLinks.forEach(link => {
-        // Remove any existing listeners
         const newLink = link.cloneNode(true);
         link.parentNode.replaceChild(newLink, link);
         
@@ -130,7 +128,6 @@ function initFinanceTabs() {
         console.log('✅ Nav link attached:', tabId);
     });
     
-    // Show dashboard by default
     setTimeout(() => {
         showFinanceTab('dashboard');
     }, 100);
@@ -139,7 +136,6 @@ function initFinanceTabs() {
 function showFinanceTab(tabId) {
     console.log('📂 Opening tab:', tabId);
     
-    // Update nav links
     document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('data-tab') === tabId) {
@@ -147,13 +143,11 @@ function showFinanceTab(tabId) {
         }
     });
     
-    // Hide all tabs
     document.querySelectorAll('.finance-tab-content, .tab-content').forEach(tab => {
         tab.style.display = 'none';
         tab.classList.remove('active');
     });
     
-    // Show target tab
     const target = document.getElementById(`tab-${tabId}`);
     if (target) {
         target.style.display = 'block';
@@ -163,7 +157,6 @@ function showFinanceTab(tabId) {
         console.warn('⚠️ Tab not found:', tabId);
     }
     
-    // Load data for the tab
     loadTabData(tabId);
 }
 
@@ -193,7 +186,7 @@ function loadTabData(tabId) {
 }
 
 // ============================================================
-// SIDEBAR TOGGLE - FIXED
+// SIDEBAR
 // ============================================================
 
 function toggleSidebar() {
@@ -219,7 +212,6 @@ function goToMainDashboard() {
     window.location.href = '/home';
 }
 
-// Fix toggle button
 document.addEventListener('DOMContentLoaded', function() {
     const toggleBtn = document.querySelector('.finance-mobile-toggle');
     if (toggleBtn) {
@@ -232,7 +224,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Close sidebar on outside click (mobile)
 document.addEventListener('click', function(e) {
     const sidebar = document.getElementById('financeSidebar');
     const toggle = document.querySelector('.finance-mobile-toggle');
@@ -269,7 +260,7 @@ async function loadAllData() {
 }
 
 // ============================================================
-// DASHBOARD - REAL DATA
+// DASHBOARD
 // ============================================================
 
 async function loadDashboardData() {
@@ -354,7 +345,6 @@ function renderRecentTransactions(transactions) {
 
 async function loadCharts() {
     try {
-        // Destroy existing charts
         if (monthlyChart) {
             monthlyChart.destroy();
             monthlyChart = null;
@@ -456,7 +446,7 @@ function refreshFinanceData() {
 }
 
 // ============================================================
-// STUDENT ACCOUNTS - REAL DATA
+// STUDENT ACCOUNTS
 // ============================================================
 
 async function loadAccounts() {
@@ -643,7 +633,7 @@ function viewStudentPayments(studentId) {
 }
 
 // ============================================================
-// PAYMENTS - REAL DATA
+// PAYMENTS
 // ============================================================
 
 async function loadStudentDropdown() {
@@ -759,7 +749,6 @@ async function recordPayment() {
             return;
         }
 
-        // Get student details
         const student = allAccounts.find(a => a.student_id === studentId);
         if (!student) {
             showToast('Student not found. Please select a valid student.', 'error');
@@ -859,7 +848,7 @@ async function deletePayment(paymentId) {
 }
 
 // ============================================================
-// FEE STRUCTURE - REAL DATA WITH EDIT/DELETE SUPPORT
+// FEE STRUCTURE - COMPLETE WITH EDITABLE COMPONENTS
 // ============================================================
 
 async function loadFeeStructure() {
@@ -872,7 +861,7 @@ async function loadFeeStructure() {
         
         const fees = await window.financeAPI.getFeeStructure();
         allFeeStructures = fees || [];
-        renderFeeStructure(allFeeStructures);
+        renderFeeStructureCards(allFeeStructures);
         console.log('✅ Fee structure loaded:', allFeeStructures.length);
     } catch (error) {
         console.error('❌ Error loading fee structure:', error);
@@ -880,235 +869,440 @@ async function loadFeeStructure() {
     }
 }
 
-function renderFeeStructure(fees) {
-    const tbody = document.getElementById('feeStructureTableBody');
-    if (!tbody) return;
-
+function renderFeeStructureCards(fees) {
+    const container = document.getElementById('feeStructureCardsContainer');
+    if (!container) return;
+    
     if (!fees || fees.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> No fee structure configured
-                </td>
-            </tr>
+        container.innerHTML = `
+            <div style="text-align:center;padding:60px;color:#94a3b8;">
+                <i class="fas fa-file-invoice" style="font-size:48px;display:block;margin-bottom:16px;"></i>
+                <h3>No Fee Structures</h3>
+                <p>Click "New Fee Structure" to create one</p>
+                <button onclick="openAddFeeModal()" class="btn-action btn-primary" style="margin-top:12px;">
+                    <i class="fas fa-plus"></i> Create Fee Structure
+                </button>
+            </div>
         `;
         return;
     }
-
-    tbody.innerHTML = fees.map(f => {
-        const isActive = f.is_active !== false;
-        return `
-            <tr>
-                <td><strong>${f.program || '-'}</strong></td>
-                <td>${f.block_term || '-'}</td>
-                <td>${f.intake_year || '-'}</td>
-                <td><strong>${formatCurrency(f.amount || 0)}</strong></td>
-                <td>${f.description || '-'}</td>
-                <td><span class="badge ${isActive ? 'badge-success' : 'badge-danger'}">${isActive ? 'Active' : 'Inactive'}</span></td>
-                <td>
-                    <button onclick="editFeeStructure('${f.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="deleteFeeStructure('${f.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// ============================================================
-// EDIT FEE STRUCTURE - LOADS DATA INTO FORM
-// ============================================================
-function editFeeStructure(feeId) {
-    console.log('📝 Editing fee:', feeId);
     
-    try {
-        // Find the fee in the local data
-        const fee = allFeeStructures.find(f => f.id === feeId);
-        
-        if (!fee) {
-            showToast('Fee structure not found', 'error');
-            console.error('Fee not found in allFeeStructures:', feeId);
-            return;
-        }
-        
-        console.log('✅ Fee found:', fee);
-        
-        // Populate the form
-        const programEl = document.getElementById('feeProgram');
-        const blockEl = document.getElementById('feeBlock');
-        const yearEl = document.getElementById('feeIntakeYear');
-        const amountEl = document.getElementById('feeAmount');
-        const descEl = document.getElementById('feeDescription');
-        
-        if (programEl) programEl.value = fee.program || '';
-        if (blockEl) blockEl.value = fee.block_term || '';
-        if (yearEl) yearEl.value = fee.intake_year || '';
-        if (amountEl) amountEl.value = fee.amount || 0;
-        if (descEl) descEl.value = fee.description || '';
-        
-        // Add or update hidden ID field
-        let idField = document.getElementById('feeStructureId');
-        if (!idField) {
-            idField = document.createElement('input');
-            idField.type = 'hidden';
-            idField.id = 'feeStructureId';
-            document.getElementById('feeStructureForm').appendChild(idField);
-        }
-        idField.value = feeId;
-        
-        // Change submit button
-        const submitBtn = document.querySelector('#feeStructureForm button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Fee Structure';
-            submitBtn.className = 'finance-btn finance-btn-warning';
-        }
-        
-        // Add cancel button if not exists
-        let cancelBtn = document.getElementById('cancelEditFeeBtn');
-        if (!cancelBtn) {
-            cancelBtn = document.createElement('button');
-            cancelBtn.id = 'cancelEditFeeBtn';
-            cancelBtn.type = 'button';
-            cancelBtn.className = 'finance-btn finance-btn-outline';
-            cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
-            cancelBtn.onclick = cancelEditFee;
-            document.getElementById('feeStructureForm').appendChild(cancelBtn);
-        }
-        cancelBtn.style.display = 'inline-flex';
-        
-        // Update form title
-        const formTitle = document.querySelector('#feeStructureForm h4');
-        if (formTitle) {
-            formTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Fee Structure';
-        }
-        
-        // Scroll to form
-        document.getElementById('feeStructureForm').scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
-        });
-        
-        showToast('Editing fee structure - update and save', 'info');
-        
-    } catch (error) {
-        console.error('❌ Error editing fee:', error);
-        showToast('Error loading fee structure', 'error');
-    }
+    container.innerHTML = fees.map(fee => `
+        <div class="fee-structure-pdf-card">
+            <!-- HEADER -->
+            <div class="fee-pdf-header">
+                <div>
+                    <div class="program-title">
+                        ${fee.program || 'N/A'}
+                        <small>${fee.level || ''} ${fee.program_code ? '· ' + fee.program_code : ''}</small>
+                    </div>
+                </div>
+                <div class="program-meta">
+                    <span>📅 ${fee.duration || 'N/A'}</span>
+                    <span>💻 ${fee.mode || 'Physical/Online'}</span>
+                    <span>🏷️ Total: <strong>KES ${(fee.total || 0).toLocaleString()}</strong></span>
+                    <span class="badge ${fee.is_active !== false ? 'badge-success' : 'badge-danger'}">
+                        ${fee.is_active !== false ? 'Active' : 'Inactive'}
+                    </span>
+                </div>
+            </div>
+            
+            <!-- BODY -->
+            <div class="fee-pdf-body">
+                <div class="fee-section">
+                    <h5>📋 Fee Components</h5>
+                    ${(fee.components || []).map(c => `
+                        <div class="fee-item">
+                            <span class="fee-label">${c.label || c.name || 'N/A'}</span>
+                            <span class="fee-amount">KES ${(c.amount || 0).toLocaleString()}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="fee-section">
+                    <h5>📌 Payment Information</h5>
+                    <div style="font-size:13px;color:#475569;margin-bottom:12px;">
+                        <div><strong>M-Pesa:</strong> ${fee.payment?.mpesa || 'N/A'}</div>
+                        <div><strong>Bank:</strong> ${fee.payment?.bank || 'N/A'}</div>
+                        <div><strong>Email:</strong> ${fee.payment?.email || 'N/A'}</div>
+                        <div><strong>WhatsApp:</strong> ${fee.payment?.whatsapp || 'N/A'}</div>
+                    </div>
+                    
+                    <h5 style="margin-top:12px;">📜 Terms</h5>
+                    <ul style="font-size:12px;color:#64748b;padding-left:16px;margin:8px 0 0 0;line-height:1.6;">
+                        ${(fee.terms || []).slice(0, 3).map(t => `<li>${t}</li>`).join('')}
+                        ${(fee.terms || []).length > 3 ? `<li>+${(fee.terms || []).length - 3} more</li>` : ''}
+                    </ul>
+                </div>
+                
+                <div class="fee-total">
+                    <span>💰 TOTAL FEES</span>
+                    <span class="amount">KES ${(fee.total || 0).toLocaleString()}</span>
+                </div>
+                
+                ${fee.hostel ? `
+                    <div style="grid-column:1/-1;background:#fef3c7;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;font-size:14px;border:1px solid #f59e0b;">
+                        <span>🏠 HOSTEL FEE (OPTIONAL)</span>
+                        <span><strong>KES ${(fee.hostel || 0).toLocaleString()}</strong> <span class="hostel-fee">Optional</span></span>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <!-- FOOTER -->
+            <div class="fee-pdf-footer">
+                <div class="payment-info">
+                    <span><strong>📱 Paybill:</strong> 247247</span>
+                    <span><strong>📧 Email:</strong> nchsmfinance@gmail.com</span>
+                </div>
+                <div style="display:flex;gap:12px;">
+                    <span>🔒 Secure Payment</span>
+                    <span>📄 Fees Subject to Review</span>
+                </div>
+            </div>
+            
+            <!-- ACTIONS -->
+            <div class="fee-pdf-actions">
+                <button onclick="openEditFeeModal('${fee.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button onclick="duplicateFeeStructure('${fee.id}')" class="finance-btn finance-btn-outline finance-btn-sm">
+                    <i class="fas fa-copy"></i> Duplicate
+                </button>
+                <button onclick="deleteFeeStructure('${fee.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    `).join('');
 }
 
 // ============================================================
-// CANCEL EDIT FEE
+// FEE STRUCTURE MODAL FUNCTIONS
 // ============================================================
-function cancelEditFee() {
+
+function openAddFeeModal() {
+    const modal = document.getElementById('feeStructureModal');
+    const title = document.getElementById('feeModalTitle');
     const form = document.getElementById('feeStructureForm');
-    if (!form) return;
     
-    // Reset form
     form.reset();
+    document.getElementById('feeStructureId').value = '';
+    title.innerHTML = '<i class="fas fa-plus-circle"></i> Add Fee Structure';
     
-    // Remove hidden ID
-    const idField = document.getElementById('feeStructureId');
-    if (idField) idField.value = '';
+    // Reset components
+    document.getElementById('feeComponentsContainer').innerHTML = `
+        <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+            <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE">
+            <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000">
+            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+            <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE">
+            <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
+            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+            <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE">
+            <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
+            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
     
-    // Reset submit button
-    const submitBtn = form.querySelector('button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Fee Structure';
-        submitBtn.className = 'finance-btn finance-btn-primary';
+    // Reset terms
+    document.getElementById('feeTermsContainer').innerHTML = `
+        <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+            <input type="text" class="form-control term-text" placeholder="Enter term" value="All fees are non-refundable once a student has commenced training.">
+            <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+            <input type="text" class="form-control term-text" placeholder="Enter term" value="Payments must be made via M-Pesa Pay bill or bank deposit only. CASH NOT ACCEPTED.">
+            <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    updateFeeTotalPreview();
+    modal.classList.add('active');
+}
+
+function openEditFeeModal(feeId) {
+    const fee = allFeeStructures.find(f => f.id === feeId);
+    if (!fee) {
+        showToast('Fee structure not found', 'error');
+        return;
     }
     
-    // Reset form title
-    const formTitle = form.querySelector('h4');
-    if (formTitle) {
-        formTitle.innerHTML = '<i class="fas fa-plus-circle"></i> Add Fee Structure';
+    const modal = document.getElementById('feeStructureModal');
+    const title = document.getElementById('feeModalTitle');
+    
+    title.innerHTML = '<i class="fas fa-edit"></i> Edit Fee Structure';
+    document.getElementById('feeStructureId').value = feeId;
+    
+    // Populate basic info
+    document.getElementById('fee_program_name').value = fee.program || '';
+    document.getElementById('fee_program_code').value = fee.program_code || '';
+    document.getElementById('fee_level').value = fee.level || 'Diploma';
+    document.getElementById('fee_duration').value = fee.duration || '';
+    document.getElementById('fee_mode').value = fee.mode || 'Physical/Online';
+    document.getElementById('fee_intake_year').value = fee.intake_year || '2026';
+    document.getElementById('fee_hostel').value = fee.hostel || 18000;
+    document.getElementById('fee_status').value = fee.is_active !== false ? 'active' : 'inactive';
+    
+    // Populate payment info
+    document.getElementById('fee_mpesa').value = fee.payment?.mpesa || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo';
+    document.getElementById('fee_bank').value = fee.payment?.bank || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036';
+    document.getElementById('fee_email').value = fee.payment?.email || 'nchsmfinance@gmail.com';
+    document.getElementById('fee_whatsapp').value = fee.payment?.whatsapp || '+254 103614355 | +254 703345771';
+    
+    // Populate components
+    const compContainer = document.getElementById('feeComponentsContainer');
+    compContainer.innerHTML = '';
+    if (fee.components && fee.components.length > 0) {
+        fee.components.forEach(comp => {
+            compContainer.innerHTML += `
+                <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-control comp-name" placeholder="Component name" value="${comp.label || comp.name || ''}">
+                    <input type="number" class="form-control comp-amount" placeholder="Amount" value="${comp.amount || 0}">
+                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        });
     }
     
-    // Hide cancel button
-    const cancelBtn = document.getElementById('cancelEditFeeBtn');
-    if (cancelBtn) {
-        cancelBtn.style.display = 'none';
+    // Populate terms
+    const termContainer = document.getElementById('feeTermsContainer');
+    termContainer.innerHTML = '';
+    if (fee.terms && fee.terms.length > 0) {
+        fee.terms.forEach(term => {
+            termContainer.innerHTML += `
+                <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-control term-text" placeholder="Enter term" value="${term}">
+                    <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        });
     }
     
-    showToast('Edit cancelled', 'info');
+    updateFeeTotalPreview();
+    modal.classList.add('active');
+}
+
+function closeFeeStructureModal() {
+    document.getElementById('feeStructureModal').classList.remove('active');
 }
 
 // ============================================================
-// SAVE FEE STRUCTURE - HANDLES BOTH ADD AND UPDATE
+// FEE COMPONENT ROW FUNCTIONS
 // ============================================================
-async function saveFeeStructure() {
-    const feeId = document.getElementById('feeStructureId')?.value || null;
-    const program = document.getElementById('feeProgram')?.value;
-    const block = document.getElementById('feeBlock')?.value;
-    const year = document.getElementById('feeIntakeYear')?.value;
-    const amount = parseFloat(document.getElementById('feeAmount')?.value);
-    const description = document.getElementById('feeDescription')?.value;
 
-    if (!program || !block || !year || !amount) {
-        showToast('Please fill in all required fields.', 'warning');
+function addFeeComponentRow() {
+    const container = document.getElementById('feeComponentsContainer');
+    const row = document.createElement('div');
+    row.className = 'fee-component-row';
+    row.style.cssText = 'display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;';
+    row.innerHTML = `
+        <input type="text" class="form-control comp-name" placeholder="Component name">
+        <input type="number" class="form-control comp-amount" placeholder="Amount">
+        <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(row);
+    updateFeeTotalPreview();
+}
+
+function removeFeeComponentRow(button) {
+    const row = button.closest('.fee-component-row');
+    if (row) {
+        row.remove();
+        updateFeeTotalPreview();
+    }
+}
+
+function addFeeTermRow() {
+    const container = document.getElementById('feeTermsContainer');
+    const row = document.createElement('div');
+    row.className = 'fee-term-row';
+    row.style.cssText = 'display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;';
+    row.innerHTML = `
+        <input type="text" class="form-control term-text" placeholder="Enter term">
+        <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(row);
+}
+
+function removeFeeTermRow(button) {
+    const row = button.closest('.fee-term-row');
+    if (row) {
+        row.remove();
+    }
+}
+
+function updateFeeTotalPreview() {
+    const amounts = document.querySelectorAll('.comp-amount');
+    let total = 0;
+    amounts.forEach(input => {
+        const val = parseFloat(input.value) || 0;
+        total += val;
+    });
+    document.getElementById('feeTotalPreview').textContent = 'KES ' + total.toLocaleString();
+}
+
+// ============================================================
+// SAVE FEE STRUCTURE (Full)
+// ============================================================
+
+async function saveFeeStructureFull() {
+    const feeId = document.getElementById('feeStructureId').value || null;
+    
+    // Get basic info
+    const program = document.getElementById('fee_program_name').value.trim();
+    const programCode = document.getElementById('fee_program_code').value.trim();
+    const level = document.getElementById('fee_level').value;
+    const duration = document.getElementById('fee_duration').value.trim();
+    const mode = document.getElementById('fee_mode').value;
+    const intakeYear = document.getElementById('fee_intake_year').value;
+    const hostel = parseFloat(document.getElementById('fee_hostel').value) || 0;
+    const status = document.getElementById('fee_status').value;
+    
+    if (!program) {
+        showToast('Please enter the program name', 'warning');
         return;
     }
-
-    try {
-        if (typeof window.financeAPI === 'undefined') {
-            showToast('Finance API not available', 'error');
-            return;
+    
+    // Get components
+    const compNames = document.querySelectorAll('.comp-name');
+    const compAmounts = document.querySelectorAll('.comp-amount');
+    const components = [];
+    let total = 0;
+    
+    compNames.forEach((input, index) => {
+        const name = input.value.trim();
+        const amount = parseFloat(compAmounts[index]?.value) || 0;
+        if (name) {
+            components.push({ label: name, amount: amount });
+            total += amount;
         }
-
-        const feeData = {
-            program: program,
-            blockTerm: block,
-            intakeYear: year,
-            amount: amount,
-            description: description || `${program} - ${block} Fees`
-        };
-
+    });
+    
+    if (components.length === 0) {
+        showToast('Please add at least one fee component', 'warning');
+        return;
+    }
+    
+    // Get terms
+    const termInputs = document.querySelectorAll('.term-text');
+    const terms = [];
+    termInputs.forEach(input => {
+        const text = input.value.trim();
+        if (text) {
+            terms.push(text);
+        }
+    });
+    
+    // Get payment info
+    const payment = {
+        mpesa: document.getElementById('fee_mpesa').value.trim() || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo',
+        bank: document.getElementById('fee_bank').value.trim() || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036',
+        email: document.getElementById('fee_email').value.trim() || 'nchsmfinance@gmail.com',
+        whatsapp: document.getElementById('fee_whatsapp').value.trim() || '+254 103614355 | +254 703345771'
+    };
+    
+    const feeData = {
+        program: program,
+        program_code: programCode,
+        level: level,
+        duration: duration,
+        mode: mode,
+        intake_year: intakeYear,
+        total: total,
+        hostel: hostel,
+        components: components,
+        terms: terms,
+        payment: payment,
+        is_active: status === 'active'
+    };
+    
+    try {
         if (feeId) {
-            // UPDATE existing
             await window.financeAPI.updateFeeStructure(feeId, feeData);
             showToast('Fee structure updated successfully!', 'success');
-            cancelEditFee(); // Reset form
         } else {
-            // CREATE new
             await window.financeAPI.createFeeStructure(feeData);
             showToast('Fee structure added successfully!', 'success');
-            document.getElementById('feeStructureForm')?.reset();
         }
         
-        // Reload fee structure list
+        closeFeeStructureModal();
         await loadFeeStructure();
         
     } catch (error) {
         console.error('❌ Error saving fee structure:', error);
-        showToast('Error saving fee structure: ' + error.message, 'error');
+        showToast('Error saving: ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// DELETE FEE STRUCTURE - WITH CONFIRMATION
+// DUPLICATE FEE STRUCTURE (Template)
 // ============================================================
+
+async function duplicateFeeStructure(feeId) {
+    const fee = allFeeStructures.find(f => f.id === feeId);
+    if (!fee) {
+        showToast('Fee structure not found', 'error');
+        return;
+    }
+    
+    try {
+        const newFee = {
+            ...fee,
+            program: fee.program + ' (Copy)',
+            program_code: fee.program_code + '_copy',
+            is_active: true
+        };
+        delete newFee.id;
+        delete newFee.created_at;
+        delete newFee.updated_at;
+        
+        await window.financeAPI.createFeeStructure(newFee);
+        showToast('Fee structure duplicated successfully!', 'success');
+        await loadFeeStructure();
+    } catch (error) {
+        console.error('❌ Error duplicating fee structure:', error);
+        showToast('Error duplicating: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// DELETE FEE STRUCTURE
+// ============================================================
+
 async function deleteFeeStructure(feeId) {
     if (!confirm('Are you sure you want to delete this fee structure? This action cannot be undone.')) {
         return;
     }
-
+    
     try {
-        if (typeof window.financeAPI === 'undefined') {
-            showToast('Finance API not available', 'error');
-            return;
-        }
-
         await window.financeAPI.deleteFeeStructure(feeId);
         showToast('Fee structure deleted successfully!', 'success');
-        
-        // Reload fee structure list
         await loadFeeStructure();
-        
     } catch (error) {
         console.error('❌ Error deleting fee structure:', error);
-        showToast('Error deleting fee structure: ' + error.message, 'error');
+        showToast('Error deleting: ' + error.message, 'error');
     }
 }
 
@@ -1118,7 +1312,7 @@ function refreshFeeStructure() {
 }
 
 // ============================================================
-// TRANSACTIONS - REAL DATA
+// TRANSACTIONS
 // ============================================================
 
 async function loadTransactions() {
@@ -1346,7 +1540,6 @@ function closeModal(modalId) {
     if (modal) modal.classList.remove('active');
 }
 
-// Close modals on outside click
 document.addEventListener('click', function(e) {
     document.querySelectorAll('.finance-modal.active').forEach(modal => {
         if (e.target === modal) {
@@ -1355,7 +1548,6 @@ document.addEventListener('click', function(e) {
     });
 });
 
-// Close modals on ESC key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         document.querySelectorAll('.finance-modal.active').forEach(modal => {
