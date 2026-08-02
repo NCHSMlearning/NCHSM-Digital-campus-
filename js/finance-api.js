@@ -91,6 +91,24 @@ async function getStudents(params = {}) {
 }
 
 /**
+ * Get all student accounts
+ */
+async function getStudentAccounts() {
+    try {
+        const { data, error } = await supabase
+            .from(TABLES.STUDENT_ACCOUNTS)
+            .select('*')
+            .order('student_name', { ascending: true });
+
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error getting student accounts:', error);
+        throw error;
+    }
+}
+
+/**
  * Get student account details
  */
 async function getStudentAccount(studentId) {
@@ -169,6 +187,9 @@ async function getPayments(params = {}) {
         if (params.status) {
             query = query.eq('status', params.status);
         }
+        if (params.program) {
+            query = query.eq('program', params.program);
+        }
 
         const { data, error } = await query;
         if (error) throw error;
@@ -215,7 +236,8 @@ async function recordPayment(data) {
             period: data.period || 'Term 1',
             status: 'completed',
             notes: data.notes || null,
-            recorded_by_name: getCurrentFinanceUser()?.name || 'System'
+            recorded_by_name: getCurrentFinanceUser()?.name || 'System',
+            created_at: new Date().toISOString()
         };
 
         const { data: result, error } = await supabase
@@ -308,6 +330,9 @@ async function getFeeStructure(params = {}) {
         if (params.program) {
             query = query.eq('program', params.program);
         }
+        if (params.intake_year) {
+            query = query.eq('intake_year', params.intake_year);
+        }
 
         const { data, error } = await query;
         if (error) throw error;
@@ -330,7 +355,8 @@ async function createFeeStructure(data) {
             amount: data.amount,
             description: data.description || `${data.program} - ${data.blockTerm} Fees`,
             is_active: true,
-            created_by_name: getCurrentFinanceUser()?.name || 'System'
+            created_by_name: getCurrentFinanceUser()?.name || 'System',
+            created_at: new Date().toISOString()
         };
 
         const { data: result, error } = await supabase
@@ -351,9 +377,14 @@ async function createFeeStructure(data) {
  */
 async function updateFeeStructure(id, data) {
     try {
+        const updateData = {
+            ...data,
+            updated_at: new Date().toISOString()
+        };
+
         const { data: result, error } = await supabase
             .from(TABLES.FEE_STRUCTURE)
-            .update(data)
+            .update(updateData)
             .eq('id', id)
             .select();
 
@@ -559,23 +590,72 @@ async function generateReport(params = {}) {
             case 'collections':
                 data = await getPayments({ limit: 100 });
                 summary.total = data.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                summary.count = data.length;
                 break;
             case 'outstanding':
                 data = await getStudentAccounts();
                 summary.total = data.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0);
+                summary.count = data.filter(a => parseFloat(a.balance) > 0).length;
+                break;
+            case 'program':
+                data = await getPayments({ program: program || 'KRCHN', limit: 100 });
+                summary.total = data.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                summary.count = data.length;
                 break;
             default:
                 data = await getPayments({ limit: 100 });
+                summary.total = data.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                summary.count = data.length;
         }
 
         return {
             data: data,
             summary: summary,
             count: data.length,
-            generated_at: new Date().toISOString()
+            generated_at: new Date().toISOString(),
+            type: type || 'summary'
         };
     } catch (error) {
         console.error('Error generating report:', error);
+        throw error;
+    }
+}
+
+// ============================================================
+// TRANSACTIONS
+// ============================================================
+
+/**
+ * Get transactions with filters
+ */
+async function getTransactions(params = {}) {
+    try {
+        let query = supabase
+            .from(TABLES.PAYMENTS)
+            .select('*')
+            .order('payment_date', { ascending: false });
+
+        if (params.limit) {
+            query = query.limit(params.limit);
+        }
+        if (params.student_id) {
+            query = query.eq('student_id', params.student_id);
+        }
+        if (params.status) {
+            query = query.eq('status', params.status);
+        }
+        if (params.startDate) {
+            query = query.gte('payment_date', params.startDate);
+        }
+        if (params.endDate) {
+            query = query.lte('payment_date', params.endDate);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error getting transactions:', error);
         throw error;
     }
 }
@@ -587,6 +667,7 @@ async function generateReport(params = {}) {
 // Make functions globally available
 window.financeAPI = {
     getStudents,
+    getStudentAccounts,
     getStudentAccount,
     getStudentTransactions,
     getStudentBalance,
@@ -602,9 +683,13 @@ window.financeAPI = {
     updateStudentAccount,
     getDashboardStats,
     generateReport,
+    getTransactions,
     isFinanceAdmin,
     getCurrentFinanceUser
 };
+
+// Also make TABLES available
+window.FINANCE_TABLES = TABLES;
 
 console.log('✅ Finance API Communication Layer loaded');
 console.log('🔗 Supabase:', !!supabase);
