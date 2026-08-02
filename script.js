@@ -3525,7 +3525,7 @@ async function loadFilterOptions() {
 }
 
 // ============================================
-// 🔥 LOAD PENDING APPROVALS - OPTIMIZED
+// 🔥 LOAD PENDING APPROVALS - FIXED FOR STUDENTS & LECTURERS
 // ============================================
 
 async function loadPendingApprovals() {
@@ -3581,64 +3581,136 @@ async function loadPendingApprovals() {
             const escapedStudentId = escapeHtml(u.student_id || '');
             const escapedEmail = escapeHtml(u.email || '');
             const escapedRole = escapeHtml(u.role || 'student');
-            const escapedProgram = escapeHtml(u.program || 'N/A');
+            const escapedProgram = escapeHtml(u.program || '');
+            const escapedDepartment = escapeHtml(u.department || '');
             
-            const programName = getProgramDisplayName(u.program);
-            const programType = getProgramType(u.program);
-            const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
-            const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+            // ============================================
+            // DETERMINE PROGRAM/DEPARTMENT DISPLAY
+            // ============================================
+            let programDisplay = '';
+            let programBadgeClass = '';
+            let programIcon = '';
+            let programTypeText = '';
             
-            const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
+            if (u.role === 'student') {
+                // STUDENT: Show program
+                const programName = getProgramDisplayName(u.program);
+                const programType = getProgramType(u.program);
+                programDisplay = programName || u.program || 'Not set';
+                programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
+                programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
+                programTypeText = programType || 'N/A';
+            } else if (u.role === 'lecturer') {
+                // LECTURER: Show department
+                programDisplay = u.department || 'Not set';
+                programBadgeClass = 'badge-lecturer';
+                programIcon = 'fa-chalkboard-teacher';
+                programTypeText = 'Lecturer';
+            } else {
+                // ADMIN or other: Show program or department
+                programDisplay = u.program || u.department || 'N/A';
+                programBadgeClass = 'badge-admin';
+                programIcon = 'fa-user-cog';
+                programTypeText = u.role || 'Staff';
+            }
             
+            // ============================================
+            // ROLE BADGE
+            // ============================================
+            const roleBadge = {
+                'student': '<span style="background:#3b82f6; color:white; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:500;">🎓 Student</span>',
+                'lecturer': '<span style="background:#10b981; color:white; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:500;">👨‍🏫 Lecturer</span>',
+                'admin': '<span style="background:#8b5cf6; color:white; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:500;">👤 Admin</span>',
+                'superadmin': '<span style="background:#ef4444; color:white; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:500;">⭐ Super Admin</span>'
+            };
+            
+            // ============================================
+            // ID DISPLAY (Student ID or Staff ID)
+            // ============================================
+            const idDisplay = u.role === 'student' ? 
+                (u.student_id || 'N/A') : 
+                (u.staff_id || u.student_id || 'N/A');
+            
+            // ============================================
+            // INTAKE DISPLAY (Only for students)
+            // ============================================
+            let intakeDisplay = 'N/A';
+            if (u.role === 'student' && u.intake_year) {
+                intakeDisplay = getDisplayIntake(u.program, u.intake_year);
+            } else if (u.role === 'lecturer') {
+                intakeDisplay = u.employment_date ? new Date(u.employment_date).toLocaleDateString() : 'N/A';
+            }
+            
+            // ============================================
+            // RENDER ROW
+            // ============================================
             tbody.innerHTML += `
-                <tr>
-                    <td><strong>${escapedName}</strong></td>
-                    <td>${escapedEmail}</td>
-                    <td>${escapedRole}</td>
-                    <td>
-                        <div style="font-weight:500; font-size:13px;">${escapeHtml(programName)}</div>
-                        <div class="program-badge ${programBadgeClass}" style="font-size:10px; margin-top:2px;">
-                            <i class="fas ${programIcon}"></i> ${programType}
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 10px 12px; font-weight: 500; color: #1e293b;">
+                        <strong>${escapedName}</strong>
+                    </td>
+                    <td style="padding: 10px 12px; color: #475569; font-size: 12px;">
+                        ${escapedEmail}
+                    </td>
+                    <td style="padding: 10px 12px; text-align: center; font-size: 11px; font-family: monospace; color: #64748B;">
+                        ${escapeHtml(idDisplay)}
+                    </td>
+                    <td style="padding: 10px 12px; text-align: center;">
+                        ${roleBadge[u.role] || roleBadge.student}
+                    </td>
+                    <td style="padding: 10px 12px;">
+                        <div style="font-weight:500; font-size:13px; color: #1e293b;">
+                            ${escapeHtml(programDisplay)}
+                        </div>
+                        <div class="program-badge ${programBadgeClass}" style="font-size:10px; margin-top:2px; display:inline-block; padding:2px 10px; border-radius:12px; color:white;">
+                            <i class="fas ${programIcon}"></i> ${programTypeText}
                         </div>
                     </td>
-                    <td>${escapeHtml(intakeDisplay)}</td>
-                    <td>${escapedStudentId || 'N/A'}</td>
-                    <td>
+                    <td style="padding: 10px 12px; text-align: center; font-size: 12px; color: #475569;">
+                        ${escapeHtml(intakeDisplay)}
+                    </td>
+                    <td style="padding: 10px 12px; text-align: center;">
                         <span class="badge ${kcseStatus === 'pending' ? 'badge-warning' : 'badge-success'}" 
-                              style="cursor:pointer; font-size:11px;" 
+                              style="cursor:pointer; font-size:11px; padding:4px 8px; border-radius:12px;" 
                               onclick="viewDocument('${escapedUserId}','kcse')">
                             ${kcseStatus.toUpperCase()}
                             <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
                         </span>
                     </td>
-                    <td>
+                    <td style="padding: 10px 12px; text-align: center;">
                         <span class="badge ${idStatus === 'pending' ? 'badge-warning' : 'badge-success'}" 
-                              style="cursor:pointer; font-size:11px;" 
+                              style="cursor:pointer; font-size:11px; padding:4px 8px; border-radius:12px;" 
                               onclick="viewDocument('${escapedUserId}','id')">
                             ${idStatus.toUpperCase()}
                             <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
                         </span>
                     </td>
-                    <td>
+                    <td style="padding: 10px 12px; text-align: center;">
                         ${u.profile_photo_url ? 
                             `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
                                   alt="Photo" 
                                   style="width:35px;height:35px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
                                   onclick="viewDocument('${escapedUserId}','photo')"
                                   onerror="this.style.display='none';">` :
-                            `<span class="badge badge-secondary" style="font-size:11px;cursor:pointer;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`
+                            `<span class="badge badge-secondary" style="font-size:11px;cursor:pointer;padding:4px 8px;border-radius:12px;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`
                         }
                     </td>
-                    <td>${new Date(u.created_at).toLocaleDateString()}</td>
-                    <td>
-                        <button class="btn-approve" 
-                                onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
-                            <i class="fas fa-eye"></i> Review
-                        </button>
-                        <button class="btn-delete" 
-                                onclick="deleteProfile('${escapedUserId}', '${escapedName}', true)">
-                            Reject
-                        </button>
+                    <td style="padding: 10px 12px; text-align: center; font-size: 11px; color: #94a3b8;">
+                        ${new Date(u.created_at).toLocaleDateString()}
+                    </td>
+                    <td style="padding: 10px 12px; text-align: center;">
+                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            <button class="btn-approve" 
+                                    style="background: #10b981; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 500;"
+                                    onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
+                                <i class="fas fa-eye"></i> Review
+                            </button>
+                            <button class="btn-delete" 
+                                    style="background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 500;"
+                                    onclick="deleteProfile('${escapedUserId}', '${escapedName}', true)">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -4153,18 +4225,22 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
 }
 
 // ============================================
-// SHOW APPROVAL MODAL - PRESERVED
+// SHOW APPROVAL MODAL - FIXED
 // ============================================
 
 function showApprovalModal(user) {
     console.log('📋 Showing approval modal for:', user.full_name);
     console.log('📚 Current program:', user.program);
+    console.log('🏢 Current department:', user.department);
+    console.log('👤 Current role:', user.role);
     
     const existingModal = document.getElementById('approvalModal');
     if (existingModal) existingModal.remove();
     
     const programType = getProgramType(user.program);
     const isTVET = programType === 'TVET';
+    const isStudent = user.role === 'student';
+    const isLecturer = user.role === 'lecturer';
     
     // Complete program options dropdown
     const programOptions = `
@@ -4203,6 +4279,18 @@ function showApprovalModal(user) {
             <option value="CCA" ${user.program === 'CCA' ? 'selected' : ''}>Certificate in Computer Applications</option>
             <option value="PTE" ${user.program === 'PTE' ? 'selected' : ''}>TVET/CDACC (PTE)</option>
         </optgroup>
+    `;
+    
+    // Department options for lecturers
+    const departmentOptions = `
+        <option value="">-- Select Department --</option>
+        <option value="Nursing" ${user.department === 'Nursing' ? 'selected' : ''}>Nursing</option>
+        <option value="TVET" ${user.department === 'TVET' ? 'selected' : ''}>TVET</option>
+        <option value="Community Health" ${user.department === 'Community Health' ? 'selected' : ''}>Community Health</option>
+        <option value="Health Records" ${user.department === 'Health Records' ? 'selected' : ''}>Health Records</option>
+        <option value="ICT" ${user.department === 'ICT' ? 'selected' : ''}>ICT</option>
+        <option value="Administration" ${user.department === 'Administration' ? 'selected' : ''}>Administration</option>
+        <option value="Clinical Medicine" ${user.department === 'Clinical Medicine' ? 'selected' : ''}>Clinical Medicine</option>
     `;
     
     // Block options based on program type
@@ -4295,7 +4383,9 @@ function showApprovalModal(user) {
                         <i class="fas fa-graduation-cap"></i> Academic Information
                     </h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div class="form-group">
+                        
+                        <!-- PROGRAM FIELD - Only for Students -->
+                        <div class="form-group" id="program_field" style="${isStudent ? 'display:block' : 'display:none'}">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
                             <select id="edit_program" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
                                 ${programOptions}
@@ -4304,21 +4394,58 @@ function showApprovalModal(user) {
                                 <i class="fas fa-edit"></i> Select the correct program if needed
                             </small>
                         </div>
-                        <div class="form-group">
+                        
+                        <!-- DEPARTMENT FIELD - Only for Lecturers -->
+                        <div class="form-group" id="department_field" style="${isLecturer ? 'display:block' : 'display:none'}">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Department *</label>
+                            <select id="edit_department" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                ${departmentOptions}
+                            </select>
+                            <small style="color:#6b7280; font-size:12px; display:block; margin-top:4px;">
+                                <i class="fas fa-edit"></i> Select the correct department if needed
+                            </small>
+                        </div>
+                        
+                        <!-- PROGRAM TYPE - For Students only -->
+                        <div class="form-group" id="program_type_field" style="${isStudent ? 'display:block' : 'display:none'}">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Type</label>
                             <input type="text" id="edit_program_type" value="${programType}" readonly
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f8f9fa; font-family:inherit;">
                         </div>
-                        <div class="form-group">
+                        
+                        <!-- STAFF ID - For Lecturers only -->
+                        <div class="form-group" id="staff_id_field" style="${isLecturer ? 'display:block' : 'display:none'}">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Staff ID</label>
+                            <input type="text" id="edit_staff_id" value="${escapeHtml(user.staff_id || '')}" readonly
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f8f9fa; font-family:inherit;">
+                            <small style="color:#6b7280; font-size:12px; display:block; margin-top:4px;">
+                                <i class="fas fa-info-circle"></i> Staff ID is auto-generated
+                            </small>
+                        </div>
+                        
+                        <!-- Intake Year - For Students only -->
+                        <div class="form-group" id="intake_field" style="${isStudent ? 'display:block' : 'display:none'}">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year</label>
                             <input type="text" id="edit_intake_year" value="${escapeHtml(user.intake_year || '')}" 
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
                         </div>
-                        <div class="form-group">
+                        
+                        <!-- Block - For Students only -->
+                        <div class="form-group" id="block_field" style="${isStudent ? 'display:block' : 'display:none'}">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Block / Term</label>
                             <select id="edit_block" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
                                 ${blockSelectOptions}
                             </select>
+                        </div>
+                        
+                        <!-- Employment Date - For Lecturers only -->
+                        <div class="form-group" id="employment_field" style="${isLecturer ? 'display:block' : 'display:none'}">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Employment Date</label>
+                            <input type="date" id="edit_employment_date" value="${user.employment_date || ''}" 
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                            <small style="color:#6b7280; font-size:12px; display:block; margin-top:4px;">
+                                <i class="fas fa-info-circle"></i> When the lecturer joined
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -4349,7 +4476,8 @@ function showApprovalModal(user) {
                     <p style="margin: 0; font-size: 13px; color: #92400e;">
                         <i class="fas fa-shield-alt"></i> 
                         <strong>Approval Action:</strong> This will activate the user account with the edited details above.
-                        <br><i class="fas fa-info-circle"></i> You can change the program if the user selected incorrectly during registration.
+                        <br><i class="fas fa-info-circle"></i> 
+                        ${isStudent ? 'You can change the program if the student selected incorrectly during registration.' : 'You can change the department if the lecturer selected incorrectly during registration.'}
                     </p>
                 </div>
             </form>
@@ -4359,7 +4487,7 @@ function showApprovalModal(user) {
     document.body.appendChild(modal);
     modal.dataset.userId = user.user_id;
     
-    // Auto-update program type when program changes
+    // Auto-update program type when program changes (only for students)
     const programSelect = document.getElementById('edit_program');
     const programTypeInput = document.getElementById('edit_program_type');
     
@@ -4371,6 +4499,34 @@ function showApprovalModal(user) {
             
             // Update block options based on program type
             updateBlockOptions(selectedProgram);
+        });
+    }
+    
+    // Handle role change to toggle fields
+    const roleSelect = document.getElementById('edit_role');
+    if (roleSelect) {
+        roleSelect.addEventListener('change', function() {
+            const newRole = this.value;
+            const isStudentRole = newRole === 'student';
+            const isLecturerRole = newRole === 'lecturer';
+            
+            // Show/hide fields based on role
+            document.getElementById('program_field').style.display = isStudentRole ? 'block' : 'none';
+            document.getElementById('program_type_field').style.display = isStudentRole ? 'block' : 'none';
+            document.getElementById('intake_field').style.display = isStudentRole ? 'block' : 'none';
+            document.getElementById('block_field').style.display = isStudentRole ? 'block' : 'none';
+            
+            document.getElementById('department_field').style.display = isLecturerRole ? 'block' : 'none';
+            document.getElementById('staff_id_field').style.display = isLecturerRole ? 'block' : 'none';
+            document.getElementById('employment_field').style.display = isLecturerRole ? 'block' : 'none';
+            
+            // Set required attributes
+            document.getElementById('edit_program').required = isStudentRole;
+            document.getElementById('edit_department').required = isLecturerRole;
+            
+            // Show/hide student ID for both roles
+            document.getElementById('edit_student_id').closest('.form-group').style.display = 
+                (isStudentRole || isLecturerRole) ? 'block' : 'none';
         });
     }
 }
@@ -4414,54 +4570,86 @@ async function confirmApproveUser() {
     
     const userId = modal.dataset.userId;
     
+    // Get all form values
     const fullName = document.getElementById('edit_full_name')?.value?.trim();
     const email = document.getElementById('edit_email')?.value?.trim();
     const studentId = document.getElementById('edit_student_id')?.value?.trim();
     const phone = document.getElementById('edit_phone')?.value?.trim();
     const role = document.getElementById('edit_role')?.value;
-    const program = document.getElementById('edit_program')?.value;
+    const program = document.getElementById('edit_program')?.value; // For students
+    const department = document.getElementById('edit_department')?.value; // For lecturers
     const intakeYear = document.getElementById('edit_intake_year')?.value?.trim();
     const block = document.getElementById('edit_block')?.value;
     const status = document.getElementById('edit_status')?.value || 'approved';
     
+    // Validation
     if (!fullName) {
         showFeedback('❌ Full Name is required', 'error');
-        const nameInput = document.getElementById('edit_full_name');
-        if (nameInput) { nameInput.focus(); nameInput.style.borderColor = '#DC2626'; }
         return;
     }
     if (!email) {
         showFeedback('❌ Email is required', 'error');
-        const emailInput = document.getElementById('edit_email');
-        if (emailInput) { emailInput.focus(); emailInput.style.borderColor = '#DC2626'; }
-        return;
-    }
-    if (!program) {
-        showFeedback('❌ Program is required', 'error');
         return;
     }
     
-    closeApprovalModal();
+    // For students: program is required
+    if (role === 'student' && !program) {
+        showFeedback('❌ Program is required for students', 'error');
+        return;
+    }
     
-    if (!confirm(`⚠️ Approve User:\n\nName: ${fullName}\nEmail: ${email}\nProgram: ${program}\nBlock: ${block || 'Not set'}\nRole: ${role}\nStatus: ${status}\n\nProceed?`)) {
+    // For lecturers: department is required
+    if (role === 'lecturer' && !department) {
+        showFeedback('❌ Department is required for lecturers', 'error');
+        return;
+    }
+    
+    // Confirm with user
+    const confirmMessage = `⚠️ Approve User:\n\n` +
+        `Name: ${fullName}\n` +
+        `Email: ${email}\n` +
+        `Role: ${role}\n` +
+        `${role === 'student' ? `Program: ${program}\n` : `Department: ${department}\n`}` +
+        `Block: ${block || 'Not set'}\n` +
+        `Status: ${status}\n\n` +
+        `Proceed?`;
+    
+    if (!confirm(confirmMessage)) {
         return;
     }
     
     try {
         const supabase = getSb();
+        
+        // Build update data based on role
         const updateData = {
             full_name: fullName,
             email: email,
             role: role,
-            program: program,
-            block: block || null,
             status: status,
+            block: block || null,
             updated_at: new Date().toISOString()
         };
         
-        if (studentId) updateData.student_id = studentId;
+        // For students: set program, clear department
+        if (role === 'student') {
+            updateData.program = program;
+            updateData.department = null;
+            if (studentId) updateData.student_id = studentId;
+            if (intakeYear) updateData.intake_year = intakeYear;
+        }
+        
+        // For lecturers: set department, clear program
+        if (role === 'lecturer') {
+            updateData.department = department;
+            updateData.program = null; // Lecturers don't have programs
+            if (studentId) updateData.student_id = studentId; // Optional for lecturers
+        }
+        
+        // Common fields
         if (phone) updateData.phone = phone;
-        if (intakeYear) updateData.intake_year = intakeYear;
+        
+        console.log('📤 Updating user with data:', updateData);
         
         const { error } = await supabase
             .from(USER_PROFILE_TABLE)
@@ -4470,27 +4658,30 @@ async function confirmApproveUser() {
         
         if (error) throw error;
         
+        // Send approval email
         try {
-            await sendApprovalEmail(email, fullName, role, program, intakeYear, block);
+            await sendApprovalEmail(email, fullName, role, program || department, intakeYear, block);
         } catch (e) {
             console.warn('⚠️ Email error:', e);
         }
         
         showFeedback(`✅ User ${fullName} approved successfully!`, 'success');
         
+        // Log audit
         await logAudit('USER_APPROVE', `User ${fullName} approved`, userId, 'SUCCESS');
         
+        // Refresh all views
         loadPendingApprovals();
         loadAllUsers(1, USERS_STATE.filters);
         loadStudents();
         loadDashboardData();
+        closeApprovalModal();
         
     } catch (err) {
         console.error('❌ Error:', err);
         showFeedback(`❌ Failed: ${err.message}`, 'error');
     }
 }
-
 // ============================================
 // UPDATE USER ROLE - PRESERVED
 // ============================================
