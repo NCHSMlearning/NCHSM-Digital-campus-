@@ -5,139 +5,145 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance Module Login - NCHSM</title>
     
-    <!-- ===== EXTERNAL CSS ===== -->
-    <link rel="stylesheet" href="css/finance-login.css">
-    <link rel="stylesheet" href="css/finance-responsive.css">
-    
-    <!-- ===== FONT AWESOME ===== -->
+    <!-- ===== STYLES ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/finance-login.css">
     
     <!-- ===== FAVICON ===== -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
+    
+    <style>
+        /* Fallback styles if CSS fails to load */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            margin: 0;
+            padding: 20px;
+        }
+        .login-container {
+            background: white;
+            border-radius: 24px;
+            max-width: 400px;
+            width: 100%;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .logo { text-align: center; margin-bottom: 30px; }
+        .logo h2 { color: #0A3D62; }
+        .logo h2 span { color: #FDB913; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; color: #475569; }
+        .form-group input { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
+        .form-group input:focus { border-color: #4C1D95; outline: none; }
+        .login-btn { width: 100%; padding: 14px; background: #4C1D95; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .login-btn:hover { background: #6d28d9; }
+        .error-message { display: none; padding: 10px; background: #fef2f2; border-radius: 8px; color: #dc2626; margin-bottom: 16px; }
+        .error-message.show { display: block; }
+        .login-footer { text-align: center; margin-top: 16px; color: #94a3b8; font-size: 13px; }
+    </style>
 </head>
 <body>
     <div class="login-container">
-        <!-- ===== LEFT PANEL ===== -->
-        <div class="login-left">
-            <div class="logo">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
-                <h2>NCHSM <span>Finance</span></h2>
-            </div>
-            <div class="tagline">Nakuru College of Health Sciences & Management</div>
-
-            <h1>Welcome <span>Back</span></h1>
-            <p class="subtitle">Sign in to access the Finance Management Module</p>
-
-            <!-- Error Message -->
-            <div id="loginError" class="error-message">
-                <i class="fas fa-exclamation-circle"></i>
-                <span id="errorText">Invalid credentials. Please try again.</span>
-            </div>
-
-            <!-- Login Form -->
-            <form id="loginForm" class="login-form" autocomplete="off">
-                <div class="form-group">
-                    <label>Email Address <span class="required">*</span></label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" id="loginEmail" placeholder="Enter your email" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Password <span class="required">*</span></label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="loginPassword" placeholder="Enter your password" required>
-                        <button type="button" class="toggle-password" onclick="togglePassword()">
-                            <i class="fas fa-eye" id="toggleIcon"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="form-options">
-                    <label>
-                        <input type="checkbox" id="rememberMe">
-                        Remember me
-                    </label>
-                    <a href="#" onclick="showForgotPassword()">Forgot Password?</a>
-                </div>
-
-                <button type="submit" id="loginBtn" class="login-btn">
-                    <span class="spinner"></span>
-                    <span class="btn-text"><i class="fas fa-sign-in-alt"></i> Sign In</span>
-                </button>
-
-                <div class="login-footer">
-                    <span>Need help? <a href="#" onclick="showHelp()">Contact Support</a></span>
-                </div>
-            </form>
+        <div class="logo">
+            <h2>NCHSM <span>Finance</span></h2>
+            <p style="color: #64748b; font-size: 13px;">Nairobi College of Health & Social Management</p>
         </div>
 
-        <!-- ===== RIGHT PANEL ===== -->
-        <div class="login-right">
-            <div class="icon">
-                <i class="fas fa-coins"></i>
+        <h1 style="text-align: center; font-size: 24px; color: #0b1124;">Welcome Back</h1>
+        <p style="text-align: center; color: #64748b; margin-bottom: 24px;">Sign in to Finance Module</p>
+
+        <!-- Error Message -->
+        <div id="loginError" class="error-message">
+            <span id="errorText">Invalid credentials</span>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="loginEmail" placeholder="admin@nchsm.ac.ke" required value="admin@nchsm.ac.ke">
             </div>
-            <h2>Finance Management</h2>
-            <p>Complete financial management system for NCHSM. Manage fees, payments, accounts, and generate reports.</p>
+
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" placeholder="admin123" required value="admin123">
+            </div>
+
+            <button type="submit" id="loginBtn" class="login-btn">
+                <span id="btnText">🔑 Sign In</span>
+                <span id="btnLoading" style="display: none;">Loading...</span>
+            </button>
+
+            <div class="login-footer">
+                <span>Demo: admin@nchsm.ac.ke / admin123</span>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // ===== SIMPLE LOGIN - NO LOOP =====
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📝 Login page loaded');
             
-            <div class="features">
-                <div class="feature-item">
-                    <i class="fas fa-credit-card"></i>
-                    <span>Fee Management & Tracking</span>
-                </div>
-                <div class="feature-item">
-                    <i class="fas fa-file-invoice-dollar"></i>
-                    <span>Payment Processing & History</span>
-                </div>
-                <div class="feature-item">
-                    <i class="fas fa-chart-pie"></i>
-                    <span>Real-time Financial Reports</span>
-                </div>
-                <div class="feature-item">
-                    <i class="fas fa-user-check"></i>
-                    <span>Student Account Management</span>
-                </div>
-            </div>
-
-            <div class="login-right-footer">
-                <span>Secure Login | v2.0</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== FORGOT PASSWORD MODAL ===== -->
-    <div id="forgotModal" class="finance-modal">
-        <div class="finance-modal-content">
-            <div class="finance-modal-header">
-                <h3><i class="fas fa-key"></i> Reset Password</h3>
-                <button class="finance-modal-close" onclick="closeForgotModal()">&times;</button>
-            </div>
-            <div class="finance-modal-body">
-                <p style="color: #64748b; margin-bottom: 16px;">
-                    Enter your email address and we'll send you a link to reset your password.
-                </p>
-                <div class="form-group">
-                    <label>Email Address</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" id="forgotEmail" placeholder="Enter your email">
-                    </div>
-                </div>
-            </div>
-            <div class="finance-modal-footer">
-                <button onclick="closeForgotModal()" class="finance-btn finance-btn-outline">Cancel</button>
-                <button onclick="sendResetLink()" class="finance-btn finance-btn-primary">
-                    <i class="fas fa-paper-plane"></i> Send Reset Link
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== EXTERNAL JAVASCRIPT ===== -->
-    <script src="js/finance-config.js"></script>
-    <script src="js/finance-auth.js"></script>
-    <script src="js/finance-app.js"></script>
+            // Check if already logged in
+            try {
+                const user = JSON.parse(localStorage.getItem('finance_user') || 'null');
+                if (user && user.token) {
+                    console.log('✅ Already logged in, redirecting...');
+                    window.location.href = 'finance.html';
+                    return;
+                }
+            } catch(e) {}
+            
+            // Setup login
+            const form = document.getElementById('loginForm');
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const email = document.getElementById('loginEmail').value.trim();
+                const password = document.getElementById('loginPassword').value;
+                const btn = document.getElementById('loginBtn');
+                const btnText = document.getElementById('btnText');
+                const btnLoading = document.getElementById('btnLoading');
+                const errorDiv = document.getElementById('loginError');
+                const errorText = document.getElementById('errorText');
+                
+                // Hide error
+                errorDiv.classList.remove('show');
+                
+                // Show loading
+                btnText.style.display = 'none';
+                btnLoading.style.display = 'inline';
+                btn.disabled = true;
+                
+                // Simulate login
+                setTimeout(() => {
+                    // Demo credentials
+                    if (email === 'admin@nchsm.ac.ke' && password === 'admin123') {
+                        const user = {
+                            id: 'usr_1',
+                            email: email,
+                            name: 'Super Admin',
+                            role: 'superadmin',
+                            token: 'token_' + Date.now(),
+                            loginTime: new Date().toISOString()
+                        };
+                        localStorage.setItem('finance_user', JSON.stringify(user));
+                        window.location.href = 'finance.html';
+                    } else {
+                        errorText.textContent = 'Invalid credentials. Try admin@nchsm.ac.ke / admin123';
+                        errorDiv.classList.add('show');
+                        btnText.style.display = 'inline';
+                        btnLoading.style.display = 'none';
+                        btn.disabled = false;
+                    }
+                }, 800);
+            });
+        });
+    </script>
 </body>
 </html>
