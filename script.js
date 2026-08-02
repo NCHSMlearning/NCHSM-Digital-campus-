@@ -4158,6 +4158,7 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
 
 function showApprovalModal(user) {
     console.log('📋 Showing approval modal for:', user.full_name);
+    console.log('📚 Current program:', user.program);
     
     const existingModal = document.getElementById('approvalModal');
     if (existingModal) existingModal.remove();
@@ -4165,8 +4166,11 @@ function showApprovalModal(user) {
     const programType = getProgramType(user.program);
     const isTVET = programType === 'TVET';
     
+    // Complete program options dropdown
     const programOptions = `
-        <option value="KRCHN" ${user.program === 'KRCHN' ? 'selected' : ''}>🎓 KRCHN Nursing</option>
+        <optgroup label="🎓 Nursing Programs">
+            <option value="KRCHN" ${user.program === 'KRCHN' ? 'selected' : ''}>KRCHN Nursing</option>
+        </optgroup>
         <optgroup label="🎯 TVET Diploma Programs">
             <option value="DPOTT" ${user.program === 'DPOTT' ? 'selected' : ''}>Diploma in Perioperative Theatre Technology</option>
             <option value="DCH" ${user.program === 'DCH' ? 'selected' : ''}>Diploma in Community Health</option>
@@ -4201,6 +4205,7 @@ function showApprovalModal(user) {
         </optgroup>
     `;
     
+    // Block options based on program type
     const blockOptions = isTVET 
         ? ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
         : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
@@ -4238,6 +4243,7 @@ function showApprovalModal(user) {
             </div>
             
             <form id="approvalForm" onsubmit="event.preventDefault(); confirmApproveUser();">
+                <!-- Personal Information -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fas fa-user"></i> Personal Information
@@ -4283,6 +4289,7 @@ function showApprovalModal(user) {
                     </div>
                 </div>
                 
+                <!-- Academic Information -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fas fa-graduation-cap"></i> Academic Information
@@ -4293,10 +4300,13 @@ function showApprovalModal(user) {
                             <select id="edit_program" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
                                 ${programOptions}
                             </select>
+                            <small style="color:#6b7280; font-size:12px; display:block; margin-top:4px;">
+                                <i class="fas fa-edit"></i> Select the correct program if needed
+                            </small>
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Type</label>
-                            <input type="text" id="edit_program_type" value="${isTVET ? 'TVET' : 'KRCHN'}" readonly
+                            <input type="text" id="edit_program_type" value="${programType}" readonly
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f8f9fa; font-family:inherit;">
                         </div>
                         <div class="form-group">
@@ -4313,6 +4323,7 @@ function showApprovalModal(user) {
                     </div>
                 </div>
                 
+                <!-- System Information -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fas fa-info-circle"></i> System Information
@@ -4324,6 +4335,7 @@ function showApprovalModal(user) {
                     </div>
                 </div>
                 
+                <!-- Action Buttons -->
                 <div style="display: flex; gap: 12px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
                     <button type="submit" style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 14px 20px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
                         <i class="fas fa-check-circle"></i> Confirm & Approve
@@ -4337,6 +4349,7 @@ function showApprovalModal(user) {
                     <p style="margin: 0; font-size: 13px; color: #92400e;">
                         <i class="fas fa-shield-alt"></i> 
                         <strong>Approval Action:</strong> This will activate the user account with the edited details above.
+                        <br><i class="fas fa-info-circle"></i> You can change the program if the user selected incorrectly during registration.
                     </p>
                 </div>
             </form>
@@ -4345,6 +4358,39 @@ function showApprovalModal(user) {
     
     document.body.appendChild(modal);
     modal.dataset.userId = user.user_id;
+    
+    // Auto-update program type when program changes
+    const programSelect = document.getElementById('edit_program');
+    const programTypeInput = document.getElementById('edit_program_type');
+    
+    if (programSelect && programTypeInput) {
+        programSelect.addEventListener('change', function() {
+            const selectedProgram = this.value;
+            const newType = getProgramType(selectedProgram);
+            programTypeInput.value = newType;
+            
+            // Update block options based on program type
+            updateBlockOptions(selectedProgram);
+        });
+    }
+}
+
+// Helper function to update block options when program changes
+function updateBlockOptions(programCode) {
+    const programType = getProgramType(programCode);
+    const isTVET = programType === 'TVET';
+    
+    const blockSelect = document.getElementById('edit_block');
+    if (!blockSelect) return;
+    
+    const blockOptions = isTVET 
+        ? ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
+        : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+    
+    const currentValue = blockSelect.value;
+    blockSelect.innerHTML = blockOptions.map(b => 
+        `<option value="${b}" ${currentValue === b ? 'selected' : ''}>${b}</option>`
+    ).join('');
 }
 
 function closeApprovalModal() {
