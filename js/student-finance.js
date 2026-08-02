@@ -1,8 +1,7 @@
-/**
- * STUDENT FINANCE MODULE
- * Handles student-facing finance functionality
- * Supports both KRCHN (Semesters - 3 per year) and TVET (Terms - 3 per year)
- */
+// ============================================================
+// UPDATED STUDENT FINANCE MODULE
+// Supports KRCHN (Semesters) and TVET (Terms with Years)
+// ============================================================
 
 // ============================================================
 // STATE
@@ -17,18 +16,20 @@ const studentFinanceState = {
     paymentProgress: 0,
     lastUpdated: null,
     isLoaded: false,
-    programType: 'KRCHN' // 'KRCHN' or 'TVET'
+    programType: 'KRCHN', // 'KRCHN' or 'TVET'
+    programLevel: 'diploma', // 'certificate' or 'diploma'
+    currentPeriod: null,
+    semesterFee: 0,
+    paidThisSemester: 0,
+    currentPeriodIndex: 0
 };
 
 // ============================================================
 // PROGRAM TYPE DETECTION
 // ============================================================
 
-/**
- * Detect if student is in Nursing (KRCHN) or TVET program
- */
 function getProgramType(program) {
-    if (!program) return 'KRCHN'; // Default
+    if (!program) return 'KRCHN';
     
     // KRCHN programs
     const krchnPrograms = ['KRCHN'];
@@ -40,62 +41,76 @@ function getProgramType(program) {
     return 'TVET';
 }
 
-/**
- * Get the correct period label based on program type
- */
+function getProgramLevel(program) {
+    // Check if it's a certificate course
+    const certificatePrograms = ['CCH', 'CPOTT', 'DHRIT'];
+    if (certificatePrograms.includes(program)) {
+        return 'certificate';
+    }
+    // Diploma courses
+    return 'diploma';
+}
+
 function getPeriodLabel(programType) {
     return programType === 'KRCHN' ? 'Semester' : 'Term';
 }
 
-/**
- * Get the correct period list based on program type
- * KRCHN: 3 semesters per year for 3 years = 9 semesters total
- * TVET: 3 terms per year
- */
-function getPeriods(programType) {
+function getPeriods(programType, programLevel = 'diploma') {
     if (programType === 'KRCHN') {
-        // Year 1 - 3 semesters
+        // KRCHN: 3 years × 3 semesters = 9 periods
         return [
             'Year 1 - Semester 1',
             'Year 1 - Semester 2',
             'Year 1 - Semester 3',
-            // Year 2 - 3 semesters
             'Year 2 - Semester 1',
             'Year 2 - Semester 2',
             'Year 2 - Semester 3',
-            // Year 3 - 3 semesters
             'Year 3 - Semester 1',
             'Year 3 - Semester 2',
             'Year 3 - Semester 3'
         ];
     } else {
-        // TVET: 3 terms per year
-        return [
-            'Term 1', 'Term 2', 'Term 3',
-            'Term 4', 'Term 5', 'Term 6',
-            'Term 7', 'Term 8', 'Term 9'
-        ];
+        // TVET: Terms with year labels
+        if (programLevel === 'certificate') {
+            // Certificate: 1 year = 3 terms
+            return [
+                'Year 1 - Term 1',
+                'Year 1 - Term 2',
+                'Year 1 - Term 3'
+            ];
+        } else {
+            // Diploma: 2 years = 6 terms
+            return [
+                'Year 1 - Term 1',
+                'Year 1 - Term 2',
+                'Year 1 - Term 3',
+                'Year 2 - Term 1',
+                'Year 2 - Term 2',
+                'Year 2 - Term 3'
+            ];
+        }
     }
 }
 
-/**
- * Get period display name
- */
-function getPeriodDisplay(period, programType) {
-    if (!period) return '-';
-    return period;
+function getTotalFees(programType, programLevel = 'diploma') {
+    if (programType === 'KRCHN') {
+        return 94100 + (8 * 64100); // 606,900
+    } else {
+        if (programLevel === 'certificate') {
+            return 57100 + (2 * 47000); // 151,100 (3 terms)
+        } else {
+            return 57100 + (5 * 47000); // 292,100 (6 terms)
+        }
+    }
 }
 
-/**
- * Get fee amount for a specific period
- */
-function getFeeAmount(programType, period) {
+function getFeeAmount(programType, periodIndex, programLevel = 'diploma') {
     if (programType === 'KRCHN') {
-        // Nursing: Each semester fee
-        return 60000; // KES 60,000 per semester
+        // KRCHN: Semester 1 (index 0) = 94,100, others = 64,100
+        return periodIndex === 0 ? 94100 : 64100;
     } else {
-        // TVET: Each term fee
-        return 45000; // KES 45,000 per term
+        // TVET: Term 1 (index 0) = 57,100, others = 47,000
+        return periodIndex === 0 ? 57100 : 47000;
     }
 }
 
@@ -103,9 +118,6 @@ function getFeeAmount(programType, period) {
 // MAIN FUNCTIONS
 // ============================================================
 
-/**
- * Load student finance data from Supabase
- */
 async function loadStudentFinance() {
     try {
         console.log('💰 Loading student finance...');
@@ -117,14 +129,20 @@ async function loadStudentFinance() {
             return;
         }
 
-        // Detect program type
+        // Detect program type and level
         const programType = getProgramType(user.program);
+        const programLevel = getProgramLevel(user.program);
         studentFinanceState.programType = programType;
+        studentFinanceState.programLevel = programLevel;
         
         console.log('👤 User:', user.full_name || user.name);
         console.log('📚 Program:', user.program);
         console.log('🏷️ Program Type:', programType);
+        console.log('📊 Program Level:', programLevel);
         console.log(`📋 Using ${getPeriodLabel(programType)}s for this student`);
+
+        // Update UI with program info
+        updateProgramInfo(user, programType, programLevel);
 
         // Show loading state
         showFinanceLoading();
@@ -133,15 +151,11 @@ async function loadStudentFinance() {
         const financeData = await fetchFinanceDataFromSupabase(user);
         
         if (financeData) {
-            // Update UI with data
             updateFinanceUI(financeData);
-            
             studentFinanceState.isLoaded = true;
             studentFinanceState.lastUpdated = new Date();
-            
             console.log('✅ Finance data loaded successfully');
         } else {
-            // If no data, show mock data for demo
             console.log('📊 No data found, using mock data');
             const mockData = getMockFinanceData(user);
             updateFinanceUI(mockData);
@@ -149,7 +163,6 @@ async function loadStudentFinance() {
         
     } catch (error) {
         console.error('Error loading finance:', error);
-        // Use mock data as fallback
         const user = window.currentUserProfile || window.currentUser;
         if (user) {
             const mockData = getMockFinanceData(user);
@@ -161,12 +174,82 @@ async function loadStudentFinance() {
     }
 }
 
-/**
- * Fetch finance data from Supabase
- */
+function updateProgramInfo(user, programType, programLevel) {
+    const periodLabel = getPeriodLabel(programType);
+    const periods = getPeriods(programType, programLevel);
+    
+    // Update program display
+    const programDisplay = document.getElementById('studentProgramDisplay');
+    if (programDisplay) {
+        programDisplay.textContent = user.program || 'N/A';
+    }
+    
+    // Update period type badge
+    const periodTypeBadge = document.getElementById('periodTypeBadge');
+    if (periodTypeBadge) {
+        if (programType === 'KRCHN') {
+            periodTypeBadge.textContent = 'KRCHN';
+            periodTypeBadge.style.background = 'rgba(253,185,19,0.2)';
+            periodTypeBadge.style.color = '#FDB913';
+        } else {
+            periodTypeBadge.textContent = programLevel === 'certificate' ? 'TVET (Cert)' : 'TVET (Dip)';
+            periodTypeBadge.style.background = 'rgba(59,130,246,0.2)';
+            periodTypeBadge.style.color = '#3b82f6';
+        }
+    }
+    
+    // Update intake display
+    const intakeDisplay = document.getElementById('studentIntakeDisplay');
+    if (intakeDisplay) {
+        intakeDisplay.textContent = user.intake || '2026';
+    }
+    
+    // Update period label in balance card
+    const currentPeriodLabel = document.getElementById('currentPeriodLabel');
+    if (currentPeriodLabel) {
+        currentPeriodLabel.textContent = `Current ${periodLabel}`;
+    }
+    
+    // Update progress period label
+    const progressPeriodLabel = document.getElementById('progressPeriodLabel');
+    if (progressPeriodLabel) {
+        progressPeriodLabel.textContent = `Current ${periodLabel}`;
+    }
+    
+    // Update period filter dropdown
+    updatePeriodFilter(programType, programLevel);
+    
+    // Update fee structure display
+    renderFeeStructure(periods, programType, programLevel);
+}
+
+function updatePeriodFilter(programType, programLevel) {
+    const periodFilter = document.getElementById('financePeriodFilter');
+    if (!periodFilter) return;
+    
+    const periods = getPeriods(programType, programLevel);
+    const periodLabel = getPeriodLabel(programType);
+    
+    // Clear existing options except "All Periods"
+    while (periodFilter.options.length > 1) {
+        periodFilter.remove(1);
+    }
+    
+    // Add new period options
+    periods.forEach(period => {
+        const option = document.createElement('option');
+        option.value = period;
+        option.textContent = period;
+        periodFilter.appendChild(option);
+    });
+}
+
+// ============================================================
+// FETCH FINANCE DATA
+// ============================================================
+
 async function fetchFinanceDataFromSupabase(user) {
     try {
-        // Check if supabase is available
         if (typeof supabase === 'undefined' || !supabase) {
             console.warn('⚠️ Supabase not available');
             return null;
@@ -175,10 +258,11 @@ async function fetchFinanceDataFromSupabase(user) {
         const studentId = user.id;
         const program = user.program || 'KRCHN';
         const programType = getProgramType(program);
+        const programLevel = getProgramLevel(program);
         const periodLabel = getPeriodLabel(programType);
+        const periods = getPeriods(programType, programLevel);
 
         console.log('📊 Fetching data for student:', studentId);
-        console.log(`📋 Using ${periodLabel}s for fee structure`);
 
         // 1. Get student account summary
         let accountData = null;
@@ -192,8 +276,6 @@ async function fetchFinanceDataFromSupabase(user) {
             if (!error && data) {
                 accountData = data;
                 console.log('✅ Account data found:', data);
-            } else {
-                console.log('ℹ️ No account data found, will use defaults');
             }
         } catch (e) {
             console.log('ℹ️ Account table may not exist yet');
@@ -211,52 +293,39 @@ async function fetchFinanceDataFromSupabase(user) {
             if (!error && data) {
                 paymentsData = data;
                 console.log('✅ Payments found:', data.length);
-            } else {
-                console.log('ℹ️ No payments found');
             }
         } catch (e) {
             console.log('ℹ️ Payments table may not exist yet');
         }
 
-        // 3. Get fee structure for student's program
-        let feeData = [];
-        try {
-            const { data, error } = await supabase
-                .from('finance_fee_structure')
-                .select('*')
-                .eq('program', program)
-                .eq('is_active', true)
-                .order('created_at', { ascending: true });
+        // 3. Determine current period from account data or user
+        let currentPeriod = accountData?.current_block || periods[0];
+        const currentPeriodIndex = periods.indexOf(currentPeriod);
+        
+        // Get semester/term fee based on program type and period
+        const semesterFee = getFeeAmount(programType, currentPeriodIndex >= 0 ? currentPeriodIndex : 0, programLevel);
+        
+        // Calculate paid this period
+        const paidThisSemester = paymentsData
+            .filter(p => p.period === currentPeriod && p.status === 'completed')
+            .reduce((sum, p) => sum + p.amount, 0);
+        
+        // Calculate balance for current period
+        const balance = semesterFee - paidThisSemester;
 
-            if (!error && data) {
-                feeData = data;
-                console.log(`✅ Fee structure found: ${data.length} ${periodLabel}s`);
-            } else {
-                console.log(`ℹ️ No fee structure found for program: ${program}`);
-            }
-        } catch (e) {
-            console.log('ℹ️ Fee structure table may not exist yet');
-        }
-
-        // Build the data object
-        const totalDue = accountData?.total_fees_due || feeData.reduce((sum, f) => sum + f.amount, 0) || 0;
-        const totalPaid = accountData?.total_paid || paymentsData.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0) || 0;
-        const balance = totalDue - totalPaid;
-
-        // Format payments with correct period labels
+        // Format payments
         const formattedPayments = paymentsData.map(p => {
-            let period = p.period || 'Semester 1';
-            // Ensure period matches program type
-            if (programType === 'KRCHN' && !period.includes('Semester') && !period.includes('Year')) {
-                // Convert "Term X" to "Semester X"
+            // Ensure period matches the correct format
+            let period = p.period;
+            if (programType === 'KRCHN' && !period.includes('Semester')) {
+                // Convert to semester format if needed
                 const num = period.replace(/\D/g, '');
-                period = num ? `Semester ${num}` : 'Semester 1';
+                period = num ? `Year ${Math.ceil(num/3)} - Semester ${((num-1)%3)+1}` : periods[0];
             } else if (programType === 'TVET' && !period.includes('Term')) {
-                // Convert "Semester X" to "Term X"
+                // Convert to term format if needed
                 const num = period.replace(/\D/g, '');
-                period = num ? `Term ${num}` : 'Term 1';
+                period = num ? `Year ${Math.ceil(num/3)} - Term ${((num-1)%3)+1}` : periods[0];
             }
-            
             return {
                 date: p.payment_date || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
                 description: p.notes || `${period} Fees`,
@@ -268,48 +337,28 @@ async function fetchFinanceDataFromSupabase(user) {
             };
         });
 
-        // Format fee structure with correct period labels
-        const formattedFees = feeData.map(f => {
-            let period = f.block_term || 'Semester 1';
-            // Ensure period matches program type
-            if (programType === 'KRCHN' && !period.includes('Semester') && !period.includes('Year')) {
-                const num = period.replace(/\D/g, '');
-                period = num ? `Semester ${num}` : 'Semester 1';
-            } else if (programType === 'TVET' && !period.includes('Term')) {
-                const num = period.replace(/\D/g, '');
-                period = num ? `Term ${num}` : 'Term 1';
-            }
-            
-            return {
-                block: period,
-                amount: f.amount || 0,
-                description: f.description || `Tuition fees`
-            };
-        });
-
-        // If no fee structure, create default based on program type
-        if (formattedFees.length === 0) {
-            const defaultPeriods = getPeriods(programType);
-            const defaultAmount = getFeeAmount(programType);
-            defaultPeriods.forEach(period => {
-                formattedFees.push({
-                    block: period,
-                    amount: defaultAmount,
-                    description: `${period} Tuition Fees`
-                });
-            });
-        }
+        // Format fee structure
+        const formattedFees = periods.map((period, index) => ({
+            block: period,
+            amount: getFeeAmount(programType, index, programLevel),
+            description: `${period} Tuition Fees`
+        }));
 
         return {
-            balance: balance,
-            totalPaid: totalPaid,
-            totalDue: totalDue,
+            balance: Math.max(balance, 0),
+            totalPaid: accountData?.total_paid || paymentsData.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0),
+            totalDue: semesterFee,
             outstanding: Math.max(balance, 0),
-            paymentProgress: totalDue > 0 ? (totalPaid / totalDue * 100) : 100,
+            paymentProgress: semesterFee > 0 ? (paidThisSemester / semesterFee * 100) : 0,
             payments: formattedPayments,
             feeStructure: formattedFees,
             programType: programType,
+            programLevel: programLevel,
             periodLabel: periodLabel,
+            currentPeriod: currentPeriod,
+            currentPeriodIndex: currentPeriodIndex,
+            semesterFee: semesterFee,
+            paidThisSemester: paidThisSemester,
             student: {
                 name: user.full_name || user.name || 'Student',
                 id: user.studentId || user.id || 'N/A',
@@ -324,42 +373,41 @@ async function fetchFinanceDataFromSupabase(user) {
     }
 }
 
-/**
- * Get mock finance data (for testing/fallback)
- */
+// ============================================================
+// MOCK DATA
+// ============================================================
+
 function getMockFinanceData(user) {
     const programType = getProgramType(user?.program);
+    const programLevel = getProgramLevel(user?.program);
     const periodLabel = getPeriodLabel(programType);
-    const periods = getPeriods(programType);
-    const amount = getFeeAmount(programType);
+    const periods = getPeriods(programType, programLevel);
+    const amount = getFeeAmount(programType, 0, programLevel);
     
-    // Generate some mock payments (some completed, some pending)
+    // Generate mock payments
     const mockPayments = [];
-    const totalPeriods = programType === 'KRCHN' ? 9 : 9; // 3 semesters/terms per year
+    const totalPeriods = periods.length;
     
-    // Add completed payments for first 4 periods
-    for (let i = 0; i < Math.min(4, totalPeriods); i++) {
-        const period = periods[i];
-        mockPayments.push({
-            date: `2026-${String(i+1).padStart(2, '0')}-15`,
-            description: `${period} Fees`,
-            period: period,
-            amount: amount,
-            method: i % 2 === 0 ? 'M-Pesa' : 'Bank Transfer',
-            reference: `REF-${String(i+1).padStart(4, '0')}`,
-            status: 'completed'
-        });
-    }
+    // Add completed payments for first period
+    mockPayments.push({
+        date: '2026-07-31',
+        description: `${periods[0]} Fees (Full)`,
+        period: periods[0],
+        amount: amount,
+        method: 'M-Pesa',
+        reference: 'MPESA-7845',
+        status: 'completed'
+    });
     
-    // Add partial payment for current period
-    if (totalPeriods > 4) {
+    // Add partial payment for current period if more than 1 period
+    if (totalPeriods > 1) {
         mockPayments.push({
-            date: `2026-${String(5).padStart(2, '0')}-01`,
-            description: `${periods[4]} Fees (Partial)`,
-            period: periods[4],
+            date: '2026-08-15',
+            description: `${periods[1]} Fees (Partial)`,
+            period: periods[1],
             amount: Math.round(amount * 0.4),
-            method: 'M-Pesa',
-            reference: 'REF-PARTIAL',
+            method: 'Bank Transfer',
+            reference: 'BT-5678',
             status: 'pending'
         });
     }
@@ -368,22 +416,34 @@ function getMockFinanceData(user) {
     const totalPaid = mockPayments
         .filter(p => p.status === 'completed')
         .reduce((sum, p) => sum + p.amount, 0);
-    const totalDue = amount * totalPeriods;
+    const totalDue = getTotalFees(programType, programLevel);
     
+    // Determine current period
+    const currentPeriod = periods[0];
+    const semesterFee = getFeeAmount(programType, 0, programLevel);
+    const paidThisSemester = mockPayments
+        .filter(p => p.period === currentPeriod && p.status === 'completed')
+        .reduce((sum, p) => sum + p.amount, 0);
+
     return {
-        balance: totalDue - totalPaid,
+        balance: Math.max(semesterFee - paidThisSemester, 0),
         totalPaid: totalPaid,
-        totalDue: totalDue,
-        outstanding: totalDue - totalPaid,
-        paymentProgress: (totalPaid / totalDue) * 100,
+        totalDue: semesterFee,
+        outstanding: Math.max(semesterFee - paidThisSemester, 0),
+        paymentProgress: semesterFee > 0 ? (paidThisSemester / semesterFee * 100) : 0,
         payments: mockPayments,
-        feeStructure: periods.map(period => ({
+        feeStructure: periods.map((period, index) => ({
             block: period,
-            amount: amount,
+            amount: getFeeAmount(programType, index, programLevel),
             description: `${period} Tuition Fees`
         })),
         programType: programType,
+        programLevel: programLevel,
         periodLabel: periodLabel,
+        currentPeriod: currentPeriod,
+        currentPeriodIndex: 0,
+        semesterFee: semesterFee,
+        paidThisSemester: paidThisSemester,
         student: {
             name: user?.full_name || user?.name || 'Student',
             id: user?.studentId || user?.id || 'N/A',
@@ -397,63 +457,11 @@ function getMockFinanceData(user) {
 // UI UPDATE FUNCTIONS
 // ============================================================
 
-/**
- * Show loading state
- */
-function showFinanceLoading() {
-    // Payment history loading
-    const historyBody = document.getElementById('studentPaymentHistory');
-    if (historyBody) {
-        historyBody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="margin-top: 10px;">Loading payment history...</p>
-                </td>
-            </tr>
-        `;
-    }
-    
-    // Fee structure loading
-    const feeStructure = document.getElementById('studentFeeStructureDisplay');
-    if (feeStructure) {
-        feeStructure.innerHTML = `
-            <div style="text-align: center; padding: 30px; color: #94a3b8;">
-                <div style="display: inline-block; width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p style="margin-top: 8px;">Loading fee structure...</p>
-            </div>
-        `;
-    }
-}
-
-/**
- * Show error state
- */
-function showFinanceError(message) {
-    const historyBody = document.getElementById('studentPaymentHistory');
-    if (historyBody) {
-        historyBody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-                    <p>${message}</p>
-                    <button onclick="loadStudentFinance()" style="margin-top: 10px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sync-alt"></i> Retry
-                    </button>
-                </td>
-            </tr>
-        `;
-    }
-}
-
-/**
- * Update finance UI with data
- */
 function updateFinanceUI(data) {
     if (!data) return;
     
-    // Update program type indicator
-    updateProgramTypeIndicator(data);
+    // Update program info
+    updateProgramInfo(data.student, data.programType, data.programLevel);
     
     // Update balance
     updateBalance(data);
@@ -465,7 +473,7 @@ function updateFinanceUI(data) {
     renderPayments(data.payments || []);
     
     // Update fee structure
-    renderFeeStructure(data.feeStructure || []);
+    renderFeeStructureData(data.feeStructure || []);
     
     // Update last updated
     const lastUpdated = document.getElementById('financeLastUpdated');
@@ -477,70 +485,24 @@ function updateFinanceUI(data) {
     updateFinanceBadge(data);
 }
 
-/**
- * Update program type indicator in UI
- */
-function updateProgramTypeIndicator(data) {
-    const programType = data.programType || 'KRCHN';
-    const periodLabel = data.periodLabel || 'Semester';
-    
-    // Update the period labels in the UI
-    const periodLabels = document.querySelectorAll('.period-label');
-    periodLabels.forEach(el => {
-        el.textContent = periodLabel;
-    });
-    
-    // Update program info display
-    const programInfo = document.getElementById('programTypeInfo');
-    if (programInfo) {
-        const programDisplay = programType === 'KRCHN' ? 
-            'Nursing (KRCHN) - 3 Semesters per Year' : 
-            'TVET - 3 Terms per Year';
-        programInfo.textContent = programDisplay;
-    }
-    
-    // Update filter dropdown
-    const periodFilter = document.getElementById('financePeriodFilter');
-    if (periodFilter) {
-        // Keep the existing options but update display
-        const options = periodFilter.querySelectorAll('option');
-        options.forEach(opt => {
-            if (opt.value && opt.value !== 'all') {
-                // Find matching period from list
-                const periods = getPeriods(programType);
-                const match = periods.find(p => p === opt.value);
-                if (match) {
-                    opt.textContent = match;
-                }
-            }
-        });
-    }
-    
-    console.log(`📋 Using "${periodLabel}" terminology for this student`);
-}
-
-/**
- * Update balance display
- */
 function updateBalance(data) {
     const balance = data.balance || 0;
-    const totalPaid = data.totalPaid || 0;
-    const totalDue = data.totalDue || 0;
-    const outstanding = data.outstanding || (totalDue - totalPaid);
-    const progress = data.paymentProgress || (totalDue > 0 ? (totalPaid / totalDue * 100) : 100);
+    const semesterFee = data.semesterFee || 0;
+    const paidThisSemester = data.paidThisSemester || 0;
+    const progress = data.paymentProgress || 0;
     
     // Update balance
     const balanceDisplay = document.getElementById('studentBalanceDisplay');
     if (balanceDisplay) balanceDisplay.textContent = `KES ${balance.toLocaleString()}`;
     
-    const totalPaidDisplay = document.getElementById('studentTotalPaid');
-    if (totalPaidDisplay) totalPaidDisplay.textContent = `KES ${totalPaid.toLocaleString()}`;
+    const semesterFeeDisplay = document.getElementById('studentSemesterFee');
+    if (semesterFeeDisplay) semesterFeeDisplay.textContent = `KES ${semesterFee.toLocaleString()}`;
     
-    const totalDueDisplay = document.getElementById('studentTotalDue');
-    if (totalDueDisplay) totalDueDisplay.textContent = `KES ${totalDue.toLocaleString()}`;
+    const paidDisplay = document.getElementById('studentPaidThisSemester');
+    if (paidDisplay) paidDisplay.textContent = `KES ${paidThisSemester.toLocaleString()}`;
     
     const outstandingDisplay = document.getElementById('studentOutstanding');
-    if (outstandingDisplay) outstandingDisplay.textContent = `KES ${outstanding.toLocaleString()}`;
+    if (outstandingDisplay) outstandingDisplay.textContent = `KES ${balance.toLocaleString()}`;
     
     // Update status
     updateBalanceStatus(balance);
@@ -554,31 +516,31 @@ function updateBalance(data) {
     if (progressText) progressText.textContent = `${progressPercent}%`;
 }
 
-/**
- * Update balance status
- */
 function updateBalanceStatus(balance) {
     const statusEl = document.getElementById('balanceStatusDisplay');
     if (!statusEl) return;
     
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    
     if (balance === 0) {
-        statusEl.textContent = '✅ Paid in Full';
-        statusEl.style.background = '#d1fae5';
-        statusEl.style.color = '#059669';
+        statusEl.style.background = 'rgba(16,185,129,0.2)';
+        statusEl.style.color = '#10b981';
+        if (dot) dot.style.background = '#10b981';
+        if (text) text.textContent = 'Paid in Full';
     } else if (balance > 0 && balance <= 10000) {
-        statusEl.textContent = '⚠️ Partial Payment';
-        statusEl.style.background = '#fef3c7';
-        statusEl.style.color = '#d97706';
+        statusEl.style.background = 'rgba(245,158,11,0.2)';
+        statusEl.style.color = '#f59e0b';
+        if (dot) dot.style.background = '#f59e0b';
+        if (text) text.textContent = 'Partial Payment';
     } else {
-        statusEl.textContent = '🔴 Outstanding Balance';
-        statusEl.style.background = '#fee2e2';
-        statusEl.style.color = '#dc2626';
+        statusEl.style.background = 'rgba(239,68,68,0.2)';
+        statusEl.style.color = '#ef4444';
+        if (dot) dot.style.background = '#ef4444';
+        if (text) text.textContent = 'Outstanding Balance';
     }
 }
 
-/**
- * Update stats
- */
 function updateStats(data) {
     const payments = data.payments || [];
     
@@ -602,9 +564,6 @@ function updateStats(data) {
     if (recordCount) recordCount.textContent = `${payments.length} records`;
 }
 
-/**
- * Render payments table
- */
 function renderPayments(payments) {
     const tbody = document.getElementById('studentPaymentHistory');
     if (!tbody) return;
@@ -623,10 +582,10 @@ function renderPayments(payments) {
     
     tbody.innerHTML = payments.map(p => {
         const statusColors = {
-            completed: 'background:#d1fae5; color:#059669;',
-            pending: 'background:#fef3c7; color:#d97706;',
-            failed: 'background:#fee2e2; color:#dc2626;',
-            overdue: 'background:#fee2e2; color:#dc2626;'
+            completed: 'background: #d1fae5; color: #059669;',
+            pending: 'background: #fef3c7; color: #d97706;',
+            failed: 'background: #fee2e2; color: #dc2626;',
+            overdue: 'background: #fee2e2; color: #dc2626;'
         };
         const statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
         const statusStyle = statusColors[p.status] || statusColors.completed;
@@ -649,10 +608,47 @@ function renderPayments(payments) {
     }).join('');
 }
 
-/**
- * Render fee structure
- */
-function renderFeeStructure(fees) {
+function renderFeeStructure(periods, programType, programLevel) {
+    const container = document.getElementById('studentFeeStructureDisplay');
+    if (!container) return;
+    
+    let total = 0;
+    let html = '';
+    
+    periods.forEach((period, index) => {
+        const amount = getFeeAmount(programType, index, programLevel);
+        total += amount;
+        html += `
+            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+                <div>
+                    <div style="font-weight: 500; color: #0b1124;">${period}</div>
+                    <div style="font-size: 12px; color: #94a3b8;">${period} Tuition Fees</div>
+                </div>
+                <div style="font-weight: 600; color: #4C1D95;">KES ${amount.toLocaleString()}</div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html + `
+        <div style="display: flex; justify-content: space-between; padding: 12px 0 0 0; margin-top: 8px; border-top: 2px solid #e5e7eb; font-weight: 700; font-size: 16px; color: #0A3D62;">
+            <span>Total Program Fees</span>
+            <span>KES ${total.toLocaleString()}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 8px 0 0 0; font-size: 13px; color: #64748b;">
+            <span>Number of ${programType === 'KRCHN' ? 'Semesters' : 'Terms'}</span>
+            <span>${periods.length}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 4px 0 0 0; font-size: 13px; color: #64748b;">
+            <span>Duration</span>
+            <span>${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</span>
+        </div>
+    `;
+    
+    const totalEl = document.getElementById('feeStructureTotal');
+    if (totalEl) totalEl.textContent = `Total: KES ${total.toLocaleString()}`;
+}
+
+function renderFeeStructureData(fees) {
     const container = document.getElementById('studentFeeStructureDisplay');
     if (!container) return;
     
@@ -685,23 +681,12 @@ function renderFeeStructure(fees) {
             <span>Total Program Fees</span>
             <span>KES ${total.toLocaleString()}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; padding: 8px 0 0 0; font-size: 13px; color: #64748b;">
-            <span>Number of ${studentFinanceState.programType === 'KRCHN' ? 'Semesters' : 'Terms'}</span>
-            <span>${fees.length}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 4px 0 0 0; font-size: 13px; color: #64748b;">
-            <span>Duration</span>
-            <span>${studentFinanceState.programType === 'KRCHN' ? '3 Years (9 Semesters)' : '3 Years (9 Terms)'}</span>
-        </div>
     `;
     
     const totalEl = document.getElementById('feeStructureTotal');
     if (totalEl) totalEl.textContent = `Total: KES ${total.toLocaleString()}`;
 }
 
-/**
- * Update finance badge
- */
 function updateFinanceBadge(data) {
     const badge = document.getElementById('financeBadge');
     const badgeCount = document.getElementById('financeBadgeCount');
@@ -725,36 +710,23 @@ function updateFinanceBadge(data) {
 // FILTER FUNCTIONS
 // ============================================================
 
-/**
- * Filter student payments
- */
 function filterStudentPayments() {
-    // Get filter values
     const statusFilter = document.getElementById('financePaymentFilter')?.value || 'all';
     const periodFilter = document.getElementById('financePeriodFilter')?.value || 'all';
     const searchTerm = document.getElementById('financeSearch')?.value?.toLowerCase() || '';
     
-    // Get current payments from state
     const payments = studentFinanceState.payments || [];
     
-    // Apply filters
     let filtered = payments.filter(p => {
-        // Status filter
         if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-        
-        // Period filter
         if (periodFilter !== 'all' && p.period !== periodFilter) return false;
-        
-        // Search filter
         if (searchTerm) {
             const searchable = `${p.description} ${p.reference} ${p.method}`.toLowerCase();
             if (!searchable.includes(searchTerm)) return false;
         }
-        
         return true;
     });
     
-    // Re-render with filtered data
     renderPayments(filtered);
     const recordCount = document.getElementById('paymentRecordCount');
     if (recordCount) recordCount.textContent = `${filtered.length} records`;
@@ -764,13 +736,11 @@ function filterStudentPayments() {
 // ACTION FUNCTIONS
 // ============================================================
 
-/**
- * Initiate payment
- */
 function initiatePayment() {
     const programType = studentFinanceState.programType || 'KRCHN';
+    const programLevel = studentFinanceState.programLevel || 'diploma';
     const periodLabel = getPeriodLabel(programType);
-    const periods = getPeriods(programType);
+    const periods = getPeriods(programType, programLevel);
     
     Swal.fire({
         title: '💰 Make Payment',
@@ -845,7 +815,6 @@ function initiatePayment() {
                 showConfirmButton: false
             });
             
-            // Simulate redirect
             setTimeout(() => {
                 Swal.fire({
                     title: 'Redirecting...',
@@ -859,9 +828,6 @@ function initiatePayment() {
     });
 }
 
-/**
- * Download student statement
- */
 function downloadStudentStatement() {
     Swal.fire({
         title: 'Generating Statement',
@@ -886,20 +852,18 @@ function downloadStudentStatement() {
     }, 2000);
 }
 
-/**
- * View student invoices
- */
 function viewStudentInvoice() {
     const programType = studentFinanceState.programType || 'KRCHN';
-    const periods = getPeriods(programType);
-    const amount = getFeeAmount(programType);
+    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const periods = getPeriods(programType, programLevel);
     
     let invoicesHtml = '';
     const statuses = ['✅ Paid', '⏳ Partial', '🔴 Outstanding'];
     
     periods.forEach((period, index) => {
-        const status = index < 4 ? statuses[0] : (index === 4 ? statuses[1] : statuses[2]);
-        const color = index < 4 ? '#059669' : (index === 4 ? '#d97706' : '#dc2626');
+        const status = index < 1 ? statuses[0] : (index === 1 ? statuses[1] : statuses[2]);
+        const color = index < 1 ? '#059669' : (index === 1 ? '#d97706' : '#dc2626');
+        const amount = getFeeAmount(programType, index, programLevel);
         invoicesHtml += `
             <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: ${index < periods.length - 1 ? '1px solid #e5e7eb' : 'none'};">
                 <span><strong>${period}</strong></span>
@@ -918,7 +882,9 @@ function viewStudentInvoice() {
                 </div>
                 <p style="font-size: 12px; color: #94a3b8; margin-top: 8px;">
                     <i class="fas fa-info-circle"></i> 
-                    ${programType === 'KRCHN' ? '3 Semesters per year for 3 years' : '3 Terms per year for 3 years'}
+                    ${programType === 'KRCHN' ? '3 Semesters per year for 3 years' : 
+                      programLevel === 'certificate' ? '3 Terms per year for 1 year' : 
+                      '3 Terms per year for 2 years'}
                 </p>
             </div>
         `,
@@ -956,18 +922,13 @@ function showToast(message, type = 'info') {
 // COMMUNICATION WITH FINANCE MODULE
 // ============================================================
 
-/**
- * Listen for updates from Finance Module
- */
 function listenForFinanceUpdates() {
-    // Listen for storage events from Finance Module
     window.addEventListener('storage', function(e) {
         if (e.key === 'finance_to_student') {
             try {
                 const data = JSON.parse(e.newValue);
                 if (data && data.data) {
                     console.log('📨 Finance update received:', data);
-                    // Refresh finance data
                     setTimeout(loadStudentFinance, 500);
                 }
             } catch (e) {
@@ -976,7 +937,6 @@ function listenForFinanceUpdates() {
         }
     });
     
-    // Listen for custom events from Finance Module
     window.addEventListener('studentFinanceUpdate', function(e) {
         console.log('📨 Finance event received:', e.detail);
         setTimeout(loadStudentFinance, 500);
@@ -984,12 +944,55 @@ function listenForFinanceUpdates() {
 }
 
 // ============================================================
+// SHOW LOADING / ERROR
+// ============================================================
+
+function showFinanceLoading() {
+    const historyBody = document.getElementById('studentPaymentHistory');
+    if (historyBody) {
+        historyBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 10px;">Loading payment history...</p>
+                </td>
+            </tr>
+        `;
+    }
+    
+    const feeStructure = document.getElementById('studentFeeStructureDisplay');
+    if (feeStructure) {
+        feeStructure.innerHTML = `
+            <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                <div style="display: inline-block; width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="margin-top: 8px;">Loading fee structure...</p>
+            </div>
+        `;
+    }
+}
+
+function showFinanceError(message) {
+    const historyBody = document.getElementById('studentPaymentHistory');
+    if (historyBody) {
+        historyBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                    <p>${message}</p>
+                    <button onclick="loadStudentFinance()" style="margin-top: 10px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// ============================================================
 // AUTO-LOAD ON TAB ACTIVATION
 // ============================================================
 
-// Listen for tab changes to load finance data
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if finance tab exists and load data when shown
     const financeTab = document.querySelector('a[data-tab="finance"]');
     if (financeTab) {
         financeTab.addEventListener('click', function() {
@@ -997,19 +1000,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Listen for app ready event
     document.addEventListener('appReady', function() {
         console.log('📱 App ready, loading student finance...');
         setTimeout(loadStudentFinance, 800);
     });
     
-    // Also load if already on finance tab
     const currentTab = document.querySelector('.tab-content.active');
     if (currentTab && currentTab.id === 'finance') {
         setTimeout(loadStudentFinance, 500);
     }
     
-    // Setup filter listeners
     const paymentFilter = document.getElementById('financePaymentFilter');
     if (paymentFilter) paymentFilter.addEventListener('change', filterStudentPayments);
     
@@ -1019,10 +1019,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('financeSearch');
     if (searchInput) searchInput.addEventListener('keyup', filterStudentPayments);
     
-    // Listen for finance updates
     listenForFinanceUpdates();
     
-    // Add spin animation style if not exists
     if (!document.getElementById('financeSpinStyle')) {
         const style = document.createElement('style');
         style.id = 'financeSpinStyle';
@@ -1036,4 +1034,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('✅ Student Finance module loaded');
-console.log('📊 Supports KRCHN (3 Semesters per year) and TVET (3 Terms per year)');
+console.log('📊 Supports KRCHN (Semesters) and TVET (Terms with Years)');
+console.log('📚 TVET Certificate: 1 Year (3 Terms)');
+console.log('📚 TVET Diploma: 2 Years (6 Terms)');
