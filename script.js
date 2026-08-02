@@ -2731,15 +2731,6 @@ function getSb() {
     return window.sb || sb;
 }
 
-// ============================================================
-// 🔥 HELPER: Escape HTML
-// ============================================================
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
 // ============================================================
 // 🔥 PROGRAM HELPER FUNCTIONS - COMPLETE
