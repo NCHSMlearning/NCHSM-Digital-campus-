@@ -635,4 +635,119 @@
                         </div>
                         <div class="finance-form-group full-width">
                             <label>Module Description</label>
-                            <textarea id="moduleDescription" rows="2">NCHSM Finance Management Module - Handles student fees
+                            <textarea id="moduleDescription" rows="2">NCHSM Finance Management Module - Handles student fees, payments, and financial reports.</textarea>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <button onclick="saveSettings()" class="finance-btn finance-btn-primary">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                </div>
+
+                <div class="finance-form-container" style="margin-top: 20px;">
+                    <h3><i class="fas fa-database"></i> Data Management</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                        <button onclick="exportAllData()" class="finance-btn finance-btn-success">
+                            <i class="fas fa-download"></i> Export All Data
+                        </button>
+                        <button onclick="backupData()" class="finance-btn finance-btn-warning">
+                            <i class="fas fa-archive"></i> Backup Data
+                        </button>
+                        <button onclick="clearCache()" class="finance-btn finance-btn-outline">
+                            <i class="fas fa-broom"></i> Clear Cache
+                        </button>
+                        <button onclick="resetModule()" class="finance-btn finance-btn-danger">
+                            <i class="fas fa-exclamation-triangle"></i> Reset Module
+                        </button>
+                    </div>
+                    <div style="margin-top: 12px; padding: 12px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b; font-size: 13px; color: #92400e;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Warning:</strong> Resetting the module will delete all financial data. This action cannot be undone.
+                    </div>
+                </div>
+
+                <div class="finance-form-container" style="margin-top: 20px;">
+                    <h3><i class="fas fa-link"></i> Integration Status</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                        <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span><i class="fas fa-user-shield" style="color: #4C1D95;"></i> Super Admin</span>
+                                <span class="finance-badge finance-badge-success">Connected</span>
+                            </div>
+                            <small style="color: #64748b;">Full access to all features</small>
+                        </div>
+                        <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span><i class="fas fa-user-graduate" style="color: #10b981;"></i> Student Dashboard</span>
+                                <span class="finance-badge finance-badge-success">Connected</span>
+                            </div>
+                            <small style="color: #64748b;">View balances, payment history</small>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ===== MODALS ===== -->
+    <!-- ============================================================ -->
+
+    <!-- ===== PAYMENT DETAIL MODAL ===== -->
+    <div id="paymentDetailModal" class="finance-modal">
+        <div class="finance-modal-content">
+            <div class="finance-modal-header">
+                <h3><i class="fas fa-receipt"></i> Payment Details</h3>
+                <button class="finance-modal-close" onclick="closeModal('paymentDetailModal')">&times;</button>
+            </div>
+            <div class="finance-modal-body" id="paymentDetailBody">
+                <div class="finance-loading">
+                    <div class="spinner"></div>
+                    <span>Loading payment details...</span>
+                </div>
+            </div>
+            <div class="finance-modal-footer">
+                <button onclick="printPaymentReceipt()" class="finance-btn finance-btn-primary">
+                    <i class="fas fa-print"></i> Print Receipt
+                </button>
+                <button onclick="closeModal('paymentDetailModal')" class="finance-btn finance-btn-outline">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== STUDENT ACCOUNT DETAIL MODAL ===== -->
+    <div id="studentAccountModal" class="finance-modal">
+        <div class="finance-modal-content" style="max-width: 800px;">
+            <div class="finance-modal-header">
+                <h3><i class="fas fa-user"></i> Student Account Details</h3>
+                <button class="finance-modal-close" onclick="closeModal('studentAccountModal')">&times;</button>
+            </div>
+            <div class="finance-modal-body" id="studentAccountBody">
+                <div class="finance-loading">
+                    <div class="spinner"></div>
+                    <span>Loading student account...</span>
+                </div>
+            </div>
+            <div class="finance-modal-footer">
+                <button onclick="generateStudentStatement()" class="finance-btn finance-btn-primary">
+                    <i class="fas fa-file-invoice"></i> Generate Statement
+                </button>
+                <button onclick="closeModal('studentAccountModal')" class="finance-btn finance-btn-outline">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== EXTERNAL JAVASCRIPT ===== -->
+    <script src="js/finance-config.js"></script>
+    <script src="js/finance-api.js"></script>
+    <script src="js/finance-admin.js"></script>
+    <script src="js/finance-student.js"></script>
+    <script src="js/finance-app.js"></script>
+</body>
+</html>
