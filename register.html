@@ -15,12 +15,9 @@
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Croppic CSS (for image cropping like NCK) -->
-    <link href="https://osp.nckenya.go.ke/assets/css/theme-default/libs/croppic/croppic.css" rel="stylesheet">
-    
     <style>
         /* ============================================
-                   ALL YOUR EXISTING STYLES + NEW UPLOAD STYLES
+                   ALL STYLES
                    ============================================ */
         * {
             margin: 0;
@@ -326,11 +323,6 @@
             transition: all 0.3s ease;
             margin-top: 4px;
         }
-        .strength-text {
-            font-size: 0.65rem;
-            margin-top: 2px;
-            transition: all 0.3s ease;
-        }
         .strength-weak { background: #ef4444; width: 25%; }
         .strength-fair { background: #f59e0b; width: 50%; }
         .strength-good { background: #3b82f6; width: 75%; }
@@ -377,7 +369,7 @@
         }
 
         /* ============================================
-                   PROFILE PHOTO UPLOAD - ENHANCED
+                   PROFILE PHOTO UPLOAD
                    ============================================ */
         .photo-upload-container {
             display: flex;
@@ -452,7 +444,7 @@
         }
 
         /* ============================================
-                   DOCUMENT UPLOAD CARDS (UPDATED - Only KCSE & ID)
+                   DOCUMENT UPLOAD CARDS
                    ============================================ */
         .documents-grid {
             display: grid;
@@ -775,40 +767,6 @@
         }
 
         /* ============================================
-                   CROPPIC OVERRIDES
-                   ============================================ */
-        .cropContainerModal {
-            max-height: 400px;
-            overflow: hidden;
-        }
-        .cropControlsUpload {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
-        .cropControlsUpload button {
-            width: auto;
-            padding: 8px 20px;
-            font-size: 0.8rem;
-            margin: 0;
-            border-radius: 30px;
-        }
-        .cropControlsUpload .cropControlCrop {
-            background: #10b981;
-        }
-        .cropControlsUpload .cropControlCrop:hover {
-            background: #059669;
-        }
-        .cropControlsUpload .cropControlRemove {
-            background: #ef4444;
-        }
-        .cropControlsUpload .cropControlRemove:hover {
-            background: #dc2626;
-        }
-
-        /* ============================================
                    ANIMATIONS
                    ============================================ */
         @keyframes fadeIn {
@@ -892,6 +850,17 @@
         }
         .upload-progress.active {
             display: block;
+        }
+        
+        /* Student ID validation styles */
+        #student-id-status.valid {
+            color: #10b981;
+        }
+        #student-id-status.invalid {
+            color: #dc2626;
+        }
+        #student-id-status.checking {
+            color: #f59e0b;
         }
     </style>
 </head>
@@ -993,9 +962,9 @@
                 </div>
             </div>
 
-            <!-- PROFILE PHOTO UPLOAD -->
+            <!-- PROFILE PHOTO UPLOAD - For Staff ID Card -->
             <div class="form-group">
-                <label><i data-feather="camera"></i> Profile Photo <span style="font-weight:400;color:#64748B;">(Optional)</span></label>
+                <label><i data-feather="camera"></i> Passport Photo (Face) <span style="font-weight:400;color:#64748B;">(For Staff/Student ID Card)</span></label>
                 <div class="photo-upload-container">
                     <div class="photo-preview" id="photoPreview" onclick="document.getElementById('profile_photo').click()">
                         <div class="placeholder-icon">📸</div>
@@ -1004,7 +973,7 @@
                     </div>
                     <div class="photo-upload-controls">
                         <input type="file" id="profile_photo" name="profile_photo" accept="image/*" style="display: none;" onchange="handlePhotoUpload(event)">
-                        <div class="help-text">Upload a passport photo (JPEG, PNG) - Max 5MB</div>
+                        <div class="help-text">Upload a clear passport-style photo (JPEG, PNG) - Max 5MB</div>
                         <div class="photo-status" id="photoStatus">No photo selected</div>
                         <div class="upload-progress" id="photoProgress">
                             <div class="progress-bar-inner" id="photoProgressBar"></div>
@@ -1023,11 +992,18 @@
         <!-- ============================================ -->
         <div class="form-section" data-section="2" style="display: none;">
 
+            <!-- STUDENT FIELDS -->
             <div id="student-fields" class="role-fields">
                 <div class="form-group">
-                    <label><i data-feather="id"></i> Admission / Student ID</label>
-                    <input type="text" id="student_id_number" name="student_id_number" placeholder="e.g. KRCHN/001/2026">
-                    <div class="help-text">Your unique student identification number</div>
+                    <label><i data-feather="id"></i> Admission / Student ID <span style="color:red;">*</span></label>
+                    <input type="text" id="student_id_number" name="student_id_number" 
+                           placeholder="KRCHN/0032/MAR/2024 or DPOTT/10726/05/26" required>
+                    <div id="student-id-status" class="help-text" style="font-weight: 600; margin-top: 4px; min-height: 20px;"></div>
+                    <div class="help-text">
+                        <strong>Nursing (KRCHN):</strong> KRCHN/XXXX/MAR/YYYY (e.g., KRCHN/0032/MAR/2024)
+                        <br><strong>TVET:</strong> PROGRAM/XXXXX/MM/YY (e.g., DPOTT/10726/05/26)
+                        <br>Valid TVET Programs: DPOTT, DCH, DHRIT, DSL, DSW, DCJS, DHSS, DICT, DME
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -1097,22 +1073,31 @@
                             <label><i data-feather="calendar"></i> Intake</label>
                             <div class="tvet-intake-row">
                                 <select id="tvet_intake_month" name="tvet_intake_month">
-                                    <option value="January">January</option>
-                                    <option value="March" selected>March</option>
-                                    <option value="May">May</option>
-                                    <option value="July">July</option>
-                                    <option value="September">September</option>
+                                    <option value="01">January (01)</option>
+                                    <option value="02">February (02)</option>
+                                    <option value="03" selected>March (03)</option>
+                                    <option value="04">April (04)</option>
+                                    <option value="05">May (05)</option>
+                                    <option value="06">June (06)</option>
+                                    <option value="07">July (07)</option>
+                                    <option value="08">August (08)</option>
+                                    <option value="09">September (09)</option>
+                                    <option value="10">October (10)</option>
+                                    <option value="11">November (11)</option>
+                                    <option value="12">December (12)</option>
                                 </select>
                                 <select id="tvet_intake_year" name="tvet_intake_year">
-                                    <option value="2024">2024</option>
-                                    <option value="2025">2025</option>
-                                    <option value="2026" selected>2026</option>
-                                    <option value="2027">2027</option>
-                                    <option value="2028">2028</option>
+                                    <option value="24">2024</option>
+                                    <option value="25">2025</option>
+                                    <option value="26" selected>2026</option>
+                                    <option value="27">2027</option>
+                                    <option value="28">2028</option>
+                                    <option value="29">2029</option>
+                                    <option value="30">2030</option>
                                 </select>
                             </div>
-                            <div class="help-text">TVET intake: January, March, May, July, September</div>
-                            <div class="intake-preview">📅 Will display as: <strong id="tvetDisplay">March 2026 Intake</strong></div>
+                            <div class="help-text">TVET intake: Select month (01-12) and year (2 digits)</div>
+                            <div class="intake-preview">📅 Will display as: <strong id="tvetDisplay">03/26 Intake</strong></div>
                         </div>
                     </div>
                 </div>
@@ -1131,26 +1116,81 @@
                 <div class="help-text">📌 Block will be set by Admin after approval</div>
             </div>
 
+            <!-- LECTURER FIELDS - No Staff ID Field! -->
             <div id="lecturer-fields" class="role-fields">
-               <div class="two-columns">
-   <div class="form-group">
-    <label><i data-feather="id"></i> Staff ID <span style="color:#64748B;font-weight:400;">(Optional)</span></label>
-    <input type="text" id="staff_id" name="staff_id" placeholder="Leave blank for auto-generation">
-    <div class="help-text">Staff ID will be auto-generated as NCHSMNUR-001, NCHSMTVT-001, etc.</div>
-</div>
-    <div class="form-group">
-        <label><i data-feather="briefcase"></i> Department</label>
-        <select id="department" name="department">
-            <option value="">-- Select Department --</option>
-            <option value="Nursing">Nursing</option>
-            <option value="TVET">TVET</option>
-            <option value="Community Health">Community Health</option>
-            <option value="Health Records">Health Records</option>
-            <option value="ICT">ICT</option>
-            <option value="Administration">Administration</option>
-        </select>
-    </div>
-</div>
+                <div style="background:#e8f4f8;padding:12px 16px;border-radius:12px;margin-bottom:16px;border-left:4px solid #0A3D62;">
+                    <p style="font-size:0.8rem;color:#0A3D62;margin:0;font-weight:500;">
+                        🆔 <strong>Staff ID will be auto-generated</strong> after registration (e.g., NCHSMNUR-001, NCHSMTVT-001)
+                    </p>
+                </div>
+                
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label><i data-feather="briefcase"></i> Department <span style="color:red;">*</span></label>
+                        <select id="department" name="department" required>
+                            <option value="">-- Select Department --</option>
+                            <option value="Nursing">Nursing</option>
+                            <option value="TVET">TVET</option>
+                            <option value="Community Health">Community Health</option>
+                            <option value="Health Records">Health Records</option>
+                            <option value="ICT">ICT</option>
+                            <option value="Administration">Administration</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i data-feather="calendar"></i> Employment Date</label>
+                        <input type="date" id="employment_date" name="employment_date">
+                    </div>
+                </div>
+                
+                <!-- Lecturer Documents -->
+                <div style="margin-top:12px;">
+                    <p style="font-weight:600;font-size:0.8rem;color:#1e293b;margin-bottom:8px;">
+                        📁 Lecturer Documents <span style="font-weight:400;color:#64748B;">(Upload)</span>
+                    </p>
+                    <div class="documents-grid">
+                        <div class="doc-card" id="doc_lecturer_id">
+                            <div class="doc-icon">🪪</div>
+                            <div class="doc-name">National ID / Passport</div>
+                            <div class="doc-status" id="doc_lecturer_id_status">Not uploaded</div>
+                            <div class="doc-badge">✓</div>
+                            <div class="doc-remove" onclick="removeDocument('lecturer_id')">✕ Remove</div>
+                            <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'lecturer_id')">
+                            <div class="doc-file-name" id="doc_lecturer_id_filename"></div>
+                        </div>
+                        
+                        <div class="doc-card" id="doc_kra_pin">
+                            <div class="doc-icon">📄</div>
+                            <div class="doc-name">KRA PIN Certificate</div>
+                            <div class="doc-status" id="doc_kra_pin_status">Not uploaded</div>
+                            <div class="doc-badge">✓</div>
+                            <div class="doc-remove" onclick="removeDocument('kra_pin')">✕ Remove</div>
+                            <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'kra_pin')">
+                            <div class="doc-file-name" id="doc_kra_pin_filename"></div>
+                        </div>
+                        
+                        <div class="doc-card" id="doc_university_cert">
+                            <div class="doc-icon">🎓</div>
+                            <div class="doc-name">University Certificate</div>
+                            <div class="doc-status" id="doc_university_cert_status">Not uploaded</div>
+                            <div class="doc-badge">✓</div>
+                            <div class="doc-remove" onclick="removeDocument('university_cert')">✕ Remove</div>
+                            <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'university_cert')">
+                            <div class="doc-file-name" id="doc_university_cert_filename"></div>
+                        </div>
+                        
+                        <div class="doc-card" id="doc_cv">
+                            <div class="doc-icon">📝</div>
+                            <div class="doc-name">CV / Resume</div>
+                            <div class="doc-status" id="doc_cv_status">Not uploaded</div>
+                            <div class="doc-badge">✓</div>
+                            <div class="doc-remove" onclick="removeDocument('cv')">✕ Remove</div>
+                            <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'cv')">
+                            <div class="doc-file-name" id="doc_cv_filename"></div>
+                        </div>
+                    </div>
+                    <div class="help-text" style="margin-top:6px;">📌 Recommended: ID, KRA PIN, University Certificate, CV</div>
+                </div>
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 0.5rem;">
@@ -1164,7 +1204,7 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- STEP 3: DOCUMENT UPLOADS (UPDATED - Only KCSE & ID) -->
+        <!-- STEP 3: DOCUMENT UPLOADS -->
         <!-- ============================================ -->
         <div class="form-section" data-section="3" style="display: none;">
             
@@ -1175,8 +1215,8 @@
                 </p>
             </div>
 
-            <!-- Document Upload Grid - Updated: Only KCSE & ID -->
-            <div class="documents-grid">
+            <!-- Document Upload Grid - Student Documents -->
+            <div id="student-docs" class="documents-grid">
                 <!-- 1. KCSE Certificate -->
                 <div class="doc-card" id="doc_kcse">
                     <div class="doc-icon">📄</div>
@@ -1359,13 +1399,8 @@
         </div>
     </div>
 </div>
-<script src="code-protection.js"></script>
+
 <script>
-    // Hides the .html extension in the URL  
-if (window.location.pathname.endsWith('.html')) {
-    const cleanPath = window.location.pathname.replace(/\.html$/, '');
-    window.history.replaceState({}, '', cleanPath);
-}
     // ============================================
     // INITIALIZATION
     // ============================================
@@ -1375,7 +1410,157 @@ if (window.location.pathname.endsWith('.html')) {
         updateProgress();
         document.getElementById('role').dispatchEvent(new Event('change'));
     });
-    
+
+    // ============================================
+    // STUDENT ID VALIDATION - Full Formats
+    // ============================================
+    function validateStudentId(studentId) {
+        if (!studentId || studentId.trim() === '') {
+            return { valid: false, message: 'Student ID is required' };
+        }
+        
+        const cleaned = studentId.trim().toUpperCase();
+        
+        // FORMAT 1: KRCHN/XXXX/MAR/YYYY (Nursing)
+        const krchnRegex = /^KRCHN\/(\d{4})\/(MAR)\/(\d{4})$/;
+        const krchnMatch = cleaned.match(krchnRegex);
+        if (krchnMatch) {
+            const number = krchnMatch[1];
+            const month = krchnMatch[2];
+            const year = krchnMatch[3];
+            
+            if (month !== 'MAR') {
+                return { valid: false, message: 'KRCHN intakes are only in March (MAR)' };
+            }
+            
+            const yearNum = parseInt(year);
+            if (yearNum < 2020 || yearNum > 2030) {
+                return { valid: false, message: 'Year must be between 2020 and 2030' };
+            }
+            
+            return { 
+                valid: true, 
+                format: 'krchn',
+                program: 'KRCHN',
+                number: number,
+                month: month,
+                year: year,
+                display: `KRCHN/${number}/${month}/${year}`
+            };
+        }
+        
+        // FORMAT 2: PROGRAM/XXXXX/MM/YY (TVET)
+        const tvetRegex = /^([A-Z]{2,5})\/(\d{5})\/(\d{2})\/(\d{2})$/;
+        const tvetMatch = cleaned.match(tvetRegex);
+        if (tvetMatch) {
+            const program = tvetMatch[1];
+            const number = tvetMatch[2];
+            const month = tvetMatch[3];
+            const year = tvetMatch[4];
+            
+            const validTvetPrograms = [
+                'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 
+                'DCJS', 'DHSS', 'DICT', 'DME', 'CPOTT', 
+                'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 
+                'CCJS', 'CAG', 'CHSS', 'CICT', 'ACH', 
+                'AAG', 'ASW', 'CCA', 'PTE'
+            ];
+            
+            if (!validTvetPrograms.includes(program)) {
+                return { 
+                    valid: false, 
+                    message: `Invalid program "${program}". Valid: ${validTvetPrograms.join(', ')}` 
+                };
+            }
+            
+            const monthNum = parseInt(month);
+            if (monthNum < 1 || monthNum > 12) {
+                return { valid: false, message: 'Month must be 01-12' };
+            }
+            
+            const yearNum = parseInt(year);
+            if (yearNum < 20 || yearNum > 30) {
+                return { valid: false, message: 'Year must be 20-30 (2020-2030)' };
+            }
+            
+            const monthNames = {
+                '01': 'JAN', '02': 'FEB', '03': 'MAR', '04': 'APR',
+                '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
+                '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
+            };
+            
+            return { 
+                valid: true, 
+                format: 'tvet',
+                program: program,
+                number: number,
+                month: month,
+                monthName: monthNames[month] || month,
+                year: year,
+                fullYear: '20' + year,
+                display: `${program}/${number}/${month}/${year}`
+            };
+        }
+        
+        return { 
+            valid: false, 
+            message: 'Invalid format. Use KRCHN/XXXX/MAR/YYYY for Nursing or PROGRAM/XXXXX/MM/YY for TVET' 
+        };
+    }
+
+    // ============================================
+    // STUDENT ID REAL-TIME VALIDATION
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        const studentIdInput = document.getElementById('student_id_number');
+        const studentIdStatus = document.getElementById('student-id-status');
+        
+        if (studentIdInput && studentIdStatus) {
+            studentIdInput.addEventListener('input', function() {
+                const value = this.value.trim();
+                
+                if (!value) {
+                    studentIdStatus.textContent = '';
+                    studentIdStatus.className = 'help-text';
+                    this.style.borderColor = '#e2e8f0';
+                    return;
+                }
+                
+                const result = validateStudentId(value);
+                
+                if (result.valid) {
+                    let formatText = '';
+                    if (result.format === 'krchn') {
+                        formatText = `✅ Valid KRCHN format: ${result.program} | #${result.number} | ${result.month} ${result.year}`;
+                    } else if (result.format === 'tvet') {
+                        formatText = `✅ Valid TVET format: ${result.program} | #${result.number} | ${result.monthName} ${result.fullYear}`;
+                    }
+                    
+                    studentIdStatus.textContent = formatText;
+                    studentIdStatus.className = 'help-text valid';
+                    this.style.borderColor = '#10b981';
+                    
+                    // Auto-select program if it matches
+                    const programSelect = document.getElementById('program_type');
+                    if (programSelect && result.program) {
+                        const options = programSelect.options;
+                        for (let option of options) {
+                            if (option.value === result.program) {
+                                option.selected = true;
+                                programSelect.dispatchEvent(new Event('change'));
+                                break;
+                            }
+                        }
+                    }
+                    
+                } else {
+                    studentIdStatus.textContent = '❌ ' + result.message;
+                    studentIdStatus.className = 'help-text invalid';
+                    this.style.borderColor = '#DC2626';
+                }
+            });
+        }
+    });
 
     // ============================================
     // SUPABASE CONFIGURATION
@@ -1384,322 +1569,18 @@ if (window.location.pathname.endsWith('.html')) {
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-
-        // ============================================
-    // BREVO EMAIL CONFIGURATION
-    // ============================================
-    const BREVO_CONFIG = {
-        apiKey: null,  // Will be loaded from Supabase
-        apiUrl: 'https://api.brevo.com/v3/smtp/email',
-        sender: {
-            email: 'noreply@nakurucollegeofhealthelearning.site',
-            name: 'NCHSM ICT Support'
-        }
-    };
-
-    // ============================================
-    // LOAD BREVO API KEY FROM SUPABASE
-    // ============================================
-    async function loadBrevoApiKey() {
-        try {
-            // Check cache first
-            const cached = sessionStorage.getItem('brevo_api_key');
-            if (cached) {
-                console.log('📦 Using cached Brevo API key');
-                BREVO_CONFIG.apiKey = cached;
-                return true;
-            }
-            
-            console.log('🔑 Fetching Brevo API key from Supabase...');
-            
-            const { data, error } = await sb.functions.invoke('get-secret', {
-                body: { secret_name: 'BREVO_API_KEY' }
-            });
-            
-            if (error) {
-                console.error('❌ Error fetching secret:', error);
-                return false;
-            }
-            
-            if (data && data.secret) {
-                BREVO_CONFIG.apiKey = data.secret;
-                sessionStorage.setItem('brevo_api_key', data.secret);
-                console.log('✅ Brevo API key loaded successfully');
-                return true;
-            }
-            
-            return false;
-        } catch (error) {
-            console.error('❌ Failed to load Brevo API key:', error);
-            return false;
-        }
-    }
-
-    // ============================================
-    // SEND WELCOME/REGISTRATION NOTIFICATION
-    // ============================================
-    async function sendRegistrationNotification(userEmail, userName, studentId, program, intake) {
-        // Check if we have the API key
-        if (!BREVO_CONFIG.apiKey) {
-            console.log('⏳ Loading Brevo API key...');
-            const loaded = await loadBrevoApiKey();
-            if (!loaded) {
-                console.error('❌ Cannot send notification - API key not loaded');
-                return;
-            }
-        }
-        
-        // Double check
-        if (!BREVO_CONFIG.apiKey) {
-            console.error('❌ No Brevo API key available');
-            return;
-        }
-        
-        try {
-            console.log(`📧 Sending registration notification to ${userEmail}`);
-            
-            // Get current time in EAT
-            const now = new Date();
-            const time = now.toLocaleString('en-KE', { 
-                timeZone: 'Africa/Nairobi',
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            // Build the welcome email
-            const htmlContent = buildWelcomeEmail(userName, userEmail, studentId, program, intake, time);
-            
-            // Send via Brevo
-            const response = await fetch(BREVO_CONFIG.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'api-key': BREVO_CONFIG.apiKey,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    sender: { 
-                        email: BREVO_CONFIG.sender.email, 
-                        name: BREVO_CONFIG.sender.name
-                    },
-                    to: [{ email: userEmail }],
-                    subject: '🎓 Welcome to NCHSM Digital Portal!',
-                    htmlContent: htmlContent
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                console.log(`✅ Welcome email sent to ${userEmail}`);
-            } else {
-                console.error('❌ Welcome email failed:', data);
-            }
-            
-        } catch(e) {
-            console.warn('⚠️ Welcome email error:', e);
-        }
-    }
-
-    // ============================================
-    // ADD STAFF TO STAFF_RECORDS (Auto-Generated Staff ID)
-    // ============================================
-    async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender) {
-        try {
-            // Check if staff already exists
-            const { data: existing } = await sb
-                .from('staff_records')
-                .select('id')
-                .eq('email', email)
-                .maybeSingle();
-            
-            if (existing) {
-                console.log('⚠️ Staff already exists in staff_records:', email);
-                return true;
-            }
-            
-            // ============================================
-            // AUTO-GENERATE STAFF ID WITH NCHSM PREFIX
-            // ============================================
-            let finalStaffId = staffId;
-
-            if (!finalStaffId || finalStaffId.trim() === '') {
-                // Department code mapping
-                const deptCodes = {
-                    'Nursing': 'NUR',
-                    'TVET': 'TVT',
-                    'Community Health': 'COM',
-                    'Health Records': 'HRT',
-                    'ICT': 'ICT',
-                    'Administration': 'ADM',
-                    'Clinical Medicine': 'CLN',
-                    'Tutors': 'TUT'
-                };
-                
-                const deptCode = deptCodes[department] || 'STA';
-                
-                // Get count of staff in this department
-                const { data: deptStaff } = await sb
-                    .from('staff_records')
-                    .select('id')
-                    .ilike('id', 'NCHSM' + deptCode + '-%')
-                    .order('created_at', { ascending: false });
-                
-                let nextNumber = 1;
-                if (deptStaff && deptStaff.length > 0) {
-                    const lastId = deptStaff[0].id;
-                    const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
-                    if (match) {
-                        nextNumber = parseInt(match[1]) + 1;
-                    } else {
-                        nextNumber = deptStaff.length + 1;
-                    }
-                }
-                
-                // Format: NCHSMNUR-001, NCHSMTVT-001, etc.
-                finalStaffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
-                console.log('🆕 Auto-generated Staff ID:', finalStaffId);
-            }
-            
-            // Split name
-            const nameParts = fullName.trim().split(' ');
-            const firstName = nameParts[0] || '';
-            const otherNames = nameParts.slice(1).join(' ') || '';
-            
-            // Prepare staff data
-            const staffData = {
-                id: finalStaffId,
-                title: 'Mr.',
-                first_name: firstName,
-                other_names: otherNames,
-                department: department || 'Nursing',
-                designation: 'lecturer',
-                email: email,
-                phone: phone || '',
-                gender: gender || 'Male',
-                login_enabled: true,
-                password_hash: btoa(password),
-                status: 'active',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                program: 'KRCHN'
-            };
-            
-            // Insert into staff_records
-            const { error } = await sb
-                .from('staff_records')
-                .insert([staffData]);
-            
-            if (error) {
-                console.error('❌ Failed to add staff to staff_records:', error);
-                return false;
-            }
-            
-            console.log('✅ Staff added to staff_records with ID:', finalStaffId);
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Error adding staff to staff_records:', error);
-            return false;
-        }
-    }
-
-    // ============================================
-    // BUILD WELCOME EMAIL - UPDATED CONTACTS
-    // ============================================
-    function buildWelcomeEmail(name, email, studentId, program, intake, time) {
-        const year = new Date().getFullYear();
-        
-        // Contact details
-        const CONTACT_EMAIL = 'portal.nchsm@gmail.com';
-        const PHONE1 = '0790969743';
-        const PHONE2 = '0702432987';
-        
-        return `
-    <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"></head>
-    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f0f4f8;">
-        <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="text-align: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0;">
-                <div style="display: inline-block; background: #0A3D62; border-radius: 50%; padding: 12px;">
-                    <span style="font-size: 32px;">🎓</span>
-                </div>
-                <h2 style="color: #0A3D62; margin: 10px 0 5px;">Welcome to NCHSM!</h2>
-                <p style="color: #64748B; margin: 0;">Nakuru College of Health Sciences and Management</p>
-            </div>
-            
-            <div style="background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
-                <p style="margin: 0; font-size: 16px; color: #0A3D62;">
-                    👋 <strong>Dear ${name}</strong>
-                </p>
-                <p style="margin: 8px 0 0; color: #1e293b;">
-                    Your NCHSM Digital Portal account has been successfully created! 
-                    We're excited to have you join our learning community.
-                </p>
-            </div>
-            
-            <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-                <h4 style="margin: 0 0 12px 0; color: #1e293b;">📋 Account Details</h4>
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                    <tr><td style="padding: 6px 0; color: #64748B;">👤 Name</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${name}</td></tr>
-                    <tr><td style="padding: 6px 0; color: #64748B;">📧 Email</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${email}</td></tr>
-                    <tr><td style="padding: 6px 0; color: #64748B;">🆔 Student ID</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${studentId || 'Pending'}</td></tr>
-                    <tr><td style="padding: 6px 0; color: #64748B;">📚 Program</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${program || 'N/A'}</td></tr>
-                    <tr><td style="padding: 6px 0; color: #64748B;">📅 Intake</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${intake || 'N/A'}</td></tr>
-                    <tr><td style="padding: 6px 0; color: #64748B;">🕐 Registered</td><td style="padding: 6px 0; color: #0A3D62; font-weight: 500;">${time}</td></tr>
-                </table>
-            </div>
-            
-            <div style="background: #dbeafe; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
-                <h5 style="margin: 0 0 8px 0; color: #1E40AF;">📌 Next Steps</h5>
-                <ul style="margin: 0; padding-left: 20px; color: #1e293b; font-size: 13px; line-height: 1.6;">
-                    <li>✅ Your account is pending admin approval</li>
-                    <li>📧 You will receive a confirmation email once approved</li>
-                    <li>🔑 Use your email and password to login</li>
-                    <li>📚 Access course materials after approval</li>
-                </ul>
-            </div>
-            
-            <div style="background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B;">
-                <h5 style="margin: 0 0 8px 0; color: #92400E;">💡 Support</h5>
-                <p style="margin: 0; color: #78350F; font-size: 13px;">
-                    If you have any questions or need assistance, contact NCHSM ICT Support:
-                    <br>📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a>
-                    <br>📞 <a href="tel:+254790969743" style="color: #0A3D62; text-decoration: none;">${PHONE1}</a> | 
-                    📞 <a href="tel:+254702432987" style="color: #0A3D62; text-decoration: none;">${PHONE2}</a>
-                </p>
-            </div>
-            
-            <div style="text-align: center; margin: 20px 0;">
-                <a href="https://nakurucollegeofhealthelearning.site/login.html" 
-                   style="background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
-                    🚪 Go to Login
-                </a>
-            </div>
-            
-            <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
-            <p style="font-size: 12px; color: #94a3b8; text-align: center;">
-                NCHSM ICT Support<br>
-                📧 <a href="mailto:${CONTACT_EMAIL}" style="color: #0A3D62; text-decoration: none;">${CONTACT_EMAIL}</a><br>
-                📞 ${PHONE1} | ${PHONE2}<br>
-                🔗 <a href="https://mail.nakurucollegeofhealthelearning.site" style="color: #0A3D62; text-decoration: none;">mail.nakurucollegeofhealthelearning.site</a><br>
-                © ${year} Nakuru College of Health Sciences and Management
-            </p>
-        </div>
-    </body>
-    </html>
-        `;
-    }
-
     // ============================================
     // STORED DOCUMENTS DATA
     // ============================================
     const uploadedDocs = {
         kcse: null,
-        id: null
+        id: null,
+        // Lecturer documents
+        lecturer_id: null,
+        kra_pin: null,
+        university_cert: null,
+        cv: null,
+        profile_photo: null
     };
 
     // ============================================
@@ -1893,9 +1774,9 @@ if (window.location.pathname.endsWith('.html')) {
         } else if (isTVET) {
             document.getElementById('krchn-intake').classList.add('hidden');
             document.getElementById('tvet-intake').classList.remove('hidden');
-            const month = document.getElementById('tvet_intake_month').value || 'March';
-            const year = document.getElementById('tvet_intake_year').value || '2026';
-            document.getElementById('tvetDisplay').textContent = `${month} ${year} Intake`;
+            const month = document.getElementById('tvet_intake_month').value || '03';
+            const year = document.getElementById('tvet_intake_year').value || '26';
+            document.getElementById('tvetDisplay').textContent = `${month}/${year} Intake`;
         } else {
             document.getElementById('krchn-intake').classList.add('hidden');
             document.getElementById('tvet-intake').classList.add('hidden');
@@ -1914,6 +1795,7 @@ if (window.location.pathname.endsWith('.html')) {
         const isLecturer = this.value === 'lecturer';
         const studentFields = document.getElementById('student-fields');
         const lecturerFields = document.getElementById('lecturer-fields');
+        const studentDocs = document.getElementById('student-docs');
         
         if (isStudent) {
             studentFields.style.display = 'block';
@@ -1925,19 +1807,23 @@ if (window.location.pathname.endsWith('.html')) {
                     input.setAttribute('required', '');
                 }
             });
+            if (studentDocs) studentDocs.style.display = 'grid';
         } else {
             studentFields.style.display = 'none';
             studentFields.classList.remove('active');
             studentFields.querySelectorAll('input, select').forEach(input => {
                 input.removeAttribute('required');
             });
+            if (studentDocs) studentDocs.style.display = 'none';
         }
         
         if (isLecturer) {
             lecturerFields.style.display = 'block';
             lecturerFields.classList.add('active');
             lecturerFields.querySelectorAll('input, select').forEach(input => {
-                input.setAttribute('required', '');
+                if (input.id !== 'employment_date') {
+                    input.setAttribute('required', '');
+                }
             });
         } else {
             lecturerFields.style.display = 'none';
@@ -1956,14 +1842,12 @@ if (window.location.pathname.endsWith('.html')) {
         const file = event.target.files[0];
         if (!file) return;
         
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
             showFeedback('❌ Photo size exceeds 5MB limit.', 'error');
             event.target.value = '';
             return;
         }
         
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             showFeedback('❌ Please upload an image file.', 'error');
             event.target.value = '';
@@ -1973,13 +1857,11 @@ if (window.location.pathname.endsWith('.html')) {
         const preview = document.getElementById('photoPreview');
         const reader = new FileReader();
         
-        // Show progress
         const progressEl = document.getElementById('photoProgress');
         const progressBar = document.getElementById('photoProgressBar');
         progressEl.classList.add('active');
         
         reader.onload = function(e) {
-            // Remove old content
             const oldImg = preview.querySelector('img');
             if (oldImg) oldImg.remove();
             const placeholderIcon = preview.querySelector('.placeholder-icon');
@@ -1987,18 +1869,15 @@ if (window.location.pathname.endsWith('.html')) {
             if (placeholderIcon) placeholderIcon.style.display = 'none';
             if (placeholderText) placeholderText.style.display = 'none';
             
-            // Add new image
             const img = document.createElement('img');
             img.src = e.target.result;
             img.alt = 'Profile photo';
             preview.prepend(img);
             
-            // Update status
             const statusEl = document.getElementById('photoStatus');
             statusEl.textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
             statusEl.className = 'photo-status uploaded';
             
-            // Hide progress
             setTimeout(() => {
                 progressEl.classList.remove('active');
                 progressBar.style.width = '0%';
@@ -2013,41 +1892,35 @@ if (window.location.pathname.endsWith('.html')) {
         };
         
         reader.readAsDataURL(file);
-        
-        // Store the file for upload later
         uploadedDocs.profile_photo = file;
     }
 
     // ============================================
-    // DOCUMENT UPLOAD (Only KCSE & ID)
+    // DOCUMENT UPLOAD
     // ============================================
     function handleDocumentUpload(event, docType) {
         const file = event.target.files[0];
         if (!file) return;
         
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
             showFeedback(`❌ ${getDocLabel(docType)} exceeds 5MB limit.`, 'error');
             event.target.value = '';
             return;
         }
         
-        // Store document
         uploadedDocs[docType] = file;
         
-        // Update UI
         const card = document.getElementById(`doc_${docType}`);
         const statusEl = document.getElementById(`doc_${docType}_status`);
         const filenameEl = document.getElementById(`doc_${docType}_filename`);
         
         card.classList.add('uploaded');
-        statusEl.textContent = `✅ Uploaded`;
+        statusEl.textContent = '✅ Uploaded';
         statusEl.className = 'doc-status uploaded-text';
         filenameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
         
         showFeedback(`✅ ${getDocLabel(docType)} uploaded successfully!`, 'success');
         
-        // Show progress
         const progressEl = document.getElementById('docUploadProgress');
         const progressBar = document.getElementById('docProgressBar');
         progressEl.classList.add('active');
@@ -2061,7 +1934,11 @@ if (window.location.pathname.endsWith('.html')) {
     function getDocLabel(docType) {
         const labels = {
             kcse: 'KCSE Certificate',
-            id: 'ID/Passport/Birth Cert'
+            id: 'ID/Passport/Birth Cert',
+            lecturer_id: 'National ID/Passport',
+            kra_pin: 'KRA PIN Certificate',
+            university_cert: 'University Certificate',
+            cv: 'CV/Resume'
         };
         return labels[docType] || docType;
     }
@@ -2077,7 +1954,6 @@ if (window.location.pathname.endsWith('.html')) {
         statusEl.className = 'doc-status';
         filenameEl.textContent = '';
         
-        // Clear the file input
         const input = card.querySelector('input[type="file"]');
         if (input) input.value = '';
         
@@ -2120,7 +1996,6 @@ if (window.location.pathname.endsWith('.html')) {
         for (const [key, value] of formData.entries()) {
             data[key] = value;
         }
-        // Save document status
         data._docs = {};
         for (const [key, value] of Object.entries(uploadedDocs)) {
             data._docs[key] = value ? 'uploaded' : 'none';
@@ -2139,16 +2014,17 @@ if (window.location.pathname.endsWith('.html')) {
             const data = JSON.parse(saved);
             Object.keys(data).forEach(key => {
                 if (key === '_docs') {
-                    // Restore document status
                     for (const [docType, status] of Object.entries(data._docs)) {
                         if (status === 'uploaded') {
                             const card = document.getElementById(`doc_${docType}`);
                             const statusEl = document.getElementById(`doc_${docType}_status`);
                             const filenameEl = document.getElementById(`doc_${docType}_filename`);
-                            card.classList.add('uploaded');
-                            statusEl.textContent = '✅ Previously uploaded';
-                            statusEl.className = 'doc-status uploaded-text';
-                            filenameEl.textContent = 'Saved from draft';
+                            if (card) {
+                                card.classList.add('uploaded');
+                                statusEl.textContent = '✅ Previously uploaded';
+                                statusEl.className = 'doc-status uploaded-text';
+                                filenameEl.textContent = 'Saved from draft';
+                            }
                         }
                     }
                     return;
@@ -2177,14 +2053,24 @@ if (window.location.pathname.endsWith('.html')) {
         const isTVET = program && program !== '' && program !== 'KRCHN';
         let intakeYear = '';
         let intakeMonth = '';
+        let intakeDisplay = '';
         if (isKRCHN) {
             intakeYear = document.getElementById('krchn_intake_year').value || '';
-            intakeMonth = 'March';
+            intakeMonth = 'MAR';
+            intakeDisplay = `March ${intakeYear}`;
         } else if (isTVET) {
-            intakeYear = document.getElementById('tvet_intake_year').value || '';
-            intakeMonth = document.getElementById('tvet_intake_month').value || 'March';
+            const year = document.getElementById('tvet_intake_year').value || '';
+            const month = document.getElementById('tvet_intake_month').value || '03';
+            intakeYear = year;
+            intakeMonth = month;
+            const monthNames = {
+                '01': 'JAN', '02': 'FEB', '03': 'MAR', '04': 'APR',
+                '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
+                '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
+            };
+            intakeDisplay = `${monthNames[month] || month} 20${year}`;
         }
-        return { intake_year: intakeYear, intake_month: intakeMonth };
+        return { intake_year: intakeYear, intake_month: intakeMonth, display: intakeDisplay };
     }
 
     function getDisplayIntake(program, year, month) {
@@ -2192,7 +2078,12 @@ if (window.location.pathname.endsWith('.html')) {
         if (program === 'KRCHN') {
             return `March ${year}`;
         } else {
-            return `${month || 'March'} ${year} Intake`;
+            const monthNames = {
+                '01': 'JAN', '02': 'FEB', '03': 'MAR', '04': 'APR',
+                '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
+                '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
+            };
+            return `${monthNames[month] || month} 20${year}`;
         }
     }
 
@@ -2215,7 +2106,7 @@ if (window.location.pathname.endsWith('.html')) {
             document.body.appendChild(piece);
             setTimeout(() => piece.remove(), 4000);
         }
-        document.getElementById('successIntakeText').textContent = intakeDisplay;
+        document.getElementById('successIntakeText').textContent = intakeDisplay || 'N/A';
         document.getElementById('successOverlay').classList.add('show');
         let countdown = 5;
         const countdownEl = document.getElementById('successCountdown');
@@ -2231,25 +2122,6 @@ if (window.location.pathname.endsWith('.html')) {
     }
 
     // ============================================
-    // EMAIL NOTIFICATION
-    // ============================================
-    async function sendRegistrationEmail(email, userName) {
-        const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
-        const params = new URLSearchParams({
-            to: email,
-            otp: 'WELCOME',
-            userName: userName,
-            emailType: 'welcome',
-            subject: 'Welcome to NCHSM Digital Portal'
-        });
-        const img = new Image();
-        img.src = scriptUrl + '?' + params.toString();
-        img.style.display = 'none';
-        document.body.appendChild(img);
-        return new Promise(resolve => setTimeout(() => resolve(true), 1000));
-    }
-
-    // ============================================
     // FEEDBACK HELPER
     // ============================================
     function showFeedback(message, type = 'success') {
@@ -2259,6 +2131,96 @@ if (window.location.pathname.endsWith('.html')) {
         setTimeout(() => {
             messageDiv.classList.remove('show');
         }, 5000);
+    }
+
+    // ============================================
+    // ADD LECTURER TO STAFF_RECORDS
+    // ============================================
+    async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender) {
+        try {
+            const { data: existing } = await sb
+                .from('staff_records')
+                .select('id')
+                .eq('email', email)
+                .maybeSingle();
+            
+            if (existing) {
+                console.log('⚠️ Staff already exists in staff_records:', email);
+                return true;
+            }
+            
+            let finalStaffId = staffId;
+            if (!finalStaffId || finalStaffId.trim() === '') {
+                const deptCodes = {
+                    'Nursing': 'NUR',
+                    'TVET': 'TVT',
+                    'Community Health': 'COM',
+                    'Health Records': 'HRT',
+                    'ICT': 'ICT',
+                    'Administration': 'ADM'
+                };
+                
+                const deptCode = deptCodes[department] || 'STA';
+                
+                const { data: deptStaff } = await sb
+                    .from('staff_records')
+                    .select('id')
+                    .ilike('id', 'NCHSM' + deptCode + '-%')
+                    .order('created_at', { ascending: false });
+                
+                let nextNumber = 1;
+                if (deptStaff && deptStaff.length > 0) {
+                    const lastId = deptStaff[0].id;
+                    const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
+                    if (match) {
+                        nextNumber = parseInt(match[1]) + 1;
+                    } else {
+                        nextNumber = deptStaff.length + 1;
+                    }
+                }
+                
+                finalStaffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
+                console.log('🆕 Auto-generated Staff ID:', finalStaffId);
+            }
+            
+            const nameParts = fullName.trim().split(' ');
+            const firstName = nameParts[0] || '';
+            const otherNames = nameParts.slice(1).join(' ') || '';
+            
+            const staffData = {
+                id: finalStaffId,
+                title: 'Mr.',
+                first_name: firstName,
+                other_names: otherNames,
+                department: department || 'Nursing',
+                designation: 'lecturer',
+                email: email,
+                phone: phone || '',
+                gender: gender || 'Male',
+                login_enabled: true,
+                password_hash: btoa(password),
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                program: 'N/A'
+            };
+            
+            const { error } = await sb
+                .from('staff_records')
+                .insert([staffData]);
+            
+            if (error) {
+                console.error('❌ Failed to add staff to staff_records:', error);
+                return false;
+            }
+            
+            console.log('✅ Staff added to staff_records with ID:', finalStaffId);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ Error adding staff to staff_records:', error);
+            return false;
+        }
     }
 
     // ============================================
@@ -2275,7 +2237,6 @@ if (window.location.pathname.endsWith('.html')) {
         btn.disabled = true;
         document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
         
-        // Check terms
         if (!document.getElementById('terms').checked && !termsAccepted) {
             showFeedback('❌ Please agree to the Terms & Conditions.', 'error');
             btn.disabled = false;
@@ -2283,9 +2244,7 @@ if (window.location.pathname.endsWith('.html')) {
             return;
         }
         
-        // Get email and validate
         const email = document.getElementById('email').value.trim();
-        
         if (!isValidEmail(email)) {
             showFeedback('❌ Please enter a valid email address.', 'error');
             btn.disabled = false;
@@ -2293,7 +2252,6 @@ if (window.location.pathname.endsWith('.html')) {
             return;
         }
         
-        // Final email check
         try {
             const emailExistsFinal = await checkEmailExists(email);
             if (emailExistsFinal) {
@@ -2306,7 +2264,6 @@ if (window.location.pathname.endsWith('.html')) {
             console.error('Final email check failed:', error);
         }
         
-        // Get all values
         const role = document.getElementById('role').value;
         const full_name = document.getElementById('full_name').value.trim();
         const phone = document.getElementById('phone').value.trim();
@@ -2326,8 +2283,8 @@ if (window.location.pathname.endsWith('.html')) {
         const guardian_name = document.getElementById('guardian_name').value.trim() || '';
         const guardian_phone = document.getElementById('guardian_phone').value.trim() || '';
         
-        const staff_id = document.getElementById('staff_id').value.trim();
         const department = document.getElementById('department').value;
+        const employment_date = document.getElementById('employment_date').value || '';
         
         // Validations
         if (!full_name) {
@@ -2375,6 +2332,25 @@ if (window.location.pathname.endsWith('.html')) {
         }
         
         if (role === 'student') {
+            // Validate Student ID
+            const studentId = document.getElementById('student_id_number').value.trim();
+            if (!studentId) {
+                showFeedback('❌ Please enter your Student ID.', 'error');
+                document.getElementById('student_id_number').style.borderColor = '#DC2626';
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
+            
+            const idValidation = validateStudentId(studentId);
+            if (!idValidation.valid) {
+                showFeedback('❌ ' + idValidation.message, 'error');
+                document.getElementById('student_id_number').style.borderColor = '#DC2626';
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
+            
             if (!program_type) {
                 showFeedback('❌ Please select your program.', 'error');
                 btn.disabled = false;
@@ -2390,12 +2366,6 @@ if (window.location.pathname.endsWith('.html')) {
         }
         
         if (role === 'lecturer') {
-            if (!staff_id) {
-                showFeedback('❌ Please enter your Staff ID.', 'error');
-                btn.disabled = false;
-                document.getElementById('button-text').textContent = '✅ Create Account';
-                return;
-            }
             if (!department) {
                 showFeedback('❌ Please select your department.', 'error');
                 btn.disabled = false;
@@ -2409,113 +2379,96 @@ if (window.location.pathname.endsWith('.html')) {
         const defaultBlock = 'Introductory';
         
         try {
-            // ============================================
-            // BUILD USER METADATA
-            // ============================================
             let userMetadata = {
                 full_name, role, phone, alt_phone, national_id,
                 date_of_birth: dob, gender, address, status: 'pending'
             };
-          if (role === 'student') {
-    const programValue = document.getElementById('program_type').value;
-    userMetadata = {
-        ...userMetadata,
-        student_id: student_id_number,
-        program: programValue,
-        intake_year: intakeData.intake_year,
-        intake_month: intakeData.intake_month,
-        current_block: defaultBlock,
-        guardian_name: guardian_name,
-        guardian_phone: guardian_phone,
-        admission_date: admissionDate,
-        admission_year: today.getFullYear().toString(),
-        doc_kcse: uploadedDocs.kcse ? 'uploaded' : 'pending',
-        doc_id: uploadedDocs.id ? 'uploaded' : 'pending'
-    };
-} else if (role === 'lecturer') {
-    userMetadata = { 
-        ...userMetadata, 
-        staff_id: staff_id, 
-        department: department 
-    };
-}
-          // ============================================
-// ============================================
-// CREATE USER IN SUPABASE AUTH - FIXED
-// ============================================
-console.log('📤 Sending user data:', {
-    email: email,
-    metadata: userMetadata
-});
-
-const { data: authData, error: authError } = await sb.auth.signUp({
-    email, 
-    password,
-    options: { 
-        data: userMetadata  // ✅ Changed from 'user_metadata' to 'data'
-    }
-});
-
-if (authError) {
-    if (authError.message.includes('User already registered')) {
-        showFeedback('❌ This email is already registered. Please use a different email or login.', 'error');
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    throw authError;
-}
-
-console.log('✅ Auth user created:', authData.user.id);
-console.log('📊 User metadata stored:', authData.user.user_metadata || authData.user.data);
-
-// ============================================
-// 🆕 IF LECTURER, ADD TO STAFF_RECORDS
-// ============================================
-if (role === 'lecturer') {
-    console.log('👔 Adding lecturer to staff_records...');
-    
-    // ✅ Pass empty string for staff_id - it will be auto-generated!
-    const staffAdded = await addStaffToRecords(
-        authData.user.id,
-        email,
-        password,
-        full_name,
-        '',  // ← Empty = auto-generate!
-        department || 'Nursing',
-        phone,
-        gender
-    );
-    
-    if (staffAdded) {
-        console.log('✅ Lecturer added to staff_records successfully!');
-    } else {
-        console.warn('⚠️ Lecturer not added to staff_records');
-    }
-}
-
-// Wait for trigger to create profile
-await new Promise(resolve => setTimeout(resolve, 1500));
-
-// Verify the profile was created
-const { data: profile, error: profileError } = await sb
-    .from('consolidated_user_profiles_table')
-    .select('*')
-    .eq('user_id', authData.user.id)
-    .single();
-
-if (profileError) {
-    console.warn('⚠️ Profile not found yet, continuing...');
-} else {
-    console.log('✅ Profile created:', profile);
-}
-            // ============================================
-            // UPLOAD DOCUMENTS TO STORAGE
-            // ============================================
+            
+            if (role === 'student') {
+                const programValue = document.getElementById('program_type').value;
+                userMetadata = {
+                    ...userMetadata,
+                    student_id: student_id_number,
+                    program: programValue,
+                    intake_year: intakeData.intake_year,
+                    intake_month: intakeData.intake_month,
+                    current_block: defaultBlock,
+                    guardian_name: guardian_name,
+                    guardian_phone: guardian_phone,
+                    admission_date: admissionDate,
+                    admission_year: today.getFullYear().toString(),
+                    doc_kcse: uploadedDocs.kcse ? 'uploaded' : 'pending',
+                    doc_id: uploadedDocs.id ? 'uploaded' : 'pending'
+                };
+            } else if (role === 'lecturer') {
+                userMetadata = { 
+                    ...userMetadata, 
+                    department: department,
+                    employment_date: employment_date,
+                    staff_id: 'AUTO_GENERATED'
+                };
+            }
+            
+            console.log('📤 Sending user data:', { email, metadata: userMetadata });
+            
+            const { data: authData, error: authError } = await sb.auth.signUp({
+                email, 
+                password,
+                options: { 
+                    data: userMetadata
+                }
+            });
+            
+            if (authError) {
+                if (authError.message.includes('User already registered')) {
+                    showFeedback('❌ This email is already registered. Please use a different email or login.', 'error');
+                    btn.disabled = false;
+                    document.getElementById('button-text').textContent = '✅ Create Account';
+                    return;
+                }
+                throw authError;
+            }
+            
+            console.log('✅ Auth user created:', authData.user.id);
+            
+            if (role === 'lecturer') {
+                console.log('👔 Adding lecturer to staff_records...');
+                const staffAdded = await addStaffToRecords(
+                    authData.user.id,
+                    email,
+                    password,
+                    full_name,
+                    '',
+                    department || 'Nursing',
+                    phone,
+                    gender
+                );
+                
+                if (staffAdded) {
+                    console.log('✅ Lecturer added to staff_records successfully!');
+                } else {
+                    console.warn('⚠️ Lecturer not added to staff_records');
+                }
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            const { data: profile, error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', authData.user.id)
+                .single();
+            
+            if (profileError) {
+                console.warn('⚠️ Profile not found yet, continuing...');
+            } else {
+                console.log('✅ Profile created:', profile);
+            }
+            
+            // Upload documents
             const userId = authData.user.id;
             const uploadPromises = [];
             
-            // Upload profile photo
             if (uploadedDocs.profile_photo) {
                 const photoFile = uploadedDocs.profile_photo;
                 const photoExt = photoFile.name.split('.').pop();
@@ -2533,82 +2486,86 @@ if (profileError) {
                 uploadPromises.push(uploadPromise);
             }
             
-            // Upload documents - only KCSE & ID
-            const docTypes = ['kcse', 'id'];
-            for (const docType of docTypes) {
-                if (uploadedDocs[docType]) {
-                    const file = uploadedDocs[docType];
-                    const ext = file.name.split('.').pop();
-                    const docPath = `documents/${userId}/${docType}.${ext}`;
-                    const uploadPromise = sb.storage
-                        .from('user-documents')
-                        .upload(docPath, file, { upsert: true })
-                        .then(() => {
-                            console.log(`✅ ${docType} document uploaded`);
-                            return sb.from('user_documents')
-                                .insert({
-                                    user_id: userId,
-                                    document_type: docType,
-                                    file_path: docPath,
-                                    file_name: file.name,
-                                    upload_date: new Date().toISOString()
-                                });
-                        })
-                        .catch(err => console.error(`❌ Failed to upload ${docType}:`, err));
-                    uploadPromises.push(uploadPromise);
+            // Student docs
+            if (role === 'student') {
+                const studentDocTypes = ['kcse', 'id'];
+                for (const docType of studentDocTypes) {
+                    if (uploadedDocs[docType]) {
+                        const file = uploadedDocs[docType];
+                        const ext = file.name.split('.').pop();
+                        const docPath = `documents/${userId}/${docType}.${ext}`;
+                        const uploadPromise = sb.storage
+                            .from('user-documents')
+                            .upload(docPath, file, { upsert: true })
+                            .then(() => {
+                                console.log(`✅ ${docType} document uploaded`);
+                                return sb.from('user_documents')
+                                    .insert({
+                                        user_id: userId,
+                                        document_type: docType,
+                                        file_path: docPath,
+                                        file_name: file.name,
+                                        upload_date: new Date().toISOString()
+                                    });
+                            })
+                            .catch(err => console.error(`❌ Failed to upload ${docType}:`, err));
+                        uploadPromises.push(uploadPromise);
+                    }
                 }
             }
             
-            // Wait for all uploads to complete
+            // Lecturer docs
+            if (role === 'lecturer') {
+                const lecturerDocTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
+                for (const docType of lecturerDocTypes) {
+                    if (uploadedDocs[docType]) {
+                        const file = uploadedDocs[docType];
+                        const ext = file.name.split('.').pop();
+                        const docPath = `documents/${userId}/${docType}.${ext}`;
+                        const uploadPromise = sb.storage
+                            .from('user-documents')
+                            .upload(docPath, file, { upsert: true })
+                            .then(() => {
+                                console.log(`✅ ${docType} document uploaded`);
+                                return sb.from('user_documents')
+                                    .insert({
+                                        user_id: userId,
+                                        document_type: docType,
+                                        file_path: docPath,
+                                        file_name: file.name,
+                                        upload_date: new Date().toISOString()
+                                    });
+                            })
+                            .catch(err => console.error(`❌ Failed to upload ${docType}:`, err));
+                        uploadPromises.push(uploadPromise);
+                    }
+                }
+            }
+            
             await Promise.allSettled(uploadPromises);
             
-                       // ============================================
-            // SUCCESS!
-            // ============================================
             const displayIntake = getDisplayIntake(program_type, intakeData.intake_year, intakeData.intake_month);
-            showFeedback(`✅ Registration successful! ${program_type} student with ${displayIntake} intake.`, 'success');
-            
-            // 🆕 Send welcome notification via Brevo
-            try {
-                await sendRegistrationNotification(
-                    email, 
-                    full_name, 
-                    student_id_number || 'Pending', 
-                    program_type || 'N/A', 
-                    displayIntake
-                );
-                console.log('✅ Welcome notification sent via Brevo');
-            } catch (brevoError) {
-                console.warn('⚠️ Brevo welcome notification failed:', brevoError);
-                // Try the old email method as fallback
-                try {
-                    await sendRegistrationEmail(email, full_name);
-                    console.log('✅ Fallback welcome email sent');
-                } catch (fallbackError) {
-                    console.warn('⚠️ Fallback email failed:', fallbackError);
-                }
-            }
+            showFeedback(`✅ Registration successful!`, 'success');
             
             showSuccessAnimation(displayIntake);
             localStorage.removeItem('registration_draft');
             
         } catch (error) {
             console.error('❌ Registration error:', error);
-            
             let errorMessage = error.message || 'Unknown error';
-            if (error.code === '22007') {
-                errorMessage = 'Invalid date format. Please select a valid date of birth.';
-            } else if (error.code === '23505') {
-                errorMessage = 'This email or student ID is already registered.';
-            }
-            
             showFeedback(`❌ Registration failed: ${errorMessage}`, 'error');
             btn.disabled = false;
             document.getElementById('button-text').textContent = '✅ Create Account';
         }
     });
 
-    console.log('✅ Registration page loaded with features: Profile Photo + KCSE + ID/Passport uploads!');
+    console.log('✅ Registration page loaded with:');
+    console.log('  📸 Profile photo upload');
+    console.log('  📁 Student: KCSE + ID documents');
+    console.log('  📁 Lecturer: ID + KRA PIN + University Certificate + CV');
+    console.log('  🆔 Student ID validation (KRCHN and TVET formats)');
+    console.log('  👔 Lecturer Staff ID auto-generation');
 </script>
+
 </body>
 </html>
