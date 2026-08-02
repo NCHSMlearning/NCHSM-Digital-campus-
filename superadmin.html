@@ -4320,52 +4320,119 @@
     </div>
 
     <!-- ============================================ -->
+    <!-- TOP BAR NAVIGATION - Quick Jump to Sections -->
+    <!-- ============================================ -->
+    <div style="background: white; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow-x: auto;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-width: max-content;">
+            <span style="font-weight: 600; font-size: 13px; color: #64748b; margin-right: 8px;">
+                <i class="fas fa-bars"></i> Jump to:
+            </span>
+            
+            <a href="#section-charts" onclick="scrollToSection('section-charts')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-chart-pie"></i> Charts
+            </a>
+            <a href="#section-units" onclick="scrollToSection('section-units')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-book"></i> Units
+            </a>
+            <a href="#section-learners" onclick="scrollToSection('section-learners')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-user-graduate"></i> Learners
+            </a>
+            <a href="#section-topweak" onclick="scrollToSection('section-topweak')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-crown"></i> Top / Weak
+            </a>
+            <a href="#section-progression" onclick="scrollToSection('section-progression')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-arrow-trend-up"></i> Progression
+            </a>
+            <a href="#section-stage" onclick="scrollToSection('section-stage')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-layer-group"></i> Stage
+            </a>
+            <a href="#section-programmes" onclick="scrollToSection('section-programmes')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-code-branch"></i> Programmes
+            </a>
+            <a href="#section-lecturer" onclick="scrollToSection('section-lecturer')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-chalkboard-teacher"></i> Lecturers
+            </a>
+            <a href="#section-assessment" onclick="scrollToSection('section-assessment')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-file-alt"></i> Assessment
+            </a>
+            <a href="#section-trends" onclick="scrollToSection('section-trends')" 
+               style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #475569; text-decoration: none; font-weight: 500; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#e2e8f0';" onmouseout="this.style.background='#f1f5f9';">
+                <i class="fas fa-chart-line"></i> Trends
+            </a>
+            <a href="#section-consolidated" onclick="scrollToSection('section-consolidated')" 
+               style="background: #8b5cf6; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: white; text-decoration: none; font-weight: 600; transition: all 0.2s; white-space: nowrap;"
+               onmouseover="this.style.background='#7c3aed';" onmouseout="this.style.background='#8b5cf6';">
+                <i class="fas fa-th-list"></i> Consolidated
+            </a>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
     <!-- EXTENDED STATS CARDS - Merged (8 Cards)     -->
     <!-- ============================================ -->
     <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 25px;">
-        <!-- Card 1: Total Students (From Existing) -->
+        <!-- Card 1: Total Students -->
         <div class="card" style="border-top: 4px solid #6366f1; padding: 14px 16px;">
             <h3 style="color: #6366f1; font-size: 11px; margin: 0 0 2px 0;">Total Learners</h3>
             <p class="data" id="analytics_total_students" style="font-size: 26px; font-weight: 700; color: #6366f1; margin: 0;">0</p>
             <p class="minor-data" style="font-size: 10px; color: #94a3b8; margin: 0;">Active enrolments</p>
         </div>
-        <!-- Card 2: Pass Rate (From Existing) -->
+        <!-- Card 2: Pass Rate -->
         <div class="card" style="border-top: 4px solid #10b981; padding: 14px 16px;">
             <h3 style="color: #10b981; font-size: 11px; margin: 0 0 2px 0;">Pass Rate</h3>
             <p class="data" id="analytics_pass_rate" style="font-size: 26px; font-weight: 700; color: #10b981; margin: 0;">0%</p>
             <p class="minor-data" style="font-size: 10px; color: #94a3b8; margin: 0;">≥60% passing</p>
         </div>
-        <!-- Card 3: Average Score (From Existing) -->
+        <!-- Card 3: Average Score -->
         <div class="card" style="border-top: 4px solid #f59e0b; padding: 14px 16px;">
             <h3 style="color: #d97706; font-size: 11px; margin: 0 0 2px 0;">Average Score</h3>
             <p class="data" id="analytics_avg_score" style="font-size: 26px; font-weight: 700; color: #d97706; margin: 0;">0%</p>
             <p class="minor-data" style="font-size: 10px; color: #94a3b8; margin: 0;">Overall average</p>
         </div>
-        <!-- Card 4: Active Subjects/Units (From Existing) -->
+        <!-- Card 4: Active Units -->
         <div class="card" style="border-top: 4px solid #8b5cf6; padding: 14px 16px;">
             <h3 style="color: #6d28d9; font-size: 11px; margin: 0 0 2px 0;">Active Units</h3>
             <p class="data" id="analytics_active_subjects" style="font-size: 26px; font-weight: 700; color: #6d28d9; margin: 0;">0</p>
             <p class="minor-data" style="font-size: 10px; color: #94a3b8; margin: 0;">With marks entered</p>
         </div>
-        <!-- Card 5: At Risk (From Existing) -->
+        <!-- Card 5: At Risk -->
         <div class="card" style="border-top: 4px solid #ef4444; padding: 14px 16px;">
             <h3 style="color: #dc2626; font-size: 11px; margin: 0 0 2px 0;">At Risk</h3>
             <p class="data" id="analytics_at_risk" style="font-size: 26px; font-weight: 700; color: #dc2626; margin: 0;">0</p>
             <p class="minor-data" style="font-size: 10px; color: #94a3b8; margin: 0;">Below 60% - Need support</p>
         </div>
-        <!-- Card 6: NEW - Improvement -->
+        <!-- Card 6: Improvement -->
         <div class="card" style="border-top: 4px solid #14b8a6; padding: 14px 16px;">
             <h3 style="color: #14b8a6; font-size: 11px; margin: 0 0 2px 0;">📈 Improvement</h3>
             <p class="data" id="analytics_improvement" style="font-size: 26px; font-weight: 700; color: #14b8a6; margin: 0;">0%</p>
             <p class="minor-data" style="font-size: 10px; color: #94a3b8; margin: 0;"><span id="improvementPeriodLabel">Block</span>-to-<span id="improvementPeriodLabel2">Block</span></p>
         </div>
-        <!-- Card 7: NEW - Struggling Units -->
+        <!-- Card 7: Struggling Units -->
         <div class="card" style="border-top: 4px solid #f43f5e; padding: 14px 16px;">
             <h3 style="color: #f43f5e; font-size: 11px; margin: 0 0 2px 0;">📚 Struggling Units</h3>
             <p class="data" id="analytics_failing_units" style="font-size: 26px; font-weight: 700; color: #f43f5e; margin: 0;">0</p>
             <p class="minor-data" style="font-size: 10px; color: #94a3b8; margin: 0;">Units with <50% pass rate</p>
         </div>
-        <!-- Card 8: NEW - Gender Ratio -->
+        <!-- Card 8: Gender Ratio -->
         <div class="card" style="border-top: 4px solid #f59e0b; padding: 14px 16px;">
             <h3 style="color: #f59e0b; font-size: 11px; margin: 0 0 2px 0;">👩‍🎓 Gender Ratio</h3>
             <p class="data" id="analytics_gender_ratio" style="font-size: 20px; font-weight: 700; color: #f59e0b; margin: 0;">-</p>
@@ -4378,7 +4445,7 @@
     <!-- ============================================ -->
     <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 15px;">
-            <!-- Program - From Existing -->
+            <!-- Program -->
             <div>
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-tag"></i> Programme
@@ -4416,7 +4483,7 @@
                     </optgroup>
                 </select>
             </div>
-            <!-- Year - From Existing -->
+            <!-- Year -->
             <div>
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-calendar"></i> Academic Year
@@ -4429,14 +4496,13 @@
                     <option value="2028">2028</option>
                 </select>
             </div>
-            <!-- Block/Term - Enhanced with both options -->
+            <!-- Block/Term -->
             <div>
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-layer-group"></i> <span id="periodLabel">Stage/Block</span>
                 </label>
                 <select id="analytics_block_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
                     <option value="all">All Stages</option>
-                    <!-- KRCHN Nursing Blocks -->
                     <optgroup label="🎓 KRCHN Nursing Blocks" id="krchnBlocks">
                         <option value="Introductory">Introductory Block</option>
                         <option value="Block 1">Block 1</option>
@@ -4446,7 +4512,6 @@
                         <option value="Block 5">Block 5</option>
                         <option value="Final">Final Block</option>
                     </optgroup>
-                    <!-- TVET Terms -->
                     <optgroup label="📚 TVET Terms" id="tvetTerms">
                         <option value="Term 1">Term 1</option>
                         <option value="Term 2">Term 2</option>
@@ -4458,7 +4523,7 @@
                     </optgroup>
                 </select>
             </div>
-            <!-- Metric View - From Existing -->
+            <!-- Metric View -->
             <div>
                 <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
                     <i class="fas fa-chart-bar"></i> Analytics View
@@ -4473,7 +4538,7 @@
                     <option value="lecturers">👨‍🏫 Lecturer Performance</option>
                 </select>
             </div>
-            <!-- Buttons - From Existing -->
+            <!-- Buttons -->
             <div style="display: flex; align-items: flex-end; gap: 10px;">
                 <button onclick="loadAnalyticsData()" style="flex: 1; background: #ec4899; padding: 10px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-chart-line"></i> Load Analytics
@@ -4486,7 +4551,7 @@
     </div>
 
     <!-- ============================================ -->
-    <!-- QUICK FILTER PILLS - From Your Existing     -->
+    <!-- QUICK FILTER PILLS                          -->
     <!-- ============================================ -->
     <div style="display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap;">
         <button onclick="filterAnalytics('all')" class="btn-action" style="background: #6366f1; padding: 8px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
@@ -4507,7 +4572,7 @@
     </div>
 
     <!-- ============================================ -->
-    <!-- PLACEHOLDER - From Your Existing            -->
+    <!-- PLACEHOLDER                                 -->
     <!-- ============================================ -->
     <div id="analyticsPlaceholder" style="text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
         <i class="fas fa-chart-line" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
@@ -4516,15 +4581,14 @@
     </div>
 
     <!-- ============================================ -->
-    <!-- DYNAMIC CONTENT - Merged                    -->
+    <!-- DYNAMIC CONTENT                             -->
     <!-- ============================================ -->
     <div id="analyticsDynamicContent" style="display: none;">
 
         <!-- ============================================ -->
-        <!-- CHART SECTION - Row 1 - From Your Existing  -->
+        <!-- SECTION: CHARTS - Row 1                     -->
         <!-- ============================================ -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-            <!-- Grade Distribution - From Existing -->
+        <div id="section-charts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
             <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <h4 style="margin: 0 0 16px 0; color: #1e293b;">
                     <i class="fas fa-chart-pie" style="color: #6366f1;"></i> Grade Distribution
@@ -4537,7 +4601,6 @@
                     <span><span style="color:#ef4444;">●</span> D (<60%)</span>
                 </div>
             </div>
-            <!-- Unit Performance - From Existing -->
             <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <h4 style="margin: 0 0 16px 0; color: #1e293b;">
                     <i class="fas fa-chart-bar" style="color: #10b981;"></i> Unit Performance
@@ -4547,17 +4610,15 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- CHART SECTION - Row 2 - Merged             -->
+        <!-- SECTION: CHARTS - Row 2                     -->
         <!-- ============================================ -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-            <!-- Period Performance - From Existing (Enhanced with Terminology) -->
             <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <h4 style="margin: 0 0 16px 0; color: #1e293b;">
                     <i class="fas fa-chart-line" style="color: #f59e0b;"></i> <span id="periodChartLabel">Block</span> Performance
                 </h4>
                 <canvas id="analyticsBlockChart" style="max-height: 220px; width: 100%;"></canvas>
             </div>
-            <!-- NEW: Gender Performance -->
             <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <h4 style="margin: 0 0 16px 0; color: #1e293b;">
                     <i class="fas fa-venus-mars" style="color: #8b5cf6;"></i> Gender Performance
@@ -4572,10 +4633,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- CHART SECTION - Row 3 - NEW Full Width     -->
+        <!-- SECTION: CHARTS - Row 3 (Unit Ranking)      -->
         <!-- ============================================ -->
         <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 25px;">
-            <!-- Unit Ranking - NEW -->
             <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <h4 style="margin: 0 0 16px 0; color: #1e293b;">
                     <i class="fas fa-trophy" style="color: #f59e0b;"></i> Unit Ranking (By Average Score)
@@ -4585,7 +4645,7 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- CHART SECTION - Row 4 - NEW CAT vs Exam    -->
+        <!-- SECTION: CHARTS - Row 4 (CAT vs Exam)       -->
         <!-- ============================================ -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
             <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
@@ -4607,7 +4667,7 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- NEW: UNIT DIFFICULTY HEATMAP                -->
+        <!-- SECTION: UNIT DIFFICULTY HEATMAP            -->
         <!-- ============================================ -->
         <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
@@ -4626,9 +4686,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- NEW: LECTURER PERFORMANCE                    -->
+        <!-- SECTION: LECTURER PERFORMANCE               -->
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="section-lecturer" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-chalkboard-teacher" style="color: #ec4899;"></i> Lecturer Performance
@@ -4659,9 +4719,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- NEW: PERIOD FILTER STATS (Blocks or Terms)  -->
+        <!-- SECTION: STAGE PERFORMANCE                   -->
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="section-stage" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-layer-group" style="color: #6366f1;"></i> <span id="periodOverviewLabel">Block</span> Performance Overview
@@ -4676,7 +4736,7 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- TABLE SEARCH & FILTER - NEW                 -->
+        <!-- TABLE SEARCH & FILTER                       -->
         <!-- ============================================ -->
         <div style="background: white; border-radius: 12px; padding: 15px 20px; margin-bottom: 15px; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -4700,9 +4760,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- UNIT PERFORMANCE TABLE - From Existing      -->
+        <!-- SECTION: UNIT PERFORMANCE TABLE             -->
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="section-units" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-table" style="color: #6366f1;"></i> Unit Performance Details
@@ -4737,9 +4797,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- LEARNER PERFORMANCE TABLE - From Existing   -->
+        <!-- SECTION: LEARNER PERFORMANCE TABLE          -->
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="section-learners" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-user-graduate" style="color: #10b981;"></i> Learner Performance Details
@@ -4774,9 +4834,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- TOP 10 + WEAK LEARNERS - NEW                -->
+        <!-- SECTION: TOP 10 + WEAK LEARNERS             -->
         <!-- ============================================ -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+        <div id="section-topweak" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
             <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <h4 style="margin: 0 0 16px 0; color: #1e293b;">
                     <i class="fas fa-crown" style="color: #f59e0b;"></i> Top 10 Learners
@@ -4802,9 +4862,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- NEW: LEARNER PROGRESSION TRACKER            -->
+        <!-- SECTION: LEARNER PROGRESSION TRACKER        -->
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="section-progression" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-arrow-trend-up" style="color: #10b981;"></i> Learner Progression Tracking
@@ -4836,9 +4896,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- PERIOD PERFORMANCE TABLE - From Existing    -->
+        <!-- SECTION: STAGE PERFORMANCE TABLE             -->
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="section-stage" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-layer-group" style="color: #f59e0b;"></i> <span id="periodSummaryLabel">Block</span> Performance Summary
@@ -4871,9 +4931,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- PROGRAMME COMPARISON TABLE - From Existing  -->
+        <!-- SECTION: PROGRAMME COMPARISON TABLE          -->
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="section-programmes" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-code-branch" style="color: #8b5cf6;"></i> Programme Comparison
@@ -4907,9 +4967,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- TRENDS TABLE - From Existing                -->
+        <!-- SECTION: TRENDS TABLE                       -->
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="section-trends" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-chart-line" style="color: #ec4899;"></i> Performance Trends
@@ -4942,9 +5002,9 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- ASSESSMENT DETAILS TABLE - From Existing    -->
+        <!-- SECTION: ASSESSMENT DETAILS TABLE           -->
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="section-assessment" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-file-alt" style="color: #f59e0b;"></i> Assessment Details
@@ -4979,10 +5039,11 @@
                 </table>
             </div>
         </div>
- <!-- ============================================ -->
-        <!-- CONSOLIDATED MARKSHEET - NEW                 -->
+
         <!-- ============================================ -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <!-- SECTION: CONSOLIDATED MARKSHEET             -->
+        <!-- ============================================ -->
+        <div id="section-consolidated" style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
                 <h4 style="margin: 0; color: #1e293b;">
                     <i class="fas fa-th-list" style="color: #8b5cf6;"></i> Consolidated Marksheet
@@ -5060,7 +5121,8 @@
                 <span>Top Performer: <strong id="consolidated_top_performer">-</strong></span>
             </div>
         </div>
-        </div> 
+
+    </div><!-- End Dynamic Content -->
 </section>
 <!-- SUPPORT TICKETS MANAGEMENT SECTION - WITH TRUE BELL NOTIFICATIONS -->
 <section id="support-tickets" class="tab-content">
