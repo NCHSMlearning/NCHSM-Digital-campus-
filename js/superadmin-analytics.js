@@ -75,13 +75,18 @@ window.analyticsChartInstances = {
 // ============================================================
 
 window.getGradeInfo = function(score) {
-    if (score >= 75 && score <= 100) {
+    // Ensure score is a valid number
+    const numScore = parseFloat(score);
+    if (isNaN(numScore) || numScore <= 0) {
+        return { grade: 'N/A', points: 0, label: 'PENDING', color: '#94a3b8' };
+    }
+    if (numScore >= 75 && numScore <= 100) {
         return { grade: 'A', points: 4, label: 'DISTINCTION', color: '#10b981' };
-    } else if (score >= 65 && score <= 74) {
+    } else if (numScore >= 65 && numScore <= 74.99) {
         return { grade: 'B', points: 3, label: 'CREDIT', color: '#3b82f6' };
-    } else if (score >= 60 && score <= 64) {
+    } else if (numScore >= 60 && numScore <= 64.99) {
         return { grade: 'C', points: 2, label: 'PASS', color: '#f59e0b' };
-    } else if (score >= 0 && score <= 59 && score > 0) {
+    } else if (numScore > 0 && numScore <= 59.99) {
         return { grade: 'FAIL', points: 0, label: 'FAIL', color: '#ef4444' };
     } else {
         return { grade: 'N/A', points: 0, label: 'PENDING', color: '#94a3b8' };
@@ -1746,8 +1751,17 @@ window.renderConsolidatedMarksheet = function() {
     loading.style.display = 'none';
     table.style.display = 'table';
     
-    // 1. Get all unique unit names
-    const units = [...new Set(marks.map(m => m.subject_name).filter(Boolean))].sort();
+    // 1. Get all unique unit names - FIX DUPLICATES
+    const unitSet = new Set();
+    marks.forEach(m => {
+        const unit = m.subject_name;
+        if (unit && unit.trim() !== '') {
+            const cleanUnit = unit.trim();
+            unitSet.add(cleanUnit);
+        }
+    });
+    const units = [...unitSet].sort();
+    console.log('📚 Unique units found:', units.length);
     
     // 2. Build student data with all units
     const studentData = {};
@@ -1767,30 +1781,43 @@ window.renderConsolidatedMarksheet = function() {
     // 3. Populate marks per student
     marks.forEach(m => {
         const studentId = m.admission_number;
-        const unit = m.subject_name;
+        const unit = m.subject_name ? m.subject_name.trim() : '';
         const score = m.final_score || 0;
         
-        if (studentData[studentId] && unit) {
-            studentData[studentId].units[unit] = score;
-            if (score > 0) {
-                studentData[studentId].total += score;
-                studentData[studentId].count++;
-                if (score >= 60) studentData[studentId].passed++;
+        if (studentData[studentId] && unit && unit !== '') {
+            // Only store if unit exists in our unique list
+            if (unitSet.has(unit)) {
+                studentData[studentId].units[unit] = score;
+                if (score > 0) {
+                    studentData[studentId].total += score;
+                    studentData[studentId].count++;
+                    if (score >= 60) studentData[studentId].passed++;
+                }
             }
         }
     });
     
-    // 4. Calculate averages and grades
+    // 4. Calculate averages and grades - FIX POINTS
     const consolidatedData = Object.values(studentData).map(data => {
         const avg = data.count > 0 ? Math.round((data.total / data.count) * 10) / 10 : 0;
         const gradeInfo = window.getGradeInfo(avg);
+        
+        // Fix: Ensure points are correct even if grade is N/A
+        let points = gradeInfo.points;
+        if (gradeInfo.grade === 'N/A' && avg > 0) {
+            if (avg >= 75) points = 4;
+            else if (avg >= 65) points = 3;
+            else if (avg >= 60) points = 2;
+            else points = 0;
+        }
+        
         const passRate = data.count > 0 ? Math.round((data.passed / data.count) * 100) : 0;
         
         return {
             ...data,
             avg: avg,
             grade: gradeInfo.grade,
-            points: gradeInfo.points,
+            points: points,
             gradeColor: gradeInfo.color,
             passRate: passRate,
             status: avg >= 60 ? '✅ Pass' : (avg > 0 ? '❌ Fail' : '⏳ Pending'),
@@ -1820,7 +1847,7 @@ window.renderConsolidatedMarksheet = function() {
         filtered = filtered.slice(0, parseInt(limit));
     }
     
-    // 8. Build table headers with dynamic unit columns
+    // 8. Build table headers with dynamic unit columns - SHOW FULL NAMES
     const headerRow = document.querySelector('#consolidatedMarksheetTable thead tr');
     if (headerRow) {
         // Remove existing dynamic unit columns (keep first 3 columns: #, Adm, Name)
@@ -1831,9 +1858,9 @@ window.renderConsolidatedMarksheet = function() {
         // Insert unit columns after Name column (index 3)
         units.forEach(unit => {
             const th = document.createElement('th');
-            th.style.cssText = 'padding: 6px 8px; text-align: center; background: #0a66c2; color: white; font-size: 11px; min-width: 60px;';
-            const shortName = unit.length > 12 ? unit.substring(0, 10) + '…' : unit;
-            th.innerHTML = `${shortName} <span style="font-size: 9px; opacity: 0.8;">(*/100)</span>`;
+            th.style.cssText = 'padding: 4px 6px; text-align: center; background: #0a66c2; color: white; font-size: 9px; min-width: 50px; white-space: nowrap;';
+            // Show full unit name with smaller font
+            th.innerHTML = `${unit} <span style="font-size: 7px; opacity: 0.7;">(*/100)</span>`;
             th.title = unit;
             headerRow.insertBefore(th, headerRow.children[3]);
         });
@@ -1868,9 +1895,9 @@ window.renderConsolidatedMarksheet = function() {
         if (avg >= 60) totalPassed++;
         
         html += `<tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">`;
-        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 600; font-size: 12px;">${index + 1}</td>`;
-        html += `<td style="padding: 6px 8px; text-align: center; font-size: 12px; font-weight: 500;">${window.escapeHtml(student.student_id || 'N/A')}</td>`;
-        html += `<td style="padding: 6px 8px; font-weight: 500; font-size: 13px; white-space: nowrap;">${window.escapeHtml(student.full_name || 'Unknown')}</td>`;
+        html += `<td style="padding: 4px 6px; text-align: center; font-weight: 600; font-size: 11px;">${index + 1}</td>`;
+        html += `<td style="padding: 4px 6px; text-align: center; font-size: 11px; font-weight: 500;">${window.escapeHtml(student.student_id || 'N/A')}</td>`;
+        html += `<td style="padding: 4px 6px; font-weight: 500; font-size: 12px; white-space: nowrap;">${window.escapeHtml(student.full_name || 'Unknown')}</td>`;
         
         // Unit scores
         units.forEach(unit => {
@@ -1878,15 +1905,15 @@ window.renderConsolidatedMarksheet = function() {
             const displayScore = (score !== undefined && score !== null && score > 0) ? score : '__';
             const isPass = score !== undefined && score !== null && score >= 60;
             const color = (score !== undefined && score !== null && score > 0) ? (isPass ? '#10b981' : '#ef4444') : '#94a3b8';
-            html += `<td style="padding: 6px 8px; text-align: center; font-weight: 600; color: ${color}; font-size: 13px;">${displayScore}</td>`;
+            html += `<td style="padding: 4px 6px; text-align: center; font-weight: 600; color: ${color}; font-size: 12px;">${displayScore}</td>`;
         });
         
         // Total, Avg, Grade, Points, Status
-        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 600; font-size: 13px;">${data.total}</td>`;
-        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 700; color: ${data.gradeColor}; font-size: 13px;">${avg}%</td>`;
-        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 700; color: ${data.gradeColor}; font-size: 14px;">${grade}</td>`;
-        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 600; font-size: 13px;">${points}</td>`;
-        html += `<td style="padding: 6px 8px; text-align: center; color: ${statusColor}; font-weight: 600; font-size: 12px;">${status}</td>`;
+        html += `<td style="padding: 4px 6px; text-align: center; font-weight: 600; font-size: 12px;">${data.total}</td>`;
+        html += `<td style="padding: 4px 6px; text-align: center; font-weight: 700; color: ${data.gradeColor}; font-size: 12px;">${avg}%</td>`;
+        html += `<td style="padding: 4px 6px; text-align: center; font-weight: 700; color: ${data.gradeColor}; font-size: 13px;">${grade}</td>`;
+        html += `<td style="padding: 4px 6px; text-align: center; font-weight: 600; font-size: 12px;">${points}</td>`;
+        html += `<td style="padding: 4px 6px; text-align: center; color: ${statusColor}; font-weight: 600; font-size: 11px;">${status}</td>`;
         html += `</tr>`;
     });
     
@@ -1903,7 +1930,6 @@ window.renderConsolidatedMarksheet = function() {
     document.getElementById('consolidated_top_performer').textContent = topPerformer;
     summary.style.display = 'flex';
 };
-
 // ============================================================
 // CONSOLIDATED MARKSHEET - EXPORT EXCEL
 // ============================================================
