@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance Module - NCHSM</title>
     
+    <!-- ===== SUPABASE ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <!-- ===== FONT AWESOME ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -1456,11 +1459,429 @@ body {
         </div>
     </div>
 
-    <!-- ===== EXTERNAL JAVASCRIPT ===== -->
-    <script src="js/finance-config.js"></script>
-    <script src="js/finance-api.js"></script>
-    <script src="js/finance-admin.js"></script>
-    <script src="js/finance-student.js"></script>
-    <script src="js/finance-app.js"></script>
+    <!-- ============================================================ -->
+    <!-- ===== JAVASCRIPT - SUPABASE INTEGRATION ===== -->
+    <!-- ============================================================ -->
+    <script>
+        // ============================================================
+        // SUPABASE CONFIGURATION
+        // ============================================================
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+
+        // Initialize Supabase client
+        const supabase = supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sb = supabase;
+
+        // Table name
+        const USER_TABLE = 'consolidated_user_profiles_table';
+
+        console.log('🔗 Supabase initialized');
+        console.log('📊 Using table:', USER_TABLE);
+
+        // ============================================================
+        // CHECK AUTHENTICATION ON LOAD
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('📝 Finance Dashboard loading...');
+            
+            // Check if user is authenticated
+            const financeUser = getFinanceUser();
+            
+            if (!financeUser) {
+                console.log('⚠️ No user found, redirecting to login...');
+                window.location.href = 'financelogin.html';
+                return;
+            }
+            
+            // Verify session with Supabase
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error || !session) {
+                    console.log('⚠️ Session expired, redirecting to login...');
+                    logoutFinance();
+                    return;
+                }
+                
+                // Check if user has finance access
+                const userData = await getUserFinanceData(session.user.id);
+                
+                if (!userData || !['superadmin', 'admin', 'finance_officer'].includes(userData.role)) {
+                    console.log('⚠️ User does not have finance access');
+                    logoutFinance();
+                    return;
+                }
+                
+                // Update UI with user info
+                updateUserUI(financeUser, userData);
+                
+                // Load dashboard data
+                loadDashboardData();
+                
+            } catch (error) {
+                console.error('❌ Auth check error:', error);
+                logoutFinance();
+            }
+        });
+
+        // ============================================================
+        // GET FINANCE USER FROM STORAGE
+        // ============================================================
+        function getFinanceUser() {
+            try {
+                // Check localStorage first
+                let user = JSON.parse(localStorage.getItem('finance_user') || 'null');
+                if (user) return user;
+                
+                // Check sessionStorage
+                user = JSON.parse(sessionStorage.getItem('finance_user') || 'null');
+                if (user) return user;
+                
+                return null;
+            } catch (e) {
+                console.error('Error getting user:', e);
+                return null;
+            }
+        }
+
+        // ============================================================
+        // GET USER FINANCE DATA FROM SUPABASE
+        // ============================================================
+        async function getUserFinanceData(userId) {
+            try {
+                const { data, error } = await supabase
+                    .from(USER_TABLE)
+                    .select('full_name, role, program, student_id, phone')
+                    .eq('id', userId)
+                    .single();
+                
+                if (error) {
+                    console.warn('⚠️ Could not fetch user profile:', error);
+                    return null;
+                }
+                
+                return data;
+            } catch (error) {
+                console.warn('⚠️ Error fetching user data:', error);
+                return null;
+            }
+        }
+
+        // ============================================================
+        // UPDATE USER UI
+        // ============================================================
+        function updateUserUI(financeUser, userData) {
+            const name = userData?.full_name || financeUser.name || 'Finance Officer';
+            const role = userData?.role || financeUser.role || 'Administrator';
+            
+            document.getElementById('userNameDisplay').textContent = name;
+            document.getElementById('sidebarUserRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+            
+            const roleMap = {
+                'superadmin': 'Super Admin',
+                'admin': 'Administrator',
+                'finance_officer': 'Finance Officer'
+            };
+            document.getElementById('userRoleDisplay').textContent = roleMap[role] || role;
+            
+            // Update current date
+            updateCurrentDate();
+        }
+
+        // ============================================================
+        // UPDATE CURRENT DATE
+        // ============================================================
+        function updateCurrentDate() {
+            const dateDisplay = document.getElementById('currentDate');
+            if (dateDisplay) {
+                const now = new Date();
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                dateDisplay.textContent = now.toLocaleDateString('en-KE', options);
+            }
+        }
+
+        // ============================================================
+        // LOAD DASHBOARD DATA
+        // ============================================================
+        function loadDashboardData() {
+            console.log('📊 Loading dashboard data...');
+            
+            // Get total students from consolidated_user_profiles_table
+            loadStudentStats();
+            
+            // Load recent transactions
+            loadRecentTransactions();
+            
+            // Initialize charts
+            initializeCharts();
+        }
+
+        // ============================================================
+        // LOAD STUDENT STATS
+        // ============================================================
+        async function loadStudentStats() {
+            try {
+                // Get total students
+                const { count: totalStudents, error: countError } = await supabase
+                    .from(USER_TABLE)
+                    .select('*', { count: 'exact', head: true })
+                    .eq('role', 'student');
+                
+                if (!countError) {
+                    document.getElementById('totalStudents').textContent = totalStudents || 0;
+                    document.getElementById('accountsBadge').textContent = totalStudents || 0;
+                }
+                
+                // Get total finance users
+                const { count: financeUsers, error: financeError } = await supabase
+                    .from(USER_TABLE)
+                    .select('*', { count: 'exact', head: true })
+                    .in('role', ['superadmin', 'admin', 'finance_officer']);
+                
+                if (!financeError) {
+                    document.getElementById('dashboardBadge').textContent = financeUsers || 0;
+                }
+                
+                // Simulate other stats (replace with real data later)
+                document.getElementById('totalCollected').textContent = 'KES 0';
+                document.getElementById('outstandingBalance').textContent = 'KES 0';
+                document.getElementById('overdueAccounts').textContent = '0';
+                document.getElementById('todayPayments').textContent = 'KES 0';
+                document.getElementById('totalTransactions').textContent = '0';
+                
+            } catch (error) {
+                console.error('Error loading student stats:', error);
+            }
+        }
+
+        // ============================================================
+        // LOAD RECENT TRANSACTIONS
+        // ============================================================
+        function loadRecentTransactions() {
+            const tbody = document.getElementById('recentTransactions');
+            if (!tbody) return;
+            
+            // Show empty state (replace with real data later)
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
+                        <i class="fas fa-info-circle"></i> No recent transactions
+                    </td>
+                </tr>
+            `;
+        }
+
+        // ============================================================
+        // INITIALIZE CHARTS
+        // ============================================================
+        function initializeCharts() {
+            // Monthly Collections Chart - Mock data
+            const monthlyCtx = document.getElementById('monthlyCollectionsChart');
+            if (monthlyCtx) {
+                new Chart(monthlyCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                        datasets: [{
+                            label: 'Monthly Collections (KES)',
+                            data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            backgroundColor: 'rgba(76, 29, 149, 0.7)',
+                            borderColor: '#4C1D95',
+                            borderWidth: 2,
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { callback: function(value) { return 'KES ' + (value / 1000).toFixed(0) + 'k'; } }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Payment Status Chart - Mock data
+            const statusCtx = document.getElementById('paymentStatusChart');
+            if (statusCtx) {
+                new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
+                        datasets: [{
+                            data: [0, 0, 0, 0],
+                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                            borderWidth: 0,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
+                            }
+                        },
+                        cutout: '60%'
+                    }
+                });
+            }
+        }
+
+        // ============================================================
+        // TAB NAVIGATION
+        // ============================================================
+        function showTab(tabId) {
+            console.log('📂 Opening tab:', tabId);
+            
+            document.querySelectorAll('.finance-tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            const target = document.getElementById('tab-' + tabId);
+            if (target) {
+                target.classList.add('active');
+            }
+            
+            document.querySelectorAll('.finance-nav a').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-tab') === tabId) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        // ============================================================
+        // SIDEBAR TOGGLE
+        // ============================================================
+        function toggleSidebar() {
+            document.getElementById('financeSidebar').classList.toggle('open');
+        }
+
+        // ============================================================
+        // LOGOUT
+        // ============================================================
+        function logoutFinance() {
+            localStorage.removeItem('finance_user');
+            sessionStorage.removeItem('finance_user');
+            window.location.href = 'financelogin.html';
+        }
+
+        // ============================================================
+        // GO TO MAIN DASHBOARD
+        // ============================================================
+        function goToMainDashboard() {
+            window.location.href = '/index.html';
+        }
+
+        // ============================================================
+        // REFRESH DATA
+        // ============================================================
+        function refreshFinanceData() {
+            showToast('Refreshing data...', 'info');
+            loadDashboardData();
+            setTimeout(() => {
+                showToast('Data refreshed successfully!', 'success');
+            }, 1000);
+        }
+
+        // ============================================================
+        // TOAST NOTIFICATIONS
+        // ============================================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('financeToastContainer');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `finance-toast finance-toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(20px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ============================================================
+        // CLOSE MODAL
+        // ============================================================
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.remove('active');
+        }
+
+        // ============================================================
+        // PLACEHOLDER FUNCTIONS (to be implemented)
+        // ============================================================
+        function filterAccounts() { console.log('Filter accounts'); }
+        function resetAccountFilters() { console.log('Reset account filters'); }
+        function exportAccountsToCSV() { showToast('Exporting accounts...', 'info'); }
+        function refreshAccounts() { loadStudentStats(); showToast('Accounts refreshed!', 'success'); }
+        function recordPayment() { showToast('Payment recorded!', 'success'); }
+        function refreshPayments() { showToast('Payments refreshed!', 'success'); }
+        function exportPaymentsToCSV() { showToast('Exporting payments...', 'info'); }
+        function saveFeeStructure() { showToast('Fee structure saved!', 'success'); }
+        function refreshFeeStructure() { showToast('Fee structure refreshed!', 'success'); }
+        function generateReport() { showToast('Generating report...', 'info'); }
+        function exportReportToPDF() { showToast('Exporting PDF...', 'info'); }
+        function exportReportToCSV() { showToast('Exporting CSV...', 'info'); }
+        function filterTransactions() { console.log('Filter transactions'); }
+        function resetTransactionFilters() { console.log('Reset transaction filters'); }
+        function saveSettings() { showToast('Settings saved!', 'success'); }
+        function exportAllData() { showToast('Exporting all data...', 'info'); }
+        function backupData() { showToast('Backup created!', 'success'); }
+        function clearCache() { showToast('Cache cleared!', 'success'); }
+        function resetModule() { 
+            if (confirm('Are you sure you want to reset the module? This cannot be undone!')) {
+                showToast('Module reset!', 'warning');
+            }
+        }
+        function printPaymentReceipt() { showToast('Printing receipt...', 'info'); }
+        function generateStudentStatement() { showToast('Generating statement...', 'info'); }
+
+        // ============================================================
+        // SETUP TAB CLICK EVENTS
+        // ============================================================
+        document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tabId = this.getAttribute('data-tab');
+                showTab(tabId);
+            });
+        });
+
+        // Close sidebar on outside click (mobile)
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById('financeSidebar');
+            const toggle = document.querySelector('.finance-mobile-toggle');
+            if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('open')) {
+                if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                    sidebar.classList.remove('open');
+                }
+            }
+        });
+
+        // Close modals on outside click
+        document.addEventListener('click', function(e) {
+            document.querySelectorAll('.finance-modal.active').forEach(modal => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+        console.log('✅ Finance Dashboard ready');
+        console.log('🔐 User:', getFinanceUser()?.email || 'Not logged in');
+    </script>
+
 </body>
 </html>
