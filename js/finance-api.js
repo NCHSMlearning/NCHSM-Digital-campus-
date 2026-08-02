@@ -476,7 +476,121 @@ async function getFeeStructure(params = {}) {
         return [];
     }
 }
+// ============================================================
+// FEE STRUCTURE - CREATE, UPDATE, DELETE
+// ============================================================
 
+async function createFeeStructure(data) {
+    try {
+        if (!isClientReady()) {
+            console.log('📝 Demo: Fee structure created', data);
+            return { success: true, id: 'demo-' + Date.now() };
+        }
+
+        // Validate required fields
+        if (!data.program) {
+            throw new Error('Program name is required');
+        }
+
+        const feeData = {
+            program: data.program,
+            program_code: data.program_code || '',
+            level: data.level || 'Diploma',
+            duration: data.duration || '',
+            mode: data.mode || 'Physical/Online',
+            block_term: data.block_term || 'Term 1',
+            intake_year: data.intake_year || '2026',
+            amount: data.total || 0,
+            total: data.total || 0,
+            hostel: data.hostel || 0,
+            components: data.components || [],
+            terms: data.terms || [],
+            payment: data.payment || {},
+            description: data.description || `${data.program} - ${data.level} Fees`,
+            is_active: data.is_active !== false,
+            created_by_name: getCurrentFinanceUser()?.name || 'System',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const { data: result, error } = await supabaseClient
+            .from(TABLES.FEE_STRUCTURE)
+            .insert([feeData])
+            .select();
+
+        if (error) throw error;
+        return result;
+    } catch (error) {
+        console.error('❌ Error creating fee structure:', error);
+        throw error;
+    }
+}
+
+async function updateFeeStructure(id, data) {
+    try {
+        if (!isClientReady()) {
+            console.log('📝 Demo: Fee structure updated', id, data);
+            return { success: true };
+        }
+
+        // Validate required fields
+        if (!data.program) {
+            throw new Error('Program name is required');
+        }
+
+        const updateData = {
+            program: data.program,
+            program_code: data.program_code || '',
+            level: data.level || 'Diploma',
+            duration: data.duration || '',
+            mode: data.mode || 'Physical/Online',
+            block_term: data.block_term || 'Term 1',
+            intake_year: data.intake_year || '2026',
+            amount: data.total || 0,
+            total: data.total || 0,
+            hostel: data.hostel || 0,
+            components: data.components || [],
+            terms: data.terms || [],
+            payment: data.payment || {},
+            description: data.description || `${data.program} - ${data.level} Fees`,
+            is_active: data.is_active !== false,
+            updated_by_name: getCurrentFinanceUser()?.name || 'System',
+            updated_at: new Date().toISOString()
+        };
+
+        const { data: result, error } = await supabaseClient
+            .from(TABLES.FEE_STRUCTURE)
+            .update(updateData)
+            .eq('id', id)
+            .select();
+
+        if (error) throw error;
+        return result;
+    } catch (error) {
+        console.error('❌ Error updating fee structure:', error);
+        throw error;
+    }
+}
+
+async function deleteFeeStructure(id) {
+    try {
+        if (!isClientReady()) {
+            console.log('📝 Demo: Fee structure deleted', id);
+            return { success: true };
+        }
+
+        const { error } = await supabaseClient
+            .from(TABLES.FEE_STRUCTURE)
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Error deleting fee structure:', error);
+        throw error;
+    }
+}
 // ============================================================
 // TRANSACTIONS
 // ============================================================
@@ -525,6 +639,9 @@ window.financeAPI = {
     recordPayment,
     deletePayment,
     getFeeStructure,
+    createFeeStructure,      // ✅ ADDED
+    updateFeeStructure,      // ✅ ADDED
+    deleteFeeStructure,      // ✅ ADDED
     updateStudentAccount,
     getDashboardStats,
     getTransactions,
