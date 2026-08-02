@@ -1,48 +1,45 @@
 /**
  * FINANCE MODULE - API COMMUNICATION LAYER
  * Handles all Supabase database operations
- * Communicates with both Super Admin and Student Dashboards
  */
 
 // ============================================================
-// SUPABASE CLIENT - SAFE INITIALIZATION (NO DUPLICATE)
+// SUPABASE CLIENT - PROPER INITIALIZATION
 // ============================================================
 
-// ✅ Check if supabase already exists globally - USE ONLY ONE
-let supabaseClient;
+// ✅ Create the Supabase client properly
+const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
-if (typeof window.supabase !== 'undefined' && window.supabase) {
-    supabaseClient = window.supabase;
-    console.log('🔗 Using existing Supabase client from window');
-} else if (typeof window.sb !== 'undefined' && window.sb) {
-    supabaseClient = window.sb;
-    console.log('🔗 Using existing Supabase client from window.sb');
-} else {
-    console.error('❌ Supabase client not available!');
-    // Try to create one as last resort
-    try {
-        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-        if (typeof supabase_js !== 'undefined' && supabase_js) {
-            supabaseClient = supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            window.supabase = supabaseClient;
-            window.sb = supabaseClient;
-            console.log('🔗 Created new Supabase client');
-        }
-    } catch (e) {
-        console.error('❌ Failed to create Supabase client:', e);
+// Get createClient function from various sources
+function getCreateClient() {
+    if (typeof window.supabase !== 'undefined' && window.supabase && typeof window.supabase.createClient === 'function') {
+        return window.supabase.createClient;
     }
+    if (typeof window.createClient === 'function') {
+        return window.createClient;
+    }
+    if (typeof supabase_js !== 'undefined' && supabase_js && typeof supabase_js.createClient === 'function') {
+        return supabase_js.createClient;
+    }
+    if (typeof Supabase !== 'undefined' && Supabase && typeof Supabase.createClient === 'function') {
+        return Supabase.createClient;
+    }
+    return null;
 }
 
-// ✅ Make available globally (only if not already set)
-if (supabaseClient && typeof window.supabase === 'undefined') {
+const createClient = getCreateClient();
+let supabaseClient = null;
+
+if (createClient) {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     window.supabase = supabaseClient;
-}
-if (supabaseClient && typeof window.sb === 'undefined') {
     window.sb = supabaseClient;
+    console.log('✅ Supabase client created successfully');
+    console.log('🔍 .from method:', typeof supabaseClient.from);
+} else {
+    console.error('❌ Could not create Supabase client');
 }
-
-console.log('🔗 Finance API: Supabase client available:', !!supabaseClient);
 
 // ============================================================
 // TABLE NAMES
@@ -82,50 +79,11 @@ function isFinanceAdmin() {
 }
 
 // ============================================================
-// MOCK DATA (for when supabase is not available)
+// CHECK IF CLIENT IS READY
 // ============================================================
 
-function getMockStats() {
-    return {
-        totalStudents: 230,
-        totalCollected: 2845000,
-        outstandingBalance: 1560000,
-        overdueAccounts: 23,
-        todayPayments: 128000,
-        totalTransactions: 876
-    };
-}
-
-function getMockStudents() {
-    return [
-        { id: '1', full_name: 'Jane Doe', student_id: 'KRCHN/001', email: 'jane@example.com', program: 'KRCHN' },
-        { id: '2', full_name: 'John Smith', student_id: 'DPOTT/023', email: 'john@example.com', program: 'DPOTT' },
-        { id: '3', full_name: 'Mary Wanjiru', student_id: 'DCH/045', email: 'mary@example.com', program: 'DCH' },
-    ];
-}
-
-function getMockStudentAccounts() {
-    return [
-        { student_id: '001', student_name: 'Jane Doe', program: 'KRCHN', intake_year: '2026', total_fees_due: 180000, total_paid: 135000, balance: 45000 },
-        { student_id: '002', student_name: 'John Smith', program: 'DPOTT', intake_year: '2026', total_fees_due: 150000, total_paid: 150000, balance: 0 },
-        { student_id: '003', student_name: 'Mary Wanjiru', program: 'DCH', intake_year: '2025', total_fees_due: 160000, total_paid: 120000, balance: 40000 },
-    ];
-}
-
-function getMockPayments() {
-    return [
-        { id: '1', payment_date: '2026-07-31', student_name: 'Jane Doe', student_id: '001', program: 'KRCHN', amount: 45000, payment_method: 'M-Pesa', reference_number: 'MPESA-7845', period: 'Term 2', status: 'completed' },
-        { id: '2', payment_date: '2026-07-31', student_name: 'John Smith', student_id: '002', program: 'DPOTT', amount: 32000, payment_method: 'Cash', reference_number: 'CASH-1234', period: 'Term 2', status: 'completed' },
-        { id: '3', payment_date: '2026-07-30', student_name: 'Mary Wanjiru', student_id: '003', program: 'DCH', amount: 28000, payment_method: 'Bank Transfer', reference_number: 'BT-5678', period: 'Term 2', status: 'pending' },
-    ];
-}
-
-function getMockFeeStructure() {
-    return [
-        { id: '1', program: 'KRCHN', block_term: 'Introductory', intake_year: '2026', amount: 60000, description: 'Tuition fees for Introductory Block' },
-        { id: '2', program: 'KRCHN', block_term: 'Block 1', intake_year: '2026', amount: 60000, description: 'Tuition fees for Block 1' },
-        { id: '3', program: 'DPOTT', block_term: 'Introductory', intake_year: '2026', amount: 50000, description: 'Tuition fees for Introductory Block' },
-    ];
+function isClientReady() {
+    return supabaseClient && typeof supabaseClient.from === 'function';
 }
 
 // ============================================================
@@ -134,9 +92,9 @@ function getMockFeeStructure() {
 
 async function getStudents(params = {}) {
     try {
-        if (!supabaseClient) {
-            console.warn('⚠️ Supabase not available, using mock data');
-            return getMockStudents();
+        if (!isClientReady()) {
+            console.warn('⚠️ Supabase not available');
+            return [];
         }
 
         let query = supabaseClient
@@ -156,15 +114,15 @@ async function getStudents(params = {}) {
         return data || [];
     } catch (error) {
         console.error('Error getting students:', error);
-        return getMockStudents();
+        return [];
     }
 }
 
 async function getStudentAccounts() {
     try {
-        if (!supabaseClient) {
-            console.warn('⚠️ Supabase not available, using mock data');
-            return getMockStudentAccounts();
+        if (!isClientReady()) {
+            console.warn('⚠️ Supabase not available');
+            return [];
         }
 
         const { data, error } = await supabaseClient
@@ -176,7 +134,7 @@ async function getStudentAccounts() {
         return data || [];
     } catch (error) {
         console.error('Error getting student accounts:', error);
-        return getMockStudentAccounts();
+        return [];
     }
 }
 
@@ -186,9 +144,9 @@ async function getStudentAccounts() {
 
 async function getPayments(params = {}) {
     try {
-        if (!supabaseClient) {
-            console.warn('⚠️ Supabase not available, using mock data');
-            return getMockPayments();
+        if (!isClientReady()) {
+            console.warn('⚠️ Supabase not available');
+            return [];
         }
 
         let query = supabaseClient
@@ -214,7 +172,7 @@ async function getPayments(params = {}) {
         return data || [];
     } catch (error) {
         console.error('Error getting payments:', error);
-        return getMockPayments();
+        return [];
     }
 }
 
@@ -224,16 +182,26 @@ async function getPayments(params = {}) {
 
 async function getDashboardStats() {
     try {
-        if (!supabaseClient) {
-            console.warn('⚠️ Supabase not available, using mock stats');
-            return getMockStats();
+        if (!isClientReady()) {
+            console.warn('⚠️ Supabase not available');
+            return {
+                totalStudents: 0,
+                totalCollected: 0,
+                outstandingBalance: 0,
+                overdueAccounts: 0,
+                todayPayments: 0,
+                totalTransactions: 0,
+                pendingPayments: 0
+            };
         }
 
+        // Get total students
         const { count: totalStudents } = await supabaseClient
             .from(TABLES.USER_PROFILES)
             .select('*', { count: 'exact', head: true })
             .eq('role', 'student');
 
+        // Get total collected
         const { data: payments } = await supabaseClient
             .from(TABLES.PAYMENTS)
             .select('amount')
@@ -241,6 +209,7 @@ async function getDashboardStats() {
 
         const totalCollected = payments ? payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
 
+        // Get outstanding balance
         const { data: accounts } = await supabaseClient
             .from(TABLES.STUDENT_ACCOUNTS)
             .select('balance')
@@ -249,6 +218,7 @@ async function getDashboardStats() {
         const outstanding = accounts ? accounts.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0) : 0;
         const overdueCount = accounts ? accounts.length : 0;
 
+        // Get today's payments
         const today = new Date().toISOString().split('T')[0];
         const { data: todayPayments } = await supabaseClient
             .from(TABLES.PAYMENTS)
@@ -258,9 +228,16 @@ async function getDashboardStats() {
 
         const todayTotal = todayPayments ? todayPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
 
+        // Get total transactions
         const { count: totalTransactions } = await supabaseClient
             .from(TABLES.PAYMENTS)
             .select('*', { count: 'exact', head: true });
+
+        // Get pending payments
+        const { count: pendingPayments } = await supabaseClient
+            .from(TABLES.PAYMENTS)
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
 
         return {
             totalStudents: totalStudents || 0,
@@ -268,12 +245,21 @@ async function getDashboardStats() {
             outstandingBalance: outstanding,
             overdueAccounts: overdueCount,
             todayPayments: todayTotal,
-            totalTransactions: totalTransactions || 0
+            totalTransactions: totalTransactions || 0,
+            pendingPayments: pendingPayments || 0
         };
 
     } catch (error) {
         console.error('❌ Error getting dashboard stats:', error);
-        return getMockStats();
+        return {
+            totalStudents: 0,
+            totalCollected: 0,
+            outstandingBalance: 0,
+            overdueAccounts: 0,
+            todayPayments: 0,
+            totalTransactions: 0,
+            pendingPayments: 0
+        };
     }
 }
 
@@ -283,8 +269,8 @@ async function getDashboardStats() {
 
 async function recordPayment(data) {
     try {
-        if (!supabaseClient) {
-            console.log('📝 Demo: Payment recorded', data);
+        if (!isClientReady()) {
+            console.warn('⚠️ Supabase not available');
             return { success: true, id: 'demo-' + Date.now() };
         }
 
@@ -327,7 +313,7 @@ async function recordPayment(data) {
 
 async function updateStudentAccount(studentId) {
     try {
-        if (!supabaseClient) {
+        if (!isClientReady()) {
             console.log('📝 Demo: Student account updated', studentId);
             return { success: true };
         }
@@ -412,7 +398,7 @@ async function updateStudentAccount(studentId) {
 
 async function deletePayment(paymentId) {
     try {
-        if (!supabaseClient) {
+        if (!isClientReady()) {
             console.log('📝 Demo: Payment deleted', paymentId);
             return { success: true };
         }
@@ -443,8 +429,8 @@ async function deletePayment(paymentId) {
 
 async function getPayment(paymentId) {
     try {
-        if (!supabaseClient) {
-            return getMockPayments().find(p => p.id === paymentId) || null;
+        if (!isClientReady()) {
+            return null;
         }
 
         const { data, error } = await supabaseClient
@@ -467,9 +453,9 @@ async function getPayment(paymentId) {
 
 async function getFeeStructure(params = {}) {
     try {
-        if (!supabaseClient) {
-            console.warn('⚠️ Supabase not available, using mock data');
-            return getMockFeeStructure();
+        if (!isClientReady()) {
+            console.warn('⚠️ Supabase not available');
+            return [];
         }
 
         let query = supabaseClient
@@ -487,7 +473,7 @@ async function getFeeStructure(params = {}) {
         return data || [];
     } catch (error) {
         console.error('Error getting fee structure:', error);
-        return getMockFeeStructure();
+        return [];
     }
 }
 
@@ -497,8 +483,9 @@ async function getFeeStructure(params = {}) {
 
 async function getTransactions(params = {}) {
     try {
-        if (!supabaseClient) {
-            return getMockPayments();
+        if (!isClientReady()) {
+            console.warn('⚠️ Supabase not available');
+            return [];
         }
 
         let query = supabaseClient
@@ -521,7 +508,7 @@ async function getTransactions(params = {}) {
         return data || [];
     } catch (error) {
         console.error('Error getting transactions:', error);
-        return getMockPayments();
+        return [];
     }
 }
 
@@ -530,6 +517,7 @@ async function getTransactions(params = {}) {
 // ============================================================
 
 window.financeAPI = {
+    supabaseClient,
     getStudents,
     getStudentAccounts,
     getPayments,
@@ -542,16 +530,11 @@ window.financeAPI = {
     getTransactions,
     getCurrentFinanceUser,
     isFinanceAdmin,
-    // Mock data for testing
-    getMockStats,
-    getMockStudents,
-    getMockStudentAccounts,
-    getMockPayments,
-    getMockFeeStructure
+    isClientReady
 };
 
 window.FINANCE_TABLES = TABLES;
 
 console.log('✅ Finance API loaded successfully');
-console.log('🔗 Supabase client available:', !!supabaseClient);
+console.log('🔗 Supabase client available:', isClientReady());
 console.log('📊 Tables:', Object.keys(TABLES).join(', '));
