@@ -1031,7 +1031,130 @@ function downloadCSV(csv, filename) {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 }
+// ============================================================
+// EXPORT MARKS TO CSV
+// ============================================================
 
+function exportMarksEntry() {
+    const marks = me_currentMarks;
+    const program = me_currentProgram;
+    const config = getGradingConfig(program);
+    const isCompetency = config.GRADE_TYPE === 'competency';
+    
+    if (!marks || marks.length === 0) {
+        if (typeof showNotification === 'function') showNotification('No data to export', 'warning');
+        return;
+    }
+    
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Percentage', 'Grade', 'Points', 'Status'];
+    const rows = marks.map(m => {
+        const result = calculateTVETMarks(m.cat1 || 0, m.cat2 || 0, m.exam || 0, program);
+        return [
+            m.admission || '',
+            m.name || '',
+            result.cat1,
+            result.cat2,
+            result.exam,
+            result.total,
+            result.percentage > 0 ? `${result.percentage}%` : '',
+            result.percentage > 0 ? result.grade : '',
+            result.percentage > 0 ? result.points : '',
+            result.percentage > 0 ? (isCompetency ? (result.isPassing ? 'COMPETENT' : 'NOT YET COMPETENT') : result.status) : ''
+        ];
+    });
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    downloadCSV(csv, `marks_${me_currentUnit}_${me_currentBlock}_${me_currentYear}.csv`);
+    if (typeof showNotification === 'function') showNotification('✅ Marks exported!', 'success');
+}
+
+// ============================================================
+// ✅ ADD THIS FUNCTION RIGHT HERE - AFTER exportMarksEntry()
+// ============================================================
+
+function exportAllMarksData() {
+    // This calls the existing exportMarksEntry function
+    if (typeof exportMarksEntry === 'function') {
+        exportMarksEntry();
+    } else {
+        console.warn('⚠️ exportMarksEntry not found, using fallback');
+        
+        // Fallback: Get marks from the table
+        const marks = me_currentMarks || [];
+        if (!marks || marks.length === 0) {
+            if (typeof showNotification === 'function') {
+                showNotification('No data to export', 'warning');
+            }
+            return;
+        }
+        
+        const program = me_currentProgram;
+        const config = getGradingConfig(program);
+        const isCompetency = config.GRADE_TYPE === 'competency';
+        
+        const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Percentage', 'Grade', 'Points', 'Status'];
+        const rows = marks.map(m => {
+            const result = calculateTVETMarks(m.cat1 || 0, m.cat2 || 0, m.exam || 0, program);
+            return [
+                m.admission || '',
+                m.name || '',
+                result.cat1,
+                result.cat2,
+                result.exam,
+                result.total,
+                result.percentage > 0 ? `${result.percentage}%` : '',
+                result.percentage > 0 ? result.grade : '',
+                result.percentage > 0 ? result.points : '',
+                result.percentage > 0 ? (isCompetency ? (result.isPassing ? 'COMPETENT' : 'NOT YET COMPETENT') : result.status) : ''
+            ];
+        });
+        
+        let csv = headers.join(',') + '\n';
+        rows.forEach(row => {
+            csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+        });
+        
+        downloadCSV(csv, `marks_${me_currentUnit}_${me_currentBlock}_${me_currentYear}.csv`);
+        if (typeof showNotification === 'function') {
+            showNotification('✅ Marks exported!', 'success');
+        }
+    }
+}
+
+// ============================================================
+// DOWNLOAD CSV
+// ============================================================
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// ✅ ALSO ADD THIS IN THE GLOBAL REGISTRATION SECTION
+// ============================================================
+
+
+// ... inside your global registration section ...
+window.exportAllMarksData = exportAllMarksData;
+
+// Make sure it's also in the main registration
+const exportFunctions = {
+    exportMarksEntry: exportMarksEntry,
+    exportAllMarksData: exportAllMarksData,  // ✅ Add this
+    downloadCSV: downloadCSV
+};
 // ============================================================
 // REFRESH FUNCTIONS
 // ============================================================
