@@ -3287,7 +3287,7 @@
             </div>
         </div>
 
-     <!-- ===== FEE STRUCTURE ===== -->
+    <!-- ===== FEE STRUCTURE ===== -->
 <div style="background: white; border-radius: 16px; border: 1px solid rgba(229,231,235,0.5); overflow: hidden; margin-bottom: 28px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
     <div style="padding: 18px 24px; background: rgba(248,250,252,0.5); border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <h4 style="margin: 0; color: #0A3D62; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
@@ -3301,12 +3301,36 @@
         </button>
     </div>
     
-    <!-- Hidden fee structure table - initially hidden -->
+    <!-- Hidden fee structure container -->
     <div id="studentFeeStructureDisplay" style="padding: 20px 24px; display: none;">
-        <div style="text-align: center; padding: 30px; color: #94a3b8;">
+        
+        <!-- Filter Bar -->
+        <div id="feeFilterBar" style="display: none; margin-bottom: 16px; padding: 12px 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e5e7eb;">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                <span style="font-weight: 600; color: #475569; font-size: 13px;">
+                    <i class="fas fa-filter" style="color: #4C1D95;"></i> Filter:
+                </span>
+                <select id="feeYearFilter" onchange="applyFeeFilters()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white; min-width: 120px; outline: none; cursor: pointer;">
+                    <option value="all">All Years</option>
+                </select>
+                <select id="feePeriodFilter" onchange="applyFeeFilters()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white; min-width: 140px; outline: none; cursor: pointer;">
+                    <option value="all">All Periods</option>
+                </select>
+                <button onclick="resetFeeFilters()" style="background: transparent; color: #64748b; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                    <i class="fas fa-times"></i> Reset
+                </button>
+                <span id="feeFilterCount" style="font-size: 12px; color: #94a3b8; margin-left: auto;"></span>
+            </div>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="feeLoadingState" style="text-align: center; padding: 30px; color: #94a3b8;">
             <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #7c3aed; border-radius: 50%; animation: spin 1s linear infinite;"></div>
             <p style="margin-top: 10px; font-weight: 500;">Loading fee structure...</p>
         </div>
+        
+        <!-- Fee Structure Content -->
+        <div id="feeStructureContent" style="display: none;"></div>
     </div>
 </div>
 
