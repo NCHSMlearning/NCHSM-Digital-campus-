@@ -1,6 +1,5 @@
 // ============================================================
-// TVET & NURSING GRADING SYSTEM - COMPLETE SOLUTION
-// FULL JS FILE - ALL FUNCTIONS INCLUDED
+// TVET & NURSING GRADING SYSTEM - COMPLETE FIXED VERSION
 // ============================================================
 
 // ============================================================
@@ -69,12 +68,40 @@ function getProgramType(programCode) {
 
 function getGradingConfig(programCode) {
     const type = getProgramType(programCode);
-    return GRADING_CONFIG[type];
+    const config = GRADING_CONFIG[type];
+    if (!config) {
+        console.warn(`⚠️ No grading config found for: ${programCode}, using TVET fallback`);
+        return GRADING_CONFIG.TVET;
+    }
+    return config;
 }
 
 // ============================================================
 // TVET MARKS CALCULATION - CORE FUNCTION
 // ============================================================
+
+function getTVETGrade(percentage, config) {
+    const grades = config.GRADE_MAPPING;
+    const sortedGrades = [...grades].sort((a, b) => b.min - a.min);
+    for (let g of sortedGrades) {
+        if (percentage >= g.min) {
+            return g;
+        }
+    }
+    return grades[grades.length - 1];
+}
+
+function getTVETGradeColor(grade, programCode) {
+    const config = getGradingConfig(programCode);
+    const gradeInfo = config.GRADE_MAPPING.find(g => g.grade === grade);
+    return gradeInfo ? gradeInfo.color : '#6b7280';
+}
+
+function getTVETGradeBgColor(grade, programCode) {
+    const config = getGradingConfig(programCode);
+    const gradeInfo = config.GRADE_MAPPING.find(g => g.grade === grade);
+    return gradeInfo ? gradeInfo.bgColor : '#f3f4f6';
+}
 
 function calculateTVETMarks(cat1, cat2, exam, programCode) {
     const config = getGradingConfig(programCode);
@@ -116,7 +143,6 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
         config: config,
         gradeType: config.GRADE_TYPE,
         gradeInfo: gradeInfo,
-        raw: { cat1: c1, cat2: c2, exam: ex },
         display: {
             cat1: `${clampedCat1}/${config.CAT1_MAX}`,
             cat2: `${clampedCat2}/${config.CAT2_MAX}`,
@@ -125,17 +151,6 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
             percentage: `${roundedPercentage}%`
         }
     };
-}
-
-function getTVETGrade(percentage, config) {
-    const grades = config.GRADE_MAPPING;
-    const sortedGrades = [...grades].sort((a, b) => b.min - a.min);
-    for (let g of sortedGrades) {
-        if (percentage >= g.min) {
-            return g;
-        }
-    }
-    return grades[grades.length - 1];
 }
 
 function getMarksEntryGrade(score, programCode) {
@@ -180,6 +195,66 @@ function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode)
     }
     
     return Math.round(percentage * 10) / 10;
+}
+
+// ============================================================
+// EXPORT ALL MARKS DATA - FIXED
+// ============================================================
+
+function exportAllMarksData() {
+    console.log('📊 Exporting all marks data...');
+    
+    const marks = window.me_currentMarks || [];
+    if (!marks || marks.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No data to export', 'warning');
+        } else {
+            alert('No data to export');
+        }
+        return;
+    }
+    
+    const program = window.me_currentProgram || 'KRCHN';
+    const config = getGradingConfig(program);
+    const isCompetency = config.GRADE_TYPE === 'competency';
+    
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Percentage', 'Grade', 'Points', 'Status'];
+    const rows = marks.map(m => {
+        const result = calculateTVETMarks(m.cat1 || 0, m.cat2 || 0, m.exam || 0, program);
+        return [
+            m.admission || '',
+            m.name || '',
+            result.cat1,
+            result.cat2,
+            result.exam,
+            result.total,
+            result.percentage > 0 ? `${result.percentage}%` : '',
+            result.percentage > 0 ? result.grade : '',
+            result.percentage > 0 ? result.points : '',
+            result.percentage > 0 ? (isCompetency ? (result.isPassing ? 'COMPETENT' : 'NOT YET COMPETENT') : result.status) : ''
+        ];
+    });
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `marks_${window.me_currentUnit || 'all'}_${window.me_currentBlock || 'all'}_${window.me_currentYear || '2025'}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    if (typeof showNotification === 'function') {
+        showNotification('✅ All marks exported successfully!', 'success');
+    } else {
+        console.log('✅ All marks exported successfully!');
+    }
 }
 
 // ============================================================
@@ -356,58 +431,70 @@ async function loadMEUnits() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY - COMPLETE WITH TVET GRADING
+// LOAD MARKS ENTRY - FIXED VERSION
 // ============================================================
 
 async function loadMarksEntry() {
-    const program = document.getElementById('me_program_select')?.value;
-    const block = document.getElementById('me_block_select')?.value;
-    const unit = document.getElementById('me_subject_select')?.value;
-    const year = document.getElementById('me_year_select')?.value;
-    const unitSelect = document.getElementById('me_subject_select');
-    const selectedOption = unitSelect.options[unitSelect.selectedIndex];
-    const assessmentType = selectedOption?.dataset?.assessment || 'full';
-    const unitCode = selectedOption?.dataset?.code || '';
-    
-    const dynamicContent = document.getElementById('marksEntryDynamicContent');
-    const placeholder = document.getElementById('marksEntryPlaceholder');
-    
-    if (!program || !block || !unit) {
-        if (dynamicContent) dynamicContent.style.display = 'none';
-        if (placeholder) placeholder.style.display = 'block';
-        document.getElementById('me_marks_container').innerHTML = `
-            <div style="text-align: center; padding: 60px 20px;">
-                <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
-                <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
-            </div>
-        `;
-        return;
-    }
-    
-    if (dynamicContent) dynamicContent.style.display = 'block';
-    if (placeholder) placeholder.style.display = 'none';
-    
-    me_currentProgram = program;
-    me_currentBlock = block;
-    me_currentUnit = unit;
-    me_currentYear = year;
-    me_currentAssessmentType = assessmentType;
-    
-    const config = getGradingConfig(program);
-    const programType = getProgramType(program);
-    
-    document.getElementById('me_marks_container').innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div class="loading-spinner"></div>
-            <p style="color: #6b7280; margin-top: 10px;">
-                Loading marks for ${unitCode || unit}...
-                <br><small style="color: #94a3b8;">${programType === 'NURSING' ? '🎓 Nursing' : '🔧 TVET'} | ${config.DISPLAY_NAME}</small>
-            </p>
-        </div>
-    `;
+    console.log('📊 loadMarksEntry() called (FIXED VERSION)');
     
     try {
+        const program = document.getElementById('me_program_select')?.value;
+        const block = document.getElementById('me_block_select')?.value;
+        const unit = document.getElementById('me_subject_select')?.value;
+        const year = document.getElementById('me_year_select')?.value;
+        const unitSelect = document.getElementById('me_subject_select');
+        const selectedOption = unitSelect?.options[unitSelect.selectedIndex];
+        const assessmentType = selectedOption?.dataset?.assessment || 'full';
+        const unitCode = selectedOption?.dataset?.code || '';
+        
+        console.log('📊 Selected:', { program, block, unit, year, assessmentType, unitCode });
+        
+        const dynamicContent = document.getElementById('marksEntryDynamicContent');
+        const placeholder = document.getElementById('marksEntryPlaceholder');
+        const marksContainer = document.getElementById('me_marks_container');
+        
+        if (!program || !block || !unit) {
+            console.log('⚠️ Missing selections - showing placeholder');
+            if (dynamicContent) dynamicContent.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'block';
+            if (marksContainer) {
+                marksContainer.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
+                        <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
+                    </div>
+                `;
+            }
+            return;
+        }
+        
+        if (dynamicContent) dynamicContent.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+        
+        me_currentProgram = program;
+        me_currentBlock = block;
+        me_currentUnit = unit;
+        me_currentYear = year;
+        me_currentAssessmentType = assessmentType;
+        
+        const config = getGradingConfig(program);
+        const programType = getProgramType(program);
+        
+        console.log(`📊 Program: ${program} (${programType}) - ${config.DISPLAY_NAME}`);
+        
+        if (marksContainer) {
+            marksContainer.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner"></div>
+                    <p style="color: #6b7280; margin-top: 10px;">
+                        Loading marks for ${unitCode || unit}...
+                        <br><small style="color: #94a3b8;">${programType === 'NURSING' ? '🎓 Nursing' : '🔧 TVET'} | ${config.DISPLAY_NAME}</small>
+                    </p>
+                </div>
+            `;
+        }
+        
         const { data: marks, error: marksError } = await sb
             .from('student_marks')
             .select('*')
@@ -417,56 +504,64 @@ async function loadMarksEntry() {
         
         if (marksError) throw marksError;
         
-        console.log(`📊 Found ${marks?.length || 0} enrolled students for ${unit}`);
-        console.log(`📊 Program: ${program} (${programType}) - ${config.DISPLAY_NAME}`);
+        console.log(`📊 Found ${marks?.length || 0} students`);
         
         if (!marks || marks.length === 0) {
-            document.getElementById('me_marks_container').innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                    <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
-                    <p style="color: #94a3b8;">Use "Manage Students" to add students to this unit</p>
-                    <button onclick="openMarksStudentManager()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-users"></i> Manage Students
-                    </button>
-                </div>
-            `;
+            if (marksContainer) {
+                marksContainer.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
+                        <p style="color: #94a3b8;">Use "Manage Students" to add students to this unit</p>
+                        <button onclick="openMarksStudentManager()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-users"></i> Manage Students
+                        </button>
+                    </div>
+                `;
+            }
             updateMarksEntryStats([], assessmentType, program);
             return;
         }
         
-        const admissions = marks.map(m => m.admission_number);
-        const { data: students, error: studentError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, block, intake_year, program')
-            .eq('role', 'student')
-            .in('student_id', admissions);
+        const admissions = marks.map(m => m.admission_number).filter(Boolean);
+        console.log(`📊 Admissions to fetch: ${admissions.length}`);
         
-        if (studentError) {
-            console.warn('⚠️ Could not fetch student names:', studentError);
+        let studentMap = {};
+        if (admissions.length > 0) {
+            try {
+                const { data: students, error: studentError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('student_id, full_name')
+                    .eq('role', 'student')
+                    .in('student_id', admissions);
+                
+                if (!studentError && students) {
+                    students.forEach(s => {
+                        if (s.student_id) {
+                            studentMap[s.student_id] = s.full_name || 'Unknown';
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('⚠️ Could not fetch student names:', e);
+            }
         }
         
-        const studentMap = {};
-        students?.forEach(s => {
-            studentMap[s.student_id] = s.full_name || 'Unknown';
-        });
-        
         const fullMarks = marks.map(m => {
-            const admission = m.admission_number || '';
-            const cat1 = m.cat1_score || 0;
-            const cat2 = m.cat2_score || 0;
-            const exam = m.exam_score || 0;
-            
-            const result = calculateTVETMarks(cat1, cat2, exam, program);
-            
+            const result = calculateTVETMarks(
+                m.cat1_score || 0, 
+                m.cat2_score || 0, 
+                m.exam_score || 0, 
+                program
+            );
             return {
-                admission: admission,
-                name: studentMap[admission] || m.student_name || 'Unknown',
+                admission: m.admission_number || '',
+                name: studentMap[m.admission_number] || m.student_name || 'Unknown',
                 program: program,
                 programType: programType,
-                cat1: cat1,
-                cat2: cat2,
-                exam: exam,
+                cat1: m.cat1_score || 0,
+                cat2: m.cat2_score || 0,
+                exam: m.exam_score || 0,
                 total: result.total,
                 maxTotal: result.maxTotal,
                 percentage: result.percentage,
@@ -477,19 +572,17 @@ async function loadMarksEntry() {
                 isPassing: result.isPassing,
                 final: result.percentage,
                 final_score: result.percentage,
-                gradeDisplay: result.grade,
                 assessmentType: m.assessment_type || assessmentType,
                 id: m.id || null,
                 approval_status: m.approval_status || 'draft',
                 published: m.published || false,
-                published_at: m.published_at || null,
                 gradeIcon: result.gradeInfo?.icon || ''
             };
         });
         
-        console.log(`📊 Displaying ${fullMarks.length} enrolled students with TVET calculation`);
-        
+        console.log(`📊 Displaying ${fullMarks.length} students`);
         me_currentMarks = fullMarks;
+        
         renderMarksEntryTable(fullMarks, unitCode, assessmentType, program);
         updateMarksEntryStats(fullMarks, assessmentType, program);
         
@@ -497,18 +590,23 @@ async function loadMarksEntry() {
         updateAssessmentTypeDisplay();
         showGradingSystemInfo(program);
         
+        console.log('✅ Marks loaded successfully!');
+        
     } catch (error) {
-        console.error('Error loading marks:', error);
-        document.getElementById('me_marks_container').innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
-                <h4 style="color: #991b1b;">Error loading marks</h4>
-                <p style="color: #64748b;">${error.message}</p>
-                <button onclick="loadMarksEntry()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    <i class="fas fa-sync-alt"></i> Retry
-                </button>
-            </div>
-        `;
+        console.error('❌ Error loading marks:', error);
+        const marksContainer = document.getElementById('me_marks_container');
+        if (marksContainer) {
+            marksContainer.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                    <h4 style="color: #991b1b;">Error loading marks</h4>
+                    <p style="color: #64748b;">${error.message}</p>
+                    <button onclick="loadMarksEntry()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+        }
         if (typeof showNotification === 'function') {
             showNotification('Error loading marks: ' + error.message, 'error');
         }
@@ -562,7 +660,7 @@ function showGradingSystemInfo(program) {
 }
 
 // ============================================================
-// RENDER MARKS ENTRY TABLE - COMPLETE
+// RENDER MARKS ENTRY TABLE
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
@@ -623,7 +721,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                         ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-${config.CAT1_MAX})</th>` : ''}
                         ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-${config.CAT2_MAX})</th>` : ''}
                         ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${config.EXAM_MAX})</th>` : ''}
-                        <th style="padding: 10px 8px; text-align: center;">Total</th>
+                        <th style="padding: 10px 8px; text-align: center;">Total (out of 100)</th>
                         <th style="padding: 10px 8px; text-align: center;">%</th>
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
                         <th style="padding: 10px 8px; text-align: center;">Points</th>
@@ -643,7 +741,8 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         const gradeInfo = getTVETGrade(percentage, config);
         const isPassing = percentage >= config.PASS_MARK;
         
-        const displayTotal = result.total > 0 ? result.total : '--';
+        // ✅ FIXED: Show converted score out of 100, not raw total
+        const displayTotal = result.percentage > 0 ? result.percentage : '--';
         const displayPercentage = result.percentage > 0 ? `${result.percentage}%` : '--';
         const displayGrade = result.percentage > 0 ? result.grade : '--';
         const displayPoints = result.percentage > 0 ? result.points : '--';
@@ -679,7 +778,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
             ${showExam ? `<td style="padding: 8px; text-align: center;">
                 <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${config.EXAM_MAX}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
-            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
+            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.percentage > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
             <td id="me_percentage_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.percentage > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayPercentage}</td>
             <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color || '#6b7280'};">${displayGrade}</td>
             <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color || '#6b7280'};">${displayPoints}</td>
@@ -1031,130 +1130,7 @@ function downloadCSV(csv, filename) {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 }
-// ============================================================
-// EXPORT MARKS TO CSV
-// ============================================================
 
-function exportMarksEntry() {
-    const marks = me_currentMarks;
-    const program = me_currentProgram;
-    const config = getGradingConfig(program);
-    const isCompetency = config.GRADE_TYPE === 'competency';
-    
-    if (!marks || marks.length === 0) {
-        if (typeof showNotification === 'function') showNotification('No data to export', 'warning');
-        return;
-    }
-    
-    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Percentage', 'Grade', 'Points', 'Status'];
-    const rows = marks.map(m => {
-        const result = calculateTVETMarks(m.cat1 || 0, m.cat2 || 0, m.exam || 0, program);
-        return [
-            m.admission || '',
-            m.name || '',
-            result.cat1,
-            result.cat2,
-            result.exam,
-            result.total,
-            result.percentage > 0 ? `${result.percentage}%` : '',
-            result.percentage > 0 ? result.grade : '',
-            result.percentage > 0 ? result.points : '',
-            result.percentage > 0 ? (isCompetency ? (result.isPassing ? 'COMPETENT' : 'NOT YET COMPETENT') : result.status) : ''
-        ];
-    });
-    
-    let csv = headers.join(',') + '\n';
-    rows.forEach(row => {
-        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
-    });
-    
-    downloadCSV(csv, `marks_${me_currentUnit}_${me_currentBlock}_${me_currentYear}.csv`);
-    if (typeof showNotification === 'function') showNotification('✅ Marks exported!', 'success');
-}
-
-// ============================================================
-// ✅ ADD THIS FUNCTION RIGHT HERE - AFTER exportMarksEntry()
-// ============================================================
-
-function exportAllMarksData() {
-    // This calls the existing exportMarksEntry function
-    if (typeof exportMarksEntry === 'function') {
-        exportMarksEntry();
-    } else {
-        console.warn('⚠️ exportMarksEntry not found, using fallback');
-        
-        // Fallback: Get marks from the table
-        const marks = me_currentMarks || [];
-        if (!marks || marks.length === 0) {
-            if (typeof showNotification === 'function') {
-                showNotification('No data to export', 'warning');
-            }
-            return;
-        }
-        
-        const program = me_currentProgram;
-        const config = getGradingConfig(program);
-        const isCompetency = config.GRADE_TYPE === 'competency';
-        
-        const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Percentage', 'Grade', 'Points', 'Status'];
-        const rows = marks.map(m => {
-            const result = calculateTVETMarks(m.cat1 || 0, m.cat2 || 0, m.exam || 0, program);
-            return [
-                m.admission || '',
-                m.name || '',
-                result.cat1,
-                result.cat2,
-                result.exam,
-                result.total,
-                result.percentage > 0 ? `${result.percentage}%` : '',
-                result.percentage > 0 ? result.grade : '',
-                result.percentage > 0 ? result.points : '',
-                result.percentage > 0 ? (isCompetency ? (result.isPassing ? 'COMPETENT' : 'NOT YET COMPETENT') : result.status) : ''
-            ];
-        });
-        
-        let csv = headers.join(',') + '\n';
-        rows.forEach(row => {
-            csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
-        });
-        
-        downloadCSV(csv, `marks_${me_currentUnit}_${me_currentBlock}_${me_currentYear}.csv`);
-        if (typeof showNotification === 'function') {
-            showNotification('✅ Marks exported!', 'success');
-        }
-    }
-}
-
-// ============================================================
-// DOWNLOAD CSV
-// ============================================================
-
-function downloadCSV(csv, filename) {
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-}
-
-// ============================================================
-// ✅ ALSO ADD THIS IN THE GLOBAL REGISTRATION SECTION
-// ============================================================
-
-
-// ... inside your global registration section ...
-window.exportAllMarksData = exportAllMarksData;
-
-// Make sure it's also in the main registration
-const exportFunctions = {
-    exportMarksEntry: exportMarksEntry,
-    exportAllMarksData: exportAllMarksData,  // ✅ Add this
-    downloadCSV: downloadCSV
-};
 // ============================================================
 // REFRESH FUNCTIONS
 // ============================================================
@@ -1929,7 +1905,7 @@ function renderStudentPublishList(marks) {
         const score = mark.percentage || mark.final || mark.final_score || 0;
         const grade = mark.grade || '-';
         const isPublished = mark.published === true;
-        const isPassing = score >= 50; // TVET pass mark is 50
+        const isPassing = score >= 50;
         const isSelected = sp_selected.has(admission);
         const gradeColor = getTVETGradeColor(grade, me_currentProgram);
         
@@ -3087,6 +3063,7 @@ window.updateMarksEntryRow = updateMarksEntryRow;
 window.updateMarksEntryStats = updateMarksEntryStats;
 window.saveMarksEntry = saveMarksEntry;
 window.exportMarksEntry = exportMarksEntry;
+window.exportAllMarksData = exportAllMarksData;
 window.downloadCSV = downloadCSV;
 window.refreshMarksData = refreshMarksData;
 window.showGradingSystemInfo = showGradingSystemInfo;
@@ -3149,3 +3126,4 @@ window.escapeHtml = escapeHtml;
 console.log('✅ TVET & Nursing Marks Entry System FULLY LOADED!');
 console.log('📋 TVET Grading: E(0-49%) → C(50-64%) → B(65-79%) → A(80-100%) | Points: E=0, C=2, B=3, A=4');
 console.log('📋 Nursing Grading: D(0-59%) → C(60-64%) → B(65-74%) → A(75-100%) | Points: D=0.0, C=2.0, B=3.0, A=4.0');
+console.log('✅ exportAllMarksData() function is now available!');
