@@ -3390,8 +3390,7 @@
 </section>
 <!-- ============================================ -->
 <!-- MARKS ENTRY SYSTEM - SUPER ADMIN (FULLY FIXED) -->
-<!-- WITH PUBLISH MARKS BUTTONS & STUDENT SELECT  -->
-
+<!-- WITH TVET COMPETENCY-BASED GRADING -->
 <!-- ============================================ -->
 <section id="marks-entry" class="tab-content">
     <!-- Header -->
@@ -3447,7 +3446,7 @@
         <div class="card" style="border-top: 4px solid #ef4444;">
             <h3 style="color: #dc2626; font-size: 12px;">At Risk</h3>
             <p class="data" id="me_at_risk" style="font-size: 28px; font-weight: 700; color: #dc2626;">0</p>
-            <p class="minor-data" style="font-size: 11px;">Below 60%</p>
+            <p class="minor-data" style="font-size: 11px;">Below pass mark</p>
         </div>
         <!-- ✅ PUBLISHED COUNT CARD -->
         <div class="card" style="border-top: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ecfdf5);">
@@ -3546,19 +3545,37 @@
         </div>
     </div>
 
-    <!-- Grading System Reference -->
+    <!-- ✅ UPDATED: Grading System Reference - Shows BOTH TVET and Nursing -->
     <div style="background: white; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
         <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
-            <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading System:</span>
-            <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 11px;">A (75-100%) → 4.0</span>
-            <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 11px;">B (65-74%) → 3.0</span>
-            <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 11px;">C (60-64%) → 2.0</span>
-            <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 11px;">D (Below 60%) → 0.0</span>
-            <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
-                <i class="fas fa-info-circle"></i> Applicable to all programs
-            </span>
+            <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading Systems:</span>
+            
+            <!-- TVET Competency-Based Grading -->
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: #f0fdf4; padding: 4px 12px; border-radius: 6px; border: 1px solid #86efac;">
+                <span style="font-size: 11px; font-weight: 700; color: #065f46;">🔧 TVET</span>
+                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A (80-100%) = 4</span>
+                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B (65-79%) = 3</span>
+                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C (50-64%) = 2</span>
+                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">E (0-49%) = 0</span>
+            </div>
+            
+            <!-- Nursing Academic Grading -->
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: #eff6ff; padding: 4px 12px; border-radius: 6px; border: 1px solid #93c5fd;">
+                <span style="font-size: 11px; font-weight: 700; color: #1e40af;">🎓 Nursing</span>
+                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A (75-100%) = 4.0</span>
+                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B (65-74%) = 3.0</span>
+                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C (60-64%) = 2.0</span>
+                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">D (0-59%) = 0.0</span>
+            </div>
+            
+            <!-- Auto-Detected Display -->
             <span id="assessmentTypeDisplay" style="font-size: 11px; color: #059669; background: #d1fae5; padding: 2px 12px; border-radius: 12px;">
                 <i class="fas fa-magic"></i> Auto: <span id="autoAssessmentTypeLabel">Full</span>
+            </span>
+            
+            <!-- Current Program Type Display -->
+            <span id="currentGradingType" style="font-size: 11px; color: #6b7280; background: #f3f4f6; padding: 2px 12px; border-radius: 12px; display: none;">
+                <i class="fas fa-info-circle"></i> <span id="currentGradingTypeLabel">TVET</span>
             </span>
         </div>
     </div>
@@ -3576,6 +3593,9 @@
     <!-- DYNAMIC CONTENT - Shows when unit is selected -->
     <!-- ============================================ -->
     <div id="marksEntryDynamicContent" style="display: none;">
+        
+        <!-- ✅ Grading System Info - Dynamic (inserted by JS) -->
+        <div id="gradingSystemInfo" style="margin-bottom: 16px;"></div>
         
         <!-- 1. LECTURER ASSIGNMENT MANAGEMENT -->
         <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
@@ -3703,10 +3723,10 @@
                     <i class="fas fa-times"></i> Deselect All
                 </button>
                 <button onclick="selectPassingStudents()" class="btn-action" style="background: #10b981; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-check-circle"></i> Select Passing (≥60%)
+                    <i class="fas fa-check-circle"></i> Select Passing
                 </button>
                 <button onclick="selectFailingStudents()" class="btn-action" style="background: #dc2626; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-exclamation-circle"></i> Select Failing (&lt;60%)
+                    <i class="fas fa-exclamation-circle"></i> Select Failing
                 </button>
                 <span style="margin-left: auto; font-size: 13px; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 20px;">
                     Selected: <strong id="sp_selected_count">0</strong> / <span id="sp_total_count">0</span>
@@ -3863,6 +3883,81 @@
         </div>
     </div>
 </div>
+
+<!-- ============================================ -->
+<!-- LOADING OVERLAY -->
+<!-- ============================================ -->
+<div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; gap: 16px;">
+    <div style="background: white; padding: 30px 40px; border-radius: 16px; text-align: center; min-width: 200px;">
+        <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+        <p id="loadingMessage" style="color: #1e293b; font-weight: 600; margin-top: 12px;">Loading...</p>
+    </div>
+    <style>
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #4C1D95;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+    </style>
+</div>
+
+<script>
+    // ============================================================
+    // ADDITIONAL: Function to update grading display based on program
+    // ============================================================
+    
+    function updateGradingDisplay(program) {
+        const config = getGradingConfig(program);
+        const programType = getProgramType(program);
+        
+        const gradingTypeEl = document.getElementById('currentGradingType');
+        const gradingTypeLabel = document.getElementById('currentGradingTypeLabel');
+        
+        if (gradingTypeEl && gradingTypeLabel) {
+            gradingTypeEl.style.display = 'inline-block';
+            if (programType === 'NURSING') {
+                gradingTypeLabel.textContent = '🎓 Nursing (Academic)';
+                gradingTypeEl.style.background = '#dbeafe';
+                gradingTypeEl.style.color = '#1e40af';
+            } else {
+                gradingTypeLabel.textContent = '🔧 TVET (Competency-Based)';
+                gradingTypeEl.style.background = '#d1fae5';
+                gradingTypeEl.style.color = '#065f46';
+            }
+        }
+    }
+    
+    // Override loadMarksEntry to update grading display
+    const originalLoadMarksEntry = window.loadMarksEntry;
+    window.loadMarksEntry = async function() {
+        await originalLoadMarksEntry();
+        const program = document.getElementById('me_program_select')?.value;
+        if (program) {
+            updateGradingDisplay(program);
+        }
+    };
+    
+    // Override loadMEBlocks to update grading display
+    const originalLoadMEBlocks = window.loadMEBlocks;
+    window.loadMEBlocks = async function() {
+        await originalLoadMEBlocks();
+        const program = document.getElementById('me_program_select')?.value;
+        if (program) {
+            updateGradingDisplay(program);
+        }
+    };
+    
+    console.log('✅ TVET Grading Display Updated in HTML!');
+    console.log('📋 TVET: E(0-49%) → C(50-64%) → B(65-79%) → A(80-100%) | Points: E=0, C=2, B=3, A=4');
+    console.log('📋 Nursing: D(0-59%) → C(60-64%) → B(65-74%) → A(75-100%) | Points: D=0.0, C=2.0, B=3.0, A=4.0');
+</script>
                                 <!-- ============================================ -->
 <!-- MARK ENTRY CONTROL PANEL - ADMIN -->
 <!-- ============================================ -->
