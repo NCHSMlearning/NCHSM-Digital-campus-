@@ -12958,11 +12958,77 @@ async function loadUnitRegistrationStats() {
             if (pendingEl) pendingEl.textContent = pending;
             if (approvedEl) approvedEl.textContent = approved;
             if (totalEl) totalEl.textContent = data.length;
+            
+            // Update badges
+            const pendingBadge = document.getElementById('pendingCountBadge');
+            if (pendingBadge) pendingBadge.textContent = pending;
+            
+            const approvedBadge = document.getElementById('approvedCountBadge');
+            if (approvedBadge) approvedBadge.textContent = approved;
         }
     } catch (error) {
         console.error('Error loading registration stats:', error);
     }
 }
+
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
+
+function isTVETProgram(program) {
+    const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 
+                          'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+                          'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+    return tvetPrograms.includes(program);
+}
+
+function getProgramType(program) {
+    if (program === 'KRCHN') return 'KRCHN';
+    if (isTVETProgram(program)) return 'TVET';
+    return 'OTHER';
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showFeedback(message, type = 'info') {
+    const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
+    
+    // Remove existing feedback
+    document.querySelectorAll('.feedback-toast').forEach(el => el.remove());
+    
+    const toast = document.createElement('div');
+    toast.className = 'feedback-toast';
+    toast.style.cssText = `
+        position: fixed; bottom: 30px; right: 30px; 
+        padding: 14px 24px; background: ${colors[type] || '#3b82f6'}; 
+        color: white; border-radius: 10px; font-weight: 500; 
+        z-index: 100000; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        animation: slideIn 0.3s ease-out; max-width: 450px;
+        font-size: 14px; border-left: 4px solid rgba(255,255,255,0.3);
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// Global state
+let pendingRegistrationsData = [];
+let pendingProgramFilter = 'all';
 
 // =====================================================
 // PENDING REGISTRATIONS - WITH TVET/KRCHN FILTER
@@ -13017,76 +13083,50 @@ async function loadUnitPendingRegistrations() {
         }
         
         // Get student details - MATCH BY user_id (UUID)
-        const studentIds = [...new Set(pendingRegistrationsData.map(r => r.student_id))];
+        const studentIds = [...new Set(pendingRegistrationsData.map(r => r.student_id).filter(id => id))];
         let studentInfo = {};
         
         // ✅ Query using user_id (matches student_id in registrations)
-        const { data: profiles, error: profileError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id, program, block, intake_year, intake_month, phone, email')
-            .in('user_id', studentIds);
-        
-        if (profileError) {
-            console.error('Error fetching profiles:', profileError);
-        }
-        
-        if (profiles) {
-            profiles.forEach(p => {
-                studentInfo[p.user_id] = {
-                    full_name: p.full_name || 'Unknown',
-                    student_id: p.student_id || p.user_id,
-                    program: p.program || 'N/A',
-                    block: p.block || 'N/A',
-                    intake_year: p.intake_year || 'N/A',
-                    intake_month: p.intake_month || '',
-                    phone: p.phone || 'N/A',
-                    email: p.email || 'N/A'
-                };
-            });
-        }
-        
-        // ✅ Handle null student IDs
-        const hasNullStudent = studentIds.includes(null);
-        let nullStudentInfo = null;
-        if (hasNullStudent) {
-            const nullRegistrations = pendingRegistrationsData.filter(r => r.student_id === null);
-            if (nullRegistrations.length > 0) {
-                // Try to find by student_name if it exists
-                const firstNull = nullRegistrations[0];
-                if (firstNull.student_name) {
-                    const { data: found } = await sb
-                        .from('consolidated_user_profiles_table')
-                        .select('user_id, full_name, student_id, program, block, intake_year, intake_month, phone, email')
-                        .eq('full_name', firstNull.student_name)
-                        .maybeSingle();
-                    
-                    if (found) {
-                        nullStudentInfo = {
-                            full_name: found.full_name,
-                            student_id: found.student_id || found.user_id,
-                            program: found.program || 'N/A',
-                            block: found.block || 'N/A',
-                            intake_year: found.intake_year || 'N/A',
-                            intake_month: found.intake_month || '',
-                            phone: found.phone || 'N/A',
-                            email: found.email || 'N/A'
-                        };
-                    }
-                }
-                
-                if (!nullStudentInfo) {
-                    nullStudentInfo = {
-                        full_name: '⚠️ Unknown Student (Needs Review)',
-                        student_id: 'N/A',
-                        program: 'N/A',
-                        block: 'N/A',
-                        intake_year: 'N/A',
-                        intake_month: '',
-                        phone: 'N/A',
-                        email: 'N/A'
-                    };
-                }
+        if (studentIds.length > 0) {
+            const { data: profiles, error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name, student_id, program, block, intake_year, intake_month, phone, email')
+                .in('user_id', studentIds);
+            
+            if (profileError) {
+                console.error('Error fetching profiles:', profileError);
             }
+            
+            if (profiles) {
+                profiles.forEach(p => {
+                    studentInfo[p.user_id] = {
+                        full_name: p.full_name || 'Unknown',
+                        student_id: p.student_id || p.user_id,
+                        program: p.program || 'N/A',
+                        block: p.block || 'N/A',
+                        intake_year: p.intake_year || 'N/A',
+                        intake_month: p.intake_month || '',
+                        phone: p.phone || 'N/A',
+                        email: p.email || 'N/A'
+                    };
+                });
+            }
+        }
+        
+        // Handle null student IDs
+        const nullRegistrations = pendingRegistrationsData.filter(r => r.student_id === null);
+        let nullStudentInfo = null;
+        if (nullRegistrations.length > 0) {
+            nullStudentInfo = {
+                full_name: '⚠️ Unknown Student (Needs Review)',
+                student_id: 'N/A',
+                program: 'N/A',
+                block: 'N/A',
+                intake_year: 'N/A',
+                intake_month: '',
+                phone: 'N/A',
+                email: 'N/A'
+            };
         }
         
         // ⭐ GROUP BY STUDENT with ALL data
@@ -13095,7 +13135,7 @@ async function loadUnitPendingRegistrations() {
             const studentId = reg.student_id;
             
             let info;
-            if (studentId === null) {
+            if (studentId === null || !studentId) {
                 info = nullStudentInfo || {
                     full_name: '⚠️ Unknown Student',
                     student_id: 'N/A',
@@ -13386,6 +13426,29 @@ async function loadUnitPendingRegistrations() {
         html += `
             </div>
             
+            <!-- Bulk Actions Footer -->
+            <div style="margin-top: 15px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button onclick="selectAllPendingUnits()" class="btn-sm" style="background: #4C1D95; color: white; padding: 4px 14px; border: none; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-check-double"></i> Select All
+                    </button>
+                    <button onclick="clearAllUnitSelections()" class="btn-sm" style="background: #6b7280; color: white; padding: 4px 14px; border: none; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                    <span style="font-size: 12px; color: #6b7280;">
+                        Selected: <span id="selectedUnitsCount">0</span> units
+                    </span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="bulkApproveSelectedUnits()" class="btn-action" style="background: #059669; color: white; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-check"></i> Approve Selected
+                    </button>
+                    <button onclick="bulkRejectSelectedUnits()" class="btn-action" style="background: #dc2626; color: white; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-times"></i> Reject Selected
+                    </button>
+                </div>
+            </div>
+            
             <!-- Footer -->
             <div style="margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; font-size: 12px; color: #6b7280; text-align: center; border: 1px solid #e5e7eb;">
                 <i class="fas fa-info-circle"></i> 
@@ -13646,7 +13709,6 @@ async function loadApprovedRegistrations() {
             if (!err && profiles) {
                 profiles.forEach(p => {
                     studentMap[p.user_id] = p.full_name;
-                    if (p.student_id) studentMap[p.student_id] = p.full_name;
                 });
             }
         }
@@ -13659,18 +13721,20 @@ async function loadApprovedRegistrations() {
             
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td><input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()"></td>
+                    <td style="text-align: center;">
+                        <input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()">
+                    </td>
                     <td><strong>${escapeHtml(studentName)}</strong></td>
-                    <td style="font-size: 12px; color: #6b7280;">${reg.student_id?.substring(0, 8) || 'N/A'}...</td>
-                    <td><span class="badge badge-info">${escapeHtml(reg.unit_code)}</span></td>
+                    <td style="font-size: 12px; color: #6b7280;">${reg.student_id ? reg.student_id.substring(0, 8) : 'N/A'}...</td>
+                    <td><span class="badge badge-info" style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.unit_code)}</span></td>
                     <td>${escapeHtml(reg.unit_name)}</td>
-                    <td><span class="badge badge-secondary">${escapeHtml(reg.block)}</span></td>
-                    <td><span class="badge badge-success">${escapeHtml(reg.reg_type || 'Normal')}</span></td>
-                    <td>${approvalDate}</td>
-                    <td style="font-size: 12px; color: #6b7280;">System</td>
-                    <td>
+                    <td><span class="badge badge-secondary" style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.block)}</span></td>
+                    <td><span class="badge badge-success" style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.reg_type || 'Normal')}</span></td>
+                    <td style="text-align: center; font-size: 12px;">${approvalDate}</td>
+                    <td style="font-size: 12px; color: #6b7280; text-align: center;">System</td>
+                    <td style="text-align: center;">
                         <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentName)}')" 
-                            class="btn-sm btn-warning">
+                            class="btn-sm btn-warning" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">
                             <i class="fas fa-undo"></i> De-approve
                         </button>
                     </td>
@@ -13680,9 +13744,17 @@ async function loadApprovedRegistrations() {
         
         tbody.innerHTML = html;
         
+        // Update badge count
+        const approvedBadge = document.getElementById('approvedCountBadge');
+        if (approvedBadge) approvedBadge.textContent = registrations.length;
+        
+        // Update stats
+        const approvedEl = document.getElementById('approvedRegistrations');
+        if (approvedEl) approvedEl.textContent = registrations.length;
+        
     } catch (error) {
         console.error('❌ Error loading approved registrations:', error);
-        tbody.innerHTML = `<tr><td colspan="10" style="color: red;">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="color: red; text-align: center; padding: 20px;">Error: ${error.message}</td></tr>`;
     }
 }
 
@@ -13705,8 +13777,11 @@ function toggleSelectAllApproved() {
 
 function filterApprovedRegistrations() {
     const searchTerm = document.getElementById('approved-search')?.value.toLowerCase() || '';
-    document.querySelectorAll('#approved-registrations-body tr').forEach(row => {
-        row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+    const rows = document.querySelectorAll('#approved-registrations-body tr');
+    rows.forEach(row => {
+        if (row.querySelector('td')?.textContent) {
+            row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
+        }
     });
 }
 
@@ -13715,7 +13790,7 @@ function exportApprovedRegistrations() {
     const rows = [];
     document.querySelectorAll('#approved-registrations-body tr').forEach(row => {
         const cells = row.querySelectorAll('td');
-        if (cells.length >= 9) {
+        if (cells.length >= 9 && !row.textContent.includes('No approved')) {
             rows.push([
                 cells[1]?.textContent.trim() || '',
                 cells[2]?.textContent.trim() || '',
@@ -13728,7 +13803,13 @@ function exportApprovedRegistrations() {
             ]);
         }
     });
-    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+    
+    if (rows.length === 0) {
+        showFeedback('⚠️ No data to export', 'warning');
+        return;
+    }
+    
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -13776,46 +13857,10 @@ async function bulkDeapproveSelected() {
 }
 
 // =====================================================
-// LOAD BLOCKS FOR FILTER
-// =====================================================
-
-async function loadUnitBlocks() {
-    try {
-        const { data, error } = await sb.from('units_catalog').select('block').eq('status', 'active');
-        if (!error && data) {
-            const blocks = [...new Set(data.map(b => b.block))];
-            const blockSelect = document.getElementById('unit_filter_block');
-            if (blockSelect) {
-                blockSelect.innerHTML = '<option value="">All Blocks</option>';
-                blocks.forEach(block => {
-                    blockSelect.innerHTML += `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`;
-                });
-            }
-        }
-    } catch (error) {
-        console.error('Error loading blocks:', error);
-    }
-}
-
-function filterUnitsByBlockSelect() {
-    const blockSelect = document.getElementById('unit_filter_block');
-    if (blockSelect) {
-        currentBlockFilter = blockSelect.value || 'all';
-        renderUnitsCatalog();
-    }
-}
-
-// =====================================================
 // EXPOSE GLOBALLY
 // =====================================================
 
-window.loadAllUnits = loadAllUnits;
-window.addNewUnitRecord = addNewUnitRecord;
-window.editUnitRecord = editUnitRecord;
-window.deleteUnitRecord = deleteUnitRecord;
-window.filterUnitsCatalog = filterUnitsCatalog;
-window.filterUnitsByBlock = filterUnitsByBlock;
-window.filterUnitsByBlockSelect = filterUnitsByBlockSelect;
+window.loadUnitRegistrationStats = loadUnitRegistrationStats;
 window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
 window.loadApprovedRegistrations = loadApprovedRegistrations;
 window.filterApprovedRegistrations = filterApprovedRegistrations;
@@ -13833,17 +13878,14 @@ window.approveStudentAllUnits = approveStudentAllUnits;
 window.rejectStudentAllUnits = rejectStudentAllUnits;
 window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
 window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
-window.toggleUnitCourses = toggleUnitCourses;
-window.updateUnitBlockOptions = updateUnitBlockOptions;
-window.initUnitForm = initUnitForm;
-window.getBlockColor = getBlockColor;
-window.getBlockEmoji = getBlockEmoji;
-window.getProgramName = getProgramName;
 window.filterPendingByProgram = filterPendingByProgram;
 window.renderFilteredPendingRegistrations = renderFilteredPendingRegistrations;
+window.isTVETProgram = isTVETProgram;
+window.getProgramType = getProgramType;
+window.escapeHtml = escapeHtml;
+window.showFeedback = showFeedback;
 
 console.log('✅ Unit Registration Management module loaded');
-
 // =====================================================
 // ADDITIONAL STYLING FOR TABLES
 // =====================================================
