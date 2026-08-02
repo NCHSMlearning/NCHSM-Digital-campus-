@@ -761,124 +761,40 @@
                 </div>
             </section>
 
-            <!-- ============================================================ -->
-            <!-- TAB 4: FEE STRUCTURE                                         -->
-            <!-- ============================================================ -->
-            <section id="tab-fee-structure" class="tab-content">
-                <div style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                    <div>
-                        <h3 style="color: white; margin: 0; font-weight: 600;">
-                            <i class="fas fa-file-invoice"></i> Fee Structure Configuration
-                        </h3>
-                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
-                            Configure fees for all programs
-                        </p>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="refreshFeeStructure()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                    </div>
-                </div>
+           <!-- ============================================================ -->
+<!-- TAB 4: FEE STRUCTURE - WITH EDITABLE COMPONENTS              -->
+<!-- ============================================================ -->
+<section id="tab-fee-structure" class="tab-content">
+    <div style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h3 style="color: white; margin: 0; font-weight: 600;">
+                <i class="fas fa-file-invoice"></i> Fee Structure Management
+            </h3>
+            <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
+                Configure fee components, templates, and structures for all programs
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="openFeeTemplateModal()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                <i class="fas fa-copy"></i> Templates
+            </button>
+            <button onclick="openAddFeeModal()" class="btn-action" style="background: white; color: #6d28d9; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
+                <i class="fas fa-plus"></i> New Fee Structure
+            </button>
+            <button onclick="refreshFeeStructure()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
 
-                <!-- Add Fee Form -->
-                <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                    <h4 style="color: #0A3D62; margin: 0 0 16px 0;">
-                        <i class="fas fa-plus-circle"></i> Add Fee Structure
-                    </h4>
-                    <form id="feeStructureForm" onsubmit="event.preventDefault(); saveFeeStructure();">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                            <div class="finance-form-group">
-                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Program *</label>
-                                <select id="feeProgram" class="form-control" required>
-                                    <option value="">-- Select Program --</option>
-                                    <option value="KRCHN">🎓 KRCHN Nursing</option>
-                                    <option value="DPOTT">DPOTT - Perioperative Theatre</option>
-                                    <option value="DCH">DCH - Community Health</option>
-                                    <option value="DHRIT">DHRIT - Health Records</option>
-                                    <option value="DSL">DSL - Science Lab</option>
-                                    <option value="DSW">DSW - Social Work</option>
-                                    <option value="DCJS">DCJS - Criminal Justice</option>
-                                    <option value="DHSS">DHSS - Health Support Services</option>
-                                    <option value="DICT">DICT - ICT</option>
-                                    <option value="DME">DME - Medical Engineering</option>
-                                </select>
-                            </div>
-                            <div class="finance-form-group">
-                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Block/Term *</label>
-                                <select id="feeBlock" class="form-control" required>
-                                    <option value="">-- Select Block --</option>
-                                    <option value="Introductory">Introductory Block</option>
-                                    <option value="Block 1">Block 1</option>
-                                    <option value="Block 2">Block 2</option>
-                                    <option value="Block 3">Block 3</option>
-                                    <option value="Block 4">Block 4</option>
-                                    <option value="Block 5">Block 5</option>
-                                    <option value="Final">Final Block</option>
-                                </select>
-                            </div>
-                            <div class="finance-form-group">
-                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Intake Year *</label>
-                                <select id="feeIntakeYear" class="form-control" required>
-                                    <option value="">-- Select Year --</option>
-                                    <option value="2024">2024</option>
-                                    <option value="2025">2025</option>
-                                    <option value="2026" selected>2026</option>
-                                    <option value="2027">2027</option>
-                                    <option value="2028">2028</option>
-                                </select>
-                            </div>
-                            <div class="finance-form-group">
-                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Fee Amount (KES) *</label>
-                                <input type="number" id="feeAmount" class="form-control" placeholder="0.00" required step="0.01" min="0">
-                            </div>
-                            <div class="finance-form-group" style="grid-column: 1 / -1;">
-                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Description</label>
-                                <input type="text" id="feeDescription" class="form-control" placeholder="e.g., Tuition fees for Block 1">
-                            </div>
-                        </div>
-                        <div style="margin-top: 16px; display: flex; gap: 10px;">
-                            <button type="submit" class="btn-action btn-primary">
-                                <i class="fas fa-save"></i> Save Fee Structure
-                            </button>
-                            <button type="reset" class="btn-action btn-outline">
-                                <i class="fas fa-times"></i> Clear
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Current Fee Structure -->
-                <div class="table-container">
-                    <div class="table-header">
-                        <h4><i class="fas fa-list"></i> Current Fee Structure</h4>
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th>Program</th>
-                                    <th>Block/Term</th>
-                                    <th>Intake Year</th>
-                                    <th>Amount</th>
-                                    <th>Description</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="feeStructureTableBody">
-                                <tr>
-                                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <div class="loading-spinner"></div>
-                                        <p style="margin-top: 10px;">Loading fee structure...</p>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
+    <!-- Fee Structure Cards Container -->
+    <div id="feeStructureCardsContainer">
+        <div style="text-align: center; padding: 60px; color: #94a3b8;">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 10px;">Loading fee structures...</p>
+        </div>
+    </div>
+</section>
             <!-- ============================================================ -->
             <!-- TAB 5: REPORTS                                               -->
             <!-- ============================================================ -->
