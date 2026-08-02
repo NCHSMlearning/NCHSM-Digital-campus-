@@ -62,7 +62,7 @@ const NURSING_PROGRAMS = ['KRCHN'];
 
 function getProgramType(programCode) {
     if (!programCode) return 'TVET';
-    if (NURSING_PROGRAMS.includes(programCode)) return 'NURSING';
+    if (NURSING_PROGRAMS.includes(programCode)) return 'NURSING'; // ✅ CORRECT
     return 'TVET';
 }
 
