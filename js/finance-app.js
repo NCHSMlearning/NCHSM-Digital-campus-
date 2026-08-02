@@ -856,22 +856,64 @@ async function loadFeeStructure() {
     
     try {
         if (typeof window.financeAPI === 'undefined') {
+            console.warn('⚠️ financeAPI not available');
+            showToast('Finance API not available', 'error');
             return;
         }
         
         const fees = await window.financeAPI.getFeeStructure();
-        allFeeStructures = fees || [];
+        console.log('📊 Raw fee data:', fees);
+        
+        if (!fees || fees.length === 0) {
+            console.warn('⚠️ No fee structures found');
+            const container = document.getElementById('feeStructureCardsContainer');
+            if (container) {
+                container.innerHTML = `
+                    <div style="text-align:center;padding:60px;color:#94a3b8;">
+                        <i class="fas fa-file-invoice" style="font-size:48px;display:block;margin-bottom:16px;"></i>
+                        <h3>No Fee Structures Found</h3>
+                        <p>Click "New Fee Structure" to create one</p>
+                        <button onclick="openAddFeeModal()" class="btn-action btn-primary" style="margin-top:12px;">
+                            <i class="fas fa-plus"></i> Create Fee Structure
+                        </button>
+                    </div>
+                `;
+            }
+            return;
+        }
+        
+        allFeeStructures = fees;
         renderFeeStructureCards(allFeeStructures);
         console.log('✅ Fee structure loaded:', allFeeStructures.length);
+        
     } catch (error) {
         console.error('❌ Error loading fee structure:', error);
-        showToast('Error loading fee structure', 'error');
+        showToast('Error loading fee structure: ' + error.message, 'error');
+        
+        const container = document.getElementById('feeStructureCardsContainer');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align:center;padding:60px;color:#dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size:48px;display:block;margin-bottom:16px;"></i>
+                    <h3>Error Loading Fee Structures</h3>
+                    <p>${error.message}</p>
+                    <button onclick="loadFeeStructure()" class="btn-action btn-primary" style="margin-top:12px;">
+                        <i class="fas fa-sync"></i> Retry
+                    </button>
+                </div>
+            `;
+        }
     }
 }
 
 function renderFeeStructureCards(fees) {
     const container = document.getElementById('feeStructureCardsContainer');
-    if (!container) return;
+    if (!container) {
+        console.warn('⚠️ Container not found: feeStructureCardsContainer');
+        return;
+    }
+    
+    console.log('📊 Rendering fee structures:', fees.length);
     
     if (!fees || fees.length === 0) {
         container.innerHTML = `
@@ -887,93 +929,106 @@ function renderFeeStructureCards(fees) {
         return;
     }
     
-    container.innerHTML = fees.map(fee => `
-        <div class="fee-structure-pdf-card">
-            <!-- HEADER -->
-            <div class="fee-pdf-header">
-                <div>
-                    <div class="program-title">
-                        ${fee.program || 'N/A'}
-                        <small>${fee.level || ''} ${fee.program_code ? '· ' + fee.program_code : ''}</small>
+    let html = '';
+    
+    fees.forEach(fee => {
+        const components = fee.components || [];
+        const terms = fee.terms || [];
+        const payment = fee.payment || {};
+        
+        html += `
+            <div class="fee-structure-pdf-card">
+                <!-- HEADER -->
+                <div class="fee-pdf-header">
+                    <div>
+                        <div class="program-title">
+                            ${fee.program || 'N/A'}
+                            <small>${fee.level || ''} ${fee.program_code ? '· ' + fee.program_code : ''}</small>
+                        </div>
+                        <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+                            ${fee.block_term || fee.duration || ''}
+                        </div>
+                    </div>
+                    <div class="program-meta">
+                        <span>📅 ${fee.duration || 'N/A'}</span>
+                        <span>💻 ${fee.mode || 'Physical/Online'}</span>
+                        <span>🏷️ Total: <strong>KES ${(fee.total || 0).toLocaleString()}</strong></span>
+                        <span class="badge ${fee.is_active !== false ? 'badge-success' : 'badge-danger'}">
+                            ${fee.is_active !== false ? 'Active' : 'Inactive'}
+                        </span>
                     </div>
                 </div>
-                <div class="program-meta">
-                    <span>📅 ${fee.duration || 'N/A'}</span>
-                    <span>💻 ${fee.mode || 'Physical/Online'}</span>
-                    <span>🏷️ Total: <strong>KES ${(fee.total || 0).toLocaleString()}</strong></span>
-                    <span class="badge ${fee.is_active !== false ? 'badge-success' : 'badge-danger'}">
-                        ${fee.is_active !== false ? 'Active' : 'Inactive'}
-                    </span>
-                </div>
-            </div>
-            
-            <!-- BODY -->
-            <div class="fee-pdf-body">
-                <div class="fee-section">
-                    <h5>📋 Fee Components</h5>
-                    ${(fee.components || []).map(c => `
-                        <div class="fee-item">
-                            <span class="fee-label">${c.label || c.name || 'N/A'}</span>
-                            <span class="fee-amount">KES ${(c.amount || 0).toLocaleString()}</span>
-                        </div>
-                    `).join('')}
-                </div>
                 
-                <div class="fee-section">
-                    <h5>📌 Payment Information</h5>
-                    <div style="font-size:13px;color:#475569;margin-bottom:12px;">
-                        <div><strong>M-Pesa:</strong> ${fee.payment?.mpesa || 'N/A'}</div>
-                        <div><strong>Bank:</strong> ${fee.payment?.bank || 'N/A'}</div>
-                        <div><strong>Email:</strong> ${fee.payment?.email || 'N/A'}</div>
-                        <div><strong>WhatsApp:</strong> ${fee.payment?.whatsapp || 'N/A'}</div>
+                <!-- BODY -->
+                <div class="fee-pdf-body">
+                    <div class="fee-section">
+                        <h5>📋 Fee Components</h5>
+                        ${components.length > 0 ? components.map(c => `
+                            <div class="fee-item">
+                                <span class="fee-label">${c.label || c.name || 'N/A'}</span>
+                                <span class="fee-amount">KES ${(c.amount || 0).toLocaleString()}</span>
+                            </div>
+                        `).join('') : '<div style="color:#94a3b8;font-size:13px;">No components defined</div>'}
                     </div>
                     
-                    <h5 style="margin-top:12px;">📜 Terms</h5>
-                    <ul style="font-size:12px;color:#64748b;padding-left:16px;margin:8px 0 0 0;line-height:1.6;">
-                        ${(fee.terms || []).slice(0, 3).map(t => `<li>${t}</li>`).join('')}
-                        ${(fee.terms || []).length > 3 ? `<li>+${(fee.terms || []).length - 3} more</li>` : ''}
-                    </ul>
-                </div>
-                
-                <div class="fee-total">
-                    <span>💰 TOTAL FEES</span>
-                    <span class="amount">KES ${(fee.total || 0).toLocaleString()}</span>
-                </div>
-                
-                ${fee.hostel ? `
-                    <div style="grid-column:1/-1;background:#fef3c7;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;font-size:14px;border:1px solid #f59e0b;">
-                        <span>🏠 HOSTEL FEE (OPTIONAL)</span>
-                        <span><strong>KES ${(fee.hostel || 0).toLocaleString()}</strong> <span class="hostel-fee">Optional</span></span>
+                    <div class="fee-section">
+                        <h5>📌 Payment Information</h5>
+                        <div style="font-size:13px;color:#475569;margin-bottom:12px;">
+                            <div><strong>M-Pesa:</strong> ${payment.mpesa || 'N/A'}</div>
+                            <div><strong>Bank:</strong> ${payment.bank || 'N/A'}</div>
+                            <div><strong>Email:</strong> ${payment.email || 'N/A'}</div>
+                            <div><strong>WhatsApp:</strong> ${payment.whatsapp || 'N/A'}</div>
+                        </div>
+                        
+                        <h5 style="margin-top:12px;">📜 Terms</h5>
+                        <ul style="font-size:12px;color:#64748b;padding-left:16px;margin:8px 0 0 0;line-height:1.6;">
+                            ${terms.length > 0 ? terms.slice(0, 3).map(t => `<li>${t}</li>`).join('') : '<li>No terms defined</li>'}
+                            ${terms.length > 3 ? `<li>+${terms.length - 3} more</li>` : ''}
+                        </ul>
                     </div>
-                ` : ''}
-            </div>
-            
-            <!-- FOOTER -->
-            <div class="fee-pdf-footer">
-                <div class="payment-info">
-                    <span><strong>📱 Paybill:</strong> 247247</span>
-                    <span><strong>📧 Email:</strong> nchsmfinance@gmail.com</span>
+                    
+                    <div class="fee-total">
+                        <span>💰 TOTAL FEES</span>
+                        <span class="amount">KES ${(fee.total || 0).toLocaleString()}</span>
+                    </div>
+                    
+                    ${fee.hostel ? `
+                        <div style="grid-column:1/-1;background:#fef3c7;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;font-size:14px;border:1px solid #f59e0b;">
+                            <span>🏠 HOSTEL FEE (OPTIONAL)</span>
+                            <span><strong>KES ${(fee.hostel || 0).toLocaleString()}</strong> <span class="hostel-fee">Optional</span></span>
+                        </div>
+                    ` : ''}
                 </div>
-                <div style="display:flex;gap:12px;">
-                    <span>🔒 Secure Payment</span>
-                    <span>📄 Fees Subject to Review</span>
+                
+                <!-- FOOTER -->
+                <div class="fee-pdf-footer">
+                    <div class="payment-info">
+                        <span><strong>📱 Paybill:</strong> 247247</span>
+                        <span><strong>📧 Email:</strong> nchsmfinance@gmail.com</span>
+                    </div>
+                    <div style="display:flex;gap:12px;">
+                        <span>🔒 Secure Payment</span>
+                        <span>📄 Fees Subject to Review</span>
+                    </div>
+                </div>
+                
+                <!-- ACTIONS -->
+                <div class="fee-pdf-actions">
+                    <button onclick="openEditFeeModal('${fee.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button onclick="duplicateFeeStructure('${fee.id}')" class="finance-btn finance-btn-outline finance-btn-sm">
+                        <i class="fas fa-copy"></i> Duplicate
+                    </button>
+                    <button onclick="deleteFeeStructure('${fee.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
                 </div>
             </div>
-            
-            <!-- ACTIONS -->
-            <div class="fee-pdf-actions">
-                <button onclick="openEditFeeModal('${fee.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button onclick="duplicateFeeStructure('${fee.id}')" class="finance-btn finance-btn-outline finance-btn-sm">
-                    <i class="fas fa-copy"></i> Duplicate
-                </button>
-                <button onclick="deleteFeeStructure('${fee.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    });
+    
+    container.innerHTML = html;
 }
 
 // ============================================================
@@ -985,9 +1040,22 @@ function openAddFeeModal() {
     const title = document.getElementById('feeModalTitle');
     const form = document.getElementById('feeStructureForm');
     
-    form.reset();
+    if (form) form.reset();
     document.getElementById('feeStructureId').value = '';
     title.innerHTML = '<i class="fas fa-plus-circle"></i> Add Fee Structure';
+    
+    // Set default values
+    const blockTermInput = document.getElementById('fee_block_term');
+    if (blockTermInput) blockTermInput.value = 'Term 1';
+    
+    const intakeYearInput = document.getElementById('fee_intake_year');
+    if (intakeYearInput) intakeYearInput.value = '2026';
+    
+    const hostelInput = document.getElementById('fee_hostel');
+    if (hostelInput) hostelInput.value = 18000;
+    
+    const statusInput = document.getElementById('fee_status');
+    if (statusInput) statusInput.value = 'active';
     
     // Reset components
     document.getElementById('feeComponentsContainer').innerHTML = `
@@ -1053,6 +1121,7 @@ function openEditFeeModal(feeId) {
     document.getElementById('fee_level').value = fee.level || 'Diploma';
     document.getElementById('fee_duration').value = fee.duration || '';
     document.getElementById('fee_mode').value = fee.mode || 'Physical/Online';
+    document.getElementById('fee_block_term').value = fee.block_term || 'Term 1';
     document.getElementById('fee_intake_year').value = fee.intake_year || '2026';
     document.getElementById('fee_hostel').value = fee.hostel || 18000;
     document.getElementById('fee_status').value = fee.is_active !== false ? 'active' : 'inactive';
@@ -1087,7 +1156,7 @@ function openEditFeeModal(feeId) {
         fee.terms.forEach(term => {
             termContainer.innerHTML += `
                 <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
-                    <input type="text" class="form-control term-text" placeholder="Enter term" value="${term}">
+                    <input type="text" class="form-control term-text" placeholder="Enter term" value="${term.replace(/"/g, '&quot;')}">
                     <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
                         <i class="fas fa-times"></i>
                     </button>
@@ -1176,12 +1245,18 @@ async function saveFeeStructureFull() {
     const level = document.getElementById('fee_level').value;
     const duration = document.getElementById('fee_duration').value.trim();
     const mode = document.getElementById('fee_mode').value;
+    const blockTerm = document.getElementById('fee_block_term').value.trim();
     const intakeYear = document.getElementById('fee_intake_year').value;
     const hostel = parseFloat(document.getElementById('fee_hostel').value) || 0;
     const status = document.getElementById('fee_status').value;
     
     if (!program) {
         showToast('Please enter the program name', 'warning');
+        return;
+    }
+    
+    if (!blockTerm) {
+        showToast('Please enter the block/term', 'warning');
         return;
     }
     
@@ -1229,6 +1304,7 @@ async function saveFeeStructureFull() {
         level: level,
         duration: duration,
         mode: mode,
+        block_term: blockTerm,
         intake_year: intakeYear,
         total: total,
         hostel: hostel,
