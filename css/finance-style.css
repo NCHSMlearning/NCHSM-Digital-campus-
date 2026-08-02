@@ -1,0 +1,310 @@
+/* ============================================================ */
+/* FINANCE MODULE - MODERN STYLES                              */
+/* Matches Super Admin Dashboard Design                        */
+/* ============================================================ */
+
+/* ===== SIDEBAR STYLES ===== */
+.finance-sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, #0A3D62 0%, #1a5a7a 100%);
+    color: white;
+    padding: 24px 16px;
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 100;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.finance-sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+.finance-sidebar::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+}
+.finance-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 4px;
+}
+
+.finance-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 12px 24px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    margin-bottom: 20px;
+}
+
+.finance-sidebar-header img {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: white;
+    padding: 8px;
+    object-fit: contain;
+}
+
+.finance-sidebar-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.finance-sidebar-header span {
+    font-size: 11px;
+    opacity: 0.8;
+    background: rgba(255,255,255,0.15);
+    padding: 2px 10px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.finance-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.finance-nav li {
+    margin-bottom: 2px;
+}
+
+.finance-nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.finance-nav a:hover {
+    background: rgba(255,255,255,0.12);
+    color: white;
+    transform: translateX(4px);
+}
+
+.finance-nav a.active {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border-left: 3px solid #FDB913;
+}
+
+.finance-nav a i {
+    width: 20px;
+    text-align: center;
+}
+
+.finance-nav .badge {
+    margin-left: auto;
+    background: #FDB913;
+    color: #0A3D62;
+    padding: 0 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.finance-sidebar-footer {
+    border-top: 1px solid rgba(255,255,255,0.15);
+    padding-top: 16px;
+    margin-top: 8px;
+}
+
+.finance-sidebar-footer a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.finance-sidebar-footer a:hover {
+    background: rgba(255,255,255,0.12);
+    color: white;
+}
+
+/* ===== MAIN CONTENT ===== */
+.finance-main {
+    margin-left: 260px;
+    padding: 30px 35px;
+    flex: 1;
+    min-height: 100vh;
+}
+
+/* ===== MOBILE TOGGLE ===== */
+.finance-mobile-toggle {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 101;
+    background: white;
+    border: none;
+    padding: 12px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 20px;
+    color: #0A3D62;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* ===== HEADER ===== */
+.finance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.finance-header h1 {
+    font-size: 28px;
+    color: #0b1124;
+    margin: 0;
+}
+
+.finance-header .subtitle {
+    color: #64748b;
+    font-size: 14px;
+    margin: 4px 0 0 0;
+}
+
+.finance-header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.finance-header-date {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.finance-header-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: #22c55e;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.status-dot.online {
+    background: #22c55e;
+}
+.status-dot.offline {
+    background: #ef4444;
+}
+
+/* ===== MODAL STYLES ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99998;
+    justify-content: center;
+    align-items: center;
+}
+.modal-overlay.active {
+    display: flex;
+}
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 850px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    position: relative;
+}
+.modal-close {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    background: none;
+    border: none;
+    font-size: 26px;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.modal-close:hover {
+    color: #1e293b;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .finance-sidebar {
+        transform: translateX(-100%);
+        width: 280px;
+    }
+    .finance-sidebar.open {
+        transform: translateX(0);
+    }
+    .finance-main {
+        margin-left: 0;
+        padding: 20px;
+    }
+    .finance-mobile-toggle {
+        display: block;
+    }
+}
+
+@media (max-width: 480px) {
+    .finance-main {
+        padding: 14px;
+    }
+    .finance-header h1 {
+        font-size: 20px;
+    }
+    .cards {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ===== PRINT ===== */
+@media print {
+    .finance-sidebar {
+        display: none !important;
+    }
+    .finance-main {
+        margin-left: 0 !important;
+        padding: 20px !important;
+    }
+    .no-print {
+        display: none !important;
+    }
+    .card {
+        break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #e5e7eb;
+    }
+}
