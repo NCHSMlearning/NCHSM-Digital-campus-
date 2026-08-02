@@ -627,7 +627,6 @@ function renderFeeStructure(periods, programType, programLevel) {
         `;
     });
     
-    // Remove the "Total Program Fees" line - show only semester/term info
     container.innerHTML = html + `
         <div style="display: flex; justify-content: space-between; padding: 12px 0 0 0; margin-top: 8px; border-top: 2px solid #e5e7eb; font-size: 14px; color: #64748b;">
             <span>Number of ${programType === 'KRCHN' ? 'Semesters' : 'Terms'}</span>
@@ -637,13 +636,14 @@ function renderFeeStructure(periods, programType, programLevel) {
             <span>Duration</span>
             <span>${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</span>
         </div>
+        <div style="margin-top: 12px; text-align: center;">
+            <button onclick="viewFullFeeStructure()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 10px 24px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 10px rgba(76,29,149,0.2);" 
+            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(76,29,149,0.35)'" 
+            onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 10px rgba(76,29,149,0.2)'">
+                <i class="fas fa-file-pdf"></i> View Full Fee Structure
+            </button>
+        </div>
     `;
-    
-    // Hide the total element entirely
-    const totalEl = document.getElementById('feeStructureTotal');
-    if (totalEl) {
-        totalEl.style.display = 'none';
-    }
 }
 
 function renderFeeStructureData(fees) {
@@ -672,7 +672,6 @@ function renderFeeStructureData(fees) {
         `;
     }).join('');
     
-    // Add summary info without total fee
     const programType = studentFinanceState.programType || 'KRCHN';
     const programLevel = studentFinanceState.programLevel || 'diploma';
     const periods = getPeriods(programType, programLevel);
@@ -686,13 +685,14 @@ function renderFeeStructureData(fees) {
             <span>Duration</span>
             <span>${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</span>
         </div>
+        <div style="margin-top: 12px; text-align: center;">
+            <button onclick="viewFullFeeStructure()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 10px 24px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 10px rgba(76,29,149,0.2);" 
+            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(76,29,149,0.35)'" 
+            onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 10px rgba(76,29,149,0.2)'">
+                <i class="fas fa-file-pdf"></i> View Full Fee Structure
+            </button>
+        </div>
     `;
-    
-    // Hide the total element
-    const totalEl = document.getElementById('feeStructureTotal');
-    if (totalEl) {
-        totalEl.style.display = 'none';
-    }
 }
 
 function updateFinanceBadge(data) {
@@ -712,6 +712,260 @@ function updateFinanceBadge(data) {
     } else {
         badge.style.display = 'none';
     }
+}
+
+// ============================================================
+// VIEW FULL FEE STRUCTURE - PDF STYLE
+// ============================================================
+
+function viewFullFeeStructure() {
+    const programType = studentFinanceState.programType || 'KRCHN';
+    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const periods = getPeriods(programType, programLevel);
+    const user = window.currentUserProfile || window.currentUser;
+    
+    // Build fee structure HTML
+    let feeHtml = '';
+    let total = 0;
+    
+    periods.forEach((period, index) => {
+        const amount = getFeeAmount(programType, index, programLevel);
+        total += amount;
+        feeHtml += `
+            <tr>
+                <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 500;">${period}</td>
+                <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; color: #64748b;">${period} Tuition Fees</td>
+                <td style="padding: 10px 16px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #4C1D95;">KES ${amount.toLocaleString()}</td>
+            </tr>
+        `;
+    });
+    
+    const periodLabel = getPeriodLabel(programType);
+    const duration = programType === 'KRCHN' ? '3 Years' : (programLevel === 'certificate' ? '1 Year' : '2 Years');
+    const totalPeriods = periods.length;
+    
+    Swal.fire({
+        title: '📄 Full Fee Structure',
+        html: `
+            <div style="text-align: left; max-height: 500px; overflow-y: auto; padding-right: 6px;">
+                <!-- Header -->
+                <div style="text-align: center; padding: 16px 0 20px 0; border-bottom: 3px solid #4C1D95; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 4px;">
+                        <div style="background: #4C1D95; padding: 8px 16px; border-radius: 8px;">
+                            <span style="color: white; font-weight: 700; font-size: 14px; letter-spacing: 1px;">${programType}</span>
+                        </div>
+                        <span style="color: #0A3D62; font-weight: 700; font-size: 18px;">Fee Structure</span>
+                    </div>
+                    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                        <strong>${user?.full_name || user?.name || 'Student'}</strong> 
+                        <span style="margin: 0 8px;">•</span> 
+                        ${user?.program || 'N/A'} 
+                        <span style="margin: 0 8px;">•</span> 
+                        Intake: ${user?.intake || '2026'}
+                    </p>
+                    <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 11px;">
+                        Generated: ${new Date().toLocaleString()}
+                    </p>
+                </div>
+                
+                <!-- Fee Table -->
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${periodLabel}</th>
+                            <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
+                            <th style="padding: 8px 12px; text-align: right; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${feeHtml}
+                    </tbody>
+                    <tfoot>
+                        <tr style="border-top: 2px solid #e5e7eb; background: #fafbfc;">
+                            <td colspan="2" style="padding: 12px 16px; font-weight: 700; color: #0A3D62; font-size: 15px;">Total Program Fees</td>
+                            <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #4C1D95; font-size: 16px;">KES ${total.toLocaleString()}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <!-- Footer Info -->
+                <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 13px; color: #64748b;">
+                    <span>📚 Number of ${periodLabel}s: <strong>${totalPeriods}</strong></span>
+                    <span>⏳ Duration: <strong>${duration}</strong></span>
+                </div>
+                <div style="margin-top: 6px; display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8;">
+                    <span>🏫 Institution: ${programType === 'KRCHN' ? 'KRCHN Program' : 'TVET Program'}</span>
+                    <span>📋 ${programLevel === 'certificate' ? 'Certificate' : 'Diploma'} Course</span>
+                </div>
+            </div>
+        `,
+        width: 700,
+        confirmButtonText: '<i class="fas fa-download"></i> Download PDF',
+        cancelButtonText: 'Close',
+        showCancelButton: true,
+        confirmButtonColor: '#4C1D95',
+        showCloseButton: true,
+        preConfirm: () => {
+            // Generate PDF
+            generateFeeStructurePDF();
+        }
+    });
+}
+
+// ============================================================
+// GENERATE PDF OF FEE STRUCTURE
+// ============================================================
+
+function generateFeeStructurePDF() {
+    const programType = studentFinanceState.programType || 'KRCHN';
+    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const periods = getPeriods(programType, programLevel);
+    const user = window.currentUserProfile || window.currentUser;
+    const periodLabel = getPeriodLabel(programType);
+    const duration = programType === 'KRCHN' ? '3 Years' : (programLevel === 'certificate' ? '1 Year' : '2 Years');
+    
+    let total = 0;
+    let rows = '';
+    
+    periods.forEach((period, index) => {
+        const amount = getFeeAmount(programType, index, programLevel);
+        total += amount;
+        rows += `
+            <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${period}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${period} Tuition Fees</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">KES ${amount.toLocaleString()}</td>
+            </tr>
+        `;
+    });
+    
+    // Create hidden iframe for printing
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Fee Structure - ${user?.program || 'KRCHN'}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+                .header { text-align: center; padding: 20px 0 30px 0; border-bottom: 3px solid #4C1D95; margin-bottom: 20px; }
+                .header h1 { color: #0A3D62; margin: 0; font-size: 24px; }
+                .header .subtitle { color: #64748b; font-size: 14px; margin: 5px 0; }
+                .header .program-badge { display: inline-block; background: #4C1D95; color: white; padding: 4px 16px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px; }
+                table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+                th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; border-bottom: 2px solid #e5e7eb; }
+                td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+                .total-row { border-top: 2px solid #e5e7eb; background: #fafbfc; font-weight: bold; }
+                .total-row td { padding: 12px 12px; }
+                .total-amount { color: #4C1D95; font-size: 16px; }
+                .footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; }
+                .footer-info { font-size: 12px; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between; }
+                .print-btn { display: none; }
+                @media print {
+                    body { padding: 20px; }
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div>
+                    <span class="program-badge">${programType}</span>
+                    <h1 style="margin: 8px 0 4px 0;">Fee Structure</h1>
+                </div>
+                <div class="subtitle">
+                    <strong>${user?.full_name || user?.name || 'Student'}</strong>
+                    <span style="margin: 0 8px;">•</span>
+                    ${user?.program || 'N/A'}
+                    <span style="margin: 0 8px;">•</span>
+                    Intake: ${user?.intake || '2026'}
+                </div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                    Generated: ${new Date().toLocaleString()}
+                </div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>${periodLabel}</th>
+                        <th>Description</th>
+                        <th style="text-align: right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="2" style="font-size: 15px;">Total Program Fees</td>
+                        <td style="text-align: right; font-size: 16px; color: #4C1D95;">KES ${total.toLocaleString()}</td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <div class="footer">
+                <span>📚 Number of ${periodLabel}s: ${periods.length}</span>
+                <span>⏳ Duration: ${duration}</span>
+            </div>
+            <div class="footer-info">
+                <span>🏫 Institution: ${programType === 'KRCHN' ? 'KRCHN Program' : 'TVET Program'}</span>
+                <span>📋 ${programLevel === 'certificate' ? 'Certificate' : 'Diploma'} Course</span>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #94a3b8;">
+                <p style="margin: 0;">This is a computer-generated fee structure. For official use only.</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    // Create download
+    const blob = new Blob([printContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Fee_Structure_${user?.program || 'KRCHN'}_${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    Swal.fire({
+        title: '✅ PDF Ready!',
+        text: 'Your fee structure has been downloaded.',
+        icon: 'success',
+        confirmButtonColor: '#4C1D95',
+        timer: 2000,
+        showConfirmButton: true
+    });
+}
+
+// ============================================================
+// PRINT FEE STRUCTURE
+// ============================================================
+
+function printFeeStructure() {
+    // Open the full fee structure view in print mode
+    viewFullFeeStructure();
+    
+    // After the modal opens, trigger print
+    setTimeout(() => {
+        const modalContent = document.querySelector('.swal2-html-container');
+        if (modalContent) {
+            // Add print button to modal footer
+            const footer = document.querySelector('.swal2-actions');
+            if (footer) {
+                const printBtn = document.createElement('button');
+                printBtn.className = 'swal2-cancel swal2-styled';
+                printBtn.innerHTML = '<i class="fas fa-print"></i> Print';
+                printBtn.style.cssText = 'background: #475569; margin-right: 8px;';
+                printBtn.onclick = function() {
+                    window.print();
+                };
+                footer.insertBefore(printBtn, footer.firstChild);
+            }
+        }
+    }, 500);
 }
 
 // ============================================================
@@ -1045,3 +1299,4 @@ console.log('✅ Student Finance module loaded');
 console.log('📊 Supports KRCHN (Semesters) and TVET (Terms with Years)');
 console.log('📚 TVET Certificate: 1 Year (3 Terms)');
 console.log('📚 TVET Diploma: 2 Years (6 Terms)');
+console.log('📄 Fee Structure can be viewed and downloaded as PDF');
