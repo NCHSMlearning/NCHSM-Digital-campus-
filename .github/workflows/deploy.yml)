@@ -15,7 +15,7 @@ permissions:
 # Add environment variables for the workflow
 env:
   GOOGLE_SCRIPT_URL: ${{ secrets.GOOGLE_SCRIPT_URL }}
-  SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}  # Optional alternative
+  SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
 
 jobs:
   build:
@@ -45,8 +45,12 @@ jobs:
                   LOCATIONIQ_API_KEY: "${{ secrets.LOCATIONIQ_API_KEY || '' }}",
                   
                   // Email Configuration
-                  EMAIL_API_ENDPOINT: "/api/send-email",  // Our secure proxy
+                  EMAIL_API_ENDPOINT: "/api/send-email",
                   ENABLE_EMAILS: true,
+                  
+                  // Finance Module Configuration
+                  FINANCE_TABLE: "consolidated_user_profiles_table",
+                  ALLOWED_ROLES: "superadmin,admin,finance_officer",
                   
                   // Application Info
                   BUILD_TIME: "${{ github.run_started_at }}",
@@ -71,74 +75,54 @@ jobs:
           })();
           EOF
           
-          # Create a simple API proxy for email (static version)
-          mkdir -p api
+          # Create finance-config.js for the Finance Module
+          echo "🔧 Generating finance-config.js from GitHub Secrets..."
+          mkdir -p finance-module/js
           
-          cat > api/send-email.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <title>API Proxy - NCHSM Portal</title>
-              <style>
-                  body {
-                      font-family: Arial, sans-serif;
-                      max-width: 800px;
-                      margin: 50px auto;
-                      padding: 20px;
-                      text-align: center;
-                  }
-                  .message {
-                      background: #f8f9fa;
-                      padding: 20px;
-                      border-radius: 10px;
-                      border: 1px solid #dee2e6;
-                  }
-              </style>
-          </head>
-          <body>
-              <div class="message">
-                  <h2>📧 Email API Proxy</h2>
-                  <p>This endpoint requires server-side implementation.</p>
-                  <p>For GitHub Pages, you need to use a serverless function or separate API service.</p>
-                  <p><strong>Recommended:</strong> Deploy a Netlify/Vercel function alongside your GitHub Pages site.</p>
-              </div>
-          </body>
-          </html>
+          cat > finance-module/js/finance-config.js << 'EOF'
+          // finance-module/js/finance-config.js - Generated from GitHub Secrets
+          // DO NOT EDIT - This file is auto-generated
+          (function() {
+              'use strict';
+              
+              var financeConfig = {
+                  SUPABASE_URL: "${{ secrets.SUPABASE_URL }}",
+                  SUPABASE_ANON_KEY: "${{ secrets.SUPABASE_ANON_KEY }}",
+                  USER_TABLE: "consolidated_user_profiles_table",
+                  ALLOWED_ROLES: ["superadmin", "finance_officer"],
+                  APP_NAME: "NCHSM Finance Module",
+                  VERSION: "2.0.0",
+                  CURRENCY: "KES"
+              };
+              
+              window.FINANCE_CONFIG = Object.freeze(financeConfig);
+              
+              console.log('✅ Finance Config loaded');
+              console.log('📊 Using table:', financeConfig.USER_TABLE);
+              console.log('👥 Allowed roles:', financeConfig.ALLOWED_ROLES.join(', '));
+          })();
           EOF
           
-          # Create API documentation
-          cat > api/README.md << 'EOF'
-          # NCHSM Email API
+          # Copy config to root for main app
+          cp config.js js/config.js 2>/dev/null || echo "⚠️ js/ directory not found, skipping"
           
-          This directory contains API endpoints for the NCHSM Portal.
-          
-          ## Email Sending
-          
-          Due to GitHub Pages static hosting limitations, email functionality requires:
-          
-          1. **Netlify/Vercel Function** (Recommended)
-          2. **Supabase Edge Function**
-          3. **Custom Node.js/Express server**
-          
-          ### Quick Setup for Email:
-          
-          1. Deploy a serverless function at: `https://your-function.vercel.app/api/send-email`
-          2. Update `config.js` EMAIL_API_ENDPOINT to point to your function
-          3. The function should forward requests to your Google Apps Script
-          
-          ### Example Function (Vercel/Netlify):
-          
-          ```javascript
-          // api/send-email.js
-          export default async function handler(req, res) {
-              const { to, otp, userName, html, subject } = req.body;
-              
-              // Forward to Google Apps Script
-              const response = await fetch(
-                  `YOUR_GOOGLE_SCRIPT_URL?${new URLSearchParams({
-                      to, otp, userName, html, subject
-                  })}`
-              );
-              
-              res.json({ success: true });
-          }
+          echo "✅ Configuration files generated successfully!"
+      
+      - name: List generated files
+        run: |
+          echo "📁 Generated files:"
+          ls -la config.js 2>/dev/null || echo "⚠️ config.js not found"
+          ls -la finance-module/js/finance-config.js 2>/dev/null || echo "⚠️ finance-config.js not found"
+          ls -la js/config.js 2>/dev/null || echo "⚠️ js/config.js not found"
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
