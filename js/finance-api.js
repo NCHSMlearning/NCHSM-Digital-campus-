@@ -5,58 +5,50 @@
  */
 
 // ============================================================
-// ENSURE SUPABASE CLIENT IS AVAILABLE (matches working pattern)
+// SUPABASE CLIENT - SAFE INITIALIZATION (NO DUPLICATE)
 // ============================================================
-(function ensureSupabaseClient() {
-    if (typeof sb !== 'undefined' && sb) {
-        window.sb = sb;
-        console.log('✅ sb already defined in finance');
-        return;
-    }
-    
-    if (typeof window.sb !== 'undefined' && window.sb) {
-        console.log('✅ sb found on window in finance');
-        return;
-    }
-    
-    console.warn('⚠️ sb not available in finance, waiting...');
-    
-    let attempts = 0;
-    const maxAttempts = 30;
-    
-    const waitForSb = setInterval(() => {
-        attempts++;
-        
-        if (typeof window.sb !== 'undefined' && window.sb) {
-            clearInterval(waitForSb);
-            console.log('✅ sb became available after', attempts, 'attempts in finance');
-            if (typeof window.loadFinanceData === 'function') {
-                setTimeout(window.loadFinanceData, 200);
-            }
-            return;
-        }
-        
-        if (attempts >= maxAttempts) {
-            clearInterval(waitForSb);
-            console.error('❌ sb not available in finance after', maxAttempts, 'attempts');
-        }
-    }, 200);
-})();
 
-// Use the same pattern as working code - check sb first, then window.sb
-const supabase = (typeof sb !== 'undefined') ? sb : window.sb;
+// ✅ Check if supabase already exists globally - USE ONLY ONE
+let supabaseClient;
 
-if (!supabase) {
-    console.error('❌ Supabase client not available in finance-api!');
+if (typeof window.supabase !== 'undefined' && window.supabase) {
+    supabaseClient = window.supabase;
+    console.log('🔗 Using existing Supabase client from window');
+} else if (typeof window.sb !== 'undefined' && window.sb) {
+    supabaseClient = window.sb;
+    console.log('🔗 Using existing Supabase client from window.sb');
+} else {
+    console.error('❌ Supabase client not available!');
+    // Try to create one as last resort
+    try {
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+        if (typeof supabase_js !== 'undefined' && supabase_js) {
+            supabaseClient = supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            window.supabase = supabaseClient;
+            window.sb = supabaseClient;
+            console.log('🔗 Created new Supabase client');
+        }
+    } catch (e) {
+        console.error('❌ Failed to create Supabase client:', e);
+    }
 }
 
-console.log('🔗 Finance API: Supabase client available:', !!supabase);
+// ✅ Make available globally (only if not already set)
+if (supabaseClient && typeof window.supabase === 'undefined') {
+    window.supabase = supabaseClient;
+}
+if (supabaseClient && typeof window.sb === 'undefined') {
+    window.sb = supabaseClient;
+}
+
+console.log('🔗 Finance API: Supabase client available:', !!supabaseClient);
 
 // ============================================================
 // TABLE NAMES
 // ============================================================
 
-const TABLES = window.FINANCE_CONFIG ? window.FINANCE_CONFIG.TABLES : {
+const TABLES = {
     USER_PROFILES: 'consolidated_user_profiles_table',
     PAYMENTS: 'finance_payments',
     FEE_STRUCTURE: 'finance_fee_structure',
@@ -96,10 +88,10 @@ function isFinanceAdmin() {
 function getMockStats() {
     return {
         totalStudents: 230,
-        totalCollected: 580505,
-        outstandingBalance: 2450000,
-        overdueAccounts: 45,
-        todayPayments: 45000,
+        totalCollected: 2845000,
+        outstandingBalance: 1560000,
+        overdueAccounts: 23,
+        todayPayments: 128000,
         totalTransactions: 876
     };
 }
@@ -142,12 +134,12 @@ function getMockFeeStructure() {
 
 async function getStudents(params = {}) {
     try {
-        if (!supabase) {
+        if (!supabaseClient) {
             console.warn('⚠️ Supabase not available, using mock data');
             return getMockStudents();
         }
 
-        let query = supabase
+        let query = supabaseClient
             .from(TABLES.USER_PROFILES)
             .select('*')
             .eq('role', 'student');
@@ -170,12 +162,12 @@ async function getStudents(params = {}) {
 
 async function getStudentAccounts() {
     try {
-        if (!supabase) {
+        if (!supabaseClient) {
             console.warn('⚠️ Supabase not available, using mock data');
             return getMockStudentAccounts();
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from(TABLES.STUDENT_ACCOUNTS)
             .select('*')
             .order('student_name', { ascending: true });
@@ -188,73 +180,18 @@ async function getStudentAccounts() {
     }
 }
 
-async function getStudentAccount(studentId) {
-    try {
-        if (!supabase) {
-            return getMockStudentAccounts().find(a => a.student_id === studentId) || null;
-        }
-
-        const { data, error } = await supabase
-            .from(TABLES.STUDENT_ACCOUNTS)
-            .select('*')
-            .eq('student_id', studentId)
-            .maybeSingle();
-
-        if (error) throw error;
-        return data;
-    } catch (error) {
-        console.error('Error getting student account:', error);
-        return null;
-    }
-}
-
-async function getStudentTransactions(studentId, params = {}) {
-    try {
-        if (!supabase) {
-            return getMockPayments().filter(p => p.student_id === studentId);
-        }
-
-        let query = supabase
-            .from(TABLES.PAYMENTS)
-            .select('*')
-            .eq('student_id', studentId)
-            .order('payment_date', { ascending: false });
-
-        if (params.limit) {
-            query = query.limit(params.limit);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
-    } catch (error) {
-        console.error('Error getting student transactions:', error);
-        return [];
-    }
-}
-
-async function getStudentBalance(studentId) {
-    try {
-        const account = await getStudentAccount(studentId);
-        return account || { balance: 0, total_paid: 0, total_due: 0 };
-    } catch (error) {
-        console.error('Error getting student balance:', error);
-        return { balance: 0, total_paid: 0, total_due: 0 };
-    }
-}
-
 // ============================================================
 // PAYMENTS
 // ============================================================
 
 async function getPayments(params = {}) {
     try {
-        if (!supabase) {
+        if (!supabaseClient) {
             console.warn('⚠️ Supabase not available, using mock data');
             return getMockPayments();
         }
 
-        let query = supabase
+        let query = supabaseClient
             .from(TABLES.PAYMENTS)
             .select('*')
             .order('payment_date', { ascending: false });
@@ -281,29 +218,72 @@ async function getPayments(params = {}) {
     }
 }
 
-async function getPayment(paymentId) {
+// ============================================================
+// DASHBOARD STATS
+// ============================================================
+
+async function getDashboardStats() {
     try {
-        if (!supabase) {
-            return getMockPayments().find(p => p.id === paymentId) || null;
+        if (!supabaseClient) {
+            console.warn('⚠️ Supabase not available, using mock stats');
+            return getMockStats();
         }
 
-        const { data, error } = await supabase
-            .from(TABLES.PAYMENTS)
-            .select('*')
-            .eq('id', paymentId)
-            .single();
+        const { count: totalStudents } = await supabaseClient
+            .from(TABLES.USER_PROFILES)
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'student');
 
-        if (error) throw error;
-        return data;
+        const { data: payments } = await supabaseClient
+            .from(TABLES.PAYMENTS)
+            .select('amount')
+            .eq('status', 'completed');
+
+        const totalCollected = payments ? payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
+
+        const { data: accounts } = await supabaseClient
+            .from(TABLES.STUDENT_ACCOUNTS)
+            .select('balance')
+            .gt('balance', 0);
+
+        const outstanding = accounts ? accounts.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0) : 0;
+        const overdueCount = accounts ? accounts.length : 0;
+
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todayPayments } = await supabaseClient
+            .from(TABLES.PAYMENTS)
+            .select('amount')
+            .eq('payment_date', today)
+            .eq('status', 'completed');
+
+        const todayTotal = todayPayments ? todayPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
+
+        const { count: totalTransactions } = await supabaseClient
+            .from(TABLES.PAYMENTS)
+            .select('*', { count: 'exact', head: true });
+
+        return {
+            totalStudents: totalStudents || 0,
+            totalCollected: totalCollected,
+            outstandingBalance: outstanding,
+            overdueAccounts: overdueCount,
+            todayPayments: todayTotal,
+            totalTransactions: totalTransactions || 0
+        };
+
     } catch (error) {
-        console.error('Error getting payment:', error);
-        return null;
+        console.error('❌ Error getting dashboard stats:', error);
+        return getMockStats();
     }
 }
 
+// ============================================================
+// RECORD PAYMENT
+// ============================================================
+
 async function recordPayment(data) {
     try {
-        if (!supabase) {
+        if (!supabaseClient) {
             console.log('📝 Demo: Payment recorded', data);
             return { success: true, id: 'demo-' + Date.now() };
         }
@@ -324,13 +304,14 @@ async function recordPayment(data) {
             created_at: new Date().toISOString()
         };
 
-        const { data: result, error } = await supabase
+        const { data: result, error } = await supabaseClient
             .from(TABLES.PAYMENTS)
             .insert([paymentData])
             .select();
 
         if (error) throw error;
 
+        // Update student account
         await updateStudentAccount(data.studentId);
 
         return result;
@@ -340,184 +321,19 @@ async function recordPayment(data) {
     }
 }
 
-async function updatePayment(paymentId, data) {
-    try {
-        if (!supabase) {
-            console.log('📝 Demo: Payment updated', paymentId, data);
-            return { success: true };
-        }
-
-        const { data: result, error } = await supabase
-            .from(TABLES.PAYMENTS)
-            .update(data)
-            .eq('id', paymentId)
-            .select();
-
-        if (error) throw error;
-
-        if (data.status) {
-            const payment = await getPayment(paymentId);
-            if (payment) {
-                await updateStudentAccount(payment.student_id);
-            }
-        }
-
-        return result;
-    } catch (error) {
-        console.error('Error updating payment:', error);
-        throw error;
-    }
-}
-
-async function deletePayment(paymentId) {
-    try {
-        if (!supabase) {
-            console.log('📝 Demo: Payment deleted', paymentId);
-            return { success: true };
-        }
-
-        const payment = await getPayment(paymentId);
-        
-        const { error } = await supabase
-            .from(TABLES.PAYMENTS)
-            .delete()
-            .eq('id', paymentId);
-
-        if (error) throw error;
-
-        if (payment) {
-            await updateStudentAccount(payment.student_id);
-        }
-
-        return { success: true };
-    } catch (error) {
-        console.error('Error deleting payment:', error);
-        throw error;
-    }
-}
-
 // ============================================================
-// FEE STRUCTURE
-// ============================================================
-
-async function getFeeStructure(params = {}) {
-    try {
-        if (!supabase) {
-            console.warn('⚠️ Supabase not available, using mock data');
-            return getMockFeeStructure();
-        }
-
-        let query = supabase
-            .from(TABLES.FEE_STRUCTURE)
-            .select('*')
-            .eq('is_active', true)
-            .order('created_at', { ascending: true });
-
-        if (params.program) {
-            query = query.eq('program', params.program);
-        }
-        if (params.intake_year) {
-            query = query.eq('intake_year', params.intake_year);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
-    } catch (error) {
-        console.error('Error getting fee structure:', error);
-        return getMockFeeStructure();
-    }
-}
-
-async function createFeeStructure(data) {
-    try {
-        if (!supabase) {
-            console.log('📝 Demo: Fee structure created', data);
-            return { success: true };
-        }
-
-        const feeData = {
-            program: data.program,
-            block_term: data.blockTerm,
-            intake_year: data.intakeYear,
-            amount: data.amount,
-            description: data.description || `${data.program} - ${data.blockTerm} Fees`,
-            is_active: true,
-            created_by_name: getCurrentFinanceUser()?.name || 'System',
-            created_at: new Date().toISOString()
-        };
-
-        const { data: result, error } = await supabase
-            .from(TABLES.FEE_STRUCTURE)
-            .insert([feeData])
-            .select();
-
-        if (error) throw error;
-        return result;
-    } catch (error) {
-        console.error('Error creating fee structure:', error);
-        throw error;
-    }
-}
-
-async function updateFeeStructure(id, data) {
-    try {
-        if (!supabase) {
-            console.log('📝 Demo: Fee structure updated', id, data);
-            return { success: true };
-        }
-
-        const updateData = {
-            ...data,
-            updated_at: new Date().toISOString()
-        };
-
-        const { data: result, error } = await supabase
-            .from(TABLES.FEE_STRUCTURE)
-            .update(updateData)
-            .eq('id', id)
-            .select();
-
-        if (error) throw error;
-        return result;
-    } catch (error) {
-        console.error('Error updating fee structure:', error);
-        throw error;
-    }
-}
-
-async function deleteFeeStructure(id) {
-    try {
-        if (!supabase) {
-            console.log('📝 Demo: Fee structure deleted', id);
-            return { success: true };
-        }
-
-        const { error } = await supabase
-            .from(TABLES.FEE_STRUCTURE)
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-        return { success: true };
-    } catch (error) {
-        console.error('Error deleting fee structure:', error);
-        throw error;
-    }
-}
-
-// ============================================================
-// STUDENT ACCOUNT UPDATE
+// UPDATE STUDENT ACCOUNT
 // ============================================================
 
 async function updateStudentAccount(studentId) {
     try {
-        if (!supabase) {
+        if (!supabaseClient) {
             console.log('📝 Demo: Student account updated', studentId);
             return { success: true };
         }
 
-        const { data: payments, error: paymentsError } = await supabase
+        // Get total paid
+        const { data: payments, error: paymentsError } = await supabaseClient
             .from(TABLES.PAYMENTS)
             .select('amount')
             .eq('student_id', studentId)
@@ -527,7 +343,8 @@ async function updateStudentAccount(studentId) {
 
         const totalPaid = payments ? payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
 
-        const { data: student, error: studentError } = await supabase
+        // Get student program
+        const { data: student, error: studentError } = await supabaseClient
             .from(TABLES.USER_PROFILES)
             .select('program, full_name, email')
             .eq('id', studentId)
@@ -535,7 +352,8 @@ async function updateStudentAccount(studentId) {
 
         if (studentError) throw studentError;
 
-        const { data: fees, error: feesError } = await supabase
+        // Get total due from fee structure
+        const { data: fees, error: feesError } = await supabaseClient
             .from(TABLES.FEE_STRUCTURE)
             .select('amount')
             .eq('program', student.program || 'KRCHN')
@@ -546,7 +364,8 @@ async function updateStudentAccount(studentId) {
         const totalDue = fees ? fees.reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0) : 0;
         const balance = totalDue - totalPaid;
 
-        const { data: lastPayment, error: lastError } = await supabase
+        // Get last payment date
+        const { data: lastPayment, error: lastError } = await supabaseClient
             .from(TABLES.PAYMENTS)
             .select('payment_date')
             .eq('student_id', studentId)
@@ -560,7 +379,7 @@ async function updateStudentAccount(studentId) {
         if (balance <= 0) paymentStatus = 'paid';
         else if (balance < 10000) paymentStatus = 'partial';
 
-        const { error: upsertError } = await supabase
+        const { error: upsertError } = await supabaseClient
             .from(TABLES.STUDENT_ACCOUNTS)
             .upsert({
                 student_id: studentId,
@@ -588,61 +407,87 @@ async function updateStudentAccount(studentId) {
 }
 
 // ============================================================
-// DASHBOARD STATS
+// DELETE PAYMENT
 // ============================================================
 
-async function getDashboardStats() {
+async function deletePayment(paymentId) {
     try {
-        if (!supabase) {
-            console.warn('⚠️ Supabase not available, using mock stats');
-            return getMockStats();
+        if (!supabaseClient) {
+            console.log('📝 Demo: Payment deleted', paymentId);
+            return { success: true };
         }
 
-        const { count: totalStudents } = await supabase
-            .from(TABLES.USER_PROFILES)
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'student');
-
-        const { data: payments } = await supabase
+        const payment = await getPayment(paymentId);
+        
+        const { error } = await supabaseClient
             .from(TABLES.PAYMENTS)
-            .select('amount')
-            .eq('status', 'completed');
+            .delete()
+            .eq('id', paymentId);
 
-        const totalCollected = payments ? payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
+        if (error) throw error;
 
-        const { data: accounts } = await supabase
-            .from(TABLES.STUDENT_ACCOUNTS)
-            .select('balance')
-            .gt('balance', 0);
+        if (payment) {
+            await updateStudentAccount(payment.student_id);
+        }
 
-        const outstanding = accounts ? accounts.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0) : 0;
-        const overdueCount = accounts ? accounts.length : 0;
-
-        const today = new Date().toISOString().split('T')[0];
-        const { data: todayPayments } = await supabase
-            .from(TABLES.PAYMENTS)
-            .select('amount')
-            .eq('payment_date', today)
-            .eq('status', 'completed');
-
-        const todayTotal = todayPayments ? todayPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
-
-        const { count: totalTransactions } = await supabase
-            .from(TABLES.PAYMENTS)
-            .select('*', { count: 'exact', head: true });
-
-        return {
-            totalStudents: totalStudents || 0,
-            totalCollected: totalCollected,
-            outstandingBalance: outstanding,
-            overdueAccounts: overdueCount,
-            todayPayments: todayTotal,
-            totalTransactions: totalTransactions || 0
-        };
-
+        return { success: true };
     } catch (error) {
-        console.error('❌ Error getting dashboard stats:', error);
-        return getMockStats();
+        console.error('Error deleting payment:', error);
+        throw error;
+    }
+}
+
+// ============================================================
+// GET PAYMENT
+// ============================================================
+
+async function getPayment(paymentId) {
+    try {
+        if (!supabaseClient) {
+            return getMockPayments().find(p => p.id === paymentId) || null;
+        }
+
+        const { data, error } = await supabaseClient
+            .from(TABLES.PAYMENTS)
+            .select('*')
+            .eq('id', paymentId)
+            .single();
+
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error getting payment:', error);
+        return null;
+    }
+}
+
+// ============================================================
+// FEE STRUCTURE
+// ============================================================
+
+async function getFeeStructure(params = {}) {
+    try {
+        if (!supabaseClient) {
+            console.warn('⚠️ Supabase not available, using mock data');
+            return getMockFeeStructure();
+        }
+
+        let query = supabaseClient
+            .from(TABLES.FEE_STRUCTURE)
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: true });
+
+        if (params.program) {
+            query = query.eq('program', params.program);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error getting fee structure:', error);
+        return getMockFeeStructure();
     }
 }
 
@@ -652,11 +497,11 @@ async function getDashboardStats() {
 
 async function getTransactions(params = {}) {
     try {
-        if (!supabase) {
+        if (!supabaseClient) {
             return getMockPayments();
         }
 
-        let query = supabase
+        let query = supabaseClient
             .from(TABLES.PAYMENTS)
             .select('*')
             .order('payment_date', { ascending: false });
@@ -670,12 +515,6 @@ async function getTransactions(params = {}) {
         if (params.status) {
             query = query.eq('status', params.status);
         }
-        if (params.startDate) {
-            query = query.gte('payment_date', params.startDate);
-        }
-        if (params.endDate) {
-            query = query.lte('payment_date', params.endDate);
-        }
 
         const { data, error } = await query;
         if (error) throw error;
@@ -687,80 +526,22 @@ async function getTransactions(params = {}) {
 }
 
 // ============================================================
-// REPORTS
+// EXPORT - Make functions globally available
 // ============================================================
 
-async function generateReport(params = {}) {
-    try {
-        const { type, program, year } = params;
-        
-        let data = [];
-        let summary = {};
-
-        switch(type) {
-            case 'summary':
-                data = await getDashboardStats();
-                break;
-            case 'collections':
-                data = await getPayments({ limit: 100 });
-                summary.total = data.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                summary.count = data.length;
-                break;
-            case 'outstanding':
-                data = await getStudentAccounts();
-                summary.total = data.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0);
-                summary.count = data.filter(a => parseFloat(a.balance) > 0).length;
-                break;
-            case 'program':
-                data = await getPayments({ program: program || 'KRCHN', limit: 100 });
-                summary.total = data.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                summary.count = data.length;
-                break;
-            default:
-                data = await getPayments({ limit: 100 });
-                summary.total = data.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                summary.count = data.length;
-        }
-
-        return {
-            data: data,
-            summary: summary,
-            count: data.length,
-            generated_at: new Date().toISOString(),
-            type: type || 'summary'
-        };
-    } catch (error) {
-        console.error('Error generating report:', error);
-        throw error;
-    }
-}
-
-// ============================================================
-// EXPORT
-// ============================================================
-
-// Make functions globally available
 window.financeAPI = {
     getStudents,
     getStudentAccounts,
-    getStudentAccount,
-    getStudentTransactions,
-    getStudentBalance,
     getPayments,
     getPayment,
     recordPayment,
-    updatePayment,
     deletePayment,
     getFeeStructure,
-    createFeeStructure,
-    updateFeeStructure,
-    deleteFeeStructure,
     updateStudentAccount,
     getDashboardStats,
-    generateReport,
     getTransactions,
-    isFinanceAdmin,
     getCurrentFinanceUser,
+    isFinanceAdmin,
     // Mock data for testing
     getMockStats,
     getMockStudents,
@@ -771,6 +552,6 @@ window.financeAPI = {
 
 window.FINANCE_TABLES = TABLES;
 
-console.log('✅ Finance API Communication Layer loaded');
-console.log('🔗 Supabase:', !!supabase);
+console.log('✅ Finance API loaded successfully');
+console.log('🔗 Supabase client available:', !!supabaseClient);
 console.log('📊 Tables:', Object.keys(TABLES).join(', '));
