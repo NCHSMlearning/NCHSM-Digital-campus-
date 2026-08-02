@@ -761,7 +761,7 @@
                 </div>
             </div>
             
-            <!-- Quick Stats - Mobile Friendly -->
+            <!-- Quick Stats -->
             <div style="display: flex; gap: clamp(10px, 2vw, 20px); flex-shrink: 0; padding-left: clamp(10px, 2vw, 20px); border-left: 2px solid #e5e7eb; margin: 0 auto; flex-wrap: wrap; justify-content: center;">
                 <div style="text-align: center; min-width: 50px;">
                     <div style="font-size: clamp(1rem, 2.5vw, 1.4rem); font-weight: 800; color: #4C1D95;" id="profile-block-number">0</div>
@@ -778,17 +778,21 @@
             </div>
         </div>
         
-        <!-- Two Column Layout - Stack on Mobile -->
-        <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+        <!-- Two Column Layout -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+
+            <!-- ======================================== -->
             <!-- LEFT COLUMN - FORM FIELDS -->
+            <!-- ======================================== -->
             <div>
+
                 <!-- ===== PERSONAL INFORMATION ===== -->
                 <div style="margin-bottom: 20px;">
                     <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(0.9rem, 1.8vw, 1.1rem);">
                         <i class="fas fa-user-circle" style="color: #FDB913;"></i> Personal Information
                     </h4>
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="grid-column: 1 / -1;">
                             <label style="font-weight: 600; font-size: clamp(0.7rem, 1.2vw, 0.85rem); color: #475569; display: block; margin-bottom: 4px;">Full Name</label>
                             <input type="text" id="profile-name-input" readonly style="width: 100%; padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 14px); border: 2px solid #e2e8f0; border-radius: 8px; font-size: clamp(0.8rem, 1.2vw, 0.95rem); background: #f8fafc;">
                         </div>
@@ -825,7 +829,7 @@
                             <label style="font-weight: 600; font-size: clamp(0.7rem, 1.2vw, 0.85rem); color: #475569; display: block; margin-bottom: 4px;">National ID / Passport</label>
                             <input type="text" id="profile-national-id-input" readonly style="width: 100%; padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 14px); border: 2px solid #e2e8f0; border-radius: 8px; font-size: clamp(0.8rem, 1.2vw, 0.95rem); background: #f8fafc;">
                         </div>
-                        <div>
+                        <div style="grid-column: 1 / -1;">
                             <label style="font-weight: 600; font-size: clamp(0.7rem, 1.2vw, 0.85rem); color: #475569; display: block; margin-bottom: 4px;">Physical Address</label>
                             <input type="text" id="profile-address-input" readonly style="width: 100%; padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 14px); border: 2px solid #e2e8f0; border-radius: 8px; font-size: clamp(0.8rem, 1.2vw, 0.95rem); background: #f8fafc;">
                         </div>
@@ -837,12 +841,12 @@
                     <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(0.9rem, 1.8vw, 1.1rem);">
                         <i class="fas fa-users" style="color: #FDB913;"></i> Guardian Information
                     </h4>
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="grid-column: 1 / -1;">
                             <label style="font-weight: 600; font-size: clamp(0.7rem, 1.2vw, 0.85rem); color: #475569; display: block; margin-bottom: 4px;">Parent/Guardian Name</label>
                             <input type="text" id="profile-guardian-name-input" readonly style="width: 100%; padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 14px); border: 2px solid #e2e8f0; border-radius: 8px; font-size: clamp(0.8rem, 1.2vw, 0.95rem); background: #f8fafc;">
                         </div>
-                        <div>
+                        <div style="grid-column: 1 / -1;">
                             <label style="font-weight: 600; font-size: clamp(0.7rem, 1.2vw, 0.85rem); color: #475569; display: block; margin-bottom: 4px;">Guardian Phone</label>
                             <input type="tel" id="profile-guardian-phone-input" readonly style="width: 100%; padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 14px); border: 2px solid #e2e8f0; border-radius: 8px; font-size: clamp(0.8rem, 1.2vw, 0.95rem); background: #f8fafc;">
                         </div>
@@ -854,7 +858,7 @@
                     <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(0.9rem, 1.8vw, 1.1rem);">
                         <i class="fas fa-graduation-cap" style="color: #FDB913;"></i> Academic Information
                     </h4>
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div>
                             <label style="font-weight: 600; font-size: clamp(0.7rem, 1.2vw, 0.85rem); color: #475569; display: block; margin-bottom: 4px;">Program</label>
                             <input type="text" id="profile-program-input" readonly style="width: 100%; padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.5vw, 14px); border: 2px solid #e2e8f0; border-radius: 8px; font-size: clamp(0.8rem, 1.2vw, 0.95rem); background: #f8fafc;">
@@ -906,8 +910,11 @@
                 </div>
             </div>
 
+            <!-- ======================================== -->
             <!-- RIGHT COLUMN - DOCUMENTS & SECURITY -->
+            <!-- ======================================== -->
             <div>
+
                 <!-- Document Upload Cards -->
                 <div style="background: #f8fafc; border-radius: 12px; padding: clamp(14px, 2vw, 20px); border: 1px solid #e2e8f0; margin-bottom: 20px;">
                     <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(0.9rem, 1.8vw, 1.1rem);">
@@ -982,7 +989,7 @@
                 onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                 <i class="fas fa-edit"></i> Edit Profile
             </button>
-            <button type="submit" id="save-profile-button" style="display: none; background: #10b981; color: white; border: none; padding: clamp(8px, 1.2vw, 12px) clamp(16px, 2.5vw, 28px); border-radius: 8px; cursor: pointer; font-weight: 600; display: none; align-items: center; gap: 8px; font-size: clamp(0.8rem, 1.2vw, 0.95rem); transition: all 0.2s;" 
+            <button type="submit" id="save-profile-button" style="display: none; background: #10b981; color: white; border: none; padding: clamp(8px, 1.2vw, 12px) clamp(16px, 2.5vw, 28px); border-radius: 8px; cursor: pointer; font-weight: 600; align-items: center; gap: 8px; font-size: clamp(0.8rem, 1.2vw, 0.95rem); transition: all 0.2s;" 
                 onmouseover="this.style.background='#059669'" 
                 onmouseout="this.style.background='#10b981'">
                 <i class="fas fa-save"></i> Save Changes
