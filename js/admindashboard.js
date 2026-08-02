@@ -4269,7 +4269,6 @@ window.displayLiveFeed = function() {
     const totalMarks = exam?.total_marks || 30;
     const isCatExam = examType.toUpperCase().includes('CAT');
     
-    // ✅ FIX: Use released_at instead of created_at
     const { data: released } = await sb
         .from('released_exam_results')
         .select('result_id, released_at');
@@ -4279,7 +4278,6 @@ window.displayLiveFeed = function() {
         releasedMap[String(r.result_id)] = r.released_at;
     });
     
-    // Get student profiles
     const studentIds = results.map(r => r.student_id).filter(id => id);
     const { data: profiles } = await sb
         .from('consolidated_user_profiles_table')
@@ -4312,6 +4310,7 @@ window.displayLiveFeed = function() {
         
         let releasedDisplay = '';
         let actionButtons = '';
+        let checkboxHtml = '';
         
         if (isReleased) {
             releasedCount++;
@@ -4329,11 +4328,12 @@ window.displayLiveFeed = function() {
                     <i class="fas fa-chart-line"></i>
                 </button>
             `;
+            checkboxHtml = `<input type="checkbox" disabled style="opacity:0.3;">`;
         } else {
             pendingCount++;
             releasedDisplay = `<span class="status-pending">🔒 Not Released</span>`;
+            checkboxHtml = `<input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()" style="margin-right:8px;">`;
             actionButtons = `
-                <input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()" style="margin-right:8px;">
                 <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${safeName}', ${parseInt(examId)})" 
                         style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
                         title="View Live Progress">
@@ -4348,9 +4348,7 @@ window.displayLiveFeed = function() {
         }
         
         html += `<tr>
-            <td style="padding:8px;">
-                ${!isReleased ? `<input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()">` : ''}
-            </td>
+            <td style="padding:8px;">${checkboxHtml}</td>
             <td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
             <td style="padding:8px;"><strong>${studentName}</strong><br><small style="color:#6b7280;">${studentEmail}</small></td>
             <td style="padding:8px;color:#0A3D62;font-weight:600;cursor:pointer;" onclick="openEditMarksModal('${studentId}', ${parseInt(examId)}, '${safeName}', '${safeExam}')">
@@ -4393,9 +4391,7 @@ window.displayLiveFeed = function() {
     }
     document.getElementById('releaseSummary').innerHTML = summaryHTML;
     
-    document.getElementById('selectAllCheckbox').checked = false;
-    document.getElementById('confirmReleaseBtn').disabled = (pendingCount === 0);
-    
+    // Update the release button
     const releaseBtn = document.getElementById('confirmReleaseBtn');
     if (pendingCount === 0) {
         releaseBtn.disabled = true;
@@ -4424,18 +4420,23 @@ window.displayLiveFeed = function() {
         const box = document.getElementById('selectAllCheckbox'); 
         if (box) selectAllStudents(box.checked); 
     };
-
-    window.updateSelectedCount = function() {
-        const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:checked');
-        const count = checkboxes.length;
-        document.getElementById('selectedCount').innerHTML = `${count} selected`;
-        document.getElementById('confirmReleaseBtn').disabled = (count === 0);
-        selectedStudentIds.clear();
-        checkboxes.forEach(cb => { 
-            const idValue = cb.getAttribute('data-id'); 
-            if (idValue) selectedStudentIds.add(idValue); 
-        });
-    };
+window.updateSelectedCount = function() {
+    const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox:checked');
+    const count = checkboxes.length;
+    const countEl = document.getElementById('selectedCount');
+    if (countEl) countEl.textContent = `${count} selected`;
+    
+    const confirmBtn = document.getElementById('confirmReleaseBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = (count === 0);
+    }
+    
+    selectedStudentIds.clear();
+    checkboxes.forEach(cb => { 
+        const idValue = cb.getAttribute('data-id'); 
+        if (idValue) selectedStudentIds.add(idValue); 
+    });
+};
 
    
  // ============================================
@@ -4606,7 +4607,7 @@ async function sendSimpleReleaseNotification(studentId, examId, grade) {
         // Get exam details
         const { data: exam, error: examError } = await sb
             .from('exams')
-            .select('exam_name, exam_type, total_marks, pass_mark')
+            .select('exam_name, exam_type')
             .eq('id', parseInt(examId))
             .single();
         
@@ -4615,13 +4616,9 @@ async function sendSimpleReleaseNotification(studentId, examId, grade) {
             return false;
         }
         
-        const score = grade.marks || 0;
-        const totalMarks = exam.total_marks || 100;
-        const percentage = ((score / totalMarks) * 100).toFixed(1);
-        const passed = parseFloat(percentage) >= (exam.pass_mark || 60);
         const portalUrl = 'https://nchsm.co.ke/exams';
         
-        // ✅ SIMPLE EMAIL - NO ANSWERS SHOWN
+        // ✅ EMAIL WITH NO SCORES - Just notification
         const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -4638,15 +4635,28 @@ async function sendSimpleReleaseNotification(studentId, examId, grade) {
         .header h1 { margin: 0; font-size: 24px; }
         .header p { margin: 4px 0 0; opacity: 0.8; }
         .body { padding: 30px 35px; }
-        .score-box { text-align: center; padding: 20px; background: #F8FAFC; border-radius: 12px; margin: 16px 0; }
-        .score-box .percentage { font-size: 3rem; font-weight: 700; color: ${passed ? '#38A169' : '#DC2626'}; }
-        .score-box .status { font-size: 1.1rem; font-weight: 600; color: ${passed ? '#38A169' : '#DC2626'}; }
-        .callout { background: #EFF6FF; padding: 20px; border-radius: 12px; border-left: 4px solid #3B82F6; margin: 16px 0; }
-        .callout h3 { margin: 0 0 8px; color: #0A3D62; }
-        .callout ul { margin: 8px 0 0; padding-left: 20px; color: #2c3e50; }
-        .btn { display: inline-block; background: #0A3D62; color: white; padding: 12px 30px; border-radius: 10px; text-decoration: none; }
-        .footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }
-        @media (max-width: 480px) { .body { padding: 20px; } .header { padding: 20px; } }
+        .notification-box { 
+            background: #EFF6FF; 
+            padding: 24px; 
+            border-radius: 16px; 
+            text-align: center; 
+            margin: 16px 0;
+            border: 2px solid #3B82F6;
+        }
+        .notification-box .icon { font-size: 3rem; display: block; margin-bottom: 8px; }
+        .notification-box .message { font-size: 1.1rem; color: #0A3D62; font-weight: 600; }
+        .notification-box .sub-message { color: #5a6c7d; font-size: 0.95rem; margin-top: 4px; }
+        .info-grid { background: #f8fafc; border-radius: 14px; padding: 20px 24px; margin: 16px 0; border-left: 4px solid #0A3D62; }
+        .info-grid p { margin: 6px 0; font-size: 14px; color: #2c3e50; display: flex; justify-content: space-between; }
+        .info-grid .label { color: #5a6c7d; font-weight: 500; }
+        .info-grid .value { color: #0A3D62; font-weight: 600; text-align: right; }
+        .btn-primary { display: inline-block; background: linear-gradient(135deg, #0A3D62, #1a5276); color: white !important; padding: 15px 36px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 8px 0; box-shadow: 0 6px 20px rgba(10, 61, 98, 0.3); text-align: center; }
+        .footer { background: #f8fafc; padding: 22px 35px; text-align: center; border-top: 1px solid #eef2f7; }
+        .footer-text { font-size: 12px; color: #8a9aa8; margin: 4px 0; }
+        .secure-badge { display: inline-block; background: #10b981; color: white; font-size: 11px; padding: 4px 16px; border-radius: 20px; font-weight: 600; margin-top: 8px; }
+        .privacy-notice { background: #fef9e7; border-radius: 12px; padding: 14px 18px; margin: 18px 0 6px; border-left: 4px solid #f39c12; }
+        .privacy-notice p { margin: 0; font-size: 13px; color: #7d6608; }
+        @media (max-width: 480px) { .header { padding: 20px; } .body { padding: 20px; } .info-grid p { flex-direction: column; } .info-grid .value { text-align: left; margin-top: 2px; } }
     </style>
 </head>
 <body>
@@ -4662,36 +4672,47 @@ async function sendSimpleReleaseNotification(studentId, examId, grade) {
                 <p>Dear <strong>${student.full_name}</strong>,</p>
                 <p>Your results for <strong>${exam.exam_name}</strong> have been released.</p>
                 
-                <div class="score-box">
-                    <div class="percentage">${percentage}%</div>
-                    <div class="status">${passed ? '✅ PASS' : '❌ FAIL'}</div>
-                    <div style="font-size: 0.9rem; color: #64748B; margin-top: 8px;">
-                        Score: ${score}/${totalMarks} marks
+                <!-- ✅ NOTIFICATION BOX - NO SCORES -->
+                <div class="notification-box">
+                    <span class="icon">🔐</span>
+                    <div class="message">Your Results Are Ready</div>
+                    <div class="sub-message">Log in to the student portal to view your grades securely.</div>
+                    <div style="margin-top: 12px; font-size: 0.8rem; color: #5a6c7d;">
+                        <span style="background: #d1fae5; padding: 3px 12px; border-radius: 20px; color: #065f46; font-weight: 600;">🔒 Private & Secure</span>
                     </div>
                 </div>
                 
-                <div class="callout">
-                    <h3>🔐 View Your Detailed Exam Report</h3>
-                    <p style="margin: 8px 0 0;">Log in to the Student Portal to see:</p>
-                    <ul>
-                        <li>All questions and your answers</li>
-                        <li>Correct answers for each question</li>
-                        <li>Detailed feedback and explanations</li>
-                        <li>Your performance breakdown</li>
-                    </ul>
-                    <div style="margin-top: 16px;">
-                        <a href="${portalUrl}" class="btn">Go to Student Portal</a>
-                    </div>
+                <!-- Exam Details -->
+                <div class="info-grid">
+                    <p><span class="label">📋 Exam</span> <span class="value">${exam.exam_name}</span></p>
+                    <p><span class="label">📊 Type</span> <span class="value">${exam.exam_type || 'Exam'}</span></p>
+                    <p><span class="label">👤 Student</span> <span class="value">${student.full_name}</span></p>
+                    <p><span class="label">🆔 ID</span> <span class="value">${student.student_id || 'N/A'}</span></p>
+                    <p><span class="label">📚 Program</span> <span class="value">${student.program || 'N/A'}</span></p>
                 </div>
                 
-                <p style="font-size: 0.85rem; color: #64748B; margin-top: 16px;">
-                    If you have any questions, please contact your instructor.
-                </p>
+                <!-- Call to Action -->
+                <div style="text-align: center; margin: 24px 0 16px;">
+                    <a href="${portalUrl}" class="btn-primary">
+                        🔑 Go to Exam Portal
+                    </a>
+                    <br>
+                    <a href="https://nchsm.co.ke" style="color: #0A3D62; text-decoration: none; font-size: 13px; font-weight: 500; margin-top: 6px; display: inline-block;">
+                        🌐 Visit NCHSM Digital Campus
+                    </a>
+                </div>
+                
+                <!-- Privacy Notice -->
+                <div class="privacy-notice">
+                    <p>💡 <strong>Note:</strong> This is a notification only. Your actual scores are available on the student portal for privacy and security.</p>
+                </div>
             </div>
             
             <div class="footer">
-                <p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
-                <p style="margin: 4px 0 0; font-size: 0.75rem;">This is an automated message from NCHSM Exam System.</p>
+                <p class="footer-text"><strong>Nakuru College of Health Sciences and Management</strong></p>
+                <p class="footer-text">📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
+                <p class="footer-text" style="font-size: 11px; color: #aab7c5;">This is an automated notification. Please do not reply to this email.</p>
+                <span class="secure-badge">🔒 Secure Notification</span>
             </div>
         </div>
     </div>
@@ -4887,7 +4908,7 @@ window.batchResendReleaseEmails = async function(examId) {
         // Get exam details
         const { data: exam, error: examError } = await sb
             .from('exams')
-            .select('exam_name, exam_type, exam_date, total_marks, pass_mark')
+            .select('exam_name, exam_type, exam_date')
             .eq('id', parseInt(examId))
             .single();
         
@@ -4896,8 +4917,6 @@ window.batchResendReleaseEmails = async function(examId) {
             return false;
         }
         
-        const isCatExam = (exam.exam_type || '').toUpperCase().includes('CAT');
-        const examTypeLabel = isCatExam ? 'CAT' : 'Exam';
         const examDate = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString('en-KE', {
             day: 'numeric',
             month: 'long',
@@ -4925,7 +4944,7 @@ window.batchResendReleaseEmails = async function(examId) {
         .greeting-sub { color: #5a6c7d; font-size: 15px; margin: 0 0 22px; }
         .divider { border: none; border-top: 2px solid #eef2f7; margin: 18px 0 22px; }
         
-        /* ✅ REMOVED SCORE BOX - replaced with notification box */
+        /* ✅ NOTIFICATION BOX - NO SCORES */
         .notification-box { 
             background: #EFF6FF; 
             padding: 24px; 
@@ -4947,6 +4966,8 @@ window.batchResendReleaseEmails = async function(examId) {
         .footer { background: #f8fafc; padding: 22px 35px; text-align: center; border-top: 1px solid #eef2f7; }
         .footer-text { font-size: 12px; color: #8a9aa8; margin: 4px 0; }
         .secure-badge { display: inline-block; background: #10b981; color: white; font-size: 11px; padding: 4px 16px; border-radius: 20px; font-weight: 600; margin-top: 8px; }
+        .privacy-notice { background: #fef9e7; border-radius: 12px; padding: 14px 18px; margin: 18px 0 6px; border-left: 4px solid #f39c12; }
+        .privacy-notice p { margin: 0; font-size: 13px; color: #7d6608; }
         @media (max-width: 480px) { .header { padding: 20px; } .body { padding: 20px; } .info-grid p { flex-direction: column; } .info-grid .value { text-align: left; margin-top: 2px; } }
     </style>
 </head>
@@ -4979,7 +5000,7 @@ window.batchResendReleaseEmails = async function(examId) {
                 <div class="info-grid">
                     <p><span class="label">📋 Exam</span> <span class="value">${exam.exam_name}</span></p>
                     <p><span class="label">📅 Date</span> <span class="value">${examDate}</span></p>
-                    <p><span class="label">📊 Type</span> <span class="value">${examTypeLabel}</span></p>
+                    <p><span class="label">📊 Type</span> <span class="value">${exam.exam_type || 'Exam'}</span></p>
                     <p><span class="label">👤 Student</span> <span class="value">${student.full_name}</span></p>
                     <p><span class="label">🆔 ID</span> <span class="value">${student.student_id || 'N/A'}</span></p>
                     <p><span class="label">📚 Program</span> <span class="value">${student.program || 'N/A'}</span></p>
@@ -4997,10 +5018,8 @@ window.batchResendReleaseEmails = async function(examId) {
                 </div>
                 
                 <!-- Privacy Notice -->
-                <div style="background: #fef9e7; border-radius: 12px; padding: 14px 18px; margin: 18px 0 6px; border-left: 4px solid #f39c12;">
-                    <p style="margin: 0; font-size: 13px; color: #7d6608;">
-                        💡 <strong>Note:</strong> This is a notification only. Your actual scores are available on the student portal for privacy and security.
-                    </p>
+                <div class="privacy-notice">
+                    <p>💡 <strong>Note:</strong> This is a notification only. Your actual scores are available on the student portal for privacy and security.</p>
                 </div>
             </div>
             
@@ -5045,7 +5064,6 @@ window.batchResendReleaseEmails = async function(examId) {
         return false;
     }
 }
-
     /**
      * Send bulk emails from the release modal
      */
