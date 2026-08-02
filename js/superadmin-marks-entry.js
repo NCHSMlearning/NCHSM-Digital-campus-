@@ -1,10 +1,189 @@
 // ============================================================
-// MARKS ENTRY SYSTEM - SUPER ADMIN (FULLY FIXED)
-// WITH AUTO-APPROVE ON SAVE
+// TVET & NURSING GRADING SYSTEM - COMPLETE SOLUTION
+// FULL JS FILE - ALL FUNCTIONS INCLUDED
 // ============================================================
 
 // ============================================================
-// STATE
+// GRADING CONFIGURATION
+// ============================================================
+
+const GRADING_CONFIG = {
+    // ✅ TVET Programs - Competency-Based Grading with Points
+    TVET: {
+        CAT1_MAX: 30,
+        CAT2_MAX: 30,
+        EXAM_MAX: 100,
+        TOTAL_MAX: 160,
+        DISPLAY_NAME: 'TVET (CAT1 30 + CAT2 30 + Exam 100 = 160 → %)',
+        PASS_MARK: 50,
+        GRADE_TYPE: 'competency',
+        GRADE_MAPPING: [
+            { min: 80, max: 100, grade: 'A', points: 4, status: 'MASTERY', comment: 'MASTERY - Excellent performance', color: '#065f46', bgColor: '#d1fae5', icon: '⭐' },
+            { min: 65, max: 79, grade: 'B', points: 3, status: 'PROFICIENT', comment: 'PROFICIENT - Good performance', color: '#1e40af', bgColor: '#dbeafe', icon: '🌟' },
+            { min: 50, max: 64, grade: 'C', points: 2, status: 'COMPETENT', comment: 'COMPETENT - Satisfactory performance', color: '#92400e', bgColor: '#fef3c7', icon: '✅' },
+            { min: 0, max: 49, grade: 'E', points: 0, status: 'NOT YET COMPETENT', comment: 'NOT YET COMPETENT - Needs improvement', color: '#991b1b', bgColor: '#fee2e2', icon: '❌' }
+        ],
+        FORMULA: 'percentage = (cat1 + cat2 + exam) / 160 * 100'
+    },
+    
+    // ✅ Nursing (KRCHN) - Academic Grading
+    NURSING: {
+        CAT1_MAX: 20,
+        CAT2_MAX: 20,
+        EXAM_MAX: 60,
+        TOTAL_MAX: 100,
+        DISPLAY_NAME: 'Nursing (CAT1 20 + CAT2 20 + Exam 60 = 100 → %)',
+        PASS_MARK: 60,
+        GRADE_TYPE: 'academic',
+        GRADE_MAPPING: [
+            { min: 75, max: 100, grade: 'A', points: 4.0, status: 'Distinction', comment: 'Distinction - Excellent performance', color: '#065f46', bgColor: '#d1fae5', icon: '🎓' },
+            { min: 65, max: 74, grade: 'B', points: 3.0, status: 'Credit', comment: 'Credit - Good performance', color: '#1e40af', bgColor: '#dbeafe', icon: '📚' },
+            { min: 60, max: 64, grade: 'C', points: 2.0, status: 'Pass', comment: 'Pass - Satisfactory performance', color: '#92400e', bgColor: '#fef3c7', icon: '✅' },
+            { min: 0, max: 59, grade: 'D', points: 0.0, status: 'Fail', comment: 'Fail - Needs improvement', color: '#991b1b', bgColor: '#fee2e2', icon: '❌' }
+        ],
+        FORMULA: 'percentage = cat1 + cat2 + exam (out of 100)'
+    }
+};
+
+// ============================================================
+// PROGRAM CODES
+// ============================================================
+
+const TVET_PROGRAMS = [
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+    'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+];
+
+const NURSING_PROGRAMS = ['KRCHN'];
+
+// ============================================================
+// DETECT PROGRAM TYPE
+// ============================================================
+
+function getProgramType(programCode) {
+    if (!programCode) return 'TVET';
+    if (NURSING_PROGRAMS.includes(programCode)) return 'NURSING';
+    return 'TVET';
+}
+
+function getGradingConfig(programCode) {
+    const type = getProgramType(programCode);
+    return GRADING_CONFIG[type];
+}
+
+// ============================================================
+// TVET MARKS CALCULATION - CORE FUNCTION
+// ============================================================
+
+function calculateTVETMarks(cat1, cat2, exam, programCode) {
+    const config = getGradingConfig(programCode);
+    const programType = getProgramType(programCode);
+    
+    const c1 = parseFloat(cat1) || 0;
+    const c2 = parseFloat(cat2) || 0;
+    const ex = parseFloat(exam) || 0;
+    
+    const clampedCat1 = Math.min(Math.max(c1, 0), config.CAT1_MAX);
+    const clampedCat2 = Math.min(Math.max(c2, 0), config.CAT2_MAX);
+    const clampedExam = Math.min(Math.max(ex, 0), config.EXAM_MAX);
+    
+    const total = clampedCat1 + clampedCat2 + clampedExam;
+    
+    let percentage;
+    if (programType === 'NURSING') {
+        percentage = total;
+    } else {
+        percentage = (total / config.TOTAL_MAX) * 100;
+    }
+    
+    const roundedPercentage = Math.round(percentage * 100) / 100;
+    const gradeInfo = getTVETGrade(roundedPercentage, config);
+    
+    return {
+        cat1: clampedCat1,
+        cat2: clampedCat2,
+        exam: clampedExam,
+        total: total,
+        maxTotal: config.TOTAL_MAX,
+        percentage: roundedPercentage,
+        grade: gradeInfo.grade,
+        points: gradeInfo.points,
+        status: gradeInfo.status,
+        comment: gradeInfo.comment,
+        isPassing: roundedPercentage >= config.PASS_MARK,
+        programType: programType,
+        config: config,
+        gradeType: config.GRADE_TYPE,
+        gradeInfo: gradeInfo,
+        raw: { cat1: c1, cat2: c2, exam: ex },
+        display: {
+            cat1: `${clampedCat1}/${config.CAT1_MAX}`,
+            cat2: `${clampedCat2}/${config.CAT2_MAX}`,
+            exam: `${clampedExam}/${config.EXAM_MAX}`,
+            total: `${total}/${config.TOTAL_MAX}`,
+            percentage: `${roundedPercentage}%`
+        }
+    };
+}
+
+function getTVETGrade(percentage, config) {
+    const grades = config.GRADE_MAPPING;
+    const sortedGrades = [...grades].sort((a, b) => b.min - a.min);
+    for (let g of sortedGrades) {
+        if (percentage >= g.min) {
+            return g;
+        }
+    }
+    return grades[grades.length - 1];
+}
+
+function getMarksEntryGrade(score, programCode) {
+    const config = getGradingConfig(programCode);
+    const gradeInfo = getTVETGrade(score, config);
+    return {
+        grade: gradeInfo.grade,
+        rating: gradeInfo.status,
+        points: gradeInfo.points,
+        color: gradeInfo.color,
+        bgColor: gradeInfo.bgColor,
+        comment: gradeInfo.comment,
+        icon: gradeInfo.icon || '',
+        isPassing: score >= config.PASS_MARK,
+        gradeType: config.GRADE_TYPE
+    };
+}
+
+function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode) {
+    const config = getGradingConfig(programCode);
+    const programType = getProgramType(programCode);
+    
+    let total = 0;
+    let cat1Val = Math.min(Math.max(parseFloat(cat1) || 0, 0), config.CAT1_MAX);
+    let cat2Val = Math.min(Math.max(parseFloat(cat2) || 0, 0), config.CAT2_MAX);
+    let examVal = Math.min(Math.max(parseFloat(exam) || 0, 0), config.EXAM_MAX);
+    
+    switch(assessmentType) {
+        case 'full': total = cat1Val + cat2Val + examVal; break;
+        case 'single_cat': total = cat1Val + examVal; break;
+        case 'exam_only': total = examVal; break;
+        case 'cats_only': total = cat1Val + cat2Val; break;
+        case 'cat_only': total = cat1Val; break;
+        default: total = cat1Val + cat2Val + examVal;
+    }
+    
+    let percentage;
+    if (programType === 'NURSING') {
+        percentage = total;
+    } else {
+        percentage = (total / config.TOTAL_MAX) * 100;
+    }
+    
+    return Math.round(percentage * 10) / 10;
+}
+
+// ============================================================
+// STATE VARIABLES
 // ============================================================
 
 let me_currentMarks = [];
@@ -34,7 +213,6 @@ function isUserAdmin() {
                 return true;
             }
         }
-        
         const sessionUser = sessionStorage.getItem('user');
         if (sessionUser) {
             try {
@@ -45,230 +223,18 @@ function isUserAdmin() {
                 }
             } catch (e) {}
         }
-        
         const urlParams = new URLSearchParams(window.location.search);
         const roleParam = urlParams.get('role');
         if (roleParam === 'superadmin' || roleParam === 'admin') {
             return true;
         }
-        
         if (window.location.pathname.includes('superadmin') || window.location.pathname.includes('admin')) {
             return true;
         }
-        
         return true;
-        
     } catch (e) {
         return true;
     }
-}
-
-// ============================================================
-// DETECT VISIBLE COLUMNS - FIXED
-// ============================================================
-
-function detectVisibleColumns() {
-    console.log('🔍 Detecting visible columns...');
-    
-    const table = document.querySelector('#me_marks_table');
-    if (!table) {
-        console.warn('⚠️ Table not found, using defaults');
-        return { hasCat1: true, hasCat2: true, hasExam: true };
-    }
-    
-    const headers = table.querySelectorAll('thead th');
-    let hasCat1 = false;
-    let hasCat2 = false;
-    let hasExam = false;
-    
-    // ✅ Check saved settings FIRST
-    const savedColumns = me_columnSettings.columns || [];
-    const savedCat1 = savedColumns.find(c => c.id === 'cat1');
-    const savedCat2 = savedColumns.find(c => c.id === 'cat2');
-    const savedExam = savedColumns.find(c => c.id === 'exam');
-    
-    // ✅ Use saved settings if they exist
-    if (savedCat1 !== undefined) {
-        hasCat1 = savedCat1.visible !== false;
-        console.log(`📋 Saved CAT1: ${hasCat1 ? 'visible' : 'hidden'}`);
-    }
-    if (savedCat2 !== undefined) {
-        hasCat2 = savedCat2.visible !== false;
-        console.log(`📋 Saved CAT2: ${hasCat2 ? 'visible' : 'hidden'}`);
-    }
-    if (savedExam !== undefined) {
-        hasExam = savedExam.visible !== false;
-        console.log(`📋 Saved Exam: ${hasExam ? 'visible' : 'hidden'}`);
-    }
-    
-    // ✅ If not saved, check DOM
-    if (savedCat1 === undefined || savedCat2 === undefined || savedExam === undefined) {
-        headers.forEach((th, index) => {
-            const text = th.textContent.toLowerCase().trim();
-            const computedDisplay = window.getComputedStyle(th).display;
-            const inlineDisplay = th.style.display;
-            const isVisible = inlineDisplay !== 'none' && computedDisplay !== 'none';
-            
-            if (savedCat1 === undefined && (text.includes('cat1') || text.includes('cat 1'))) {
-                hasCat1 = isVisible;
-            }
-            if (savedCat2 === undefined && (text.includes('cat2') || text.includes('cat 2'))) {
-                hasCat2 = isVisible;
-            }
-            if (savedExam === undefined && text.includes('exam')) {
-                hasExam = isVisible;
-            }
-        });
-    }
-    
-    // ✅ Default to true if still not set
-    if (savedCat1 === undefined && !hasCat1) hasCat1 = true;
-    if (savedCat2 === undefined && !hasCat2) hasCat2 = true;
-    if (savedExam === undefined && !hasExam) hasExam = true;
-    
-    const result = { hasCat1, hasCat2, hasExam };
-    console.log('📊 Final detection result:', result);
-    
-    return result;
-}
-
-// ============================================================
-// GET AUTO ASSESSMENT TYPE
-// ============================================================
-
-function getAutoAssessmentType() {
-    const visible = detectVisibleColumns();
-    console.log('📊 Visible columns for assessment:', visible);
-    
-    if (visible.hasExam && !visible.hasCat1 && !visible.hasCat2) {
-        console.log('📋 → exam_only');
-        return 'exam_only';
-    }
-    
-    if (visible.hasCat1 && !visible.hasCat2 && !visible.hasExam) {
-        console.log('📋 → cat_only (CAT1 only)');
-        return 'cat_only';
-    }
-    
-    if (!visible.hasCat1 && visible.hasCat2 && !visible.hasExam) {
-        console.log('📋 → cat_only (CAT2 only)');
-        return 'cat_only';
-    }
-    
-    if (visible.hasCat1 && visible.hasCat2 && !visible.hasExam) {
-        console.log('📋 → cats_only');
-        return 'cats_only';
-    }
-    
-    if (visible.hasCat1 && !visible.hasCat2 && visible.hasExam) {
-        console.log('📋 → single_cat (CAT1 + Exam)');
-        return 'single_cat';
-    }
-    
-    if (!visible.hasCat1 && visible.hasCat2 && visible.hasExam) {
-        console.log('📋 → single_cat (CAT2 + Exam)');
-        return 'single_cat';
-    }
-    
-    console.log('📋 → full (default)');
-    return 'full';
-}
-
-// ============================================================
-// GET ASSESSMENT TYPE LABEL
-// ============================================================
-
-function getAssessmentTypeLabel(type) {
-    const labels = {
-        'full': 'Full (CAT1+CAT2+Exam)',
-        'single_cat': 'Single CAT (CAT+Exam)',
-        'exam_only': 'Exam Only',
-        'cats_only': 'CAT1+CAT2 Only',
-        'cat_only': 'CAT Only'
-    };
-    return labels[type] || type;
-}
-
-// ============================================================
-// UPDATE ASSESSMENT TYPE DISPLAY
-// ============================================================
-
-function updateAssessmentTypeDisplay() {
-    const autoType = getAutoAssessmentType();
-    const label = getAssessmentTypeLabel(autoType);
-    
-    const labelEl = document.getElementById('autoAssessmentTypeLabel');
-    if (labelEl) {
-        labelEl.textContent = label;
-    }
-    
-    const assessmentSelect = document.getElementById('me_assessment_type');
-    if (assessmentSelect) {
-        assessmentSelect.value = autoType;
-    }
-    
-    me_currentAssessmentType = autoType;
-}
-
-// ============================================================
-// RECALCULATE ALL TOTALS
-// ============================================================
-
-function recalculateAllTotals() {
-    const assessmentType = me_currentAssessmentType;
-    const rows = document.querySelectorAll('#me_marks_container table tbody tr');
-    
-    rows.forEach((row, index) => {
-        const cat1Input = document.getElementById(`me_cat1_${index}`);
-        const cat2Input = document.getElementById(`me_cat2_${index}`);
-        const examInput = document.getElementById(`me_exam_${index}`);
-        
-        const cat1 = parseFloat(cat1Input?.value) || 0;
-        const cat2 = parseFloat(cat2Input?.value) || 0;
-        const exam = parseFloat(examInput?.value) || 0;
-        
-        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-        const gradeInfo = getMarksEntryGrade(total);
-        
-        const totalEl = document.getElementById(`me_total_${index}`);
-        if (totalEl) {
-            totalEl.textContent = total > 0 ? total : '--';
-            totalEl.style.color = total >= 60 ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
-        }
-        
-        const gradeEl = document.getElementById(`me_grade_${index}`);
-        if (gradeEl) {
-            gradeEl.textContent = total > 0 ? gradeInfo.grade : '--';
-            gradeEl.style.color = gradeInfo.color;
-        }
-        
-        const pointsEl = document.getElementById(`me_points_${index}`);
-        if (pointsEl) {
-            pointsEl.textContent = total > 0 ? gradeInfo.points.toFixed(1) : '--';
-            pointsEl.style.color = gradeInfo.color;
-        }
-        
-        const ratingEl = document.getElementById(`me_rating_${index}`);
-        if (ratingEl) {
-            if (total > 0) {
-                ratingEl.innerHTML = `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
-            } else {
-                ratingEl.innerHTML = '<span style="color: #94a3b8;">PENDING</span>';
-            }
-        }
-        
-        if (me_currentMarks && me_currentMarks[index]) {
-            me_currentMarks[index].cat1 = cat1;
-            me_currentMarks[index].cat2 = cat2;
-            me_currentMarks[index].exam = exam;
-            me_currentMarks[index].assessmentType = assessmentType;
-        }
-    });
-    
-    updateMarksEntryStats(me_currentMarks, assessmentType);
-    updateAssessmentTypeDisplay();
-    
-    console.log(`✅ Recalculated all totals with assessment type: ${assessmentType}`);
 }
 
 // ============================================================
@@ -378,7 +344,6 @@ async function loadMEUnits() {
             assessmentSelect.disabled = true;
         }
         
-        // ✅ Load lecturer assignments for this block
         await loadLecturerAssignments();
         
     } catch (error) {
@@ -391,7 +356,7 @@ async function loadMEUnits() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY - SHOW ALL ENROLLED STUDENTS (Even with 0 marks)
+// LOAD MARKS ENTRY - COMPLETE WITH TVET GRADING
 // ============================================================
 
 async function loadMarksEntry() {
@@ -429,15 +394,20 @@ async function loadMarksEntry() {
     me_currentYear = year;
     me_currentAssessmentType = assessmentType;
     
+    const config = getGradingConfig(program);
+    const programType = getProgramType(program);
+    
     document.getElementById('me_marks_container').innerHTML = `
         <div style="text-align: center; padding: 40px;">
             <div class="loading-spinner"></div>
-            <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unitCode || unit}...</p>
+            <p style="color: #6b7280; margin-top: 10px;">
+                Loading marks for ${unitCode || unit}...
+                <br><small style="color: #94a3b8;">${programType === 'NURSING' ? '🎓 Nursing' : '🔧 TVET'} | ${config.DISPLAY_NAME}</small>
+            </p>
         </div>
     `;
     
     try {
-        // ✅ SOURCE OF TRUTH: Get ALL enrolled students from student_marks
         const { data: marks, error: marksError } = await sb
             .from('student_marks')
             .select('*')
@@ -448,6 +418,7 @@ async function loadMarksEntry() {
         if (marksError) throw marksError;
         
         console.log(`📊 Found ${marks?.length || 0} enrolled students for ${unit}`);
+        console.log(`📊 Program: ${program} (${programType}) - ${config.DISPLAY_NAME}`);
         
         if (!marks || marks.length === 0) {
             document.getElementById('me_marks_container').innerHTML = `
@@ -460,12 +431,10 @@ async function loadMarksEntry() {
                     </button>
                 </div>
             `;
-            // ✅ Update stats to 0
-            updateMarksEntryStats([], assessmentType);
+            updateMarksEntryStats([], assessmentType, program);
             return;
         }
         
-        // ✅ Get student names from profile (for display)
         const admissions = marks.map(m => m.admission_number);
         const { data: students, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
@@ -482,33 +451,51 @@ async function loadMarksEntry() {
             studentMap[s.student_id] = s.full_name || 'Unknown';
         });
         
-        // ✅ Build full marks data - SHOW ALL STUDENTS even with 0 scores
         const fullMarks = marks.map(m => {
             const admission = m.admission_number || '';
+            const cat1 = m.cat1_score || 0;
+            const cat2 = m.cat2_score || 0;
+            const exam = m.exam_score || 0;
+            
+            const result = calculateTVETMarks(cat1, cat2, exam, program);
+            
             return {
                 admission: admission,
                 name: studentMap[admission] || m.student_name || 'Unknown',
                 program: program,
-                cat1: m.cat1_score || 0,
-                cat2: m.cat2_score || 0,
-                exam: m.exam_score || 0,
-                final: m.final_score || 0,
-                grade: m.grade || '',
-                gradedBy: m.graded_by || '',
+                programType: programType,
+                cat1: cat1,
+                cat2: cat2,
+                exam: exam,
+                total: result.total,
+                maxTotal: result.maxTotal,
+                percentage: result.percentage,
+                grade: result.grade,
+                points: result.points,
+                status: result.status,
+                comment: result.comment,
+                isPassing: result.isPassing,
+                final: result.percentage,
+                final_score: result.percentage,
+                gradeDisplay: result.grade,
                 assessmentType: m.assessment_type || assessmentType,
                 id: m.id || null,
-                approval_status: m.approval_status || 'draft'
+                approval_status: m.approval_status || 'draft',
+                published: m.published || false,
+                published_at: m.published_at || null,
+                gradeIcon: result.gradeInfo?.icon || ''
             };
         });
         
-        console.log(`📊 Displaying ${fullMarks.length} enrolled students (including those with 0 marks)`);
+        console.log(`📊 Displaying ${fullMarks.length} enrolled students with TVET calculation`);
         
         me_currentMarks = fullMarks;
-        renderMarksEntryTable(fullMarks, unitCode, assessmentType);
-        updateMarksEntryStats(fullMarks, assessmentType);
+        renderMarksEntryTable(fullMarks, unitCode, assessmentType, program);
+        updateMarksEntryStats(fullMarks, assessmentType, program);
         
         await loadUnitColumnSettings();
         updateAssessmentTypeDisplay();
+        showGradingSystemInfo(program);
         
     } catch (error) {
         console.error('Error loading marks:', error);
@@ -529,23 +516,69 @@ async function loadMarksEntry() {
 }
 
 // ============================================================
-// RENDER MARKS TABLE - WITH AUTO DETECTION AND MANAGE STUDENTS
+// SHOW GRADING SYSTEM INFO
 // ============================================================
 
-function renderMarksEntryTable(marks, unitCode, assessmentType) {
+function showGradingSystemInfo(program) {
+    const config = getGradingConfig(program);
+    const programType = getProgramType(program);
+    
+    let container = document.getElementById('gradingSystemInfo');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'gradingSystemInfo';
+        const marksContainer = document.getElementById('me_marks_container');
+        if (marksContainer) {
+            marksContainer.parentNode.insertBefore(container, marksContainer);
+        }
+    }
+    
+    const icon = programType === 'NURSING' ? '🎓' : '🔧';
+    const typeLabel = programType === 'NURSING' ? 'Nursing (KRCHN)' : 'TVET';
+    const gradeType = config.GRADE_TYPE === 'competency' ? 'Competency-Based' : 'Academic';
+    
+    let gradeLegend = '';
+    config.GRADE_MAPPING.forEach(g => {
+        gradeLegend += `
+            <span style="background:${g.bgColor};color:${g.color};padding:2px 10px;border-radius:4px;font-weight:600;font-size:11px;border:1px solid ${g.color};">
+                ${g.icon || ''} ${g.grade} (${g.min}-${g.max}%) = ${g.points}pts
+            </span>
+        `;
+    });
+    
+    container.innerHTML = `
+        <div style="background:${programType === 'NURSING' ? '#eff6ff' : '#f0fdf4'};padding:12px 16px;border-radius:8px;border:1px solid ${programType === 'NURSING' ? '#93c5fd' : '#86efac'};margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <span style="font-weight:700;color:#1e293b;">${icon} ${typeLabel}</span>
+                <span style="font-size:12px;color:#475569;background:white;padding:2px 10px;border-radius:12px;">${gradeType}</span>
+                <span style="font-size:12px;color:#475569;">Pass: ≥${config.PASS_MARK}%</span>
+                <span style="font-size:11px;color:#6b7280;background:white;padding:2px 10px;border-radius:12px;">${config.FORMULA}</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid ${programType === 'NURSING' ? '#dbeafe' : '#d1fae5'};">
+                ${gradeLegend}
+            </div>
+        </div>
+    `;
+}
+
+// ============================================================
+// RENDER MARKS ENTRY TABLE - COMPLETE
+// ============================================================
+
+function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     const container = document.getElementById('me_marks_container');
     if (!container) return;
     
+    const config = getGradingConfig(program);
+    const programType = getProgramType(program);
+    const isCompetency = config.GRADE_TYPE === 'competency';
+    
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
-    const passing = marks.filter(m => {
-        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total >= 60;
-    });
+    const passing = marks.filter(m => m.isPassing);
     
     const showCat1 = assessmentType !== 'exam_only';
     const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
     const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
-    const examMax = assessmentType === 'exam_only' ? 100 : 70;
     
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
@@ -556,7 +589,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 <span style="font-size: 12px; color: #059669; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
                 <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} passing</span>
                 <span style="font-size: 12px; color: #6b7280; margin-left: 12px; background: #f3f4f6; padding: 2px 12px; border-radius: 40px;">
-                    📋 Auto: ${getAssessmentTypeLabel(assessmentType)}
+                    📋 ${isCompetency ? 'TVET Competency' : 'Nursing Academic'}
                 </span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -587,13 +620,14 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                         <th style="padding: 10px 6px; text-align: center; width: 35px;">#</th>
                         <th style="padding: 10px 8px; text-align: left;">Admission</th>
                         <th style="padding: 10px 8px; text-align: left;">Name</th>
-                        ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-30)</th>` : ''}
-                        ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-30)</th>` : ''}
-                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${examMax})</th>` : ''}
+                        ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-${config.CAT1_MAX})</th>` : ''}
+                        ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-${config.CAT2_MAX})</th>` : ''}
+                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${config.EXAM_MAX})</th>` : ''}
                         <th style="padding: 10px 8px; text-align: center;">Total</th>
+                        <th style="padding: 10px 8px; text-align: center;">%</th>
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
                         <th style="padding: 10px 8px; text-align: center;">Points</th>
-                        <th style="padding: 10px 8px; text-align: center;">Rating</th>
+                        <th style="padding: 10px 8px; text-align: center;">Status</th>
                         ${isUserAdmin() ? '<th style="padding: 10px 8px; text-align: center;">Approval</th>' : ''}
                     </tr>
                 </thead>
@@ -603,11 +637,16 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         const cat1 = parseFloat(m.cat1) || 0;
         const cat2 = parseFloat(m.cat2) || 0;
         const exam = parseFloat(m.exam) || 0;
-        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-        const gradeInfo = getMarksEntryGrade(total);
-        const displayTotal = total > 0 ? total : '--';
-        const displayGrade = total > 0 ? gradeInfo.grade : '--';
-        const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
+        
+        const result = calculateTVETMarks(cat1, cat2, exam, program);
+        const percentage = result.percentage;
+        const gradeInfo = getTVETGrade(percentage, config);
+        const isPassing = percentage >= config.PASS_MARK;
+        
+        const displayTotal = result.total > 0 ? result.total : '--';
+        const displayPercentage = result.percentage > 0 ? `${result.percentage}%` : '--';
+        const displayGrade = result.percentage > 0 ? result.grade : '--';
+        const displayPoints = result.percentage > 0 ? result.points : '--';
         
         const approvalBadge = {
             'pending': '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:10px;">⏳ Pending</span>',
@@ -616,25 +655,35 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>'
         }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>';
         
-        html += `<tr>
+        let statusBadge;
+        if (isCompetency) {
+            statusBadge = isPassing 
+                ? `<span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">✅ COMPETENT</span>`
+                : `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">❌ NOT YET COMPETENT</span>`;
+        } else {
+            statusBadge = result.percentage > 0
+                ? `<span style="background:${gradeInfo.bgColor};color:${gradeInfo.color};padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">${gradeInfo.icon || ''} ${gradeInfo.status}</span>`
+                : '<span style="color:#94a3b8;">PENDING</span>';
+        }
+        
+        html += `<tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #f8fafc;' : ''}">
             <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
             <td style="padding: 8px 8px;"><strong>${m.name || 'Unknown'}</strong></td>
             ${showCat1 ? `<td style="padding: 8px; text-align: center;">
-                <input type="number" id="me_cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+                <input type="number" id="me_cat1_${i}" value="${cat1}" min="0" max="${config.CAT1_MAX}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
             ${showCat2 ? `<td style="padding: 8px; text-align: center;">
-                <input type="number" id="me_cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+                <input type="number" id="me_cat2_${i}" value="${cat2}" min="0" max="${config.CAT2_MAX}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
             ${showExam ? `<td style="padding: 8px; text-align: center;">
-                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${examMax}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${config.EXAM_MAX}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
-            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${total >= 60 ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
-            <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color};">${displayGrade}</td>
-            <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color};">${displayPoints}</td>
-            <td id="me_rating_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">
-                ${total > 0 ? `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
-            </td>
+            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
+            <td id="me_percentage_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.percentage > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayPercentage}</td>
+            <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color || '#6b7280'};">${displayGrade}</td>
+            <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color || '#6b7280'};">${displayPoints}</td>
+            <td id="me_status_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">${statusBadge}</td>
             ${isUserAdmin() ? `<td style="padding: 8px 6px; text-align: center; font-size: 11px;">${approvalBadge}</td>` : ''}
         </tr>`;
     });
@@ -654,42 +703,58 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
 }
 
 // ============================================================
-// UPDATE MARKS ROW
+// UPDATE MARKS ENTRY ROW
 // ============================================================
 
 function updateMarksEntryRow(index) {
+    const program = me_currentProgram;
+    const config = getGradingConfig(program);
+    
     const cat1 = parseFloat(document.getElementById(`me_cat1_${index}`)?.value) || 0;
     const cat2 = parseFloat(document.getElementById(`me_cat2_${index}`)?.value) || 0;
     const exam = parseFloat(document.getElementById(`me_exam_${index}`)?.value) || 0;
-    const assessmentType = me_currentAssessmentType;
     
-    const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-    const gradeInfo = getMarksEntryGrade(total);
+    const result = calculateTVETMarks(cat1, cat2, exam, program);
+    const isPassing = result.isPassing;
+    const gradeInfo = getTVETGrade(result.percentage, config);
     
     const totalEl = document.getElementById(`me_total_${index}`);
     if (totalEl) {
-        totalEl.textContent = total > 0 ? total : '--';
-        totalEl.style.color = total >= 60 ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
+        totalEl.textContent = result.total > 0 ? result.total : '--';
+        totalEl.style.color = isPassing ? '#065f46' : (result.total > 0 ? '#991b1b' : '#f59e0b');
+    }
+    
+    const percentageEl = document.getElementById(`me_percentage_${index}`);
+    if (percentageEl) {
+        percentageEl.textContent = result.percentage > 0 ? `${result.percentage}%` : '--';
+        percentageEl.style.color = isPassing ? '#065f46' : (result.percentage > 0 ? '#991b1b' : '#f59e0b');
     }
     
     const gradeEl = document.getElementById(`me_grade_${index}`);
     if (gradeEl) {
-        gradeEl.textContent = total > 0 ? gradeInfo.grade : '--';
-        gradeEl.style.color = gradeInfo.color;
+        gradeEl.textContent = result.percentage > 0 ? result.grade : '--';
+        gradeEl.style.color = gradeInfo.color || '#6b7280';
     }
     
     const pointsEl = document.getElementById(`me_points_${index}`);
     if (pointsEl) {
-        pointsEl.textContent = total > 0 ? gradeInfo.points.toFixed(1) : '--';
-        pointsEl.style.color = gradeInfo.color;
+        pointsEl.textContent = result.percentage > 0 ? result.points : '--';
+        pointsEl.style.color = gradeInfo.color || '#6b7280';
     }
     
-    const ratingEl = document.getElementById(`me_rating_${index}`);
-    if (ratingEl) {
-        if (total > 0) {
-            ratingEl.innerHTML = `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
+    const statusEl = document.getElementById(`me_status_${index}`);
+    if (statusEl) {
+        const isCompetency = config.GRADE_TYPE === 'competency';
+        if (result.percentage > 0) {
+            if (isCompetency) {
+                statusEl.innerHTML = isPassing 
+                    ? `<span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">✅ COMPETENT</span>`
+                    : `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">❌ NOT YET COMPETENT</span>`;
+            } else {
+                statusEl.innerHTML = `<span style="background:${gradeInfo.bgColor};color:${gradeInfo.color};padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">${gradeInfo.icon || ''} ${gradeInfo.status}</span>`;
+            }
         } else {
-            ratingEl.innerHTML = '<span style="color: #94a3b8;">PENDING</span>';
+            statusEl.innerHTML = '<span style="color:#94a3b8;">PENDING</span>';
         }
     }
     
@@ -697,96 +762,54 @@ function updateMarksEntryRow(index) {
         me_currentMarks[index].cat1 = cat1;
         me_currentMarks[index].cat2 = cat2;
         me_currentMarks[index].exam = exam;
+        me_currentMarks[index].percentage = result.percentage;
+        me_currentMarks[index].total = result.total;
+        me_currentMarks[index].grade = result.grade;
+        me_currentMarks[index].points = result.points;
+        me_currentMarks[index].status = result.status;
+        me_currentMarks[index].isPassing = isPassing;
     }
 }
 
 // ============================================================
-// CALCULATE TOTAL - SUPPORTS ALL ASSESSMENT TYPES
+// UPDATE MARKS ENTRY STATS
 // ============================================================
 
-function calculateMarksEntryTotal(cat1, cat2, exam, type) {
-    let total = 0;
-    
-    switch(type) {
-        case 'full':
-            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-            break;
-            
-        case 'single_cat':
-            total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-            break;
-            
-        case 'exam_only':
-            total = Math.round(Math.min(exam,100) * 10) / 10;
-            break;
-            
-        case 'cats_only':
-            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
-            break;
-            
-        case 'cat_only':
-            total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
-            break;
-            
-        default:
-            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-    }
-    
-    return total;
-}
-
-// ============================================================
-// GET GRADE INFO
-// ============================================================
-
-function getMarksEntryGrade(score) {
-    if (score >= 75) return { grade: 'A', rating: 'Distinction', points: 4, color: '#065f46' };
-    else if (score >= 65) return { grade: 'B', rating: 'Credit', points: 3, color: '#1e40af' };
-    else if (score >= 60) return { grade: 'C', rating: 'Pass', points: 2, color: '#92400e' };
-    else return { grade: 'D', rating: 'Fail', points: 0, color: '#991b1b' };
-}
-
-// ============================================================
-// UPDATE STATS - SHOW ALL ENROLLED STUDENTS
-// ============================================================
-
-function updateMarksEntryStats(marks, assessmentType) {
-    // ✅ Count ALL enrolled students (including those with 0 marks)
+function updateMarksEntryStats(marks, assessmentType, program) {
+    const config = getGradingConfig(program);
     const totalEnrolled = marks.length;
-    
-    // ✅ Students with scores (any score > 0)
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
+    const passing = marks.filter(m => m.isPassing);
     
-    // ✅ Students passing
-    const passing = marks.filter(m => {
-        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total >= 60;
-    });
-    
-    // ✅ Average score (only students with scores)
     const avg = withScores.length > 0 ? 
-        withScores.reduce((sum, m) => sum + calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType), 0) / withScores.length : 0;
+        withScores.reduce((sum, m) => sum + (m.percentage || 0), 0) / withScores.length : 0;
     
     const totalEl = document.getElementById('me_total_students');
     const subjectsEl = document.getElementById('me_total_subjects');
     const passEl = document.getElementById('me_pass_rate');
     const avgEl = document.getElementById('me_class_avg');
     const atRiskEl = document.getElementById('me_at_risk');
+    const publishedEl = document.getElementById('me_published_count');
     
     if (totalEl) totalEl.textContent = totalEnrolled;
     if (subjectsEl) subjectsEl.textContent = marks.length > 0 ? 1 : 0;
     if (passEl) passEl.textContent = totalEnrolled > 0 ? Math.round((passing.length / totalEnrolled) * 100) + '%' : '0%';
     if (avgEl) avgEl.textContent = Math.round(avg) + '%';
     
-    // ✅ At risk: students with total < 60 (only those with scores)
     const atRisk = marks.filter(m => {
-        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total > 0 && total < 60;
+        const pct = m.percentage || 0;
+        return pct > 0 && pct < config.PASS_MARK;
     });
     if (atRiskEl) atRiskEl.textContent = atRisk.length;
+    
+    if (publishedEl && marks) {
+        const publishedCount = marks.filter(m => m.published === true).length;
+        publishedEl.textContent = publishedCount;
+    }
 }
+
 // ============================================================
-// SAVE MARKS - WITH AUTO-APPROVE FOR ADMIN
+// SAVE MARKS ENTRY - WITH AUTO-APPROVE
 // ============================================================
 
 async function saveMarksEntry() {
@@ -796,13 +819,13 @@ async function saveMarksEntry() {
     const unit = me_currentUnit;
     const year = me_currentYear;
     const assessmentType = me_currentAssessmentType || 'full';
+    const program = me_currentProgram;
     
     if (!block || !unit) {
         showNotification('Please select a block and unit first', 'warning');
         return;
     }
     
-    // Collect all marks data
     const marksData = [];
     const rows = document.querySelectorAll('#me_marks_container table tbody tr');
     
@@ -825,18 +848,7 @@ async function saveMarksEntry() {
             const cat2 = parseFloat(cat2Input?.value) || 0;
             const exam = parseFloat(examInput?.value) || 0;
             
-            let total = 0;
-            if (assessmentType === 'full') {
-                total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-            } else if (assessmentType === 'single_cat') {
-                total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-            } else if (assessmentType === 'exam_only') {
-                total = Math.round(Math.min(exam,100) * 10) / 10;
-            } else {
-                total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-            }
-            
-            const gradeInfo = getMarksEntryGrade(total);
+            const result = calculateTVETMarks(cat1, cat2, exam, program);
             
             marksData.push({
                 admission_number: admission,
@@ -847,10 +859,10 @@ async function saveMarksEntry() {
                 cat1_score: cat1,
                 cat2_score: cat2,
                 exam_score: exam,
-                final_score: total,
-                grade: gradeInfo.grade,
+                final_score: result.percentage,
+                grade: result.grade,
+                points: result.points,
                 academic_year: year,
-                // ✅ AUTO-APPROVE for admin
                 approval_status: 'approved',
                 approved_at: new Date().toISOString(),
                 approved_by: window.currentUser?.id || null,
@@ -871,10 +883,8 @@ async function saveMarksEntry() {
         let saved = 0;
         let errors = 0;
         
-        // Process each mark individually
         for (const mark of marksData) {
             try {
-                // Check if record exists
                 const { data: existing, error: fetchError } = await sb
                     .from('student_marks')
                     .select('id')
@@ -890,7 +900,6 @@ async function saveMarksEntry() {
                     continue;
                 }
                 
-                // ✅ Always set to approved for admin
                 const updateData = {
                     student_name: mark.student_name,
                     assessment_type: mark.assessment_type,
@@ -899,15 +908,14 @@ async function saveMarksEntry() {
                     exam_score: mark.exam_score,
                     final_score: mark.final_score,
                     grade: mark.grade,
+                    points: mark.points,
                     approval_status: 'approved',
                     approved_at: new Date().toISOString(),
                     approved_by: window.currentUser?.id || null,
                     updated_at: new Date().toISOString()
                 };
                 
-                let result;
                 if (existing) {
-                    // ✅ UPDATE with auto-approve
                     const { error: updateError } = await sb
                         .from('student_marks')
                         .update(updateData)
@@ -919,7 +927,6 @@ async function saveMarksEntry() {
                         continue;
                     }
                 } else {
-                    // ✅ INSERT with auto-approve
                     const { error: insertError } = await sb
                         .from('student_marks')
                         .insert({
@@ -933,6 +940,7 @@ async function saveMarksEntry() {
                             exam_score: mark.exam_score,
                             final_score: mark.final_score,
                             grade: mark.grade,
+                            points: mark.points,
                             academic_year: mark.academic_year,
                             approval_status: 'approved',
                             approved_at: new Date().toISOString(),
@@ -962,7 +970,6 @@ async function saveMarksEntry() {
             showNotification(`✅ ${saved} marks saved and auto-approved!`, 'success');
         }
         
-        // ✅ Refresh the table
         setTimeout(() => loadMarksEntry(), 500);
         
     } catch (error) {
@@ -973,45 +980,34 @@ async function saveMarksEntry() {
 }
 
 // ============================================================
-// REFRESH MARKS DATA
-// ============================================================
-
-function refreshMarksData() {
-    loadMarksEntry();
-    if (typeof showNotification === 'function') {
-        showNotification('🔄 Data refreshed!', 'success');
-    }
-}
-
-// ============================================================
 // EXPORT MARKS TO CSV
 // ============================================================
 
 function exportMarksEntry() {
     const marks = me_currentMarks;
+    const program = me_currentProgram;
+    const config = getGradingConfig(program);
+    const isCompetency = config.GRADE_TYPE === 'competency';
+    
     if (!marks || marks.length === 0) {
         if (typeof showNotification === 'function') showNotification('No data to export', 'warning');
         return;
     }
     
-    const assessmentType = me_currentAssessmentType;
-    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating'];
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Percentage', 'Grade', 'Points', 'Status'];
     const rows = marks.map(m => {
-        const cat1 = m.cat1 || 0;
-        const cat2 = m.cat2 || 0;
-        const exam = m.exam || 0;
-        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-        const gradeInfo = getMarksEntryGrade(total);
+        const result = calculateTVETMarks(m.cat1 || 0, m.cat2 || 0, m.exam || 0, program);
         return [
             m.admission || '',
             m.name || '',
-            cat1,
-            cat2,
-            exam,
-            total > 0 ? total : '',
-            total > 0 ? gradeInfo.grade : '',
-            total > 0 ? gradeInfo.points : '',
-            total > 0 ? gradeInfo.rating : ''
+            result.cat1,
+            result.cat2,
+            result.exam,
+            result.total,
+            result.percentage > 0 ? `${result.percentage}%` : '',
+            result.percentage > 0 ? result.grade : '',
+            result.percentage > 0 ? result.points : '',
+            result.percentage > 0 ? (isCompetency ? (result.isPassing ? 'COMPETENT' : 'NOT YET COMPETENT') : result.status) : ''
         ];
     });
     
@@ -1024,9 +1020,38 @@ function exportMarksEntry() {
     if (typeof showNotification === 'function') showNotification('✅ Marks exported!', 'success');
 }
 
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
 
 // ============================================================
-// COLUMN MANAGEMENT - ADMIN ONLY
+// REFRESH FUNCTIONS
+// ============================================================
+
+function refreshMarksData() {
+    loadMarksEntry();
+    if (typeof showNotification === 'function') {
+        showNotification('🔄 Data refreshed!', 'success');
+    }
+}
+
+function refreshAssignmentHistory() {
+    loadAssignmentHistory();
+    if (typeof showNotification === 'function') {
+        showNotification('🔄 Assignment history refreshed!', 'success');
+    }
+}
+
+// ============================================================
+// COLUMN MANAGEMENT
 // ============================================================
 
 async function loadUnitColumnSettings() {
@@ -1107,14 +1132,15 @@ function renderUnitColumns() {
         { id: 'sno', label: '#', required: true },
         { id: 'admission', label: 'Admission', required: true },
         { id: 'name', label: 'Name', required: true },
-        { id: 'cat1', label: 'CAT1 (0-30)', required: false },
-        { id: 'cat2', label: 'CAT2 (0-30)', required: false },
-        { id: 'exam', label: 'Exam', required: false },
+        { id: 'cat1', label: `CAT1 (0-${getGradingConfig(me_currentProgram).CAT1_MAX})`, required: false },
+        { id: 'cat2', label: `CAT2 (0-${getGradingConfig(me_currentProgram).CAT2_MAX})`, required: false },
+        { id: 'exam', label: `Exam (0-${getGradingConfig(me_currentProgram).EXAM_MAX})`, required: false },
         { id: 'total', label: 'Total', required: false },
+        { id: 'percentage', label: '%', required: false },
         { id: 'grade', label: 'Grade', required: false },
         { id: 'points', label: 'Points', required: false },
-        { id: 'rating', label: 'Rating', required: false },
-        { id: 'gradedBy', label: 'Graded By', required: false }
+        { id: 'status', label: 'Status', required: false },
+        { id: 'approval', label: 'Approval', required: false }
     ];
     
     const savedColumns = me_columnSettings.columns || [];
@@ -1219,8 +1245,6 @@ async function saveUnitColumnSetting(columnId, visible) {
     }
 }
 
-window.saveUnitColumnSetting = saveUnitColumnSetting;
-
 function applyColumnVisibility() {
     console.log('📋 Applying column visibility...');
     
@@ -1242,10 +1266,10 @@ function applyColumnVisibility() {
         else if (text.includes('cat2') || text.includes('cat 2')) columnIndexMap['cat2'] = index;
         else if (text.includes('exam')) columnIndexMap['exam'] = index;
         else if (text.includes('total')) columnIndexMap['total'] = index;
+        else if (text.includes('%')) columnIndexMap['percentage'] = index;
         else if (text.includes('grade')) columnIndexMap['grade'] = index;
         else if (text.includes('points')) columnIndexMap['points'] = index;
-        else if (text.includes('rating')) columnIndexMap['rating'] = index;
-        else if (text.includes('graded by')) columnIndexMap['gradedBy'] = index;
+        else if (text.includes('status')) columnIndexMap['status'] = index;
         else if (text.includes('#')) columnIndexMap['sno'] = index;
         else if (text.includes('admission')) columnIndexMap['admission'] = index;
         else if (text.includes('name')) columnIndexMap['name'] = index;
@@ -1259,10 +1283,10 @@ function applyColumnVisibility() {
         else if (text.includes('cat2') || text.includes('cat 2')) colId = 'cat2';
         else if (text.includes('exam')) colId = 'exam';
         else if (text.includes('total')) colId = 'total';
+        else if (text.includes('%')) colId = 'percentage';
         else if (text.includes('grade')) colId = 'grade';
         else if (text.includes('points')) colId = 'points';
-        else if (text.includes('rating')) colId = 'rating';
-        else if (text.includes('graded by')) colId = 'gradedBy';
+        else if (text.includes('status')) colId = 'status';
         else if (text.includes('#')) colId = 'sno';
         else if (text.includes('admission')) colId = 'admission';
         else if (text.includes('name')) colId = 'name';
@@ -1291,16 +1315,6 @@ function applyColumnVisibility() {
             }
         });
     });
-    
-    const autoAssessmentType = getAutoAssessmentType();
-    if (autoAssessmentType !== me_currentAssessmentType) {
-        me_currentAssessmentType = autoAssessmentType;
-        const assessmentSelect = document.getElementById('me_assessment_type');
-        if (assessmentSelect) assessmentSelect.value = autoAssessmentType;
-        recalculateAllTotals();
-    } else {
-        updateAssessmentTypeDisplay();
-    }
 }
 
 async function resetUnitColumns() {
@@ -1350,7 +1364,7 @@ async function resetUnitColumns() {
 }
 
 // ============================================================
-// LECTURER UNIT ASSIGNMENT MANAGEMENT
+// LECTURER ASSIGNMENT FUNCTIONS
 // ============================================================
 
 async function loadLecturerAssignments() {
@@ -1413,8 +1427,6 @@ async function loadLecturerAssignments() {
         lecturers.forEach(lecturer => {
             const isAssigned = !!assignedMap[lecturer.id];
             const fullName = lecturer.other_names ? `${lecturer.first_name} ${lecturer.other_names}` : lecturer.first_name;
-            const departmentDisplay = getLecturerDepartment(lecturer);
-            const programDisplay = lecturer.program || 'KRCHN';
             
             html += `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: ${isAssigned ? '#d1fae5' : '#f8fafc'}; border-radius: 8px; border: 1px solid ${isAssigned ? '#10b981' : '#e2e8f0'};">
@@ -1422,10 +1434,9 @@ async function loadLecturerAssignments() {
                         <strong style="font-size: 13px; color: #1e293b;">${fullName}</strong>
                         <span style="font-size: 11px; color: #64748b; display: block;">${lecturer.email || ''}</span>
                         <span style="font-size: 10px; color: #94a3b8;">
-                            <span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; padding: 2px 8px; border-radius: 4px;">
-                                ${programDisplay}
+                            <span style="background: ${program === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; padding: 2px 8px; border-radius: 4px;">
+                                ${program || 'KRCHN'}
                             </span>
-                            - ${departmentDisplay}
                         </span>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
@@ -1499,8 +1510,6 @@ async function assignLecturerToUnit(lecturerId, lecturerName, unit, block) {
     }
 }
 
-window.assignLecturerToUnit = assignLecturerToUnit;
-
 async function removeLecturerAssignment(lecturerId, unit, block) {
     const program = document.getElementById('me_program_select')?.value;
     const year = document.getElementById('me_year_select')?.value || '2025';
@@ -1558,142 +1567,6 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
     }
 }
 
-window.removeLecturerAssignment = removeLecturerAssignment;
-
-async function showLecturerAssignmentModal() {
-    const block = document.getElementById('me_block_select')?.value;
-    const program = document.getElementById('me_program_select')?.value;
-    const year = document.getElementById('me_year_select')?.value || '2025';
-    const unitSelect = document.getElementById('me_subject_select');
-    const currentUnit = unitSelect?.value;
-    
-    if (!block || !program) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select a program and block first', 'warning');
-        }
-        return;
-    }
-    
-    document.getElementById('me_assign_block').value = block.replace(/_/g, ' ');
-    document.getElementById('me_assign_year').value = year;
-    document.getElementById('me_assign_program').value = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET';
-    
-    const lecturerSelect = document.getElementById('me_lecturer_select');
-    if (lecturerSelect) {
-        lecturerSelect.innerHTML = '<option value="">Loading lecturers...</option>';
-        
-        try {
-            const { data: lecturers, error } = await sb
-                .from('staff_records')
-                .select('*')
-                .eq('program', program)
-                .in('status', ['active', 'approved'])
-                .order('first_name', { ascending: true });
-            
-            if (error) throw error;
-            
-            if (lecturerSelect) {
-                if (!lecturers || lecturers.length === 0) {
-                    lecturerSelect.innerHTML = '<option value="">No lecturers found for this program</option>';
-                } else {
-                    lecturerSelect.innerHTML = '<option value="">-- Select Lecturer --</option>';
-                    lecturers.forEach(l => {
-                        const option = document.createElement('option');
-                        option.value = l.id;
-                        const fullName = l.other_names ? `${l.first_name} ${l.other_names}` : l.first_name;
-                        option.textContent = `${fullName} (${l.email || 'no email'})`;
-                        lecturerSelect.appendChild(option);
-                    });
-                }
-            }
-            
-        } catch (error) {
-            console.error('Error loading lecturers:', error);
-            if (lecturerSelect) {
-                lecturerSelect.innerHTML = '<option value="">Error loading lecturers</option>';
-            }
-            if (typeof showNotification === 'function') {
-                showNotification('Error loading lecturers: ' + error.message, 'error');
-            }
-        }
-    }
-    
-    const assignUnitSelect = document.getElementById('me_assign_subject_select');
-    if (assignUnitSelect) {
-        assignUnitSelect.innerHTML = '<option value="">Loading units...</option>';
-        try {
-            const { data: units, error } = await sb
-                .from('units_catalog')
-                .select('unit_name, unit_code')
-                .eq('program', program)
-                .eq('block', block)
-                .eq('status', 'active')
-                .order('unit_name', { ascending: true });
-            
-            if (error) throw error;
-            
-            assignUnitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
-            units?.forEach(u => {
-                const option = document.createElement('option');
-                option.value = u.unit_name;
-                option.textContent = `${u.unit_code || ''} - ${u.unit_name}`;
-                if (u.unit_name === currentUnit) {
-                    option.selected = true;
-                }
-                assignUnitSelect.appendChild(option);
-            });
-            
-        } catch (error) {
-            console.error('Error loading units:', error);
-            assignUnitSelect.innerHTML = '<option value="">Error loading units</option>';
-        }
-    }
-    
-    document.getElementById('lecturerAssignmentModal').style.display = 'flex';
-}
-
-window.showLecturerAssignmentModal = showLecturerAssignmentModal;
-
-function closeLecturerAssignmentModal() {
-    document.getElementById('lecturerAssignmentModal').style.display = 'none';
-}
-
-window.closeLecturerAssignmentModal = closeLecturerAssignmentModal;
-
-async function saveLecturerAssignment() {
-    const lecturerId = document.getElementById('me_lecturer_select')?.value;
-    const unit = document.getElementById('me_assign_subject_select')?.value;
-    const block = document.getElementById('me_block_select')?.value;
-    const program = document.getElementById('me_program_select')?.value;
-    const year = document.getElementById('me_year_select')?.value || '2025';
-    
-    if (!lecturerId) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select a lecturer', 'warning');
-        }
-        return;
-    }
-    
-    if (!unit) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select a unit', 'warning');
-        }
-        return;
-    }
-    
-    const lecturerSelect = document.getElementById('me_lecturer_select');
-    const lecturerName = lecturerSelect?.options[lecturerSelect.selectedIndex]?.text?.split(' (')[0] || 'Lecturer';
-    
-    await assignLecturerToUnit(lecturerId, lecturerName, unit, block);
-    closeLecturerAssignmentModal();
-}
-
-window.saveLecturerAssignment = saveLecturerAssignment;
-
-// ============================================================
-// ASSIGNMENT HISTORY
-// ============================================================
-
 async function loadAssignmentHistory() {
     console.log('📋 Loading assignment history...');
     const block = document.getElementById('me_block_select')?.value;
@@ -1750,7 +1623,6 @@ async function loadAssignmentHistory() {
                         <th style="padding: 10px 12px; text-align: left;">#</th>
                         <th style="padding: 10px 12px; text-align: left;">Lecturer Name</th>
                         <th style="padding: 10px 12px; text-align: left;">Email</th>
-                        <th style="padding: 10px 12px; text-align: left;">Department</th>
                         <th style="padding: 10px 12px; text-align: left;">Program</th>
                         <th style="padding: 10px 12px; text-align: left;">Block</th>
                         <th style="padding: 10px 12px; text-align: left;">Assigned Date</th>
@@ -1771,7 +1643,6 @@ async function loadAssignmentHistory() {
                 .maybeSingle();
             
             const email = lecturer?.email || a.lecturer_email || 'N/A';
-            const department = a.department || lecturer?.department || 'N/A';
             const programDisplay = a.program || lecturer?.program || 'KRCHN';
             const assignedDate = a.created_at ? new Date(a.created_at).toLocaleDateString() : 'N/A';
             
@@ -1780,11 +1651,6 @@ async function loadAssignmentHistory() {
                     <td style="padding: 10px 12px;">${i + 1}</td>
                     <td style="padding: 10px 12px; font-weight: 600;">${escapeHtml(fullName)}</td>
                     <td style="padding: 10px 12px;">${escapeHtml(email)}</td>
-                    <td style="padding: 10px 12px;">
-                        <span style="background: ${department === 'Nursing' ? '#dbeafe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                            ${escapeHtml(department)}
-                        </span>
-                    </td>
                     <td style="padding: 10px 12px;">
                         <span style="background: ${programDisplay === 'KRCHN' ? '#d1fae5' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
                             ${escapeHtml(programDisplay)}
@@ -1822,17 +1688,6 @@ async function loadAssignmentHistory() {
         `;
     }
 }
-
-window.loadAssignmentHistory = loadAssignmentHistory;
-
-function refreshAssignmentHistory() {
-    loadAssignmentHistory();
-    if (typeof showNotification === 'function') {
-        showNotification('🔄 Assignment history refreshed!', 'success');
-    }
-}
-
-window.refreshAssignmentHistory = refreshAssignmentHistory;
 
 async function clearAllAssignments() {
     const block = document.getElementById('me_block_select')?.value;
@@ -1880,22 +1735,386 @@ async function clearAllAssignments() {
     }
 }
 
-window.clearAllAssignments = clearAllAssignments;
-
 // ============================================================
-// GET LECTURER DEPARTMENT
+// STUDENT PUBLISH MODAL FUNCTIONS
 // ============================================================
 
-function getLecturerDepartment(lecturer) {
-    if (lecturer.program === 'KRCHN') return 'Nursing';
-    else if (lecturer.program === 'TVET') return 'TVET Department';
-    else if (lecturer.department) return lecturer.department;
-    else return 'General';
+let sp_students = [];
+let sp_selected = new Set();
+
+function openStudentPublishModal() {
+    const modal = document.getElementById('studentPublishModal');
+    if (!modal) {
+        if (typeof showNotification === 'function') {
+            showNotification('Modal not found', 'error');
+        }
+        return;
+    }
+    
+    document.getElementById('sp_unit_display').textContent = `Unit: ${me_currentUnit || 'Not selected'}`;
+    document.getElementById('sp_block_display').textContent = `Block: ${me_currentBlock || 'Not selected'}`;
+    
+    loadStudentPublishList();
+    modal.style.display = 'flex';
 }
 
-window.getLecturerDepartment = getLecturerDepartment;
+function closeStudentPublishModal() {
+    document.getElementById('studentPublishModal').style.display = 'none';
+}
+
+function loadStudentPublishList() {
+    const container = document.getElementById('sp_student_list');
+    if (!container) return;
+    
+    const marks = me_currentMarks || [];
+    sp_students = marks;
+    sp_selected = new Set();
+    
+    if (marks.length === 0) {
+        container.innerHTML = `
+            <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
+                <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                No students found for this unit
+            </td></tr>
+        `;
+        updateStudentPublishStats();
+        return;
+    }
+    
+    renderStudentPublishList(marks);
+    updateStudentPublishStats();
+}
+
+function renderStudentPublishList(marks) {
+    const container = document.getElementById('sp_student_list');
+    if (!container) return;
+    
+    const searchTerm = document.getElementById('sp_search')?.value?.toLowerCase() || '';
+    
+    let filteredMarks = marks;
+    if (searchTerm) {
+        filteredMarks = marks.filter(m => 
+            (m.name || m.student_name || '').toLowerCase().includes(searchTerm) ||
+            (m.admission || m.admission_number || '').toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    let html = '';
+    filteredMarks.forEach((mark, index) => {
+        const admission = mark.admission || mark.admission_number || 'N/A';
+        const name = mark.name || mark.student_name || 'Unknown';
+        const score = mark.percentage || mark.final || mark.final_score || 0;
+        const grade = mark.grade || '-';
+        const isPublished = mark.published === true;
+        const isPassing = score >= 50; // TVET pass mark is 50
+        const isSelected = sp_selected.has(admission);
+        const gradeColor = getTVETGradeColor(grade, me_currentProgram);
+        
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                <td style="padding: 8px 12px; text-align: center;">
+                    <input type="checkbox" class="sp-student-checkbox" data-admission="${admission}" 
+                           ${isSelected ? 'checked' : ''} ${isPublished ? 'disabled' : ''}
+                           onchange="toggleStudentSelection('${admission}', this.checked)" 
+                           style="width: 16px; height: 16px; cursor: ${isPublished ? 'not-allowed' : 'pointer'};">
+                </td>
+                <td style="padding: 8px 12px; font-weight: 500;">${escapeHtml(name)}</td>
+                <td style="padding: 8px 12px; font-size: 12px; color: #64748b;">${escapeHtml(admission)}</td>
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${isPassing ? '#10b981' : '#dc2626'};">${score}%</td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="background: ${gradeColor || '#6b7280'}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${escapeHtml(grade)}</span>
+                </td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="color: ${isPassing ? '#10b981' : '#dc2626'}; font-weight: 600; font-size: 12px;">
+                        ${isPassing ? '✅ COMPETENT' : '❌ NOT YET COMPETENT'}
+                    </span>
+                </td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="color: ${isPublished ? '#10b981' : '#94a3b8'}; font-weight: 600; font-size: 12px;">
+                        ${isPublished ? '✅ Published' : '📝 Draft'}
+                    </span>
+                    ${isPublished ? `<br><span style="font-size: 10px; color: #94a3b8;">Already published</span>` : ''}
+                </td>
+            </tr>
+        `;
+    });
+    
+    container.innerHTML = html;
+    updateStudentPublishStats();
+}
+
+function toggleStudentSelection(admission, checked) {
+    if (checked) {
+        sp_selected.add(admission);
+    } else {
+        sp_selected.delete(admission);
+    }
+    updateStudentPublishStats();
+}
+
+function selectAllStudents() {
+    const checkboxes = document.querySelectorAll('.sp-student-checkbox:not([disabled])');
+    checkboxes.forEach(cb => {
+        cb.checked = true;
+        sp_selected.add(cb.dataset.admission);
+    });
+    updateStudentPublishStats();
+}
+
+function deselectAllStudents() {
+    const checkboxes = document.querySelectorAll('.sp-student-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+        sp_selected.delete(cb.dataset.admission);
+    });
+    updateStudentPublishStats();
+}
+
+function selectPassingStudents() {
+    const marks = sp_students;
+    const config = getGradingConfig(me_currentProgram);
+    marks.forEach(m => {
+        const score = m.percentage || m.final || m.final_score || 0;
+        const admission = m.admission || m.admission_number || '';
+        if (score >= config.PASS_MARK && !m.published) {
+            sp_selected.add(admission);
+        }
+    });
+    renderStudentPublishList(sp_students);
+    updateStudentPublishStats();
+}
+
+function selectFailingStudents() {
+    const marks = sp_students;
+    const config = getGradingConfig(me_currentProgram);
+    marks.forEach(m => {
+        const score = m.percentage || m.final || m.final_score || 0;
+        const admission = m.admission || m.admission_number || '';
+        if (score > 0 && score < config.PASS_MARK && !m.published) {
+            sp_selected.add(admission);
+        }
+    });
+    renderStudentPublishList(sp_students);
+    updateStudentPublishStats();
+}
+
+function toggleAllStudentCheckboxes() {
+    const selectAll = document.getElementById('sp_select_all');
+    const checkboxes = document.querySelectorAll('.sp-student-checkbox:not([disabled])');
+    const isChecked = selectAll?.checked || false;
+    
+    checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+        if (isChecked) {
+            sp_selected.add(cb.dataset.admission);
+        } else {
+            sp_selected.delete(cb.dataset.admission);
+        }
+    });
+    updateStudentPublishStats();
+}
+
+function filterStudentPublishList() {
+    renderStudentPublishList(sp_students);
+}
+
+function updateStudentPublishStats() {
+    const total = sp_students.length;
+    const alreadyPublished = sp_students.filter(m => m.published === true).length;
+    const selectedCount = sp_selected.size;
+    const toPublish = selectedCount;
+    
+    document.getElementById('sp_total_count').textContent = total;
+    document.getElementById('sp_selected_count').textContent = selectedCount;
+    document.getElementById('sp_already_published').textContent = alreadyPublished;
+    document.getElementById('sp_to_publish').textContent = toPublish;
+    document.getElementById('sp_publish_summary').textContent = `${toPublish} students selected for publishing`;
+    document.getElementById('sp_publish_btn_count').textContent = toPublish;
+    
+    const publishBtn = document.getElementById('sp_publish_btn');
+    if (publishBtn) {
+        publishBtn.disabled = toPublish === 0;
+        publishBtn.style.opacity = toPublish === 0 ? '0.5' : '1';
+        publishBtn.style.cursor = toPublish === 0 ? 'not-allowed' : 'pointer';
+    }
+}
+
+async function publishSelectedStudents() {
+    const selectedAdmissions = Array.from(sp_selected);
+    
+    if (selectedAdmissions.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No students selected to publish', 'warning');
+        }
+        return;
+    }
+    
+    const unit = me_currentUnit;
+    const block = me_currentBlock;
+    const program = me_currentProgram;
+    const year = me_currentYear;
+    
+    if (!unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit first', 'warning');
+        }
+        return;
+    }
+    
+    const confirmMsg = `⚠️ Publish marks for ${selectedAdmissions.length} selected students?\n\n` +
+        `Unit: ${unit}\n` +
+        `Block: ${block}\n` +
+        `Program: ${program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET Programs'}\n` +
+        `Year: ${year}\n\n` +
+        `Only selected students will see their marks.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    if (typeof showLoading === 'function') {
+        showLoading(`Publishing ${selectedAdmissions.length} students...`);
+    }
+    
+    try {
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const admission of selectedAdmissions) {
+            try {
+                const { error } = await sb
+                    .from('student_marks')
+                    .update({
+                        published: true,
+                        published_at: new Date().toISOString(),
+                        published_by: window.currentUser?.id || null
+                    })
+                    .eq('admission_number', admission)
+                    .eq('subject_name', unit)
+                    .eq('block', block)
+                    .eq('academic_year', year);
+                
+                if (error) {
+                    console.error(`❌ Error publishing ${admission}:`, error);
+                    errorCount++;
+                } else {
+                    successCount++;
+                }
+            } catch (err) {
+                console.error(`❌ Error publishing ${admission}:`, err);
+                errorCount++;
+            }
+        }
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        closeStudentPublishModal();
+        
+        if (typeof showNotification === 'function') {
+            if (errorCount === 0) {
+                showNotification(`✅ Published ${successCount} students successfully!`, 'success');
+            } else {
+                showNotification(`⚠️ Published ${successCount} students, ${errorCount} errors`, 'warning');
+            }
+        }
+        
+        loadMarksEntry();
+        
+        if (typeof window.loadPublishedMarks === 'function') {
+            setTimeout(window.loadPublishedMarks, 500);
+        }
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error publishing selected students:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error publishing students: ' + error.message, 'error');
+        }
+    }
+}
+
+async function publishCurrentUnitMarks() {
+    const unit = me_currentUnit;
+    const block = me_currentBlock;
+    const program = me_currentProgram;
+    const year = me_currentYear;
+    const assessmentType = me_currentAssessmentType || 'full';
+    
+    if (!unit || !block) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a unit first', 'warning');
+        }
+        return;
+    }
+    
+    const totalMarks = me_currentMarks?.length || 0;
+    if (totalMarks === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No marks found for this unit', 'warning');
+        }
+        return;
+    }
+    
+    const programLabel = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET Programs';
+    const confirmMsg = `⚠️ Publish ALL marks for "${unit}"?\n\n` +
+        `Program: ${programLabel}\n` +
+        `Block: ${block}\n` +
+        `Year: ${year}\n` +
+        `Students: ${totalMarks}\n\n` +
+        `This will make marks visible to ALL students in this unit.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    if (typeof showLoading === 'function') {
+        showLoading(`Publishing ${totalMarks} marks...`);
+    }
+    
+    try {
+        let query = sb
+            .from('student_marks')
+            .update({
+                published: true,
+                published_at: new Date().toISOString(),
+                published_by: window.currentUser?.id || null
+            })
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('academic_year', year);
+        
+        if (program) {
+            query = query.eq('program', program);
+        }
+        
+        if (assessmentType && assessmentType !== 'full') {
+            query = query.eq('assessment_type', assessmentType);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        const count = data?.length || 0;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ Published ${count} marks for "${unit}"!`, 'success');
+        }
+        
+        loadMarksEntry();
+        
+        if (typeof window.loadPublishedMarks === 'function') {
+            setTimeout(window.loadPublishedMarks, 500);
+        }
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error publishing marks:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error publishing marks: ' + error.message, 'error');
+        }
+    }
+}
+
 // ============================================================
-// STUDENT MANAGER FUNCTIONS - SHOW ALL STUDENTS
+// STUDENT MANAGER FUNCTIONS
 // ============================================================
 
 async function openMarksStudentManager() {
@@ -1918,7 +2137,6 @@ async function openMarksStudentManager() {
     
     modal.style.display = 'flex';
     
-    // Show loading in modal
     const container = document.getElementById('marksStudentManagerBody');
     if (container) {
         container.innerHTML = `
@@ -1935,21 +2153,13 @@ async function openMarksStudentManager() {
     await loadMarksStudentManagerData(block, unit, program, year);
 }
 
-window.openMarksStudentManager = openMarksStudentManager;
-
-// ============================================================
-// LOAD MARKS STUDENT MANAGER DATA - SHOW ALL STUDENTS
-// ============================================================
-
 async function loadMarksStudentManagerData(block, unit, program, year) {
     const container = document.getElementById('marksStudentManagerBody');
     if (!container) return;
     
     console.log('📊 Loading student manager data...');
-    console.log('📊 Block:', block, 'Unit:', unit, 'Program:', program, 'Year:', year);
     
     try {
-        // ✅ Get ALL enrolled students from student_marks
         const { data: enrolledStudents, error: enrolledError } = await sb
             .from('student_marks')
             .select('*')
@@ -1959,9 +2169,6 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
         
         if (enrolledError) throw enrolledError;
         
-        console.log(`📊 Enrolled students found: ${enrolledStudents?.length || 0}`);
-        
-        // ✅ Build enrolled map from student_marks
         const enrolledMap = {};
         enrolledStudents?.forEach(s => {
             if (s.admission_number) {
@@ -1969,23 +2176,17 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
             }
         });
         
-        // ✅ Get ALL students from consolidated_user_profiles_table
         let query = sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, email, program, block, admission_number, status')
             .eq('role', 'student');
         
-        // Filter by program if provided
         if (program) query = query.eq('program', program);
-        // Filter by block if provided
         if (block) query = query.eq('block', block);
         
         const { data: profileStudents, error: profileError } = await query;
         if (profileError) throw profileError;
         
-        console.log(`📊 Profile students found: ${profileStudents?.length || 0}`);
-        
-        // ✅ Get ALL students from student_marks (to include students not in profiles)
         const { data: allMarksStudents, error: marksError } = await sb
             .from('student_marks')
             .select('admission_number, student_name')
@@ -1994,12 +2195,8 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
         
         if (marksError) throw marksError;
         
-        console.log(`📊 Marks students found: ${allMarksStudents?.length || 0}`);
-        
-        // ✅ Combine both sources - use student_id from profiles, admission_number from marks
         const allStudentsMap = {};
         
-        // Add students from profiles
         profileStudents?.forEach(s => {
             if (s.student_id) {
                 allStudentsMap[s.student_id] = {
@@ -2015,7 +2212,6 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
             }
         });
         
-        // Add students from marks (if not already in map)
         allMarksStudents?.forEach(s => {
             if (s.admission_number && !allStudentsMap[s.admission_number]) {
                 allStudentsMap[s.admission_number] = {
@@ -2032,16 +2228,10 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
         });
         
         const allStudents = Object.values(allStudentsMap);
-        console.log(`📊 Total unique students: ${allStudents.length}`);
-        
-        // ✅ Filter available students (not enrolled)
         const availableStudents = allStudents.filter(s => {
             return !enrolledMap[s.student_id] && !enrolledMap[s.admission_number];
         });
         
-        console.log(`📊 Available students: ${availableStudents.length}`);
-        
-        // Store data
         me_studentManagerData = {
             allStudents: allStudents,
             enrolledStudents: enrolledStudents || [],
@@ -2066,41 +2256,27 @@ async function loadMarksStudentManagerData(block, unit, program, year) {
     }
 }
 
-window.loadMarksStudentManagerData = loadMarksStudentManagerData;
-
-// ============================================================
-// RENDER STUDENT MANAGER - SHOW ALL STUDENTS
-// ============================================================
-
 function renderMarksStudentManager() {
     const container = document.getElementById('marksStudentManagerBody');
     if (!container) return;
     
     const { allStudents, enrolledStudents, availableStudents, block, unit, program, year } = me_studentManagerData;
+    const config = getGradingConfig(program);
     
     const totalEnrolled = enrolledStudents?.length || 0;
     const totalAvailable = availableStudents?.length || 0;
     const totalStudents = allStudents?.length || 0;
     
-    console.log('📊 Rendering student manager...');
-    console.log('📊 Total students:', totalStudents);
-    console.log('📊 Available students:', totalAvailable);
-    console.log('📊 Enrolled students:', totalEnrolled);
-    
-    // Build student dropdown options - SHOW ALL AVAILABLE STUDENTS
     let studentOptions = '<option value="">-- Select Student to Add --</option>';
     
     if (availableStudents && availableStudents.length > 0) {
         availableStudents.forEach(s => {
             const displayName = s.full_name || 'Unknown';
             const displayId = s.student_id || s.admission_number || 'N/A';
-            const source = s.source === 'marks' ? '📌' : '';
-            studentOptions += `<option value="${s.student_id || s.admission_number}">${displayName} (${displayId}) ${source}</option>`;
+            studentOptions += `<option value="${s.student_id || s.admission_number}">${displayName} (${displayId})</option>`;
         });
-        console.log('📊 Student options built:', availableStudents.length);
     } else {
         studentOptions = '<option value="">No available students</option>';
-        console.log('📊 No available students found');
     }
     
     let html = `
@@ -2109,6 +2285,9 @@ function renderMarksStudentManager() {
                 <h4 style="margin: 0; color: #1e293b;">${escapeHtml(unit)}</h4>
                 <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
                     ${escapeHtml(program)} | ${escapeHtml(block)} | ${escapeHtml(year)}
+                    <span style="margin-left: 10px; background: ${config.GRADE_TYPE === 'competency' ? '#d1fae5' : '#dbeafe'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                        ${config.GRADE_TYPE === 'competency' ? 'TVET Competency' : 'Nursing Academic'}
+                    </span>
                 </p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -2182,8 +2361,9 @@ function renderMarksStudentManager() {
                         <th style="padding: 8px; text-align: center;">CAT1</th>
                         <th style="padding: 8px; text-align: center;">CAT2</th>
                         <th style="padding: 8px; text-align: center;">Exam</th>
-                        <th style="padding: 8px; text-align: center;">Total</th>
+                        <th style="padding: 8px; text-align: center;">%</th>
                         <th style="padding: 8px; text-align: center;">Grade</th>
+                        <th style="padding: 8px; text-align: center;">Points</th>
                         <th style="padding: 8px; text-align: center;">Actions</th>
                     </tr>
                 </thead>
@@ -2193,7 +2373,7 @@ function renderMarksStudentManager() {
     if (!enrolledStudents || enrolledStudents.length === 0) {
         html += `
             <tr>
-                <td colspan="12" style="padding: 30px; text-align: center; color: #94a3b8;">
+                <td colspan="13" style="padding: 30px; text-align: center; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
                     No students enrolled in this unit yet
                 </td>
@@ -2206,10 +2386,13 @@ function renderMarksStudentManager() {
             const cat1 = s.cat1_score || 0;
             const cat2 = s.cat2_score || 0;
             const exam = s.exam_score || 0;
-            const total = s.final_score || 0;
-            const grade = s.grade || '-';
+            
+            const result = calculateTVETMarks(cat1, cat2, exam, program);
+            const percentage = result.percentage;
+            const grade = result.grade;
+            const points = result.points;
+            const isPassing = result.isPassing;
             const hasMarks = cat1 > 0 || cat2 > 0 || exam > 0;
-            const isPassing = total >= 60;
             
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #f8fafc;' : ''}">
@@ -2224,8 +2407,9 @@ function renderMarksStudentManager() {
                     <td style="padding: 8px; text-align: center;">${cat1 || '-'}</td>
                     <td style="padding: 8px; text-align: center;">${cat2 || '-'}</td>
                     <td style="padding: 8px; text-align: center;">${exam || '-'}</td>
-                    <td style="padding: 8px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : (hasMarks ? '#991b1b' : '#94a3b8')};">${hasMarks ? total : '-'}</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : (hasMarks ? '#991b1b' : '#94a3b8')};">${hasMarks ? percentage + '%' : '-'}</td>
                     <td style="padding: 8px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : (hasMarks ? '#991b1b' : '#94a3b8')};">${hasMarks ? grade : '-'}</td>
+                    <td style="padding: 8px; text-align: center; font-weight: bold;">${hasMarks ? points : '-'}</td>
                     <td style="padding: 8px; text-align: center;">
                         <button onclick="removeStudentFromMarksUnit('${admission}')" 
                                 style="background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
@@ -2260,17 +2444,9 @@ function renderMarksStudentManager() {
     container.innerHTML = html;
 }
 
-window.renderMarksStudentManager = renderMarksStudentManager;
-
-// ============================================================
-// ADD STUDENT TO MARKS UNIT
-// ============================================================
-
 async function addStudentToMarksUnit() {
     const select = document.getElementById('studentToAddMarks');
     const studentId = select?.value;
-    
-    console.log('📊 Add student - selected ID:', studentId);
     
     if (!studentId) {
         showNotification('Please select a student to add', 'warning');
@@ -2284,7 +2460,6 @@ async function addStudentToMarksUnit() {
         return;
     }
     
-    // Find student in available list
     const student = me_studentManagerData.availableStudents.find(s => 
         s.student_id === studentId || s.admission_number === studentId
     );
@@ -2311,13 +2486,12 @@ async function addStudentToMarksUnit() {
             exam_score: 0,
             final_score: 0,
             grade: null,
+            points: null,
             academic_year: year,
             approval_status: 'draft',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
-        
-        console.log('📊 Inserting mark data:', markData);
         
         const { error } = await sb
             .from('student_marks')
@@ -2334,12 +2508,6 @@ async function addStudentToMarksUnit() {
         showNotification('❌ Error: ' + error.message, 'error');
     }
 }
-
-window.addStudentToMarksUnit = addStudentToMarksUnit;
-
-// ============================================================
-// ADD ALL AVAILABLE STUDENTS TO MARKS UNIT
-// ============================================================
 
 async function addAllAvailableStudentsToMarksUnit() {
     const { availableStudents, block, unit, program, year } = me_studentManagerData;
@@ -2363,13 +2531,12 @@ async function addAllAvailableStudentsToMarksUnit() {
             exam_score: 0,
             final_score: 0,
             grade: null,
+            points: null,
             academic_year: year,
             approval_status: 'draft',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         }));
-        
-        console.log('📊 Inserting all students:', inserts.length);
         
         const { error } = await sb
             .from('student_marks')
@@ -2387,48 +2554,89 @@ async function addAllAvailableStudentsToMarksUnit() {
     }
 }
 
-window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
-
-// ============================================================
-// RELOAD STUDENT MANAGER
-// ============================================================
-
 async function reloadMarksStudentManager() {
     const { block, unit, program, year } = me_studentManagerData;
     await loadMarksStudentManagerData(block, unit, program, year);
 }
 
-window.reloadMarksStudentManager = reloadMarksStudentManager;
-
-
-
-// ============================================================
-// TOGGLE ALL STUDENTS
-// ============================================================
-
-function toggleAllStudents() {
-    const selectAll = document.getElementById('selectAllStudents');
-    const checkboxes = document.querySelectorAll('.student-checkbox');
-    const isChecked = selectAll?.checked || false;
-    checkboxes.forEach(cb => cb.checked = isChecked);
-    updateSelectedCount();
+async function removeStudentFromMarksUnit(admission) {
+    const { block, unit, year } = me_studentManagerData;
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    let studentName = 'this student';
+    try {
+        const { data: student } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name')
+            .eq('student_id', admission)
+            .single();
+        if (student) studentName = student.full_name;
+    } catch (e) {}
+    
+    if (!confirm(`⚠️ Remove "${studentName}" from "${unit}"?\n\nTheir marks will be permanently deleted.`)) return;
+    
+    if (typeof showLoading === 'function') showLoading('Removing student...');
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .delete()
+            .eq('admission_number', admission)
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        showNotification(`✅ ${studentName} removed from "${unit}"`, 'success');
+        await reloadMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('❌ Error removing student:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
 }
 
-window.toggleAllStudents = toggleAllStudents;
-
-function toggleAllStudentsCheckbox() {
-    const selectAll = document.getElementById('selectAllCheckbox');
-    const checkboxes = document.querySelectorAll('.student-checkbox');
-    const isChecked = selectAll?.checked || false;
-    checkboxes.forEach(cb => cb.checked = isChecked);
-    updateSelectedCount();
+async function clearAllStudentsFromMarksUnit() {
+    const { block, unit, year } = me_studentManagerData;
+    
+    if (!block || !unit) {
+        showNotification('Please select a block and unit first', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ALL students from "${unit}"?\n\nThis will delete ALL marks for this unit.`)) return;
+    
+    if (typeof showLoading === 'function') showLoading('Removing all students...');
+    
+    try {
+        const { error } = await sb
+            .from('student_marks')
+            .delete()
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        showNotification(`✅ All students removed from "${unit}"`, 'success');
+        await reloadMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('❌ Error clearing students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
 }
-
-window.toggleAllStudentsCheckbox = toggleAllStudentsCheckbox;
-
-// ============================================================
-// DROP SELECTED STUDENTS
-// ============================================================
 
 async function dropSelectedStudents() {
     const checkboxes = document.querySelectorAll('.student-checkbox:checked');
@@ -2482,112 +2690,208 @@ async function dropSelectedStudents() {
     }
 }
 
-window.dropSelectedStudents = dropSelectedStudents;
-
-// ============================================================
-// REMOVE SINGLE STUDENT FROM MARKS UNIT
-// ============================================================
-
-async function removeStudentFromMarksUnit(admission) {
-    const { block, unit, year } = me_studentManagerData;
-    
-    if (!block || !unit) {
-        showNotification('Please select a block and unit first', 'warning');
-        return;
-    }
-    
-    // Find student name
-    let studentName = 'this student';
-    try {
-        const { data: student } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('full_name')
-            .eq('student_id', admission)
-            .single();
-        if (student) studentName = student.full_name;
-    } catch (e) {}
-    
-    if (!confirm(`⚠️ Remove "${studentName}" from "${unit}"?\n\nTheir marks will be permanently deleted.`)) return;
-    
-    if (typeof showLoading === 'function') showLoading('Removing student...');
-    
-    try {
-        const { error } = await sb
-            .from('student_marks')
-            .delete()
-            .eq('admission_number', admission)
-            .eq('block', block)
-            .eq('subject_name', unit)
-            .eq('academic_year', year);
-        
-        if (error) throw error;
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        showNotification(`✅ ${studentName} removed from "${unit}"`, 'success');
-        await reloadMarksStudentManager();
-        loadMarksEntry();
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('❌ Error removing student:', error);
-        showNotification('❌ Error: ' + error.message, 'error');
-    }
+function toggleAllStudents() {
+    const selectAll = document.getElementById('selectAllStudents');
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const isChecked = selectAll?.checked || false;
+    checkboxes.forEach(cb => cb.checked = isChecked);
+    updateSelectedCount();
 }
 
-window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
-
-// ============================================================
-// CLEAR ALL STUDENTS FROM MARKS UNIT
-// ============================================================
-
-async function clearAllStudentsFromMarksUnit() {
-    const { block, unit, year } = me_studentManagerData;
-    
-    if (!block || !unit) {
-        showNotification('Please select a block and unit first', 'warning');
-        return;
-    }
-    
-    if (!confirm(`⚠️ Remove ALL students from "${unit}"?\n\nThis will delete ALL marks for this unit.`)) return;
-    
-    if (typeof showLoading === 'function') showLoading('Removing all students...');
-    
-    try {
-        const { error } = await sb
-            .from('student_marks')
-            .delete()
-            .eq('block', block)
-            .eq('subject_name', unit)
-            .eq('academic_year', year);
-        
-        if (error) throw error;
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        showNotification(`✅ All students removed from "${unit}"`, 'success');
-        await reloadMarksStudentManager();
-        loadMarksEntry();
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('❌ Error clearing students:', error);
-        showNotification('❌ Error: ' + error.message, 'error');
-    }
+function toggleAllStudentsCheckbox() {
+    const selectAll = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const isChecked = selectAll?.checked || false;
+    checkboxes.forEach(cb => cb.checked = isChecked);
+    updateSelectedCount();
 }
 
-window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+    const count = checkboxes.length;
+    
+    document.getElementById('selectedStudentCount').textContent = count;
+    document.getElementById('dropSelectedCount').textContent = count;
+    document.getElementById('dropSelectedCountBottom').textContent = count;
+    
+    const dropBtn = document.getElementById('dropSelectedBtn');
+    const dropBtnBottom = document.getElementById('dropSelectedBtnBottom');
+    
+    if (dropBtn) dropBtn.style.display = count > 0 ? 'inline-block' : 'none';
+    if (dropBtnBottom) dropBtnBottom.style.display = count > 0 ? 'inline-block' : 'none';
+}
 
-
-
-console.log('✅ Student Manager Functions Fully Loaded!');
-console.log('📋 Student Manager Features:');
-console.log('   - ✅ Shows ALL students from profiles and marks tables');
-console.log('   - ✅ Add Single Student');
-console.log('   - ✅ Add All Students');
-console.log('   - ✅ Drop Selected Students');
-console.log('   - ✅ Remove Single Student');
-console.log('   - ✅ Clear All Students');
 // ============================================================
-// SHOW/HIDE NOTIFICATION/LOADING FUNCTIONS
+// ASSESSMENT TYPE DETECTION
+// ============================================================
+
+function detectVisibleColumns() {
+    console.log('🔍 Detecting visible columns...');
+    
+    const table = document.querySelector('#me_marks_table');
+    if (!table) {
+        console.warn('⚠️ Table not found, using defaults');
+        return { hasCat1: true, hasCat2: true, hasExam: true };
+    }
+    
+    const headers = table.querySelectorAll('thead th');
+    let hasCat1 = false;
+    let hasCat2 = false;
+    let hasExam = false;
+    
+    const savedColumns = me_columnSettings.columns || [];
+    const savedCat1 = savedColumns.find(c => c.id === 'cat1');
+    const savedCat2 = savedColumns.find(c => c.id === 'cat2');
+    const savedExam = savedColumns.find(c => c.id === 'exam');
+    
+    if (savedCat1 !== undefined) hasCat1 = savedCat1.visible !== false;
+    if (savedCat2 !== undefined) hasCat2 = savedCat2.visible !== false;
+    if (savedExam !== undefined) hasExam = savedExam.visible !== false;
+    
+    if (savedCat1 === undefined || savedCat2 === undefined || savedExam === undefined) {
+        headers.forEach((th, index) => {
+            const text = th.textContent.toLowerCase().trim();
+            const isVisible = th.style.display !== 'none';
+            
+            if (savedCat1 === undefined && (text.includes('cat1') || text.includes('cat 1'))) {
+                hasCat1 = isVisible;
+            }
+            if (savedCat2 === undefined && (text.includes('cat2') || text.includes('cat 2'))) {
+                hasCat2 = isVisible;
+            }
+            if (savedExam === undefined && text.includes('exam')) {
+                hasExam = isVisible;
+            }
+        });
+    }
+    
+    if (savedCat1 === undefined && !hasCat1) hasCat1 = true;
+    if (savedCat2 === undefined && !hasCat2) hasCat2 = true;
+    if (savedExam === undefined && !hasExam) hasExam = true;
+    
+    return { hasCat1, hasCat2, hasExam };
+}
+
+function getAutoAssessmentType() {
+    const visible = detectVisibleColumns();
+    console.log('📊 Visible columns for assessment:', visible);
+    
+    if (visible.hasExam && !visible.hasCat1 && !visible.hasCat2) return 'exam_only';
+    if (visible.hasCat1 && !visible.hasCat2 && !visible.hasExam) return 'cat_only';
+    if (!visible.hasCat1 && visible.hasCat2 && !visible.hasExam) return 'cat_only';
+    if (visible.hasCat1 && visible.hasCat2 && !visible.hasExam) return 'cats_only';
+    if (visible.hasCat1 && !visible.hasCat2 && visible.hasExam) return 'single_cat';
+    if (!visible.hasCat1 && visible.hasCat2 && visible.hasExam) return 'single_cat';
+    return 'full';
+}
+
+function updateAssessmentTypeDisplay() {
+    const autoType = getAutoAssessmentType();
+    const labels = {
+        'full': 'Full (CAT1+CAT2+Exam)',
+        'single_cat': 'Single CAT (CAT+Exam)',
+        'exam_only': 'Exam Only',
+        'cats_only': 'CAT1+CAT2 Only',
+        'cat_only': 'CAT Only'
+    };
+    
+    const labelEl = document.getElementById('autoAssessmentTypeLabel');
+    if (labelEl) labelEl.textContent = labels[autoType] || autoType;
+    
+    const assessmentSelect = document.getElementById('me_assessment_type');
+    if (assessmentSelect) assessmentSelect.value = autoType;
+    
+    me_currentAssessmentType = autoType;
+}
+
+function recalculateAllTotals() {
+    const assessmentType = me_currentAssessmentType;
+    const program = me_currentProgram;
+    const rows = document.querySelectorAll('#me_marks_container table tbody tr');
+    
+    rows.forEach((row, index) => {
+        const cat1Input = document.getElementById(`me_cat1_${index}`);
+        const cat2Input = document.getElementById(`me_cat2_${index}`);
+        const examInput = document.getElementById(`me_exam_${index}`);
+        
+        const cat1 = parseFloat(cat1Input?.value) || 0;
+        const cat2 = parseFloat(cat2Input?.value) || 0;
+        const exam = parseFloat(examInput?.value) || 0;
+        
+        const result = calculateTVETMarks(cat1, cat2, exam, program);
+        const isPassing = result.isPassing;
+        const gradeInfo = getTVETGrade(result.percentage, getGradingConfig(program));
+        
+        const totalEl = document.getElementById(`me_total_${index}`);
+        if (totalEl) {
+            totalEl.textContent = result.total > 0 ? result.total : '--';
+            totalEl.style.color = isPassing ? '#065f46' : (result.total > 0 ? '#991b1b' : '#f59e0b');
+        }
+        
+        const percentageEl = document.getElementById(`me_percentage_${index}`);
+        if (percentageEl) {
+            percentageEl.textContent = result.percentage > 0 ? `${result.percentage}%` : '--';
+            percentageEl.style.color = isPassing ? '#065f46' : (result.percentage > 0 ? '#991b1b' : '#f59e0b');
+        }
+        
+        const gradeEl = document.getElementById(`me_grade_${index}`);
+        if (gradeEl) {
+            gradeEl.textContent = result.percentage > 0 ? result.grade : '--';
+            gradeEl.style.color = gradeInfo.color || '#6b7280';
+        }
+        
+        const pointsEl = document.getElementById(`me_points_${index}`);
+        if (pointsEl) {
+            pointsEl.textContent = result.percentage > 0 ? result.points : '--';
+            pointsEl.style.color = gradeInfo.color || '#6b7280';
+        }
+        
+        const statusEl = document.getElementById(`me_status_${index}`);
+        if (statusEl) {
+            const isCompetency = getGradingConfig(program).GRADE_TYPE === 'competency';
+            if (result.percentage > 0) {
+                if (isCompetency) {
+                    statusEl.innerHTML = isPassing 
+                        ? `<span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">✅ COMPETENT</span>`
+                        : `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">❌ NOT YET COMPETENT</span>`;
+                } else {
+                    statusEl.innerHTML = `<span style="background:${gradeInfo.bgColor};color:${gradeInfo.color};padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">${gradeInfo.icon || ''} ${gradeInfo.status}</span>`;
+                }
+            } else {
+                statusEl.innerHTML = '<span style="color:#94a3b8;">PENDING</span>';
+            }
+        }
+        
+        if (me_currentMarks && me_currentMarks[index]) {
+            me_currentMarks[index].cat1 = cat1;
+            me_currentMarks[index].cat2 = cat2;
+            me_currentMarks[index].exam = exam;
+            me_currentMarks[index].percentage = result.percentage;
+            me_currentMarks[index].total = result.total;
+            me_currentMarks[index].grade = result.grade;
+            me_currentMarks[index].points = result.points;
+            me_currentMarks[index].status = result.status;
+            me_currentMarks[index].isPassing = isPassing;
+        }
+    });
+    
+    updateMarksEntryStats(me_currentMarks, assessmentType, program);
+    updateAssessmentTypeDisplay();
+}
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ============================================================
+// NOTIFICATION FUNCTIONS
 // ============================================================
 
 if (typeof showNotification === 'undefined') {
@@ -2640,19 +2944,30 @@ if (typeof hideLoading === 'undefined') {
 // GLOBAL REGISTRATION
 // ============================================================
 
+// Grading functions
+window.GRADING_CONFIG = GRADING_CONFIG;
+window.getProgramType = getProgramType;
+window.getGradingConfig = getGradingConfig;
+window.calculateTVETMarks = calculateTVETMarks;
+window.getTVETGrade = getTVETGrade;
+window.getMarksEntryGrade = getMarksEntryGrade;
+window.calculateMarksEntryTotal = calculateMarksEntryTotal;
+window.getTVETGradeColor = getTVETGradeColor;
+window.getTVETGradeBgColor = getTVETGradeBgColor;
+
 // Main functions
 window.loadMEBlocks = loadMEBlocks;
 window.loadMEUnits = loadMEUnits;
 window.loadMarksEntry = loadMarksEntry;
 window.renderMarksEntryTable = renderMarksEntryTable;
 window.updateMarksEntryRow = updateMarksEntryRow;
+window.updateMarksEntryStats = updateMarksEntryStats;
 window.saveMarksEntry = saveMarksEntry;
 window.exportMarksEntry = exportMarksEntry;
-window.refreshMarksData = refreshMarksData;
-window.calculateMarksEntryTotal = calculateMarksEntryTotal;
-window.getMarksEntryGrade = getMarksEntryGrade;
-window.updateMarksEntryStats = updateMarksEntryStats;
 window.downloadCSV = downloadCSV;
+window.refreshMarksData = refreshMarksData;
+window.showGradingSystemInfo = showGradingSystemInfo;
+window.recalculateAllTotals = recalculateAllTotals;
 
 // Column management
 window.loadUnitColumnSettings = loadUnitColumnSettings;
@@ -2666,504 +2981,11 @@ window.isUserAdmin = isUserAdmin;
 window.loadLecturerAssignments = loadLecturerAssignments;
 window.assignLecturerToUnit = assignLecturerToUnit;
 window.removeLecturerAssignment = removeLecturerAssignment;
-window.showLecturerAssignmentModal = showLecturerAssignmentModal;
-window.closeLecturerAssignmentModal = closeLecturerAssignmentModal;
-window.saveLecturerAssignment = saveLecturerAssignment;
-
-// Assignment history
 window.loadAssignmentHistory = loadAssignmentHistory;
 window.refreshAssignmentHistory = refreshAssignmentHistory;
 window.clearAllAssignments = clearAllAssignments;
-window.getLecturerDepartment = getLecturerDepartment;
 
-// Student management
-window.openMarksStudentManager = openMarksStudentManager;
-window.loadMarksStudentManagerData = loadMarksStudentManagerData;
-window.reloadMarksStudentManager = reloadMarksStudentManager;
-window.renderMarksStudentManager = renderMarksStudentManager;
-window.addStudentToMarksUnit = addStudentToMarksUnit;
-window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
-window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
-window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
-window.dropSelectedStudents = dropSelectedStudents;
-window.toggleAllStudents = toggleAllStudents;
-window.toggleAllStudentsCheckbox = toggleAllStudentsCheckbox;
-window.updateSelectedCount = updateSelectedCount;
-
-// Auto-detect functions
-window.detectVisibleColumns = detectVisibleColumns;
-window.getAutoAssessmentType = getAutoAssessmentType;
-window.updateAssessmentTypeDisplay = updateAssessmentTypeDisplay;
-window.recalculateAllTotals = recalculateAllTotals;
-
-// Debug
-window.escapeHtml = escapeHtml;
-
-console.log('✅ Marks Entry System Fully Loaded!');
-console.log('📋 Features:');
-console.log('   - ✅ Auto-assessment type detection');
-console.log('   - ✅ Column management (Admin only)');
-console.log('   - ✅ Lecturer assignment management');
-console.log('   - ✅ Assignment history');
-console.log('   - ✅ Student management with select all');
-console.log('   - ✅ Auto-approve on save for Admin');
-console.log('   - ✅ Export to CSV');
-console.log('   - ✅ Dynamic content toggle');
-// ============================================================
-// PUBLISH FUNCTIONS - Publish Marks from Marks Entry
-// ============================================================
-
-/**
- * Publish ALL marks for the currently selected unit
- */
-async function publishCurrentUnitMarks() {
-    const unit = me_currentUnit;
-    const block = me_currentBlock;
-    const program = me_currentProgram;
-    const year = me_currentYear;
-    const assessmentType = me_currentAssessmentType || 'full';
-    
-    if (!unit || !block) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select a unit first', 'warning');
-        }
-        return;
-    }
-    
-    // Get current marks count
-    const totalMarks = me_currentMarks?.length || 0;
-    if (totalMarks === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('No marks found for this unit', 'warning');
-        }
-        return;
-    }
-    
-    // Confirm with user
-    const programLabel = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET Programs';
-    const confirmMsg = `⚠️ Publish ALL marks for "${unit}"?\n\n` +
-        `Program: ${programLabel}\n` +
-        `Block: ${block}\n` +
-        `Year: ${year}\n` +
-        `Students: ${totalMarks}\n\n` +
-        `This will make marks visible to ALL students in this unit.`;
-    
-    if (!confirm(confirmMsg)) return;
-    
-    if (typeof showLoading === 'function') {
-        showLoading(`Publishing ${totalMarks} marks...`);
-    }
-    
-    try {
-        let query = window.sb
-            .from('student_marks')
-            .update({
-                published: true,
-                published_at: new Date().toISOString(),
-                published_by: window.currentUser?.id || null
-            })
-            .eq('subject_name', unit)
-            .eq('block', block)
-            .eq('academic_year', year);
-        
-        if (program) {
-            query = query.eq('program', program);
-        }
-        
-        if (assessmentType && assessmentType !== 'full') {
-            query = query.eq('assessment_type', assessmentType);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        
-        const count = data?.length || 0;
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        
-        if (typeof showNotification === 'function') {
-            showNotification(`✅ Published ${count} marks for "${unit}"!`, 'success');
-        }
-        
-        // Refresh the marks entry view
-        loadMarksEntry();
-        
-        // Also refresh the published marks view if it's loaded
-        if (typeof window.loadPublishedMarks === 'function') {
-            setTimeout(window.loadPublishedMarks, 500);
-        }
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error publishing marks:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error publishing marks: ' + error.message, 'error');
-        }
-    }
-}
-
-// ============================================================
-// STUDENT PUBLISH MODAL FUNCTIONS
-// ============================================================
-
-let sp_students = [];
-let sp_selected = new Set();
-
-/**
- * Open the student publish modal
- */
-function openStudentPublishModal() {
-    const modal = document.getElementById('studentPublishModal');
-    if (!modal) {
-        if (typeof showNotification === 'function') {
-            showNotification('Modal not found', 'error');
-        }
-        return;
-    }
-    
-    // Update unit/block display
-    document.getElementById('sp_unit_display').textContent = `Unit: ${me_currentUnit || 'Not selected'}`;
-    document.getElementById('sp_block_display').textContent = `Block: ${me_currentBlock || 'Not selected'}`;
-    
-    // Load students
-    loadStudentPublishList();
-    modal.style.display = 'flex';
-}
-
-/**
- * Close the student publish modal
- */
-function closeStudentPublishModal() {
-    document.getElementById('studentPublishModal').style.display = 'none';
-}
-
-/**
- * Load students for the publish modal
- */
-function loadStudentPublishList() {
-    const container = document.getElementById('sp_student_list');
-    if (!container) return;
-    
-    const marks = me_currentMarks || [];
-    sp_students = marks;
-    sp_selected = new Set();
-    
-    if (marks.length === 0) {
-        container.innerHTML = `
-            <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
-                <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                No students found for this unit
-            </td></tr>
-        `;
-        updateStudentPublishStats();
-        return;
-    }
-    
-    renderStudentPublishList(marks);
-    updateStudentPublishStats();
-}
-
-/**
- * Render the student publish list with checkboxes
- */
-function renderStudentPublishList(marks) {
-    const container = document.getElementById('sp_student_list');
-    if (!container) return;
-    
-    const searchTerm = document.getElementById('sp_search')?.value?.toLowerCase() || '';
-    
-    let filteredMarks = marks;
-    if (searchTerm) {
-        filteredMarks = marks.filter(m => 
-            (m.name || m.student_name || '').toLowerCase().includes(searchTerm) ||
-            (m.admission || m.admission_number || '').toLowerCase().includes(searchTerm)
-        );
-    }
-    
-    let html = '';
-    filteredMarks.forEach((mark, index) => {
-        const admission = mark.admission || mark.admission_number || 'N/A';
-        const name = mark.name || mark.student_name || 'Unknown';
-        const score = mark.final || mark.final_score || 0;
-        const grade = mark.grade || '-';
-        const isPublished = mark.published === true;
-        const isPassing = score >= 60;
-        const isSelected = sp_selected.has(admission);
-        const gradeColor = getGradeColor(grade);
-        
-        html += `
-            <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
-                <td style="padding: 8px 12px; text-align: center;">
-                    <input type="checkbox" class="sp-student-checkbox" data-admission="${admission}" 
-                           ${isSelected ? 'checked' : ''} ${isPublished ? 'disabled' : ''}
-                           onchange="toggleStudentSelection('${admission}', this.checked)" 
-                           style="width: 16px; height: 16px; cursor: ${isPublished ? 'not-allowed' : 'pointer'};">
-                </td>
-                <td style="padding: 8px 12px; font-weight: 500;">${escapeHtml(name)}</td>
-                <td style="padding: 8px 12px; font-size: 12px; color: #64748b;">${escapeHtml(admission)}</td>
-                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${isPassing ? '#10b981' : '#dc2626'};">${score}%</td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">${escapeHtml(grade)}</span>
-                </td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="color: ${isPassing ? '#10b981' : '#dc2626'}; font-weight: 600; font-size: 12px;">
-                        ${isPassing ? '✅ Pass' : '❌ Fail'}
-                    </span>
-                </td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="color: ${isPublished ? '#10b981' : '#94a3b8'}; font-weight: 600; font-size: 12px;">
-                        ${isPublished ? '✅ Published' : '📝 Draft'}
-                    </span>
-                    ${isPublished ? `<br><span style="font-size: 10px; color: #94a3b8;">Already published</span>` : ''}
-                </td>
-            </tr>
-        `;
-    });
-    
-    container.innerHTML = html;
-    updateStudentPublishStats();
-}
-
-/**
- * Toggle selection of a student
- */
-function toggleStudentSelection(admission, checked) {
-    if (checked) {
-        sp_selected.add(admission);
-    } else {
-        sp_selected.delete(admission);
-    }
-    updateStudentPublishStats();
-}
-
-/**
- * Select all students
- */
-function selectAllStudents() {
-    const checkboxes = document.querySelectorAll('.sp-student-checkbox:not([disabled])');
-    checkboxes.forEach(cb => {
-        cb.checked = true;
-        sp_selected.add(cb.dataset.admission);
-    });
-    updateStudentPublishStats();
-}
-
-/**
- * Deselect all students
- */
-function deselectAllStudents() {
-    const checkboxes = document.querySelectorAll('.sp-student-checkbox');
-    checkboxes.forEach(cb => {
-        cb.checked = false;
-        sp_selected.delete(cb.dataset.admission);
-    });
-    updateStudentPublishStats();
-}
-
-/**
- * Select passing students (score >= 60)
- */
-function selectPassingStudents() {
-    const marks = sp_students;
-    marks.forEach(m => {
-        const score = m.final || m.final_score || 0;
-        const admission = m.admission || m.admission_number || '';
-        if (score >= 60 && !m.published) {
-            sp_selected.add(admission);
-        }
-    });
-    renderStudentPublishList(sp_students);
-    updateStudentPublishStats();
-}
-
-/**
- * Select failing students (score < 60)
- */
-function selectFailingStudents() {
-    const marks = sp_students;
-    marks.forEach(m => {
-        const score = m.final || m.final_score || 0;
-        const admission = m.admission || m.admission_number || '';
-        if (score > 0 && score < 60 && !m.published) {
-            sp_selected.add(admission);
-        }
-    });
-    renderStudentPublishList(sp_students);
-    updateStudentPublishStats();
-}
-
-/**
- * Toggle all checkboxes in the student list
- */
-function toggleAllStudentCheckboxes() {
-    const selectAll = document.getElementById('sp_select_all');
-    const checkboxes = document.querySelectorAll('.sp-student-checkbox:not([disabled])');
-    const isChecked = selectAll?.checked || false;
-    
-    checkboxes.forEach(cb => {
-        cb.checked = isChecked;
-        if (isChecked) {
-            sp_selected.add(cb.dataset.admission);
-        } else {
-            sp_selected.delete(cb.dataset.admission);
-        }
-    });
-    updateStudentPublishStats();
-}
-
-/**
- * Filter the student list by search term
- */
-function filterStudentPublishList() {
-    renderStudentPublishList(sp_students);
-}
-
-/**
- * Update the stats in the student publish modal
- */
-function updateStudentPublishStats() {
-    const total = sp_students.length;
-    const alreadyPublished = sp_students.filter(m => m.published === true).length;
-    const selectedCount = sp_selected.size;
-    const toPublish = selectedCount;
-    
-    document.getElementById('sp_total_count').textContent = total;
-    document.getElementById('sp_selected_count').textContent = selectedCount;
-    document.getElementById('sp_already_published').textContent = alreadyPublished;
-    document.getElementById('sp_to_publish').textContent = toPublish;
-    document.getElementById('sp_publish_summary').textContent = `${toPublish} students selected for publishing`;
-    document.getElementById('sp_publish_btn_count').textContent = toPublish;
-    
-    // Enable/disable publish button
-    const publishBtn = document.getElementById('sp_publish_btn');
-    if (publishBtn) {
-        publishBtn.disabled = toPublish === 0;
-        publishBtn.style.opacity = toPublish === 0 ? '0.5' : '1';
-        publishBtn.style.cursor = toPublish === 0 ? 'not-allowed' : 'pointer';
-    }
-}
-
-/**
- * Publish the selected students
- */
-async function publishSelectedStudents() {
-    const selectedAdmissions = Array.from(sp_selected);
-    
-    if (selectedAdmissions.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('No students selected to publish', 'warning');
-        }
-        return;
-    }
-    
-    const unit = me_currentUnit;
-    const block = me_currentBlock;
-    const program = me_currentProgram;
-    const year = me_currentYear;
-    
-    if (!unit || !block) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select a unit first', 'warning');
-        }
-        return;
-    }
-    
-    const confirmMsg = `⚠️ Publish marks for ${selectedAdmissions.length} selected students?\n\n` +
-        `Unit: ${unit}\n` +
-        `Block: ${block}\n` +
-        `Program: ${program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET Programs'}\n` +
-        `Year: ${year}\n\n` +
-        `Only selected students will see their marks.`;
-    
-    if (!confirm(confirmMsg)) return;
-    
-    if (typeof showLoading === 'function') {
-        showLoading(`Publishing ${selectedAdmissions.length} students...`);
-    }
-    
-    try {
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const admission of selectedAdmissions) {
-            try {
-                const { error } = await window.sb
-                    .from('student_marks')
-                    .update({
-                        published: true,
-                        published_at: new Date().toISOString(),
-                        published_by: window.currentUser?.id || null
-                    })
-                    .eq('admission_number', admission)
-                    .eq('subject_name', unit)
-                    .eq('block', block)
-                    .eq('academic_year', year);
-                
-                if (error) {
-                    console.error(`❌ Error publishing ${admission}:`, error);
-                    errorCount++;
-                } else {
-                    successCount++;
-                }
-            } catch (err) {
-                console.error(`❌ Error publishing ${admission}:`, err);
-                errorCount++;
-            }
-        }
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        closeStudentPublishModal();
-        
-        if (typeof showNotification === 'function') {
-            if (errorCount === 0) {
-                showNotification(`✅ Published ${successCount} students successfully!`, 'success');
-            } else {
-                showNotification(`⚠️ Published ${successCount} students, ${errorCount} errors`, 'warning');
-            }
-        }
-        
-        // Refresh the marks entry view
-        loadMarksEntry();
-        
-        // Also refresh the published marks view if it's loaded
-        if (typeof window.loadPublishedMarks === 'function') {
-            setTimeout(window.loadPublishedMarks, 500);
-        }
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error publishing selected students:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error publishing students: ' + error.message, 'error');
-        }
-    }
-}
-
-// ============================================================
-// OVERRIDE UPDATE STATS TO INCLUDE PUBLISHED COUNT
-// ============================================================
-
-const originalUpdateStats = window.updateMarksEntryStats;
-
-window.updateMarksEntryStats = function(marks, assessmentType) {
-    // Call original function if it exists
-    if (typeof originalUpdateStats === 'function') {
-        originalUpdateStats(marks, assessmentType);
-    }
-    
-    // Update published count
-    const publishedEl = document.getElementById('me_published_count');
-    if (publishedEl && marks) {
-        const publishedCount = marks.filter(m => m.published === true).length;
-        publishedEl.textContent = publishedCount;
-    }
-};
-
-// ============================================================
-// EXPOSE FUNCTIONS GLOBALLY
-// ============================================================
-
+// Publish functions
 window.publishCurrentUnitMarks = publishCurrentUnitMarks;
 window.openStudentPublishModal = openStudentPublishModal;
 window.closeStudentPublishModal = closeStudentPublishModal;
@@ -3179,8 +3001,28 @@ window.filterStudentPublishList = filterStudentPublishList;
 window.updateStudentPublishStats = updateStudentPublishStats;
 window.publishSelectedStudents = publishSelectedStudents;
 
-console.log('✅ Publish functions added to Marks Entry!');
-console.log('📋 Available functions:');
-console.log('   - publishCurrentUnitMarks() - Publish ALL marks in current unit');
-console.log('   - openStudentPublishModal() - Open modal to select students');
-console.log('   - publishSelectedStudents() - Publish only selected students');
+// Student management
+window.openMarksStudentManager = openMarksStudentManager;
+window.loadMarksStudentManagerData = loadMarksStudentManagerData;
+window.reloadMarksStudentManager = reloadMarksStudentManager;
+window.renderMarksStudentManager = renderMarksStudentManager;
+window.addStudentToMarksUnit = addStudentToMarksUnit;
+window.addAllAvailableStudentsToMarksUnit = addAllAvailableStudentsToMarksUnit;
+window.removeStudentFromMarksUnit = removeStudentFromMarksUnit;
+window.clearAllStudentsFromMarksUnit = clearAllStudentsFromMarksUnit;
+window.dropSelectedStudents = dropSelectedStudents;
+window.toggleAllStudents = toggleAllStudents;
+window.toggleAllStudentsCheckbox = toggleAllStudentsCheckbox;
+window.updateSelectedCount = updateSelectedCount;
+
+// Assessment detection
+window.detectVisibleColumns = detectVisibleColumns;
+window.getAutoAssessmentType = getAutoAssessmentType;
+window.updateAssessmentTypeDisplay = updateAssessmentTypeDisplay;
+
+// Utility
+window.escapeHtml = escapeHtml;
+
+console.log('✅ TVET & Nursing Marks Entry System FULLY LOADED!');
+console.log('📋 TVET Grading: E(0-49%) → C(50-64%) → B(65-79%) → A(80-100%) | Points: E=0, C=2, B=3, A=4');
+console.log('📋 Nursing Grading: D(0-59%) → C(60-64%) → B(65-74%) → A(75-100%) | Points: D=0.0, C=2.0, B=3.0, A=4.0');
