@@ -18,722 +18,363 @@
     <!-- ===== FAVICON ===== -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
 
-<style>
-/* ============================================================ */
-/* FINANCE MODULE - ALL STYLES INLINE                          */
-/* ============================================================ */
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f0f4ff;
-    min-height: 100vh;
-}
-
-/* ===== LAYOUT ===== */
-.finance-container {
-    display: flex;
-    min-height: 100vh;
-}
-
-/* ===== SIDEBAR ===== */
-.finance-sidebar {
-    width: 260px;
-    background: linear-gradient(180deg, #0A3D62 0%, #1a5a7a 100%);
-    color: white;
-    padding: 24px 16px;
-    position: fixed;
-    height: 100vh;
-    overflow-y: auto;
-    z-index: 100;
-    transition: transform 0.3s ease;
-}
-
-.finance-sidebar::-webkit-scrollbar {
-    width: 4px;
-}
-.finance-sidebar::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.1);
-}
-.finance-sidebar::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.3);
-    border-radius: 4px;
-}
-
-.finance-sidebar-header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 0 12px 24px 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.2);
-    margin-bottom: 20px;
-}
-
-.finance-sidebar-header img {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: white;
-    padding: 8px;
-    object-fit: contain;
-}
-
-.finance-sidebar-header h2 {
-    font-size: 16px;
-    font-weight: 700;
-    color: white;
-    margin: 0;
-}
-
-.finance-sidebar-header span {
-    font-size: 11px;
-    opacity: 0.8;
-    background: rgba(255,255,255,0.2);
-    padding: 2px 10px;
-    border-radius: 20px;
-    display: inline-block;
-    margin-top: 2px;
-}
-
-.finance-nav {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.finance-nav li {
-    margin-bottom: 2px;
-}
-
-.finance-nav a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    color: rgba(255,255,255,0.8);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-
-.finance-nav a:hover {
-    background: rgba(255,255,255,0.1);
-    color: white;
-}
-
-.finance-nav a.active {
-    background: rgba(255,255,255,0.15);
-    color: white;
-    border-left: 3px solid #FDB913;
-}
-
-.finance-nav a i {
-    width: 20px;
-    text-align: center;
-}
-
-.finance-nav .badge {
-    margin-left: auto;
-    background: #FDB913;
-    color: #0A3D62;
-    padding: 0 8px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-}
-
-.finance-sidebar-footer {
-    border-top: 1px solid rgba(255,255,255,0.2);
-    padding-top: 16px;
-    margin-top: 8px;
-}
-
-.finance-sidebar-footer a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    color: rgba(255,255,255,0.8);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.finance-sidebar-footer a:hover {
-    background: rgba(255,255,255,0.15);
-    color: white;
-}
-
-/* ===== MAIN CONTENT ===== */
-.finance-main {
-    margin-left: 260px;
-    padding: 30px 35px;
-    flex: 1;
-    min-height: 100vh;
-}
-
-/* ===== MOBILE TOGGLE ===== */
-.finance-mobile-toggle {
-    display: none;
-    position: fixed;
-    top: 16px;
-    left: 16px;
-    z-index: 101;
-    background: white;
-    border: none;
-    padding: 12px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 20px;
-    color: #0A3D62;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-/* ===== HEADER ===== */
-.finance-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 25px;
-}
-
-.finance-header h1 {
-    font-size: 28px;
-    color: #0b1124;
-    margin: 0;
-}
-
-.finance-header h1 span {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.finance-header .subtitle {
-    color: #64748b;
-    font-size: 14px;
-    margin: 4px 0 0 0;
-}
-
-.finance-header-right {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.finance-header-date {
-    color: #64748b;
-    font-size: 14px;
-}
-
-.finance-header-status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 14px;
-    color: #22c55e;
-}
-
-.status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.status-dot.online {
-    background: #22c55e;
-}
-.status-dot.offline {
-    background: #ef4444;
-}
-
-/* ===== TAB CONTENT ===== */
-.finance-tab-content {
-    display: none;
-    animation: fadeIn 0.3s ease;
-}
-
-.finance-tab-content.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* ===== STATS CARDS ===== */
-.finance-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 25px;
-}
-
-.finance-card {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    border-top: 4px solid #4C1D95;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-
-.finance-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-}
-
-.finance-card h3 {
-    font-size: 12px;
-    color: #64748b;
-    margin: 0 0 8px 0;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.finance-card .data {
-    font-size: 28px;
-    font-weight: 700;
-    margin: 0;
-    color: #0b1124;
-}
-
-.finance-card .minor-data {
-    font-size: 12px;
-    color: #94a3b8;
-    margin: 4px 0 0 0;
-}
-
-.finance-card.border-green { border-top-color: #10b981; }
-.finance-card.border-orange { border-top-color: #f59e0b; }
-.finance-card.border-red { border-top-color: #ef4444; }
-.finance-card.border-purple { border-top-color: #8b5cf6; }
-.finance-card.border-blue { border-top-color: #3b82f6; }
-
-/* ===== FORMS ===== */
-.finance-form-container {
-    background: white;
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 25px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    border: 1px solid #e5e7eb;
-}
-
-.finance-form-container h3 {
-    color: #0A3D62;
-    margin: 0 0 16px 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.finance-form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-}
-
-.finance-form-grid .full-width {
-    grid-column: 1 / -1;
-}
-
-.finance-form-group {
-    display: flex;
-    flex-direction: column;
-}
-
-.finance-form-group label {
-    font-weight: 600;
-    font-size: 13px;
-    color: #475569;
-    margin-bottom: 5px;
-}
-
-.finance-form-group input,
-.finance-form-group select,
-.finance-form-group textarea {
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    font-size: 14px;
-    background: #f8fafc;
-    transition: border-color 0.2s;
-    font-family: inherit;
-}
-
-.finance-form-group input:focus,
-.finance-form-group select:focus,
-.finance-form-group textarea:focus {
-    border-color: #4C1D95;
-    outline: none;
-    background: white;
-}
-
-/* ===== BUTTONS ===== */
-.finance-btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-}
-
-.finance-btn-primary {
-    background: #4C1D95;
-    color: white;
-}
-.finance-btn-primary:hover {
-    background: #6d28d9;
-    transform: translateY(-1px);
-}
-
-.finance-btn-success {
-    background: #10b981;
-    color: white;
-}
-.finance-btn-success:hover {
-    background: #059669;
-}
-
-.finance-btn-danger {
-    background: #dc2626;
-    color: white;
-}
-.finance-btn-danger:hover {
-    background: #b91c1c;
-}
-
-.finance-btn-warning {
-    background: #f59e0b;
-    color: #0A3D62;
-}
-.finance-btn-warning:hover {
-    background: #d97706;
-}
-
-.finance-btn-outline {
-    background: transparent;
-    color: #475569;
-    border: 1px solid #e2e8f0;
-}
-.finance-btn-outline:hover {
-    background: #f8fafc;
-}
-
-.finance-btn-sm {
-    padding: 6px 14px;
-    font-size: 12px;
-}
-
-/* ===== TABLES ===== */
-.finance-table-container {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-
-.finance-table-container .table-header {
-    padding: 16px 20px;
-    background: #f8fafc;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.finance-table-container .table-header h4 {
-    margin: 0;
-    color: #0A3D62;
-}
-
-.finance-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-.finance-table th {
-    padding: 12px 16px;
-    text-align: left;
-    font-weight: 600;
-    color: #475569;
-    background: #f8fafc;
-    border-bottom: 2px solid #e5e7eb;
-    white-space: nowrap;
-}
-
-.finance-table td {
-    padding: 12px 16px;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.finance-table tbody tr:hover {
-    background: #f8fafc;
-}
-
-/* ===== BADGES ===== */
-.finance-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.finance-badge-success {
-    background: #d1fae5;
-    color: #059669;
-}
-.finance-badge-warning {
-    background: #fef3c7;
-    color: #d97706;
-}
-.finance-badge-danger {
-    background: #fee2e2;
-    color: #dc2626;
-}
-.finance-badge-info {
-    background: #dbeafe;
-    color: #2563eb;
-}
-.finance-badge-purple {
-    background: #ede9fe;
-    color: #6d28d9;
-}
-
-/* ===== FILTER BAR ===== */
-.finance-filter-bar {
-    background: white;
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 20px;
-    border: 1px solid #e5e7eb;
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.finance-filter-bar input,
-.finance-filter-bar select {
-    padding: 8px 14px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    font-size: 13px;
-    background: #f8fafc;
-    min-width: 150px;
-}
-
-.finance-filter-bar input:focus,
-.finance-filter-bar select:focus {
-    border-color: #4C1D95;
-    outline: none;
-}
-
-/* ===== TOAST NOTIFICATIONS ===== */
-.finance-toast-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.finance-toast {
-    padding: 14px 24px;
-    border-radius: 10px;
-    color: white;
-    font-weight: 500;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-    animation: slideInToast 0.3s ease;
-    max-width: 400px;
-}
-
-.finance-toast-success { background: #059669; }
-.finance-toast-error { background: #dc2626; }
-.finance-toast-warning { background: #f59e0b; color: #0A3D62; }
-.finance-toast-info { background: #3b82f6; }
-
-@keyframes slideInToast {
-    from { transform: translateX(20px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-/* ===== LOADING ===== */
-.finance-loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px;
-    color: #94a3b8;
-    gap: 12px;
-}
-
-.finance-loading .spinner {
-    width: 30px;
-    height: 30px;
-    border: 3px solid #e5e7eb;
-    border-top-color: #4C1D95;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* ===== MODALS ===== */
-.finance-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(4px);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-}
-
-.finance-modal.active {
-    display: flex;
-}
-
-.finance-modal-content {
-    background: white;
-    border-radius: 16px;
-    max-width: 700px;
-    width: 95%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-
-.finance-modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    background: white;
-    z-index: 10;
-}
-
-.finance-modal-header h3 {
-    margin: 0;
-    color: #0A3D62;
-}
-
-.finance-modal-close {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: #94a3b8;
-    transition: color 0.2s;
-}
-
-.finance-modal-close:hover {
-    color: #1e293b;
-}
-
-.finance-modal-body {
-    padding: 24px;
-}
-
-.finance-modal-footer {
-    padding: 16px 24px;
-    border-top: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    position: sticky;
-    bottom: 0;
-    background: white;
-}
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
-    .finance-sidebar {
-        transform: translateX(-100%);
-        width: 280px;
-    }
-    .finance-sidebar.open {
-        transform: translateX(0);
-    }
-    .finance-main {
-        margin-left: 0;
-        padding: 20px;
-    }
-    .finance-mobile-toggle {
-        display: block;
-    }
-    .finance-cards {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    }
-}
-
-@media (max-width: 480px) {
-    .finance-main {
-        padding: 14px;
-    }
-    .finance-header h1 {
-        font-size: 20px;
-    }
-    .finance-cards {
-        grid-template-columns: 1fr 1fr;
-    }
-    .finance-table th,
-    .finance-table td {
-        padding: 8px 10px;
-        font-size: 12px;
-    }
-}
-
-/* ===== PRINT STYLES ===== */
-@media print {
-    .finance-sidebar { display: none !important; }
-    .finance-main { margin-left: 0 !important; padding: 20px !important; }
-    .finance-header-right, .finance-mobile-toggle, .finance-btn, .finance-no-print { display: none !important; }
-    .finance-card { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5e7eb; }
-    .finance-table-container { box-shadow: none !important; border: 1px solid #e5e7eb; }
-    .finance-modal { display: none !important; }
-    .finance-toast-container { display: none !important; }
-}
-</style>
+    <!-- ===== EXTERNAL CSS ===== -->
+    <link rel="stylesheet" href="css/finance-style.css">
+
+    <!-- ============================================================ -->
+    <!-- INLINE STYLES FOR CRITICAL LAYOUT (matches Super Admin)     -->
+    <!-- ============================================================ -->
+    <style>
+        /* ===== RESET & BASE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f4ff;
+            min-height: 100vh;
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #4C1D95;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* ===== CARD STYLES (matches Super Admin) ===== */
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-top: 4px solid #4C1D95;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .card h3 {
+            font-size: 12px;
+            color: #64748b;
+            margin: 0 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .card .data {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+            color: #0b1124;
+        }
+        .card .minor-data {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 4px 0 0 0;
+        }
+
+        /* ===== FORM CONTROLS (matches Super Admin) ===== */
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+        .form-control:focus {
+            border-color: #4C1D95;
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+        }
+
+        /* ===== BUTTONS (matches Super Admin) ===== */
+        .btn-action {
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .btn-action:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: #4C1D95;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #6d28d9;
+        }
+        .btn-success {
+            background: #059669;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #10b981;
+        }
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #ef4444;
+        }
+        .btn-warning {
+            background: #FDB913;
+            color: #0A3D62;
+        }
+        .btn-warning:hover {
+            background: #fcd34d;
+        }
+        .btn-outline {
+            background: transparent;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-outline:hover {
+            background: #f8fafc;
+            border-color: #4C1D95;
+        }
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+        .btn-xs {
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+
+        /* ===== BADGES (matches Super Admin) ===== */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-success {
+            background: #d1fae5;
+            color: #059669;
+        }
+        .badge-warning {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .badge-danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .badge-info {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+        .badge-purple {
+            background: #ede9fe;
+            color: #6d28d9;
+        }
+
+        /* ===== TABLES (matches Super Admin) ===== */
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .table-container .table-header {
+            padding: 16px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .table-container .table-header h4 {
+            margin: 0;
+            color: #0A3D62;
+            font-weight: 600;
+        }
+        .modern-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .modern-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            background: #f8fafc;
+            border-bottom: 2px solid #e5e7eb;
+            white-space: nowrap;
+        }
+        .modern-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .modern-table tbody tr:hover {
+            background: #f8fafc;
+        }
+        .modern-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* ===== FILTER BAR (matches Super Admin) ===== */
+        .filter-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-bar input,
+        .filter-bar select {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
+            background: #f8fafc;
+            min-width: 150px;
+        }
+        .filter-bar input:focus,
+        .filter-bar select:focus {
+            border-color: #4C1D95;
+            outline: none;
+        }
+
+        /* ===== MODAL (matches Super Admin) ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99998;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 850px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 18px;
+            background: none;
+            border: none;
+            font-size: 26px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .modal-close:hover {
+            color: #1e293b;
+        }
+
+        /* ===== TOAST NOTIFICATIONS ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 14px 24px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+        .toast-success { background: #059669; }
+        .toast-error { background: #dc2626; }
+        .toast-warning { background: #f59e0b; color: #0A3D62; }
+        .toast-info { background: #3b82f6; }
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .finance-sidebar { transform: translateX(-100%); width: 280px; }
+            .finance-sidebar.open { transform: translateX(0); }
+            .finance-main { margin-left: 0; padding: 20px; }
+            .finance-mobile-toggle { display: block; }
+            .cards { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+        }
+        @media (max-width: 480px) {
+            .finance-main { padding: 14px; }
+            .finance-header h1 { font-size: 20px; }
+            .cards { grid-template-columns: 1fr 1fr; }
+            .modal-content { padding: 20px; }
+        }
+
+        /* ===== PRINT ===== */
+        @media print {
+            .finance-sidebar { display: none !important; }
+            .finance-main { margin-left: 0 !important; padding: 20px !important; }
+            .no-print { display: none !important; }
+            .card { break-inside: avoid; box-shadow: none !important; border: 1px solid #e5e7eb; }
+        }
+    </style>
 </head>
 <body>
     <div class="finance-container">
@@ -800,7 +441,6 @@ body {
                 <a href="#" onclick="logoutFinance()">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
-                    <span style="margin-left: auto; font-size: 11px; opacity: 0.6;">⌘Q</span>
                 </a>
                 <a href="#" onclick="goToMainDashboard()">
                     <i class="fas fa-arrow-left"></i>
@@ -817,76 +457,76 @@ body {
         <!-- ===== MAIN CONTENT ===== -->
         <main class="finance-main">
             <!-- ===== HEADER ===== -->
-            <div class="finance-header">
+            <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
                 <div>
-                    <h1>Welcome, <span id="userNameDisplay">Finance Officer</span>!</h1>
-                    <p class="subtitle" id="userRoleDisplay">Super Admin</p>
-                </div>
-                <div class="finance-header-right">
-                    <span class="finance-header-date">
-                        <i class="fas fa-calendar"></i> 
+                    <h2 style="color: white; margin: 0; font-weight: 700;">
+                        <i class="fas fa-wallet"></i> Finance Dashboard
+                    </h2>
+                    <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
+                        <i class="fas fa-university"></i> NCHSM Financial Management &nbsp;|&nbsp; <i class="fas fa-clock"></i> 
                         <span id="currentDate"></span>
-                    </span>
-                    <span class="finance-header-status">
-                        <span class="status-dot online"></span> 
-                        <span id="connectionStatus">Online</span>
-                    </span>
-                    <button onclick="refreshFinanceData()" class="finance-btn finance-btn-outline finance-btn-sm">
-                        <i class="fas fa-sync-alt"></i>
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button onclick="refreshFinanceData()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button onclick="exportAllData()" class="btn-action" style="background: white; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                        <i class="fas fa-download"></i> Export All
                     </button>
                 </div>
             </div>
 
             <!-- ===== TOAST CONTAINER ===== -->
-            <div id="financeToastContainer" class="finance-toast-container"></div>
+            <div id="financeToastContainer" class="toast-container"></div>
 
             <!-- ============================================================ -->
             <!-- TAB 1: DASHBOARD                                             -->
             <!-- ============================================================ -->
-            <section id="tab-dashboard" class="finance-tab-content active">
+            <section id="tab-dashboard" class="tab-content active">
                 <!-- Stats Cards -->
-                <div class="finance-cards" id="dashboardStats">
-                    <div class="finance-card">
-                        <h3>Total Students</h3>
-                        <p class="data" id="totalStudents">0</p>
+                <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 25px;">
+                    <div class="card" style="border-top: 4px solid #4C1D95;">
+                        <h3 style="color: #4C1D95;">Total Students</h3>
+                        <p class="data" id="totalStudents" style="color: #4C1D95;">0</p>
                         <p class="minor-data">Active accounts</p>
                     </div>
-                    <div class="finance-card border-green">
-                        <h3>Total Collected</h3>
-                        <p class="data" id="totalCollected">KES 0</p>
-                        <p class="minor-data">This year</p>
+                    <div class="card" style="border-top: 4px solid #059669;">
+                        <h3 style="color: #059669;">Total Collected</h3>
+                        <p class="data" id="totalCollected" style="color: #059669;">KES 0</p>
+                        <p class="minor-data">All time</p>
                     </div>
-                    <div class="finance-card border-orange">
-                        <h3>Outstanding Balance</h3>
-                        <p class="data" id="outstandingBalance">KES 0</p>
+                    <div class="card" style="border-top: 4px solid #FDB913;">
+                        <h3 style="color: #d97706;">Outstanding Balance</h3>
+                        <p class="data" id="outstandingBalance" style="color: #d97706;">KES 0</p>
                         <p class="minor-data">Across all students</p>
                     </div>
-                    <div class="finance-card border-red">
-                        <h3>Overdue Accounts</h3>
-                        <p class="data" id="overdueAccounts">0</p>
+                    <div class="card" style="border-top: 4px solid #dc2626;">
+                        <h3 style="color: #dc2626;">Overdue Accounts</h3>
+                        <p class="data" id="overdueAccounts" style="color: #dc2626;">0</p>
                         <p class="minor-data">Balance &gt; 30 days</p>
                     </div>
-                    <div class="finance-card border-purple">
-                        <h3>Today's Payments</h3>
-                        <p class="data" id="todayPayments">KES 0</p>
+                    <div class="card" style="border-top: 4px solid #8b5cf6;">
+                        <h3 style="color: #6d28d9;">Today's Payments</h3>
+                        <p class="data" id="todayPayments" style="color: #6d28d9;">KES 0</p>
                         <p class="minor-data">Received today</p>
                     </div>
-                    <div class="finance-card border-blue">
-                        <h3>Total Transactions</h3>
-                        <p class="data" id="totalTransactions">0</p>
+                    <div class="card" style="border-top: 4px solid #3b82f6;">
+                        <h3 style="color: #2563eb;">Total Transactions</h3>
+                        <p class="data" id="totalTransactions" style="color: #2563eb;">0</p>
                         <p class="minor-data">All time</p>
                     </div>
                 </div>
 
                 <!-- Charts Row -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-bottom: 25px;">
-                    <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
+                    <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                         <h4 style="margin: 0 0 15px 0; color: #0A3D62;">
                             <i class="fas fa-chart-line" style="color: #4C1D95;"></i> Monthly Collections
                         </h4>
                         <canvas id="monthlyCollectionsChart" height="200"></canvas>
                     </div>
-                    <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
+                    <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                         <h4 style="margin: 0 0 15px 0; color: #0A3D62;">
                             <i class="fas fa-chart-pie" style="color: #4C1D95;"></i> Payment Status Distribution
                         </h4>
@@ -895,15 +535,15 @@ body {
                 </div>
 
                 <!-- Recent Transactions -->
-                <div class="finance-table-container">
+                <div class="table-container">
                     <div class="table-header">
                         <h4><i class="fas fa-clock"></i> Recent Transactions</h4>
-                        <button onclick="showTab('transactions')" class="finance-btn finance-btn-primary finance-btn-sm">
+                        <button onclick="showTab('transactions')" class="btn-action btn-primary btn-sm">
                             View All <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
                     <div style="overflow-x: auto;">
-                        <table class="finance-table">
+                        <table class="modern-table">
                             <thead>
                                 <tr>
                                     <th>Date</th>
@@ -917,7 +557,8 @@ body {
                             <tbody id="recentTransactions">
                                 <tr>
                                     <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <i class="fas fa-spinner fa-spin"></i> Loading transactions...
+                                        <div class="loading-spinner"></div>
+                                        <p style="margin-top: 10px;">Loading transactions...</p>
                                     </td>
                                 </tr>
                             </tbody>
@@ -929,48 +570,53 @@ body {
             <!-- ============================================================ -->
             <!-- TAB 2: STUDENT ACCOUNTS                                      -->
             <!-- ============================================================ -->
-            <section id="tab-accounts" class="finance-tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
-                    <h2 style="color: #0A3D62; margin: 0;">
-                        <i class="fas fa-users"></i> Student Accounts
-                    </h2>
+            <section id="tab-accounts" class="tab-content">
+                <div style="background: linear-gradient(135deg, #4C1D95, #6d28d9); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="color: white; margin: 0; font-weight: 600;">
+                            <i class="fas fa-users"></i> Student Accounts
+                        </h3>
+                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
+                            View and manage all student financial accounts
+                        </p>
+                    </div>
                     <div style="display: flex; gap: 10px;">
-                        <button onclick="exportAccountsToCSV()" class="finance-btn finance-btn-success finance-btn-sm">
+                        <button onclick="exportAccountsToCSV()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
                             <i class="fas fa-download"></i> Export CSV
                         </button>
-                        <button onclick="refreshAccounts()" class="finance-btn finance-btn-outline finance-btn-sm">
+                        <button onclick="refreshAccounts()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                     </div>
                 </div>
 
                 <!-- Filter Bar -->
-                <div class="finance-filter-bar">
+                <div class="filter-bar">
                     <input type="text" id="accountSearch" placeholder="🔍 Search by name or ID..." onkeyup="filterAccounts()">
                     <select id="accountStatusFilter" onchange="filterAccounts()">
                         <option value="all">All Status</option>
-                        <option value="positive">✅ Positive Balance</option>
-                        <option value="zero">➖ Zero Balance</option>
-                        <option value="negative">⚠️ Outstanding</option>
-                        <option value="overdue">🔴 Overdue (>30 days)</option>
+                        <option value="paid">✅ Paid</option>
+                        <option value="partial">⚠️ Partial</option>
+                        <option value="outstanding">🔴 Outstanding</option>
+                        <option value="overdue">🚨 Overdue</option>
                     </select>
                     <select id="accountProgramFilter" onchange="filterAccounts()">
                         <option value="all">All Programs</option>
                         <option value="KRCHN">KRCHN</option>
                         <option value="TVET">TVET</option>
                     </select>
-                    <button onclick="filterAccounts()" class="finance-btn finance-btn-primary finance-btn-sm">
+                    <button onclick="filterAccounts()" class="btn-action btn-primary btn-sm">
                         <i class="fas fa-filter"></i> Apply
                     </button>
-                    <button onclick="resetAccountFilters()" class="finance-btn finance-btn-outline finance-btn-sm">
+                    <button onclick="resetAccountFilters()" class="btn-action btn-outline btn-sm">
                         <i class="fas fa-undo"></i> Reset
                     </button>
                 </div>
 
                 <!-- Accounts Table -->
-                <div class="finance-table-container">
+                <div class="table-container">
                     <div style="overflow-x: auto;">
-                        <table class="finance-table">
+                        <table class="modern-table">
                             <thead>
                                 <tr>
                                     <th>Student Name</th>
@@ -987,7 +633,8 @@ body {
                             <tbody id="accountsTableBody">
                                 <tr>
                                     <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <i class="fas fa-spinner fa-spin"></i> Loading accounts...
+                                        <div class="loading-spinner"></div>
+                                        <p style="margin-top: 10px;">Loading accounts...</p>
                                     </td>
                                 </tr>
                             </tbody>
@@ -999,29 +646,43 @@ body {
             <!-- ============================================================ -->
             <!-- TAB 3: PAYMENTS                                              -->
             <!-- ============================================================ -->
-            <section id="tab-payments" class="finance-tab-content">
-                <h2 style="color: #0A3D62; margin: 0 0 20px 0;">
-                    <i class="fas fa-credit-card"></i> Payment Processing
-                </h2>
+            <section id="tab-payments" class="tab-content">
+                <div style="background: linear-gradient(135deg, #059669, #10b981); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="color: white; margin: 0; font-weight: 600;">
+                            <i class="fas fa-credit-card"></i> Payment Processing
+                        </h3>
+                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
+                            Record and manage all student payments
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="refreshPayments()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Record Payment Form -->
-                <div class="finance-form-container">
-                    <h3><i class="fas fa-receipt"></i> Record Payment</h3>
+                <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <h4 style="color: #0A3D62; margin: 0 0 16px 0;">
+                        <i class="fas fa-receipt"></i> Record Payment
+                    </h4>
                     <form id="paymentForm" onsubmit="event.preventDefault(); recordPayment();">
-                        <div class="finance-form-grid">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                             <div class="finance-form-group">
-                                <label>Student *</label>
-                                <select id="paymentStudent" required>
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Student *</label>
+                                <select id="paymentStudent" class="form-control" required>
                                     <option value="">-- Select Student --</option>
                                 </select>
                             </div>
                             <div class="finance-form-group">
-                                <label>Amount (KES) *</label>
-                                <input type="number" id="paymentAmount" placeholder="0.00" required step="0.01" min="0">
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Amount (KES) *</label>
+                                <input type="number" id="paymentAmount" class="form-control" placeholder="0.00" required step="0.01" min="0">
                             </div>
                             <div class="finance-form-group">
-                                <label>Payment Method *</label>
-                                <select id="paymentMethod" required>
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Payment Method *</label>
+                                <select id="paymentMethod" class="form-control" required>
                                     <option value="Cash">Cash</option>
                                     <option value="M-Pesa">M-Pesa</option>
                                     <option value="Bank Transfer">Bank Transfer</option>
@@ -1030,32 +691,32 @@ body {
                                 </select>
                             </div>
                             <div class="finance-form-group">
-                                <label>Reference Number</label>
-                                <input type="text" id="paymentReference" placeholder="Transaction ref (optional)">
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Reference Number</label>
+                                <input type="text" id="paymentReference" class="form-control" placeholder="Transaction ref (optional)">
                             </div>
                             <div class="finance-form-group">
-                                <label>Payment Date *</label>
-                                <input type="date" id="paymentDate" required>
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Payment Date *</label>
+                                <input type="date" id="paymentDate" class="form-control" required>
                             </div>
                             <div class="finance-form-group">
-                                <label>Period *</label>
-                                <select id="paymentPeriod" required>
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Period *</label>
+                                <select id="paymentPeriod" class="form-control" required>
                                     <option value="Term 1">Term 1</option>
                                     <option value="Term 2">Term 2</option>
                                     <option value="Term 3">Term 3</option>
                                     <option value="Full Year">Full Year</option>
                                 </select>
                             </div>
-                            <div class="finance-form-group full-width">
-                                <label>Notes</label>
-                                <textarea id="paymentNotes" rows="2" placeholder="Additional notes (optional)"></textarea>
+                            <div class="finance-form-group" style="grid-column: 1 / -1;">
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Notes</label>
+                                <textarea id="paymentNotes" class="form-control" rows="2" placeholder="Additional notes (optional)"></textarea>
                             </div>
                         </div>
                         <div style="margin-top: 16px; display: flex; gap: 10px;">
-                            <button type="submit" class="finance-btn finance-btn-success">
+                            <button type="submit" class="btn-action btn-success">
                                 <i class="fas fa-save"></i> Record Payment
                             </button>
-                            <button type="reset" class="finance-btn finance-btn-outline">
+                            <button type="reset" class="btn-action btn-outline">
                                 <i class="fas fa-times"></i> Clear
                             </button>
                         </div>
@@ -1063,26 +724,23 @@ body {
                 </div>
 
                 <!-- Payment History -->
-                <div class="finance-table-container">
+                <div class="table-container">
                     <div class="table-header">
                         <h4><i class="fas fa-history"></i> Payment History</h4>
                         <div style="display: flex; gap: 10px;">
-                            <button onclick="exportPaymentsToCSV()" class="finance-btn finance-btn-success finance-btn-sm">
+                            <button onclick="exportPaymentsToCSV()" class="btn-action btn-success btn-sm">
                                 <i class="fas fa-download"></i> Export
-                            </button>
-                            <button onclick="refreshPayments()" class="finance-btn finance-btn-outline finance-btn-sm">
-                                <i class="fas fa-sync-alt"></i> Refresh
                             </button>
                         </div>
                     </div>
                     <div style="overflow-x: auto;">
-                        <table class="finance-table">
+                        <table class="modern-table">
                             <thead>
                                 <tr>
                                     <th>Date</th>
                                     <th>Student</th>
                                     <th>Program</th>
-                                    <th>Amount (KES)</th>
+                                    <th>Amount</th>
                                     <th>Method</th>
                                     <th>Reference</th>
                                     <th>Period</th>
@@ -1093,7 +751,8 @@ body {
                             <tbody id="paymentsTableBody">
                                 <tr>
                                     <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <i class="fas fa-spinner fa-spin"></i> Loading payments...
+                                        <div class="loading-spinner"></div>
+                                        <p style="margin-top: 10px;">Loading payments...</p>
                                     </td>
                                 </tr>
                             </tbody>
@@ -1105,20 +764,35 @@ body {
             <!-- ============================================================ -->
             <!-- TAB 4: FEE STRUCTURE                                         -->
             <!-- ============================================================ -->
-            <section id="tab-fee-structure" class="finance-tab-content">
-                <h2 style="color: #0A3D62; margin: 0 0 20px 0;">
-                    <i class="fas fa-file-invoice"></i> Fee Structure Configuration
-                </h2>
+            <section id="tab-fee-structure" class="tab-content">
+                <div style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="color: white; margin: 0; font-weight: 600;">
+                            <i class="fas fa-file-invoice"></i> Fee Structure Configuration
+                        </h3>
+                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
+                            Configure fees for all programs
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="refreshFeeStructure()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
 
-                <div class="finance-form-container">
-                    <h3><i class="fas fa-cog"></i> Configure Fee Structure</h3>
+                <!-- Add Fee Form -->
+                <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <h4 style="color: #0A3D62; margin: 0 0 16px 0;">
+                        <i class="fas fa-plus-circle"></i> Add Fee Structure
+                    </h4>
                     <form id="feeStructureForm" onsubmit="event.preventDefault(); saveFeeStructure();">
-                        <div class="finance-form-grid">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                             <div class="finance-form-group">
-                                <label>Program *</label>
-                                <select id="feeProgram" required>
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Program *</label>
+                                <select id="feeProgram" class="form-control" required>
                                     <option value="">-- Select Program --</option>
-                                    <option value="KRCHN">KRCHN Nursing</option>
+                                    <option value="KRCHN">🎓 KRCHN Nursing</option>
                                     <option value="DPOTT">DPOTT - Perioperative Theatre</option>
                                     <option value="DCH">DCH - Community Health</option>
                                     <option value="DHRIT">DHRIT - Health Records</option>
@@ -1131,8 +805,8 @@ body {
                                 </select>
                             </div>
                             <div class="finance-form-group">
-                                <label>Block/Term *</label>
-                                <select id="feeBlock" required>
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Block/Term *</label>
+                                <select id="feeBlock" class="form-control" required>
                                     <option value="">-- Select Block --</option>
                                     <option value="Introductory">Introductory Block</option>
                                     <option value="Block 1">Block 1</option>
@@ -1144,30 +818,30 @@ body {
                                 </select>
                             </div>
                             <div class="finance-form-group">
-                                <label>Intake Year *</label>
-                                <select id="feeIntakeYear" required>
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Intake Year *</label>
+                                <select id="feeIntakeYear" class="form-control" required>
                                     <option value="">-- Select Year --</option>
                                     <option value="2024">2024</option>
                                     <option value="2025">2025</option>
-                                    <option value="2026">2026</option>
+                                    <option value="2026" selected>2026</option>
                                     <option value="2027">2027</option>
                                     <option value="2028">2028</option>
                                 </select>
                             </div>
                             <div class="finance-form-group">
-                                <label>Fee Amount (KES) *</label>
-                                <input type="number" id="feeAmount" placeholder="0.00" required step="0.01" min="0">
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Fee Amount (KES) *</label>
+                                <input type="number" id="feeAmount" class="form-control" placeholder="0.00" required step="0.01" min="0">
                             </div>
-                            <div class="finance-form-group full-width">
-                                <label>Description</label>
-                                <input type="text" id="feeDescription" placeholder="e.g., Tuition fees for Block 1">
+                            <div class="finance-form-group" style="grid-column: 1 / -1;">
+                                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Description</label>
+                                <input type="text" id="feeDescription" class="form-control" placeholder="e.g., Tuition fees for Block 1">
                             </div>
                         </div>
                         <div style="margin-top: 16px; display: flex; gap: 10px;">
-                            <button type="submit" class="finance-btn finance-btn-primary">
+                            <button type="submit" class="btn-action btn-primary">
                                 <i class="fas fa-save"></i> Save Fee Structure
                             </button>
-                            <button type="reset" class="finance-btn finance-btn-outline">
+                            <button type="reset" class="btn-action btn-outline">
                                 <i class="fas fa-times"></i> Clear
                             </button>
                         </div>
@@ -1175,21 +849,18 @@ body {
                 </div>
 
                 <!-- Current Fee Structure -->
-                <div class="finance-table-container">
+                <div class="table-container">
                     <div class="table-header">
                         <h4><i class="fas fa-list"></i> Current Fee Structure</h4>
-                        <button onclick="refreshFeeStructure()" class="finance-btn finance-btn-outline finance-btn-sm">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
                     </div>
                     <div style="overflow-x: auto;">
-                        <table class="finance-table">
+                        <table class="modern-table">
                             <thead>
                                 <tr>
                                     <th>Program</th>
                                     <th>Block/Term</th>
                                     <th>Intake Year</th>
-                                    <th>Amount (KES)</th>
+                                    <th>Amount</th>
                                     <th>Description</th>
                                     <th>Status</th>
                                     <th>Actions</th>
@@ -1198,7 +869,8 @@ body {
                             <tbody id="feeStructureTableBody">
                                 <tr>
                                     <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <i class="fas fa-spinner fa-spin"></i> Loading fee structure...
+                                        <div class="loading-spinner"></div>
+                                        <p style="margin-top: 10px;">Loading fee structure...</p>
                                     </td>
                                 </tr>
                             </tbody>
@@ -1210,48 +882,54 @@ body {
             <!-- ============================================================ -->
             <!-- TAB 5: REPORTS                                               -->
             <!-- ============================================================ -->
-            <section id="tab-reports" class="finance-tab-content">
-                <h2 style="color: #0A3D62; margin: 0 0 20px 0;">
-                    <i class="fas fa-chart-bar"></i> Financial Reports
-                </h2>
+            <section id="tab-reports" class="tab-content">
+                <div style="background: linear-gradient(135deg, #d97706, #f59e0b); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="color: white; margin: 0; font-weight: 600;">
+                            <i class="fas fa-chart-bar"></i> Financial Reports
+                        </h3>
+                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
+                            Generate and export financial reports
+                        </p>
+                    </div>
+                </div>
 
                 <!-- Report Filters -->
-                <div class="finance-filter-bar">
-                    <select id="reportType" onchange="generateReport()">
+                <div class="filter-bar">
+                    <select id="reportType" onchange="generateReport()" class="form-control" style="min-width: 160px;">
                         <option value="summary">📊 Summary Report</option>
                         <option value="collections">💰 Collections Report</option>
                         <option value="outstanding">⚠️ Outstanding Report</option>
                         <option value="program">📚 Program-wise Report</option>
-                        <option value="monthly">📅 Monthly Report</option>
                     </select>
-                    <select id="reportProgram" onchange="generateReport()">
+                    <select id="reportProgram" onchange="generateReport()" class="form-control" style="min-width: 140px;">
                         <option value="all">All Programs</option>
                         <option value="KRCHN">KRCHN</option>
                         <option value="TVET">TVET</option>
                     </select>
-                    <select id="reportYear" onchange="generateReport()">
+                    <select id="reportYear" onchange="generateReport()" class="form-control" style="min-width: 120px;">
                         <option value="2024">2024</option>
                         <option value="2025">2025</option>
                         <option value="2026" selected>2026</option>
                         <option value="2027">2027</option>
                         <option value="2028">2028</option>
                     </select>
-                    <button onclick="generateReport()" class="finance-btn finance-btn-primary">
-                        <i class="fas fa-chart-bar"></i> Generate Report
+                    <button onclick="generateReport()" class="btn-action btn-primary">
+                        <i class="fas fa-chart-bar"></i> Generate
                     </button>
-                    <button onclick="exportReportToPDF()" class="finance-btn finance-btn-success">
-                        <i class="fas fa-file-pdf"></i> Export PDF
+                    <button onclick="exportReportToPDF()" class="btn-action btn-success">
+                        <i class="fas fa-file-pdf"></i> PDF
                     </button>
-                    <button onclick="exportReportToCSV()" class="finance-btn finance-btn-success">
-                        <i class="fas fa-file-excel"></i> Export CSV
+                    <button onclick="exportReportToCSV()" class="btn-action btn-outline">
+                        <i class="fas fa-file-excel"></i> CSV
                     </button>
                 </div>
 
                 <!-- Report Content -->
-                <div id="reportContent" style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; min-height: 300px;">
+                <div id="reportContent" style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; min-height: 300px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                     <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
                         <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
-                        <h3>Select report type and click "Generate Report"</h3>
+                        <h3>Select report type and click "Generate"</h3>
                         <p>View financial reports, collections, and outstanding balances</p>
                     </div>
                 </div>
@@ -1260,40 +938,48 @@ body {
             <!-- ============================================================ -->
             <!-- TAB 6: TRANSACTIONS                                          -->
             <!-- ============================================================ -->
-            <section id="tab-transactions" class="finance-tab-content">
-                <h2 style="color: #0A3D62; margin: 0 0 20px 0;">
-                    <i class="fas fa-exchange-alt"></i> All Transactions
-                </h2>
+            <section id="tab-transactions" class="tab-content">
+                <div style="background: linear-gradient(135deg, #2563eb, #3b82f6); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="color: white; margin: 0; font-weight: 600;">
+                            <i class="fas fa-exchange-alt"></i> All Transactions
+                        </h3>
+                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
+                            View and filter all financial transactions
+                        </p>
+                    </div>
+                </div>
 
-                <div class="finance-filter-bar">
-                    <input type="text" id="transactionSearch" placeholder="🔍 Search transactions..." onkeyup="filterTransactions()">
-                    <select id="transactionStatusFilter" onchange="filterTransactions()">
+                <!-- Transaction Filters -->
+                <div class="filter-bar">
+                    <input type="text" id="transactionSearch" placeholder="🔍 Search transactions..." onkeyup="filterTransactions()" class="form-control" style="min-width: 180px;">
+                    <select id="transactionStatusFilter" onchange="filterTransactions()" class="form-control" style="min-width: 140px;">
                         <option value="all">All Status</option>
                         <option value="completed">✅ Completed</option>
                         <option value="pending">⏳ Pending</option>
                         <option value="failed">❌ Failed</option>
-                        <option value="refunded">🔄 Refunded</option>
                     </select>
-                    <input type="date" id="transactionDateFrom" onchange="filterTransactions()">
-                    <input type="date" id="transactionDateTo" onchange="filterTransactions()">
-                    <button onclick="filterTransactions()" class="finance-btn finance-btn-primary finance-btn-sm">
-                        <i class="fas fa-filter"></i> Filter
+                    <input type="date" id="transactionDateFrom" onchange="filterTransactions()" class="form-control" style="min-width: 140px;">
+                    <input type="date" id="transactionDateTo" onchange="filterTransactions()" class="form-control" style="min-width: 140px;">
+                    <button onclick="filterTransactions()" class="btn-action btn-primary btn-sm">
+                        <i class="fas fa-filter"></i> Apply
                     </button>
-                    <button onclick="resetTransactionFilters()" class="finance-btn finance-btn-outline finance-btn-sm">
+                    <button onclick="resetTransactionFilters()" class="btn-action btn-outline btn-sm">
                         <i class="fas fa-undo"></i> Reset
                     </button>
                 </div>
 
-                <div class="finance-table-container">
+                <!-- Transactions Table -->
+                <div class="table-container">
                     <div style="overflow-x: auto;">
-                        <table class="finance-table">
+                        <table class="modern-table">
                             <thead>
                                 <tr>
                                     <th>Transaction ID</th>
                                     <th>Date</th>
                                     <th>Student</th>
                                     <th>Program</th>
-                                    <th>Amount (KES)</th>
+                                    <th>Amount</th>
                                     <th>Method</th>
                                     <th>Reference</th>
                                     <th>Status</th>
@@ -1303,7 +989,8 @@ body {
                             <tbody id="transactionsTableBody">
                                 <tr>
                                     <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <i class="fas fa-spinner fa-spin"></i> Loading transactions...
+                                        <div class="loading-spinner"></div>
+                                        <p style="margin-top: 10px;">Loading transactions...</p>
                                     </td>
                                 </tr>
                             </tbody>
@@ -1315,66 +1002,74 @@ body {
             <!-- ============================================================ -->
             <!-- TAB 7: SETTINGS                                              -->
             <!-- ============================================================ -->
-            <section id="tab-settings" class="finance-tab-content">
-                <h2 style="color: #0A3D62; margin: 0 0 20px 0;">
-                    <i class="fas fa-cog"></i> Finance Module Settings
-                </h2>
+            <section id="tab-settings" class="tab-content">
+                <div style="background: linear-gradient(135deg, #6b7280, #9ca3af); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="color: white; margin: 0; font-weight: 600;">
+                            <i class="fas fa-cog"></i> Finance Module Settings
+                        </h3>
+                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
+                            Configure module preferences
+                        </p>
+                    </div>
+                </div>
 
-                <div class="finance-form-container">
-                    <h3><i class="fas fa-sliders-h"></i> General Settings</h3>
-                    <div class="finance-form-grid">
+                <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <h4 style="color: #0A3D62; margin: 0 0 16px 0;">
+                        <i class="fas fa-sliders-h"></i> General Settings
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                         <div class="finance-form-group">
-                            <label>Module Status</label>
-                            <select id="moduleStatus">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Module Status</label>
+                            <select id="moduleStatus" class="form-control">
                                 <option value="active">🟢 Active</option>
-                                <option value="maintenance">🟡 Maintenance Mode</option>
+                                <option value="maintenance">🟡 Maintenance</option>
                                 <option value="disabled">🔴 Disabled</option>
                             </select>
                         </div>
                         <div class="finance-form-group">
-                            <label>Default Currency</label>
-                            <select id="defaultCurrency">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Default Currency</label>
+                            <select id="defaultCurrency" class="form-control">
                                 <option value="KES">KES - Kenyan Shilling</option>
                                 <option value="USD">USD - US Dollar</option>
                             </select>
                         </div>
                         <div class="finance-form-group">
-                            <label>Payment Terms</label>
-                            <select id="paymentTerms">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Payment Terms</label>
+                            <select id="paymentTerms" class="form-control">
                                 <option value="30">30 Days</option>
                                 <option value="60">60 Days</option>
                                 <option value="90">90 Days</option>
                             </select>
                         </div>
                         <div class="finance-form-group">
-                            <label>Late Payment Fee (%)</label>
-                            <input type="number" id="lateFee" value="5" min="0" max="100">
-                        </div>
-                        <div class="finance-form-group full-width">
-                            <label>Module Description</label>
-                            <textarea id="moduleDescription" rows="2">NCHSM Finance Management Module - Handles student fees, payments, and financial reports.</textarea>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Late Fee (%)</label>
+                            <input type="number" id="lateFee" class="form-control" value="5" min="0" max="100">
                         </div>
                     </div>
                     <div style="margin-top: 16px;">
-                        <button onclick="saveSettings()" class="finance-btn finance-btn-primary">
+                        <button onclick="saveSettings()" class="btn-action btn-primary">
                             <i class="fas fa-save"></i> Save Settings
                         </button>
                     </div>
                 </div>
 
-                <div class="finance-form-container" style="margin-top: 20px;">
-                    <h3><i class="fas fa-database"></i> Data Management</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                        <button onclick="exportAllData()" class="finance-btn finance-btn-success">
+                <!-- Data Management -->
+                <div style="background: white; border-radius: 12px; padding: 24px; margin-top: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <h4 style="color: #0A3D62; margin: 0 0 16px 0;">
+                        <i class="fas fa-database"></i> Data Management
+                    </h4>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button onclick="exportAllData()" class="btn-action btn-success">
                             <i class="fas fa-download"></i> Export All Data
                         </button>
-                        <button onclick="backupData()" class="finance-btn finance-btn-warning">
+                        <button onclick="backupData()" class="btn-action btn-warning">
                             <i class="fas fa-archive"></i> Backup Data
                         </button>
-                        <button onclick="clearCache()" class="finance-btn finance-btn-outline">
+                        <button onclick="clearCache()" class="btn-action btn-outline">
                             <i class="fas fa-broom"></i> Clear Cache
                         </button>
-                        <button onclick="resetModule()" class="finance-btn finance-btn-danger">
+                        <button onclick="resetModule()" class="btn-action btn-danger">
                             <i class="fas fa-exclamation-triangle"></i> Reset Module
                         </button>
                     </div>
@@ -1384,20 +1079,23 @@ body {
                     </div>
                 </div>
 
-                <div class="finance-form-container" style="margin-top: 20px;">
-                    <h3><i class="fas fa-link"></i> Integration Status</h3>
+                <!-- Integration Status -->
+                <div style="background: white; border-radius: 12px; padding: 24px; margin-top: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <h4 style="color: #0A3D62; margin: 0 0 16px 0;">
+                        <i class="fas fa-link"></i> Integration Status
+                    </h4>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
                         <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <span><i class="fas fa-user-shield" style="color: #4C1D95;"></i> Super Admin</span>
-                                <span class="finance-badge finance-badge-success">Connected</span>
+                                <span class="badge badge-success">Connected</span>
                             </div>
                             <small style="color: #64748b;">Full access to all features</small>
                         </div>
                         <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span><i class="fas fa-user-graduate" style="color: #10b981;"></i> Student Dashboard</span>
-                                <span class="finance-badge finance-badge-success">Connected</span>
+                                <span><i class="fas fa-user-graduate" style="color: #059669;"></i> Student Dashboard</span>
+                                <span class="badge badge-success">Connected</span>
                             </div>
                             <small style="color: #64748b;">View balances, payment history</small>
                         </div>
@@ -1412,796 +1110,50 @@ body {
     <!-- ===== MODALS ===== -->
     <!-- ============================================================ -->
 
-    <!-- ===== PAYMENT DETAIL MODAL ===== -->
-    <div id="paymentDetailModal" class="finance-modal">
-        <div class="finance-modal-content">
-            <div class="finance-modal-header">
-                <h3><i class="fas fa-receipt"></i> Payment Details</h3>
-                <button class="finance-modal-close" onclick="closeModal('paymentDetailModal')">&times;</button>
-            </div>
-            <div class="finance-modal-body" id="paymentDetailBody">
-                <div class="finance-loading">
-                    <div class="spinner"></div>
-                    <span>Loading payment details...</span>
+    <!-- Payment Detail Modal -->
+    <div id="paymentDetailModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('paymentDetailModal')">&times;</button>
+            <h3 style="color: #0A3D62; margin-bottom: 16px;">
+                <i class="fas fa-receipt"></i> Payment Details
+            </h3>
+            <div id="paymentDetailBody">
+                <div style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 10px; color: #94a3b8;">Loading...</p>
                 </div>
             </div>
-            <div class="finance-modal-footer">
-                <button onclick="printPaymentReceipt()" class="finance-btn finance-btn-primary">
-                    <i class="fas fa-print"></i> Print Receipt
-                </button>
-                <button onclick="closeModal('paymentDetailModal')" class="finance-btn finance-btn-outline">
-                    Close
-                </button>
+            <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                <button onclick="closeModal('paymentDetailModal')" class="btn-action btn-outline">Close</button>
             </div>
         </div>
     </div>
 
-    <!-- ===== STUDENT ACCOUNT DETAIL MODAL ===== -->
-    <div id="studentAccountModal" class="finance-modal">
-        <div class="finance-modal-content" style="max-width: 800px;">
-            <div class="finance-modal-header">
-                <h3><i class="fas fa-user"></i> Student Account Details</h3>
-                <button class="finance-modal-close" onclick="closeModal('studentAccountModal')">&times;</button>
-            </div>
-            <div class="finance-modal-body" id="studentAccountBody">
-                <div class="finance-loading">
-                    <div class="spinner"></div>
-                    <span>Loading student account...</span>
+    <!-- Student Account Modal -->
+    <div id="studentAccountModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 800px;">
+            <button class="modal-close" onclick="closeModal('studentAccountModal')">&times;</button>
+            <h3 style="color: #0A3D62; margin-bottom: 16px;">
+                <i class="fas fa-user"></i> Student Account Details
+            </h3>
+            <div id="studentAccountBody">
+                <div style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 10px; color: #94a3b8;">Loading...</p>
                 </div>
             </div>
-            <div class="finance-modal-footer">
-                <button onclick="generateStudentStatement()" class="finance-btn finance-btn-primary">
-                    <i class="fas fa-file-invoice"></i> Generate Statement
-                </button>
-                <button onclick="closeModal('studentAccountModal')" class="finance-btn finance-btn-outline">
-                    Close
-                </button>
+            <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                <button onclick="closeModal('studentAccountModal')" class="btn-action btn-outline">Close</button>
             </div>
         </div>
     </div>
 
-<!-- ============================================================ -->
-<!-- ===== JAVASCRIPT - WORKING WITH DATA FETCHING ===== -->
-<!-- ============================================================ -->
-<script>
-    // ============================================================
-    // HIDE .html EXTENSION
-    // ============================================================
-    if (window.location.pathname.endsWith('.html')) {
-        const cleanPath = window.location.pathname.replace(/\.html$/, '');
-        window.history.replaceState({}, '', cleanPath);
-    }
-
-    // ============================================================
-    // SUPABASE CONFIG
-    // ============================================================
-    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    window.sb = supabaseClient;
-
-    console.log('🔗 Supabase initialized:', !!supabaseClient);
-
-    // Table name
-    const USER_TABLE = 'consolidated_user_profiles_table';
-    const ALLOWED_ROLES = ['superadmin', 'finance_officer'];
-
-    // ============================================================
-    // CHECK AUTHENTICATION ON LOAD
-    // ============================================================
-    document.addEventListener('DOMContentLoaded', async function() {
-        console.log('📝 Finance Dashboard loading...');
-        
-        if (!supabaseClient) {
-            console.error('❌ Supabase not available');
-            return;
-        }
-        
-        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-        
-        if (sessionError || !session) {
-            console.log('⚠️ No session found');
-            logoutFinance();
-            return;
-        }
-        
-        const userId = session.user.id;
-        const userEmail = session.user.email;
-        
-        console.log('👤 User ID:', userId);
-        console.log('👤 User Email:', userEmail);
-        
-        // Get user data
-        let userData = await getUserFinanceData(userId);
-        
-        if (!userData) {
-            console.log('⚠️ No profile by ID, checking by email...');
-            const { data: emailData, error: emailError } = await supabaseClient
-                .from(USER_TABLE)
-                .select('*')
-                .eq('email', userEmail)
-                .maybeSingle();
-            
-            if (!emailError && emailData) {
-                userData = emailData;
-                console.log('✅ Found user by email:', userData.full_name);
-            }
-        }
-        
-        if (!userData) {
-            console.log('⚠️ No profile found');
-            logoutFinance();
-            return;
-        }
-        
-        if (!ALLOWED_ROLES.includes(userData.role)) {
-            console.log('⚠️ Invalid role:', userData.role);
-            logoutFinance();
-            return;
-        }
-        
-        // Update UI
-        document.getElementById('userNameDisplay').textContent = userData.full_name || 'Finance Officer';
-        document.getElementById('sidebarUserRole').textContent = userData.role || 'Administrator';
-        document.getElementById('userRoleDisplay').textContent = userData.role === 'superadmin' ? 'Super Admin' : 'Finance Officer';
-        
-        updateCurrentDate();
-        
-        // Load ALL dashboard data
-        await loadDashboardData();
-        await loadStudentAccounts();
-        await loadAllPayments();
-        await loadFeeStructure();
-        
-        console.log('✅ Dashboard ready for:', userData.full_name);
-    });
-
-    // ============================================================
-    // GET USER FINANCE DATA
-    // ============================================================
-    async function getUserFinanceData(userId) {
-        try {
-            const { data, error } = await supabaseClient
-                .from(USER_TABLE)
-                .select('*')
-                .eq('id', userId)
-                .maybeSingle();
-            
-            if (error) {
-                console.warn('⚠️ Error fetching user:', error);
-                return null;
-            }
-            return data;
-        } catch (error) {
-            console.warn('⚠️ Error:', error);
-            return null;
-        }
-    }
-
-    // ============================================================
-    // UPDATE CURRENT DATE
-    // ============================================================
-    function updateCurrentDate() {
-        const dateDisplay = document.getElementById('currentDate');
-        if (dateDisplay) {
-            const now = new Date();
-            dateDisplay.textContent = now.toLocaleDateString('en-KE', { 
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-            });
-        }
-    }
-
-    // ============================================================
-    // LOAD DASHBOARD DATA - FIXED
-    // ============================================================
-    async function loadDashboardData() {
-        console.log('📊 Loading dashboard data...');
-        
-        try {
-            // 1. Get total students
-            const { count: totalStudents } = await supabaseClient
-                .from(USER_TABLE)
-                .select('*', { count: 'exact', head: true })
-                .eq('role', 'student');
-            
-            document.getElementById('totalStudents').textContent = totalStudents || 0;
-            document.getElementById('accountsBadge').textContent = totalStudents || 0;
-            console.log('✅ Total students:', totalStudents);
-            
-            // 2. Get total collected (completed payments)
-            const { data: payments, error: paymentsError } = await supabaseClient
-                .from('finance_payments')
-                .select('amount')
-                .eq('status', 'completed');
-            
-            if (!paymentsError && payments) {
-                const totalCollected = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                document.getElementById('totalCollected').textContent = 'KES ' + totalCollected.toLocaleString();
-                console.log('✅ Total collected:', totalCollected);
-            }
-            
-            // 3. Get outstanding balance
-            const { data: accounts, error: accountsError } = await supabaseClient
-                .from('finance_student_accounts')
-                .select('balance')
-                .gt('balance', 0);
-            
-            if (!accountsError && accounts) {
-                const outstanding = accounts.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0);
-                document.getElementById('outstandingBalance').textContent = 'KES ' + outstanding.toLocaleString();
-                document.getElementById('overdueAccounts').textContent = accounts.length || 0;
-                document.getElementById('dashboardBadge').textContent = accounts.length || 0;
-                console.log('✅ Outstanding balance:', outstanding);
-            }
-            
-            // 4. Get today's payments
-            const today = new Date().toISOString().split('T')[0];
-            const { data: todayPayments, error: todayError } = await supabaseClient
-                .from('finance_payments')
-                .select('amount')
-                .eq('payment_date', today)
-                .eq('status', 'completed');
-            
-            if (!todayError && todayPayments) {
-                const todayTotal = todayPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-                document.getElementById('todayPayments').textContent = 'KES ' + todayTotal.toLocaleString();
-                console.log('✅ Today payments:', todayTotal);
-            }
-            
-            // 5. Get total transactions
-            const { count: totalTransactions } = await supabaseClient
-                .from('finance_payments')
-                .select('*', { count: 'exact', head: true });
-            
-            document.getElementById('totalTransactions').textContent = totalTransactions || 0;
-            console.log('✅ Total transactions:', totalTransactions);
-            
-            // 6. Load recent transactions
-            await loadRecentTransactions();
-            
-            // 7. Load charts
-            await loadCharts();
-            
-        } catch (error) {
-            console.error('❌ Error loading dashboard:', error);
-        }
-    }
-
-    // ============================================================
-    // LOAD RECENT TRANSACTIONS
-    // ============================================================
-    async function loadRecentTransactions() {
-        try {
-            const { data: transactions, error } = await supabaseClient
-                .from('finance_payments')
-                .select('*')
-                .order('payment_date', { ascending: false })
-                .limit(10);
-            
-            if (error) throw error;
-            
-            const tbody = document.getElementById('recentTransactions');
-            if (!tbody) return;
-            
-            if (!transactions || transactions.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
-                            <i class="fas fa-info-circle"></i> No recent transactions
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            tbody.innerHTML = transactions.map(t => {
-                const statusColors = {
-                    completed: 'background:#d1fae5; color:#059669;',
-                    pending: 'background:#fef3c7; color:#d97706;',
-                    failed: 'background:#fee2e2; color:#dc2626;'
-                };
-                return `
-                    <tr>
-                        <td>${t.payment_date || '-'}</td>
-                        <td><strong>${t.student_name || 'N/A'}</strong></td>
-                        <td>${t.program || '-'}</td>
-                        <td><strong>KES ${(t.amount || 0).toLocaleString()}</strong></td>
-                        <td>${t.payment_method || '-'}</td>
-                        <td>
-                            <span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;${statusColors[t.status] || statusColors.pending}">
-                                ${t.status ? t.status.charAt(0).toUpperCase() + t.status.slice(1) : 'Pending'}
-                            </span>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            
-            console.log('✅ Recent transactions loaded:', transactions.length);
-            
-        } catch (error) {
-            console.error('❌ Error loading recent transactions:', error);
-        }
-    }
-
-    // ============================================================
-    // LOAD CHARTS
-    // ============================================================
-    async function loadCharts() {
-        try {
-            // Destroy existing charts
-            if (window.monthlyChart) {
-                window.monthlyChart.destroy();
-                window.monthlyChart = null;
-            }
-            if (window.statusChart) {
-                window.statusChart.destroy();
-                window.statusChart = null;
-            }
-            
-            // Get monthly data
-            const { data: monthlyData, error: monthlyError } = await supabaseClient
-                .from('finance_payments')
-                .select('payment_date, amount')
-                .eq('status', 'completed');
-            
-            // Process monthly data
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const monthlyTotals = new Array(12).fill(0);
-            
-            if (!monthlyError && monthlyData) {
-                monthlyData.forEach(p => {
-                    if (p.payment_date) {
-                        const date = new Date(p.payment_date);
-                        const month = date.getMonth();
-                        monthlyTotals[month] += parseFloat(p.amount) || 0;
-                    }
-                });
-            }
-            
-            // Monthly chart
-            const monthlyCtx = document.getElementById('monthlyCollectionsChart');
-            if (monthlyCtx) {
-                window.monthlyChart = new Chart(monthlyCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: months,
-                        datasets: [{
-                            label: 'Monthly Collections (KES)',
-                            data: monthlyTotals,
-                            backgroundColor: 'rgba(76, 29, 149, 0.7)',
-                            borderColor: '#4C1D95',
-                            borderWidth: 2,
-                            borderRadius: 4,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { callback: function(value) { return 'KES ' + (value / 1000).toFixed(0) + 'k'; } }
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Get status data
-            const { data: statusData, error: statusError } = await supabaseClient
-                .from('finance_payments')
-                .select('status');
-            
-            if (!statusError && statusData) {
-                const statusCounts = { completed: 0, pending: 0, failed: 0, refunded: 0 };
-                statusData.forEach(p => {
-                    if (statusCounts[p.status] !== undefined) statusCounts[p.status]++;
-                });
-                
-                const statusCtx = document.getElementById('paymentStatusChart');
-                if (statusCtx) {
-                    window.statusChart = new Chart(statusCtx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
-                            datasets: [{
-                                data: [statusCounts.completed, statusCounts.pending, statusCounts.failed, statusCounts.refunded],
-                                backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-                                borderWidth: 0,
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: true,
-                            plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
-                                }
-                            },
-                            cutout: '60%'
-                        }
-                    });
-                }
-            }
-            
-            console.log('✅ Charts loaded');
-            
-        } catch (error) {
-            console.error('❌ Error loading charts:', error);
-        }
-    }
-
-    // ============================================================
-    // LOAD STUDENT ACCOUNTS
-    // ============================================================
-    async function loadStudentAccounts() {
-        try {
-            console.log('📊 Loading student accounts...');
-            
-            const { data: accounts, error } = await supabaseClient
-                .from('finance_student_accounts')
-                .select('*')
-                .order('student_name', { ascending: true });
-            
-            if (error) throw error;
-            
-            const tbody = document.getElementById('accountsTableBody');
-            if (!tbody) return;
-            
-            if (!accounts || accounts.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                            <i class="fas fa-info-circle"></i> No student accounts found
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            tbody.innerHTML = accounts.map(acc => {
-                const balance = parseFloat(acc.balance) || 0;
-                const status = balance === 0 ? 'paid' : 
-                              balance > 0 && balance <= 10000 ? 'partial' : 'outstanding';
-                const statusLabel = status === 'paid' ? '✅ Paid' :
-                                   status === 'partial' ? '⚠️ Partial' : '🔴 Outstanding';
-                const statusClass = status === 'paid' ? 'finance-badge-success' :
-                                   status === 'partial' ? 'finance-badge-warning' : 'finance-badge-danger';
-                
-                return `
-                    <tr>
-                        <td><strong>${acc.student_name || 'N/A'}</strong></td>
-                        <td>${acc.student_id || '-'}</td>
-                        <td>${acc.program || '-'}</td>
-                        <td>${acc.intake_year || '-'}</td>
-                        <td>KES ${(acc.total_fees_due || 0).toLocaleString()}</td>
-                        <td>KES ${(acc.total_paid || 0).toLocaleString()}</td>
-                        <td><strong>KES ${balance.toLocaleString()}</strong></td>
-                        <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
-                        <td>
-                            <button onclick="viewStudentAccount('${acc.student_id}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button onclick="viewStudentPayments('${acc.student_id}')" class="finance-btn finance-btn-outline finance-btn-sm">
-                                <i class="fas fa-receipt"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            
-            console.log('✅ Student accounts loaded:', accounts.length);
-            
-        } catch (error) {
-            console.error('❌ Error loading accounts:', error);
-        }
-    }
-
-    // ============================================================
-    // LOAD ALL PAYMENTS
-    // ============================================================
-    async function loadAllPayments() {
-        try {
-            console.log('💳 Loading payments...');
-            
-            const { data: payments, error } = await supabaseClient
-                .from('finance_payments')
-                .select('*')
-                .order('payment_date', { ascending: false });
-            
-            if (error) throw error;
-            
-            const tbody = document.getElementById('paymentsTableBody');
-            if (!tbody) return;
-            
-            if (!payments || payments.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                            <i class="fas fa-info-circle"></i> No payments found
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            tbody.innerHTML = payments.map(p => {
-                const statusClass = p.status === 'completed' ? 'finance-badge-success' :
-                                   p.status === 'pending' ? 'finance-badge-warning' : 'finance-badge-danger';
-                const statusLabel = p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : 'Pending';
-                
-                return `
-                    <tr>
-                        <td>${p.payment_date || '-'}</td>
-                        <td><strong>${p.student_name || 'N/A'}</strong></td>
-                        <td>${p.program || '-'}</td>
-                        <td><strong>KES ${(p.amount || 0).toLocaleString()}</strong></td>
-                        <td>${p.payment_method || '-'}</td>
-                        <td>${p.reference_number || '-'}</td>
-                        <td>${p.period || '-'}</td>
-                        <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
-                        <td>
-                            <button onclick="adminViewPayment('${p.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button onclick="adminDeletePayment('${p.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            
-            console.log('✅ Payments loaded:', payments.length);
-            
-        } catch (error) {
-            console.error('❌ Error loading payments:', error);
-        }
-    }
-
-    // ============================================================
-    // LOAD FEE STRUCTURE
-    // ============================================================
-    async function loadFeeStructure() {
-        try {
-            console.log('📋 Loading fee structure...');
-            
-            const { data: fees, error } = await supabaseClient
-                .from('finance_fee_structure')
-                .select('*')
-                .eq('is_active', true)
-                .order('created_at', { ascending: true });
-            
-            if (error) throw error;
-            
-            const tbody = document.getElementById('feeStructureTableBody');
-            if (!tbody) return;
-            
-            if (!fees || fees.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                            <i class="fas fa-info-circle"></i> No fee structure found
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            tbody.innerHTML = fees.map(f => `
-                <tr>
-                    <td><strong>${f.program || '-'}</strong></td>
-                    <td>${f.block_term || '-'}</td>
-                    <td>${f.intake_year || '-'}</td>
-                    <td><strong>KES ${(f.amount || 0).toLocaleString()}</strong></td>
-                    <td>${f.description || '-'}</td>
-                    <td><span class="finance-badge finance-badge-success">Active</span></td>
-                    <td>
-                        <button onclick="editFeeStructure('${f.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button onclick="deleteFeeStructure('${f.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-            
-            console.log('✅ Fee structure loaded:', fees.length);
-            
-        } catch (error) {
-            console.error('❌ Error loading fee structure:', error);
-        }
-    }
-
-    // ============================================================
-    // TAB NAVIGATION
-    // ============================================================
-    function showTab(tabId) {
-        console.log('📂 Opening tab:', tabId);
-        
-        document.querySelectorAll('.finance-tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        
-        const target = document.getElementById('tab-' + tabId);
-        if (target) {
-            target.classList.add('active');
-        }
-        
-        document.querySelectorAll('.finance-nav a').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabId) {
-                link.classList.add('active');
-            }
-        });
-        
-        // Load data for specific tabs
-        if (tabId === 'accounts') {
-            setTimeout(loadStudentAccounts, 300);
-        } else if (tabId === 'payments') {
-            setTimeout(loadAllPayments, 300);
-        } else if (tabId === 'fee-structure') {
-            setTimeout(loadFeeStructure, 300);
-        }
-    }
-
-    // ============================================================
-    // SIDEBAR TOGGLE
-    // ============================================================
-    function toggleSidebar() {
-        document.getElementById('financeSidebar').classList.toggle('open');
-    }
-
-    // ============================================================
-    // LOGOUT
-    // ============================================================
-    function logoutFinance() {
-        if (confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem('finance_user');
-            sessionStorage.removeItem('finance_user');
-            showToast('Logging out...', 'info');
-            setTimeout(function() {
-                window.location.href = 'financelogin.html';
-            }, 500);
-        }
-    }
-
-    // ============================================================
-    // GO TO MAIN DASHBOARD
-    // ============================================================
-    function goToMainDashboard() {
-        window.location.href = '/home';
-    }
-
-    // ============================================================
-    // REFRESH DATA
-    // ============================================================
-    function refreshFinanceData() {
-        showToast('Refreshing data...', 'info');
-        loadDashboardData();
-        setTimeout(() => {
-            showToast('Data refreshed successfully!', 'success');
-        }, 1000);
-    }
-
-    // ============================================================
-    // TOAST NOTIFICATIONS
-    // ============================================================
-    function showToast(message, type = 'info') {
-        const container = document.getElementById('financeToastContainer');
-        if (!container) return;
-        
-        const toast = document.createElement('div');
-        toast.className = `finance-toast finance-toast-${type}`;
-        toast.textContent = message;
-        container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(20px)';
-            toast.style.transition = 'all 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    }
-
-    // ============================================================
-    // CLOSE MODAL
-    // ============================================================
-    function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) modal.classList.remove('active');
-    }
-
-    // ============================================================
-    // PLACEHOLDER FUNCTIONS
-    // ============================================================
-    function filterAccounts() { console.log('Filter accounts'); }
-    function resetAccountFilters() { console.log('Reset account filters'); }
-    function exportAccountsToCSV() { showToast('Exporting accounts...', 'info'); }
-    function refreshAccounts() { loadStudentAccounts(); showToast('Accounts refreshed!', 'success'); }
-    function recordPayment() { showToast('Payment recorded!', 'success'); }
-    function refreshPayments() { loadAllPayments(); showToast('Payments refreshed!', 'success'); }
-    function exportPaymentsToCSV() { showToast('Exporting payments...', 'info'); }
-    function saveFeeStructure() { showToast('Fee structure saved!', 'success'); }
-    function refreshFeeStructure() { loadFeeStructure(); showToast('Fee structure refreshed!', 'success'); }
-    function generateReport() { showToast('Generating report...', 'info'); }
-    function exportReportToPDF() { showToast('Exporting PDF...', 'info'); }
-    function exportReportToCSV() { showToast('Exporting CSV...', 'info'); }
-    function filterTransactions() { console.log('Filter transactions'); }
-    function resetTransactionFilters() { console.log('Reset transaction filters'); }
-    function saveSettings() { showToast('Settings saved!', 'success'); }
-    function exportAllData() { showToast('Exporting all data...', 'info'); }
-    function backupData() { showToast('Backup created!', 'success'); }
-    function clearCache() { showToast('Cache cleared!', 'success'); }
-    function resetModule() { 
-        if (confirm('Are you sure you want to reset the module? This cannot be undone!')) {
-            showToast('Module reset!', 'warning');
-        }
-    }
-    function printPaymentReceipt() { showToast('Printing receipt...', 'info'); }
-    function generateStudentStatement() { showToast('Generating statement...', 'info'); }
-    function viewStudentAccount(studentId) { showToast('Viewing student: ' + studentId, 'info'); }
-    function viewStudentPayments(studentId) { showToast('Viewing payments for: ' + studentId, 'info'); }
-    function adminViewPayment(paymentId) { showToast('Viewing payment: ' + paymentId, 'info'); }
-    function adminDeletePayment(paymentId) { 
-        if (confirm('Delete this payment?')) {
-            showToast('Payment deleted!', 'success');
-        }
-    }
-    function editFeeStructure(feeId) { showToast('Editing fee: ' + feeId, 'info'); }
-    function deleteFeeStructure(feeId) { 
-        if (confirm('Delete this fee structure?')) {
-            showToast('Fee structure deleted!', 'success');
-        }
-    }
-
-    // ============================================================
-    // SETUP TAB CLICK EVENTS
-    // ============================================================
-    document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const tabId = this.getAttribute('data-tab');
-            showTab(tabId);
-        });
-    });
-
-    // Close sidebar on outside click (mobile)
-    document.addEventListener('click', function(e) {
-        const sidebar = document.getElementById('financeSidebar');
-        const toggle = document.querySelector('.finance-mobile-toggle');
-        if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('open')) {
-            if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
-                sidebar.classList.remove('open');
-            }
-        }
-    });
-
-    // Close modals on outside click
-    document.addEventListener('click', function(e) {
-        document.querySelectorAll('.finance-modal.active').forEach(modal => {
-            if (e.target === modal) {
-                modal.classList.remove('active');
-            }
-        });
-    });
-
-    // Close modals on ESC
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            document.querySelectorAll('.finance-modal.active').forEach(modal => {
-                modal.classList.remove('active');
-            });
-        }
-    });
-
-    console.log('✅ Finance Dashboard ready');
-    console.log('🔐 User:', getFinanceUser()?.email || 'Not logged in');
-</script>
+    <!-- ============================================================ -->
+    <!-- ===== JAVASCRIPT - EXTERNAL FILES ===== -->
+    <!-- ============================================================ -->
+    <script src="js/finance-config.js"></script>
+    <script src="js/finance-api.js"></script>
+    <script src="js/finance-app.js"></script>
    
 </body>
 </html>
