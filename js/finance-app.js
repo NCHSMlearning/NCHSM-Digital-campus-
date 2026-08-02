@@ -354,6 +354,7 @@ function renderRecentTransactions(transactions) {
 
 async function loadCharts() {
     try {
+        // Destroy existing charts
         if (monthlyChart) {
             monthlyChart.destroy();
             monthlyChart = null;
@@ -858,7 +859,7 @@ async function deletePayment(paymentId) {
 }
 
 // ============================================================
-// FEE STRUCTURE - REAL DATA
+// FEE STRUCTURE - REAL DATA WITH EDIT/DELETE SUPPORT
 // ============================================================
 
 async function loadFeeStructure() {
@@ -894,31 +895,155 @@ function renderFeeStructure(fees) {
         return;
     }
 
-    tbody.innerHTML = fees.map(f => `
-        <tr>
-            <td><strong>${f.program || '-'}</strong></td>
-            <td>${f.block_term || '-'}</td>
-            <td>${f.intake_year || '-'}</td>
-            <td><strong>${formatCurrency(f.amount)}</strong></td>
-            <td>${f.description || '-'}</td>
-            <td><span class="finance-badge finance-badge-success">Active</span></td>
-            <td>
-                <button onclick="editFeeStructure('${f.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button onclick="deleteFeeStructure('${f.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = fees.map(f => {
+        const isActive = f.is_active !== false;
+        return `
+            <tr>
+                <td><strong>${f.program || '-'}</strong></td>
+                <td>${f.block_term || '-'}</td>
+                <td>${f.intake_year || '-'}</td>
+                <td><strong>${formatCurrency(f.amount || 0)}</strong></td>
+                <td>${f.description || '-'}</td>
+                <td><span class="badge ${isActive ? 'badge-success' : 'badge-danger'}">${isActive ? 'Active' : 'Inactive'}</span></td>
+                <td>
+                    <button onclick="editFeeStructure('${f.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteFeeStructure('${f.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
-function saveFeeStructure() {
+// ============================================================
+// EDIT FEE STRUCTURE - LOADS DATA INTO FORM
+// ============================================================
+function editFeeStructure(feeId) {
+    console.log('📝 Editing fee:', feeId);
+    
+    try {
+        // Find the fee in the local data
+        const fee = allFeeStructures.find(f => f.id === feeId);
+        
+        if (!fee) {
+            showToast('Fee structure not found', 'error');
+            console.error('Fee not found in allFeeStructures:', feeId);
+            return;
+        }
+        
+        console.log('✅ Fee found:', fee);
+        
+        // Populate the form
+        const programEl = document.getElementById('feeProgram');
+        const blockEl = document.getElementById('feeBlock');
+        const yearEl = document.getElementById('feeIntakeYear');
+        const amountEl = document.getElementById('feeAmount');
+        const descEl = document.getElementById('feeDescription');
+        
+        if (programEl) programEl.value = fee.program || '';
+        if (blockEl) blockEl.value = fee.block_term || '';
+        if (yearEl) yearEl.value = fee.intake_year || '';
+        if (amountEl) amountEl.value = fee.amount || 0;
+        if (descEl) descEl.value = fee.description || '';
+        
+        // Add or update hidden ID field
+        let idField = document.getElementById('feeStructureId');
+        if (!idField) {
+            idField = document.createElement('input');
+            idField.type = 'hidden';
+            idField.id = 'feeStructureId';
+            document.getElementById('feeStructureForm').appendChild(idField);
+        }
+        idField.value = feeId;
+        
+        // Change submit button
+        const submitBtn = document.querySelector('#feeStructureForm button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Fee Structure';
+            submitBtn.className = 'finance-btn finance-btn-warning';
+        }
+        
+        // Add cancel button if not exists
+        let cancelBtn = document.getElementById('cancelEditFeeBtn');
+        if (!cancelBtn) {
+            cancelBtn = document.createElement('button');
+            cancelBtn.id = 'cancelEditFeeBtn';
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'finance-btn finance-btn-outline';
+            cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+            cancelBtn.onclick = cancelEditFee;
+            document.getElementById('feeStructureForm').appendChild(cancelBtn);
+        }
+        cancelBtn.style.display = 'inline-flex';
+        
+        // Update form title
+        const formTitle = document.querySelector('#feeStructureForm h4');
+        if (formTitle) {
+            formTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Fee Structure';
+        }
+        
+        // Scroll to form
+        document.getElementById('feeStructureForm').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+        
+        showToast('Editing fee structure - update and save', 'info');
+        
+    } catch (error) {
+        console.error('❌ Error editing fee:', error);
+        showToast('Error loading fee structure', 'error');
+    }
+}
+
+// ============================================================
+// CANCEL EDIT FEE
+// ============================================================
+function cancelEditFee() {
+    const form = document.getElementById('feeStructureForm');
+    if (!form) return;
+    
+    // Reset form
+    form.reset();
+    
+    // Remove hidden ID
+    const idField = document.getElementById('feeStructureId');
+    if (idField) idField.value = '';
+    
+    // Reset submit button
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Fee Structure';
+        submitBtn.className = 'finance-btn finance-btn-primary';
+    }
+    
+    // Reset form title
+    const formTitle = form.querySelector('h4');
+    if (formTitle) {
+        formTitle.innerHTML = '<i class="fas fa-plus-circle"></i> Add Fee Structure';
+    }
+    
+    // Hide cancel button
+    const cancelBtn = document.getElementById('cancelEditFeeBtn');
+    if (cancelBtn) {
+        cancelBtn.style.display = 'none';
+    }
+    
+    showToast('Edit cancelled', 'info');
+}
+
+// ============================================================
+// SAVE FEE STRUCTURE - HANDLES BOTH ADD AND UPDATE
+// ============================================================
+async function saveFeeStructure() {
+    const feeId = document.getElementById('feeStructureId')?.value || null;
     const program = document.getElementById('feeProgram')?.value;
     const block = document.getElementById('feeBlock')?.value;
     const year = document.getElementById('feeIntakeYear')?.value;
-    const amount = document.getElementById('feeAmount')?.value;
+    const amount = parseFloat(document.getElementById('feeAmount')?.value);
     const description = document.getElementById('feeDescription')?.value;
 
     if (!program || !block || !year || !amount) {
@@ -926,9 +1051,65 @@ function saveFeeStructure() {
         return;
     }
 
-    showToast('Fee structure saved successfully!', 'success');
-    document.getElementById('feeStructureForm')?.reset();
-    loadFeeStructure();
+    try {
+        if (typeof window.financeAPI === 'undefined') {
+            showToast('Finance API not available', 'error');
+            return;
+        }
+
+        const feeData = {
+            program: program,
+            blockTerm: block,
+            intakeYear: year,
+            amount: amount,
+            description: description || `${program} - ${block} Fees`
+        };
+
+        if (feeId) {
+            // UPDATE existing
+            await window.financeAPI.updateFeeStructure(feeId, feeData);
+            showToast('Fee structure updated successfully!', 'success');
+            cancelEditFee(); // Reset form
+        } else {
+            // CREATE new
+            await window.financeAPI.createFeeStructure(feeData);
+            showToast('Fee structure added successfully!', 'success');
+            document.getElementById('feeStructureForm')?.reset();
+        }
+        
+        // Reload fee structure list
+        await loadFeeStructure();
+        
+    } catch (error) {
+        console.error('❌ Error saving fee structure:', error);
+        showToast('Error saving fee structure: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// DELETE FEE STRUCTURE - WITH CONFIRMATION
+// ============================================================
+async function deleteFeeStructure(feeId) {
+    if (!confirm('Are you sure you want to delete this fee structure? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        if (typeof window.financeAPI === 'undefined') {
+            showToast('Finance API not available', 'error');
+            return;
+        }
+
+        await window.financeAPI.deleteFeeStructure(feeId);
+        showToast('Fee structure deleted successfully!', 'success');
+        
+        // Reload fee structure list
+        await loadFeeStructure();
+        
+    } catch (error) {
+        console.error('❌ Error deleting fee structure:', error);
+        showToast('Error deleting fee structure: ' + error.message, 'error');
+    }
 }
 
 function refreshFeeStructure() {
@@ -1182,21 +1363,6 @@ document.addEventListener('keydown', function(e) {
         });
     }
 });
-
-// ============================================================
-// PLACEHOLDER FUNCTIONS
-// ============================================================
-
-function editFeeStructure(feeId) {
-    showToast('Editing fee: ' + feeId, 'info');
-}
-
-function deleteFeeStructure(feeId) {
-    if (confirm('Delete this fee structure?')) {
-        showToast('Fee structure deleted!', 'success');
-        loadFeeStructure();
-    }
-}
 
 // ============================================================
 // INITIALIZATION COMPLETE
