@@ -2,14 +2,12 @@
 // ENSURE SUPABASE CLIENT IS AVAILABLE
 // ============================================================
 (function ensureSupabaseClient() {
-    // Check if sb is already defined globally
     if (typeof sb !== 'undefined' && sb) {
         window.sb = sb;
         console.log('✅ sb already defined in analytics');
         return;
     }
     
-    // Check if sb is on window
     if (typeof window.sb !== 'undefined' && window.sb) {
         console.log('✅ sb found on window in analytics');
         return;
@@ -17,7 +15,6 @@
     
     console.warn('⚠️ sb not available, waiting...');
     
-    // Wait for sb to become available
     let attempts = 0;
     const maxAttempts = 30;
     
@@ -27,7 +24,6 @@
         if (typeof window.sb !== 'undefined' && window.sb) {
             clearInterval(waitForSb);
             console.log('✅ sb became available after', attempts, 'attempts in analytics');
-            // Auto-load analytics if it was waiting
             if (typeof window.loadAnalyticsData === 'function') {
                 setTimeout(window.loadAnalyticsData, 200);
             }
@@ -37,7 +33,6 @@
         if (attempts >= maxAttempts) {
             clearInterval(waitForSb);
             console.error('❌ sb not available in analytics after', maxAttempts, 'attempts');
-            // Show error in UI
             const placeholder = document.getElementById('analyticsPlaceholder');
             if (placeholder) {
                 placeholder.innerHTML = `
@@ -52,11 +47,10 @@
     }, 200);
 })();
 
-// ✅ Use a local reference to sb that checks both
 const supabase = (typeof sb !== 'undefined') ? sb : window.sb;
 
 // ============================================================
-// SUPER ADMIN ANALYTICS MODULE - COMPLETE WITH EXACT GRADING SYSTEM
+// SUPER ADMIN ANALYTICS MODULE - COMPLETE
 // ============================================================
 
 console.log('📊 Super Admin Analytics Module Loading...');
@@ -70,7 +64,9 @@ window.analyticsChartInstances = {
     subjectChart: null,
     blockChart: null,
     programChart: null,
-    termChart: null,
+    genderChart: null,
+    examTypeChart: null,
+    gradeByExamChart: null,
     unitRankingChart: null
 };
 
@@ -147,11 +143,110 @@ window.getProgramDisplayName = function(programCode) {
 };
 
 // ============================================================
+// TERMINOLOGY SWITCHER - TVET vs KRCHN
+// ============================================================
+
+window.updateTerminology = function() {
+    const program = document.getElementById('analytics_program_select')?.value || 'all';
+    const isKRCHN = program === 'KRCHN';
+    const isTVET = program !== 'all' && program !== 'KRCHN';
+    
+    let term = 'Block';
+    let plural = 'Blocks';
+    let periodLabel = 'Block';
+    
+    if (isKRCHN) {
+        term = 'Block';
+        plural = 'Blocks';
+        periodLabel = 'Block';
+    } else if (isTVET) {
+        term = 'Term';
+        plural = 'Terms';
+        periodLabel = 'Term';
+    } else {
+        term = 'Block';
+        plural = 'Blocks';
+        periodLabel = 'Block';
+    }
+    
+    const labelMap = {
+        'periodLabel': periodLabel + '/Stage',
+        'periodChartLabel': periodLabel,
+        'periodOverviewLabel': periodLabel,
+        'periodTableLabel': periodLabel,
+        'periodSummaryLabel': periodLabel,
+        'periodTableHeader': periodLabel,
+        'examPeriodLabel': periodLabel,
+        'progressionPeriodLabel': plural.toLowerCase(),
+        'improvementPeriodLabel': periodLabel,
+        'improvementPeriodLabel2': periodLabel,
+        'terminologyLabel': `Using: ${plural} (${isKRCHN ? 'KRCHN' : isTVET ? 'TVET' : 'All'})`
+    };
+    
+    for (const [id, text] of Object.entries(labelMap)) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    }
+    
+    // Update progression column headers
+    const progCols = ['progCol1', 'progCol2', 'progCol3', 'progCol4', 'progCol5'];
+    const blockNames = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4'];
+    const termNames = ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5'];
+    const names = isKRCHN ? blockNames : (isTVET ? termNames : blockNames);
+    
+    progCols.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (el && names[index]) el.textContent = names[index];
+    });
+    
+    // Show/hide dropdown options
+    const krchnBlocks = document.getElementById('krchnBlocks');
+    const tvetTerms = document.getElementById('tvetTerms');
+    if (krchnBlocks) krchnBlocks.style.display = isKRCHN ? '' : 'none';
+    if (tvetTerms) tvetTerms.style.display = isTVET ? '' : 'none';
+    
+    // Auto-select appropriate option
+    const blockSelect = document.getElementById('analytics_block_select');
+    if (blockSelect) {
+        const currentVal = blockSelect.value;
+        const blockValues = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        const termValues = ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
+        
+        if (isTVET && blockValues.includes(currentVal)) {
+            const termMap = {
+                'Introductory': 'Term 1',
+                'Block 1': 'Term 2',
+                'Block 2': 'Term 3',
+                'Block 3': 'Term 4',
+                'Block 4': 'Term 5',
+                'Block 5': 'Term 6',
+                'Final': 'Final'
+            };
+            blockSelect.value = termMap[currentVal] || 'Term 1';
+        }
+        if (isKRCHN && termValues.includes(currentVal)) {
+            const blockMap = {
+                'Term 1': 'Introductory',
+                'Term 2': 'Block 1',
+                'Term 3': 'Block 2',
+                'Term 4': 'Block 3',
+                'Term 5': 'Block 4',
+                'Term 6': 'Block 5',
+                'Final': 'Final'
+            };
+            blockSelect.value = blockMap[currentVal] || 'Introductory';
+        }
+    }
+};
+
+// ============================================================
 // SHOW ANALYTICS LOADING
 // ============================================================
 
 window.showAnalyticsLoading = function(isLoading) {
     const placeholder = document.getElementById('analyticsPlaceholder');
+    const dynamicContent = document.getElementById('analyticsDynamicContent');
+    
     if (isLoading) {
         if (placeholder) {
             placeholder.style.display = 'block';
@@ -163,7 +258,7 @@ window.showAnalyticsLoading = function(isLoading) {
                 </div>
             `;
         }
-        document.getElementById('analyticsDynamicContent').style.display = 'none';
+        if (dynamicContent) dynamicContent.style.display = 'none';
     } else {
         if (placeholder) {
             placeholder.innerHTML = `
@@ -189,14 +284,10 @@ window.loadAnalyticsData = async function() {
     
     window.showAnalyticsLoading(true);
     
-    // ✅ Get the client
     const client = supabase || window.sb;
     if (!client) {
-        console.error('❌ Supabase client not available in loadAnalyticsData');
+        console.error('❌ Supabase client not available');
         window.showAnalyticsLoading(false);
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('Database connection error. Please refresh.', 'error');
-        }
         return;
     }
     
@@ -215,14 +306,8 @@ window.loadAnalyticsData = async function() {
                 studentQuery = studentQuery.eq('program', program);
             }
         }
-        
-        if (block !== 'all') {
-            studentQuery = studentQuery.eq('block', block);
-        }
-        
-        if (year) {
-            studentQuery = studentQuery.eq('intake_year', year);
-        }
+        if (block !== 'all') studentQuery = studentQuery.eq('block', block);
+        if (year) studentQuery = studentQuery.eq('intake_year', year);
         
         const { data: students, error: studentError } = await studentQuery;
         if (studentError) throw studentError;
@@ -236,34 +321,14 @@ window.loadAnalyticsData = async function() {
             .eq('academic_year', year)
             .in('admission_number', studentIds.length > 0 ? studentIds : ['none']);
         
-        if (block !== 'all') {
-            marksQuery = marksQuery.eq('block', block);
-        }
+        if (block !== 'all') marksQuery = marksQuery.eq('block', block);
         
         const { data: marks, error: marksError } = await marksQuery;
         if (marksError) throw marksError;
         console.log(`📊 Found ${marks?.length || 0} marks records`);
         
-        // 3. GET NCK MARKS
-        const { data: nckMarks, error: nckError } = await client
-            .from('nck_marks')
-            .select('*')
-            .eq('academic_year', year);
-        if (nckError) console.warn('⚠️ NCK marks error:', nckError);
-        
-        // 4. FILTER AND CALCULATE STATISTICS
+        // 3. PROCESS DATA
         let filteredStudents = students || [];
-        
-        if (program && program !== 'all' && program !== 'TVET') {
-            filteredStudents = filteredStudents.filter(s => s.program === program);
-        } else if (program === 'TVET') {
-            filteredStudents = filteredStudents.filter(s => s.program !== 'KRCHN');
-        }
-        
-        if (block && block !== 'all') {
-            filteredStudents = filteredStudents.filter(s => s.block === block);
-        }
-        
         const totalStudents = filteredStudents.length;
         const filteredStudentIds = filteredStudents.map(s => s.student_id);
         
@@ -274,6 +339,7 @@ window.loadAnalyticsData = async function() {
         
         const totalSubjects = [...new Set(filteredMarks?.map(m => m.subject_name) || [])].length;
         
+        // 4. CALCULATE STATISTICS
         let totalScore = 0, scoredCount = 0, passedCount = 0, atRiskCount = 0;
         let totalPoints = 0, aCount = 0, bCount = 0, cCount = 0, failCount = 0;
         
@@ -284,10 +350,8 @@ window.loadAnalyticsData = async function() {
                 totalScore += score;
                 scoredCount++;
                 totalPoints += gradeInfo.points;
-                
                 if (score >= 60) passedCount++;
                 else atRiskCount++;
-                
                 if (score >= 75) aCount++;
                 else if (score >= 65) bCount++;
                 else if (score >= 60) cCount++;
@@ -299,16 +363,19 @@ window.loadAnalyticsData = async function() {
         const passRate = scoredCount > 0 ? Math.round((passedCount / scoredCount) * 100) : 0;
         const avgPoints = scoredCount > 0 ? Math.round((totalPoints / scoredCount) * 10) / 10 : 0;
         
-        console.log(`📊 Stats: ${totalStudents} students, ${scoredCount} scored, ${passedCount} passed`);
-        console.log(`📊 Avg Score: ${avgScore}%, Avg Points: ${avgPoints}`);
-        console.log(`📊 Grade Distribution: A=${aCount}, B=${bCount}, C=${cCount}, FAIL=${failCount}`);
-        
         // 5. UPDATE STATS CARDS
         document.getElementById('analytics_total_students').textContent = totalStudents;
         document.getElementById('analytics_pass_rate').textContent = passRate + '%';
         document.getElementById('analytics_avg_score').textContent = avgScore + '%';
         document.getElementById('analytics_active_subjects').textContent = totalSubjects;
         document.getElementById('analytics_at_risk').textContent = atRiskCount;
+        document.getElementById('analytics_improvement').textContent = '0%'; // Placeholder
+        document.getElementById('analytics_failing_units').textContent = '0'; // Placeholder
+        
+        // Calculate gender ratio
+        const females = filteredStudents.filter(s => s.gender === 'Female').length;
+        const males = filteredStudents.filter(s => s.gender === 'Male').length;
+        document.getElementById('analytics_gender_ratio').textContent = `${females} : ${males}`;
         
         // 6. UPDATE PROGRAM BADGE
         const programLabel = document.getElementById('analytics_program_label');
@@ -329,6 +396,9 @@ window.loadAnalyticsData = async function() {
         window.renderBlockPerformanceChart(filteredStudents, filteredMarks);
         window.renderProgramComparisonChart(filteredStudents, filteredMarks);
         window.renderUnitRankingChart(filteredMarks);
+        window.renderGenderChart(filteredStudents, filteredMarks);
+        window.renderExamTypeChart(filteredMarks);
+        window.renderGradeByExamChart(filteredMarks);
         
         // 9. RENDER TABLES
         window.renderAnalyticsSubjectTable(filteredMarks, filteredStudents, program, block);
@@ -343,6 +413,8 @@ window.loadAnalyticsData = async function() {
         window.renderTopStudents(filteredStudents, filteredMarks);
         window.renderWeakStudents(filteredStudents, filteredMarks);
         window.renderBlockFilterStats(filteredStudents, filteredMarks, block);
+        window.renderDifficultyHeatmap(filteredMarks);
+        window.renderProgressionTable(filteredStudents, filteredMarks);
         
         // 11. SHOW CONTENT
         document.getElementById('analyticsPlaceholder').style.display = 'none';
@@ -352,9 +424,6 @@ window.loadAnalyticsData = async function() {
         
     } catch (error) {
         console.error('❌ Error loading analytics:', error);
-        if (typeof window.showNotification === 'function') {
-            window.showNotification('Error loading analytics: ' + error.message, 'error');
-        }
     } finally {
         window.showAnalyticsLoading(false);
     }
@@ -367,7 +436,6 @@ window.loadAnalyticsData = async function() {
 window.renderGradeDistributionChart = function(marks) {
     const canvas = document.getElementById('analyticsGradeChart');
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d');
     
     if (window.analyticsChartInstances.gradeChart) {
@@ -376,7 +444,6 @@ window.renderGradeDistributionChart = function(marks) {
     }
     
     const grades = { 'A': 0, 'B': 0, 'C': 0, 'FAIL': 0 };
-    
     marks?.forEach(m => {
         const score = m.final_score || 0;
         if (score > 0) {
@@ -387,17 +454,13 @@ window.renderGradeDistributionChart = function(marks) {
         }
     });
     
-    const labels = ['A (75-100)', 'B (65-74)', 'C (60-64)', 'FAIL (0-59)'];
-    const data = [grades.A, grades.B, grades.C, grades.FAIL];
-    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
-    
     window.analyticsChartInstances.gradeChart = new Chart(ctx, {
-        type: 'pie',
+        type: 'doughnut',
         data: {
-            labels: labels,
+            labels: ['A (75-100)', 'B (65-74)', 'C (60-64)', 'FAIL (0-59)'],
             datasets: [{
-                data: data,
-                backgroundColor: colors,
+                data: [grades.A, grades.B, grades.C, grades.FAIL],
+                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
                 borderWidth: 2,
                 borderColor: '#ffffff'
             }]
@@ -406,19 +469,7 @@ window.renderGradeDistributionChart = function(marks) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { padding: 10, usePointStyle: true }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
-                            return `${context.label}: ${context.parsed} (${percentage}%)`;
-                        }
-                    }
-                }
+                legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } }
             }
         }
     });
@@ -431,7 +482,6 @@ window.renderGradeDistributionChart = function(marks) {
 window.renderSubjectPerformanceChart = function(marks) {
     const canvas = document.getElementById('analyticsSubjectChart');
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d');
     
     if (window.analyticsChartInstances.subjectChart) {
@@ -443,9 +493,7 @@ window.renderSubjectPerformanceChart = function(marks) {
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
         const score = m.final_score || 0;
-        if (!subjectData[subject]) {
-            subjectData[subject] = { total: 0, count: 0, pass: 0 };
-        }
+        if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0, pass: 0 };
         if (score > 0) {
             subjectData[subject].total += score;
             subjectData[subject].count++;
@@ -453,56 +501,25 @@ window.renderSubjectPerformanceChart = function(marks) {
         }
     });
     
-    const sortedSubjects = Object.keys(subjectData).sort();
-    const labels = sortedSubjects.map(s => s.length > 15 ? s.substring(0, 15) + '...' : s);
-    const avgScores = sortedSubjects.map(s => {
-        const data = subjectData[s];
-        return data.count > 0 ? Math.round(data.total / data.count) : 0;
-    });
-    const passRates = sortedSubjects.map(s => {
-        const data = subjectData[s];
-        return data.count > 0 ? Math.round((data.pass / data.count) * 100) : 0;
-    });
+    const sorted = Object.keys(subjectData).sort();
+    const labels = sorted.map(s => s.length > 15 ? s.substring(0, 15) + '...' : s);
+    const avgScores = sorted.map(s => subjectData[s].count > 0 ? Math.round(subjectData[s].total / subjectData[s].count) : 0);
+    const passRates = sorted.map(s => subjectData[s].count > 0 ? Math.round((subjectData[s].pass / subjectData[s].count) * 100) : 0);
     
     window.analyticsChartInstances.subjectChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Average Score (%)',
-                    data: avgScores,
-                    backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                    borderColor: '#6366f1',
-                    borderWidth: 1,
-                    borderRadius: 4
-                },
-                {
-                    label: 'Pass Rate (%)',
-                    data: passRates,
-                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                    borderColor: '#10b981',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }
+                { label: 'Avg Score (%)', data: avgScores, backgroundColor: 'rgba(99,102,241,0.7)', borderColor: '#6366f1', borderWidth: 1, borderRadius: 4 },
+                { label: 'Pass Rate (%)', data: passRates, backgroundColor: 'rgba(16,185,129,0.7)', borderColor: '#10b981', borderWidth: 1, borderRadius: 4 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { padding: 10, usePointStyle: true }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: { callback: function(value) { return value + '%'; } }
-                }
-            }
+            plugins: { legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } } },
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
         }
     });
 };
@@ -514,7 +531,6 @@ window.renderSubjectPerformanceChart = function(marks) {
 window.renderBlockPerformanceChart = function(students, marks) {
     const canvas = document.getElementById('analyticsBlockChart');
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d');
     
     if (window.analyticsChartInstances.blockChart) {
@@ -524,18 +540,12 @@ window.renderBlockPerformanceChart = function(students, marks) {
     
     const blockData = {};
     const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-    
-    blockOrder.forEach(b => {
-        blockData[b] = { total: 0, count: 0, pass: 0, students: 0 };
-    });
+    blockOrder.forEach(b => blockData[b] = { total: 0, count: 0, pass: 0, students: 0 });
     
     students?.forEach(s => {
         const block = s.block || 'Unknown';
-        if (blockData[block]) {
-            blockData[block].students++;
-        } else {
-            blockData[block] = { total: 0, count: 0, pass: 0, students: 1 };
-        }
+        if (blockData[block]) blockData[block].students++;
+        else blockData[block] = { total: 0, count: 0, pass: 0, students: 1 };
     });
     
     marks?.forEach(m => {
@@ -549,63 +559,23 @@ window.renderBlockPerformanceChart = function(students, marks) {
     });
     
     const labels = Object.keys(blockData).filter(b => blockData[b].students > 0);
-    const avgScores = labels.map(b => {
-        const data = blockData[b];
-        return data.count > 0 ? Math.round(data.total / data.count) : 0;
-    });
-    const passRates = labels.map(b => {
-        const data = blockData[b];
-        return data.count > 0 ? Math.round((data.pass / data.count) * 100) : 0;
-    });
-    const studentCounts = labels.map(b => blockData[b].students);
+    const avgScores = labels.map(b => blockData[b].count > 0 ? Math.round(blockData[b].total / blockData[b].count) : 0);
+    const passRates = labels.map(b => blockData[b].count > 0 ? Math.round((blockData[b].pass / blockData[b].count) * 100) : 0);
     
     window.analyticsChartInstances.blockChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Avg Score (%)',
-                    data: avgScores,
-                    backgroundColor: 'rgba(245, 158, 11, 0.7)',
-                    borderColor: '#f59e0b',
-                    borderWidth: 1,
-                    borderRadius: 4
-                },
-                {
-                    label: 'Pass Rate (%)',
-                    data: passRates,
-                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                    borderColor: '#10b981',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }
+                { label: 'Avg Score (%)', data: avgScores, backgroundColor: 'rgba(245,158,11,0.7)', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 4 },
+                { label: 'Pass Rate (%)', data: passRates, backgroundColor: 'rgba(16,185,129,0.7)', borderColor: '#10b981', borderWidth: 1, borderRadius: 4 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { padding: 10, usePointStyle: true }
-                },
-                tooltip: {
-                    callbacks: {
-                        afterBody: function(context) {
-                            const index = context[0].dataIndex;
-                            return `Students: ${studentCounts[index] || 0}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: { callback: function(value) { return value + '%'; } }
-                }
-            }
+            plugins: { legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } } },
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
         }
     });
 };
@@ -617,7 +587,6 @@ window.renderBlockPerformanceChart = function(students, marks) {
 window.renderProgramComparisonChart = function(students, marks) {
     const canvas = document.getElementById('analyticsProgramChart');
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d');
     
     if (window.analyticsChartInstances.programChart) {
@@ -626,12 +595,9 @@ window.renderProgramComparisonChart = function(students, marks) {
     }
     
     const programData = {};
-    
     students?.forEach(s => {
         const program = s.program || 'Unknown';
-        if (!programData[program]) {
-            programData[program] = { total: 0, count: 0, pass: 0, students: 0 };
-        }
+        if (!programData[program]) programData[program] = { total: 0, count: 0, pass: 0, students: 0 };
         programData[program].students++;
     });
     
@@ -645,59 +611,25 @@ window.renderProgramComparisonChart = function(students, marks) {
         }
     });
     
-    const sortedPrograms = Object.keys(programData)
-        .sort((a, b) => programData[b].students - programData[a].students)
-        .slice(0, 8);
-    
-    const labels = sortedPrograms.map(p => window.getProgramDisplayName(p) || p);
-    const avgScores = sortedPrograms.map(p => {
-        const data = programData[p];
-        return data.count > 0 ? Math.round(data.total / data.count) : 0;
-    });
-    const passRates = sortedPrograms.map(p => {
-        const data = programData[p];
-        return data.count > 0 ? Math.round((data.pass / data.count) * 100) : 0;
-    });
+    const sorted = Object.keys(programData).sort((a, b) => programData[b].students - programData[a].students).slice(0, 8);
+    const labels = sorted.map(p => window.getProgramDisplayName(p) || p);
+    const avgScores = sorted.map(p => programData[p].count > 0 ? Math.round(programData[p].total / programData[p].count) : 0);
+    const passRates = sorted.map(p => programData[p].count > 0 ? Math.round((programData[p].pass / programData[p].count) * 100) : 0);
     
     window.analyticsChartInstances.programChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Avg Score (%)',
-                    data: avgScores,
-                    backgroundColor: 'rgba(139, 92, 246, 0.7)',
-                    borderColor: '#8b5cf6',
-                    borderWidth: 1,
-                    borderRadius: 4
-                },
-                {
-                    label: 'Pass Rate (%)',
-                    data: passRates,
-                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                    borderColor: '#10b981',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }
+                { label: 'Avg Score (%)', data: avgScores, backgroundColor: 'rgba(139,92,246,0.7)', borderColor: '#8b5cf6', borderWidth: 1, borderRadius: 4 },
+                { label: 'Pass Rate (%)', data: passRates, backgroundColor: 'rgba(16,185,129,0.7)', borderColor: '#10b981', borderWidth: 1, borderRadius: 4 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { padding: 10, usePointStyle: true }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: { callback: function(value) { return value + '%'; } }
-                }
-            }
+            plugins: { legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } } },
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
         }
     });
 };
@@ -709,7 +641,6 @@ window.renderProgramComparisonChart = function(students, marks) {
 window.renderUnitRankingChart = function(marks) {
     const canvas = document.getElementById('analyticsUnitRankingChart');
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d');
     
     if (window.analyticsChartInstances.unitRankingChart) {
@@ -721,9 +652,7 @@ window.renderUnitRankingChart = function(marks) {
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
         const score = m.final_score || 0;
-        if (!subjectData[subject]) {
-            subjectData[subject] = { total: 0, count: 0, pass: 0 };
-        }
+        if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0, pass: 0 };
         if (score > 0) {
             subjectData[subject].total += score;
             subjectData[subject].count++;
@@ -731,78 +660,311 @@ window.renderUnitRankingChart = function(marks) {
         }
     });
     
-    const sortedSubjects = Object.keys(subjectData)
-        .map(subject => ({
-            name: subject,
-            avg: subjectData[subject].count > 0 ? Math.round(subjectData[subject].total / subjectData[subject].count) : 0,
-            count: subjectData[subject].count,
-            passRate: subjectData[subject].count > 0 ? Math.round((subjectData[subject].pass / subjectData[subject].count) * 100) : 0
+    const sorted = Object.keys(subjectData)
+        .map(s => ({
+            name: s,
+            avg: subjectData[s].count > 0 ? Math.round(subjectData[s].total / subjectData[s].count) : 0,
+            passRate: subjectData[s].count > 0 ? Math.round((subjectData[s].pass / subjectData[s].count) * 100) : 0
         }))
         .sort((a, b) => b.avg - a.avg)
         .slice(0, 15);
     
-    const labels = sortedSubjects.map(s => s.name.length > 20 ? s.name.substring(0, 20) + '...' : s.name);
-    const avgData = sortedSubjects.map(s => s.avg);
-    const passData = sortedSubjects.map(s => s.passRate);
-    
-    const colors = avgData.map(avg => {
-        if (avg >= 80) return 'rgba(16, 185, 129, 0.8)';
-        if (avg >= 65) return 'rgba(59, 130, 246, 0.8)';
-        if (avg >= 60) return 'rgba(245, 158, 11, 0.8)';
-        return 'rgba(239, 68, 68, 0.8)';
-    });
+    const labels = sorted.map(s => s.name.length > 20 ? s.name.substring(0, 20) + '...' : s.name);
+    const avgData = sorted.map(s => s.avg);
+    const passData = sorted.map(s => s.passRate);
+    const colors = avgData.map(avg => avg >= 80 ? 'rgba(16,185,129,0.8)' : avg >= 65 ? 'rgba(59,130,246,0.8)' : avg >= 60 ? 'rgba(245,158,11,0.8)' : 'rgba(239,68,68,0.8)');
     
     window.analyticsChartInstances.unitRankingChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Average Score (%)',
-                    data: avgData,
-                    backgroundColor: colors,
-                    borderColor: colors.map(c => c.replace('0.8', '1')),
-                    borderWidth: 1,
-                    borderRadius: 4
-                },
-                {
-                    label: 'Pass Rate (%)',
-                    data: passData,
-                    backgroundColor: 'rgba(139, 92, 246, 0.5)',
-                    borderColor: '#8b5cf6',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }
+                { label: 'Average Score (%)', data: avgData, backgroundColor: colors, borderColor: colors.map(c => c.replace('0.8', '1')), borderWidth: 1, borderRadius: 4 },
+                { label: 'Pass Rate (%)', data: passData, backgroundColor: 'rgba(139,92,246,0.5)', borderColor: '#8b5cf6', borderWidth: 1, borderRadius: 4 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             indexAxis: 'y',
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: { padding: 10, usePointStyle: true }
-                },
-                tooltip: {
-                    callbacks: {
-                        afterBody: function(context) {
-                            const index = context[0].dataIndex;
-                            const subject = sortedSubjects[index];
-                            return `Students: ${subject?.count || 0}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: { callback: function(value) { return value + '%'; } }
-                }
-            }
+            plugins: { legend: { position: 'top', labels: { padding: 10, usePointStyle: true } } },
+            scales: { x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
         }
     });
+};
+
+// ============================================================
+// RENDER GENDER CHART (NEW)
+// ============================================================
+
+window.renderGenderChart = function(students, marks) {
+    const canvas = document.getElementById('analyticsGenderChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    if (window.analyticsChartInstances.genderChart) {
+        window.analyticsChartInstances.genderChart.destroy();
+        window.analyticsChartInstances.genderChart = null;
+    }
+    
+    let maleTotal = 0, maleCount = 0, femaleTotal = 0, femaleCount = 0;
+    
+    students?.forEach(s => {
+        const gender = s.gender || 'Unknown';
+        const studentMarks = marks?.filter(m => m.admission_number === s.student_id) || [];
+        studentMarks.forEach(m => {
+            const score = m.final_score || 0;
+            if (score > 0) {
+                if (gender === 'Male') { maleTotal += score; maleCount++; }
+                else if (gender === 'Female') { femaleTotal += score; femaleCount++; }
+            }
+        });
+    });
+    
+    const maleAvg = maleCount > 0 ? Math.round(maleTotal / maleCount) : 0;
+    const femaleAvg = femaleCount > 0 ? Math.round(femaleTotal / femaleCount) : 0;
+    const gap = Math.abs(maleAvg - femaleAvg);
+    
+    document.getElementById('genderFemaleAvg').textContent = femaleAvg + '%';
+    document.getElementById('genderMaleAvg').textContent = maleAvg + '%';
+    document.getElementById('genderGap').textContent = gap + '%';
+    
+    window.analyticsChartInstances.genderChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Female', 'Male'],
+            datasets: [{
+                label: 'Average Score (%)',
+                data: [femaleAvg, maleAvg],
+                backgroundColor: ['rgba(236,72,153,0.7)', 'rgba(59,130,246,0.7)'],
+                borderColor: ['#ec4899', '#3b82f6'],
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+        }
+    });
+};
+
+// ============================================================
+// RENDER CAT VS EXAM CHART (NEW)
+// ============================================================
+
+window.renderExamTypeChart = function(marks) {
+    const canvas = document.getElementById('analyticsExamTypeChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    if (window.analyticsChartInstances.examTypeChart) {
+        window.analyticsChartInstances.examTypeChart.destroy();
+        window.analyticsChartInstances.examTypeChart = null;
+    }
+    
+    let cat1Total = 0, cat1Count = 0, cat2Total = 0, cat2Count = 0, examTotal = 0, examCount = 0;
+    
+    marks?.forEach(m => {
+        if (m.cat1_score && m.cat1_score > 0) { cat1Total += m.cat1_score; cat1Count++; }
+        if (m.cat2_score && m.cat2_score > 0) { cat2Total += m.cat2_score; cat2Count++; }
+        if (m.exam_score && m.exam_score > 0) { examTotal += m.exam_score; examCount++; }
+    });
+    
+    const cat1Avg = cat1Count > 0 ? Math.round(cat1Total / cat1Count) : 0;
+    const cat2Avg = cat2Count > 0 ? Math.round(cat2Total / cat2Count) : 0;
+    const examAvg = examCount > 0 ? Math.round(examTotal / examCount) : 0;
+    
+    document.getElementById('analytics_cat_avg').textContent = cat1Avg + '%';
+    document.getElementById('analytics_exam_avg').textContent = examAvg + '%';
+    
+    window.analyticsChartInstances.examTypeChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['CAT 1', 'CAT 2', 'Final Exam'],
+            datasets: [{
+                label: 'Average Score (%)',
+                data: [cat1Avg, cat2Avg, examAvg],
+                backgroundColor: ['rgba(245,158,11,0.7)', 'rgba(245,158,11,0.5)', 'rgba(139,92,246,0.7)'],
+                borderColor: ['#f59e0b', '#f59e0b', '#8b5cf6'],
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+        }
+    });
+};
+
+// ============================================================
+// RENDER GRADE BY EXAM CHART (NEW)
+// ============================================================
+
+window.renderGradeByExamChart = function(marks) {
+    const canvas = document.getElementById('analyticsGradeByExamChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    if (window.analyticsChartInstances.gradeByExamChart) {
+        window.analyticsChartInstances.gradeByExamChart.destroy();
+        window.analyticsChartInstances.gradeByExamChart = null;
+    }
+    
+    const grades = { 'CAT1': { 'A': 0, 'B': 0, 'C': 0, 'FAIL': 0 }, 'CAT2': { 'A': 0, 'B': 0, 'C': 0, 'FAIL': 0 }, 'EXAM': { 'A': 0, 'B': 0, 'C': 0, 'FAIL': 0 } };
+    
+    marks?.forEach(m => {
+        ['cat1_score', 'cat2_score', 'exam_score'].forEach((field, idx) => {
+            const score = m[field] || 0;
+            const key = ['CAT1', 'CAT2', 'EXAM'][idx];
+            if (score > 0) {
+                if (score >= 75) grades[key].A++;
+                else if (score >= 65) grades[key].B++;
+                else if (score >= 60) grades[key].C++;
+                else grades[key].FAIL++;
+            }
+        });
+    });
+    
+    window.analyticsChartInstances.gradeByExamChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['A (75-100)', 'B (65-74)', 'C (60-64)', 'FAIL (0-59)'],
+            datasets: [
+                { label: 'CAT 1', data: [grades.CAT1.A, grades.CAT1.B, grades.CAT1.C, grades.CAT1.FAIL], backgroundColor: 'rgba(245,158,11,0.7)' },
+                { label: 'CAT 2', data: [grades.CAT2.A, grades.CAT2.B, grades.CAT2.C, grades.CAT2.FAIL], backgroundColor: 'rgba(59,130,246,0.7)' },
+                { label: 'Exam', data: [grades.EXAM.A, grades.EXAM.B, grades.EXAM.C, grades.EXAM.FAIL], backgroundColor: 'rgba(139,92,246,0.7)' }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+};
+
+// ============================================================
+// RENDER DIFFICULTY HEATMAP (NEW)
+// ============================================================
+
+window.renderDifficultyHeatmap = function(marks) {
+    const container = document.getElementById('analytics_difficulty_heatmap');
+    if (!container) return;
+    
+    const subjectData = {};
+    marks?.forEach(m => {
+        const subject = m.subject_name || 'Unknown';
+        const score = m.final_score || 0;
+        if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0 };
+        if (score > 0) {
+            subjectData[subject].total += score;
+            subjectData[subject].count++;
+        }
+    });
+    
+    const sorted = Object.keys(subjectData)
+        .map(s => ({
+            name: s,
+            avg: subjectData[s].count > 0 ? Math.round(subjectData[s].total / subjectData[s].count) : 0,
+            count: subjectData[s].count
+        }))
+        .sort((a, b) => a.avg - b.avg);
+    
+    if (sorted.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px; grid-column: 1 / -1;">No data available</p>';
+        return;
+    }
+    
+    let html = '';
+    sorted.forEach(item => {
+        let color, label;
+        if (item.avg >= 75) { color = '#dcfce7'; label = '🟢 Easy'; }
+        else if (item.avg >= 65) { color = '#fef3c7'; label = '🟡 Medium'; }
+        else if (item.avg >= 60) { color = '#fed7aa'; label = '🟠 Moderate'; }
+        else { color = '#fee2e2'; label = '🔴 Hard'; }
+        
+        const textColor = item.avg >= 75 ? '#166534' : item.avg >= 65 ? '#92400e' : item.avg >= 60 ? '#9a3412' : '#991b1b';
+        
+        html += `
+            <div style="background: ${color}; border-radius: 8px; padding: 12px 16px; text-align: center; border: 1px solid ${textColor}33;">
+                <div style="font-weight: 600; font-size: 13px; color: ${textColor};">${window.escapeHtml(item.name)}</div>
+                <div style="font-size: 20px; font-weight: 700; color: ${textColor};">${item.avg}%</div>
+                <div style="font-size: 11px; color: ${textColor}80;">${item.count} students • ${label}</div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+};
+
+// ============================================================
+// RENDER PROGRESSION TABLE (NEW)
+// ============================================================
+
+window.renderProgressionTable = function(students, marks) {
+    const tbody = document.getElementById('analytics_progression_body');
+    if (!tbody) return;
+    
+    const studentAverages = {};
+    marks?.forEach(m => {
+        const admission = m.admission_number;
+        const block = m.block || 'Unknown';
+        const score = m.final_score || 0;
+        if (!studentAverages[admission]) studentAverages[admission] = {};
+        if (!studentAverages[admission][block]) studentAverages[admission][block] = { total: 0, count: 0 };
+        if (score > 0) {
+            studentAverages[admission][block].total += score;
+            studentAverages[admission][block].count++;
+        }
+    });
+    
+    const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4'];
+    const topStudents = students?.slice(0, 15) || [];
+    
+    if (topStudents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:30px;text-align:center;color:#94a3b8;">No progression data available</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    topStudents.forEach(student => {
+        const data = studentAverages[student.student_id] || {};
+        const scores = blockOrder.map(block => {
+            const bData = data[block];
+            return bData && bData.count > 0 ? Math.round(bData.total / bData.count) : '-';
+        });
+        
+        // Calculate trend
+        const validScores = scores.filter(s => s !== '-');
+        let trend = '➡️', trendColor = '#94a3b8';
+        if (validScores.length >= 2) {
+            const first = validScores[0];
+            const last = validScores[validScores.length - 1];
+            if (last > first) { trend = '📈'; trendColor = '#10b981'; }
+            else if (last < first) { trend = '📉'; trendColor = '#ef4444'; }
+            else { trend = '➡️'; trendColor = '#f59e0b'; }
+        }
+        
+        const avg = validScores.length > 0 ? Math.round(validScores.reduce((a,b) => a + b, 0) / validScores.length) : 0;
+        const avgColor = avg >= 60 ? '#10b981' : avg > 0 ? '#ef4444' : '#94a3b8';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(student.full_name || 'Unknown')}</td>
+                ${scores.map(s => `<td style="padding:10px 12px;text-align:center;font-weight:600;color:${s !== '-' && s >= 60 ? '#10b981' : s !== '-' ? '#ef4444' : '#94a3b8'};">${s}</td>`).join('')}
+                <td style="padding:10px 12px;text-align:center;font-size:20px;color:${trendColor};">${trend}</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
 };
 
 // ============================================================
@@ -817,20 +979,12 @@ window.renderAnalyticsSubjectTable = function(marks, students, program, block) {
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
         const score = m.final_score || 0;
-        if (!subjectData[subject]) {
-            subjectData[subject] = { 
-                total: 0, count: 0, pass: 0, students: new Set(),
-                totalPoints: 0, aCount: 0, bCount: 0, cCount: 0, failCount: 0
-            };
-        }
+        if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0, pass: 0, students: new Set(), aCount: 0, bCount: 0, cCount: 0, failCount: 0 };
         if (score > 0) {
-            const gradeInfo = window.getGradeInfo(score);
             subjectData[subject].total += score;
             subjectData[subject].count++;
             subjectData[subject].students.add(m.admission_number);
-            subjectData[subject].totalPoints += gradeInfo.points;
             if (score >= 60) subjectData[subject].pass++;
-            
             if (score >= 75) subjectData[subject].aCount++;
             else if (score >= 65) subjectData[subject].bCount++;
             else if (score >= 60) subjectData[subject].cCount++;
@@ -839,60 +993,46 @@ window.renderAnalyticsSubjectTable = function(marks, students, program, block) {
     });
     
     const sorted = Object.keys(subjectData)
-        .map(subject => {
-            const data = subjectData[subject];
+        .map(s => {
+            const data = subjectData[s];
             const avg = data.count > 0 ? Math.round((data.total / data.count) * 10) / 10 : 0;
-            const avgPoints = data.count > 0 ? Math.round((data.totalPoints / data.count) * 10) / 10 : 0;
             const gradeInfo = window.getGradeInfo(avg);
             return {
-                name: subject,
+                name: s,
                 avg: avg,
-                avgPoints: avgPoints,
                 count: data.count,
                 passCount: data.pass,
                 passRate: data.count > 0 ? Math.round((data.pass / data.count) * 100) : 0,
                 uniqueStudents: data.students.size,
                 grade: gradeInfo.grade,
                 points: gradeInfo.points,
-                label: gradeInfo.label,
                 color: gradeInfo.color,
-                aCount: data.aCount,
-                bCount: data.bCount,
-                cCount: data.cCount,
-                failCount: data.failCount
+                aCount: data.aCount, bCount: data.bCount, cCount: data.cCount, failCount: data.failCount
             };
         })
         .sort((a, b) => b.avg - a.avg);
     
     if (sorted.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="padding: 40px; text-align: center; color: #94a3b8;">No subject data available for the selected filters</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;color:#94a3b8;">No unit data available</td></tr>';
         return;
     }
     
     let html = '';
-    sorted.forEach(subject => {
-        let gradeBadges = '';
-        if (subject.aCount > 0) gradeBadges += `<span style="background:#10b981;color:white;padding:2px 6px;border-radius:4px;font-size:10px;margin:0 2px;">A:${subject.aCount}</span>`;
-        if (subject.bCount > 0) gradeBadges += `<span style="background:#3b82f6;color:white;padding:2px 6px;border-radius:4px;font-size:10px;margin:0 2px;">B:${subject.bCount}</span>`;
-        if (subject.cCount > 0) gradeBadges += `<span style="background:#f59e0b;color:white;padding:2px 6px;border-radius:4px;font-size:10px;margin:0 2px;">C:${subject.cCount}</span>`;
-        if (subject.failCount > 0) gradeBadges += `<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;font-size:10px;margin:0 2px;">FAIL:${subject.failCount}</span>`;
-        
-        const status = subject.avg >= 60 ? '✅ Passing' : (subject.avg > 0 ? '⚠️ At Risk' : '⏳ No Data');
-        const statusColor = subject.avg >= 60 ? '#10b981' : (subject.avg > 0 ? '#ef4444' : '#94a3b8');
+    sorted.forEach(s => {
+        const status = s.avg >= 60 ? '✅ Passing' : (s.avg > 0 ? '⚠️ At Risk' : '⏳ No Data');
+        const statusColor = s.avg >= 60 ? '#10b981' : (s.avg > 0 ? '#ef4444' : '#94a3b8');
+        const difficulty = s.avg >= 75 ? '🟢 Easy' : s.avg >= 65 ? '🟡 Medium' : s.avg >= 60 ? '🟠 Moderate' : '🔴 Hard';
         
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 10px 12px; font-weight: 500;">${window.escapeHtml(subject.name)}</td>
-                <td style="padding: 10px 12px; text-align: center;">
-                    ${subject.uniqueStudents} / ${subject.count}
-                    <span style="font-size: 10px; color: #94a3b8; display: block;">enrolled / graded</span>
-                </td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${subject.avg}%</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${subject.passRate}%</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: ${subject.color};">${subject.grade}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${subject.points}</td>
-                <td style="padding: 10px 12px; text-align: center;">${gradeBadges || '-'}</td>
-                <td style="padding: 10px 12px; text-align: center; color: ${statusColor};">${status}</td>
+            <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(s.name)}</td>
+                <td style="padding:10px 12px;text-align:center;">${s.uniqueStudents} / ${s.count}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;">${s.avg}%</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;">${s.passRate}%</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:700;color:${s.color};">${s.grade}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;">${s.points}</td>
+                <td style="padding:10px 12px;text-align:center;color:${statusColor};">${status}</td>
+                <td style="padding:10px 12px;text-align:center;">${difficulty}</td>
             </tr>
         `;
     });
@@ -909,21 +1049,16 @@ window.renderAnalyticsStudentTable = function(students, marks) {
     if (!tbody) return;
     
     if (!students || students.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">No student data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;color:#94a3b8;">No learner data available</td></tr>';
         return;
     }
     
     const studentMarks = {};
     marks?.forEach(m => {
         const admission = m.admission_number;
-        if (!studentMarks[admission]) {
-            studentMarks[admission] = { total: 0, count: 0 };
-        }
+        if (!studentMarks[admission]) studentMarks[admission] = { total: 0, count: 0 };
         const score = m.final_score || 0;
-        if (score > 0) {
-            studentMarks[admission].total += score;
-            studentMarks[admission].count++;
-        }
+        if (score > 0) { studentMarks[admission].total += score; studentMarks[admission].count++; }
     });
     
     let html = '';
@@ -933,16 +1068,19 @@ window.renderAnalyticsStudentTable = function(students, marks) {
         const gradeInfo = window.getGradeInfo(avg);
         const status = avg >= 60 ? '✅ Passing' : (avg > 0 ? '⚠️ At Risk' : '⏳ No Data');
         const statusColor = avg >= 60 ? '#10b981' : (avg > 0 ? '#ef4444' : '#94a3b8');
+        const riskLevel = avg >= 60 ? '🟢 Low' : avg >= 50 ? '🟡 Medium' : avg > 0 ? '🔴 High' : '⚪ N/A';
+        const riskColor = avg >= 60 ? '#10b981' : avg >= 50 ? '#f59e0b' : avg > 0 ? '#ef4444' : '#94a3b8';
         
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 10px 12px; font-weight: 500;">${window.escapeHtml(student.full_name || 'Unknown')}</td>
-                <td style="padding: 10px 12px; text-align: center;">${window.escapeHtml(student.student_id || 'N/A')}</td>
-                <td style="padding: 10px 12px; text-align: center;">${window.escapeHtml(student.program || 'N/A')}</td>
-                <td style="padding: 10px 12px; text-align: center;">${window.escapeHtml(student.block || 'N/A')}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${avg}%</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: ${gradeInfo.color};">${gradeInfo.grade}</td>
-                <td style="padding: 10px 12px; text-align: center; color: ${statusColor};">${status}</td>
+            <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(student.full_name || 'Unknown')}</td>
+                <td style="padding:10px 12px;text-align:center;">${window.escapeHtml(student.student_id || 'N/A')}</td>
+                <td style="padding:10px 12px;text-align:center;">${window.escapeHtml(student.program || 'N/A')}</td>
+                <td style="padding:10px 12px;text-align:center;">${window.escapeHtml(student.block || 'N/A')}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;">${avg}%</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:700;color:${gradeInfo.color};">${gradeInfo.grade}</td>
+                <td style="padding:10px 12px;text-align:center;color:${statusColor};">${status}</td>
+                <td style="padding:10px 12px;text-align:center;color:${riskColor};font-weight:600;">${riskLevel}</td>
             </tr>
         `;
     });
@@ -960,16 +1098,11 @@ window.renderAnalyticsBlockTable = function(students, marks, selectedBlock) {
     
     const blockData = {};
     const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-    
-    blockOrder.forEach(b => {
-        blockData[b] = { total: 0, count: 0, pass: 0, students: 0, topStudent: null, topScore: 0, atRisk: 0 };
-    });
+    blockOrder.forEach(b => blockData[b] = { total: 0, count: 0, pass: 0, students: 0, topStudent: null, topScore: 0, atRisk: 0 });
     
     students?.forEach(s => {
         const block = s.block || 'Unknown';
-        if (!blockData[block]) {
-            blockData[block] = { total: 0, count: 0, pass: 0, students: 0, topStudent: null, topScore: 0, atRisk: 0 };
-        }
+        if (!blockData[block]) blockData[block] = { total: 0, count: 0, pass: 0, students: 0, topStudent: null, topScore: 0, atRisk: 0 };
         blockData[block].students++;
     });
     
@@ -981,7 +1114,6 @@ window.renderAnalyticsBlockTable = function(students, marks, selectedBlock) {
             blockData[block].count++;
             if (score >= 60) blockData[block].pass++;
             else blockData[block].atRisk++;
-            
             if (score > blockData[block].topScore) {
                 blockData[block].topScore = score;
                 blockData[block].topStudent = m.student_name || 'Unknown';
@@ -990,9 +1122,8 @@ window.renderAnalyticsBlockTable = function(students, marks, selectedBlock) {
     });
     
     const sortedBlocks = Object.keys(blockData).filter(b => blockData[b].students > 0);
-    
     if (sortedBlocks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">No block data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#94a3b8;">No stage data available</td></tr>';
         return;
     }
     
@@ -1001,17 +1132,14 @@ window.renderAnalyticsBlockTable = function(students, marks, selectedBlock) {
         const data = blockData[block];
         const avg = data.count > 0 ? Math.round((data.total / data.count) * 10) / 10 : 0;
         const passRate = data.count > 0 ? Math.round((data.pass / data.count) * 100) : 0;
-        const topStudent = data.topStudent || 'N/A';
-        const atRisk = data.atRisk || 0;
-        
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 10px 12px; font-weight: 600;">${window.escapeHtml(block)}</td>
-                <td style="padding: 10px 12px; text-align: center;">${data.students}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${avg}%</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${passRate}%</td>
-                <td style="padding: 10px 12px; text-align: center;">${window.escapeHtml(topStudent)}</td>
-                <td style="padding: 10px 12px; text-align: center; color: ${atRisk > 0 ? '#dc2626' : '#10b981'};">${atRisk}</td>
+            <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 12px;font-weight:600;">${window.escapeHtml(block)}</td>
+                <td style="padding:10px 12px;text-align:center;">${data.students}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;">${avg}%</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;">${passRate}%</td>
+                <td style="padding:10px 12px;text-align:center;">${window.escapeHtml(data.topStudent || 'N/A')}</td>
+                <td style="padding:10px 12px;text-align:center;color:${data.atRisk > 0 ? '#dc2626' : '#10b981'};">${data.atRisk}</td>
             </tr>
         `;
     });
@@ -1028,12 +1156,9 @@ window.renderAnalyticsProgramTable = function(students, marks) {
     if (!tbody) return;
     
     const programData = {};
-    
     students?.forEach(s => {
         const program = s.program || 'Unknown';
-        if (!programData[program]) {
-            programData[program] = { total: 0, count: 0, pass: 0, students: 0 };
-        }
+        if (!programData[program]) programData[program] = { total: 0, count: 0, pass: 0, students: 0 };
         programData[program].students++;
     });
     
@@ -1047,35 +1172,32 @@ window.renderAnalyticsProgramTable = function(students, marks) {
         }
     });
     
-    const sortedPrograms = Object.keys(programData).sort((a, b) => programData[b].students - programData[a].students);
-    
-    if (sortedPrograms.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">No program data available</td></tr>';
+    const sorted = Object.keys(programData).sort((a, b) => programData[b].students - programData[a].students);
+    if (sorted.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:#94a3b8;">No programme data available</td></tr>';
         return;
     }
     
     let html = '';
-    sortedPrograms.forEach(program => {
+    sorted.forEach(program => {
         const data = programData[program];
         const avg = data.count > 0 ? Math.round((data.total / data.count) * 10) / 10 : 0;
         const passRate = data.count > 0 ? Math.round((data.pass / data.count) * 100) : 0;
         const programType = program === 'KRCHN' ? 'KRCHN' : 'TVET';
-        const level = program.startsWith('D') ? 'Diploma' : 
-                     program.startsWith('C') ? 'Certificate' : 
-                     program.startsWith('A') ? 'Artisan' : 'Other';
-        const performanceColor = avg >= 60 ? '#10b981' : (avg > 0 ? '#ef4444' : '#94a3b8');
+        const level = program.startsWith('D') ? 'Diploma' : program.startsWith('C') ? 'Certificate' : program.startsWith('A') ? 'Artisan' : 'Other';
+        const perfColor = avg >= 60 ? '#10b981' : (avg > 0 ? '#ef4444' : '#94a3b8');
         
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 10px 12px; font-weight: 500;">${window.escapeHtml(window.getProgramDisplayName(program))}</td>
-                <td style="padding: 10px 12px; text-align: center;"><span style="background: ${programType === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${programType}</span></td>
-                <td style="padding: 10px 12px; text-align: center;">${level}</td>
-                <td style="padding: 10px 12px; text-align: center;">${data.students}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600; color: ${performanceColor};">${avg}%</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600; color: ${performanceColor};">${passRate}%</td>
-                <td style="padding: 10px 12px; text-align: center;">
-                    <div style="height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden; max-width: 100px; margin: 0 auto;">
-                        <div style="width: ${passRate}%; height: 100%; background: ${performanceColor}; border-radius: 4px;"></div>
+            <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(window.getProgramDisplayName(program))}</td>
+                <td style="padding:10px 12px;text-align:center;"><span style="background:${programType === 'KRCHN' ? '#dbeafe' : '#fef3c7'};padding:2px 10px;border-radius:12px;font-size:11px;">${programType}</span></td>
+                <td style="padding:10px 12px;text-align:center;">${level}</td>
+                <td style="padding:10px 12px;text-align:center;">${data.students}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;color:${perfColor};">${avg}%</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;color:${perfColor};">${passRate}%</td>
+                <td style="padding:10px 12px;text-align:center;">
+                    <div style="height:6px;background:#e5e7eb;border-radius:4px;overflow:hidden;max-width:100px;margin:0 auto;">
+                        <div style="width:${passRate}%;height:100%;background:${perfColor};border-radius:4px;"></div>
                     </div>
                 </td>
             </tr>
@@ -1094,12 +1216,9 @@ window.renderAnalyticsTrendsTable = function(students, marks) {
     if (!tbody) return;
     
     const yearData = {};
-    
     students?.forEach(s => {
         const year = s.intake_year || 'Unknown';
-        if (!yearData[year]) {
-            yearData[year] = { total: 0, count: 0, pass: 0, students: 0 };
-        }
+        if (!yearData[year]) yearData[year] = { total: 0, count: 0, pass: 0, students: 0 };
         yearData[year].students++;
     });
     
@@ -1114,49 +1233,34 @@ window.renderAnalyticsTrendsTable = function(students, marks) {
     });
     
     const sortedYears = Object.keys(yearData).sort();
-    
     if (sortedYears.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">No trend data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:#94a3b8;">No trend data available</td></tr>';
         return;
     }
     
     let previousAvg = null;
     let html = '';
-    
     sortedYears.forEach(year => {
         const data = yearData[year];
         const avg = data.count > 0 ? Math.round((data.total / data.count) * 10) / 10 : 0;
         const passRate = data.count > 0 ? Math.round((data.pass / data.count) * 100) : 0;
-        
-        let change = 'N/A';
-        let trend = '➡️';
-        let trendColor = '#94a3b8';
-        
+        let change = 'N/A', trend = '➡️', trendColor = '#94a3b8';
         if (previousAvg !== null && previousAvg > 0) {
             const diff = avg - previousAvg;
             change = (diff > 0 ? '+' : '') + diff.toFixed(1) + '%';
-            if (diff > 0) {
-                trend = '📈';
-                trendColor = '#10b981';
-            } else if (diff < 0) {
-                trend = '📉';
-                trendColor = '#ef4444';
-            } else {
-                trend = '➡️';
-                trendColor = '#f59e0b';
-            }
+            if (diff > 0) { trend = '📈'; trendColor = '#10b981'; }
+            else if (diff < 0) { trend = '📉'; trendColor = '#ef4444'; }
+            else { trend = '➡️'; trendColor = '#f59e0b'; }
         }
-        
         previousAvg = avg;
-        
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 10px 12px; font-weight: 600;">${window.escapeHtml(year)}</td>
-                <td style="padding: 10px 12px; text-align: center;">${data.students}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${avg}%</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${passRate}%</td>
-                <td style="padding: 10px 12px; text-align: center; color: ${trendColor}; font-weight: 600;">${change}</td>
-                <td style="padding: 10px 12px; text-align: center; font-size: 20px; color: ${trendColor};">${trend}</td>
+            <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 12px;font-weight:600;">${window.escapeHtml(year)}</td>
+                <td style="padding:10px 12px;text-align:center;">${data.students}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;">${avg}%</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;">${passRate}%</td>
+                <td style="padding:10px 12px;text-align:center;color:${trendColor};font-weight:600;">${change}</td>
+                <td style="padding:10px 12px;text-align:center;font-size:20px;color:${trendColor};">${trend}</td>
             </tr>
         `;
     });
@@ -1173,32 +1277,35 @@ window.renderAnalyticsExamDetails = function(marks, students) {
     if (!tbody) return;
     
     if (!marks || marks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="padding: 40px; text-align: center; color: #94a3b8;">No exam data available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">No assessment data available</td></tr>';
         return;
     }
     
     let html = '';
-    marks.forEach((m, index) => {
+    marks.slice(0, 20).forEach((m, index) => {
         const total = m.final_score || 0;
         const gradeInfo = window.getGradeInfo(total);
         const status = total >= 60 ? '✅ Pass' : (total > 0 ? '❌ Fail' : '⏳ Pending');
         const statusColor = total >= 60 ? '#10b981' : (total > 0 ? '#ef4444' : '#f59e0b');
-        
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 10px 12px;">${index + 1}</td>
-                <td style="padding: 10px 12px;">${window.escapeHtml(m.subject_name || 'N/A')}</td>
-                <td style="padding: 10px 12px;">${window.escapeHtml(m.student_name || 'Unknown')}</td>
-                <td style="padding: 10px 12px; text-align: center;">${window.escapeHtml(m.block || 'N/A')}</td>
-                <td style="padding: 10px 12px; text-align: center;">${m.cat1_score || '-'}</td>
-                <td style="padding: 10px 12px; text-align: center;">${m.cat2_score || '-'}</td>
-                <td style="padding: 10px 12px; text-align: center;">${m.exam_score || '-'}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: ${statusColor};">${total || '-'}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: ${gradeInfo.color};">${m.grade || '-'}</td>
-                <td style="padding: 10px 12px; text-align: center; color: ${statusColor};">${status}</td>
+            <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:10px 12px;">${index + 1}</td>
+                <td style="padding:10px 12px;">${window.escapeHtml(m.subject_name || 'N/A')}</td>
+                <td style="padding:10px 12px;">${window.escapeHtml(m.student_name || 'Unknown')}</td>
+                <td style="padding:10px 12px;text-align:center;">${window.escapeHtml(m.block || 'N/A')}</td>
+                <td style="padding:10px 12px;text-align:center;">${m.cat1_score || '-'}</td>
+                <td style="padding:10px 12px;text-align:center;">${m.cat2_score || '-'}</td>
+                <td style="padding:10px 12px;text-align:center;">${m.exam_score || '-'}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:700;color:${statusColor};">${total || '-'}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:700;color:${gradeInfo.color};">${m.grade || gradeInfo.grade}</td>
+                <td style="padding:10px 12px;text-align:center;color:${statusColor};">${status}</td>
             </tr>
         `;
     });
+    
+    if (marks.length > 20) {
+        html += `<tr><td colspan="10" style="padding:10px;text-align:center;color:#94a3b8;">... and ${marks.length - 20} more records</td></tr>`;
+    }
     
     tbody.innerHTML = html;
 };
@@ -1215,9 +1322,7 @@ window.renderUnitRankings = function(marks, students, program, block) {
     marks?.forEach(m => {
         const subject = m.subject_name || 'Unknown';
         const score = m.final_score || 0;
-        if (!subjectData[subject]) {
-            subjectData[subject] = { total: 0, count: 0, pass: 0, scores: [] };
-        }
+        if (!subjectData[subject]) subjectData[subject] = { total: 0, count: 0, pass: 0, scores: [] };
         if (score > 0) {
             subjectData[subject].total += score;
             subjectData[subject].count++;
@@ -1226,59 +1331,57 @@ window.renderUnitRankings = function(marks, students, program, block) {
         }
     });
     
-    const sortedSubjects = Object.keys(subjectData)
-        .map(subject => ({
-            name: subject,
-            avg: subjectData[subject].count > 0 ? Math.round(subjectData[subject].total / subjectData[subject].count) : 0,
-            count: subjectData[subject].count,
-            pass: subjectData[subject].pass,
-            passRate: subjectData[subject].count > 0 ? Math.round((subjectData[subject].pass / subjectData[subject].count) * 100) : 0,
-            highest: subjectData[subject].scores.length > 0 ? Math.max(...subjectData[subject].scores) : 0,
-            lowest: subjectData[subject].scores.length > 0 ? Math.min(...subjectData[subject].scores) : 0
+    const sorted = Object.keys(subjectData)
+        .map(s => ({
+            name: s,
+            avg: subjectData[s].count > 0 ? Math.round(subjectData[s].total / subjectData[s].count) : 0,
+            count: subjectData[s].count,
+            pass: subjectData[s].pass,
+            passRate: subjectData[s].count > 0 ? Math.round((subjectData[s].pass / subjectData[s].count) * 100) : 0,
+            highest: subjectData[s].scores.length > 0 ? Math.max(...subjectData[s].scores) : 0,
+            lowest: subjectData[s].scores.length > 0 ? Math.min(...subjectData[s].scores) : 0
         }))
         .sort((a, b) => b.avg - a.avg);
     
-    if (sortedSubjects.length === 0) {
-        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No unit data available</p>';
+    if (sorted.length === 0) {
+        container.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">No unit data available</p>';
         return;
     }
     
     let html = `
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead>
-                    <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white;">
-                        <th style="padding: 10px 12px; text-align: left;">Rank</th>
-                        <th style="padding: 10px 12px; text-align: left;">Unit/Subject</th>
-                        <th style="padding: 10px 12px; text-align: center;">Students</th>
-                        <th style="padding: 10px 12px; text-align: center;">Avg Score</th>
-                        <th style="padding: 10px 12px; text-align: center;">Pass Rate</th>
-                        <th style="padding: 10px 12px; text-align: center;">Highest</th>
-                        <th style="padding: 10px 12px; text-align: center;">Lowest</th>
-                        <th style="padding: 10px 12px; text-align: center;">Performance</th>
+                    <tr style="background:linear-gradient(135deg,#4C1D95,#7c3aed);color:white;">
+                        <th style="padding:10px 12px;text-align:left;">Rank</th>
+                        <th style="padding:10px 12px;text-align:left;">Unit</th>
+                        <th style="padding:10px 12px;text-align:center;">Students</th>
+                        <th style="padding:10px 12px;text-align:center;">Avg Score</th>
+                        <th style="padding:10px 12px;text-align:center;">Pass Rate</th>
+                        <th style="padding:10px 12px;text-align:center;">Highest</th>
+                        <th style="padding:10px 12px;text-align:center;">Lowest</th>
+                        <th style="padding:10px 12px;text-align:center;">Performance</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
-    sortedSubjects.forEach((subject, index) => {
+    sorted.slice(0, 15).forEach((subject, index) => {
         const rank = index + 1;
         const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
-        const performanceColor = subject.avg >= 80 ? '#10b981' : subject.avg >= 65 ? '#3b82f6' : subject.avg >= 60 ? '#f59e0b' : '#ef4444';
-        const barColor = subject.avg >= 80 ? '#10b981' : subject.avg >= 65 ? '#3b82f6' : subject.avg >= 60 ? '#f59e0b' : '#ef4444';
-        
+        const perfColor = subject.avg >= 80 ? '#10b981' : subject.avg >= 65 ? '#3b82f6' : subject.avg >= 60 ? '#f59e0b' : '#ef4444';
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
-                <td style="padding: 10px 12px; font-weight: 700; text-align: center;">${medal}</td>
-                <td style="padding: 10px 12px; font-weight: 500;">${window.escapeHtml(subject.name)}</td>
-                <td style="padding: 10px 12px; text-align: center;">${subject.count}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: ${performanceColor};">${subject.avg}%</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${subject.passRate}%</td>
-                <td style="padding: 10px 12px; text-align: center; color: #10b981;">${subject.highest}%</td>
-                <td style="padding: 10px 12px; text-align: center; color: #ef4444;">${subject.lowest}%</td>
-                <td style="padding: 10px 12px; text-align: center;">
-                    <div style="height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden; max-width: 100px; margin: 0 auto;">
-                        <div style="width: ${subject.avg}%; height: 100%; background: ${barColor}; border-radius: 4px;"></div>
+            <tr style="border-bottom:1px solid #e5e7eb;${index % 2 === 0 ? 'background:#f8fafc;' : ''}">
+                <td style="padding:10px 12px;font-weight:700;text-align:center;">${medal}</td>
+                <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(subject.name)}</td>
+                <td style="padding:10px 12px;text-align:center;">${subject.count}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:700;color:${perfColor};">${subject.avg}%</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:600;">${subject.passRate}%</td>
+                <td style="padding:10px 12px;text-align:center;color:#10b981;">${subject.highest}%</td>
+                <td style="padding:10px 12px;text-align:center;color:#ef4444;">${subject.lowest}%</td>
+                <td style="padding:10px 12px;text-align:center;">
+                    <div style="height:6px;background:#e5e7eb;border-radius:4px;overflow:hidden;max-width:100px;margin:0 auto;">
+                        <div style="width:${subject.avg}%;height:100%;background:${perfColor};border-radius:4px;"></div>
                     </div>
                 </td>
             </tr>
@@ -1289,9 +1392,7 @@ window.renderUnitRankings = function(marks, students, program, block) {
                 </tbody>
             </table>
         </div>
-        <div style="margin-top: 10px; font-size: 12px; color: #94a3b8; text-align: right;">
-            Showing ${sortedSubjects.length} units
-        </div>
+        <div style="margin-top:10px;font-size:12px;color:#94a3b8;text-align:right;">Showing ${Math.min(sorted.length, 15)} of ${sorted.length} units</div>
     `;
     
     container.innerHTML = html;
@@ -1309,9 +1410,7 @@ window.renderTopStudents = function(students, marks) {
     marks?.forEach(m => {
         const admission = m.admission_number;
         const score = m.final_score || 0;
-        if (!studentAverages[admission]) {
-            studentAverages[admission] = { total: 0, count: 0, scores: [], points: 0 };
-        }
+        if (!studentAverages[admission]) studentAverages[admission] = { total: 0, count: 0, scores: [], points: 0 };
         if (score > 0) {
             const gradeInfo = window.getGradeInfo(score);
             studentAverages[admission].total += score;
@@ -1342,53 +1441,32 @@ window.renderTopStudents = function(students, marks) {
     });
     
     const topStudents = studentData.sort((a, b) => b.avg - a.avg).slice(0, 10);
-    
     if (topStudents.length === 0) {
-        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No student data available</p>';
+        container.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">No learner data available</p>';
         return;
     }
     
-    let html = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
-    `;
-    
+    let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">`;
     topStudents.forEach((data, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`;
         const statusColor = data.grade === 'A' ? '#10b981' : data.grade === 'B' ? '#3b82f6' : data.grade === 'C' ? '#f59e0b' : '#ef4444';
-        
+        const bgColor = index === 0 ? '#fef3c7' : index === 1 ? '#f0fdf4' : index === 2 ? '#eff6ff' : '#f8fafc';
+        const borderColor = index === 0 ? '#f59e0b' : index === 1 ? '#10b981' : index === 2 ? '#3b82f6' : '#e5e7eb';
         html += `
-            <div style="
-                background: ${index === 0 ? '#fef3c7' : index === 1 ? '#f0fdf4' : index === 2 ? '#eff6ff' : '#f8fafc'};
-                border: 2px solid ${index === 0 ? '#f59e0b' : index === 1 ? '#10b981' : index === 2 ? '#3b82f6' : '#e5e7eb'};
-                border-radius: 12px;
-                padding: 16px;
-                text-align: center;
-            ">
-                <div style="font-size: 28px; margin-bottom: 8px;">${medal}</div>
-                <div style="font-weight: 700; font-size: 15px; color: #1e293b;">${window.escapeHtml(data.student.full_name || 'Unknown')}</div>
-                <div style="font-size: 12px; color: #64748b;">${window.escapeHtml(data.student.student_id || 'N/A')}</div>
-                <div style="font-size: 12px; color: #64748b;">${window.escapeHtml(data.student.program || 'N/A')}</div>
-                <div style="margin-top: 10px; display: flex; justify-content: center; gap: 15px;">
-                    <div>
-                        <div style="font-size: 11px; color: #94a3b8;">Average</div>
-                        <div style="font-size: 20px; font-weight: 700; color: ${statusColor};">${data.avg}%</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 11px; color: #94a3b8;">Grade</div>
-                        <div style="font-size: 20px; font-weight: 700; color: ${statusColor};">${data.grade}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 11px; color: #94a3b8;">Points</div>
-                        <div style="font-size: 20px; font-weight: 700; color: ${statusColor};">${data.points}</div>
-                    </div>
+            <div style="background:${bgColor};border:2px solid ${borderColor};border-radius:12px;padding:16px;text-align:center;">
+                <div style="font-size:28px;margin-bottom:8px;">${medal}</div>
+                <div style="font-weight:700;font-size:15px;color:#1e293b;">${window.escapeHtml(data.student.full_name || 'Unknown')}</div>
+                <div style="font-size:12px;color:#64748b;">${window.escapeHtml(data.student.student_id || 'N/A')}</div>
+                <div style="font-size:12px;color:#64748b;">${window.escapeHtml(data.student.program || 'N/A')}</div>
+                <div style="margin-top:10px;display:flex;justify-content:center;gap:15px;">
+                    <div><div style="font-size:11px;color:#94a3b8;">Average</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${data.avg}%</div></div>
+                    <div><div style="font-size:11px;color:#94a3b8;">Grade</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${data.grade}</div></div>
+                    <div><div style="font-size:11px;color:#94a3b8;">Points</div><div style="font-size:20px;font-weight:700;color:${statusColor};">${data.points}</div></div>
                 </div>
-                <div style="font-size: 11px; color: #94a3b8; margin-top: 5px;">
-                    ${data.count} subjects • Highest: ${data.highest}% • Lowest: ${data.lowest}%
-                </div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:5px;">${data.count} units • Highest: ${data.highest}% • Lowest: ${data.lowest}%</div>
             </div>
         `;
     });
-    
     html += '</div>';
     container.innerHTML = html;
 };
@@ -1405,9 +1483,7 @@ window.renderWeakStudents = function(students, marks) {
     marks?.forEach(m => {
         const admission = m.admission_number;
         const score = m.final_score || 0;
-        if (!studentAverages[admission]) {
-            studentAverages[admission] = { total: 0, count: 0, scores: [] };
-        }
+        if (!studentAverages[admission]) studentAverages[admission] = { total: 0, count: 0, scores: [] };
         if (score > 0) {
             studentAverages[admission].total += score;
             studentAverages[admission].count++;
@@ -1433,62 +1509,62 @@ window.renderWeakStudents = function(students, marks) {
     });
     
     const weakStudents = studentData.sort((a, b) => a.avg - b.avg);
-    
     if (weakStudents.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: #10b981;">
-                <i class="fas fa-check-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                🎉 No weak students! All students are performing well.
+            <div style="text-align:center;padding:20px;color:#10b981;">
+                <i class="fas fa-check-circle" style="font-size:32px;display:block;margin-bottom:10px;"></i>
+                🎉 No weak learners! All learners are performing well.
             </div>
         `;
         return;
     }
     
     let html = `
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead>
-                    <tr style="background: #dc2626; color: white;">
-                        <th style="padding: 10px 12px; text-align: left;">#</th>
-                        <th style="padding: 10px 12px; text-align: left;">Student Name</th>
-                        <th style="padding: 10px 12px; text-align: left;">Admission</th>
-                        <th style="padding: 10px 12px; text-align: left;">Program</th>
-                        <th style="padding: 10px 12px; text-align: center;">Avg Score</th>
-                        <th style="padding: 10px 12px; text-align: center;">Subjects</th>
-                        <th style="padding: 10px 12px; text-align: center;">Highest</th>
-                        <th style="padding: 10px 12px; text-align: center;">Lowest</th>
-                        <th style="padding: 10px 12px; text-align: center;">Status</th>
+                    <tr style="background:#dc2626;color:white;">
+                        <th style="padding:10px 12px;text-align:left;">#</th>
+                        <th style="padding:10px 12px;text-align:left;">Learner</th>
+                        <th style="padding:10px 12px;text-align:left;">Admission</th>
+                        <th style="padding:10px 12px;text-align:left;">Programme</th>
+                        <th style="padding:10px 12px;text-align:center;">Avg Score</th>
+                        <th style="padding:10px 12px;text-align:center;">Units</th>
+                        <th style="padding:10px 12px;text-align:center;">Highest</th>
+                        <th style="padding:10px 12px;text-align:center;">Lowest</th>
+                        <th style="padding:10px 12px;text-align:center;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
-    weakStudents.forEach((data, index) => {
+    weakStudents.slice(0, 20).forEach((data, index) => {
         const status = data.avg >= 50 ? '⚠️ At Risk' : '❌ Critical';
         const statusColor = data.avg >= 50 ? '#f59e0b' : '#dc2626';
-        
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #fef2f2;' : ''}">
-                <td style="padding: 10px 12px; text-align: center;">${index + 1}</td>
-                <td style="padding: 10px 12px; font-weight: 500;">${window.escapeHtml(data.student.full_name || 'Unknown')}</td>
-                <td style="padding: 10px 12px;">${window.escapeHtml(data.student.student_id || 'N/A')}</td>
-                <td style="padding: 10px 12px;">${window.escapeHtml(data.student.program || 'N/A')}</td>
-                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: ${statusColor};">${data.avg}%</td>
-                <td style="padding: 10px 12px; text-align: center;">${data.count}</td>
-                <td style="padding: 10px 12px; text-align: center; color: #10b981;">${data.highest}%</td>
-                <td style="padding: 10px 12px; text-align: center; color: #dc2626;">${data.lowest}%</td>
-                <td style="padding: 10px 12px; text-align: center; color: ${statusColor}; font-weight: 600;">${status}</td>
+            <tr style="border-bottom:1px solid #e5e7eb;${index % 2 === 0 ? 'background:#fef2f2;' : ''}">
+                <td style="padding:10px 12px;text-align:center;">${index + 1}</td>
+                <td style="padding:10px 12px;font-weight:500;">${window.escapeHtml(data.student.full_name || 'Unknown')}</td>
+                <td style="padding:10px 12px;">${window.escapeHtml(data.student.student_id || 'N/A')}</td>
+                <td style="padding:10px 12px;">${window.escapeHtml(data.student.program || 'N/A')}</td>
+                <td style="padding:10px 12px;text-align:center;font-weight:700;color:${statusColor};">${data.avg}%</td>
+                <td style="padding:10px 12px;text-align:center;">${data.count}</td>
+                <td style="padding:10px 12px;text-align:center;color:#10b981;">${data.highest}%</td>
+                <td style="padding:10px 12px;text-align:center;color:#dc2626;">${data.lowest}%</td>
+                <td style="padding:10px 12px;text-align:center;color:${statusColor};font-weight:600;">${status}</td>
             </tr>
         `;
     });
+    
+    if (weakStudents.length > 20) {
+        html += `<tr><td colspan="9" style="padding:10px;text-align:center;color:#94a3b8;">... and ${weakStudents.length - 20} more learners</td></tr>`;
+    }
     
     html += `
                 </tbody>
             </table>
         </div>
-        <div style="margin-top: 10px; font-size: 12px; color: #94a3b8; text-align: right;">
-            ${weakStudents.length} students need intervention
-        </div>
+        <div style="margin-top:10px;font-size:12px;color:#94a3b8;text-align:right;">${weakStudents.length} learners need intervention</div>
     `;
     
     container.innerHTML = html;
@@ -1504,18 +1580,12 @@ window.renderBlockFilterStats = function(students, marks, selectedBlock) {
     
     const blockStats = {};
     const blockOrder = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-    
-    blockOrder.forEach(b => {
-        blockStats[b] = { total: 0, avg: 0, pass: 0, fail: 0, pending: 0, totalScore: 0, scoredCount: 0 };
-    });
+    blockOrder.forEach(b => blockStats[b] = { total: 0, avg: 0, pass: 0, fail: 0, pending: 0, totalScore: 0, scoredCount: 0 });
     
     students?.forEach(s => {
         const block = s.block || 'Unknown';
-        if (blockStats[block]) {
-            blockStats[block].total++;
-        } else {
-            blockStats[block] = { total: 1, avg: 0, pass: 0, fail: 0, pending: 0, totalScore: 0, scoredCount: 0 };
-        }
+        if (blockStats[block]) blockStats[block].total++;
+        else blockStats[block] = { total: 1, avg: 0, pass: 0, fail: 0, pending: 0, totalScore: 0, scoredCount: 0 };
     });
     
     marks?.forEach(m => {
@@ -1538,57 +1608,80 @@ window.renderBlockFilterStats = function(students, marks, selectedBlock) {
         data.avg = data.scoredCount > 0 ? Math.round((data.totalScore / data.scoredCount) * 10) / 10 : 0;
     });
     
-    const displayBlocks = selectedBlock !== 'all' 
-        ? [selectedBlock] 
-        : Object.keys(blockStats).filter(b => blockStats[b].total > 0);
-    
+    const displayBlocks = selectedBlock !== 'all' ? [selectedBlock] : Object.keys(blockStats).filter(b => blockStats[b].total > 0);
     if (displayBlocks.length === 0) {
-        container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No block data available</p>';
+        container.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">No stage data available</p>';
         return;
     }
     
-    let html = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
-    `;
-    
+    let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">`;
     displayBlocks.forEach(block => {
         const data = blockStats[block];
         const statusColor = data.avg >= 60 ? '#10b981' : (data.avg > 0 ? '#dc2626' : '#f59e0b');
         const passRate = data.scoredCount > 0 ? Math.round((data.pass / data.scoredCount) * 100) : 0;
-        
         html += `
-            <div style="
-                background: ${data.avg >= 60 ? '#f0fdf4' : data.avg > 0 ? '#fef2f2' : '#fefce8'};
-                border: 2px solid ${data.avg >= 60 ? '#10b981' : data.avg > 0 ? '#dc2626' : '#f59e0b'};
-                border-radius: 12px;
-                padding: 16px;
-                text-align: center;
-            ">
-                <div style="font-weight: 700; font-size: 14px; color: #1e293b;">${block}</div>
-                <div style="font-size: 11px; color: #64748b;">${data.total} students</div>
-                <div style="font-size: 24px; font-weight: 700; color: ${statusColor}; margin: 8px 0;">
-                    ${data.avg}%
+            <div style="background:${data.avg >= 60 ? '#f0fdf4' : data.avg > 0 ? '#fef2f2' : '#fefce8'};border:2px solid ${statusColor};border-radius:12px;padding:16px;text-align:center;">
+                <div style="font-weight:700;font-size:14px;color:#1e293b;">${block}</div>
+                <div style="font-size:11px;color:#64748b;">${data.total} learners</div>
+                <div style="font-size:24px;font-weight:700;color:${statusColor};margin:8px 0;">${data.avg}%</div>
+                <div style="display:flex;justify-content:center;gap:15px;font-size:12px;">
+                    <div><span style="color:#10b981;">✅ ${data.pass}</span></div>
+                    <div><span style="color:#dc2626;">❌ ${data.fail}</span></div>
+                    <div><span style="color:#f59e0b;">⏳ ${data.pending}</span></div>
                 </div>
-                <div style="display: flex; justify-content: center; gap: 15px; font-size: 12px;">
-                    <div>
-                        <span style="color: #10b981;">✅ ${data.pass}</span>
-                    </div>
-                    <div>
-                        <span style="color: #dc2626;">❌ ${data.fail}</span>
-                    </div>
-                    <div>
-                        <span style="color: #f59e0b;">⏳ ${data.pending}</span>
-                    </div>
-                </div>
-                <div style="font-size: 11px; color: #94a3b8; margin-top: 5px;">
-                    Pass Rate: ${passRate}%
-                </div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:5px;">Pass Rate: ${passRate}%</div>
             </div>
         `;
     });
-    
     html += '</div>';
     container.innerHTML = html;
+};
+
+// ============================================================
+// TABLE SEARCH & FILTER (NEW)
+// ============================================================
+
+window.filterAnalyticsTable = function() {
+    const searchTerm = document.getElementById('analytics_table_search')?.value?.toLowerCase() || '';
+    const statusFilter = document.getElementById('analytics_table_status_filter')?.value || 'all';
+    
+    // Filter subject table
+    const subjectRows = document.querySelectorAll('#analytics_subject_table_body tr');
+    let visibleCount = 0;
+    subjectRows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        let show = true;
+        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (show && statusFilter !== 'all') {
+            const statusCell = row.querySelector('td:nth-child(7)');
+            if (statusCell) {
+                const statusText = statusCell.textContent.toLowerCase();
+                if (statusFilter === 'pass' && !statusText.includes('pass')) show = false;
+                if (statusFilter === 'fail' && !statusText.includes('risk') && !statusText.includes('fail')) show = false;
+            }
+        }
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    });
+    
+    document.getElementById('analytics_table_visible_count').textContent = visibleCount;
+    
+    // Also filter student table
+    const studentRows = document.querySelectorAll('#analytics_student_table_body tr');
+    studentRows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        let show = true;
+        if (searchTerm && !text.includes(searchTerm)) show = false;
+        if (show && statusFilter !== 'all') {
+            const statusCell = row.querySelector('td:nth-child(7)');
+            if (statusCell) {
+                const statusText = statusCell.textContent.toLowerCase();
+                if (statusFilter === 'pass' && !statusText.includes('pass')) show = false;
+                if (statusFilter === 'fail' && !statusText.includes('risk') && !statusText.includes('fail')) show = false;
+            }
+        }
+        row.style.display = show ? '' : 'none';
+    });
 };
 
 // ============================================================
@@ -1598,9 +1691,6 @@ window.renderBlockFilterStats = function(students, marks, selectedBlock) {
 window.refreshAnalytics = function() {
     console.log('🔄 Refreshing analytics...');
     window.loadAnalyticsData();
-    if (typeof window.showNotification === 'function') {
-        window.showNotification('🔄 Analytics refreshed!', 'success');
-    }
 };
 
 // ============================================================
@@ -1626,12 +1716,12 @@ Date: ${new Date().toLocaleString()}
 ----------------------------------------
 📈 Summary Statistics:
 ----------------------------------------
-Total Students: ${totalStudents}
+Total Learners: ${totalStudents}
 Pass Rate: ${passRate}
 Average Score: ${avgScore}
-At Risk Students: ${atRisk}
+At Risk Learners: ${atRisk}
 ----------------------------------------
-Program: ${program}
+Programme: ${program}
 Year: ${year}
 Block: ${block}
 ========================================
@@ -1650,10 +1740,6 @@ FAIL (0-59%) → 0.0
     a.download = `analytics_report_${new Date().toISOString().split('T')[0]}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    
-    if (typeof window.showNotification === 'function') {
-        window.showNotification('📊 Report exported successfully!', 'success');
-    }
 };
 
 // ============================================================
@@ -1665,6 +1751,7 @@ window.filterAnalytics = function(program) {
     const select = document.getElementById('analytics_program_select');
     if (select) {
         select.value = program;
+        window.updateTerminology();
         window.loadAnalyticsData();
     }
 };
@@ -1687,6 +1774,8 @@ window.refreshAnalytics = window.refreshAnalytics;
 window.exportAnalyticsReport = window.exportAnalyticsReport;
 window.filterAnalytics = window.filterAnalytics;
 window.updateAnalyticsMetric = window.updateAnalyticsMetric;
+window.filterAnalyticsTable = window.filterAnalyticsTable;
+window.updateTerminology = window.updateTerminology;
 window.getProgramDisplayName = window.getProgramDisplayName;
 window.getGradeInfo = window.getGradeInfo;
 window.calculateGrade = window.calculateGrade;
@@ -1701,3 +1790,5 @@ console.log('   - refreshAnalytics()');
 console.log('   - exportAnalyticsReport()');
 console.log('   - filterAnalytics(program)');
 console.log('   - updateAnalyticsMetric()');
+console.log('   - filterAnalyticsTable()');
+console.log('   - updateTerminology()');
