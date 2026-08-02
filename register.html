@@ -1138,15 +1138,15 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label><i data-feather="calendar"></i> Employment Date</label>
+                        <label><i data-feather="calendar"></i> Employment Date <span style="font-weight:400;color:#64748B;">(Optional)</span></label>
                         <input type="date" id="employment_date" name="employment_date">
                     </div>
                 </div>
                 
-                <!-- Lecturer Documents -->
+                <!-- Lecturer Documents - OPTIONAL -->
                 <div style="margin-top:12px;">
                     <p style="font-weight:600;font-size:0.8rem;color:#1e293b;margin-bottom:8px;">
-                        📁 Lecturer Documents <span style="font-weight:400;color:#64748B;">(Upload)</span>
+                        📁 Lecturer Documents <span style="font-weight:400;color:#64748B;">(Optional)</span>
                     </p>
                     <div class="documents-grid">
                         <div class="doc-card" id="doc_lecturer_id">
@@ -1155,7 +1155,7 @@
                             <div class="doc-status" id="doc_lecturer_id_status">Not uploaded</div>
                             <div class="doc-badge">✓</div>
                             <div class="doc-remove" onclick="removeDocument('lecturer_id')">✕ Remove</div>
-                            <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'lecturer_id')">
+                            <input type="file" id="doc_lecturer_id_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'lecturer_id')">
                             <div class="doc-file-name" id="doc_lecturer_id_filename"></div>
                         </div>
                         
@@ -1165,7 +1165,7 @@
                             <div class="doc-status" id="doc_kra_pin_status">Not uploaded</div>
                             <div class="doc-badge">✓</div>
                             <div class="doc-remove" onclick="removeDocument('kra_pin')">✕ Remove</div>
-                            <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'kra_pin')">
+                            <input type="file" id="doc_kra_pin_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'kra_pin')">
                             <div class="doc-file-name" id="doc_kra_pin_filename"></div>
                         </div>
                         
@@ -1175,7 +1175,7 @@
                             <div class="doc-status" id="doc_university_cert_status">Not uploaded</div>
                             <div class="doc-badge">✓</div>
                             <div class="doc-remove" onclick="removeDocument('university_cert')">✕ Remove</div>
-                            <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'university_cert')">
+                            <input type="file" id="doc_university_cert_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'university_cert')">
                             <div class="doc-file-name" id="doc_university_cert_filename"></div>
                         </div>
                         
@@ -1185,11 +1185,11 @@
                             <div class="doc-status" id="doc_cv_status">Not uploaded</div>
                             <div class="doc-badge">✓</div>
                             <div class="doc-remove" onclick="removeDocument('cv')">✕ Remove</div>
-                            <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'cv')">
+                            <input type="file" id="doc_cv_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'cv')">
                             <div class="doc-file-name" id="doc_cv_filename"></div>
                         </div>
                     </div>
-                    <div class="help-text" style="margin-top:6px;">📌 Recommended: ID, KRA PIN, University Certificate, CV</div>
+                    <div class="help-text" style="margin-top:6px;">📌 <strong>Optional:</strong> Upload ID, KRA PIN, University Certificate, or CV if available</div>
                 </div>
             </div>
 
@@ -1224,7 +1224,7 @@
                     <div class="doc-status" id="doc_kcse_status">Not uploaded</div>
                     <div class="doc-badge">✓</div>
                     <div class="doc-remove" onclick="removeDocument('kcse')">✕ Remove</div>
-                    <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'kcse')">
+                    <input type="file" id="doc_kcse_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'kcse')">
                     <div class="doc-file-name" id="doc_kcse_filename"></div>
                 </div>
 
@@ -1235,7 +1235,7 @@
                     <div class="doc-status" id="doc_id_status">Not uploaded</div>
                     <div class="doc-badge">✓</div>
                     <div class="doc-remove" onclick="removeDocument('id')">✕ Remove</div>
-                    <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'id')">
+                    <input type="file" id="doc_id_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocumentUpload(event, 'id')">
                     <div class="doc-file-name" id="doc_id_filename"></div>
                 </div>
             </div>
@@ -1573,9 +1573,10 @@
     // STORED DOCUMENTS DATA
     // ============================================
     const uploadedDocs = {
+        // Student docs
         kcse: null,
         id: null,
-        // Lecturer documents
+        // Lecturer docs
         lecturer_id: null,
         kra_pin: null,
         university_cert: null,
@@ -1709,7 +1710,7 @@
     });
 
     // ============================================
-    // PROGRESS INDICATOR
+    // PROGRESS INDICATOR - FIXED FOR LECTURER
     // ============================================
     let currentStep = 1;
 
@@ -1717,9 +1718,35 @@
         if (step > currentStep) {
             const currentSection = document.querySelector(`.form-section[data-section="${currentStep}"]`);
             if (currentSection) {
+                // Get role
+                const role = document.getElementById('role').value;
+                
+                // Get all required inputs in the current section
                 const inputs = currentSection.querySelectorAll('input[required], select[required]');
                 let valid = true;
+                
                 for (const input of inputs) {
+                    // SKIP validation for hidden fields (student fields when lecturer is selected)
+                    const isHidden = input.closest('.role-fields') && !input.closest('.role-fields').classList.contains('active');
+                    if (isHidden) {
+                        continue; // Skip hidden fields
+                    }
+                    
+                    // Skip if it's a lecturer field but role is student
+                    if (input.closest('#lecturer-fields') && role !== 'lecturer') {
+                        continue;
+                    }
+                    
+                    // Skip if it's a student field but role is lecturer
+                    if (input.closest('#student-fields') && role !== 'student') {
+                        continue;
+                    }
+                    
+                    // Skip file inputs (documents are optional)
+                    if (input.type === 'file') {
+                        continue;
+                    }
+                    
                     if (!input.value.trim()) {
                         input.style.borderColor = '#DC2626';
                         valid = false;
@@ -1727,6 +1754,7 @@
                         input.style.borderColor = '#e2e8f0';
                     }
                 }
+                
                 if (!valid) {
                     showFeedback('Please fill all required fields before proceeding.', 'warning');
                     return;
@@ -1788,7 +1816,7 @@
     document.getElementById('tvet_intake_year').addEventListener('change', updateIntakePreview);
 
     // ============================================
-    // ROLE TOGGLE
+    // ROLE TOGGLE - FIXED
     // ============================================
     document.getElementById('role').addEventListener('change', function() {
         const isStudent = this.value === 'student';
@@ -1800,6 +1828,8 @@
         if (isStudent) {
             studentFields.style.display = 'block';
             studentFields.classList.add('active');
+            
+            // Set required on student fields
             studentFields.querySelectorAll('input, select').forEach(input => {
                 if (input.id !== 'student_id_number' && 
                     input.id !== 'guardian_name' && 
@@ -1807,7 +1837,14 @@
                     input.setAttribute('required', '');
                 }
             });
+            
             if (studentDocs) studentDocs.style.display = 'grid';
+            
+            // Remove required from lecturer fields
+            lecturerFields.querySelectorAll('input, select').forEach(input => {
+                input.removeAttribute('required');
+            });
+            
         } else {
             studentFields.style.display = 'none';
             studentFields.classList.remove('active');
@@ -1820,11 +1857,27 @@
         if (isLecturer) {
             lecturerFields.style.display = 'block';
             lecturerFields.classList.add('active');
+            
+            // Set required on lecturer fields - ONLY department, NOT documents!
             lecturerFields.querySelectorAll('input, select').forEach(input => {
-                if (input.id !== 'employment_date') {
+                // Skip file inputs (documents are optional)
+                if (input.type === 'file') {
+                    input.removeAttribute('required');
+                    return;
+                }
+                // Skip employment date (optional)
+                if (input.id === 'employment_date') {
+                    input.removeAttribute('required');
+                    return;
+                }
+                // Only department is required
+                if (input.id === 'department') {
                     input.setAttribute('required', '');
+                } else {
+                    input.removeAttribute('required');
                 }
             });
+            
         } else {
             lecturerFields.style.display = 'none';
             lecturerFields.classList.remove('active');
@@ -1914,20 +1967,28 @@
         const statusEl = document.getElementById(`doc_${docType}_status`);
         const filenameEl = document.getElementById(`doc_${docType}_filename`);
         
-        card.classList.add('uploaded');
-        statusEl.textContent = '✅ Uploaded';
-        statusEl.className = 'doc-status uploaded-text';
-        filenameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        if (card) card.classList.add('uploaded');
+        if (statusEl) {
+            statusEl.textContent = '✅ Uploaded';
+            statusEl.className = 'doc-status uploaded-text';
+        }
+        if (filenameEl) {
+            filenameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        }
         
         showFeedback(`✅ ${getDocLabel(docType)} uploaded successfully!`, 'success');
         
         const progressEl = document.getElementById('docUploadProgress');
         const progressBar = document.getElementById('docProgressBar');
-        progressEl.classList.add('active');
-        progressBar.style.width = '100%';
+        if (progressEl) {
+            progressEl.classList.add('active');
+            if (progressBar) progressBar.style.width = '100%';
+        }
         setTimeout(() => {
-            progressEl.classList.remove('active');
-            progressBar.style.width = '0%';
+            if (progressEl) {
+                progressEl.classList.remove('active');
+                if (progressBar) progressBar.style.width = '0%';
+            }
         }, 800);
     }
 
@@ -1949,12 +2010,19 @@
         const statusEl = document.getElementById(`doc_${docType}_status`);
         const filenameEl = document.getElementById(`doc_${docType}_filename`);
         
-        card.classList.remove('uploaded');
-        statusEl.textContent = 'Not uploaded';
-        statusEl.className = 'doc-status';
-        filenameEl.textContent = '';
+        if (card) {
+            card.classList.remove('uploaded');
+        }
+        if (statusEl) {
+            statusEl.textContent = 'Not uploaded';
+            statusEl.className = 'doc-status';
+        }
+        if (filenameEl) {
+            filenameEl.textContent = '';
+        }
         
-        const input = card.querySelector('input[type="file"]');
+        // Clear the file input
+        const input = document.getElementById(`doc_${docType}_input`);
         if (input) input.value = '';
         
         showFeedback(`🗑️ ${getDocLabel(docType)} removed.`, 'warning');
@@ -2021,9 +2089,13 @@
                             const filenameEl = document.getElementById(`doc_${docType}_filename`);
                             if (card) {
                                 card.classList.add('uploaded');
-                                statusEl.textContent = '✅ Previously uploaded';
-                                statusEl.className = 'doc-status uploaded-text';
-                                filenameEl.textContent = 'Saved from draft';
+                                if (statusEl) {
+                                    statusEl.textContent = '✅ Previously uploaded';
+                                    statusEl.className = 'doc-status uploaded-text';
+                                }
+                                if (filenameEl) {
+                                    filenameEl.textContent = 'Saved from draft';
+                                }
                             }
                         }
                     }
@@ -2126,6 +2198,7 @@
     // ============================================
     function showFeedback(message, type = 'success') {
         const messageDiv = document.getElementById('message');
+        if (!messageDiv) return;
         messageDiv.textContent = message;
         messageDiv.className = `message ${type} show`;
         setTimeout(() => {
@@ -2405,7 +2478,12 @@
                     ...userMetadata, 
                     department: department,
                     employment_date: employment_date,
-                    staff_id: 'AUTO_GENERATED'
+                    staff_id: 'AUTO_GENERATED',
+                    // Lecturer docs - optional
+                    doc_lecturer_id: uploadedDocs.lecturer_id ? 'uploaded' : 'pending',
+                    doc_kra_pin: uploadedDocs.kra_pin ? 'uploaded' : 'pending',
+                    doc_university_cert: uploadedDocs.university_cert ? 'uploaded' : 'pending',
+                    doc_cv: uploadedDocs.cv ? 'uploaded' : 'pending'
                 };
             }
             
@@ -2514,7 +2592,7 @@
                 }
             }
             
-            // Lecturer docs
+            // Lecturer docs - OPTIONAL
             if (role === 'lecturer') {
                 const lecturerDocTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
                 for (const docType of lecturerDocTypes) {
@@ -2562,9 +2640,10 @@
     console.log('✅ Registration page loaded with:');
     console.log('  📸 Profile photo upload');
     console.log('  📁 Student: KCSE + ID documents');
-    console.log('  📁 Lecturer: ID + KRA PIN + University Certificate + CV');
+    console.log('  📁 Lecturer: ID + KRA PIN + University Certificate + CV (Optional)');
     console.log('  🆔 Student ID validation (KRCHN and TVET formats)');
-    console.log('  👔 Lecturer Staff ID auto-generation');
+    console.log('  👔 Lecturer Staff ID auto-generated');
+    console.log('  ✅ Lecturer documents are OPTIONAL');
 </script>
 
 </body>
