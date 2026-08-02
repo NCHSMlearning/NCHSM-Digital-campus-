@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance Module - NCHSM</title>
     
-    <!-- ===== SUPABASE ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- ===== SUPABASE - Using same working CDN ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
     
     <!-- ===== FONT AWESOME ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -1460,62 +1461,28 @@ body {
     </div>
 
 <!-- ============================================================ -->
-<!-- ===== JAVASCRIPT - SUPABASE INTEGRATION ===== -->
+<!-- ===== JAVASCRIPT - SUPABASE INTEGRATION (FIXED) ===== -->
 <!-- ============================================================ -->
 <script>
     // ============================================================
-    // SUPABASE CONFIGURATION
+    // HIDE .html EXTENSION
+    // ============================================================
+    if (window.location.pathname.endsWith('.html')) {
+        const cleanPath = window.location.pathname.replace(/\.html$/, '');
+        window.history.replaceState({}, '', cleanPath);
+    }
+
+    // ============================================================
+    // 🔧 SUPABASE CONFIG (Using window to avoid duplicate declaration)
     // ============================================================
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
-    // ============================================================
-    // INITIALIZE SUPABASE - FIXED: No duplicate declaration
-    // ============================================================
-    let supabase;
-
-    // Check if supabase already exists globally
-    if (typeof window.supabase !== 'undefined' && window.supabase) {
-        console.log('🔗 Using existing Supabase client');
-        supabase = window.supabase;
-    } 
-    // Check if supabase_js is available (from CDN)
-    else if (typeof supabase_js !== 'undefined' && supabase_js) {
-        console.log('🔗 Creating Supabase client from supabase_js');
-        supabase = supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } 
-    // Check if createClient is available in window
-    else if (typeof window.createClient === 'function') {
-        console.log('🔗 Creating Supabase client from window.createClient');
-        supabase = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } 
-    // Fallback: try to get from the global Supabase object
-    else if (typeof Supabase !== 'undefined' && Supabase.createClient) {
-        console.log('🔗 Creating Supabase client from Supabase.createClient');
-        supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } 
-    else {
-        console.error('❌ Supabase client not available');
-        // Show error message to user
-        document.body.innerHTML = `
-            <div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;font-family:Arial,sans-serif;padding:20px;text-align:center;">
-                <div style="font-size:48px;color:#dc2626;margin-bottom:20px;">⚠️</div>
-                <h1 style="color:#0A3D62;">Supabase Client Error</h1>
-                <p style="color:#64748b;max-width:400px;">Unable to initialize Supabase client. Please check your internet connection and refresh the page.</p>
-                <button onclick="location.reload()" style="margin-top:20px;padding:12px 30px;background:#4C1D95;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;">
-                    <i class="fas fa-sync-alt"></i> Refresh Page
-                </button>
-            </div>
-        `;
-        throw new Error('Supabase client not available');
-    }
-
-    // Make available globally
-    window.sb = supabase;
-    window.supabase = supabase;
+    // ✅ Use a different variable name to avoid conflict
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     console.log('🔗 Supabase initialized');
-    console.log('📊 Supabase client:', supabase ? '✅ Available' : '❌ Not available');
+    console.log('📊 Supabase client:', supabaseClient ? '✅ Available' : '❌ Not available');
 
     // Table name
     const USER_TABLE = 'consolidated_user_profiles_table';
@@ -1528,7 +1495,7 @@ body {
         console.log('📝 Finance Dashboard loading...');
         
         // Check if supabase is available
-        if (!supabase) {
+        if (!supabaseClient) {
             console.error('❌ Supabase not available');
             return;
         }
@@ -1544,7 +1511,7 @@ body {
         
         // Verify session with Supabase
         try {
-            const { data: { session }, error } = await supabase.auth.getSession();
+            const { data: { session }, error } = await supabaseClient.auth.getSession();
             
             if (error || !session) {
                 console.log('⚠️ Session expired, redirecting to login...');
@@ -1598,12 +1565,12 @@ body {
     // ============================================================
     async function getUserFinanceData(userId) {
         try {
-            if (!supabase) {
+            if (!supabaseClient) {
                 console.warn('⚠️ Supabase not initialized');
                 return null;
             }
             
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from(USER_TABLE)
                 .select('full_name, role, program, student_id, phone')
                 .eq('id', userId)
@@ -1675,13 +1642,13 @@ body {
     // ============================================================
     async function loadStudentStats() {
         try {
-            if (!supabase) {
+            if (!supabaseClient) {
                 console.warn('⚠️ Supabase not initialized');
                 return;
             }
             
             // Get total students
-            const { count: totalStudents, error: countError } = await supabase
+            const { count: totalStudents, error: countError } = await supabaseClient
                 .from(USER_TABLE)
                 .select('*', { count: 'exact', head: true })
                 .eq('role', 'student');
@@ -1692,7 +1659,7 @@ body {
             }
             
             // Get total finance users
-            const { count: financeUsers, error: financeError } = await supabase
+            const { count: financeUsers, error: financeError } = await supabaseClient
                 .from(USER_TABLE)
                 .select('*', { count: 'exact', head: true })
                 .in('role', ['superadmin', 'finance_officer']);
@@ -1822,22 +1789,42 @@ body {
         document.getElementById('financeSidebar').classList.toggle('open');
     }
 
-    // ============================================================
-    // LOGOUT
-    // ============================================================
-    function logoutFinance() {
+  // ============================================================
+// FIXED LOGOUT - With confirmation
+// ============================================================
+function logoutFinance() {
+    // Show confirmation
+    if (confirm('Are you sure you want to logout?')) {
+        // Clear all storage
         localStorage.removeItem('finance_user');
         sessionStorage.removeItem('finance_user');
-        window.location.href = 'financelogin.html';
+        localStorage.removeItem('adminSession'); // Clear any other sessions
+        
+        // Show toast notification
+        showToast('Logging out...', 'info');
+        
+        // Redirect after short delay
+        setTimeout(function() {
+            window.location.href = 'financelogin.html';
+        }, 500);
     }
+}
 
-    // ============================================================
-    // GO TO MAIN DASHBOARD
-    // ============================================================
-    function goToMainDashboard() {
-        window.location.href = '/index.html';
+// Also add logout to ESC key (optional)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        // Close any open modals
+        document.querySelectorAll('.finance-modal.active').forEach(modal => {
+            modal.classList.remove('active');
+        });
     }
-
+});
+   // ============================================================
+// GO TO MAIN DASHBOARD
+// ============================================================
+function goToMainDashboard() {
+    window.location.href = 'https://nchsm.co.ke/home';
+}
     // ============================================================
     // REFRESH DATA
     // ============================================================
