@@ -1,183 +1,351 @@
 /**
  * FINANCE MODULE - SUPER ADMIN FUNCTIONS
  * All functions specific to Super Admin role
+ * Updated to work directly with Supabase
  */
 
-// ===== ADMIN DASHBOARD =====
+// ============================================================
+// ADMIN DASHBOARD
+// ============================================================
 
 /**
  * Load admin dashboard data
  */
 async function loadAdminDashboard() {
     try {
-        const data = await adminGetDashboardData();
-        updateAdminStats(data);
-        loadAdminRecentTransactions(data.recentTransactions);
-        loadAdminCharts(data);
-        return data;
+        console.log('📊 Loading admin dashboard...');
+        
+        // Load stats from Supabase
+        await loadAdminStats();
+        
+        // Load recent transactions
+        await loadAdminRecentTransactions();
+        
+        // Load charts
+        await loadAdminCharts();
+        
+        return true;
     } catch (error) {
         console.error('Error loading admin dashboard:', error);
         showToast('Error loading dashboard data', 'error');
+        return false;
     }
 }
 
 /**
- * Get admin dashboard data
+ * Load admin stats from Supabase
  */
-async function adminGetDashboardData() {
-    const [stats, recent, chartData] = await Promise.all([
-        financeAPI.getDashboardStats(),
-        financeAPI.getPayments({ limit: 10, sort: 'desc' }),
-        financeAPI.getDashboardData({ type: 'chart' })
-    ]);
-    
-    return {
-        stats,
-        recentTransactions: recent,
-        chartData: chartData
-    };
+async function loadAdminStats() {
+    try {
+        if (!window.supabase) {
+            console.warn('⚠️ Supabase not available');
+            return;
+        }
+        
+        const supabase = window.supabase;
+        
+        // Get total students
+        const { count: totalStudents, error: countError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'student');
+        
+        if (!countError) {
+            document.getElementById('totalStudents').textContent = totalStudents || 0;
+            document.getElementById('accountsBadge').textContent = totalStudents || 0;
+        }
+        
+        // Get total collected from payments
+        const { data: payments, error: paymentsError } = await supabase
+            .from('finance_payments')
+            .select('amount')
+            .eq('status', 'completed');
+        
+        if (!paymentsError && payments) {
+            const totalCollected = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            document.getElementById('totalCollected').textContent = formatCurrency(totalCollected);
+        }
+        
+        // Get outstanding balance from student accounts
+        const { data: accounts, error: accountsError } = await supabase
+            .from('finance_student_accounts')
+            .select('balance')
+            .gt('balance', 0);
+        
+        if (!accountsError && accounts) {
+            const outstanding = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+            document.getElementById('outstandingBalance').textContent = formatCurrency(outstanding);
+            document.getElementById('overdueAccounts').textContent = accounts.length || 0;
+            document.getElementById('dashboardBadge').textContent = accounts.length || 0;
+        }
+        
+        // Get today's payments
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todayPayments, error: todayError } = await supabase
+            .from('finance_payments')
+            .select('amount')
+            .eq('payment_date', today)
+            .eq('status', 'completed');
+        
+        if (!todayError && todayPayments) {
+            const todayTotal = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            document.getElementById('todayPayments').textContent = formatCurrency(todayTotal);
+        }
+        
+        // Get total transactions
+        const { count: totalTransactions, error: transError } = await supabase
+            .from('finance_transactions')
+            .select('*', { count: 'exact', head: true });
+        
+        if (!transError) {
+            document.getElementById('totalTransactions').textContent = totalTransactions || 0;
+        }
+        
+    } catch (error) {
+        console.error('Error loading admin stats:', error);
+    }
 }
 
 /**
- * Update admin stats
+ * Load admin recent transactions
  */
-function updateAdminStats(data) {
-    if (!data || !data.stats) return;
-    
-    const stats = data.stats;
-    document.getElementById('totalStudents').textContent = stats.totalStudents || 0;
-    document.getElementById('totalCollected').textContent = formatCurrency(stats.totalCollected || 0);
-    document.getElementById('outstandingBalance').textContent = formatCurrency(stats.outstandingBalance || 0);
-    document.getElementById('overdueAccounts').textContent = stats.overdueAccounts || 0;
-    document.getElementById('todayPayments').textContent = formatCurrency(stats.todayPayments || 0);
-    document.getElementById('totalTransactions').textContent = stats.totalTransactions || 0;
-    
-    // Update badges
-    document.getElementById('dashboardBadge').textContent = stats.overdueAccounts || 0;
-    document.getElementById('accountsBadge').textContent = stats.totalStudents || 0;
+async function loadAdminRecentTransactions() {
+    try {
+        if (!window.supabase) return;
+        
+        const { data: transactions, error } = await window.supabase
+            .from('finance_payments')
+            .select('*')
+            .order('payment_date', { ascending: false })
+            .limit(10);
+        
+        if (error) throw error;
+        
+        const tbody = document.getElementById('recentTransactions');
+        if (!tbody) return;
+        
+        if (!transactions || transactions.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
+                        <i class="fas fa-info-circle"></i> No recent transactions
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = transactions.map(t => {
+            const statusColors = {
+                completed: 'background:#d1fae5; color:#059669;',
+                pending: 'background:#fef3c7; color:#d97706;',
+                failed: 'background:#fee2e2; color:#dc2626;'
+            };
+            return `
+                <tr>
+                    <td>${formatDate(t.payment_date)}</td>
+                    <td><strong>${t.student_name || 'N/A'}</strong></td>
+                    <td>${t.program || '-'}</td>
+                    <td><strong>${formatCurrency(t.amount)}</strong></td>
+                    <td>${t.payment_method || '-'}</td>
+                    <td>
+                        <span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;${statusColors[t.status] || statusColors.pending}">
+                            ${t.status ? t.status.charAt(0).toUpperCase() + t.status.slice(1) : 'Pending'}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading recent transactions:', error);
+    }
 }
 
 /**
  * Load admin charts
  */
-function loadAdminCharts(data) {
-    // Monthly chart
-    if (data.chartData && data.chartData.monthly) {
-        updateMonthlyChart(data.chartData.monthly);
-    }
-    
-    // Status chart
-    if (data.chartData && data.chartData.status) {
-        updateStatusChart(data.chartData.status);
-    }
-}
-
-/**
- * Update monthly chart
- */
-function updateMonthlyChart(data) {
-    const ctx = document.getElementById('monthlyCollectionsChart');
-    if (!ctx) return;
-    
-    if (monthlyChart) monthlyChart.destroy();
-    
-    monthlyChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{
-                label: 'Monthly Collections (KES)',
-                data: data,
-                backgroundColor: 'rgba(76, 29, 149, 0.7)',
-                borderColor: '#4C1D95',
-                borderWidth: 2,
-                borderRadius: 4,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { callback: v => 'KES ' + (v/1000).toFixed(0) + 'k' }
+async function loadAdminCharts() {
+    try {
+        if (!window.supabase) return;
+        
+        // Get monthly data
+        const { data: monthlyData, error: monthlyError } = await window.supabase
+            .from('finance_payments')
+            .select('payment_date, amount')
+            .eq('status', 'completed')
+            .order('payment_date', { ascending: true });
+        
+        // Process monthly data
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthlyTotals = new Array(12).fill(0);
+        
+        if (!monthlyError && monthlyData) {
+            monthlyData.forEach(p => {
+                if (p.payment_date) {
+                    const date = new Date(p.payment_date);
+                    const month = date.getMonth();
+                    monthlyTotals[month] += p.amount || 0;
                 }
+            });
+        }
+        
+        // Update monthly chart
+        const monthlyCtx = document.getElementById('monthlyCollectionsChart');
+        if (monthlyCtx) {
+            if (window.monthlyChart) window.monthlyChart.destroy();
+            
+            window.monthlyChart = new Chart(monthlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Monthly Collections (KES)',
+                        data: monthlyTotals,
+                        backgroundColor: 'rgba(76, 29, 149, 0.7)',
+                        borderColor: '#4C1D95',
+                        borderWidth: 2,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: function(value) { return 'KES ' + (value / 1000).toFixed(0) + 'k'; } }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Get status data
+        const { data: statusData, error: statusError } = await window.supabase
+            .from('finance_payments')
+            .select('status');
+        
+        if (!statusError && statusData) {
+            const statusCounts = {
+                completed: 0,
+                pending: 0,
+                failed: 0,
+                refunded: 0
+            };
+            
+            statusData.forEach(p => {
+                if (statusCounts[p.status] !== undefined) {
+                    statusCounts[p.status]++;
+                }
+            });
+            
+            const statusCtx = document.getElementById('paymentStatusChart');
+            if (statusCtx) {
+                if (window.statusChart) window.statusChart.destroy();
+                
+                window.statusChart = new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
+                        datasets: [{
+                            data: [statusCounts.completed, statusCounts.pending, statusCounts.failed, statusCounts.refunded],
+                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                            borderWidth: 0,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
+                            }
+                        },
+                        cutout: '60%'
+                    }
+                });
             }
         }
-    });
+        
+    } catch (error) {
+        console.error('Error loading charts:', error);
+    }
 }
 
-/**
- * Update status chart
- */
-function updateStatusChart(data) {
-    const ctx = document.getElementById('paymentStatusChart');
-    if (!ctx) return;
-    
-    if (statusChart) statusChart.destroy();
-    
-    statusChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
-            datasets: [{
-                data: [data.completed || 0, data.pending || 0, data.failed || 0, data.refunded || 0],
-                backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-                borderWidth: 0,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
-                }
-            },
-            cutout: '60%'
-        }
-    });
-}
-
-// ===== ADMIN STUDENT MANAGEMENT =====
+// ============================================================
+// ADMIN STUDENT MANAGEMENT
+// ============================================================
 
 /**
- * Load all students with account info
+ * Load all students with account info from Supabase
  */
 async function loadAllStudentAccounts() {
     try {
-        showLoading('Loading student accounts...');
-        const students = await adminGetAllStudents({ includeAccounts: true });
-        renderAdminStudentAccounts(students);
-        hideLoading();
-        return students;
+        console.log('📊 Loading student accounts...');
+        showToast('Loading accounts...', 'info');
+        
+        if (!window.supabase) {
+            console.warn('⚠️ Supabase not available');
+            return;
+        }
+        
+        // Get all student accounts with user data
+        const { data: accounts, error } = await window.supabase
+            .from('finance_student_accounts')
+            .select(`
+                student_id,
+                student_name,
+                student_email,
+                program,
+                intake_year,
+                current_block,
+                total_fees_due,
+                total_paid,
+                balance,
+                outstanding,
+                payment_status,
+                last_payment_date
+            `)
+            .order('student_name', { ascending: true });
+        
+        if (error) {
+            console.error('❌ Error loading accounts:', error);
+            showToast('Error loading accounts', 'error');
+            return;
+        }
+        
+        renderAdminStudentAccounts(accounts || []);
+        showToast('Accounts loaded!', 'success');
+        
     } catch (error) {
-        hideLoading();
-        showToast('Error loading student accounts', 'error');
-        return [];
+        console.error('❌ Error loading accounts:', error);
+        showToast('Error loading accounts', 'error');
     }
 }
 
 /**
  * Render admin student accounts
  */
-function renderAdminStudentAccounts(students) {
+function renderAdminStudentAccounts(accounts) {
     const tbody = document.getElementById('accountsTableBody');
     if (!tbody) return;
     
-    if (!students || students.length === 0) {
+    if (!accounts || accounts.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> No students found
+                    <i class="fas fa-info-circle"></i> No student accounts found
                 </td>
             </tr>
         `;
         return;
     }
     
-    tbody.innerHTML = students.map(student => {
-        const balance = student.balance || 0;
+    tbody.innerHTML = accounts.map(acc => {
+        const balance = parseFloat(acc.balance) || 0;
         const status = balance === 0 ? 'paid' : 
                       balance > 0 && balance <= 10000 ? 'partial' : 'outstanding';
         const statusLabel = status === 'paid' ? '✅ Paid' :
@@ -187,23 +355,20 @@ function renderAdminStudentAccounts(students) {
         
         return `
             <tr>
-                <td><strong>${student.name}</strong></td>
-                <td>${student.studentId || '-'}</td>
-                <td>${student.program || '-'}</td>
-                <td>${student.intake || '-'}</td>
-                <td>${formatCurrency(student.totalDue || 0)}</td>
-                <td>${formatCurrency(student.totalPaid || 0)}</td>
+                <td><strong>${acc.student_name || 'N/A'}</strong></td>
+                <td>${acc.student_id || '-'}</td>
+                <td>${acc.program || '-'}</td>
+                <td>${acc.intake_year || '-'}</td>
+                <td>${formatCurrency(acc.total_fees_due || 0)}</td>
+                <td>${formatCurrency(acc.total_paid || 0)}</td>
                 <td><strong>${formatCurrency(balance)}</strong></td>
                 <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
                 <td>
-                    <button onclick="adminViewStudent('${student.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
+                    <button onclick="adminViewStudent('${acc.student_id}')" class="finance-btn finance-btn-primary finance-btn-sm">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button onclick="adminEditStudent('${student.id}')" class="finance-btn finance-btn-outline finance-btn-sm">
+                    <button onclick="adminEditStudent('${acc.student_id}')" class="finance-btn finance-btn-outline finance-btn-sm">
                         <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="adminDeleteStudent('${student.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
-                        <i class="fas fa-trash"></i>
                     </button>
                 </td>
             </tr>
@@ -215,8 +380,10 @@ function renderAdminStudentAccounts(students) {
  * Admin view student
  */
 function adminViewStudent(studentId) {
-    // Open student detail modal
-    document.getElementById('studentAccountModal').classList.add('active');
+    const modal = document.getElementById('studentAccountModal');
+    if (!modal) return;
+    
+    modal.classList.add('active');
     document.getElementById('studentAccountBody').innerHTML = `
         <div class="finance-loading">
             <div class="spinner"></div>
@@ -224,111 +391,86 @@ function adminViewStudent(studentId) {
         </div>
     `;
     
-    // Simulate loading
-    setTimeout(() => {
-        document.getElementById('studentAccountBody').innerHTML = `
-            <div style="padding: 10px 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h4 style="color: #0A3D62; margin: 0;">Student Details</h4>
-                    <span class="finance-badge finance-badge-info">ID: ${studentId}</span>
+    // Load student data
+    setTimeout(async () => {
+        try {
+            if (!window.supabase) return;
+            
+            const { data: account, error } = await window.supabase
+                .from('finance_student_accounts')
+                .select('*')
+                .eq('student_id', studentId)
+                .single();
+            
+            if (error) throw error;
+            
+            document.getElementById('studentAccountBody').innerHTML = `
+                <div style="padding: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="color: #0A3D62; margin: 0;">Student Details</h4>
+                        <span class="finance-badge finance-badge-info">ID: ${studentId}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8fafc; padding: 16px; border-radius: 8px;">
+                        <div><strong>Name:</strong> ${account.student_name || 'N/A'}</div>
+                        <div><strong>Student ID:</strong> ${account.student_id || '-'}</div>
+                        <div><strong>Program:</strong> ${account.program || '-'}</div>
+                        <div><strong>Intake:</strong> ${account.intake_year || '-'}</div>
+                        <div><strong>Total Due:</strong> ${formatCurrency(account.total_fees_due || 0)}</div>
+                        <div><strong>Total Paid:</strong> ${formatCurrency(account.total_paid || 0)}</div>
+                        <div><strong>Balance:</strong> ${formatCurrency(account.balance || 0)}</div>
+                        <div><strong>Status:</strong> <span class="finance-badge ${account.balance === 0 ? 'finance-badge-success' : 'finance-badge-warning'}">${account.payment_status || 'N/A'}</span></div>
+                    </div>
+                    <hr style="margin: 15px 0;">
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button onclick="adminGenerateStatement('${studentId}')" class="finance-btn finance-btn-primary">
+                            <i class="fas fa-file-invoice"></i> Generate Statement
+                        </button>
+                        <button onclick="adminSendReminder('${studentId}')" class="finance-btn finance-btn-warning">
+                            <i class="fas fa-bell"></i> Send Reminder
+                        </button>
+                    </div>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8fafc; padding: 16px; border-radius: 8px;">
-                    <div><strong>Name:</strong> Jane Doe</div>
-                    <div><strong>Student ID:</strong> KRCHN/001/2026</div>
-                    <div><strong>Program:</strong> KRCHN Nursing</div>
-                    <div><strong>Intake:</strong> March 2026</div>
-                    <div><strong>Total Due:</strong> ${formatCurrency(180000)}</div>
-                    <div><strong>Total Paid:</strong> ${formatCurrency(135000)}</div>
-                    <div><strong>Balance:</strong> ${formatCurrency(45000)}</div>
-                    <div><strong>Status:</strong> <span class="finance-badge finance-badge-warning">Partial</span></div>
+            `;
+        } catch (error) {
+            console.error('Error loading student details:', error);
+            document.getElementById('studentAccountBody').innerHTML = `
+                <div style="padding: 20px; text-align: center; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>Error loading student details</p>
                 </div>
-                <hr style="margin: 15px 0;">
-                <h5 style="margin-bottom: 10px;">Payment History</h5>
-                <div style="max-height: 200px; overflow-y: auto;">
-                    <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background: #f8fafc;">
-                                <th style="padding: 8px; text-align: left;">Date</th>
-                                <th style="padding: 8px; text-align: left;">Amount</th>
-                                <th style="padding: 8px; text-align: left;">Method</th>
-                                <th style="padding: 8px; text-align: left;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>31 Jul 2026</td><td>${formatCurrency(45000)}</td><td>M-Pesa</td><td><span class="finance-badge finance-badge-success">Completed</span></td></tr>
-                            <tr><td>15 Jul 2026</td><td>${formatCurrency(30000)}</td><td>Bank Transfer</td><td><span class="finance-badge finance-badge-success">Completed</span></td></tr>
-                            <tr><td>01 Jul 2026</td><td>${formatCurrency(60000)}</td><td>Cash</td><td><span class="finance-badge finance-badge-success">Completed</span></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 15px; display: flex; gap: 10px;">
-                    <button onclick="adminGenerateStatement('${studentId}')" class="finance-btn finance-btn-primary">
-                        <i class="fas fa-file-invoice"></i> Generate Statement
-                    </button>
-                    <button onclick="adminSendReminder('${studentId}')" class="finance-btn finance-btn-warning">
-                        <i class="fas fa-bell"></i> Send Reminder
-                    </button>
-                </div>
-            </div>
-        `;
-    }, 600);
+            `;
+        }
+    }, 500);
 }
 
-/**
- * Admin edit student
- */
-function adminEditStudent(studentId) {
-    showToast('Opening edit form for student...', 'info');
-    // Implement edit functionality
-}
+// ============================================================
+// ADMIN PAYMENT MANAGEMENT
+// ============================================================
 
 /**
- * Admin delete student
- */
-function adminDeleteStudent(studentId) {
-    if (!confirm('Are you sure you want to delete this student? This action cannot be undone.')) {
-        return;
-    }
-    showToast('Student deleted successfully.', 'success');
-    loadAllStudentAccounts();
-}
-
-/**
- * Admin generate statement
- */
-function adminGenerateStatement(studentId) {
-    showToast('Generating statement...', 'info');
-    setTimeout(() => {
-        showToast('Statement generated successfully!', 'success');
-    }, 1000);
-}
-
-/**
- * Admin send reminder
- */
-function adminSendReminder(studentId) {
-    showToast('Sending reminder...', 'info');
-    setTimeout(() => {
-        showToast('Payment reminder sent successfully!', 'success');
-    }, 1000);
-}
-
-// ===== ADMIN PAYMENT MANAGEMENT =====
-
-/**
- * Load all payments
+ * Load all payments from Supabase
  */
 async function loadAllPayments() {
     try {
-        showLoading('Loading payments...');
-        const payments = await adminGetAllPayments({ limit: 100 });
-        renderAdminPayments(payments);
-        hideLoading();
-        return payments;
+        console.log('💳 Loading payments...');
+        
+        if (!window.supabase) {
+            console.warn('⚠️ Supabase not available');
+            return;
+        }
+        
+        const { data: payments, error } = await window.supabase
+            .from('finance_payments')
+            .select('*')
+            .order('payment_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        renderAdminPayments(payments || []);
+        
     } catch (error) {
-        hideLoading();
+        console.error('❌ Error loading payments:', error);
         showToast('Error loading payments', 'error');
-        return [];
     }
 }
 
@@ -353,24 +495,21 @@ function renderAdminPayments(payments) {
     tbody.innerHTML = payments.map(p => {
         const statusClass = p.status === 'completed' ? 'finance-badge-success' :
                            p.status === 'pending' ? 'finance-badge-warning' : 'finance-badge-danger';
-        const statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
+        const statusLabel = p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : 'Pending';
         
         return `
             <tr>
-                <td>${formatDate(p.date)}</td>
-                <td><strong>${p.student}</strong></td>
+                <td>${formatDate(p.payment_date)}</td>
+                <td><strong>${p.student_name || 'N/A'}</strong></td>
                 <td>${p.program || '-'}</td>
                 <td><strong>${formatCurrency(p.amount)}</strong></td>
-                <td>${p.method || '-'}</td>
-                <td>${p.reference || '-'}</td>
+                <td>${p.payment_method || '-'}</td>
+                <td>${p.reference_number || '-'}</td>
                 <td>${p.period || '-'}</td>
                 <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
                 <td>
                     <button onclick="adminViewPayment('${p.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
                         <i class="fas fa-eye"></i>
-                    </button>
-                    <button onclick="adminEditPayment('${p.id}')" class="finance-btn finance-btn-outline finance-btn-sm">
-                        <i class="fas fa-edit"></i>
                     </button>
                     <button onclick="adminDeletePayment('${p.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
                         <i class="fas fa-trash"></i>
@@ -381,222 +520,21 @@ function renderAdminPayments(payments) {
     }).join('');
 }
 
-/**
- * Admin view payment
- */
-function adminViewPayment(paymentId) {
-    document.getElementById('paymentDetailModal').classList.add('active');
-    document.getElementById('paymentDetailBody').innerHTML = `
-        <div class="finance-loading">
-            <div class="spinner"></div>
-            <span>Loading payment details...</span>
-        </div>
-    `;
-    
-    setTimeout(() => {
-        document.getElementById('paymentDetailBody').innerHTML = `
-            <div style="padding: 10px 0;">
-                <h4 style="color: #0A3D62; margin-bottom: 15px;">Payment Receipt</h4>
-                <div style="background: #f8fafc; padding: 16px; border-radius: 8px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div><strong>Transaction ID:</strong> ${paymentId}</div>
-                        <div><strong>Date:</strong> ${formatDate(new Date())}</div>
-                        <div><strong>Student:</strong> Jane Doe</div>
-                        <div><strong>Amount:</strong> ${formatCurrency(45000)}</div>
-                        <div><strong>Method:</strong> M-Pesa</div>
-                        <div><strong>Reference:</strong> MPESA-7845</div>
-                        <div><strong>Period:</strong> Term 2</div>
-                        <div><strong>Status:</strong> <span class="finance-badge finance-badge-success">Completed</span></div>
-                    </div>
-                </div>
-                <div style="margin-top: 15px; display: flex; gap: 10px;">
-                    <button onclick="printPaymentReceipt()" class="finance-btn finance-btn-primary">
-                        <i class="fas fa-print"></i> Print Receipt
-                    </button>
-                    <button onclick="adminEditPayment('${paymentId}')" class="finance-btn finance-btn-outline">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                </div>
-            </div>
-        `;
-    }, 500);
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+
+function formatCurrency(amount) {
+    return 'KES ' + (amount || 0).toLocaleString();
 }
 
-/**
- * Admin edit payment
- */
-function adminEditPayment(paymentId) {
-    showToast('Opening edit form for payment...', 'info');
+function formatDate(date) {
+    if (!date) return '-';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-/**
- * Admin delete payment
- */
-function adminDeletePayment(paymentId) {
-    if (!confirm('Are you sure you want to delete this payment?')) return;
-    showToast('Payment deleted successfully.', 'success');
-    loadAllPayments();
-}
-
-// ===== ADMIN REPORTS =====
-
-/**
- * Load reports
- */
-async function loadReports() {
-    try {
-        const reportData = await adminGenerateReport({
-            type: document.getElementById('reportType').value,
-            program: document.getElementById('reportProgram').value,
-            year: document.getElementById('reportYear').value
-        });
-        renderReport(reportData);
-    } catch (error) {
-        showToast('Error generating report', 'error');
-    }
-}
-
-/**
- * Render report
- */
-function renderReport(data) {
-    const container = document.getElementById('reportContent');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div style="padding: 10px 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h4 style="color: #0A3D62; margin: 0;">
-                    <i class="fas fa-file-alt"></i> ${data.title || 'Financial Report'}
-                </h4>
-                <span style="font-size: 12px; color: #94a3b8;">
-                    Generated: ${formatDateTime(new Date())}
-                </span>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
-                ${Object.entries(data.summary || {}).map(([key, value]) => `
-                    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase;">${key.replace(/_/g, ' ')}</div>
-                        <div style="font-size: 24px; font-weight: 700; color: #0A3D62;">${formatCurrency(value)}</div>
-                    </div>
-                `).join('')}
-            </div>
-            
-            <div style="overflow-x: auto;">
-                <table class="finance-table">
-                    <thead>
-                        <tr>
-                            ${Object.keys(data.columns || {}).map(col => `<th>${col}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${(data.rows || []).map(row => `
-                            <tr>
-                                ${Object.values(row).map(val => `<td>${val}</td>`).join('')}
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-            
-            ${data.total ? `
-                <div style="margin-top: 16px; padding: 12px; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
-                    <strong>Total: ${formatCurrency(data.total)}</strong>
-                </div>
-            ` : ''}
-        </div>
-    `;
-}
-
-// ===== ADMIN SETTINGS =====
-
-/**
- * Update module settings
- */
-async function updateModuleSettings() {
-    try {
-        const settings = {
-            status: document.getElementById('moduleStatus').value,
-            currency: document.getElementById('defaultCurrency').value,
-            terms: document.getElementById('paymentTerms').value,
-            lateFee: parseFloat(document.getElementById('lateFee').value) || 0,
-            description: document.getElementById('moduleDescription').value
-        };
-        
-        await financeAPI.updateSettings(settings);
-        showToast('Settings saved successfully!', 'success');
-    } catch (error) {
-        showToast('Error saving settings', 'error');
-    }
-}
-
-// ===== ADMIN BULK OPERATIONS =====
-
-/**
- * Bulk promote students
- */
-async function adminBulkPromote() {
-    const fromBlock = document.getElementById('promoteFromBlock').value;
-    const toBlock = document.getElementById('promoteToBlock').value;
-    const program = document.getElementById('promoteProgram').value;
-    const intake = document.getElementById('promoteIntake').value;
-    
-    if (!fromBlock || !toBlock) {
-        showToast('Please select both source and destination blocks.', 'warning');
-        return;
-    }
-    
-    if (!confirm(`Are you sure you want to promote all students from ${fromBlock} to ${toBlock}?`)) {
-        return;
-    }
-    
-    try {
-        showLoading('Promoting students...');
-        const result = await adminBulkPromote({
-            fromBlock,
-            toBlock,
-            program,
-            intake
-        });
-        hideLoading();
-        showToast(`${result.count || 0} students promoted successfully!`, 'success');
-    } catch (error) {
-        hideLoading();
-        showToast('Error promoting students', 'error');
-    }
-}
-
-// ===== COMMUNICATION WITH STUDENT DASHBOARD =====
-
-/**
- * Send update to student dashboard
- */
-function adminSendToStudents(data) {
-    sendToStudentDashboard(data);
-    showToast('Update sent to student dashboard', 'success');
-}
-
-/**
- * Publish fees to students
- */
-async function adminPublishFees() {
-    try {
-        showLoading('Publishing fees...');
-        const result = await financeAPI.request('/fees/publish', 'POST');
-        hideLoading();
-        showToast(`Fees published to ${result.students} students`, 'success');
-        
-        // Notify student dashboard
-        sendToStudentDashboard({
-            type: 'FEES_PUBLISHED',
-            data: result
-        });
-    } catch (error) {
-        hideLoading();
-        showToast('Error publishing fees', 'error');
-    }
-}
-
-// ===== EXPORT =====
+// ============================================================
+// EXPORT
+// ============================================================
 console.log('✅ Super Admin Functions loaded');
