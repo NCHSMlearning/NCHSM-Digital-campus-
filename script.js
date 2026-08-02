@@ -12338,64 +12338,94 @@ function updateVisualization() {
 // =====================================================
 
 // =====================================================
-// GLOBALS & HELPERS
+// GLOBALS & HELPERS - Check if already defined
 // =====================================================
 
-let pendingRegistrationsData = [];
-let pendingProgramFilter = 'all';
-let registrationsData = [];
-let expandedGroups = new Set();
-let selectedGroups = new Set();
-
-function isTVETProgram(program) {
-    const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 
-                          'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-                          'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
-    return tvetPrograms.includes(program);
-}
-
-function getProgramType(program) {
-    if (program === 'KRCHN') return 'KRCHN';
-    if (isTVETProgram(program)) return 'TVET';
-    return 'OTHER';
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function showFeedback(message, type = 'info') {
-    const colors = {
-        success: '#10b981',
-        error: '#ef4444',
-        warning: '#f59e0b',
-        info: '#3b82f6'
+// Only declare if not already defined
+if (typeof window.isTVETProgram === 'undefined') {
+    window.isTVETProgram = function(program) {
+        const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 
+                              'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+                              'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+        return tvetPrograms.includes(program);
     };
-    
-    document.querySelectorAll('.feedback-toast').forEach(el => el.remove());
-    
-    const toast = document.createElement('div');
-    toast.className = 'feedback-toast';
-    toast.style.cssText = `
-        position: fixed; bottom: 30px; right: 30px; 
-        padding: 14px 24px; background: ${colors[type] || '#3b82f6'}; 
-        color: white; border-radius: 10px; font-weight: 500; 
-        z-index: 100000; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        animation: slideIn 0.3s ease-out; max-width: 450px;
-        font-size: 14px; border-left: 4px solid rgba(255,255,255,0.3);
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.3s';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
 }
+
+if (typeof window.getProgramType === 'undefined') {
+    window.getProgramType = function(program) {
+        if (program === 'KRCHN') return 'KRCHN';
+        if (window.isTVETProgram(program)) return 'TVET';
+        return 'OTHER';
+    };
+}
+
+if (typeof window.escapeHtml === 'undefined') {
+    window.escapeHtml = function(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    };
+}
+
+if (typeof window.showFeedback === 'undefined') {
+    window.showFeedback = function(message, type = 'info') {
+        const colors = {
+            success: '#10b981',
+            error: '#ef4444',
+            warning: '#f59e0b',
+            info: '#3b82f6'
+        };
+        
+        document.querySelectorAll('.feedback-toast').forEach(el => el.remove());
+        
+        const toast = document.createElement('div');
+        toast.className = 'feedback-toast';
+        toast.style.cssText = `
+            position: fixed; bottom: 30px; right: 30px; 
+            padding: 14px 24px; background: ${colors[type] || '#3b82f6'}; 
+            color: white; border-radius: 10px; font-weight: 500; 
+            z-index: 100000; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease-out; max-width: 450px;
+            font-size: 14px; border-left: 4px solid rgba(255,255,255,0.3);
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    };
+}
+
+// =====================================================
+// GLOBALS - Only initialize if not already set
+// =====================================================
+
+if (typeof window.pendingRegistrationsData === 'undefined') {
+    window.pendingRegistrationsData = [];
+}
+if (typeof window.pendingProgramFilter === 'undefined') {
+    window.pendingProgramFilter = 'all';
+}
+if (typeof window.registrationsData === 'undefined') {
+    window.registrationsData = [];
+}
+if (typeof window.expandedGroups === 'undefined') {
+    window.expandedGroups = new Set();
+}
+if (typeof window.selectedGroups === 'undefined') {
+    window.selectedGroups = new Set();
+}
+
+// Aliases for local use
+const pendingRegistrationsData = window.pendingRegistrationsData;
+const pendingProgramFilter = window.pendingProgramFilter;
+const registrationsData = window.registrationsData;
+const expandedGroups = window.expandedGroups;
+const selectedGroups = window.selectedGroups;
 
 // =====================================================
 // DASHBOARD LOADER
@@ -12491,11 +12521,11 @@ async function loadUnitPendingRegistrations() {
         
         if (error) throw error;
         
-        pendingRegistrationsData = registrations || [];
+        window.pendingRegistrationsData = registrations || [];
         
-        console.log(`✅ Loaded ${pendingRegistrationsData.length} pending registrations`);
+        console.log(`✅ Loaded ${window.pendingRegistrationsData.length} pending registrations`);
         
-        if (pendingRegistrationsData.length === 0) {
+        if (window.pendingRegistrationsData.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 30px; color: #6b7280;">
                     <i class="fas fa-check-circle" style="font-size: 40px; color: #10b981;"></i>
@@ -12506,7 +12536,7 @@ async function loadUnitPendingRegistrations() {
         }
         
         // Get student details
-        const studentIds = [...new Set(pendingRegistrationsData.map(r => r.student_id).filter(id => id))];
+        const studentIds = [...new Set(window.pendingRegistrationsData.map(r => r.student_id).filter(id => id))];
         let studentInfo = {};
         
         if (studentIds.length > 0) {
@@ -12532,7 +12562,7 @@ async function loadUnitPendingRegistrations() {
         }
         
         // Handle null student IDs
-        const nullRegistrations = pendingRegistrationsData.filter(r => r.student_id === null);
+        const nullRegistrations = window.pendingRegistrationsData.filter(r => r.student_id === null);
         let nullStudentInfo = null;
         if (nullRegistrations.length > 0) {
             nullStudentInfo = {
@@ -12549,7 +12579,7 @@ async function loadUnitPendingRegistrations() {
         
         // Group by student
         const groupedByStudent = {};
-        for (const reg of pendingRegistrationsData) {
+        for (const reg of window.pendingRegistrationsData) {
             const studentId = reg.student_id;
             
             let info;
@@ -12580,7 +12610,7 @@ async function loadUnitPendingRegistrations() {
             const key = studentId || 'null_student';
             
             if (!groupedByStudent[key]) {
-                const programType = getProgramType(info.program);
+                const programType = window.getProgramType(info.program);
                 groupedByStudent[key] = {
                     id: studentId,
                     name: info.full_name,
@@ -12626,7 +12656,7 @@ async function loadUnitPendingRegistrations() {
                 </div>
                 <div style="font-size: 13px; color: #4b5563; background: #f8fafc; padding: 6px 14px; border-radius: 20px; border: 1px solid #e5e7eb;">
                     <i class="fas fa-users"></i> ${sortedGroups.length} students · 
-                    <i class="fas fa-book"></i> ${pendingRegistrationsData.length} units
+                    <i class="fas fa-book"></i> ${window.pendingRegistrationsData.length} units
                 </div>
             </div>
             
@@ -12658,7 +12688,7 @@ async function loadUnitPendingRegistrations() {
                     transition: all 0.2s;
                     ${isUnknown ? 'border-left: 4px solid #f59e0b;' : ''}
                 "
-                data-program="${escapeHtml(student.program)}"
+                data-program="${window.escapeHtml(student.program)}"
                 data-is-tvet="${student.isTVET}"
                 onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
                 onmouseout="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)'">
@@ -12668,25 +12698,25 @@ async function loadUnitPendingRegistrations() {
                         <div style="flex: 1; min-width: 0;">
                             <strong style="font-size: 16px; color: #1e3a5f;">
                                 <i class="fas fa-user-circle" style="color: #4C1D95;"></i> 
-                                ${escapeHtml(student.name)}
+                                ${window.escapeHtml(student.name)}
                                 ${programBadge}
                             </strong>
                             <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px;">
                                 <span style="font-size: 12px; color: #6b7280;">
-                                    <i class="fas fa-id-card"></i> ${escapeHtml(student.student_id)}
+                                    <i class="fas fa-id-card"></i> ${window.escapeHtml(student.student_id)}
                                 </span>
                                 <span style="font-size: 12px; color: #6b7280;">
-                                    <i class="fas fa-graduation-cap"></i> ${escapeHtml(student.program)}
+                                    <i class="fas fa-graduation-cap"></i> ${window.escapeHtml(student.program)}
                                 </span>
                                 <span style="font-size: 12px; color: #6b7280;">
-                                    <i class="fas fa-layer-group"></i> ${escapeHtml(student.block)}
+                                    <i class="fas fa-layer-group"></i> ${window.escapeHtml(student.block)}
                                 </span>
                                 <span style="font-size: 12px; color: #6b7280;">
-                                    <i class="fas fa-calendar"></i> ${escapeHtml(student.intake)}
+                                    <i class="fas fa-calendar"></i> ${window.escapeHtml(student.intake)}
                                 </span>
                                 ${student.phone && student.phone !== 'N/A' ? `
                                     <span style="font-size: 12px; color: #6b7280;">
-                                        <i class="fas fa-phone"></i> ${escapeHtml(student.phone)}
+                                        <i class="fas fa-phone"></i> ${window.escapeHtml(student.phone)}
                                     </span>
                                 ` : ''}
                                 <span style="font-size: 12px; color: #6b7280;">
@@ -12757,11 +12787,11 @@ async function loadUnitPendingRegistrations() {
                         <input type="checkbox" class="unit-checkbox-item" data-reg-id="${unit.id}" data-student-id="${student.id || 'null'}" onchange="updateSelectedUnitsCount()" style="width: 16px; height: 16px; cursor: pointer;">
                         <div style="flex: 1; min-width: 0;">
                             <div>
-                                <strong style="font-size: 13px; color: #1e3a5f;">${escapeHtml(unit.unit_code)}</strong>
-                                <span style="font-size: 12px; color: #374151; margin-left: 6px;">${escapeHtml(unit.unit_name)}</span>
+                                <strong style="font-size: 13px; color: #1e3a5f;">${window.escapeHtml(unit.unit_code)}</strong>
+                                <span style="font-size: 12px; color: #374151; margin-left: 6px;">${window.escapeHtml(unit.unit_name)}</span>
                             </div>
                             <div style="font-size: 11px; color: #6b7280;">
-                                <i class="fas fa-layer-group"></i> ${escapeHtml(unit.block)}
+                                <i class="fas fa-layer-group"></i> ${window.escapeHtml(unit.block)}
                             </div>
                         </div>
                         <div style="display: flex; gap: 4px; flex-shrink: 0;">
@@ -12833,21 +12863,21 @@ async function loadUnitPendingRegistrations() {
             <!-- Footer -->
             <div style="margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; font-size: 12px; color: #6b7280; text-align: center; border: 1px solid #e5e7eb;">
                 <i class="fas fa-info-circle"></i> 
-                Total: <strong>${pendingRegistrationsData.length}</strong> pending unit(s) from <strong>${sortedGroups.length}</strong> student(s)
+                Total: <strong>${window.pendingRegistrationsData.length}</strong> pending unit(s) from <strong>${sortedGroups.length}</strong> student(s)
             </div>
         `;
         
         container.innerHTML = html;
         
         // Apply any existing filter
-        if (pendingProgramFilter !== 'all') {
+        if (window.pendingProgramFilter !== 'all') {
             renderFilteredPendingRegistrations();
         }
         
         // Update stats
         const pendingCountEl = document.getElementById('pendingRegistrations');
         if (pendingCountEl) {
-            pendingCountEl.textContent = pendingRegistrationsData.length;
+            pendingCountEl.textContent = window.pendingRegistrationsData.length;
         }
         
         console.log('✅ Display complete - grouped by student with TVET/KRCHN filter!');
@@ -12871,7 +12901,7 @@ async function loadUnitPendingRegistrations() {
 // ============================================
 
 function filterPendingByProgram(type) {
-    pendingProgramFilter = type;
+    window.pendingProgramFilter = type;
     
     // Update button styles
     document.querySelectorAll('.pending-filter-btn').forEach(btn => {
@@ -12900,13 +12930,13 @@ function renderFilteredPendingRegistrations() {
     
     cards.forEach(card => {
         const program = card.dataset.program || '';
-        const isTVET = isTVETProgram(program);
+        const isTVET = window.isTVETProgram(program);
         
-        if (pendingProgramFilter === 'all') {
+        if (window.pendingProgramFilter === 'all') {
             card.style.display = 'block';
-        } else if (pendingProgramFilter === 'TVET' && isTVET) {
+        } else if (window.pendingProgramFilter === 'TVET' && isTVET) {
             card.style.display = 'block';
-        } else if (pendingProgramFilter === 'KRCHN' && !isTVET) {
+        } else if (window.pendingProgramFilter === 'KRCHN' && !isTVET) {
             card.style.display = 'block';
         } else {
             card.style.display = 'none';
@@ -12946,12 +12976,12 @@ async function approveSingleUnitRecord(regId) {
         await sb.from('student_unit_registrations')
             .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
             .eq('id', regId);
-        showFeedback('✅ Unit approved!', 'success');
+        window.showFeedback('✅ Unit approved!', 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
         await loadApprovedRegistrations();
     } catch (error) {
-        showFeedback(`Error: ${error.message}`, 'error');
+        window.showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
@@ -12959,16 +12989,16 @@ async function rejectSingleUnitRecord(regId) {
     if (!confirm('Reject this unit?')) return;
     try {
         await sb.from('student_unit_registrations').delete().eq('id', regId);
-        showFeedback('❌ Unit rejected and removed!', 'success');
+        window.showFeedback('❌ Unit rejected and removed!', 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
     } catch (error) {
-        showFeedback(`Error: ${error.message}`, 'error');
+        window.showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
 async function approveStudentAllUnits(studentId) {
-    const studentUnits = pendingRegistrationsData.filter(r => r.student_id === studentId);
+    const studentUnits = window.pendingRegistrationsData.filter(r => r.student_id === studentId);
     if (studentUnits.length === 0) return;
     if (!confirm(`Approve ${studentUnits.length} unit(s) for this student?`)) return;
     
@@ -12977,28 +13007,28 @@ async function approveStudentAllUnits(studentId) {
         await sb.from('student_unit_registrations')
             .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
             .in('id', ids);
-        showFeedback(`✅ Approved ${studentUnits.length} unit(s)!`, 'success');
+        window.showFeedback(`✅ Approved ${studentUnits.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
         await loadApprovedRegistrations();
     } catch (error) {
-        showFeedback(`Error: ${error.message}`, 'error');
+        window.showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
 async function rejectStudentAllUnits(studentId) {
-    const studentUnits = pendingRegistrationsData.filter(r => r.student_id === studentId);
+    const studentUnits = window.pendingRegistrationsData.filter(r => r.student_id === studentId);
     if (studentUnits.length === 0) return;
     if (!confirm(`Reject ${studentUnits.length} unit(s) for this student?`)) return;
     
     try {
         const ids = studentUnits.map(r => r.id);
         await sb.from('student_unit_registrations').delete().in('id', ids);
-        showFeedback(`❌ Rejected ${studentUnits.length} unit(s)!`, 'success');
+        window.showFeedback(`❌ Rejected ${studentUnits.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
     } catch (error) {
-        showFeedback(`Error: ${error.message}`, 'error');
+        window.showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
@@ -13008,19 +13038,19 @@ async function bulkApproveSelectedUnits() {
         const regId = cb.getAttribute('data-reg-id');
         if (regId) selectedIds.push(regId);
     });
-    if (selectedIds.length === 0) { showFeedback('⚠️ No units selected', 'warning'); return; }
+    if (selectedIds.length === 0) { window.showFeedback('⚠️ No units selected', 'warning'); return; }
     if (!confirm(`Approve ${selectedIds.length} unit(s)?`)) return;
     
     try {
         await sb.from('student_unit_registrations')
             .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
             .in('id', selectedIds);
-        showFeedback(`✅ Approved ${selectedIds.length} unit(s)!`, 'success');
+        window.showFeedback(`✅ Approved ${selectedIds.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
         await loadApprovedRegistrations();
     } catch (error) {
-        showFeedback(`Error: ${error.message}`, 'error');
+        window.showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
@@ -13030,16 +13060,16 @@ async function bulkRejectSelectedUnits() {
         const regId = cb.getAttribute('data-reg-id');
         if (regId) selectedIds.push(regId);
     });
-    if (selectedIds.length === 0) { showFeedback('⚠️ No units selected', 'warning'); return; }
+    if (selectedIds.length === 0) { window.showFeedback('⚠️ No units selected', 'warning'); return; }
     if (!confirm(`Reject ${selectedIds.length} unit(s)?`)) return;
     
     try {
         await sb.from('student_unit_registrations').delete().in('id', selectedIds);
-        showFeedback(`❌ Rejected ${selectedIds.length} unit(s)!`, 'success');
+        window.showFeedback(`❌ Rejected ${selectedIds.length} unit(s)!`, 'success');
         await loadUnitPendingRegistrations();
         await loadUnitRegistrationStats();
     } catch (error) {
-        showFeedback(`Error: ${error.message}`, 'error');
+        window.showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
@@ -13105,16 +13135,16 @@ async function loadApprovedRegistrations() {
                     <td style="text-align: center;">
                         <input type="checkbox" class="approved-checkbox" data-reg-id="${reg.id}" onchange="updateApprovedSelectedCount()">
                     </td>
-                    <td><strong>${escapeHtml(studentName)}</strong></td>
+                    <td><strong>${window.escapeHtml(studentName)}</strong></td>
                     <td style="font-size: 12px; color: #6b7280;">${reg.student_id ? reg.student_id.substring(0, 8) : 'N/A'}...</td>
-                    <td><span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.unit_code)}</span></td>
-                    <td>${escapeHtml(reg.unit_name)}</td>
-                    <td style="text-align: center;"><span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.block)}</span></td>
-                    <td style="text-align: center;"><span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.reg_type || 'Normal')}</span></td>
+                    <td><span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.unit_code)}</span></td>
+                    <td>${window.escapeHtml(reg.unit_name)}</td>
+                    <td style="text-align: center;"><span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.block)}</span></td>
+                    <td style="text-align: center;"><span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.reg_type || 'Normal')}</span></td>
                     <td style="text-align: center; font-size: 12px;">${approvalDate}</td>
                     <td style="font-size: 12px; color: #6b7280; text-align: center;">System</td>
                     <td style="text-align: center;">
-                        <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentName)}')" 
+                        <button onclick="deapproveSingleRegistration('${reg.id}', '${window.escapeHtml(reg.unit_code)}', '${window.escapeHtml(studentName)}')" 
                             style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">
                             <i class="fas fa-undo"></i> De-approve
                         </button>
@@ -13190,7 +13220,7 @@ function exportApprovedRegistrations() {
     });
     
     if (rows.length === 0) {
-        showFeedback('⚠️ No data to export', 'warning');
+        window.showFeedback('⚠️ No data to export', 'warning');
         return;
     }
     
@@ -13201,7 +13231,7 @@ function exportApprovedRegistrations() {
     link.download = `approved_registrations_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-    showFeedback('📥 Exported successfully!', 'success');
+    window.showFeedback('📥 Exported successfully!', 'success');
 }
 
 async function deapproveSingleRegistration(regId, unitCode, studentName) {
@@ -13210,12 +13240,12 @@ async function deapproveSingleRegistration(regId, unitCode, studentName) {
         await sb.from('student_unit_registrations')
             .update({ status: 'pending', approved_by: null, approval_date: null })
             .eq('id', regId);
-        showFeedback(`🔄 Unit ${unitCode} moved to pending!`, 'success');
+        window.showFeedback(`🔄 Unit ${unitCode} moved to pending!`, 'success');
         await loadApprovedRegistrations();
         await loadUnitRegistrationStats();
         await loadUnitPendingRegistrations();
     } catch (error) {
-        showFeedback(`Error: ${error.message}`, 'error');
+        window.showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
@@ -13225,19 +13255,19 @@ async function bulkDeapproveSelected() {
         const regId = cb.getAttribute('data-reg-id');
         if (regId) selectedIds.push(regId);
     });
-    if (selectedIds.length === 0) { showFeedback('⚠️ No registrations selected', 'warning'); return; }
+    if (selectedIds.length === 0) { window.showFeedback('⚠️ No registrations selected', 'warning'); return; }
     if (!confirm(`De-approve ${selectedIds.length} registration(s)?`)) return;
     
     try {
         await sb.from('student_unit_registrations')
             .update({ status: 'pending', approved_by: null, approval_date: null })
             .in('id', selectedIds);
-        showFeedback(`🔄 ${selectedIds.length} registration(s) de-approved!`, 'success');
+        window.showFeedback(`🔄 ${selectedIds.length} registration(s) de-approved!`, 'success');
         await loadApprovedRegistrations();
         await loadUnitRegistrationStats();
         await loadUnitPendingRegistrations();
     } catch (error) {
-        showFeedback(`Error: ${error.message}`, 'error');
+        window.showFeedback(`Error: ${error.message}`, 'error');
     }
 }
 
@@ -13264,9 +13294,9 @@ async function loadGroupedRegistrations() {
         
         if (error) throw error;
         
-        registrationsData = data || [];
+        window.registrationsData = data || [];
         
-        if (registrationsData.length === 0) {
+        if (window.registrationsData.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #94a3b8;">
                     <i class="fas fa-inbox" style="font-size: 36px; display: block; margin-bottom: 10px;"></i>
@@ -13276,7 +13306,7 @@ async function loadGroupedRegistrations() {
             return;
         }
         
-        renderGroupedRegistrations(registrationsData);
+        renderGroupedRegistrations(window.registrationsData);
         
     } catch (error) {
         console.error('Error loading grouped registrations:', error);
@@ -13303,13 +13333,13 @@ function renderGroupedRegistrations(data) {
         return;
     }
     
-    // Group by student
+    // Group by student - use student_id or student_name as key
     const groups = {};
     data.forEach(reg => {
-        const key = reg.student_id || 'null_student';
+        const key = reg.student_id || reg.student_name || 'unknown_student';
         if (!groups[key]) {
             groups[key] = {
-                id: reg.student_id,
+                id: reg.student_id || key,
                 name: reg.student_name || 'Unknown Student',
                 program: reg.program || 'N/A',
                 block: reg.block || 'N/A',
@@ -13328,11 +13358,10 @@ function renderGroupedRegistrations(data) {
     
     // Render each group
     let html = '';
-    let groupIndex = 0;
     
     for (const key in groups) {
         const group = groups[key];
-        const isExpanded = expandedGroups.has(key);
+        const isExpanded = window.expandedGroups.has(key);
         const regs = group.registrations;
         
         // Determine group status
@@ -13379,9 +13408,9 @@ function renderGroupedRegistrations(data) {
                             ${group.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <div style="font-weight: 600; color: #1e293b; font-size: 15px;">${escapeHtml(group.name)}</div>
+                            <div style="font-weight: 600; color: #1e293b; font-size: 15px;">${window.escapeHtml(group.name)}</div>
                             <div style="font-size: 12px; color: #94a3b8;">
-                                ${key !== 'null_student' ? key.substring(0, 8) : 'N/A'} • ${escapeHtml(group.program)} • ${escapeHtml(group.block)}
+                                ${key !== 'unknown_student' && key !== 'null_student' ? key.substring(0, 8) : 'N/A'} • ${window.escapeHtml(group.program)} • ${window.escapeHtml(group.block)}
                             </div>
                         </div>
                     </div>
@@ -13433,8 +13462,8 @@ function renderGroupedRegistrations(data) {
             html += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
-                    <td style="padding: 8px 12px; font-weight: 500; color: #4C1D95;">${escapeHtml(reg.unit_code)}</td>
-                    <td style="padding: 8px 12px;">${escapeHtml(reg.unit_name)}</td>
+                    <td style="padding: 8px 12px; font-weight: 500; color: #4C1D95;">${window.escapeHtml(reg.unit_code)}</td>
+                    <td style="padding: 8px 12px;">${window.escapeHtml(reg.unit_name)}</td>
                     <td style="padding: 8px 12px; text-align: center;">
                         <span style="background: ${reg.reg_type === 'Core' ? '#dbeafe' : '#f3e8ff'}; color: ${reg.reg_type === 'Core' ? '#1e40af' : '#6d28d9'}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
                             ${reg.reg_type || 'Core'}
@@ -13470,7 +13499,6 @@ function renderGroupedRegistrations(data) {
                 </div>
             </div>
         `;
-        groupIndex++;
     }
     
     container.innerHTML = html;
@@ -13481,40 +13509,40 @@ function renderGroupedRegistrations(data) {
 // =====================================================
 
 function toggleGroup(studentId) {
-    if (expandedGroups.has(studentId)) {
-        expandedGroups.delete(studentId);
+    if (window.expandedGroups.has(studentId)) {
+        window.expandedGroups.delete(studentId);
     } else {
-        expandedGroups.add(studentId);
+        window.expandedGroups.add(studentId);
     }
-    renderGroupedRegistrations(registrationsData);
+    renderGroupedRegistrations(window.registrationsData);
 }
 
 function expandAllGroups() {
     const groups = {};
-    registrationsData.forEach(reg => {
-        const key = reg.student_id || 'null_student';
+    window.registrationsData.forEach(reg => {
+        const key = reg.student_id || reg.student_name || 'unknown_student';
         groups[key] = true;
     });
     for (const key in groups) {
-        expandedGroups.add(key);
+        window.expandedGroups.add(key);
     }
-    renderGroupedRegistrations(registrationsData);
+    renderGroupedRegistrations(window.registrationsData);
 }
 
 function collapseAllGroups() {
-    expandedGroups.clear();
-    renderGroupedRegistrations(registrationsData);
+    window.expandedGroups.clear();
+    renderGroupedRegistrations(window.registrationsData);
 }
 
 function updateGroupSelection() {
     const checkboxes = document.querySelectorAll('.group-select-checkbox:checked');
-    selectedGroups = new Set();
+    window.selectedGroups = new Set();
     checkboxes.forEach(cb => {
-        selectedGroups.add(cb.dataset.studentId);
+        window.selectedGroups.add(cb.dataset.studentId);
     });
-    document.getElementById('selectedGroupsCount').textContent = selectedGroups.size;
+    document.getElementById('selectedGroupsCount').textContent = window.selectedGroups.size;
     
-    const hasSelection = selectedGroups.size > 0;
+    const hasSelection = window.selectedGroups.size > 0;
     const approveBtn = document.getElementById('approveSelectedBtn');
     const rejectBtn = document.getElementById('rejectSelectedBtn');
     if (approveBtn) approveBtn.style.display = hasSelection ? 'inline-block' : 'none';
@@ -13530,23 +13558,23 @@ function toggleSelectAllGroups() {
 }
 
 function approveSelectedGroups() {
-    if (selectedGroups.size === 0) {
-        showFeedback('⚠️ No groups selected', 'warning');
+    if (window.selectedGroups.size === 0) {
+        window.showFeedback('⚠️ No groups selected', 'warning');
         return;
     }
     
-    if (!confirm(`Approve all registrations for ${selectedGroups.size} selected students?`)) return;
+    if (!confirm(`Approve all registrations for ${window.selectedGroups.size} selected students?`)) return;
     
     const ids = [];
-    registrationsData.forEach(reg => {
-        const key = reg.student_id || 'null_student';
-        if (selectedGroups.has(key) && reg.status === 'pending') {
+    window.registrationsData.forEach(reg => {
+        const key = reg.student_id || reg.student_name || 'unknown_student';
+        if (window.selectedGroups.has(key) && reg.status === 'pending') {
             ids.push(reg.id);
         }
     });
     
     if (ids.length === 0) {
-        showFeedback('⚠️ No pending registrations in selected groups', 'warning');
+        window.showFeedback('⚠️ No pending registrations in selected groups', 'warning');
         return;
     }
     
@@ -13554,36 +13582,36 @@ function approveSelectedGroups() {
         .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
         .in('id', ids)
         .then(() => {
-            showFeedback(`✅ Approved ${ids.length} unit(s)!`, 'success');
-            selectedGroups.clear();
+            window.showFeedback(`✅ Approved ${ids.length} unit(s)!`, 'success');
+            window.selectedGroups.clear();
             document.getElementById('selectAllGroups').checked = false;
             loadGroupedRegistrations();
             loadUnitRegistrationStats();
             loadApprovedRegistrations();
         })
         .catch(error => {
-            showFeedback(`Error: ${error.message}`, 'error');
+            window.showFeedback(`Error: ${error.message}`, 'error');
         });
 }
 
 function rejectSelectedGroups() {
-    if (selectedGroups.size === 0) {
-        showFeedback('⚠️ No groups selected', 'warning');
+    if (window.selectedGroups.size === 0) {
+        window.showFeedback('⚠️ No groups selected', 'warning');
         return;
     }
     
-    if (!confirm(`Reject all registrations for ${selectedGroups.size} selected students?`)) return;
+    if (!confirm(`Reject all registrations for ${window.selectedGroups.size} selected students?`)) return;
     
     const ids = [];
-    registrationsData.forEach(reg => {
-        const key = reg.student_id || 'null_student';
-        if (selectedGroups.has(key) && reg.status === 'pending') {
+    window.registrationsData.forEach(reg => {
+        const key = reg.student_id || reg.student_name || 'unknown_student';
+        if (window.selectedGroups.has(key) && reg.status === 'pending') {
             ids.push(reg.id);
         }
     });
     
     if (ids.length === 0) {
-        showFeedback('⚠️ No pending registrations in selected groups', 'warning');
+        window.showFeedback('⚠️ No pending registrations in selected groups', 'warning');
         return;
     }
     
@@ -13591,14 +13619,14 @@ function rejectSelectedGroups() {
         .delete()
         .in('id', ids)
         .then(() => {
-            showFeedback(`❌ Rejected ${ids.length} unit(s)!`, 'success');
-            selectedGroups.clear();
+            window.showFeedback(`❌ Rejected ${ids.length} unit(s)!`, 'success');
+            window.selectedGroups.clear();
             document.getElementById('selectAllGroups').checked = false;
             loadGroupedRegistrations();
             loadUnitRegistrationStats();
         })
         .catch(error => {
-            showFeedback(`Error: ${error.message}`, 'error');
+            window.showFeedback(`Error: ${error.message}`, 'error');
         });
 }
 
@@ -13609,13 +13637,13 @@ function approveRegistration(regId) {
         .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
         .eq('id', regId)
         .then(() => {
-            showFeedback('✅ Registration approved', 'success');
+            window.showFeedback('✅ Registration approved', 'success');
             loadGroupedRegistrations();
             loadUnitRegistrationStats();
             loadApprovedRegistrations();
         })
         .catch(error => {
-            showFeedback(`Error: ${error.message}`, 'error');
+            window.showFeedback(`Error: ${error.message}`, 'error');
         });
 }
 
@@ -13626,19 +13654,19 @@ function rejectRegistration(regId) {
         .delete()
         .eq('id', regId)
         .then(() => {
-            showFeedback('❌ Registration rejected', 'error');
+            window.showFeedback('❌ Registration rejected', 'error');
             loadGroupedRegistrations();
             loadUnitRegistrationStats();
         })
         .catch(error => {
-            showFeedback(`Error: ${error.message}`, 'error');
+            window.showFeedback(`Error: ${error.message}`, 'error');
         });
 }
 
 function viewRegistrationDetails(regId) {
-    const reg = registrationsData.find(r => r.id === regId);
+    const reg = window.registrationsData.find(r => r.id === regId);
     if (reg) {
-        showFeedback(`Registration: ${reg.unit_code} - ${reg.unit_name} (${reg.status})`, 'info');
+        window.showFeedback(`Registration: ${reg.unit_code} - ${reg.unit_name} (${reg.status})`, 'info');
     }
 }
 
@@ -13666,13 +13694,13 @@ function filterUnitRegistrations(type) {
         activeBtn.style.color = 'white';
     }
     
-    let filtered = registrationsData;
+    let filtered = window.registrationsData;
     if (type === 'krchn') {
-        filtered = registrationsData.filter(r => r.program === 'KRCHN');
+        filtered = window.registrationsData.filter(r => r.program === 'KRCHN');
     } else if (type === 'tvet') {
-        filtered = registrationsData.filter(r => r.program && isTVETProgram(r.program));
+        filtered = window.registrationsData.filter(r => r.program && window.isTVETProgram(r.program));
     } else if (type === 'pending') {
-        filtered = registrationsData.filter(r => r.status === 'pending');
+        filtered = window.registrationsData.filter(r => r.status === 'pending');
     }
     
     document.getElementById('registrationsFilterCount').textContent = filtered.length;
@@ -13685,7 +13713,7 @@ function filterGroupedRegistrations() {
     const block = document.getElementById('groupedBlockFilter')?.value || 'all';
     const status = document.getElementById('groupedStatusFilter')?.value || 'all';
     
-    let filtered = registrationsData;
+    let filtered = window.registrationsData;
     
     if (search) {
         filtered = filtered.filter(r => 
@@ -13718,7 +13746,7 @@ function filterGroupedRegistrations() {
 
 function exportGroupedRegistrations() {
     let csv = 'Student ID,Student Name,Program,Block,Unit Code,Unit Name,Status,Registration Date\n';
-    registrationsData.forEach(reg => {
+    window.registrationsData.forEach(reg => {
         csv += `${reg.student_id || 'N/A'},${reg.student_name || 'Unknown'},${reg.program || 'N/A'},${reg.block || 'N/A'},${reg.unit_code || 'N/A'},${reg.unit_name || 'N/A'},${reg.status || 'N/A'},${reg.submitted_date || 'N/A'}\n`;
     });
     
@@ -13729,7 +13757,7 @@ function exportGroupedRegistrations() {
     a.download = `registrations_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    showFeedback('📥 Exported successfully!', 'success');
+    window.showFeedback('📥 Exported successfully!', 'success');
 }
 
 // =====================================================
@@ -13750,49 +13778,117 @@ function togglePendingList() {
 }
 
 // =====================================================
-// EXPOSE GLOBALLY
+// EXPOSE GLOBALLY - Only if not already defined
 // =====================================================
 
-window.loadUnitDashboard = loadUnitDashboard;
-window.loadUnitRegistrationStats = loadUnitRegistrationStats;
-window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
-window.loadApprovedRegistrations = loadApprovedRegistrations;
-window.loadGroupedRegistrations = loadGroupedRegistrations;
-window.filterApprovedRegistrations = filterApprovedRegistrations;
-window.exportApprovedRegistrations = exportApprovedRegistrations;
-window.exportGroupedRegistrations = exportGroupedRegistrations;
-window.deapproveSingleRegistration = deapproveSingleRegistration;
-window.bulkDeapproveSelected = bulkDeapproveSelected;
-window.toggleSelectAllApproved = toggleSelectAllApproved;
-window.updateApprovedSelectedCount = updateApprovedSelectedCount;
-window.selectAllPendingUnits = selectAllPendingUnits;
-window.clearAllUnitSelections = clearAllUnitSelections;
-window.updateSelectedUnitsCount = updateSelectedUnitsCount;
-window.approveSingleUnitRecord = approveSingleUnitRecord;
-window.rejectSingleUnitRecord = rejectSingleUnitRecord;
-window.approveStudentAllUnits = approveStudentAllUnits;
-window.rejectStudentAllUnits = rejectStudentAllUnits;
-window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
-window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
-window.filterPendingByProgram = filterPendingByProgram;
-window.renderFilteredPendingRegistrations = renderFilteredPendingRegistrations;
-window.filterUnitRegistrations = filterUnitRegistrations;
-window.filterGroupedRegistrations = filterGroupedRegistrations;
-window.toggleGroup = toggleGroup;
-window.expandAllGroups = expandAllGroups;
-window.collapseAllGroups = collapseAllGroups;
-window.updateGroupSelection = updateGroupSelection;
-window.toggleSelectAllGroups = toggleSelectAllGroups;
-window.approveSelectedGroups = approveSelectedGroups;
-window.rejectSelectedGroups = rejectSelectedGroups;
-window.approveRegistration = approveRegistration;
-window.rejectRegistration = rejectRegistration;
-window.viewRegistrationDetails = viewRegistrationDetails;
-window.togglePendingList = togglePendingList;
-window.isTVETProgram = isTVETProgram;
-window.getProgramType = getProgramType;
-window.escapeHtml = escapeHtml;
-window.showFeedback = showFeedback;
+if (typeof window.loadUnitDashboard === 'undefined') {
+    window.loadUnitDashboard = loadUnitDashboard;
+}
+if (typeof window.loadUnitRegistrationStats === 'undefined') {
+    window.loadUnitRegistrationStats = loadUnitRegistrationStats;
+}
+if (typeof window.loadUnitPendingRegistrations === 'undefined') {
+    window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
+}
+if (typeof window.loadApprovedRegistrations === 'undefined') {
+    window.loadApprovedRegistrations = loadApprovedRegistrations;
+}
+if (typeof window.loadGroupedRegistrations === 'undefined') {
+    window.loadGroupedRegistrations = loadGroupedRegistrations;
+}
+if (typeof window.filterApprovedRegistrations === 'undefined') {
+    window.filterApprovedRegistrations = filterApprovedRegistrations;
+}
+if (typeof window.exportApprovedRegistrations === 'undefined') {
+    window.exportApprovedRegistrations = exportApprovedRegistrations;
+}
+if (typeof window.exportGroupedRegistrations === 'undefined') {
+    window.exportGroupedRegistrations = exportGroupedRegistrations;
+}
+if (typeof window.deapproveSingleRegistration === 'undefined') {
+    window.deapproveSingleRegistration = deapproveSingleRegistration;
+}
+if (typeof window.bulkDeapproveSelected === 'undefined') {
+    window.bulkDeapproveSelected = bulkDeapproveSelected;
+}
+if (typeof window.toggleSelectAllApproved === 'undefined') {
+    window.toggleSelectAllApproved = toggleSelectAllApproved;
+}
+if (typeof window.updateApprovedSelectedCount === 'undefined') {
+    window.updateApprovedSelectedCount = updateApprovedSelectedCount;
+}
+if (typeof window.selectAllPendingUnits === 'undefined') {
+    window.selectAllPendingUnits = selectAllPendingUnits;
+}
+if (typeof window.clearAllUnitSelections === 'undefined') {
+    window.clearAllUnitSelections = clearAllUnitSelections;
+}
+if (typeof window.updateSelectedUnitsCount === 'undefined') {
+    window.updateSelectedUnitsCount = updateSelectedUnitsCount;
+}
+if (typeof window.approveSingleUnitRecord === 'undefined') {
+    window.approveSingleUnitRecord = approveSingleUnitRecord;
+}
+if (typeof window.rejectSingleUnitRecord === 'undefined') {
+    window.rejectSingleUnitRecord = rejectSingleUnitRecord;
+}
+if (typeof window.approveStudentAllUnits === 'undefined') {
+    window.approveStudentAllUnits = approveStudentAllUnits;
+}
+if (typeof window.rejectStudentAllUnits === 'undefined') {
+    window.rejectStudentAllUnits = rejectStudentAllUnits;
+}
+if (typeof window.bulkApproveSelectedUnits === 'undefined') {
+    window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
+}
+if (typeof window.bulkRejectSelectedUnits === 'undefined') {
+    window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
+}
+if (typeof window.filterPendingByProgram === 'undefined') {
+    window.filterPendingByProgram = filterPendingByProgram;
+}
+if (typeof window.renderFilteredPendingRegistrations === 'undefined') {
+    window.renderFilteredPendingRegistrations = renderFilteredPendingRegistrations;
+}
+if (typeof window.filterUnitRegistrations === 'undefined') {
+    window.filterUnitRegistrations = filterUnitRegistrations;
+}
+if (typeof window.filterGroupedRegistrations === 'undefined') {
+    window.filterGroupedRegistrations = filterGroupedRegistrations;
+}
+if (typeof window.toggleGroup === 'undefined') {
+    window.toggleGroup = toggleGroup;
+}
+if (typeof window.expandAllGroups === 'undefined') {
+    window.expandAllGroups = expandAllGroups;
+}
+if (typeof window.collapseAllGroups === 'undefined') {
+    window.collapseAllGroups = collapseAllGroups;
+}
+if (typeof window.updateGroupSelection === 'undefined') {
+    window.updateGroupSelection = updateGroupSelection;
+}
+if (typeof window.toggleSelectAllGroups === 'undefined') {
+    window.toggleSelectAllGroups = toggleSelectAllGroups;
+}
+if (typeof window.approveSelectedGroups === 'undefined') {
+    window.approveSelectedGroups = approveSelectedGroups;
+}
+if (typeof window.rejectSelectedGroups === 'undefined') {
+    window.rejectSelectedGroups = rejectSelectedGroups;
+}
+if (typeof window.approveRegistration === 'undefined') {
+    window.approveRegistration = approveRegistration;
+}
+if (typeof window.rejectRegistration === 'undefined') {
+    window.rejectRegistration = rejectRegistration;
+}
+if (typeof window.viewRegistrationDetails === 'undefined') {
+    window.viewRegistrationDetails = viewRegistrationDetails;
+}
+if (typeof window.togglePendingList === 'undefined') {
+    window.togglePendingList = togglePendingList;
+}
 
 console.log('✅ Unit Registration Management module loaded and ready!');
 // =====================================================
