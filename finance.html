@@ -1473,15 +1473,16 @@ body {
     }
 
     // ============================================================
-    // 🔧 SUPABASE CONFIG (Using window to avoid duplicate declaration)
+    // 🔧 SUPABASE CONFIG
     // ============================================================
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
-    // ✅ Use a different variable name to avoid conflict
+    // ✅ Use supabaseClient to avoid conflicts
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.sb = supabaseClient;
 
-    console.log('🔗 Supabase initialized');
+    console.log('🔗 Supabase initialized:', !!supabaseClient);
     console.log('📊 Supabase client:', supabaseClient ? '✅ Available' : '❌ Not available');
 
     // Table name
@@ -1489,70 +1490,179 @@ body {
     const ALLOWED_ROLES = ['superadmin', 'finance_officer'];
 
     // ============================================================
-    // CHECK AUTHENTICATION ON LOAD
+    // CHECK AUTHENTICATION ON LOAD - FIXED
     // ============================================================
     document.addEventListener('DOMContentLoaded', async function() {
         console.log('📝 Finance Dashboard loading...');
         
-        // Check if supabase is available
         if (!supabaseClient) {
             console.error('❌ Supabase not available');
             return;
         }
         
-        // Check if user is authenticated
-        const financeUser = getFinanceUser();
+        // ✅ Get session FIRST - this gives us the correct user ID
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
         
-        if (!financeUser) {
-            console.log('⚠️ No user found, redirecting to login...');
-            window.location.href = 'financelogin.html';
+        if (sessionError || !session) {
+            console.log('⚠️ No session found, checking local storage...');
+            const financeUser = getFinanceUser();
+            if (financeUser) {
+                // Try to refresh session
+                try {
+                    const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
+                    if (refreshError) throw refreshError;
+                    if (refreshData.session) {
+                        console.log('✅ Session refreshed');
+                        await handleAuthenticatedUser(financeUser, refreshData.session);
+                        return;
+                    }
+                } catch (refreshErr) {
+                    console.warn('⚠️ Could not refresh session:', refreshErr);
+                }
+            }
+            logoutFinance();
             return;
         }
         
-        // Verify session with Supabase
+        // ✅ Use the session user ID (this is the CORRECT one)
+        const userId = session.user.id;
+        const userEmail = session.user.email;
+        
+        console.log('👤 Session User ID:', userId);
+        console.log('👤 Session User Email:', userEmail);
+        
+        // Get stored user
+        let financeUser = getFinanceUser();
+        
+        // If stored user has wrong ID, update it
+        if (financeUser && financeUser.id !== userId) {
+            console.log('⚠️ Stored user ID mismatch, updating...');
+            financeUser.id = userId;
+            financeUser.email = userEmail;
+            localStorage.setItem('finance_user', JSON.stringify(financeUser));
+        }
+        
+        // If no stored user, create one
+        if (!financeUser) {
+            console.log('📋 Creating user from session');
+            financeUser = {
+                id: userId,
+                email: userEmail,
+                name: session.user.user_metadata?.full_name || userEmail,
+                role: 'superadmin',
+                token: session.access_token,
+                loginTime: new Date().toISOString()
+            };
+            localStorage.setItem('finance_user', JSON.stringify(financeUser));
+        }
+        
+        await handleAuthenticatedUser(financeUser, session);
+    });
+
+    // ============================================================
+    // HANDLE AUTHENTICATED USER - FIXED
+    // ============================================================
+    async function handleAuthenticatedUser(financeUser, session) {
         try {
-            const { data: { session }, error } = await supabaseClient.auth.getSession();
+            // ✅ ALWAYS use the session user ID
+            const userId = session.user.id;
+            const userEmail = session.user.email;
             
-            if (error || !session) {
-                console.log('⚠️ Session expired, redirecting to login...');
-                logoutFinance();
-                return;
+            console.log('👤 Processing user:', userEmail);
+            console.log('🆔 User ID:', userId);
+            
+            // Try to get user data by ID first
+            let userData = await getUserFinanceData(userId);
+            
+            // If not found by ID, try by email
+            if (!userData) {
+                console.log('⚠️ No profile by ID, checking by email...');
+                const { data: emailData, error: emailError } = await supabaseClient
+                    .from(USER_TABLE)
+                    .select('*')
+                    .eq('email', userEmail)
+                    .maybeSingle();
+                
+                if (!emailError && emailData) {
+                    console.log('✅ Found user by email:', emailData);
+                    userData = emailData;
+                    
+                    // Update the user's ID in the table if needed
+                    if (emailData.id !== userId) {
+                        console.log('⚠️ User ID mismatch, updating table...');
+                        const { error: updateError } = await supabaseClient
+                            .from(USER_TABLE)
+                            .update({ id: userId })
+                            .eq('email', userEmail);
+                        
+                        if (!updateError) {
+                            console.log('✅ User ID updated in table');
+                            // Refetch with correct ID
+                            userData = await getUserFinanceData(userId);
+                        }
+                    }
+                }
             }
             
-            // Check if user has finance access
-            const userData = await getUserFinanceData(session.user.id);
+            // If still no user data, create profile for allowed emails
+            if (!userData) {
+                console.log('⚠️ No profile found, checking allowed emails...');
+                const allowedEmails = ['nchsmsuperadmin@gmail.com', 'admin@nchsm.co.ke', 'tiongikevin99@gmail.com'];
+                if (allowedEmails.includes(userEmail)) {
+                    console.log('✅ User email is in allowed list, creating profile...');
+                    await createDefaultProfile(userId, userEmail);
+                    userData = await getUserFinanceData(userId);
+                }
+            }
             
-            if (!userData || !ALLOWED_ROLES.includes(userData.role)) {
+            if (!userData) {
                 console.log('⚠️ User does not have finance access');
                 logoutFinance();
                 return;
             }
             
-            // Update UI with user info
-            updateUserUI(financeUser, userData);
+            // Check role
+            if (!ALLOWED_ROLES.includes(userData.role)) {
+                console.log('⚠️ User role does not have finance access:', userData.role);
+                logoutFinance();
+                return;
+            }
+            
+            // Update stored user with correct info
+            const updatedUser = {
+                id: userId,
+                email: userEmail,
+                name: userData.full_name || financeUser.name || userEmail,
+                role: userData.role || 'superadmin',
+                token: session.access_token,
+                loginTime: new Date().toISOString()
+            };
+            localStorage.setItem('finance_user', JSON.stringify(updatedUser));
+            
+            console.log('✅ User authenticated:', updatedUser.name);
+            console.log('🔑 Role:', updatedUser.role);
+            
+            // Update UI
+            updateUserUI(updatedUser, userData);
             
             // Load dashboard data
             loadDashboardData();
             
         } catch (error) {
-            console.error('❌ Auth check error:', error);
+            console.error('❌ Error handling authenticated user:', error);
             logoutFinance();
         }
-    });
+    }
 
     // ============================================================
     // GET FINANCE USER FROM STORAGE
     // ============================================================
     function getFinanceUser() {
         try {
-            // Check localStorage first
             let user = JSON.parse(localStorage.getItem('finance_user') || 'null');
             if (user) return user;
-            
-            // Check sessionStorage
             user = JSON.parse(sessionStorage.getItem('finance_user') || 'null');
             if (user) return user;
-            
             return null;
         } catch (e) {
             console.error('Error getting user:', e);
@@ -1561,7 +1671,7 @@ body {
     }
 
     // ============================================================
-    // GET USER FINANCE DATA FROM SUPABASE
+    // GET USER FINANCE DATA - FIXED with maybeSingle
     // ============================================================
     async function getUserFinanceData(userId) {
         try {
@@ -1572,18 +1682,55 @@ body {
             
             const { data, error } = await supabaseClient
                 .from(USER_TABLE)
-                .select('full_name, role, program, student_id, phone')
+                .select('*')
                 .eq('id', userId)
-                .single();
+                .maybeSingle();
             
             if (error) {
                 console.warn('⚠️ Could not fetch user profile:', error);
                 return null;
             }
             
+            if (!data) {
+                console.warn('⚠️ No profile found for user:', userId);
+                return null;
+            }
+            
+            console.log('👤 User data found:', data.full_name, '| Role:', data.role);
             return data;
         } catch (error) {
             console.warn('⚠️ Error fetching user data:', error);
+            return null;
+        }
+    }
+
+    // ============================================================
+    // CREATE DEFAULT PROFILE
+    // ============================================================
+    async function createDefaultProfile(userId, email) {
+        try {
+            const { data, error } = await supabaseClient
+                .from(USER_TABLE)
+                .upsert([
+                    {
+                        id: userId,
+                        email: email,
+                        full_name: email.split('@')[0] || 'Super Admin',
+                        role: 'superadmin',
+                        program: 'Administration',
+                        status: 'approved'
+                    }
+                ]);
+            
+            if (error) {
+                console.warn('⚠️ Could not create default profile:', error);
+                return null;
+            }
+            
+            console.log('✅ Default profile created for:', email);
+            return data;
+        } catch (error) {
+            console.warn('⚠️ Error creating profile:', error);
             return null;
         }
     }
@@ -1595,17 +1742,20 @@ body {
         const name = userData?.full_name || financeUser.name || 'Finance Officer';
         const role = userData?.role || financeUser.role || 'Administrator';
         
-        document.getElementById('userNameDisplay').textContent = name;
-        document.getElementById('sidebarUserRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        const nameDisplay = document.getElementById('userNameDisplay');
+        if (nameDisplay) nameDisplay.textContent = name;
+        
+        const sidebarRole = document.getElementById('sidebarUserRole');
+        if (sidebarRole) sidebarRole.textContent = role.charAt(0).toUpperCase() + role.slice(1);
         
         const roleMap = {
             'superadmin': 'Super Admin',
             'admin': 'Administrator',
             'finance_officer': 'Finance Officer'
         };
-        document.getElementById('userRoleDisplay').textContent = roleMap[role] || role;
+        const roleDisplay = document.getElementById('userRoleDisplay');
+        if (roleDisplay) roleDisplay.textContent = roleMap[role] || role;
         
-        // Update current date
         updateCurrentDate();
     }
 
@@ -1626,14 +1776,8 @@ body {
     // ============================================================
     function loadDashboardData() {
         console.log('📊 Loading dashboard data...');
-        
-        // Get total students from consolidated_user_profiles_table
         loadStudentStats();
-        
-        // Load recent transactions
         loadRecentTransactions();
-        
-        // Initialize charts
         initializeCharts();
     }
 
@@ -1647,7 +1791,6 @@ body {
                 return;
             }
             
-            // Get total students
             const { count: totalStudents, error: countError } = await supabaseClient
                 .from(USER_TABLE)
                 .select('*', { count: 'exact', head: true })
@@ -1658,7 +1801,6 @@ body {
                 document.getElementById('accountsBadge').textContent = totalStudents || 0;
             }
             
-            // Get total finance users
             const { count: financeUsers, error: financeError } = await supabaseClient
                 .from(USER_TABLE)
                 .select('*', { count: 'exact', head: true })
@@ -1668,7 +1810,7 @@ body {
                 document.getElementById('dashboardBadge').textContent = financeUsers || 0;
             }
             
-            // Simulate other stats (replace with real data later)
+            // Load mock data for now
             document.getElementById('totalCollected').textContent = 'KES 0';
             document.getElementById('outstandingBalance').textContent = 'KES 0';
             document.getElementById('overdueAccounts').textContent = '0';
@@ -1687,7 +1829,6 @@ body {
         const tbody = document.getElementById('recentTransactions');
         if (!tbody) return;
         
-        // Show empty state (replace with real data later)
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
@@ -1701,10 +1842,19 @@ body {
     // INITIALIZE CHARTS
     // ============================================================
     function initializeCharts() {
-        // Monthly Collections Chart - Mock data
+        // Destroy existing charts
+        if (window.monthlyChart) {
+            window.monthlyChart.destroy();
+            window.monthlyChart = null;
+        }
+        if (window.statusChart) {
+            window.statusChart.destroy();
+            window.statusChart = null;
+        }
+        
         const monthlyCtx = document.getElementById('monthlyCollectionsChart');
         if (monthlyCtx) {
-            new Chart(monthlyCtx, {
+            window.monthlyChart = new Chart(monthlyCtx, {
                 type: 'bar',
                 data: {
                     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -1731,10 +1881,9 @@ body {
             });
         }
         
-        // Payment Status Chart - Mock data
         const statusCtx = document.getElementById('paymentStatusChart');
         if (statusCtx) {
-            new Chart(statusCtx, {
+            window.statusChart = new Chart(statusCtx, {
                 type: 'doughnut',
                 data: {
                     labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
@@ -1789,42 +1938,27 @@ body {
         document.getElementById('financeSidebar').classList.toggle('open');
     }
 
-  // ============================================================
-// FIXED LOGOUT - With confirmation
-// ============================================================
-function logoutFinance() {
-    // Show confirmation
-    if (confirm('Are you sure you want to logout?')) {
-        // Clear all storage
-        localStorage.removeItem('finance_user');
-        sessionStorage.removeItem('finance_user');
-        localStorage.removeItem('adminSession'); // Clear any other sessions
-        
-        // Show toast notification
-        showToast('Logging out...', 'info');
-        
-        // Redirect after short delay
-        setTimeout(function() {
-            window.location.href = 'financelogin.html';
-        }, 500);
+    // ============================================================
+    // LOGOUT - FIXED
+    // ============================================================
+    function logoutFinance() {
+        if (confirm('Are you sure you want to logout?')) {
+            localStorage.removeItem('finance_user');
+            sessionStorage.removeItem('finance_user');
+            showToast('Logging out...', 'info');
+            setTimeout(function() {
+                window.location.href = 'financelogin.html';
+            }, 500);
+        }
     }
-}
 
-// Also add logout to ESC key (optional)
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        // Close any open modals
-        document.querySelectorAll('.finance-modal.active').forEach(modal => {
-            modal.classList.remove('active');
-        });
+    // ============================================================
+    // GO TO MAIN DASHBOARD
+    // ============================================================
+    function goToMainDashboard() {
+        window.location.href = '/home';
     }
-});
-   // ============================================================
-// GO TO MAIN DASHBOARD
-// ============================================================
-function goToMainDashboard() {
-    window.location.href = 'https://nchsm.co.ke/home';
-}
+
     // ============================================================
     // REFRESH DATA
     // ============================================================
@@ -1865,7 +1999,7 @@ function goToMainDashboard() {
     }
 
     // ============================================================
-    // PLACEHOLDER FUNCTIONS (to be implemented)
+    // PLACEHOLDER FUNCTIONS
     // ============================================================
     function filterAccounts() { console.log('Filter accounts'); }
     function resetAccountFilters() { console.log('Reset account filters'); }
@@ -1922,6 +2056,15 @@ function goToMainDashboard() {
                 modal.classList.remove('active');
             }
         });
+    });
+
+    // Close modals on ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.finance-modal.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+        }
     });
 
     console.log('✅ Finance Dashboard ready');
