@@ -2697,6 +2697,7 @@ async function loadDataVisualization() {
  * ✅ TVET/KRCHN fixes applied
  * ✅ Full program names everywhere
  * ✅ Document upload functions added
+ * ✅ ALL missing functions included
  *******************************************************/
 
 // ============================================
@@ -2728,6 +2729,119 @@ let searchTimeout = null;
 // ============================================================
 function getSb() {
     return window.sb || sb;
+}
+
+// ============================================================
+// 🔥 HELPER: Escape HTML
+// ============================================================
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================================
+// 🔥 PROGRAM HELPER FUNCTIONS - COMPLETE
+// ============================================================
+
+function getProgramDisplayName(programCode) {
+    if (!programCode) return 'N/A';
+    
+    const programMap = {
+        'KRCHN': '🎓 KRCHN Nursing',
+        'DPOTT': '🎯 Diploma in Perioperative Theatre Technology',
+        'DCH': '🎯 Diploma in Community Health',
+        'DHRIT': '🎯 Diploma in Health Records and IT',
+        'DSL': '🎯 Diploma in Science Lab',
+        'DSW': '🎯 Diploma in Social Work',
+        'DCJS': '🎯 Diploma in Criminal Justice',
+        'DHSS': '🎯 Diploma in Health Support Services',
+        'DICT': '🎯 Diploma in ICT',
+        'DME': '🎯 Diploma in Medical Engineering',
+        'CPOTT': '📜 Certificate in Perioperative Theatre Technology',
+        'CCH': '📜 Certificate in Community Health',
+        'CHRIT': '📜 Certificate in Health Records and IT',
+        'CPC': '📜 Certificate in Patient Care',
+        'CSL': '📜 Certificate in Science Lab',
+        'CSW': '📜 Certificate in Social Work',
+        'CCJS': '📜 Certificate in Criminal Justice',
+        'CAG': '📜 Certificate in Agriculture',
+        'CHSS': '📜 Certificate in Health Support Services',
+        'CICT': '📜 Certificate in ICT',
+        'ACH': '🔧 Artisan in Community Health',
+        'AAG': '🔧 Artisan in Agriculture',
+        'ASW': '🔧 Artisan in Social Work',
+        'CCA': '📊 Certificate in Computer Applications',
+        'PTE': '📊 TVET/CDACC (PTE)'
+    };
+    
+    return programMap[programCode] || programCode;
+}
+
+function getProgramType(programCode) {
+    if (!programCode) return 'KRCHN';
+    
+    // TVET Programs list
+    const tvetPrograms = [
+        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+        'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+    ];
+    
+    if (tvetPrograms.includes(programCode)) {
+        return 'TVET';
+    }
+    
+    if (programCode === 'KRCHN') {
+        return 'KRCHN';
+    }
+    
+    // Check by prefix
+    const prefixes = {
+        'D': 'TVET',  // Diploma
+        'C': 'TVET',  // Certificate
+        'A': 'TVET',  // Artisan
+        'P': 'TVET'   // PTE
+    };
+    
+    const firstChar = programCode.charAt(0);
+    if (prefixes[firstChar]) {
+        return prefixes[firstChar];
+    }
+    
+    return 'KRCHN';
+}
+
+function getProgramLevel(programCode) {
+    if (!programCode) return 'N/A';
+    
+    if (programCode === 'KRCHN') return 'Diploma';
+    
+    const firstChar = programCode.charAt(0);
+    if (firstChar === 'D') return 'Diploma';
+    if (firstChar === 'C') return 'Certificate';
+    if (firstChar === 'A') return 'Artisan';
+    
+    return 'N/A';
+}
+
+function isTVETProgram(programCode) {
+    return getProgramType(programCode) === 'TVET';
+}
+
+function getDisplayIntake(program, year) {
+    if (!year) return 'N/A';
+    
+    if (typeof year === 'string' && year.includes(' ')) {
+        return year;
+    }
+    
+    if (program === 'KRCHN') {
+        return `March ${year}`;
+    } else {
+        return `March ${year} Intake`;
+    }
 }
 
 // ============================================================
@@ -2818,6 +2932,44 @@ async function populateUserBlockFilter() {
         
     } catch (error) {
         console.error('Error loading block filter:', error);
+    }
+}
+
+/**
+ * Update block/term options based on selected program
+ */
+function updateBlockTermOptions(programSelectId, blockSelectId) {
+    const programSelect = document.getElementById(programSelectId);
+    const blockSelect = document.getElementById(blockSelectId);
+    
+    if (!programSelect || !blockSelect) return;
+    
+    const program = programSelect.value;
+    const isTVET = isTVETProgram(program);
+    
+    let options = [];
+    
+    if (!program) {
+        blockSelect.innerHTML = '<option value="">-- Select Program First --</option>';
+        return;
+    }
+    
+    if (isTVET) {
+        options = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
+    } else {
+        options = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+    }
+    
+    blockSelect.innerHTML = `<option value="">-- Select ${isTVET ? 'Term' : 'Block'} --</option>` +
+        options.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+    
+    // Update hint
+    const hint = document.getElementById('block-hint');
+    if (hint) {
+        hint.textContent = isTVET ? 
+            '💡 TVET program - Terms available' : 
+            '💡 KRCHN program - Blocks available';
+        hint.style.color = isTVET ? '#f59e0b' : '#4C1D95';
     }
 }
 
@@ -3038,14 +3190,14 @@ async function loadAllUsers(page = 1, filters = {}) {
         return;
     }
     
-   tbody.innerHTML = `
-    <tr>
-        <td colspan="13" style="padding: 60px 20px; text-align: center;">
-            <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <p style="color: #6b7280; margin: 0;">Loading users...</p>
-        </td>
-    </tr>
-`;
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="13" style="padding: 60px 20px; text-align: center;">
+                <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="color: #6b7280; margin: 0;">Loading users...</p>
+            </td>
+        </tr>
+    `;
     
     try {
         const supabase = getSb();
@@ -3143,7 +3295,6 @@ async function loadAllUsers(page = 1, filters = {}) {
 
 // ============================================
 // 📊 RENDER USERS TABLE - COMPLETE TVET SUPPORT
-// WITH STUDENT/STAFF ID COLUMN (NO USER ID)
 // ============================================
 
 function renderUsersTable(users, docCache = {}) {
@@ -3197,7 +3348,7 @@ function renderUsersTable(users, docCache = {}) {
         const blockBadgeBg = isTVET ? '#fef3c7' : '#e0e7ff';
         const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
 
-        // ✅ Student ID / Staff ID based on role (NO USER ID)
+        // Student ID / Staff ID based on role
         let idDisplay = 'N/A';
         let idLabel = 'ID';
         if (u.role === 'student') {
@@ -3215,7 +3366,6 @@ function renderUsersTable(users, docCache = {}) {
             <tr style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" 
                 onmouseover="this.style.background='#f8fafc'" 
                 onmouseout="this.style.background='white'">
-                <!-- ✅ NEW: Student/Staff ID Column (NO USER ID) -->
                 <td style="padding: 10px 14px; text-align: center; font-weight: 600; font-size: 13px;">
                     ${escapeHtml(idDisplay)}
                     <br>
@@ -3413,6 +3563,12 @@ function changeUserPage(page) {
     }
 }
 
+function changePerPage(value) {
+    USERS_STATE.perPage = parseInt(value) || 20;
+    USERS_STATE.page = 1;
+    loadAllUsers(1, USERS_STATE.filters);
+}
+
 // ============================================
 // 🔍 SEARCH WITH DEBOUNCE
 // ============================================
@@ -3525,7 +3681,7 @@ async function loadFilterOptions() {
 }
 
 // ============================================
-// 🔥 LOAD PENDING APPROVALS - FIXED FOR STUDENTS & LECTURERS
+// 🔥 LOAD PENDING APPROVALS - FIXED
 // ============================================
 
 async function loadPendingApprovals() {
@@ -3539,9 +3695,9 @@ async function loadPendingApprovals() {
 
     try {
         const supabase = getSb();
-        const { data: pending, error, count } = await supabase
+        const { data: pending, error } = await supabase
             .from(USER_PROFILE_TABLE)
-            .select('*', { count: 'exact' })
+            .select('*')
             .eq('status', 'pending')
             .order('created_at', { ascending: true })
             .limit(50);
@@ -3582,18 +3738,14 @@ async function loadPendingApprovals() {
             const escapedEmail = escapeHtml(u.email || '');
             const escapedRole = escapeHtml(u.role || 'student');
             const escapedProgram = escapeHtml(u.program || '');
-            const escapedDepartment = escapeHtml(u.department || '');
             
-            // ============================================
-            // DETERMINE PROGRAM/DEPARTMENT DISPLAY
-            // ============================================
+            // Determine program/department display
             let programDisplay = '';
             let programBadgeClass = '';
             let programIcon = '';
             let programTypeText = '';
             
             if (u.role === 'student') {
-                // STUDENT: Show program
                 const programName = getProgramDisplayName(u.program);
                 const programType = getProgramType(u.program);
                 programDisplay = programName || u.program || 'Not set';
@@ -3601,22 +3753,18 @@ async function loadPendingApprovals() {
                 programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
                 programTypeText = programType || 'N/A';
             } else if (u.role === 'lecturer') {
-                // LECTURER: Show department
                 programDisplay = u.department || 'Not set';
                 programBadgeClass = 'badge-lecturer';
                 programIcon = 'fa-chalkboard-teacher';
                 programTypeText = 'Lecturer';
             } else {
-                // ADMIN or other: Show program or department
                 programDisplay = u.program || u.department || 'N/A';
                 programBadgeClass = 'badge-admin';
                 programIcon = 'fa-user-cog';
                 programTypeText = u.role || 'Staff';
             }
             
-            // ============================================
-            // ROLE BADGE
-            // ============================================
+            // Role badge
             const roleBadge = {
                 'student': '<span style="background:#3b82f6; color:white; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:500;">🎓 Student</span>',
                 'lecturer': '<span style="background:#10b981; color:white; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:500;">👨‍🏫 Lecturer</span>',
@@ -3624,26 +3772,19 @@ async function loadPendingApprovals() {
                 'superadmin': '<span style="background:#ef4444; color:white; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:500;">⭐ Super Admin</span>'
             };
             
-            // ============================================
-            // ID DISPLAY (Student ID or Staff ID)
-            // ============================================
+            // ID display
             const idDisplay = u.role === 'student' ? 
                 (u.student_id || 'N/A') : 
                 (u.staff_id || u.student_id || 'N/A');
             
-            // ============================================
-            // INTAKE DISPLAY (Only for students)
-            // ============================================
+            // Intake display
             let intakeDisplay = 'N/A';
             if (u.role === 'student' && u.intake_year) {
                 intakeDisplay = getDisplayIntake(u.program, u.intake_year);
             } else if (u.role === 'lecturer') {
                 intakeDisplay = u.employment_date ? new Date(u.employment_date).toLocaleDateString() : 'N/A';
             }
-            
-            // ============================================
-            // RENDER ROW
-            // ============================================
+
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 10px 12px; font-weight: 500; color: #1e293b;">
@@ -3670,16 +3811,14 @@ async function loadPendingApprovals() {
                         ${escapeHtml(intakeDisplay)}
                     </td>
                     <td style="padding: 10px 12px; text-align: center;">
-                        <span class="badge ${kcseStatus === 'pending' ? 'badge-warning' : 'badge-success'}" 
-                              style="cursor:pointer; font-size:11px; padding:4px 8px; border-radius:12px;" 
+                        <span style="cursor:pointer; font-size:11px; padding:4px 8px; border-radius:12px; background: ${kcseStatus === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${kcseStatus === 'pending' ? '#92400e' : '#065f46'};" 
                               onclick="viewDocument('${escapedUserId}','kcse')">
                             ${kcseStatus.toUpperCase()}
                             <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
                         </span>
                     </td>
                     <td style="padding: 10px 12px; text-align: center;">
-                        <span class="badge ${idStatus === 'pending' ? 'badge-warning' : 'badge-success'}" 
-                              style="cursor:pointer; font-size:11px; padding:4px 8px; border-radius:12px;" 
+                        <span style="cursor:pointer; font-size:11px; padding:4px 8px; border-radius:12px; background: ${idStatus === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${idStatus === 'pending' ? '#92400e' : '#065f46'};" 
                               onclick="viewDocument('${escapedUserId}','id')">
                             ${idStatus.toUpperCase()}
                             <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
@@ -3692,7 +3831,7 @@ async function loadPendingApprovals() {
                                   style="width:35px;height:35px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
                                   onclick="viewDocument('${escapedUserId}','photo')"
                                   onerror="this.style.display='none';">` :
-                            `<span class="badge badge-secondary" style="font-size:11px;cursor:pointer;padding:4px 8px;border-radius:12px;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`
+                            `<span style="font-size:11px;cursor:pointer;color:#94a3b8;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`
                         }
                     </td>
                     <td style="padding: 10px 12px; text-align: center; font-size: 11px; color: #94a3b8;">
@@ -3800,7 +3939,7 @@ async function loadStudents() {
 }
 
 // ============================================
-// 🚀 INITIALIZE MANAGE USERS - UPDATED
+// 🚀 INITIALIZE MANAGE USERS
 // ============================================
 
 async function initManageUsers() {
@@ -3831,9 +3970,6 @@ async function initManageUsers() {
 // 📄 DOCUMENT UPLOAD FUNCTIONS
 // ============================================
 
-/**
- * Open document upload modal for a user
- */
 function openDocumentUploadModal(userId, userName) {
     const modal = document.getElementById('documentUploadModal');
     if (!modal) {
@@ -3855,11 +3991,7 @@ function openDocumentUploadModal(userId, userName) {
     
     modal.style.display = 'flex';
 }
-window.openDocumentUploadModal = openDocumentUploadModal;
 
-/**
- * Preview document before upload
- */
 function previewDocument(type) {
     const fileInput = document.getElementById('doc_' + type);
     const previewDiv = document.getElementById(type + '_preview');
@@ -3900,11 +4032,7 @@ function previewDocument(type) {
         }
     }
 }
-window.previewDocument = previewDocument;
 
-/**
- * Upload user documents - FIXED with proper sb reference
- */
 async function uploadUserDocuments() {
     const userId = document.getElementById('doc_user_id').value;
     if (!userId) {
@@ -3982,11 +4110,7 @@ async function uploadUserDocuments() {
         showNotification(`❌ No documents uploaded. Errors: ${errorCount}`, 'error');
     }
 }
-window.uploadUserDocuments = uploadUserDocuments;
 
-/**
- * View a document
- */
 function viewDocument(userId, docType) {
     console.log('📄 Viewing document:', { userId, docType });
     
@@ -4026,7 +4150,6 @@ function viewDocument(userId, docType) {
             }
         });
 }
-window.viewDocument = viewDocument;
 
 // ============================================
 // 📝 ORIGINAL FUNCTIONS (PRESERVED WITH FIXES)
@@ -4109,15 +4232,14 @@ async function handleAddAccount(e) {
     }
 }
 
-// ✅ FIXED: Mass Promotion uses correct field
 async function handleMassPromotion(e) {
     e.preventDefault();
     const submitButton = e.submitter;
     const originalText = submitButton.textContent;
     setButtonLoading(submitButton, true, originalText);
 
-    const promote_intake = document.getElementById('promote_intake')?.value;
-    const promote_program = document.getElementById('promote_program')?.value;
+    const promote_intake = document.getElementById('promote_program')?.value;
+    const promote_program = document.getElementById('promote_course')?.value;
     const promote_from_block = document.getElementById('promote_from_block')?.value;
     const promote_to_block = document.getElementById('promote_to_block')?.value;
 
@@ -4682,6 +4804,7 @@ async function confirmApproveUser() {
         showFeedback(`❌ Failed: ${err.message}`, 'error');
     }
 }
+
 // ============================================
 // UPDATE USER ROLE - PRESERVED
 // ============================================
@@ -4733,24 +4856,6 @@ async function updateUserRole(userId, newRole, fullName) {
     } catch (err) {
         console.error('❌ Unexpected error in updateUserRole:', err);
         showFeedback(`Unexpected error: ${err.message}`, 'error');
-    }
-}
-
-// ============================================
-// DISPLAY INTAKE FUNCTION - PRESERVED
-// ============================================
-
-function getDisplayIntake(program, year) {
-    if (!year) return 'N/A';
-    
-    if (typeof year === 'string' && year.includes(' ')) {
-        return year;
-    }
-    
-    if (program === 'KRCHN') {
-        return `March ${year}`;
-    } else {
-        return `March ${year} Intake`;
     }
 }
 
@@ -5113,6 +5218,80 @@ async function handleEditUser(e) {
 }
 
 // ============================================
+// 🔧 BACKWARDS COMPATIBILITY - FIX MISSING FUNCTIONS
+// ============================================
+
+// Alias for handleEditUser -> saveEditedUser
+const saveEditedUser = handleEditUser;
+
+// Close edit user modal
+function closeEditUserModal() {
+    const modal = document.getElementById('userEditModal');
+    if (modal) {
+        modal.style.display = 'none';
+        // Reset form if it exists
+        const form = modal.querySelector('form');
+        if (form) form.reset();
+    }
+}
+
+// Close any modal by ID
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Filter pending approvals
+function filterPendingApprovals() {
+    const searchInput = document.getElementById('pending-search');
+    const programFilter = document.getElementById('pending-program-filter');
+    const statusFilter = document.getElementById('pending-status-filter');
+    
+    const searchTerm = searchInput?.value?.toLowerCase() || '';
+    const programValue = programFilter?.value || 'all';
+    const statusValue = statusFilter?.value || 'all';
+    
+    const rows = document.querySelectorAll('#pending-table-body tr');
+    
+    rows.forEach(row => {
+        const name = row.querySelector('td:first-child')?.textContent?.toLowerCase() || '';
+        const email = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
+        const program = row.querySelector('td:nth-child(5)')?.textContent?.toLowerCase() || '';
+        const status = row.querySelector('td:nth-child(11)')?.textContent?.toLowerCase() || '';
+        
+        let show = true;
+        
+        if (searchTerm && !name.includes(searchTerm) && !email.includes(searchTerm)) {
+            show = false;
+        }
+        
+        if (programValue !== 'all' && !program.includes(programValue.toLowerCase())) {
+            show = false;
+        }
+        
+        if (statusValue !== 'all' && !status.includes(statusValue.toLowerCase())) {
+            show = false;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+function resetPendingFilters() {
+    const searchInput = document.getElementById('pending-search');
+    const programFilter = document.getElementById('pending-program-filter');
+    const statusFilter = document.getElementById('pending-status-filter');
+    
+    if (searchInput) searchInput.value = '';
+    if (programFilter) programFilter.value = 'all';
+    if (statusFilter) statusFilter.value = 'all';
+    
+    filterPendingApprovals();
+}
+
+// ============================================
 // ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
 // ============================================
 
@@ -5121,6 +5300,7 @@ window.loadPendingApprovals = loadPendingApprovals;
 window.loadStudents = loadStudents;
 window.initManageUsers = initManageUsers;
 window.changeUserPage = changeUserPage;
+window.changePerPage = changePerPage;
 window.searchUsersDebounced = searchUsersDebounced;
 window.filterUsers = filterUsers;
 window.resetUserFilters = resetUserFilters;
@@ -5136,12 +5316,23 @@ window.handleAddAccount = handleAddAccount;
 window.handleMassPromotion = handleMassPromotion;
 window.openEditUserModal = openEditUserModal;
 window.handleEditUser = handleEditUser;
+window.saveEditedUser = saveEditedUser;
+window.closeEditUserModal = closeEditUserModal;
+window.closeModal = closeModal;
+window.filterPendingApprovals = filterPendingApprovals;
+window.resetPendingFilters = resetPendingFilters;
 window.openDocumentUploadModal = openDocumentUploadModal;
 window.previewDocument = previewDocument;
 window.uploadUserDocuments = uploadUserDocuments;
 window.viewDocument = viewDocument;
+window.updateBlockTermOptions = updateBlockTermOptions;
+window.getProgramDisplayName = getProgramDisplayName;
+window.getProgramType = getProgramType;
+window.getProgramLevel = getProgramLevel;
+window.isTVETProgram = isTVETProgram;
 
 console.log('✅ Users Management fully optimized and exposed to global scope!');
+console.log('✅ All functions loaded successfully!');
 /*******************************************************
  * 10. UNIT MANAGEMENT - COMPLETE TVET/KRCHN SUPPORT
  * Renamed from "Courses" to "Units" for accuracy
