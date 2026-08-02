@@ -1147,23 +1147,131 @@
             </div>
         </div>
     </div>
-<script src="code-protection.js"></script>
+<!-- ============================================================ -->
+<!-- ===== JAVASCRIPT ===== -->
+<!-- ============================================================ -->
 
+<!-- Hide .html extension -->
+<script>
+    if (window.location.pathname.endsWith('.html')) {
+        const cleanPath = window.location.pathname.replace(/\.html$/, '');
+        window.history.replaceState({}, '', cleanPath);
+    }
+</script>
 
-    <!-- ============================================================ -->
-    <!-- ===== JAVASCRIPT - EXTERNAL FILES ===== -->
-    <!-- ============================================================ -->
-
- <!-- Hides the .html extension in the URL -->
-    <script>
-        if (window.location.pathname.endsWith('.html')) {
-            const cleanPath = window.location.pathname.replace(/\.html$/, '');
-            window.history.replaceState({}, '', cleanPath);
+<!-- Global Functions -->
+<script>
+    // ============================================================
+    // SHOW TAB
+    // ============================================================
+    window.showTab = function(tabId) {
+        console.log('📂 Opening tab:', tabId);
+        
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+            tab.classList.remove('active');
+        });
+        
+        const target = document.getElementById('tab-' + tabId);
+        if (target) {
+            target.style.display = 'block';
+            target.classList.add('active');
+            console.log('✅ Tab opened:', tabId);
+        } else {
+            console.warn('⚠️ Tab not found:', tabId);
+            // Try direct match
+            const alt = document.getElementById(tabId);
+            if (alt) {
+                alt.style.display = 'block';
+                alt.classList.add('active');
+                console.log('✅ Tab opened (alt):', tabId);
+            }
         }
-    </script>
-    <script src="js/finance-config.js"></script>
-    <script src="js/finance-api.js"></script>
-    <script src="js/finance-app.js"></script>
+        
+        document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('data-tab') === tabId) {
+                link.classList.add('active');
+            }
+        });
+        
+        // Load tab data
+        const loaders = {
+            'dashboard': function() { 
+                if (typeof loadDashboardData === 'function') loadDashboardData(); 
+            },
+            'accounts': function() { 
+                if (typeof loadAccounts === 'function') loadAccounts(); 
+            },
+            'payments': function() { 
+                if (typeof loadPayments === 'function') loadPayments(); 
+            },
+            'fee-structure': function() { 
+                if (typeof loadFeeStructure === 'function') loadFeeStructure(); 
+            },
+            'transactions': function() { 
+                if (typeof loadTransactions === 'function') loadTransactions(); 
+            },
+            'settings': function() { 
+                if (typeof loadSettings === 'function') loadSettings(); 
+            }
+        };
+        
+        if (loaders[tabId]) {
+            setTimeout(loaders[tabId], 300);
+        }
+    };
+    
+    // ============================================================
+    // SIDEBAR TOGGLE
+    // ============================================================
+    window.toggleSidebar = function() {
+        const sidebar = document.getElementById('financeSidebar');
+        if (sidebar) {
+            sidebar.classList.toggle('open');
+        }
+    };
+    
+    // ============================================================
+    // GO TO MAIN DASHBOARD
+    // ============================================================
+    window.goToMainDashboard = function() {
+        window.location.href = '/home';
+    };
+    
+    // ============================================================
+    // LOGOUT
+    // ============================================================
+    window.logoutFinance = function() {
+        if (confirm('Are you sure you want to logout?')) {
+            localStorage.removeItem('finance_user');
+            sessionStorage.removeItem('finance_user');
+            window.location.href = 'financelogin.html';
+        }
+    };
+    
+    console.log('✅ Global functions loaded');
+</script>
+
+<!-- External JS -->
+<script src="js/finance-config.js"></script>
+<script src="js/finance-api.js"></script>
+<script src="js/finance-app.js"></script>
+
+<!-- Ensure Dashboard -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            if (typeof window.showTab === 'function') {
+                window.showTab('dashboard');
+            }
+            console.log('✅ Dashboard loaded');
+        }, 600);
+    });
+</script>
+
+<!-- Code Protection -->
+<script src="code-protection.js"></script>
    
 </body>
 </html>
