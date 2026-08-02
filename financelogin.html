@@ -660,7 +660,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- ===== JAVASCRIPT - COMPLETELY FIXED ===== -->
+    <!-- ===== JAVASCRIPT - COMPLETELY FIXED WITH ERROR HANDLING ===== -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -678,50 +678,76 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
         // ============================================================
-        // FIXED: USE IIFE TO AVOID GLOBAL CONFLICTS
+        // SAFELY INITIALIZE SUPABASE
         // ============================================================
-        (function() {
-            'use strict';
-            
-            // Only create if it doesn't already exist globally
-            if (typeof window.supabase === 'undefined' || !window.supabase) {
-                console.log('🔗 Creating new Supabase client');
-                
-                try {
-                    // Try to create from available sources
-                    let supabaseClient = null;
-                    
-                    // Check if supabase_js is available (from CDN)
-                    if (typeof supabase_js !== 'undefined' && supabase_js && typeof supabase_js.createClient === 'function') {
-                        supabaseClient = supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    } 
-                    // Check if createClient is available in window
-                    else if (typeof window.createClient === 'function') {
-                        supabaseClient = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    } 
-                    // Fallback: try to get from the global Supabase object
-                    else if (typeof Supabase !== 'undefined' && Supabase.createClient) {
-                        supabaseClient = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    } 
-                    else {
-                        console.error('❌ No Supabase client creator found');
-                    }
-                    
-                    // Make available globally
-                    window.supabase = supabaseClient;
-                    window.sb = supabaseClient;
-                    
-                } catch (e) {
-                    console.error('❌ Error creating Supabase client:', e);
-                    window.supabase = null;
-                    window.sb = null;
+        function initSupabase() {
+            try {
+                // Check if already exists
+                if (typeof window.supabase !== 'undefined' && window.supabase) {
+                    console.log('🔗 Using existing Supabase client');
+                    return window.supabase;
                 }
-            } else {
-                console.log('🔗 Using existing Supabase client');
+
+                console.log('🔗 Creating new Supabase client...');
+                
+                // Try different ways to create the client
+                let client = null;
+                
+                // Method 1: Using supabase_js from CDN
+                if (typeof supabase_js !== 'undefined' && supabase_js && typeof supabase_js.createClient === 'function') {
+                    client = supabase_js.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log('✅ Created via supabase_js');
+                }
+                // Method 2: Using window.createClient
+                else if (typeof window.createClient === 'function') {
+                    client = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log('✅ Created via window.createClient');
+                }
+                // Method 3: Using global Supabase
+                else if (typeof Supabase !== 'undefined' && Supabase && typeof Supabase.createClient === 'function') {
+                    client = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log('✅ Created via Supabase.createClient');
+                }
+                // Method 4: Try to get from window
+                else if (typeof window.supabaseJs !== 'undefined' && window.supabaseJs) {
+                    client = window.supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log('✅ Created via window.supabaseJs');
+                }
+                else {
+                    console.error('❌ No Supabase client creator found!');
+                    return null;
+                }
+
+                // Store globally
+                window.supabase = client;
+                window.sb = client;
+                
+                return client;
+            } catch (error) {
+                console.error('❌ Error creating Supabase client:', error);
+                return null;
             }
-            
-            console.log('🔗 Supabase initialized:', window.supabase ? '✅ Available' : '❌ Not available');
-        })();
+        }
+
+        // Initialize
+        const supabaseClient = initSupabase();
+        
+        if (!supabaseClient) {
+            // Show error to user
+            document.body.innerHTML = `
+                <div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;font-family:Arial,sans-serif;padding:20px;text-align:center;background:#f8fafc;">
+                    <div style="font-size:48px;color:#dc2626;margin-bottom:20px;">⚠️</div>
+                    <h1 style="color:#0A3D62;">Supabase Connection Error</h1>
+                    <p style="color:#64748b;max-width:400px;">Unable to initialize Supabase client. Please check your internet connection and refresh the page.</p>
+                    <button onclick="location.reload()" style="margin-top:20px;padding:12px 30px;background:#4C1D95;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;">
+                        <i class="fas fa-sync-alt"></i> Refresh Page
+                    </button>
+                </div>
+            `;
+            throw new Error('Supabase client not available');
+        }
+
+        console.log('🔗 Supabase initialized successfully');
 
         // ============================================================
         // TABLE NAME & ALLOWED ROLES
@@ -764,7 +790,12 @@
             try {
                 const supabase = window.supabase;
                 if (!supabase) {
-                    console.warn('⚠️ Supabase not initialized');
+                    console.warn('⚠️ Supabase not available');
+                    return;
+                }
+                
+                if (typeof supabase.auth === 'undefined') {
+                    console.warn('⚠️ Supabase auth not available');
                     return;
                 }
                 
@@ -814,7 +845,7 @@
             try {
                 const supabase = window.supabase;
                 if (!supabase) {
-                    console.warn('⚠️ Supabase not initialized');
+                    console.warn('⚠️ Supabase not available');
                     return null;
                 }
                 
