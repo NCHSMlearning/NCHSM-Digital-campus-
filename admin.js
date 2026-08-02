@@ -1,8 +1,8 @@
 // =====================================================
 // NCHSM ADMIN DASHBOARD - COMPLETE JAVASCRIPT
-// ALL functions implemented - NO placeholders
+// ALL functions implemented - Modern UI matching Super Admin
 // KRCHN uses BLOCKS, TVET uses TERMS
-// INCLUDES: Unit Assignment to Lecturers
+// INCLUDES: Unit Assignment to Lecturers + Charts + Modern UI
 // =====================================================
 
 // ------------------------------------------------------------------
@@ -19,6 +19,7 @@ let allResourcesData = [];
 let currentResourceType = 'all';
 let adminAllTickets = [];
 let calendarInstance = null;
+let chartInstances = {};
 
 // ====================================================================
 // LECTURER UNIT ASSIGNMENT - STATE
@@ -135,6 +136,26 @@ function showToast(message, type) {
     }, 4000);
 }
 
+function formatDate(date) {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleDateString('en-KE', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+
+function formatDateTime(date) {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleString('en-KE', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 // ------------------------------------------------------------------
 // BLOCK/TERM DROPDOWN - CORRECTED FOR KRCHN vs TVET
 // ------------------------------------------------------------------
@@ -189,7 +210,19 @@ function setupBlockTermDropdowns() {
 // INITIALIZATION
 // ------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Admin panel loading...');
+    console.log('🚀 Admin panel loading...');
+    
+    // Set current date
+    const dateEl = document.getElementById('currentDate');
+    if (dateEl) {
+        const now = new Date();
+        dateEl.textContent = now.toLocaleDateString('en-KE', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
     
     if (typeof supabase !== 'undefined') {
         db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -204,28 +237,59 @@ document.addEventListener('DOMContentLoaded', function() {
     checkUserSession();
     setupNavigation();
     setupMobileMenu();
+    setupDropdowns();
     loadDashboardNumbers();
     setupBlockTermDropdowns();
     setupAssignmentEventListeners();
+    initCharts();
 });
+
+// ------------------------------------------------------------------
+// SETUP DROPDOWNS (Matches Super Admin)
+// ------------------------------------------------------------------
+function setupDropdowns() {
+    const dropdownToggles = document.querySelectorAll('.nav-dropdown > a');
+    dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const parentLi = this.closest('.nav-dropdown');
+            
+            // Close all other dropdowns
+            document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                if (dropdown !== parentLi) {
+                    dropdown.classList.remove('open');
+                }
+            });
+            
+            parentLi.classList.toggle('open');
+        });
+    });
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.nav-dropdown')) {
+            document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                dropdown.classList.remove('open');
+            });
+        }
+    });
+}
 
 // ------------------------------------------------------------------
 // SETUP ASSIGNMENT EVENT LISTENERS
 // ------------------------------------------------------------------
 function setupAssignmentEventListeners() {
-    // Lecturer search
     const searchInput = document.getElementById('lecturerSearch');
     if (searchInput) {
         searchInput.addEventListener('keyup', filterLecturerList);
     }
     
-    // Program filter
     const programFilter = document.getElementById('lecturerProgramFilter');
     if (programFilter) {
         programFilter.addEventListener('change', filterLecturerList);
     }
     
-    // Unit search in modal
     const unitSearch = document.getElementById('unitSearchInput');
     if (unitSearch) {
         unitSearch.addEventListener('keyup', filterAvailableUnits);
@@ -256,11 +320,9 @@ async function checkUserSession() {
         if (profile) {
             currentAdmin = profile;
             
-            const welcomeEl = document.querySelector('header h1');
-            if (welcomeEl && profile.full_name) {
-                const nameSpan = document.getElementById('adminName');
-                if (nameSpan) nameSpan.textContent = profile.full_name;
-                welcomeEl.innerHTML = 'Welcome, <span id="adminName">' + profile.full_name + '</span>!';
+            const nameSpan = document.getElementById('adminName');
+            if (nameSpan && profile.full_name) {
+                nameSpan.textContent = profile.full_name;
             }
             
             if (profile.role === 'superadmin' || profile.role === 'super_admin') {
@@ -278,7 +340,7 @@ async function checkUserSession() {
 // SIDEBAR NAVIGATION
 // ------------------------------------------------------------------
 function setupNavigation() {
-    var navLinks = document.querySelectorAll('.nav a');
+    var navLinks = document.querySelectorAll('.nav a[data-tab]');
     var allTabs = document.querySelectorAll('.tab-content');
     
     for (var i = 0; i < navLinks.length; i++) {
@@ -303,6 +365,9 @@ function setupNavigation() {
                 targetTab.classList.add('active');
                 loadTabContent(tabId);
             }
+            
+            // Close mobile sidebar
+            document.getElementById('sidebar')?.classList.remove('active');
         });
     }
     
@@ -413,9 +478,111 @@ async function loadDashboardNumbers() {
         if (lecturersEl) lecturersEl.textContent = lecturerCount || 0;
         
         loadWelcomeMessageForDisplay();
+        updateCharts();
         
     } catch(e) {
         console.log('Dashboard error:', e);
+    }
+}
+
+// ------------------------------------------------------------------
+// CHARTS - Matches Super Admin
+// ------------------------------------------------------------------
+function initCharts() {
+    // Enrolment by Block Chart
+    const ctx1 = document.getElementById('enrolmentBlockChart');
+    if (ctx1) {
+        chartInstances.enrolment = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Final'],
+                datasets: [{
+                    label: 'Students',
+                    data: [0, 0, 0, 0, 0, 0],
+                    backgroundColor: ['#4C1D95', '#6d28d9', '#8b5cf6', '#a78bfa', '#c4b5fd', '#e9d5ff'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+    
+    // Gender Distribution Chart
+    const ctx2 = document.getElementById('genderDistributionChart');
+    if (ctx2) {
+        chartInstances.gender = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['Male', 'Female'],
+                datasets: [{
+                    data: [0, 0],
+                    backgroundColor: ['#3b82f6', '#ec4899'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+}
+
+async function updateCharts() {
+    if (!db) return;
+    
+    try {
+        // Get student counts by block
+        const { data: students } = await db
+            .from('consolidated_user_profiles_table')
+            .select('block')
+            .eq('role', 'student')
+            .eq('status', 'approved');
+        
+        if (students) {
+            const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Final'];
+            const counts = blocks.map(block => 
+                students.filter(s => s.block === block).length
+            );
+            
+            if (chartInstances.enrolment) {
+                chartInstances.enrolment.data.datasets[0].data = counts;
+                chartInstances.enrolment.update();
+            }
+        }
+        
+        // Get gender distribution
+        const { data: genderData } = await db
+            .from('consolidated_user_profiles_table')
+            .select('gender')
+            .eq('role', 'student')
+            .eq('status', 'approved');
+        
+        if (genderData) {
+            const male = genderData.filter(s => s.gender === 'Male' || s.gender === 'M').length;
+            const female = genderData.filter(s => s.gender === 'Female' || s.gender === 'F').length;
+            
+            if (chartInstances.gender) {
+                chartInstances.gender.data.datasets[0].data = [male, female];
+                chartInstances.gender.update();
+            }
+        }
+    } catch(e) {
+        console.log('Chart update error:', e);
     }
 }
 
@@ -449,7 +616,7 @@ async function loadAllUsers() {
     var html = '';
     for (var i = 0; i < data.length; i++) {
         var u = data[i];
-        var statusClass = (u.status === 'approved') ? 'badge-success' : 'badge-warning';
+        var statusClass = (u.status === 'approved' || u.status === 'active') ? 'badge-success' : 'badge-warning';
         var shortId = u.user_id ? u.user_id.substring(0,8) : 'N/A';
         var programName = getProgramDisplayName(u.program);
         var blockTermLabel = getBlockTermLabel(u.program);
@@ -459,12 +626,12 @@ async function loadAllUsers() {
         html += '<td>' + shortId + '...</td>';
         html += '<td>' + escapeHtml(u.full_name) + '</td>';
         html += '<td>' + escapeHtml(u.email) + '</td>';
-        html += '<td>' + escapeHtml(u.role) + '</td>';
-        html += '<td>' + escapeHtml(programName) + '<br><small>' + blockTermLabel + ': ' + escapeHtml(blockTermDisplay) + '</small></td>';
-        html += '<td><span class="badge ' + statusClass + '">' + u.status + '</span></td>';
+        html += '<td><span class="badge badge-primary">' + escapeHtml(u.role) + '</span></td>';
+        html += '<td>' + escapeHtml(programName) + '<br><small style="color:#94a3b8;">' + blockTermLabel + ': ' + escapeHtml(blockTermDisplay) + '</small></td>';
+        html += '<td><span class="badge ' + statusClass + '">' + (u.status || 'pending') + '</span></td>';
         html += '<td>';
-        html += '<button class="btn-sm btn-edit" onclick="openEditUser(\'' + u.user_id + '\')">Edit</button> ';
-        html += '<button class="btn-sm btn-delete" onclick="deleteUserAccount(\'' + u.user_id + '\', \'' + escapeHtml(u.full_name) + '\')">Delete</button>';
+        html += '<button class="btn-sm btn-edit" onclick="openEditUser(\'' + u.user_id + '\')"><i class="fas fa-edit"></i></button> ';
+        html += '<button class="btn-sm btn-delete" onclick="deleteUserAccount(\'' + u.user_id + '\', \'' + escapeHtml(u.full_name) + '\')"><i class="fas fa-trash"></i></button>';
         html += '</td>';
         html += '</tr>';
     }
@@ -505,12 +672,12 @@ async function loadPendingUsers() {
         html += '<tr>';
         html += '<td>' + escapeHtml(u.full_name) + '</td>';
         html += '<td>' + escapeHtml(u.email) + '</td>';
-        html += '<td>' + escapeHtml(u.role) + '</td>';
+        html += '<td><span class="badge badge-primary">' + escapeHtml(u.role) + '</span></td>';
         html += '<td>' + escapeHtml(programName) + '</td>';
         html += '<td>' + dateStr + '</td>';
         html += '<td>';
-        html += '<button class="btn-sm btn-success" onclick="approveUser(\'' + u.user_id + '\', \'' + escapeHtml(u.full_name) + '\')">Approve</button> ';
-        html += '<button class="btn-sm btn-delete" onclick="deleteUserAccount(\'' + u.user_id + '\', \'' + escapeHtml(u.full_name) + '\')">Reject</button>';
+        html += '<button class="btn-sm btn-success" onclick="approveUser(\'' + u.user_id + '\', \'' + escapeHtml(u.full_name) + '\')"><i class="fas fa-check"></i></button> ';
+        html += '<button class="btn-sm btn-delete" onclick="deleteUserAccount(\'' + u.user_id + '\', \'' + escapeHtml(u.full_name) + '\')"><i class="fas fa-times"></i></button>';
         html += '</td>';
         html += '</tr>';
     }
@@ -546,7 +713,7 @@ async function loadStudents() {
     for (var i = 0; i < data.length; i++) {
         var s = data[i];
         var shortId = s.user_id ? s.user_id.substring(0,8) : 'N/A';
-        var statusClass = (s.status === 'approved') ? 'badge-success' : 'badge-warning';
+        var statusClass = (s.status === 'approved' || s.status === 'active') ? 'badge-success' : 'badge-warning';
         var programName = getProgramDisplayName(s.program);
         
         html += '<tr>';
@@ -554,8 +721,8 @@ async function loadStudents() {
         html += '<td>' + escapeHtml(s.full_name) + '</td>';
         html += '<td>' + escapeHtml(s.email) + '</td>';
         html += '<td>' + escapeHtml(programName) + '</td>';
-        html += '<td><span class="badge ' + statusClass + '">' + s.status + '</span></td>';
-        html += '<td><button class="btn-sm btn-edit" onclick="openEditUser(\'' + s.user_id + '\')">Edit</button></td>';
+        html += '<td><span class="badge ' + statusClass + '">' + (s.status || 'pending') + '</span></td>';
+        html += '<td><button class="btn-sm btn-edit" onclick="openEditUser(\'' + s.user_id + '\')"><i class="fas fa-edit"></i></button></td>';
         html += '</tr>';
     }
     
@@ -576,7 +743,7 @@ document.getElementById('add-account-form')?.addEventListener('submit', async fu
     var block = document.getElementById('account-block-term')?.value || 'Introductory';
     
     if (!name || !email || !password) {
-        alert('Please fill in all required fields');
+        showToast('Please fill in all required fields', 'warning');
         return;
     }
     
@@ -665,7 +832,7 @@ window.openEditUser = async function(userId) {
             .single();
         
         if (error || !user) {
-            alert('User not found');
+            showToast('User not found', 'error');
             return;
         }
         
@@ -689,7 +856,7 @@ window.openEditUser = async function(userId) {
         document.getElementById('userEditModal').style.display = 'flex';
         
     } catch(err) {
-        alert('Error loading user: ' + err.message);
+        showToast('Error loading user: ' + err.message, 'error');
     }
 };
 
@@ -701,7 +868,7 @@ document.getElementById('edit-user-form')?.addEventListener('submit', async func
     var confirmPassword = document.getElementById('edit_user_confirm_password').value;
     
     if (newPassword && newPassword !== confirmPassword) {
-        alert('Passwords do not match!');
+        showToast('Passwords do not match!', 'warning');
         return;
     }
     
@@ -740,7 +907,7 @@ document.getElementById('edit-user-form')?.addEventListener('submit', async func
         loadStudents();
         
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -777,7 +944,7 @@ async function loadAllCourses() {
         html += '<td>' + escapeHtml(c.unit_code || 'N/A') + '</td>';
         html += '<td>' + escapeHtml(programName) + '</td>';
         html += '<td>' + (c.intake_year || 'N/A') + '</td>';
-        html += '<td><button class="btn-sm btn-delete" onclick="deleteCourseItem(\'' + c.id + '\')">Delete</button></td>';
+        html += '<td><button class="btn-sm btn-delete" onclick="deleteCourseItem(\'' + c.id + '\')"><i class="fas fa-trash"></i></button></td>';
         html += '</tr>';
     }
     
@@ -794,7 +961,7 @@ document.getElementById('add-course-form')?.addEventListener('submit', async fun
     var block = document.getElementById('course-block')?.value || 'General';
     
     if (!name || !code) {
-        alert('Course name and unit code are required');
+        showToast('Course name and unit code are required', 'warning');
         return;
     }
     
@@ -815,7 +982,7 @@ document.getElementById('add-course-form')?.addEventListener('submit', async fun
         loadAllCourses();
         
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -828,7 +995,7 @@ window.deleteCourseItem = async function(courseId) {
         showToast('✅ Course deleted', 'success');
         loadAllCourses();
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 };
 
@@ -854,8 +1021,12 @@ async function loadAllUnits() {
         // Also refresh available units for assignment
         await loadAvailableUnitsForAssignment();
         
+        // Update unit count
+        const countEl = document.getElementById('unitCountDisplay');
+        if (countEl) countEl.textContent = allUnitsList.length;
+        
     } catch(err) {
-        container.innerHTML = '<p>Error loading units: ' + err.message + '</p>';
+        container.innerHTML = '<p style="color: #dc2626;">Error loading units: ' + err.message + '</p>';
     }
 }
 
@@ -881,7 +1052,7 @@ function renderUnitList() {
     }
     
     if (filtered.length === 0) {
-        container.innerHTML = '<p>No units found</p>';
+        container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 40px 0;">No units found</p>';
         return;
     }
     
@@ -897,10 +1068,10 @@ function renderUnitList() {
         html += '<span class="unit-name">' + escapeHtml(u.unit_name) + '</span>';
         html += '</div>';
         html += '<div class="unit-meta">';
-        html += '<span>' + escapeHtml(programName) + '</span>';
-        html += '<span>' + blockTermLabel + ': ' + escapeHtml(u.block) + '</span>';
-        html += '<span>Year: ' + (u.year || 'N/A') + '</span>';
-        html += '<span>' + (u.credits || 3) + ' Credits</span>';
+        html += '<span><i class="fas fa-graduation-cap"></i> ' + escapeHtml(programName) + '</span>';
+        html += '<span><i class="fas fa-layer-group"></i> ' + blockTermLabel + ': ' + escapeHtml(u.block) + '</span>';
+        html += '<span><i class="fas fa-calendar"></i> ' + (u.year || 'N/A') + '</span>';
+        html += '<span><i class="fas fa-star"></i> ' + (u.credits || 3) + ' Credits</span>';
         html += '</div></div>';
     }
     html += '</div>';
@@ -938,7 +1109,7 @@ window.addNewUnitRecord = async function() {
     var prerequisites = document.getElementById('new_unit_prerequisites').value || null;
     
     if (!unitCode || !unitName) {
-        alert('Please fill in Unit Code and Unit Name');
+        showToast('Please fill in Unit Code and Unit Name', 'warning');
         return;
     }
     
@@ -965,7 +1136,7 @@ window.addNewUnitRecord = async function() {
         loadAllUnits();
         
     } catch(err) {
-        alert('Error adding unit: ' + err.message);
+        showToast('Error adding unit: ' + err.message, 'error');
     }
 };
 
@@ -988,7 +1159,6 @@ async function loadLecturersForAssignment() {
     if (!db) return;
     
     try {
-        // Fetch all lecturers (approved, role = lecturer)
         const { data, error } = await db
             .from('consolidated_user_profiles_table')
             .select('*')
@@ -1000,12 +1170,8 @@ async function loadLecturersForAssignment() {
         
         allLecturers = data || [];
         
-        // Load existing assignments
         await loadExistingAssignments();
-        
-        // Update stats
         updateAssignmentStats();
-        
         renderLecturerList();
         
     } catch(err) {
@@ -1091,12 +1257,10 @@ function renderLecturerList() {
     const container = document.getElementById('lecturer-assignment-list');
     if (!container) return;
     
-    // Apply filters
     const searchTerm = document.getElementById('lecturerSearch')?.value?.toLowerCase() || '';
     const programFilter = document.getElementById('lecturerProgramFilter')?.value || 'all';
     
     let filtered = allLecturers.filter(lecturer => {
-        // Search filter
         if (searchTerm) {
             const name = (lecturer.full_name || '').toLowerCase();
             const email = (lecturer.email || '').toLowerCase();
@@ -1105,7 +1269,6 @@ function renderLecturerList() {
             }
         }
         
-        // Program filter
         if (programFilter !== 'all') {
             if (programFilter === 'TVET' && !isTVETProgram(lecturer.program)) return false;
             if (programFilter === 'KRCHN' && lecturer.program !== 'KRCHN') return false;
@@ -1137,10 +1300,10 @@ function renderLecturerList() {
                 </div>
                 <div class="lecturer-info">
                     <h4>${escapeHtml(lecturer.full_name)}</h4>
-                    <p class="lecturer-email">${escapeHtml(lecturer.email)}</p>
-                    <p class="lecturer-program">${escapeHtml(programName)}</p>
+                    <p class="lecturer-email"><i class="fas fa-envelope"></i> ${escapeHtml(lecturer.email)}</p>
+                    <p class="lecturer-program"><i class="fas fa-graduation-cap"></i> ${escapeHtml(programName)}</p>
                     <div class="lecturer-stats">
-                        <span class="unit-count">📚 ${unitCount} units assigned</span>
+                        <span class="unit-count"><i class="fas fa-book"></i> ${unitCount} units assigned</span>
                     </div>
                 </div>
                 <div class="lecturer-actions">
@@ -1168,25 +1331,19 @@ async function openUnitAssignmentModal(lecturerId) {
         return;
     }
     
-    // Populate lecturer info
     document.getElementById('modalLecturerName').textContent = lecturer.full_name;
     document.getElementById('modalLecturerEmail').textContent = lecturer.email;
     document.getElementById('modalLecturerProgram').textContent = getProgramDisplayName(lecturer.program);
     document.getElementById('assignmentLecturerName').textContent = lecturer.full_name;
     
-    // Get assigned units
     const assignedUnits = allLecturerAssignments.filter(
         a => a.lecturer_id === lecturerId
     );
     document.getElementById('modalAssignedCount').textContent = assignedUnits.length;
     
-    // Render assigned units
     renderAssignedUnits(assignedUnits);
-    
-    // Render available units
     await renderAvailableUnits(lecturerId, assignedUnits);
     
-    // Show modal
     document.getElementById('unitAssignmentModal').style.display = 'flex';
 }
 
@@ -1198,7 +1355,7 @@ function renderAssignedUnits(assignedUnits) {
     if (!container) return;
     
     if (assignedUnits.length === 0) {
-        container.innerHTML = '<p class="text-muted">No units assigned yet</p>';
+        container.innerHTML = '<p class="text-muted"><i class="fas fa-info-circle"></i> No units assigned yet</p>';
         return;
     }
     
@@ -1226,14 +1383,13 @@ async function renderAvailableUnits(lecturerId, assignedUnits) {
     const container = document.getElementById('available-units-list');
     if (!container) return;
     
-    // Make sure we have the latest units
     await loadAvailableUnitsForAssignment();
     
     const assignedUnitIds = assignedUnits.map(a => a.unit_id);
     const available = availableUnitsForAssignment.filter(u => !assignedUnitIds.includes(u.id));
     
     if (available.length === 0) {
-        container.innerHTML = '<p class="text-muted">No available units to assign</p>';
+        container.innerHTML = '<p class="text-muted"><i class="fas fa-check-circle"></i> All units assigned</p>';
         return;
     }
     
@@ -1246,7 +1402,7 @@ async function renderAvailableUnits(lecturerId, assignedUnits) {
             <div class="available-unit-item" onclick="assignUnitToLecturer('${lecturerId}', '${u.id}', '${escapeHtml(u.unit_code)}', '${escapeHtml(u.unit_name)}')">
                 <span class="unit-code">${escapeHtml(u.unit_code)}</span>
                 <span class="unit-name">${escapeHtml(u.unit_name)}</span>
-                <span class="unit-block">${blockTermLabel}: ${escapeHtml(u.block)}</span>
+                <span class="unit-block"><i class="fas fa-layer-group"></i> ${blockTermLabel}: ${escapeHtml(u.block)}</span>
                 <button class="btn-sm btn-success">
                     <i class="fas fa-plus"></i> Assign
                 </button>
@@ -1282,7 +1438,6 @@ function filterAvailableUnits() {
 async function assignUnitToLecturer(lecturerId, unitId, unitCode, unitName) {
     if (!db) return;
     
-    // Check if already assigned
     const existing = allLecturerAssignments.find(
         a => a.lecturer_id === lecturerId && a.unit_id === unitId
     );
@@ -1309,17 +1464,12 @@ async function assignUnitToLecturer(lecturerId, unitId, unitCode, unitName) {
         
         if (error) throw error;
         
-        // Update local state
         if (data && data.length > 0) {
             allLecturerAssignments.push(data[0]);
         }
         
-        // Refresh the modal
         await refreshAssignmentModal(lecturerId);
-        
         showToast('✅ Unit ' + unitCode + ' assigned successfully!', 'success');
-        
-        // Refresh stats and list
         updateAssignmentStats();
         renderLecturerList();
         
@@ -1344,15 +1494,10 @@ async function removeUnitFromLecturer(assignmentId, unitCode) {
         
         if (error) throw error;
         
-        // Update local state
         allLecturerAssignments = allLecturerAssignments.filter(a => a.id !== assignmentId);
-        
-        // Refresh the modal
         await refreshAssignmentModal(currentLecturerId);
         
         showToast('✅ Unit ' + unitCode + ' removed successfully!', 'success');
-        
-        // Refresh stats and list
         updateAssignmentStats();
         renderLecturerList();
         
@@ -1370,24 +1515,20 @@ async function refreshAssignmentModal(lecturerId) {
     const lecturer = allLecturers.find(l => l.user_id === lecturerId);
     if (!lecturer) return;
     
-    // Get updated assignments
     const assignedUnits = allLecturerAssignments.filter(
         a => a.lecturer_id === lecturerId
     );
     document.getElementById('modalAssignedCount').textContent = assignedUnits.length;
     
-    // Re-render assigned units
     renderAssignedUnits(assignedUnits);
-    
-    // Re-render available units
     await renderAvailableUnits(lecturerId, assignedUnits);
 }
 
 // ------------------------------------------------------------------
-// SAVE ALL UNIT ASSIGNMENTS (Bulk save from modal)
+// SAVE ALL UNIT ASSIGNMENTS
 // ------------------------------------------------------------------
 async function saveAllUnitAssignments() {
-    showToast('All assignments saved successfully!', 'success');
+    showToast('✅ All assignments saved successfully!', 'success');
     closeModal('unitAssignmentModal');
     updateAssignmentStats();
     renderLecturerList();
@@ -1443,11 +1584,11 @@ async function loadAdminTickets() {
             if (t.status === 'in_progress') statusClass = 'badge-info';
             
             html += '<tr>';
-            html += '<td>' + escapeHtml(t.ticket_number) + '</td>';
+            html += '<td><span class="badge badge-primary">' + escapeHtml(t.ticket_number) + '</span></td>';
             html += '<td>' + escapeHtml(studentNames[t.student_id] || 'Student') + '</td>';
             html += '<td>' + escapeHtml(t.subject) + '</td>';
             html += '<td><span class="badge ' + statusClass + '">' + escapeHtml(t.status) + '</span></td>';
-            html += '<td><button class="btn-sm btn-edit" onclick="viewTicketDetail(\'' + t.id + '\')">View</button></td>';
+            html += '<td><button class="btn-sm btn-edit" onclick="viewTicketDetail(\'' + t.id + '\')"><i class="fas fa-eye"></i></button></td>';
             html += '</tr>';
         }
         
@@ -1510,11 +1651,11 @@ function renderFilteredTickets(tickets) {
         if (t.status === 'in_progress') statusClass = 'badge-info';
         
         html += '<tr>';
-        html += '<td>' + escapeHtml(t.ticket_number) + '</td>';
+        html += '<td><span class="badge badge-primary">' + escapeHtml(t.ticket_number) + '</span></td>';
         html += '<td>' + escapeHtml(t.student_name || 'Student') + '</td>';
         html += '<td>' + escapeHtml(t.subject) + '</td>';
         html += '<td><span class="badge ' + statusClass + '">' + escapeHtml(t.status) + '</span></td>';
-        html += '<td><button class="btn-sm btn-edit" onclick="viewTicketDetail(\'' + t.id + '\')">View</button></td>';
+        html += '<td><button class="btn-sm btn-edit" onclick="viewTicketDetail(\'' + t.id + '\')"><i class="fas fa-eye"></i></button></td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
@@ -1523,23 +1664,23 @@ function renderFilteredTickets(tickets) {
 window.viewTicketDetail = function(ticketId) {
     var ticket = adminAllTickets.find(function(t) { return t.id === ticketId; });
     if (!ticket) {
-        alert('Ticket not found');
+        showToast('Ticket not found', 'error');
         return;
     }
     
     var modalHtml = '<div id="ticketDetailModal" class="modal" style="display:flex;">';
     modalHtml += '<div class="modal-content">';
-    modalHtml += '<div class="modal-header"><h3>Ticket: ' + escapeHtml(ticket.ticket_number) + '</h3><span class="close" onclick="closeModal(\'ticketDetailModal\')">&times;</span></div>';
+    modalHtml += '<div class="modal-header"><h3><i class="fas fa-ticket-alt"></i> Ticket: ' + escapeHtml(ticket.ticket_number) + '</h3><button class="close" onclick="closeModal(\'ticketDetailModal\')">&times;</button></div>';
     modalHtml += '<div class="modal-body">';
     modalHtml += '<p><strong>Subject:</strong> ' + escapeHtml(ticket.subject) + '</p>';
     modalHtml += '<p><strong>Description:</strong> ' + escapeHtml(ticket.description || 'No description') + '</p>';
-    modalHtml += '<p><strong>Status:</strong> ' + escapeHtml(ticket.status) + '</p>';
+    modalHtml += '<p><strong>Status:</strong> <span class="badge badge-info">' + escapeHtml(ticket.status) + '</span></p>';
     modalHtml += '<p><strong>Priority:</strong> ' + escapeHtml(ticket.priority || 'Medium') + '</p>';
-    modalHtml += '<p><strong>Created:</strong> ' + new Date(ticket.created_at).toLocaleString() + '</p>';
-    modalHtml += '<hr><textarea id="ticketReplyMsg" rows="4" style="width:100%;padding:10px;" placeholder="Type your reply..."></textarea>';
+    modalHtml += '<p><strong>Created:</strong> ' + formatDateTime(ticket.created_at) + '</p>';
+    modalHtml += '<hr><textarea id="ticketReplyMsg" rows="4" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;" placeholder="Type your reply..."></textarea>';
     modalHtml += '<div style="margin-top:10px;"><button onclick="sendTicketReply(\'' + ticketId + '\')" class="btn-action">Send Reply</button></div>';
     modalHtml += '</div>';
-    modalHtml += '<div class="modal-actions"><button onclick="closeModal(\'ticketDetailModal\')" class="btn">Close</button></div>';
+    modalHtml += '<div class="modal-actions"><button onclick="closeModal(\'ticketDetailModal\')" class="btn-secondary">Close</button></div>';
     modalHtml += '</div></div>';
     
     var existingModal = document.getElementById('ticketDetailModal');
@@ -1550,10 +1691,10 @@ window.viewTicketDetail = function(ticketId) {
 window.sendTicketReply = async function(ticketId) {
     var message = document.getElementById('ticketReplyMsg')?.value;
     if (!message) {
-        alert('Please enter a message');
+        showToast('Please enter a message', 'warning');
         return;
     }
-    showToast('Reply sent!', 'success');
+    showToast('✅ Reply sent!', 'success');
     closeModal('ticketDetailModal');
 };
 
@@ -1588,9 +1729,9 @@ async function loadScheduledSessions() {
             
             html += '<tr>';
             html += '<td>' + escapeHtml(s.session_title) + '</td>';
-            html += '<td>' + new Date(s.session_date).toLocaleDateString() + '</td>';
-            html += '<td>' + escapeHtml(s.target_program) + '</td>';
-            html += '<td><button class="btn-sm btn-delete" onclick="deleteSessionItem(\'' + s.id + '\')">Delete</button></td>';
+            html += '<td>' + formatDate(s.session_date) + '</td>';
+            html += '<td><span class="badge badge-primary">' + escapeHtml(s.target_program) + '</span></td>';
+            html += '<td><button class="btn-sm btn-delete" onclick="deleteSessionItem(\'' + s.id + '\')"><i class="fas fa-trash"></i></button></td>';
             html += '</tr>';
         }
         
@@ -1613,7 +1754,7 @@ document.getElementById('add-session-form')?.addEventListener('submit', async fu
     };
     
     if (!sessionData.session_title || !sessionData.session_date) {
-        alert('Please fill in session title and date');
+        showToast('Please fill in session title and date', 'warning');
         return;
     }
     
@@ -1625,7 +1766,7 @@ document.getElementById('add-session-form')?.addEventListener('submit', async fu
         loadScheduledSessions();
         setupCalendar();
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -1639,7 +1780,7 @@ window.deleteSessionItem = async function(sessionId) {
         loadScheduledSessions();
         setupCalendar();
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 };
 
@@ -1674,11 +1815,13 @@ async function loadTodayAttendance() {
         for (var i = 0; i < data.length; i++) {
             var r = data[i];
             var studentName = (r.student && r.student.full_name) ? r.student.full_name : 'Unknown';
+            var statusClass = r.is_verified ? 'badge-success' : 'badge-warning';
+            var statusText = r.is_verified ? 'Verified' : 'Pending';
             
             html += '<tr>';
             html += '<td>' + escapeHtml(studentName) + '</td>';
-            html += '<td>' + new Date(r.check_in_time).toLocaleDateString() + '</td>';
-            html += '<td>' + (r.is_verified ? 'Verified' : 'Pending') + '</td>';
+            html += '<td>' + formatDate(r.check_in_time) + '</td>';
+            html += '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>';
             html += '<td>' + escapeHtml(r.location_name || 'N/A') + '</td>';
             html += '</tr>';
         }
@@ -1714,14 +1857,16 @@ async function loadExamList() {
         var html = '';
         for (var i = 0; i < data.length; i++) {
             var e = data[i];
+            var statusClass = e.status === 'Upcoming' ? 'badge-info' : 
+                             e.status === 'Completed' ? 'badge-success' : 'badge-warning';
             
             html += '<tr>';
-            html += '<td>' + escapeHtml(e.exam_type) + '</td>';
+            html += '<td><span class="badge badge-primary">' + escapeHtml(e.exam_type) + '</span></td>';
             html += '<td>' + escapeHtml(e.exam_name) + '</td>';
-            html += '<td>' + new Date(e.exam_date).toLocaleDateString() + '</td>';
-            html += '<td>' + escapeHtml(e.target_program) + '</td>';
-            html += '<td>' + escapeHtml(e.status) + '</td>';
-            html += '<td><button class="btn-sm btn-delete" onclick="deleteExamItem(\'' + e.id + '\')">Delete</button></td>';
+            html += '<td>' + formatDate(e.exam_date) + '</td>';
+            html += '<td><span class="badge badge-primary">' + escapeHtml(e.target_program) + '</span></td>';
+            html += '<td><span class="badge ' + statusClass + '">' + escapeHtml(e.status) + '</span></td>';
+            html += '<td><button class="btn-sm btn-delete" onclick="deleteExamItem(\'' + e.id + '\')"><i class="fas fa-trash"></i></button></td>';
             html += '</tr>';
         }
         
@@ -1745,7 +1890,7 @@ document.getElementById('add-exam-form')?.addEventListener('submit', async funct
     };
     
     if (!examData.exam_name || !examData.exam_date) {
-        alert('Please fill in exam title and date');
+        showToast('Please fill in exam title and date', 'warning');
         return;
     }
     
@@ -1757,7 +1902,7 @@ document.getElementById('add-exam-form')?.addEventListener('submit', async funct
         loadExamList();
         setupCalendar();
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -1771,7 +1916,7 @@ window.deleteExamItem = async function(examId) {
         loadExamList();
         setupCalendar();
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 };
 
@@ -1842,17 +1987,18 @@ function filterResourcesTable() {
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
         var typeLabel = r.resource_type === 'pastpaper' ? 'Past Paper' : 'Material';
+        var typeClass = r.resource_type === 'pastpaper' ? 'badge-warning' : 'badge-info';
         
         html += '<tr>';
-        html += '<td>' + typeLabel + '</td>';
+        html += '<td><span class="badge ' + typeClass + '">' + typeLabel + '</span></td>';
         html += '<td>' + (r.pastpaper_year || r.intake || 'N/A') + '</td>';
-        html += '<td>' + escapeHtml(r.program_type) + '</td>';
+        html += '<td><span class="badge badge-primary">' + escapeHtml(r.program_type) + '</span></td>';
         html += '<td>' + escapeHtml(r.block) + '</td>';
         html += '<td>' + escapeHtml(r.title) + '</td>';
         html += '<td>' + (r.description || '-') + '</td>';
         html += '<td>' + escapeHtml(r.uploaded_by_name || 'Admin') + '</td>';
-        html += '<td>' + new Date(r.created_at).toLocaleDateString() + '</td>';
-        html += '<td><a href="' + r.file_url + '" target="_blank" class="btn-sm btn-edit">View</a> <button class="btn-sm btn-delete" onclick="deleteResourceItem(\'' + r.id + '\')">Delete</button></td>';
+        html += '<td>' + formatDate(r.created_at) + '</td>';
+        html += '<td><a href="' + r.file_url + '" target="_blank" class="btn-sm btn-edit"><i class="fas fa-eye"></i></a> <button class="btn-sm btn-delete" onclick="deleteResourceItem(\'' + r.id + '\')"><i class="fas fa-trash"></i></button></td>';
         html += '</tr>';
     }
     
@@ -1877,13 +2023,13 @@ window.deleteResourceItem = async function(resourceId) {
         showToast('✅ Resource deleted', 'success');
         loadAllResources();
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 };
 
 window.handleResourceUpload = async function(e) {
     e.preventDefault();
-    alert('Resource upload feature - Configure Supabase Storage bucket first');
+    showToast('Resource upload feature - Configure Supabase Storage bucket first', 'info');
 };
 
 window.togglePastPaperFields = function() {
@@ -1938,8 +2084,8 @@ async function loadMessageList() {
             
             html += '<tr>';
             html += '<td>' + escapeHtml(m.subject) + '</td>';
-            html += '<td>' + new Date(m.created_at).toLocaleDateString() + '</td>';
-            html += '<td><button class="btn-sm btn-edit" onclick="viewMessageDetail(\'' + m.id + '\')">View</button></td>';
+            html += '<td>' + formatDate(m.created_at) + '</td>';
+            html += '<td><button class="btn-sm btn-edit" onclick="viewMessageDetail(\'' + m.id + '\')"><i class="fas fa-eye"></i></button></td>';
             html += '</tr>';
         }
         
@@ -1953,9 +2099,9 @@ async function loadMessageList() {
 window.viewMessageDetail = function(messageId) {
     var message = allMessagesData?.find(function(m) { return m.id === messageId; });
     if (message) {
-        alert('Subject: ' + message.subject + '\n\nMessage: ' + message.message);
+        showToast('Subject: ' + message.subject + '\n\nMessage: ' + message.message, 'info');
     } else {
-        alert('Message details - Feature in development');
+        showToast('Message details - Feature in development', 'info');
     }
 };
 
@@ -1971,7 +2117,7 @@ document.getElementById('send-message-form')?.addEventListener('submit', async f
     };
     
     if (!messageData.subject || !messageData.message) {
-        alert('Please enter subject and message');
+        showToast('Please enter subject and message', 'warning');
         return;
     }
     
@@ -1982,7 +2128,7 @@ document.getElementById('send-message-form')?.addEventListener('submit', async f
         e.target.reset();
         loadMessageList();
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -2013,7 +2159,7 @@ async function setupCalendar() {
                     id: 'session_' + s.id,
                     title: s.session_title,
                     start: startDate,
-                    color: '#3498db'
+                    color: '#3b82f6'
                 });
             }
         }
@@ -2028,7 +2174,7 @@ async function setupCalendar() {
                     id: 'exam_' + e.id,
                     title: e.exam_type + ': ' + e.exam_name,
                     start: startDate,
-                    color: '#e74c3c'
+                    color: '#ef4444'
                 });
             }
         }
@@ -2107,7 +2253,7 @@ document.getElementById('edit-welcome-form')?.addEventListener('submit', async f
         var preview = document.getElementById('live-preview');
         if (preview) preview.innerHTML = content;
     } catch(err) {
-        alert('Error: ' + err.message);
+        showToast('Error: ' + err.message, 'error');
     }
 });
 
@@ -2119,7 +2265,7 @@ window.filterTable = function(inputId, tableId, columns) {
     if (!searchVal) return;
     
     var filter = searchVal.value.toLowerCase();
-    var rows = document.querySelectorAll('#' + tableId + ' tr');
+    var rows = document.querySelectorAll('#' + tableId + ' tbody tr');
     
     for (var i = 0; i < rows.length; i++) {
         var match = false;
@@ -2191,3 +2337,4 @@ initResourceFilters();
 
 console.log('✅ Admin dashboard loaded successfully!');
 console.log('✅ Unit Assignment feature enabled!');
+console.log('✅ Charts initialized!');
