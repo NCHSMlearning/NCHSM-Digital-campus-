@@ -612,12 +612,10 @@ function renderFeeStructure(periods, programType, programLevel) {
     const container = document.getElementById('studentFeeStructureDisplay');
     if (!container) return;
     
-    let total = 0;
     let html = '';
     
     periods.forEach((period, index) => {
         const amount = getFeeAmount(programType, index, programLevel);
-        total += amount;
         html += `
             <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
                 <div>
@@ -629,23 +627,23 @@ function renderFeeStructure(periods, programType, programLevel) {
         `;
     });
     
+    // Remove the "Total Program Fees" line - show only semester/term info
     container.innerHTML = html + `
-        <div style="display: flex; justify-content: space-between; padding: 12px 0 0 0; margin-top: 8px; border-top: 2px solid #e5e7eb; font-weight: 700; font-size: 16px; color: #0A3D62;">
-            <span>Total Program Fees</span>
-            <span>KES ${total.toLocaleString()}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 8px 0 0 0; font-size: 13px; color: #64748b;">
+        <div style="display: flex; justify-content: space-between; padding: 12px 0 0 0; margin-top: 8px; border-top: 2px solid #e5e7eb; font-size: 14px; color: #64748b;">
             <span>Number of ${programType === 'KRCHN' ? 'Semesters' : 'Terms'}</span>
             <span>${periods.length}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; padding: 4px 0 0 0; font-size: 13px; color: #64748b;">
+        <div style="display: flex; justify-content: space-between; padding: 4px 0 0 0; font-size: 14px; color: #64748b;">
             <span>Duration</span>
             <span>${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</span>
         </div>
     `;
     
+    // Hide the total element entirely
     const totalEl = document.getElementById('feeStructureTotal');
-    if (totalEl) totalEl.textContent = `Total: KES ${total.toLocaleString()}`;
+    if (totalEl) {
+        totalEl.style.display = 'none';
+    }
 }
 
 function renderFeeStructureData(fees) {
@@ -662,9 +660,7 @@ function renderFeeStructureData(fees) {
         return;
     }
     
-    let total = 0;
     container.innerHTML = fees.map(f => {
-        total += f.amount || 0;
         return `
             <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
                 <div>
@@ -676,15 +672,27 @@ function renderFeeStructureData(fees) {
         `;
     }).join('');
     
+    // Add summary info without total fee
+    const programType = studentFinanceState.programType || 'KRCHN';
+    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const periods = getPeriods(programType, programLevel);
+    
     container.innerHTML += `
-        <div style="display: flex; justify-content: space-between; padding: 12px 0 0 0; margin-top: 8px; border-top: 2px solid #e5e7eb; font-weight: 700; font-size: 16px; color: #0A3D62;">
-            <span>Total Program Fees</span>
-            <span>KES ${total.toLocaleString()}</span>
+        <div style="display: flex; justify-content: space-between; padding: 12px 0 0 0; margin-top: 8px; border-top: 2px solid #e5e7eb; font-size: 14px; color: #64748b;">
+            <span>Number of ${programType === 'KRCHN' ? 'Semesters' : 'Terms'}</span>
+            <span>${periods.length}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 4px 0 0 0; font-size: 14px; color: #64748b;">
+            <span>Duration</span>
+            <span>${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</span>
         </div>
     `;
     
+    // Hide the total element
     const totalEl = document.getElementById('feeStructureTotal');
-    if (totalEl) totalEl.textContent = `Total: KES ${total.toLocaleString()}`;
+    if (totalEl) {
+        totalEl.style.display = 'none';
+    }
 }
 
 function updateFinanceBadge(data) {
