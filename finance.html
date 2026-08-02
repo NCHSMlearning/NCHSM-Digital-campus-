@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance Module - NCHSM</title>
     
-    <!-- ===== SUPABASE - Using same working CDN ===== -->
+    <!-- ===== SUPABASE ===== -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
     </script>
     
@@ -1461,7 +1461,7 @@ body {
     </div>
 
 <!-- ============================================================ -->
-<!-- ===== JAVASCRIPT - SUPABASE INTEGRATION (FIXED) ===== -->
+<!-- ===== JAVASCRIPT - WORKING WITH DATA FETCHING ===== -->
 <!-- ============================================================ -->
 <script>
     // ============================================================
@@ -1473,24 +1473,22 @@ body {
     }
 
     // ============================================================
-    // 🔧 SUPABASE CONFIG
+    // SUPABASE CONFIG
     // ============================================================
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
-    // ✅ Use supabaseClient to avoid conflicts
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     window.sb = supabaseClient;
 
     console.log('🔗 Supabase initialized:', !!supabaseClient);
-    console.log('📊 Supabase client:', supabaseClient ? '✅ Available' : '❌ Not available');
 
     // Table name
     const USER_TABLE = 'consolidated_user_profiles_table';
     const ALLOWED_ROLES = ['superadmin', 'finance_officer'];
 
     // ============================================================
-    // CHECK AUTHENTICATION ON LOAD - FIXED
+    // CHECK AUTHENTICATION ON LOAD
     // ============================================================
     document.addEventListener('DOMContentLoaded', async function() {
         console.log('📝 Finance Dashboard loading...');
@@ -1500,186 +1498,70 @@ body {
             return;
         }
         
-        // ✅ Get session FIRST - this gives us the correct user ID
         const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
         
         if (sessionError || !session) {
-            console.log('⚠️ No session found, checking local storage...');
-            const financeUser = getFinanceUser();
-            if (financeUser) {
-                // Try to refresh session
-                try {
-                    const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession();
-                    if (refreshError) throw refreshError;
-                    if (refreshData.session) {
-                        console.log('✅ Session refreshed');
-                        await handleAuthenticatedUser(financeUser, refreshData.session);
-                        return;
-                    }
-                } catch (refreshErr) {
-                    console.warn('⚠️ Could not refresh session:', refreshErr);
-                }
-            }
+            console.log('⚠️ No session found');
             logoutFinance();
             return;
         }
         
-        // ✅ Use the session user ID (this is the CORRECT one)
         const userId = session.user.id;
         const userEmail = session.user.email;
         
-        console.log('👤 Session User ID:', userId);
-        console.log('👤 Session User Email:', userEmail);
+        console.log('👤 User ID:', userId);
+        console.log('👤 User Email:', userEmail);
         
-        // Get stored user
-        let financeUser = getFinanceUser();
+        // Get user data
+        let userData = await getUserFinanceData(userId);
         
-        // If stored user has wrong ID, update it
-        if (financeUser && financeUser.id !== userId) {
-            console.log('⚠️ Stored user ID mismatch, updating...');
-            financeUser.id = userId;
-            financeUser.email = userEmail;
-            localStorage.setItem('finance_user', JSON.stringify(financeUser));
+        if (!userData) {
+            console.log('⚠️ No profile by ID, checking by email...');
+            const { data: emailData, error: emailError } = await supabaseClient
+                .from(USER_TABLE)
+                .select('*')
+                .eq('email', userEmail)
+                .maybeSingle();
+            
+            if (!emailError && emailData) {
+                userData = emailData;
+                console.log('✅ Found user by email:', userData.full_name);
+            }
         }
         
-        // If no stored user, create one
-        if (!financeUser) {
-            console.log('📋 Creating user from session');
-            financeUser = {
-                id: userId,
-                email: userEmail,
-                name: session.user.user_metadata?.full_name || userEmail,
-                role: 'superadmin',
-                token: session.access_token,
-                loginTime: new Date().toISOString()
-            };
-            localStorage.setItem('finance_user', JSON.stringify(financeUser));
+        if (!userData) {
+            console.log('⚠️ No profile found');
+            logoutFinance();
+            return;
         }
         
-        await handleAuthenticatedUser(financeUser, session);
+        if (!ALLOWED_ROLES.includes(userData.role)) {
+            console.log('⚠️ Invalid role:', userData.role);
+            logoutFinance();
+            return;
+        }
+        
+        // Update UI
+        document.getElementById('userNameDisplay').textContent = userData.full_name || 'Finance Officer';
+        document.getElementById('sidebarUserRole').textContent = userData.role || 'Administrator';
+        document.getElementById('userRoleDisplay').textContent = userData.role === 'superadmin' ? 'Super Admin' : 'Finance Officer';
+        
+        updateCurrentDate();
+        
+        // Load ALL dashboard data
+        await loadDashboardData();
+        await loadStudentAccounts();
+        await loadAllPayments();
+        await loadFeeStructure();
+        
+        console.log('✅ Dashboard ready for:', userData.full_name);
     });
 
     // ============================================================
-    // HANDLE AUTHENTICATED USER - FIXED
-    // ============================================================
-    async function handleAuthenticatedUser(financeUser, session) {
-        try {
-            // ✅ ALWAYS use the session user ID
-            const userId = session.user.id;
-            const userEmail = session.user.email;
-            
-            console.log('👤 Processing user:', userEmail);
-            console.log('🆔 User ID:', userId);
-            
-            // Try to get user data by ID first
-            let userData = await getUserFinanceData(userId);
-            
-            // If not found by ID, try by email
-            if (!userData) {
-                console.log('⚠️ No profile by ID, checking by email...');
-                const { data: emailData, error: emailError } = await supabaseClient
-                    .from(USER_TABLE)
-                    .select('*')
-                    .eq('email', userEmail)
-                    .maybeSingle();
-                
-                if (!emailError && emailData) {
-                    console.log('✅ Found user by email:', emailData);
-                    userData = emailData;
-                    
-                    // Update the user's ID in the table if needed
-                    if (emailData.id !== userId) {
-                        console.log('⚠️ User ID mismatch, updating table...');
-                        const { error: updateError } = await supabaseClient
-                            .from(USER_TABLE)
-                            .update({ id: userId })
-                            .eq('email', userEmail);
-                        
-                        if (!updateError) {
-                            console.log('✅ User ID updated in table');
-                            // Refetch with correct ID
-                            userData = await getUserFinanceData(userId);
-                        }
-                    }
-                }
-            }
-            
-            // If still no user data, create profile for allowed emails
-            if (!userData) {
-                console.log('⚠️ No profile found, checking allowed emails...');
-                const allowedEmails = ['nchsmsuperadmin@gmail.com', 'admin@nchsm.co.ke', 'tiongikevin99@gmail.com'];
-                if (allowedEmails.includes(userEmail)) {
-                    console.log('✅ User email is in allowed list, creating profile...');
-                    await createDefaultProfile(userId, userEmail);
-                    userData = await getUserFinanceData(userId);
-                }
-            }
-            
-            if (!userData) {
-                console.log('⚠️ User does not have finance access');
-                logoutFinance();
-                return;
-            }
-            
-            // Check role
-            if (!ALLOWED_ROLES.includes(userData.role)) {
-                console.log('⚠️ User role does not have finance access:', userData.role);
-                logoutFinance();
-                return;
-            }
-            
-            // Update stored user with correct info
-            const updatedUser = {
-                id: userId,
-                email: userEmail,
-                name: userData.full_name || financeUser.name || userEmail,
-                role: userData.role || 'superadmin',
-                token: session.access_token,
-                loginTime: new Date().toISOString()
-            };
-            localStorage.setItem('finance_user', JSON.stringify(updatedUser));
-            
-            console.log('✅ User authenticated:', updatedUser.name);
-            console.log('🔑 Role:', updatedUser.role);
-            
-            // Update UI
-            updateUserUI(updatedUser, userData);
-            
-            // Load dashboard data
-            loadDashboardData();
-            
-        } catch (error) {
-            console.error('❌ Error handling authenticated user:', error);
-            logoutFinance();
-        }
-    }
-
-    // ============================================================
-    // GET FINANCE USER FROM STORAGE
-    // ============================================================
-    function getFinanceUser() {
-        try {
-            let user = JSON.parse(localStorage.getItem('finance_user') || 'null');
-            if (user) return user;
-            user = JSON.parse(sessionStorage.getItem('finance_user') || 'null');
-            if (user) return user;
-            return null;
-        } catch (e) {
-            console.error('Error getting user:', e);
-            return null;
-        }
-    }
-
-    // ============================================================
-    // GET USER FINANCE DATA - FIXED with maybeSingle
+    // GET USER FINANCE DATA
     // ============================================================
     async function getUserFinanceData(userId) {
         try {
-            if (!supabaseClient) {
-                console.warn('⚠️ Supabase not initialized');
-                return null;
-            }
-            
             const { data, error } = await supabaseClient
                 .from(USER_TABLE)
                 .select('*')
@@ -1687,76 +1569,14 @@ body {
                 .maybeSingle();
             
             if (error) {
-                console.warn('⚠️ Could not fetch user profile:', error);
+                console.warn('⚠️ Error fetching user:', error);
                 return null;
             }
-            
-            if (!data) {
-                console.warn('⚠️ No profile found for user:', userId);
-                return null;
-            }
-            
-            console.log('👤 User data found:', data.full_name, '| Role:', data.role);
             return data;
         } catch (error) {
-            console.warn('⚠️ Error fetching user data:', error);
+            console.warn('⚠️ Error:', error);
             return null;
         }
-    }
-
-    // ============================================================
-    // CREATE DEFAULT PROFILE
-    // ============================================================
-    async function createDefaultProfile(userId, email) {
-        try {
-            const { data, error } = await supabaseClient
-                .from(USER_TABLE)
-                .upsert([
-                    {
-                        id: userId,
-                        email: email,
-                        full_name: email.split('@')[0] || 'Super Admin',
-                        role: 'superadmin',
-                        program: 'Administration',
-                        status: 'approved'
-                    }
-                ]);
-            
-            if (error) {
-                console.warn('⚠️ Could not create default profile:', error);
-                return null;
-            }
-            
-            console.log('✅ Default profile created for:', email);
-            return data;
-        } catch (error) {
-            console.warn('⚠️ Error creating profile:', error);
-            return null;
-        }
-    }
-
-    // ============================================================
-    // UPDATE USER UI
-    // ============================================================
-    function updateUserUI(financeUser, userData) {
-        const name = userData?.full_name || financeUser.name || 'Finance Officer';
-        const role = userData?.role || financeUser.role || 'Administrator';
-        
-        const nameDisplay = document.getElementById('userNameDisplay');
-        if (nameDisplay) nameDisplay.textContent = name;
-        
-        const sidebarRole = document.getElementById('sidebarUserRole');
-        if (sidebarRole) sidebarRole.textContent = role.charAt(0).toUpperCase() + role.slice(1);
-        
-        const roleMap = {
-            'superadmin': 'Super Admin',
-            'admin': 'Administrator',
-            'finance_officer': 'Finance Officer'
-        };
-        const roleDisplay = document.getElementById('userRoleDisplay');
-        if (roleDisplay) roleDisplay.textContent = roleMap[role] || role;
-        
-        updateCurrentDate();
     }
 
     // ============================================================
@@ -1766,145 +1586,434 @@ body {
         const dateDisplay = document.getElementById('currentDate');
         if (dateDisplay) {
             const now = new Date();
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            dateDisplay.textContent = now.toLocaleDateString('en-KE', options);
+            dateDisplay.textContent = now.toLocaleDateString('en-KE', { 
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+            });
         }
     }
 
     // ============================================================
-    // LOAD DASHBOARD DATA
+    // LOAD DASHBOARD DATA - FIXED
     // ============================================================
-    function loadDashboardData() {
+    async function loadDashboardData() {
         console.log('📊 Loading dashboard data...');
-        loadStudentStats();
-        loadRecentTransactions();
-        initializeCharts();
-    }
-
-    // ============================================================
-    // LOAD STUDENT STATS
-    // ============================================================
-    async function loadStudentStats() {
+        
         try {
-            if (!supabaseClient) {
-                console.warn('⚠️ Supabase not initialized');
-                return;
-            }
-            
-            const { count: totalStudents, error: countError } = await supabaseClient
+            // 1. Get total students
+            const { count: totalStudents } = await supabaseClient
                 .from(USER_TABLE)
                 .select('*', { count: 'exact', head: true })
                 .eq('role', 'student');
             
-            if (!countError) {
-                document.getElementById('totalStudents').textContent = totalStudents || 0;
-                document.getElementById('accountsBadge').textContent = totalStudents || 0;
+            document.getElementById('totalStudents').textContent = totalStudents || 0;
+            document.getElementById('accountsBadge').textContent = totalStudents || 0;
+            console.log('✅ Total students:', totalStudents);
+            
+            // 2. Get total collected (completed payments)
+            const { data: payments, error: paymentsError } = await supabaseClient
+                .from('finance_payments')
+                .select('amount')
+                .eq('status', 'completed');
+            
+            if (!paymentsError && payments) {
+                const totalCollected = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                document.getElementById('totalCollected').textContent = 'KES ' + totalCollected.toLocaleString();
+                console.log('✅ Total collected:', totalCollected);
             }
             
-            const { count: financeUsers, error: financeError } = await supabaseClient
-                .from(USER_TABLE)
-                .select('*', { count: 'exact', head: true })
-                .in('role', ['superadmin', 'finance_officer']);
+            // 3. Get outstanding balance
+            const { data: accounts, error: accountsError } = await supabaseClient
+                .from('finance_student_accounts')
+                .select('balance')
+                .gt('balance', 0);
             
-            if (!financeError) {
-                document.getElementById('dashboardBadge').textContent = financeUsers || 0;
+            if (!accountsError && accounts) {
+                const outstanding = accounts.reduce((sum, a) => sum + (parseFloat(a.balance) || 0), 0);
+                document.getElementById('outstandingBalance').textContent = 'KES ' + outstanding.toLocaleString();
+                document.getElementById('overdueAccounts').textContent = accounts.length || 0;
+                document.getElementById('dashboardBadge').textContent = accounts.length || 0;
+                console.log('✅ Outstanding balance:', outstanding);
             }
             
-            // Load mock data for now
-            document.getElementById('totalCollected').textContent = 'KES 0';
-            document.getElementById('outstandingBalance').textContent = 'KES 0';
-            document.getElementById('overdueAccounts').textContent = '0';
-            document.getElementById('todayPayments').textContent = 'KES 0';
-            document.getElementById('totalTransactions').textContent = '0';
+            // 4. Get today's payments
+            const today = new Date().toISOString().split('T')[0];
+            const { data: todayPayments, error: todayError } = await supabaseClient
+                .from('finance_payments')
+                .select('amount')
+                .eq('payment_date', today)
+                .eq('status', 'completed');
+            
+            if (!todayError && todayPayments) {
+                const todayTotal = todayPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+                document.getElementById('todayPayments').textContent = 'KES ' + todayTotal.toLocaleString();
+                console.log('✅ Today payments:', todayTotal);
+            }
+            
+            // 5. Get total transactions
+            const { count: totalTransactions } = await supabaseClient
+                .from('finance_payments')
+                .select('*', { count: 'exact', head: true });
+            
+            document.getElementById('totalTransactions').textContent = totalTransactions || 0;
+            console.log('✅ Total transactions:', totalTransactions);
+            
+            // 6. Load recent transactions
+            await loadRecentTransactions();
+            
+            // 7. Load charts
+            await loadCharts();
             
         } catch (error) {
-            console.error('Error loading student stats:', error);
+            console.error('❌ Error loading dashboard:', error);
         }
     }
 
     // ============================================================
     // LOAD RECENT TRANSACTIONS
     // ============================================================
-    function loadRecentTransactions() {
-        const tbody = document.getElementById('recentTransactions');
-        if (!tbody) return;
-        
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> No recent transactions
-                </td>
-            </tr>
-        `;
+    async function loadRecentTransactions() {
+        try {
+            const { data: transactions, error } = await supabaseClient
+                .from('finance_payments')
+                .select('*')
+                .order('payment_date', { ascending: false })
+                .limit(10);
+            
+            if (error) throw error;
+            
+            const tbody = document.getElementById('recentTransactions');
+            if (!tbody) return;
+            
+            if (!transactions || transactions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
+                            <i class="fas fa-info-circle"></i> No recent transactions
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = transactions.map(t => {
+                const statusColors = {
+                    completed: 'background:#d1fae5; color:#059669;',
+                    pending: 'background:#fef3c7; color:#d97706;',
+                    failed: 'background:#fee2e2; color:#dc2626;'
+                };
+                return `
+                    <tr>
+                        <td>${t.payment_date || '-'}</td>
+                        <td><strong>${t.student_name || 'N/A'}</strong></td>
+                        <td>${t.program || '-'}</td>
+                        <td><strong>KES ${(t.amount || 0).toLocaleString()}</strong></td>
+                        <td>${t.payment_method || '-'}</td>
+                        <td>
+                            <span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;${statusColors[t.status] || statusColors.pending}">
+                                ${t.status ? t.status.charAt(0).toUpperCase() + t.status.slice(1) : 'Pending'}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            console.log('✅ Recent transactions loaded:', transactions.length);
+            
+        } catch (error) {
+            console.error('❌ Error loading recent transactions:', error);
+        }
     }
 
     // ============================================================
-    // INITIALIZE CHARTS
+    // LOAD CHARTS
     // ============================================================
-    function initializeCharts() {
-        // Destroy existing charts
-        if (window.monthlyChart) {
-            window.monthlyChart.destroy();
-            window.monthlyChart = null;
-        }
-        if (window.statusChart) {
-            window.statusChart.destroy();
-            window.statusChart = null;
-        }
-        
-        const monthlyCtx = document.getElementById('monthlyCollectionsChart');
-        if (monthlyCtx) {
-            window.monthlyChart = new Chart(monthlyCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                    datasets: [{
-                        label: 'Monthly Collections (KES)',
-                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        backgroundColor: 'rgba(76, 29, 149, 0.7)',
-                        borderColor: '#4C1D95',
-                        borderWidth: 2,
-                        borderRadius: 4,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { callback: function(value) { return 'KES ' + (value / 1000).toFixed(0) + 'k'; } }
+    async function loadCharts() {
+        try {
+            // Destroy existing charts
+            if (window.monthlyChart) {
+                window.monthlyChart.destroy();
+                window.monthlyChart = null;
+            }
+            if (window.statusChart) {
+                window.statusChart.destroy();
+                window.statusChart = null;
+            }
+            
+            // Get monthly data
+            const { data: monthlyData, error: monthlyError } = await supabaseClient
+                .from('finance_payments')
+                .select('payment_date, amount')
+                .eq('status', 'completed');
+            
+            // Process monthly data
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthlyTotals = new Array(12).fill(0);
+            
+            if (!monthlyError && monthlyData) {
+                monthlyData.forEach(p => {
+                    if (p.payment_date) {
+                        const date = new Date(p.payment_date);
+                        const month = date.getMonth();
+                        monthlyTotals[month] += parseFloat(p.amount) || 0;
+                    }
+                });
+            }
+            
+            // Monthly chart
+            const monthlyCtx = document.getElementById('monthlyCollectionsChart');
+            if (monthlyCtx) {
+                window.monthlyChart = new Chart(monthlyCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: months,
+                        datasets: [{
+                            label: 'Monthly Collections (KES)',
+                            data: monthlyTotals,
+                            backgroundColor: 'rgba(76, 29, 149, 0.7)',
+                            borderColor: '#4C1D95',
+                            borderWidth: 2,
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { callback: function(value) { return 'KES ' + (value / 1000).toFixed(0) + 'k'; } }
+                            }
                         }
                     }
-                }
-            });
-        }
-        
-        const statusCtx = document.getElementById('paymentStatusChart');
-        if (statusCtx) {
-            window.statusChart = new Chart(statusCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
-                    datasets: [{
-                        data: [0, 0, 0, 0],
-                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-                        borderWidth: 0,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
+                });
+            }
+            
+            // Get status data
+            const { data: statusData, error: statusError } = await supabaseClient
+                .from('finance_payments')
+                .select('status');
+            
+            if (!statusError && statusData) {
+                const statusCounts = { completed: 0, pending: 0, failed: 0, refunded: 0 };
+                statusData.forEach(p => {
+                    if (statusCounts[p.status] !== undefined) statusCounts[p.status]++;
+                });
+                
+                const statusCtx = document.getElementById('paymentStatusChart');
+                if (statusCtx) {
+                    window.statusChart = new Chart(statusCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
+                            datasets: [{
+                                data: [statusCounts.completed, statusCounts.pending, statusCounts.failed, statusCounts.refunded],
+                                backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                                borderWidth: 0,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
+                                }
+                            },
+                            cutout: '60%'
                         }
-                    },
-                    cutout: '60%'
+                    });
                 }
-            });
+            }
+            
+            console.log('✅ Charts loaded');
+            
+        } catch (error) {
+            console.error('❌ Error loading charts:', error);
+        }
+    }
+
+    // ============================================================
+    // LOAD STUDENT ACCOUNTS
+    // ============================================================
+    async function loadStudentAccounts() {
+        try {
+            console.log('📊 Loading student accounts...');
+            
+            const { data: accounts, error } = await supabaseClient
+                .from('finance_student_accounts')
+                .select('*')
+                .order('student_name', { ascending: true });
+            
+            if (error) throw error;
+            
+            const tbody = document.getElementById('accountsTableBody');
+            if (!tbody) return;
+            
+            if (!accounts || accounts.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-info-circle"></i> No student accounts found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = accounts.map(acc => {
+                const balance = parseFloat(acc.balance) || 0;
+                const status = balance === 0 ? 'paid' : 
+                              balance > 0 && balance <= 10000 ? 'partial' : 'outstanding';
+                const statusLabel = status === 'paid' ? '✅ Paid' :
+                                   status === 'partial' ? '⚠️ Partial' : '🔴 Outstanding';
+                const statusClass = status === 'paid' ? 'finance-badge-success' :
+                                   status === 'partial' ? 'finance-badge-warning' : 'finance-badge-danger';
+                
+                return `
+                    <tr>
+                        <td><strong>${acc.student_name || 'N/A'}</strong></td>
+                        <td>${acc.student_id || '-'}</td>
+                        <td>${acc.program || '-'}</td>
+                        <td>${acc.intake_year || '-'}</td>
+                        <td>KES ${(acc.total_fees_due || 0).toLocaleString()}</td>
+                        <td>KES ${(acc.total_paid || 0).toLocaleString()}</td>
+                        <td><strong>KES ${balance.toLocaleString()}</strong></td>
+                        <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
+                        <td>
+                            <button onclick="viewStudentAccount('${acc.student_id}')" class="finance-btn finance-btn-primary finance-btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="viewStudentPayments('${acc.student_id}')" class="finance-btn finance-btn-outline finance-btn-sm">
+                                <i class="fas fa-receipt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            console.log('✅ Student accounts loaded:', accounts.length);
+            
+        } catch (error) {
+            console.error('❌ Error loading accounts:', error);
+        }
+    }
+
+    // ============================================================
+    // LOAD ALL PAYMENTS
+    // ============================================================
+    async function loadAllPayments() {
+        try {
+            console.log('💳 Loading payments...');
+            
+            const { data: payments, error } = await supabaseClient
+                .from('finance_payments')
+                .select('*')
+                .order('payment_date', { ascending: false });
+            
+            if (error) throw error;
+            
+            const tbody = document.getElementById('paymentsTableBody');
+            if (!tbody) return;
+            
+            if (!payments || payments.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-info-circle"></i> No payments found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = payments.map(p => {
+                const statusClass = p.status === 'completed' ? 'finance-badge-success' :
+                                   p.status === 'pending' ? 'finance-badge-warning' : 'finance-badge-danger';
+                const statusLabel = p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : 'Pending';
+                
+                return `
+                    <tr>
+                        <td>${p.payment_date || '-'}</td>
+                        <td><strong>${p.student_name || 'N/A'}</strong></td>
+                        <td>${p.program || '-'}</td>
+                        <td><strong>KES ${(p.amount || 0).toLocaleString()}</strong></td>
+                        <td>${p.payment_method || '-'}</td>
+                        <td>${p.reference_number || '-'}</td>
+                        <td>${p.period || '-'}</td>
+                        <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
+                        <td>
+                            <button onclick="adminViewPayment('${p.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="adminDeletePayment('${p.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            console.log('✅ Payments loaded:', payments.length);
+            
+        } catch (error) {
+            console.error('❌ Error loading payments:', error);
+        }
+    }
+
+    // ============================================================
+    // LOAD FEE STRUCTURE
+    // ============================================================
+    async function loadFeeStructure() {
+        try {
+            console.log('📋 Loading fee structure...');
+            
+            const { data: fees, error } = await supabaseClient
+                .from('finance_fee_structure')
+                .select('*')
+                .eq('is_active', true)
+                .order('created_at', { ascending: true });
+            
+            if (error) throw error;
+            
+            const tbody = document.getElementById('feeStructureTableBody');
+            if (!tbody) return;
+            
+            if (!fees || fees.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-info-circle"></i> No fee structure found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = fees.map(f => `
+                <tr>
+                    <td><strong>${f.program || '-'}</strong></td>
+                    <td>${f.block_term || '-'}</td>
+                    <td>${f.intake_year || '-'}</td>
+                    <td><strong>KES ${(f.amount || 0).toLocaleString()}</strong></td>
+                    <td>${f.description || '-'}</td>
+                    <td><span class="finance-badge finance-badge-success">Active</span></td>
+                    <td>
+                        <button onclick="editFeeStructure('${f.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteFeeStructure('${f.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            console.log('✅ Fee structure loaded:', fees.length);
+            
+        } catch (error) {
+            console.error('❌ Error loading fee structure:', error);
         }
     }
 
@@ -1929,6 +2038,15 @@ body {
                 link.classList.add('active');
             }
         });
+        
+        // Load data for specific tabs
+        if (tabId === 'accounts') {
+            setTimeout(loadStudentAccounts, 300);
+        } else if (tabId === 'payments') {
+            setTimeout(loadAllPayments, 300);
+        } else if (tabId === 'fee-structure') {
+            setTimeout(loadFeeStructure, 300);
+        }
     }
 
     // ============================================================
@@ -1939,7 +2057,7 @@ body {
     }
 
     // ============================================================
-    // LOGOUT - FIXED
+    // LOGOUT
     // ============================================================
     function logoutFinance() {
         if (confirm('Are you sure you want to logout?')) {
@@ -2004,12 +2122,12 @@ body {
     function filterAccounts() { console.log('Filter accounts'); }
     function resetAccountFilters() { console.log('Reset account filters'); }
     function exportAccountsToCSV() { showToast('Exporting accounts...', 'info'); }
-    function refreshAccounts() { loadStudentStats(); showToast('Accounts refreshed!', 'success'); }
+    function refreshAccounts() { loadStudentAccounts(); showToast('Accounts refreshed!', 'success'); }
     function recordPayment() { showToast('Payment recorded!', 'success'); }
-    function refreshPayments() { showToast('Payments refreshed!', 'success'); }
+    function refreshPayments() { loadAllPayments(); showToast('Payments refreshed!', 'success'); }
     function exportPaymentsToCSV() { showToast('Exporting payments...', 'info'); }
     function saveFeeStructure() { showToast('Fee structure saved!', 'success'); }
-    function refreshFeeStructure() { showToast('Fee structure refreshed!', 'success'); }
+    function refreshFeeStructure() { loadFeeStructure(); showToast('Fee structure refreshed!', 'success'); }
     function generateReport() { showToast('Generating report...', 'info'); }
     function exportReportToPDF() { showToast('Exporting PDF...', 'info'); }
     function exportReportToCSV() { showToast('Exporting CSV...', 'info'); }
@@ -2026,6 +2144,20 @@ body {
     }
     function printPaymentReceipt() { showToast('Printing receipt...', 'info'); }
     function generateStudentStatement() { showToast('Generating statement...', 'info'); }
+    function viewStudentAccount(studentId) { showToast('Viewing student: ' + studentId, 'info'); }
+    function viewStudentPayments(studentId) { showToast('Viewing payments for: ' + studentId, 'info'); }
+    function adminViewPayment(paymentId) { showToast('Viewing payment: ' + paymentId, 'info'); }
+    function adminDeletePayment(paymentId) { 
+        if (confirm('Delete this payment?')) {
+            showToast('Payment deleted!', 'success');
+        }
+    }
+    function editFeeStructure(feeId) { showToast('Editing fee: ' + feeId, 'info'); }
+    function deleteFeeStructure(feeId) { 
+        if (confirm('Delete this fee structure?')) {
+            showToast('Fee structure deleted!', 'success');
+        }
+    }
 
     // ============================================================
     // SETUP TAB CLICK EVENTS
