@@ -369,8 +369,8 @@ window.loadAnalyticsData = async function() {
         document.getElementById('analytics_avg_score').textContent = avgScore + '%';
         document.getElementById('analytics_active_subjects').textContent = totalSubjects;
         document.getElementById('analytics_at_risk').textContent = atRiskCount;
-        document.getElementById('analytics_improvement').textContent = '0%'; // Placeholder
-        document.getElementById('analytics_failing_units').textContent = '0'; // Placeholder
+        document.getElementById('analytics_improvement').textContent = '0%';
+        document.getElementById('analytics_failing_units').textContent = '0';
         
         // Calculate gender ratio
         const females = filteredStudents.filter(s => s.gender === 'Female').length;
@@ -416,7 +416,18 @@ window.loadAnalyticsData = async function() {
         window.renderDifficultyHeatmap(filteredMarks);
         window.renderProgressionTable(filteredStudents, filteredMarks);
         
-        // 11. SHOW CONTENT
+        // ============================================
+        // 11. STORE DATA FOR CONSOLIDATED MARKSHEET
+        // ============================================
+        window._analyticsStudents = filteredStudents;
+        window._analyticsMarks = filteredMarks;
+        
+        // 12. RENDER CONSOLIDATED MARKSHEET
+        if (typeof window.renderConsolidatedMarksheet === 'function') {
+            window.renderConsolidatedMarksheet();
+        }
+        
+        // 13. SHOW CONTENT
         document.getElementById('analyticsPlaceholder').style.display = 'none';
         document.getElementById('analyticsDynamicContent').style.display = 'block';
         
@@ -424,6 +435,9 @@ window.loadAnalyticsData = async function() {
         
     } catch (error) {
         console.error('❌ Error loading analytics:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('Error loading analytics: ' + error.message, 'error');
+        }
     } finally {
         window.showAnalyticsLoading(false);
     }
@@ -1782,6 +1796,280 @@ window.calculateGrade = window.calculateGrade;
 window.calculateGradePoints = window.calculateGradePoints;
 window.escapeHtml = window.escapeHtml;
 
+
+// ============================================================
+// CONSOLIDATED MARKSHEET - RENDER (USES "UNITS" TERMINOLOGY)
+// ============================================================
+
+window.renderConsolidatedMarksheet = function() {
+    const container = document.getElementById('consolidatedMarksheetContainer');
+    const loading = document.getElementById('consolidatedLoading');
+    const table = document.getElementById('consolidatedMarksheetTable');
+    const tbody = document.getElementById('consolidatedMarksheetBody');
+    const summary = document.getElementById('consolidatedSummary');
+    
+    if (!container || !tbody) return;
+    
+    const students = window._analyticsStudents || [];
+    const marks = window._analyticsMarks || [];
+    
+    if (students.length === 0 || marks.length === 0) {
+        loading.style.display = 'block';
+        table.style.display = 'none';
+        loading.innerHTML = '<p style="color: #94a3b8;">No data available for consolidated marksheet</p>';
+        return;
+    }
+    
+    // Get filter values
+    const sortBy = document.getElementById('consolidated_sort')?.value || 'avg';
+    const limit = document.getElementById('consolidated_limit')?.value || 'all';
+    const searchTerm = document.getElementById('consolidated_search')?.value?.toLowerCase() || '';
+    
+    loading.style.display = 'none';
+    table.style.display = 'table';
+    
+    // 1. Get all unique unit names
+    const units = [...new Set(marks.map(m => m.subject_name).filter(Boolean))].sort();
+    
+    // 2. Build student data with all units
+    const studentData = {};
+    students.forEach(s => {
+        const studentId = s.student_id;
+        if (!studentData[studentId]) {
+            studentData[studentId] = {
+                student: s,
+                units: {},
+                total: 0,
+                count: 0,
+                passed: 0
+            };
+        }
+    });
+    
+    // 3. Populate marks per student
+    marks.forEach(m => {
+        const studentId = m.admission_number;
+        const unit = m.subject_name;
+        const score = m.final_score || 0;
+        
+        if (studentData[studentId] && unit) {
+            studentData[studentId].units[unit] = score;
+            if (score > 0) {
+                studentData[studentId].total += score;
+                studentData[studentId].count++;
+                if (score >= 60) studentData[studentId].passed++;
+            }
+        }
+    });
+    
+    // 4. Calculate averages and grades
+    const consolidatedData = Object.values(studentData).map(data => {
+        const avg = data.count > 0 ? Math.round((data.total / data.count) * 10) / 10 : 0;
+        const gradeInfo = window.getGradeInfo(avg);
+        const passRate = data.count > 0 ? Math.round((data.passed / data.count) * 100) : 0;
+        
+        return {
+            ...data,
+            avg: avg,
+            grade: gradeInfo.grade,
+            points: gradeInfo.points,
+            gradeColor: gradeInfo.color,
+            passRate: passRate,
+            status: avg >= 60 ? '✅ Pass' : (avg > 0 ? '❌ Fail' : '⏳ Pending'),
+            statusColor: avg >= 60 ? '#10b981' : (avg > 0 ? '#ef4444' : '#f59e0b')
+        };
+    });
+    
+    // 5. Filter by search term
+    let filtered = consolidatedData;
+    if (searchTerm) {
+        filtered = filtered.filter(d => 
+            d.student.full_name?.toLowerCase().includes(searchTerm) ||
+            d.student.student_id?.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    // 6. Sort
+    filtered.sort((a, b) => {
+        if (sortBy === 'name') return (a.student.full_name || '').localeCompare(b.student.full_name || '');
+        if (sortBy === 'grade') return b.points - a.points;
+        if (sortBy === 'points') return b.points - a.points;
+        return b.avg - a.avg;
+    });
+    
+    // 7. Apply limit
+    if (limit !== 'all') {
+        filtered = filtered.slice(0, parseInt(limit));
+    }
+    
+    // 8. Build table headers with dynamic unit columns
+    const headerRow = document.querySelector('#consolidatedMarksheetTable thead tr');
+    if (headerRow) {
+        // Remove existing dynamic unit columns (keep first 3 columns: #, Adm, Name)
+        while (headerRow.children.length > 8) {
+            headerRow.removeChild(headerRow.lastChild);
+        }
+        
+        // Insert unit columns after Name column (index 3)
+        units.forEach(unit => {
+            const th = document.createElement('th');
+            th.style.cssText = 'padding: 6px 8px; text-align: center; background: #0a66c2; color: white; font-size: 11px; min-width: 60px;';
+            const shortName = unit.length > 12 ? unit.substring(0, 10) + '…' : unit;
+            th.innerHTML = `${shortName} <span style="font-size: 9px; opacity: 0.8;">(*/100)</span>`;
+            th.title = unit;
+            headerRow.insertBefore(th, headerRow.children[3]);
+        });
+    }
+    
+    // 9. Build table rows
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="20" style="padding: 30px; text-align: center; color: #94a3b8;">No learners match your search</td></tr>';
+        summary.style.display = 'none';
+        return;
+    }
+    
+    let html = '';
+    let totalAvgSum = 0;
+    let totalPassed = 0;
+    let topPerformer = '-';
+    let topScore = 0;
+    
+    filtered.forEach((data, index) => {
+        const student = data.student;
+        const avg = data.avg;
+        const grade = data.grade;
+        const points = data.points;
+        const status = data.status;
+        const statusColor = data.statusColor;
+        
+        totalAvgSum += avg;
+        if (avg > topScore) {
+            topScore = avg;
+            topPerformer = student.full_name || 'Unknown';
+        }
+        if (avg >= 60) totalPassed++;
+        
+        html += `<tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">`;
+        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 600; font-size: 12px;">${index + 1}</td>`;
+        html += `<td style="padding: 6px 8px; text-align: center; font-size: 12px; font-weight: 500;">${window.escapeHtml(student.student_id || 'N/A')}</td>`;
+        html += `<td style="padding: 6px 8px; font-weight: 500; font-size: 13px; white-space: nowrap;">${window.escapeHtml(student.full_name || 'Unknown')}</td>`;
+        
+        // Unit scores
+        units.forEach(unit => {
+            const score = data.units[unit];
+            const displayScore = (score !== undefined && score !== null && score > 0) ? score : '__';
+            const isPass = score !== undefined && score !== null && score >= 60;
+            const color = (score !== undefined && score !== null && score > 0) ? (isPass ? '#10b981' : '#ef4444') : '#94a3b8';
+            html += `<td style="padding: 6px 8px; text-align: center; font-weight: 600; color: ${color}; font-size: 13px;">${displayScore}</td>`;
+        });
+        
+        // Total, Avg, Grade, Points, Status
+        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 600; font-size: 13px;">${data.total}</td>`;
+        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 700; color: ${data.gradeColor}; font-size: 13px;">${avg}%</td>`;
+        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 700; color: ${data.gradeColor}; font-size: 14px;">${grade}</td>`;
+        html += `<td style="padding: 6px 8px; text-align: center; font-weight: 600; font-size: 13px;">${points}</td>`;
+        html += `<td style="padding: 6px 8px; text-align: center; color: ${statusColor}; font-weight: 600; font-size: 12px;">${status}</td>`;
+        html += `</tr>`;
+    });
+    
+    tbody.innerHTML = html;
+    
+    // 10. Update summary
+    const totalStudents = filtered.length;
+    const avgAll = totalStudents > 0 ? Math.round(totalAvgSum / totalStudents) : 0;
+    const passRateAll = totalStudents > 0 ? Math.round((totalPassed / totalStudents) * 100) : 0;
+    
+    document.getElementById('consolidated_total_count').textContent = totalStudents;
+    document.getElementById('consolidated_avg_score').textContent = avgAll + '%';
+    document.getElementById('consolidated_pass_rate').textContent = passRateAll + '%';
+    document.getElementById('consolidated_top_performer').textContent = topPerformer;
+    summary.style.display = 'flex';
+};
+
+// ============================================================
+// CONSOLIDATED MARKSHEET - EXPORT EXCEL
+// ============================================================
+
+window.exportConsolidatedMarksheet = function() {
+    const table = document.getElementById('consolidatedMarksheetTable');
+    if (!table) return;
+    
+    // Build CSV
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('th, td');
+        const rowData = [];
+        cells.forEach(cell => {
+            let text = cell.textContent.trim();
+            if (text.includes(',') || text.includes('"')) {
+                text = '"' + text.replace(/"/g, '""') + '"';
+            }
+            rowData.push(text);
+        });
+        csv.push(rowData.join(','));
+    });
+    
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `consolidated_marksheet_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+};
+
+// ============================================================
+// CONSOLIDATED MARKSHEET - PRINT
+// ============================================================
+
+window.printConsolidatedMarksheet = function() {
+    const table = document.getElementById('consolidatedMarksheetTable');
+    if (!table) return;
+    
+    const printWindow = window.open('', '_blank', 'width=1200,height=800');
+    if (!printWindow) return;
+    
+    const styles = `
+        <style>
+            body { font-family: Arial, sans-serif; font-size: 11px; padding: 20px; }
+            h2 { text-align: center; color: #1e293b; margin-bottom: 5px; }
+            .subtitle { text-align: center; color: #64748b; font-size: 13px; margin-top: 0; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; }
+            th { background: #0a66c2; color: white; padding: 6px 8px; text-align: center; font-size: 10px; }
+            td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; text-align: center; }
+            tr:nth-child(even) { background: #f8fafc; }
+            .summary { margin-top: 15px; display: flex; justify-content: space-around; font-size: 13px; font-weight: 600; }
+            .footer { margin-top: 20px; text-align: center; color: #94a3b8; font-size: 11px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+        </style>
+    `;
+    
+    const tableHTML = table.outerHTML;
+    const summaryHTML = document.getElementById('consolidatedSummary')?.outerHTML || '';
+    const programLabel = document.getElementById('analytics_program_label')?.textContent || 'All Programs';
+    const year = document.getElementById('analytics_year_select')?.value || '2025';
+    const block = document.getElementById('analytics_block_select')?.value || 'All';
+    
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head><title>Consolidated Marksheet</title>${styles}</head>
+        <body>
+            <h2>NAKURU COLLEGE OF HEALTH SCIENCES & MANAGEMENT</h2>
+            <div class="subtitle">Consolidated Marksheet • ${programLabel} • ${year} • ${block}</div>
+            ${tableHTML}
+            ${summaryHTML}
+            <div class="footer">Generated on ${new Date().toLocaleString()}</div>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+};
 console.log('✅ Super Admin Analytics Module Loaded Successfully!');
 console.log('📊 Grading System: A(75-100)→4, B(65-74)→3, C(60-64)→2, FAIL(0-59)→0');
 console.log('📊 Available functions:');
