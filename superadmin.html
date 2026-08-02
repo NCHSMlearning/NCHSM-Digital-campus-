@@ -4979,8 +4979,88 @@
                 </table>
             </div>
         </div>
-
-    </div><!-- End Dynamic Content -->
+ <!-- ============================================ -->
+        <!-- CONSOLIDATED MARKSHEET - NEW                 -->
+        <!-- ============================================ -->
+        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                <h4 style="margin: 0; color: #1e293b;">
+                    <i class="fas fa-th-list" style="color: #8b5cf6;"></i> Consolidated Marksheet
+                    <span style="font-size: 12px; color: #94a3b8; font-weight: normal; margin-left: 8px;">
+                        All units, all learners - summary view
+                    </span>
+                </h4>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button onclick="exportConsolidatedMarksheet()" style="background: #8b5cf6; color: white; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </button>
+                    <button onclick="printConsolidatedMarksheet()" style="background: #6366f1; color: white; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Consolidated Marksheet Filters -->
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                <div>
+                    <label style="font-size: 11px; font-weight: 600; color: #64748b; display: block;">Sort By</label>
+                    <select id="consolidated_sort" onchange="renderConsolidatedMarksheet()" style="padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px;">
+                        <option value="name">Learner Name</option>
+                        <option value="avg" selected>Average Score</option>
+                        <option value="grade">Grade</option>
+                        <option value="points">Points</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 11px; font-weight: 600; color: #64748b; display: block;">Show</label>
+                    <select id="consolidated_limit" onchange="renderConsolidatedMarksheet()" style="padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px;">
+                        <option value="all">All Learners</option>
+                        <option value="10">Top 10</option>
+                        <option value="20">Top 20</option>
+                        <option value="50">Top 50</option>
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <label style="font-size: 11px; font-weight: 600; color: #64748b; display: block;">Search</label>
+                    <input type="text" id="consolidated_search" placeholder="Search learner..." onkeyup="renderConsolidatedMarksheet()" style="width: 100%; padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px;">
+                </div>
+            </div>
+            
+            <!-- Consolidated Marksheet Table -->
+            <div style="overflow-x: auto;" id="consolidatedMarksheetContainer">
+                <div id="consolidatedLoading" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                    <p style="margin-top: 10px;">Loading consolidated marksheet...</p>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; display: none;" id="consolidatedMarksheetTable">
+                    <thead style="background: linear-gradient(135deg, #0d8af0, #0a66c2); color: white; position: sticky; top: 0; z-index: 10;">
+                        <tr>
+                            <th style="padding: 8px 10px; text-align: center; min-width: 40px;">#</th>
+                            <th style="padding: 8px 10px; text-align: left; min-width: 120px;">Adm No.</th>
+                            <th style="padding: 8px 10px; text-align: left; min-width: 180px;">Learner Name</th>
+                            <!-- Dynamic subject columns inserted here by JS -->
+                            <th style="padding: 8px 10px; text-align: center; background: #0a66c2; min-width: 60px;">Total</th>
+                            <th style="padding: 8px 10px; text-align: center; background: #0a66c2; min-width: 60px;">Avg</th>
+                            <th style="padding: 8px 10px; text-align: center; background: #0a66c2; min-width: 50px;">Grade</th>
+                            <th style="padding: 8px 10px; text-align: center; background: #0a66c2; min-width: 50px;">Points</th>
+                            <th style="padding: 8px 10px; text-align: center; background: #0a66c2; min-width: 80px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="consolidatedMarksheetBody">
+                        <tr><td colspan="20" style="padding: 30px; text-align: center; color: #94a3b8;">No data available</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Summary Footer -->
+            <div id="consolidatedSummary" style="display: none; margin-top: 12px; padding: 10px 16px; background: #f8fafc; border-radius: 8px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 13px;">
+                <span>Total Learners: <strong id="consolidated_total_count">0</strong></span>
+                <span>Average Score: <strong id="consolidated_avg_score">0%</strong></span>
+                <span>Pass Rate: <strong id="consolidated_pass_rate">0%</strong></span>
+                <span>Top Performer: <strong id="consolidated_top_performer">-</strong></span>
+            </div>
+        </div>
+        </div> 
 </section>
 <!-- SUPPORT TICKETS MANAGEMENT SECTION - WITH TRUE BELL NOTIFICATIONS -->
 <section id="support-tickets" class="tab-content">
