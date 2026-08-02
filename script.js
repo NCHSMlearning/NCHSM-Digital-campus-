@@ -12333,647 +12333,19 @@ function updateVisualization() {
 // Add this at the end of your script.js, before the closing of the file
 
 // =====================================================
-// UNIT REGISTRATION MANAGEMENT - COMPLETE ENHANCED
+// UNIT REGISTRATIONS & APPROVALS - COMPLETE SCRIPT
+// MATCHES THE UPDATED HTML SECTION
 // =====================================================
 
-// Global variables for unit management
-let allUnits = [];
-let currentBlockFilter = 'all';
+// =====================================================
+// GLOBALS & HELPERS
+// =====================================================
+
 let pendingRegistrationsData = [];
-let approvedRegistrationsData = [];
-let pendingProgramFilter = 'all';  // ✅ NEW: For TVET/KRCHN filter
-
-// =====================================================
-// TOGGLE UNIT COURSES - POPULATES COURSE DROPDOWN
-// =====================================================
-
-window.toggleUnitCourses = async function() {
-    const programSelect = document.getElementById('new_unit_program');
-    const courseSelect = document.getElementById('new_unit_course');
-    
-    if (!programSelect || !courseSelect) return;
-    
-    const selectedProgram = programSelect.value;
-    
-    // Clear current options
-    courseSelect.innerHTML = '<option value="">-- Select Course --</option>';
-    
-    if (!selectedProgram) return;
-    
-    try {
-        // Try to get courses from database
-        const { data: courses, error } = await sb
-            .from('courses')
-            .select('id, course_name, unit_code')
-            .eq('target_program', selectedProgram)
-            .order('course_name', { ascending: true });
-        
-        if (!error && courses && courses.length > 0) {
-            courses.forEach(course => {
-                const option = document.createElement('option');
-                option.value = course.id;
-                const unitCode = course.unit_code ? ` (${course.unit_code})` : '';
-                option.textContent = course.course_name + unitCode;
-                courseSelect.appendChild(option);
-            });
-            console.log(`✅ Loaded ${courses.length} courses for ${selectedProgram} from DB`);
-            return;
-        }
-        
-        // If no DB courses, use program display names
-        const programName = getProgramDisplayName(selectedProgram);
-        
-        // Add main program
-        const mainOpt = document.createElement('option');
-        mainOpt.value = selectedProgram;
-        mainOpt.textContent = `📚 ${programName}`;
-        courseSelect.appendChild(mainOpt);
-        
-        // If TVET selected, show ALL TVET programs
-        if (selectedProgram === 'TVET') {
-            const separator = document.createElement('option');
-            separator.disabled = true;
-            separator.textContent = '─── All TVET Programs ───';
-            separator.style.fontWeight = 'bold';
-            courseSelect.appendChild(separator);
-            
-            TVET_PROGRAMS.forEach(code => {
-                const displayName = getProgramDisplayName(code);
-                if (displayName && displayName !== code) {
-                    const opt = document.createElement('option');
-                    opt.value = code;
-                    const level = getProgramLevel(code);
-                    const emoji = level === 'DIPLOMA' ? '🎓' : 
-                                  level === 'CERTIFICATE' ? '📜' : 
-                                  level === 'ARTISAN' ? '🔧' : '📊';
-                    opt.textContent = `${emoji} ${displayName}`;
-                    courseSelect.appendChild(opt);
-                }
-            });
-        }
-        
-        console.log(`📚 Loaded course options for ${selectedProgram}`);
-        
-    } catch (err) {
-        console.error('Error in toggleUnitCourses:', err);
-        const programName = getProgramDisplayName(selectedProgram);
-        const option = document.createElement('option');
-        option.value = selectedProgram;
-        option.textContent = programName;
-        courseSelect.appendChild(option);
-    }
-};
-
-// =====================================================
-// UPDATE BLOCK OPTIONS BASED ON PROGRAM
-// =====================================================
-
-window.updateUnitBlockOptions = function(program) {
-    const blockSelect = document.getElementById('new_unit_block');
-    if (!blockSelect) return;
-    
-    const programType = getProgramType(program);
-    const currentValue = blockSelect.value;
-    
-    blockSelect.innerHTML = '';
-    
-    if (programType === 'KRCHN') {
-        // KRCHN uses Blocks with NUMBERS
-        ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'].forEach(block => {
-            const opt = document.createElement('option');
-            opt.value = block;
-            opt.textContent = block;
-            blockSelect.appendChild(opt);
-        });
-    } else {
-        // TVET uses Terms (NO Introductory!)
-        ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'].forEach(term => {
-            const opt = document.createElement('option');
-            opt.value = term;
-            opt.textContent = term;
-            blockSelect.appendChild(opt);
-        });
-    }
-    
-    if (currentValue) {
-        const exists = Array.from(blockSelect.options).some(o => o.value === currentValue);
-        if (exists) blockSelect.value = currentValue;
-    }
-};
-
-// =====================================================
-// INITIALIZE UNIT FORM
-// =====================================================
-
-function initUnitForm() {
-    const programSelect = document.getElementById('new_unit_program');
-    if (programSelect) {
-        programSelect.addEventListener('change', function() {
-            const program = this.value;
-            toggleUnitCourses();
-            updateUnitBlockOptions(program);
-        });
-        // Trigger initial load
-        setTimeout(() => programSelect.dispatchEvent(new Event('change')), 200);
-    }
-}
-
-// =====================================================
-// HELPER FUNCTIONS FOR DISPLAY
-// =====================================================
-
-function getProgramName(code) {
-    const names = {
-        'KRCHN': '🎓 KRCHN Nursing',
-        'DPOTT': '🎯 Perioperative Theatre',
-        'DCH': '🎯 Community Health',
-        'DHRIT': '🎯 Health Records & IT',
-        'DSL': '🎯 Science Lab',
-        'DSW': '🎯 Social Work',
-        'DCJS': '🎯 Criminal Justice',
-        'DHSS': '🎯 Health Support Services',
-        'DICT': '🎯 ICT',
-        'DME': '🎯 Medical Engineering',
-        'CPOTT': '📜 Perioperative Theatre',
-        'CCH': '📜 Community Health',
-        'CHRIT': '📜 Health Records & IT',
-        'CPC': '📜 Patient Care',
-        'CSL': '📜 Science Lab',
-        'CSW': '📜 Social Work',
-        'CCJS': '📜 Criminal Justice',
-        'CAG': '📜 Agriculture',
-        'CHSS': '📜 Health Support Services',
-        'CICT': '📜 ICT',
-        'ACH': '🔧 Community Health',
-        'AAG': '🔧 Agriculture',
-        'ASW': '🔧 Social Work',
-        'CCA': '📊 Computer Applications',
-        'PTE': '📊 TVET/CDACC'
-    };
-    return names[code] || code || 'N/A';
-}
-
-function getBlockColor(block) {
-    const colors = {
-        'Introductory': '#8b5cf6',
-        'Block 1': '#3b82f6',
-        'Block 2': '#06b6d4',
-        'Block 3': '#10b981',
-        'Block 4': '#f59e0b',
-        'Block 5': '#ef4444',
-        'Final': '#8b5cf6',
-        'Term 1': '#3b82f6',
-        'Term 2': '#06b6d4',
-        'Term 3': '#10b981',
-        'Term 4': '#f59e0b',
-        'Term 5': '#ef4444',
-        'Term 6': '#8b5cf6'
-    };
-    return colors[block] || '#6b7280';
-}
-
-function getBlockEmoji(block) {
-    const emojis = {
-        'Introductory': '🌟',
-        'Block 1': '📘',
-        'Block 2': '📗',
-        'Block 3': '📒',
-        'Block 4': '📙',
-        'Block 5': '📕',
-        'Final': '🏆',
-        'Term 1': '📘',
-        'Term 2': '📗',
-        'Term 3': '📒',
-        'Term 4': '📙',
-        'Term 5': '📕',
-        'Term 6': '📚'
-    };
-    return emojis[block] || '📚';
-}
-
-// =====================================================
-// UNIT CATALOG MANAGEMENT - ENHANCED
-// =====================================================
-
-async function loadAllUnits() {
-    const container = document.getElementById('units-list-container');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div class="loading-spinner" style="display: inline-block; width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <p style="margin-top: 10px; color: #6b7280;">Loading units...</p>
-        </div>
-    `;
-    
-    try {
-        const { data, error } = await sb
-            .from('units_catalog')
-            .select('*')
-            .order('block', { ascending: true })
-            .order('unit_code', { ascending: true });
-        
-        if (error) throw error;
-        
-        allUnits = data || [];
-        window.allUnits = allUnits;
-        renderUnitsCatalog();
-        loadUnitRegistrationStats();
-        
-    } catch (error) {
-        console.error('Error loading units:', error);
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #dc2626;">
-                <i class="fas fa-exclamation-circle" style="font-size: 40px;"></i>
-                <p style="margin-top: 10px;">Error loading units: ${error.message}</p>
-                <button onclick="loadAllUnits()" style="margin-top: 10px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    <i class="fas fa-sync-alt"></i> Retry
-                </button>
-            </div>
-        `;
-    }
-}
-
-function renderUnitsCatalog() {
-    const container = document.getElementById('units-list-container');
-    if (!container) return;
-    
-    const searchTerm = document.getElementById('unit_search')?.value.toLowerCase() || '';
-    const programFilter = document.getElementById('unit_filter_program')?.value || '';
-    const yearFilter = document.getElementById('unit_filter_year')?.value || '';
-    
-    let filtered = [...allUnits];
-    
-    if (searchTerm) {
-        filtered = filtered.filter(u => 
-            u.unit_code?.toLowerCase().includes(searchTerm) || 
-            u.unit_name?.toLowerCase().includes(searchTerm)
-        );
-    }
-    if (programFilter) {
-        filtered = filtered.filter(u => u.program === programFilter);
-    }
-    if (yearFilter) {
-        filtered = filtered.filter(u => u.year == yearFilter);
-    }
-    if (currentBlockFilter !== 'all') {
-        filtered = filtered.filter(u => u.block === currentBlockFilter);
-    }
-    
-    if (filtered.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; color: #6b7280;">
-                <i class="fas fa-search" style="font-size: 48px; color: #d1d5db;"></i>
-                <p style="margin-top: 16px; font-size: 16px;">No units found</p>
-                <p style="font-size: 13px;">Try adjusting your filters or add a new unit</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-            <div>
-                <span style="font-weight: 600; color: #1e3a5f; font-size: 14px;">
-                    <i class="fas fa-list"></i> ${filtered.length} unit${filtered.length > 1 ? 's' : ''}
-                </span>
-                <span style="font-size: 12px; color: #6b7280; margin-left: 10px;">
-                    (${allUnits.length} total)
-                </span>
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                ${currentBlockFilter !== 'all' ? `
-                    <span style="background: #4C1D95; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
-                        <i class="fas fa-filter"></i> ${currentBlockFilter}
-                        <span onclick="filterUnitsByBlock('all')" style="cursor: pointer; margin-left: 6px;">✕</span>
-                    </span>
-                ` : ''}
-                ${programFilter ? `
-                    <span style="background: #4C1D95; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
-                        <i class="fas fa-filter"></i> ${getProgramName(programFilter)}
-                        <span onclick="document.getElementById('unit_filter_program').value=''; filterUnitsCatalog();" style="cursor: pointer; margin-left: 6px;">✕</span>
-                    </span>
-                ` : ''}
-            </div>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px;">
-    `;
-    
-    filtered.forEach(unit => {
-        const blockColor = getBlockColor(unit.block);
-        const blockEmoji = getBlockEmoji(unit.block);
-        const programName = getProgramName(unit.program);
-        const typeColor = unit.unit_type === 'Core' ? '#2563eb' : '#d97706';
-        const typeBg = unit.unit_type === 'Core' ? '#dbeafe' : '#fef3c7';
-        
-        html += `
-            <div class="unit-card" style="
-                background: white; 
-                border: 1px solid #e5e7eb; 
-                border-radius: 12px; 
-                padding: 16px; 
-                transition: all 0.2s;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-                cursor: default;
-            "
-            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.1)';"
-            onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.05)';">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            <span style="font-weight: 700; color: #4C1D95; font-size: 16px;">${escapeHtml(unit.unit_code)}</span>
-                            <span style="
-                                background: ${typeBg}; 
-                                color: ${typeColor}; 
-                                padding: 2px 10px; 
-                                border-radius: 12px; 
-                                font-size: 10px; 
-                                font-weight: 600;
-                            ">${escapeHtml(unit.unit_type || 'Core')}</span>
-                            <span style="
-                                background: #f3f4f6; 
-                                color: #4b5563; 
-                                padding: 2px 10px; 
-                                border-radius: 12px; 
-                                font-size: 10px;
-                            ">
-                                <i class="fas fa-star"></i> ${unit.credits || 3} cr
-                            </span>
-                        </div>
-                        <div style="font-size: 15px; color: #1f2937; margin-top: 4px; font-weight: 500;">
-                            ${escapeHtml(unit.unit_name)}
-                        </div>
-                        ${unit.prerequisites ? `
-                            <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">
-                                <i class="fas fa-link"></i> Prerequisite: ${escapeHtml(unit.prerequisites)}
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                        <button onclick="editUnitRecord(${unit.id})" 
-                            style="
-                                background: #3b82f6; 
-                                color: white; 
-                                border: none; 
-                                border-radius: 6px; 
-                                padding: 5px 10px; 
-                                font-size: 11px; 
-                                cursor: pointer; 
-                                transition: all 0.2s;
-                            "
-                            onmouseover="this.style.background='#2563eb'"
-                            onmouseout="this.style.background='#3b82f6'"
-                        >
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button onclick="deleteUnitRecord(${unit.id}, '${escapeHtml(unit.unit_code)}')" 
-                            style="
-                                background: #ef4444; 
-                                color: white; 
-                                border: none; 
-                                border-radius: 6px; 
-                                padding: 5px 10px; 
-                                font-size: 11px; 
-                                cursor: pointer; 
-                                transition: all 0.2s;
-                            "
-                            onmouseover="this.style.background='#dc2626'"
-                            onmouseout="this.style.background='#ef4444'"
-                        >
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Tags -->
-                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6;">
-                    <span style="
-                        background: #f3f4f6; 
-                        padding: 3px 10px; 
-                        border-radius: 12px; 
-                        font-size: 11px; 
-                        color: #4b5563;
-                    ">
-                        <i class="fas fa-tag"></i> ${escapeHtml(programName)}
-                    </span>
-                    <span style="
-                        background: ${blockColor}20; 
-                        padding: 3px 10px; 
-                        border-radius: 12px; 
-                        font-size: 11px; 
-                        color: ${blockColor};
-                        border: 1px solid ${blockColor}30;
-                    ">
-                        <i class="fas fa-layer-group"></i> ${blockEmoji} ${escapeHtml(unit.block)}
-                    </span>
-                    <span style="
-                        background: #f3f4f6; 
-                        padding: 3px 10px; 
-                        border-radius: 12px; 
-                        font-size: 11px; 
-                        color: #4b5563;
-                    ">
-                        <i class="fas fa-calendar"></i> ${unit.year || 'N/A'}
-                    </span>
-                    <span style="
-                        background: #f3f4f6; 
-                        padding: 3px 10px; 
-                        border-radius: 12px; 
-                        font-size: 11px; 
-                        color: #4b5563;
-                    ">
-                        <i class="fas fa-clock"></i> ${unit.hours || 0}h
-                    </span>
-                    ${unit.status ? `
-                        <span style="
-                            background: ${unit.status === 'active' ? '#d1fae5' : '#fee2e2'};
-                            color: ${unit.status === 'active' ? '#059669' : '#dc2626'};
-                            padding: 3px 10px;
-                            border-radius: 12px;
-                            font-size: 11px;
-                        ">
-                            ${unit.status === 'active' ? '✅ Active' : '❌ Inactive'}
-                        </span>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    });
-    
-    html += `
-        </div>
-        <div style="text-align: center; margin-top: 16px; font-size: 12px; color: #9ca3af;">
-            Showing ${filtered.length} of ${allUnits.length} units
-        </div>
-    `;
-    
-    container.innerHTML = html;
-}
-
-// =====================================================
-// ADD NEW UNIT RECORD
-// =====================================================
-
-async function addNewUnitRecord() {
-    const unitCode = document.getElementById('new_unit_code')?.value;
-    const unitName = document.getElementById('new_unit_name')?.value;
-    const program = document.getElementById('new_unit_program')?.value;
-    const block = document.getElementById('new_unit_block')?.value;
-    const year = parseInt(document.getElementById('new_unit_year')?.value);
-    const credits = parseInt(document.getElementById('new_unit_credits')?.value);
-    const hours = parseInt(document.getElementById('new_unit_hours')?.value);
-    const unitType = document.getElementById('new_unit_type')?.value;
-    const prerequisites = document.getElementById('new_unit_prerequisites')?.value || null;
-    
-    if (!unitCode || !unitName) {
-        showFeedback('Please fill in Unit Code and Unit Name', 'error');
-        return;
-    }
-    
-    const newUnit = {
-        unit_code: unitCode,
-        unit_name: unitName,
-        program: program,
-        block: block,
-        year: year,
-        credits: credits,
-        hours: hours,
-        unit_type: unitType,
-        prerequisites: prerequisites,
-        status: 'active'
-    };
-    
-    try {
-        const { data, error } = await sb
-            .from('units_catalog')
-            .insert([newUnit])
-            .select();
-        
-        if (error) throw error;
-        
-        showFeedback(`Unit "${unitCode}" added successfully!`, 'success');
-        
-        document.getElementById('new_unit_code').value = '';
-        document.getElementById('new_unit_name').value = '';
-        document.getElementById('new_unit_prerequisites').value = '';
-        
-        loadAllUnits();
-        
-    } catch (error) {
-        console.error('Error adding unit:', error);
-        showFeedback(`Error adding unit: ${error.message}`, 'error');
-    }
-}
-
-// =====================================================
-// EDIT UNIT RECORD
-// =====================================================
-
-async function editUnitRecord(unitId) {
-    const unit = allUnits.find(u => u.id === unitId);
-    if (!unit) return;
-    
-    document.getElementById('edit_unit_id').value = unit.id;
-    document.getElementById('edit_unit_code').value = unit.unit_code;
-    document.getElementById('edit_unit_name').value = unit.unit_name;
-    document.getElementById('edit_unit_program').value = unit.program;
-    document.getElementById('edit_unit_block').value = unit.block;
-    document.getElementById('edit_unit_year').value = unit.year;
-    document.getElementById('edit_unit_credits').value = unit.credits;
-    document.getElementById('edit_unit_hours').value = unit.hours || 0;
-    document.getElementById('edit_unit_type').value = unit.unit_type || 'Core';
-    document.getElementById('edit_unit_prerequisites').value = unit.prerequisites || '';
-    
-    document.getElementById('editUnitModal').style.display = 'flex';
-}
-
-// =====================================================
-// DELETE UNIT RECORD
-// =====================================================
-
-async function deleteUnitRecord(unitId, unitCode) {
-    if (!confirm(`⚠️ Are you sure you want to delete unit "${unitCode}"? This action cannot be undone.`)) return;
-    
-    try {
-        const { error } = await sb
-            .from('units_catalog')
-            .delete()
-            .eq('id', unitId);
-        
-        if (error) throw error;
-        
-        showFeedback(`Unit "${unitCode}" deleted successfully!`, 'success');
-        loadAllUnits();
-        
-    } catch (error) {
-        console.error('Error deleting unit:', error);
-        showFeedback(`Error deleting unit: ${error.message}`, 'error');
-    }
-}
-
-// =====================================================
-// FILTER FUNCTIONS
-// =====================================================
-
-function filterUnitsCatalog() {
-    renderUnitsCatalog();
-}
-
-function filterUnitsByBlock(block) {
-    currentBlockFilter = block;
-    
-    document.querySelectorAll('.block-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-block') === block) {
-            btn.classList.add('active');
-            btn.style.background = '#4C1D95';
-            btn.style.color = 'white';
-        } else {
-            btn.style.background = '#f3f4f6';
-            btn.style.color = '#374151';
-        }
-    });
-    
-    renderUnitsCatalog();
-}
-
-// =====================================================
-// REGISTRATION STATISTICS
-// =====================================================
-
-async function loadUnitRegistrationStats() {
-    try {
-        const { data, error } = await sb
-            .from('student_unit_registrations')
-            .select('*');
-        
-        if (!error && data) {
-            const pending = data.filter(r => r.status === 'pending').length;
-            const approved = data.filter(r => r.status === 'approved').length;
-            
-            const pendingEl = document.getElementById('pendingRegistrations');
-            const approvedEl = document.getElementById('approvedRegistrations');
-            const totalEl = document.getElementById('totalRegistrations');
-            
-            if (pendingEl) pendingEl.textContent = pending;
-            if (approvedEl) approvedEl.textContent = approved;
-            if (totalEl) totalEl.textContent = data.length;
-            
-            // Update badges
-            const pendingBadge = document.getElementById('pendingCountBadge');
-            if (pendingBadge) pendingBadge.textContent = pending;
-            
-            const approvedBadge = document.getElementById('approvedCountBadge');
-            if (approvedBadge) approvedBadge.textContent = approved;
-        }
-    } catch (error) {
-        console.error('Error loading registration stats:', error);
-    }
-}
-
-// =====================================================
-// HELPER FUNCTIONS
-// =====================================================
+let pendingProgramFilter = 'all';
+let registrationsData = [];
+let expandedGroups = new Set();
+let selectedGroups = new Set();
 
 function isTVETProgram(program) {
     const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 
@@ -13003,7 +12375,6 @@ function showFeedback(message, type = 'info') {
         info: '#3b82f6'
     };
     
-    // Remove existing feedback
     document.querySelectorAll('.feedback-toast').forEach(el => el.remove());
     
     const toast = document.createElement('div');
@@ -13026,9 +12397,59 @@ function showFeedback(message, type = 'info') {
     }, 4000);
 }
 
-// Global state
-let pendingRegistrationsData = [];
-let pendingProgramFilter = 'all';
+// =====================================================
+// DASHBOARD LOADER
+// =====================================================
+
+async function loadUnitDashboard() {
+    await loadUnitRegistrationStats();
+    await loadUnitPendingRegistrations();
+    await loadGroupedRegistrations();
+}
+
+// =====================================================
+// REGISTRATION STATISTICS
+// =====================================================
+
+async function loadUnitRegistrationStats() {
+    try {
+        const { data, error } = await sb
+            .from('student_unit_registrations')
+            .select('*');
+        
+        if (!error && data) {
+            const pending = data.filter(r => r.status === 'pending').length;
+            const approved = data.filter(r => r.status === 'approved').length;
+            
+            // Update summary cards
+            const pendingEl = document.getElementById('pendingRegistrations');
+            const approvedEl = document.getElementById('approvedRegistrations');
+            const totalEl = document.getElementById('totalRegistrations');
+            const studentsEl = document.getElementById('totalStudentsCount');
+            
+            if (pendingEl) pendingEl.textContent = pending;
+            if (approvedEl) approvedEl.textContent = approved;
+            if (totalEl) totalEl.textContent = data.length;
+            
+            // Get unique students count
+            const uniqueStudents = new Set(data.map(r => r.student_id).filter(id => id));
+            if (studentsEl) studentsEl.textContent = uniqueStudents.size;
+            
+            // Update badges
+            const pendingBadge = document.getElementById('pendingCountBadge');
+            if (pendingBadge) pendingBadge.textContent = pending;
+            
+            const approvedBadge = document.getElementById('approvedCountBadge');
+            if (approvedBadge) approvedBadge.textContent = approved;
+            
+            // Update student group count
+            const groupCount = document.getElementById('studentGroupCount');
+            if (groupCount) groupCount.textContent = uniqueStudents.size;
+        }
+    } catch (error) {
+        console.error('Error loading registration stats:', error);
+    }
+}
 
 // =====================================================
 // PENDING REGISTRATIONS - WITH TVET/KRCHN FILTER
@@ -13045,10 +12466,15 @@ async function loadUnitPendingRegistrations() {
     if (container.style.display !== 'none' && container.style.display !== '') {
         container.style.display = 'none';
         container.innerHTML = '';
+        const label = document.getElementById('pendingToggleLabel');
+        if (label) label.textContent = 'Show';
         return;
     }
     
     container.style.display = 'block';
+    const label = document.getElementById('pendingToggleLabel');
+    if (label) label.textContent = 'Hide';
+    
     container.innerHTML = `
         <div style="text-align: center; padding: 40px;">
             <div class="loading-spinner" style="display: inline-block; width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
@@ -13057,7 +12483,6 @@ async function loadUnitPendingRegistrations() {
     `;
     
     try {
-        // Fetch pending registrations
         const { data: registrations, error } = await sb
             .from('student_unit_registrations')
             .select('*')
@@ -13066,13 +12491,11 @@ async function loadUnitPendingRegistrations() {
         
         if (error) throw error;
         
-        // Store globally
-        window.pendingRegistrationsData = registrations || [];
-        pendingRegistrationsData = window.pendingRegistrationsData;
+        pendingRegistrationsData = registrations || [];
         
         console.log(`✅ Loaded ${pendingRegistrationsData.length} pending registrations`);
         
-        if (!pendingRegistrationsData || pendingRegistrationsData.length === 0) {
+        if (pendingRegistrationsData.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 30px; color: #6b7280;">
                     <i class="fas fa-check-circle" style="font-size: 40px; color: #10b981;"></i>
@@ -13082,22 +12505,17 @@ async function loadUnitPendingRegistrations() {
             return;
         }
         
-        // Get student details - MATCH BY user_id (UUID)
+        // Get student details
         const studentIds = [...new Set(pendingRegistrationsData.map(r => r.student_id).filter(id => id))];
         let studentInfo = {};
         
-        // ✅ Query using user_id (matches student_id in registrations)
         if (studentIds.length > 0) {
             const { data: profiles, error: profileError } = await sb
                 .from('consolidated_user_profiles_table')
                 .select('user_id, full_name, student_id, program, block, intake_year, intake_month, phone, email')
                 .in('user_id', studentIds);
             
-            if (profileError) {
-                console.error('Error fetching profiles:', profileError);
-            }
-            
-            if (profiles) {
+            if (!profileError && profiles) {
                 profiles.forEach(p => {
                     studentInfo[p.user_id] = {
                         full_name: p.full_name || 'Unknown',
@@ -13129,13 +12547,13 @@ async function loadUnitPendingRegistrations() {
             };
         }
         
-        // ⭐ GROUP BY STUDENT with ALL data
+        // Group by student
         const groupedByStudent = {};
         for (const reg of pendingRegistrationsData) {
             const studentId = reg.student_id;
             
             let info;
-            if (studentId === null || !studentId) {
+            if (!studentId) {
                 info = nullStudentInfo || {
                     full_name: '⚠️ Unknown Student',
                     student_id: 'N/A',
@@ -13186,15 +12604,9 @@ async function loadUnitPendingRegistrations() {
             });
         }
         
-        // Sort by name
-        const sortedGroups = Object.values(groupedByStudent);
-        sortedGroups.sort((a, b) => a.name.localeCompare(b.name));
+        const sortedGroups = Object.values(groupedByStudent).sort((a, b) => a.name.localeCompare(b.name));
         
-        console.log(`✅ Grouped into ${sortedGroups.length} students with full data`);
-        
-        // ============================================
-        // BUILD HTML WITH FILTER CONTROLS
-        // ============================================
+        // Build HTML
         let html = `
             <!-- Filter Controls -->
             <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
@@ -13202,43 +12614,13 @@ async function loadUnitPendingRegistrations() {
                     <span style="font-weight: 600; font-size: 13px; color: #1e293b;">
                         <i class="fas fa-filter"></i> Filter:
                     </span>
-                    <button onclick="filterPendingByProgram('all')" id="pendingFilterall" class="pending-filter-btn active" style="
-                        padding: 6px 16px; 
-                        border: 2px solid #4C1D95; 
-                        border-radius: 20px; 
-                        background: #4C1D95; 
-                        color: white; 
-                        cursor: pointer; 
-                        font-weight: 500; 
-                        font-size: 12px;
-                        transition: all 0.2s;
-                    ">
+                    <button onclick="filterPendingByProgram('all')" id="pendingFilterall" class="pending-filter-btn active" style="padding: 6px 16px; border: 2px solid #4C1D95; border-radius: 20px; background: #4C1D95; color: white; cursor: pointer; font-weight: 500; font-size: 12px;">
                         <i class="fas fa-users"></i> All Students
                     </button>
-                    <button onclick="filterPendingByProgram('KRCHN')" id="pendingFilterKRCHN" class="pending-filter-btn" style="
-                        padding: 6px 16px; 
-                        border: 2px solid #e5e7eb; 
-                        border-radius: 20px; 
-                        background: #e5e7eb; 
-                        color: #374151; 
-                        cursor: pointer; 
-                        font-weight: 500; 
-                        font-size: 12px;
-                        transition: all 0.2s;
-                    ">
+                    <button onclick="filterPendingByProgram('KRCHN')" id="pendingFilterKRCHN" class="pending-filter-btn" style="padding: 6px 16px; border: 2px solid #e5e7eb; border-radius: 20px; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
                         <i class="fas fa-graduation-cap"></i> 🎓 KRCHN
                     </button>
-                    <button onclick="filterPendingByProgram('TVET')" id="pendingFilterTVET" class="pending-filter-btn" style="
-                        padding: 6px 16px; 
-                        border: 2px solid #e5e7eb; 
-                        border-radius: 20px; 
-                        background: #e5e7eb; 
-                        color: #374151; 
-                        cursor: pointer; 
-                        font-weight: 500; 
-                        font-size: 12px;
-                        transition: all 0.2s;
-                    ">
+                    <button onclick="filterPendingByProgram('TVET')" id="pendingFilterTVET" class="pending-filter-btn" style="padding: 6px 16px; border: 2px solid #e5e7eb; border-radius: 20px; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
                         <i class="fas fa-tools"></i> 🔧 TVET
                     </button>
                 </div>
@@ -13252,7 +12634,6 @@ async function loadUnitPendingRegistrations() {
             <div class="students-pending-list">
         `;
         
-        // Loop through each student
         for (const student of sortedGroups) {
             const firstUnit = student.units[0];
             const submittedDate = firstUnit?.submitted_date 
@@ -13726,15 +13107,15 @@ async function loadApprovedRegistrations() {
                     </td>
                     <td><strong>${escapeHtml(studentName)}</strong></td>
                     <td style="font-size: 12px; color: #6b7280;">${reg.student_id ? reg.student_id.substring(0, 8) : 'N/A'}...</td>
-                    <td><span class="badge badge-info" style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.unit_code)}</span></td>
+                    <td><span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.unit_code)}</span></td>
                     <td>${escapeHtml(reg.unit_name)}</td>
-                    <td><span class="badge badge-secondary" style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.block)}</span></td>
-                    <td><span class="badge badge-success" style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.reg_type || 'Normal')}</span></td>
+                    <td style="text-align: center;"><span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.block)}</span></td>
+                    <td style="text-align: center;"><span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px;">${escapeHtml(reg.reg_type || 'Normal')}</span></td>
                     <td style="text-align: center; font-size: 12px;">${approvalDate}</td>
                     <td style="font-size: 12px; color: #6b7280; text-align: center;">System</td>
                     <td style="text-align: center;">
                         <button onclick="deapproveSingleRegistration('${reg.id}', '${escapeHtml(reg.unit_code)}', '${escapeHtml(studentName)}')" 
-                            class="btn-sm btn-warning" style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">
                             <i class="fas fa-undo"></i> De-approve
                         </button>
                     </td>
@@ -13751,6 +13132,10 @@ async function loadApprovedRegistrations() {
         // Update stats
         const approvedEl = document.getElementById('approvedRegistrations');
         if (approvedEl) approvedEl.textContent = registrations.length;
+        
+        // Update filter count
+        const filterCount = document.getElementById('registrationsFilterCount');
+        if (filterCount) filterCount.textContent = registrations.length;
         
     } catch (error) {
         console.error('❌ Error loading approved registrations:', error);
@@ -13857,14 +13242,525 @@ async function bulkDeapproveSelected() {
 }
 
 // =====================================================
+// GROUPED REGISTRATIONS - STUDENT GROUPING
+// =====================================================
+
+async function loadGroupedRegistrations() {
+    const container = document.getElementById('grouped-registrations-container');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 10px; color: #6b7280;">Loading student registrations...</p>
+        </div>
+    `;
+    
+    try {
+        const { data, error } = await sb
+            .from('student_unit_registrations')
+            .select('*')
+            .order('submitted_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        registrationsData = data || [];
+        
+        if (registrationsData.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-inbox" style="font-size: 36px; display: block; margin-bottom: 10px;"></i>
+                    <p style="margin: 0;">No registrations found.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        renderGroupedRegistrations(registrationsData);
+        
+    } catch (error) {
+        console.error('Error loading grouped registrations:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc2626;">
+                <i class="fas fa-exclamation-circle" style="font-size: 36px; display: block; margin-bottom: 10px;"></i>
+                <p>Error: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function renderGroupedRegistrations(data) {
+    const container = document.getElementById('grouped-registrations-container');
+    if (!container) return;
+    
+    if (!data || data.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                <i class="fas fa-inbox" style="font-size: 36px; display: block; margin-bottom: 10px;"></i>
+                <p style="margin: 0;">No registrations found.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Group by student
+    const groups = {};
+    data.forEach(reg => {
+        const key = reg.student_id || 'null_student';
+        if (!groups[key]) {
+            groups[key] = {
+                id: reg.student_id,
+                name: reg.student_name || 'Unknown Student',
+                program: reg.program || 'N/A',
+                block: reg.block || 'N/A',
+                registrations: []
+            };
+        }
+        groups[key].registrations.push(reg);
+    });
+    
+    // Update counts
+    const groupCount = document.getElementById('studentGroupCount');
+    if (groupCount) groupCount.textContent = Object.keys(groups).length;
+    
+    const filterCount = document.getElementById('registrationsFilterCount');
+    if (filterCount) filterCount.textContent = data.length;
+    
+    // Render each group
+    let html = '';
+    let groupIndex = 0;
+    
+    for (const key in groups) {
+        const group = groups[key];
+        const isExpanded = expandedGroups.has(key);
+        const regs = group.registrations;
+        
+        // Determine group status
+        const allApproved = regs.every(r => r.status === 'approved');
+        const hasPending = regs.some(r => r.status === 'pending');
+        const hasRejected = regs.some(r => r.status === 'rejected');
+        
+        let statusColor = '#10b981';
+        let statusLabel = 'All Approved';
+        if (hasRejected) {
+            statusColor = '#ef4444';
+            statusLabel = 'Has Rejected';
+        } else if (hasPending) {
+            statusColor = '#f59e0b';
+            statusLabel = 'Has Pending';
+        }
+        
+        // Program color
+        const progColors = {
+            'KRCHN': '#4C1D95',
+            'DPOTT': '#2563eb',
+            'DCH': '#059669',
+            'DHRIT': '#8b5cf6',
+            'DSL': '#f59e0b',
+            'DSW': '#ec4899',
+            'DCJS': '#14b8a6',
+            'DHSS': '#f43f5e',
+            'DICT': '#6366f1',
+            'DME': '#10b981'
+        };
+        const progColor = progColors[group.program] || '#6b7280';
+        
+        html += `
+            <div class="student-group-card" data-student-id="${key}" data-program="${group.program}" data-block="${group.block}" style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: white; transition: all 0.2s;">
+                
+                <!-- GROUP HEADER -->
+                <div onclick="toggleGroup('${key}')" style="padding: 14px 18px; background: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                    
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 14px; color: #94a3b8;">
+                            <i class="fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
+                        </span>
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: ${progColor}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">
+                            ${group.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; color: #1e293b; font-size: 15px;">${escapeHtml(group.name)}</div>
+                            <div style="font-size: 12px; color: #94a3b8;">
+                                ${key !== 'null_student' ? key.substring(0, 8) : 'N/A'} • ${escapeHtml(group.program)} • ${escapeHtml(group.block)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <span style="font-size: 12px; color: #64748b; background: #e5e7eb; padding: 2px 10px; border-radius: 12px;">
+                            <i class="fas fa-book"></i> ${regs.length} units
+                        </span>
+                        <span style="font-size: 11px; padding: 3px 10px; border-radius: 12px; background: ${statusColor}20; color: ${statusColor}; font-weight: 500; border: 1px solid ${statusColor}40;">
+                            ${statusLabel}
+                        </span>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: white; border: 1px solid #e5e7eb;" onclick="event.stopPropagation();">
+                            <input type="checkbox" class="group-select-checkbox" data-student-id="${key}" onchange="updateGroupSelection()">
+                            <span style="font-size: 11px;">Select</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- GROUP BODY -->
+                <div id="group-body-${key}" style="padding: ${isExpanded ? '16px 18px' : '0 18px'}; max-height: ${isExpanded ? '2000px' : '0'}; overflow: hidden; transition: all 0.3s ease;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="background: #f1f5f9; border-bottom: 1px solid #e5e7eb;">
+                                <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569;">#</th>
+                                <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569;">Unit Code</th>
+                                <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569;">Unit Name</th>
+                                <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Type</th>
+                                <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                                <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Date</th>
+                                <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        regs.forEach((reg, index) => {
+            const statusColors = {
+                'approved': '#10b981',
+                'pending': '#f59e0b',
+                'rejected': '#ef4444'
+            };
+            const statusLabels = {
+                'approved': '✅ Approved',
+                'pending': '⏳ Pending',
+                'rejected': '❌ Rejected'
+            };
+            const statusBg = statusColors[reg.status] || '#6b7280';
+            
+            html += `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
+                    <td style="padding: 8px 12px; font-weight: 500; color: #4C1D95;">${escapeHtml(reg.unit_code)}</td>
+                    <td style="padding: 8px 12px;">${escapeHtml(reg.unit_name)}</td>
+                    <td style="padding: 8px 12px; text-align: center;">
+                        <span style="background: ${reg.reg_type === 'Core' ? '#dbeafe' : '#f3e8ff'}; color: ${reg.reg_type === 'Core' ? '#1e40af' : '#6d28d9'}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
+                            ${reg.reg_type || 'Core'}
+                        </span>
+                    </td>
+                    <td style="padding: 8px 12px; text-align: center;">
+                        <span style="background: ${statusBg}20; color: ${statusBg}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
+                            ${statusLabels[reg.status] || reg.status}
+                        </span>
+                    </td>
+                    <td style="padding: 8px 12px; text-align: center; font-size: 12px; color: #94a3b8;">${reg.submitted_date ? new Date(reg.submitted_date).toLocaleDateString() : 'N/A'}</td>
+                    <td style="padding: 8px 12px; text-align: center;">
+                        ${reg.status === 'pending' ? `
+                            <button onclick="approveRegistration('${reg.id}')" style="background: #10b981; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button onclick="rejectRegistration('${reg.id}')" style="background: #ef4444; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        ` : `
+                            <button onclick="viewRegistrationDetails('${reg.id}')" style="background: #4C1D95; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        `}
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        groupIndex++;
+    }
+    
+    container.innerHTML = html;
+}
+
+// =====================================================
+// GROUP INTERACTIONS
+// =====================================================
+
+function toggleGroup(studentId) {
+    if (expandedGroups.has(studentId)) {
+        expandedGroups.delete(studentId);
+    } else {
+        expandedGroups.add(studentId);
+    }
+    renderGroupedRegistrations(registrationsData);
+}
+
+function expandAllGroups() {
+    const groups = {};
+    registrationsData.forEach(reg => {
+        const key = reg.student_id || 'null_student';
+        groups[key] = true;
+    });
+    for (const key in groups) {
+        expandedGroups.add(key);
+    }
+    renderGroupedRegistrations(registrationsData);
+}
+
+function collapseAllGroups() {
+    expandedGroups.clear();
+    renderGroupedRegistrations(registrationsData);
+}
+
+function updateGroupSelection() {
+    const checkboxes = document.querySelectorAll('.group-select-checkbox:checked');
+    selectedGroups = new Set();
+    checkboxes.forEach(cb => {
+        selectedGroups.add(cb.dataset.studentId);
+    });
+    document.getElementById('selectedGroupsCount').textContent = selectedGroups.size;
+    
+    const hasSelection = selectedGroups.size > 0;
+    const approveBtn = document.getElementById('approveSelectedBtn');
+    const rejectBtn = document.getElementById('rejectSelectedBtn');
+    if (approveBtn) approveBtn.style.display = hasSelection ? 'inline-block' : 'none';
+    if (rejectBtn) rejectBtn.style.display = hasSelection ? 'inline-block' : 'none';
+}
+
+function toggleSelectAllGroups() {
+    const checked = document.getElementById('selectAllGroups')?.checked || false;
+    document.querySelectorAll('.group-select-checkbox').forEach(cb => {
+        cb.checked = checked;
+    });
+    updateGroupSelection();
+}
+
+function approveSelectedGroups() {
+    if (selectedGroups.size === 0) {
+        showFeedback('⚠️ No groups selected', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Approve all registrations for ${selectedGroups.size} selected students?`)) return;
+    
+    const ids = [];
+    registrationsData.forEach(reg => {
+        const key = reg.student_id || 'null_student';
+        if (selectedGroups.has(key) && reg.status === 'pending') {
+            ids.push(reg.id);
+        }
+    });
+    
+    if (ids.length === 0) {
+        showFeedback('⚠️ No pending registrations in selected groups', 'warning');
+        return;
+    }
+    
+    sb.from('student_unit_registrations')
+        .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
+        .in('id', ids)
+        .then(() => {
+            showFeedback(`✅ Approved ${ids.length} unit(s)!`, 'success');
+            selectedGroups.clear();
+            document.getElementById('selectAllGroups').checked = false;
+            loadGroupedRegistrations();
+            loadUnitRegistrationStats();
+            loadApprovedRegistrations();
+        })
+        .catch(error => {
+            showFeedback(`Error: ${error.message}`, 'error');
+        });
+}
+
+function rejectSelectedGroups() {
+    if (selectedGroups.size === 0) {
+        showFeedback('⚠️ No groups selected', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Reject all registrations for ${selectedGroups.size} selected students?`)) return;
+    
+    const ids = [];
+    registrationsData.forEach(reg => {
+        const key = reg.student_id || 'null_student';
+        if (selectedGroups.has(key) && reg.status === 'pending') {
+            ids.push(reg.id);
+        }
+    });
+    
+    if (ids.length === 0) {
+        showFeedback('⚠️ No pending registrations in selected groups', 'warning');
+        return;
+    }
+    
+    sb.from('student_unit_registrations')
+        .delete()
+        .in('id', ids)
+        .then(() => {
+            showFeedback(`❌ Rejected ${ids.length} unit(s)!`, 'success');
+            selectedGroups.clear();
+            document.getElementById('selectAllGroups').checked = false;
+            loadGroupedRegistrations();
+            loadUnitRegistrationStats();
+        })
+        .catch(error => {
+            showFeedback(`Error: ${error.message}`, 'error');
+        });
+}
+
+function approveRegistration(regId) {
+    if (!confirm('Approve this registration?')) return;
+    
+    sb.from('student_unit_registrations')
+        .update({ status: 'approved', approval_date: new Date().toISOString().split('T')[0] })
+        .eq('id', regId)
+        .then(() => {
+            showFeedback('✅ Registration approved', 'success');
+            loadGroupedRegistrations();
+            loadUnitRegistrationStats();
+            loadApprovedRegistrations();
+        })
+        .catch(error => {
+            showFeedback(`Error: ${error.message}`, 'error');
+        });
+}
+
+function rejectRegistration(regId) {
+    if (!confirm('Reject this registration?')) return;
+    
+    sb.from('student_unit_registrations')
+        .delete()
+        .eq('id', regId)
+        .then(() => {
+            showFeedback('❌ Registration rejected', 'error');
+            loadGroupedRegistrations();
+            loadUnitRegistrationStats();
+        })
+        .catch(error => {
+            showFeedback(`Error: ${error.message}`, 'error');
+        });
+}
+
+function viewRegistrationDetails(regId) {
+    const reg = registrationsData.find(r => r.id === regId);
+    if (reg) {
+        showFeedback(`Registration: ${reg.unit_code} - ${reg.unit_name} (${reg.status})`, 'info');
+    }
+}
+
+// =====================================================
+// QUICK FILTER FUNCTIONS
+// =====================================================
+
+function filterUnitRegistrations(type) {
+    document.querySelectorAll('.view-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.background = '#e5e7eb';
+        btn.style.color = '#475569';
+    });
+    
+    const btnMap = {
+        'all': 'viewAllBtn',
+        'krchn': 'viewKrchnBtn',
+        'tvet': 'viewTvetBtn',
+        'pending': 'viewPendingBtn'
+    };
+    const activeBtn = document.getElementById(btnMap[type]);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.background = '#4C1D95';
+        activeBtn.style.color = 'white';
+    }
+    
+    let filtered = registrationsData;
+    if (type === 'krchn') {
+        filtered = registrationsData.filter(r => r.program === 'KRCHN');
+    } else if (type === 'tvet') {
+        filtered = registrationsData.filter(r => r.program && isTVETProgram(r.program));
+    } else if (type === 'pending') {
+        filtered = registrationsData.filter(r => r.status === 'pending');
+    }
+    
+    document.getElementById('registrationsFilterCount').textContent = filtered.length;
+    renderGroupedRegistrations(filtered);
+}
+
+function filterGroupedRegistrations() {
+    const search = document.getElementById('groupedSearch')?.value.toLowerCase() || '';
+    const program = document.getElementById('groupedProgramFilter')?.value || 'all';
+    const block = document.getElementById('groupedBlockFilter')?.value || 'all';
+    const status = document.getElementById('groupedStatusFilter')?.value || 'all';
+    
+    let filtered = registrationsData;
+    
+    if (search) {
+        filtered = filtered.filter(r => 
+            (r.student_name || '').toLowerCase().includes(search) ||
+            (r.student_id || '').toLowerCase().includes(search) ||
+            (r.unit_code || '').toLowerCase().includes(search) ||
+            (r.unit_name || '').toLowerCase().includes(search)
+        );
+    }
+    
+    if (program !== 'all') {
+        filtered = filtered.filter(r => r.program === program);
+    }
+    
+    if (block !== 'all') {
+        filtered = filtered.filter(r => r.block === block);
+    }
+    
+    if (status !== 'all') {
+        filtered = filtered.filter(r => r.status === status);
+    }
+    
+    document.getElementById('registrationsFilterCount').textContent = filtered.length;
+    renderGroupedRegistrations(filtered);
+}
+
+// =====================================================
+// EXPORT FUNCTIONS
+// =====================================================
+
+function exportGroupedRegistrations() {
+    let csv = 'Student ID,Student Name,Program,Block,Unit Code,Unit Name,Status,Registration Date\n';
+    registrationsData.forEach(reg => {
+        csv += `${reg.student_id || 'N/A'},${reg.student_name || 'Unknown'},${reg.program || 'N/A'},${reg.block || 'N/A'},${reg.unit_code || 'N/A'},${reg.unit_name || 'N/A'},${reg.status || 'N/A'},${reg.submitted_date || 'N/A'}\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `registrations_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showFeedback('📥 Exported successfully!', 'success');
+}
+
+// =====================================================
+// TOGGLE PENDING LIST
+// =====================================================
+
+function togglePendingList() {
+    const list = document.getElementById('pending-registrations-list');
+    const label = document.getElementById('pendingToggleLabel');
+    if (list.style.display === 'none' || list.style.display === '') {
+        list.style.display = 'block';
+        if (label) label.textContent = 'Hide';
+        loadUnitPendingRegistrations();
+    } else {
+        list.style.display = 'none';
+        if (label) label.textContent = 'Show';
+    }
+}
+
+// =====================================================
 // EXPOSE GLOBALLY
 // =====================================================
 
+window.loadUnitDashboard = loadUnitDashboard;
 window.loadUnitRegistrationStats = loadUnitRegistrationStats;
 window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
 window.loadApprovedRegistrations = loadApprovedRegistrations;
+window.loadGroupedRegistrations = loadGroupedRegistrations;
 window.filterApprovedRegistrations = filterApprovedRegistrations;
 window.exportApprovedRegistrations = exportApprovedRegistrations;
+window.exportGroupedRegistrations = exportGroupedRegistrations;
 window.deapproveSingleRegistration = deapproveSingleRegistration;
 window.bulkDeapproveSelected = bulkDeapproveSelected;
 window.toggleSelectAllApproved = toggleSelectAllApproved;
@@ -13880,12 +13776,25 @@ window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
 window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
 window.filterPendingByProgram = filterPendingByProgram;
 window.renderFilteredPendingRegistrations = renderFilteredPendingRegistrations;
+window.filterUnitRegistrations = filterUnitRegistrations;
+window.filterGroupedRegistrations = filterGroupedRegistrations;
+window.toggleGroup = toggleGroup;
+window.expandAllGroups = expandAllGroups;
+window.collapseAllGroups = collapseAllGroups;
+window.updateGroupSelection = updateGroupSelection;
+window.toggleSelectAllGroups = toggleSelectAllGroups;
+window.approveSelectedGroups = approveSelectedGroups;
+window.rejectSelectedGroups = rejectSelectedGroups;
+window.approveRegistration = approveRegistration;
+window.rejectRegistration = rejectRegistration;
+window.viewRegistrationDetails = viewRegistrationDetails;
+window.togglePendingList = togglePendingList;
 window.isTVETProgram = isTVETProgram;
 window.getProgramType = getProgramType;
 window.escapeHtml = escapeHtml;
 window.showFeedback = showFeedback;
 
-console.log('✅ Unit Registration Management module loaded');
+console.log('✅ Unit Registration Management module loaded and ready!');
 // =====================================================
 // ADDITIONAL STYLING FOR TABLES
 // =====================================================
