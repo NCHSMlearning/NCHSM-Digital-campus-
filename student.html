@@ -3065,146 +3065,196 @@
     <div style="padding: 20px 0; max-width: 1200px; margin: 0 auto;">
 
         <!-- ===== HEADER ===== -->
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 30px;">
             <div>
-                <h2 style="margin: 0; font-size: clamp(1.1rem, 2.5vw, 1.8rem); color: #0A3D62;">
-                    <i class="fas fa-wallet" style="color: #FDB913;"></i> My Finance
+                <h2 style="margin: 0; font-size: clamp(1.3rem, 2.5vw, 2rem); color: #0A3D62; font-weight: 800; letter-spacing: -0.5px;">
+                    <i class="fas fa-wallet" style="color: #FDB913; background: rgba(253,185,19,0.15); padding: 8px; border-radius: 12px; margin-right: 8px;"></i> 
+                    My Finance
                 </h2>
-                <p style="color: #64748b; font-size: clamp(0.75rem, 1.2vw, 0.95rem); margin: 4px 0 0 0;">
-                    View your account balance, payment history, and fee structure
+                <p style="color: #64748b; font-size: clamp(0.8rem, 1.2vw, 0.95rem); margin: 4px 0 0 0;">
+                    <span style="background: rgba(76,29,149,0.08); padding: 2px 12px; border-radius: 20px;">
+                        <i class="fas fa-graduation-cap" style="font-size: 12px;"></i> 
+                        <span id="studentProgramDisplay">Loading...</span>
+                    </span>
+                    <span style="margin-left: 12px;">
+                        <i class="far fa-calendar-alt"></i> 
+                        <span id="studentCurrentPeriodDisplay">-</span>
+                    </span>
                 </p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button onclick="loadStudentFinance()" style="background: #f1f5f9; color: #475569; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
-                    <i class="fas fa-sync-alt"></i> Refresh
+                <button onclick="loadStudentFinance()" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); color: #475569; border: 1px solid rgba(226,232,240,0.8); padding: 10px 18px; border-radius: 12px; cursor: pointer; font-weight: 500; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.04);" 
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.08)'" 
+                onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
+                    <i class="fas fa-sync-alt" style="font-size: 12px;"></i> Refresh
                 </button>
-                <button onclick="downloadStudentStatement()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='#6d28d9'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px rgba(76,29,149,0.3)'" onmouseout="this.style.background='#4C1D95'; this.style.transform='none'; this.style.boxShadow='none'">
+                <button onclick="downloadStudentStatement()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 10px 24px; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(76,29,149,0.25);" 
+                onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(76,29,149,0.35)'" 
+                onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(76,29,149,0.25)'">
                     <i class="fas fa-file-pdf"></i> Statement
                 </button>
             </div>
         </div>
 
-        <!-- ===== BALANCE CARD ===== -->
-        <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 24px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(10, 61, 98, 0.3); color: white;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+        <!-- ===== MODERN BALANCE CARD ===== -->
+        <div style="background: linear-gradient(145deg, #0A3D62, #1a5a7a); border-radius: 24px; padding: 30px 35px; margin-bottom: 25px; box-shadow: 0 20px 60px rgba(10, 61, 98, 0.35); position: relative; overflow: hidden;">
+            <!-- Decorative elements -->
+            <div style="position: absolute; top: -50%; right: -10%; width: 400px; height: 400px; border-radius: 50%; background: rgba(253,185,19,0.05); pointer-events: none;"></div>
+            <div style="position: absolute; bottom: -40%; left: -5%; width: 300px; height: 300px; border-radius: 50%; background: rgba(124,58,237,0.05); pointer-events: none;"></div>
+            
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 30px; position: relative; z-index: 1;">
                 <div>
-                    <span style="font-size: 13px; opacity: 0.7; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Current Balance</span>
-                    <span style="font-size: 36px; font-weight: 700; display: block; margin: 4px 0;" id="studentBalanceDisplay">KES 0.00</span>
-                    <span style="font-size: 14px; padding: 4px 14px; border-radius: 20px; display: inline-block; font-weight: 600; background: #d1fae5; color: #059669;" id="balanceStatusDisplay">✅ Paid in Full</span>
-                </div>
-                <div style="display: flex; gap: 30px;">
-                    <div style="text-align: center;">
-                        <span style="font-size: 11px; opacity: 0.7; display: block; text-transform: uppercase;">Total Paid</span>
-                        <span style="font-size: 18px; font-weight: 600; display: block; margin-top: 2px;" id="studentTotalPaid">KES 0.00</span>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <span style="font-size: 12px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                            <i class="fas fa-calendar-check" style="margin-right: 4px;"></i>
+                            <span id="currentPeriodLabel">Current Semester</span> Balance
+                        </span>
+                        <span style="background: rgba(253,185,19,0.2); color: #FDB913; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;" id="periodTypeBadge">KRCHN</span>
                     </div>
-                    <div style="text-align: center;">
-                        <span style="font-size: 11px; opacity: 0.7; display: block; text-transform: uppercase;">Total Due</span>
-                        <span style="font-size: 18px; font-weight: 600; display: block; margin-top: 2px;" id="studentTotalDue">KES 0.00</span>
+                    <div style="display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;">
+                        <span style="font-size: 42px; font-weight: 800; letter-spacing: -1px;" id="studentBalanceDisplay">KES 0.00</span>
+                        <span style="font-size: 14px; padding: 4px 16px; border-radius: 50px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; backdrop-filter: blur(10px);" id="balanceStatusDisplay">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%;" id="statusDot"></span>
+                            <span id="statusText">Loading...</span>
+                        </span>
                     </div>
-                    <div style="text-align: center;">
-                        <span style="font-size: 11px; opacity: 0.7; display: block; text-transform: uppercase;">Outstanding</span>
-                        <span style="font-size: 18px; font-weight: 600; display: block; margin-top: 2px; color: #dc2626;" id="studentOutstanding">KES 0.00</span>
+                    <div style="display: flex; gap: 30px; margin-top: 14px; flex-wrap: wrap;">
+                        <div>
+                            <span style="font-size: 11px; opacity: 0.6; display: block; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">Semester Fee</span>
+                            <span style="font-size: 18px; font-weight: 700; display: block; margin-top: 2px;" id="studentSemesterFee">KES 0.00</span>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; opacity: 0.6; display: block; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">Paid This Semester</span>
+                            <span style="font-size: 18px; font-weight: 700; display: block; margin-top: 2px; color: #4ade80;" id="studentPaidThisSemester">KES 0.00</span>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; opacity: 0.6; display: block; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">Remaining</span>
+                            <span style="font-size: 18px; font-weight: 700; display: block; margin-top: 2px; color: #f87171;" id="studentOutstanding">KES 0.00</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div style="margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.15);">
-                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
-                    <span>Payment Progress</span>
-                    <span id="paymentProgressText">0%</span>
-                </div>
-                <div style="height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden;">
-                    <div style="height: 100%; border-radius: 4px; transition: width 0.6s ease; background: linear-gradient(90deg, #4C1D95, #7c3aed); width: 0%;" id="paymentProgressFill"></div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center;">
+                    <div style="background: rgba(255,255,255,0.08); backdrop-filter: blur(20px); border-radius: 16px; padding: 16px 20px; text-align: center; min-width: 120px; border: 1px solid rgba(255,255,255,0.06);">
+                        <span style="font-size: 11px; opacity: 0.6; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Progress</span>
+                        <span style="font-size: 28px; font-weight: 800; display: block;" id="paymentProgressText">0%</span>
+                        <div style="height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin-top: 8px; overflow: hidden;">
+                            <div style="height: 100%; border-radius: 2px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); background: linear-gradient(90deg, #FDB913, #7c3aed); width: 0%;" id="paymentProgressFill"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ===== STATS ROW ===== -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 25px;">
-            <div style="background: white; padding: 16px 18px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 14px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: #d1fae5; color: #059669;">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div>
-                    <span style="font-size: 22px; font-weight: 700; color: #0b1124; display: block;" id="financePaidCount">0</span>
-                    <span style="font-size: 12px; color: #94a3b8;">Paid Invoices</span>
-                </div>
-            </div>
-            <div style="background: white; padding: 16px 18px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 14px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: #fef3c7; color: #d97706;">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div>
-                    <span style="font-size: 22px; font-weight: 700; color: #0b1124; display: block;" id="financePendingCount">0</span>
-                    <span style="font-size: 12px; color: #94a3b8;">Pending</span>
+        <!-- ===== QUICK STATS ===== -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px;">
+            <div style="background: white; padding: 18px 20px; border-radius: 16px; border: 1px solid rgba(229,231,235,0.5); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 3px rgba(0,0,0,0.02);" 
+            onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 40px rgba(0,0,0,0.06)'" 
+            onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.02)'">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #059669;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <span style="font-size: 22px; font-weight: 800; color: #0b1124; display: block; letter-spacing: -0.5px;" id="financePaidCount">0</span>
+                        <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Paid Invoices</span>
+                    </div>
                 </div>
             </div>
-            <div style="background: white; padding: 16px 18px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 14px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: #fee2e2; color: #dc2626;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div>
-                    <span style="font-size: 22px; font-weight: 700; color: #0b1124; display: block;" id="financeOverdueCount">0</span>
-                    <span style="font-size: 12px; color: #94a3b8;">Overdue</span>
+            <div style="background: white; padding: 18px 20px; border-radius: 16px; border: 1px solid rgba(229,231,235,0.5); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 3px rgba(0,0,0,0.02);" 
+            onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 40px rgba(0,0,0,0.06)'" 
+            onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.02)'">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #d97706;">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                        <span style="font-size: 22px; font-weight: 800; color: #0b1124; display: block; letter-spacing: -0.5px;" id="financePendingCount">0</span>
+                        <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Pending</span>
+                    </div>
                 </div>
             </div>
-            <div style="background: white; padding: 16px 18px; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 14px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <div style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: #dbeafe; color: #3b82f6;">
-                    <i class="fas fa-receipt"></i>
+            <div style="background: white; padding: 18px 20px; border-radius: 16px; border: 1px solid rgba(229,231,235,0.5); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 3px rgba(0,0,0,0.02);" 
+            onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 40px rgba(0,0,0,0.06)'" 
+            onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.02)'">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: linear-gradient(135deg, #fee2e2, #fca5a5); color: #dc2626;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div>
+                        <span style="font-size: 22px; font-weight: 800; color: #0b1124; display: block; letter-spacing: -0.5px;" id="financeOverdueCount">0</span>
+                        <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Overdue</span>
+                    </div>
                 </div>
-                <div>
-                    <span style="font-size: 22px; font-weight: 700; color: #0b1124; display: block;" id="financeTotalTransactions">0</span>
-                    <span style="font-size: 12px; color: #94a3b8;">Transactions</span>
+            </div>
+            <div style="background: white; padding: 18px 20px; border-radius: 16px; border: 1px solid rgba(229,231,235,0.5); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 3px rgba(0,0,0,0.02);" 
+            onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 40px rgba(0,0,0,0.06)'" 
+            onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.02)'">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: linear-gradient(135deg, #dbeafe, #93c5fd); color: #3b82f6;">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                    <div>
+                        <span style="font-size: 22px; font-weight: 800; color: #0b1124; display: block; letter-spacing: -0.5px;" id="financeTotalTransactions">0</span>
+                        <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Transactions</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ===== FILTERS ===== -->
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; background: white; padding: 14px 18px; border-radius: 12px; border: 1px solid #e5e7eb;">
+        <!-- ===== MODERN FILTERS ===== -->
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); padding: 16px 20px; border-radius: 16px; border: 1px solid rgba(229,231,235,0.5); box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
             <div style="display: flex; gap: 10px; flex-wrap: wrap; flex: 1;">
-                <select id="financePaymentFilter" onchange="filterStudentPayments()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
-                    <option value="all">All Payments</option>
+                <select id="financePaymentFilter" onchange="filterStudentPayments()" style="padding: 10px 16px; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 500; background: white; min-width: 140px; color: #0b1124; transition: all 0.2s; outline: none; cursor: pointer;" onfocus="this.style.borderColor='#7c3aed'; this.style.boxShadow='0 0 0 3px rgba(124,58,237,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                    <option value="all">📊 All Payments</option>
                     <option value="completed">✅ Completed</option>
                     <option value="pending">⏳ Pending</option>
                     <option value="failed">❌ Failed</option>
                 </select>
-                <select id="financePeriodFilter" onchange="filterStudentPayments()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
-                    <option value="all">All Periods</option>
-                    <option value="Term 1">Term 1</option>
-                    <option value="Term 2">Term 2</option>
-                    <option value="Term 3">Term 3</option>
-                    <option value="Full Year">Full Year</option>
+                <select id="financePeriodFilter" onchange="filterStudentPayments()" style="padding: 10px 16px; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 500; background: white; min-width: 140px; color: #0b1124; transition: all 0.2s; outline: none; cursor: pointer;" onfocus="this.style.borderColor='#7c3aed'; this.style.boxShadow='0 0 0 3px rgba(124,58,237,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                    <option value="all">📅 All Periods</option>
+                    <option value="Introductory">Year 1 - Semester 1</option>
+                    <option value="Year 1 - Semester 2">Year 1 - Semester 2</option>
+                    <option value="Year 1 - Semester 3">Year 1 - Semester 3</option>
+                    <option value="Year 2 - Semester 1">Year 2 - Semester 1</option>
+                    <option value="Year 2 - Semester 2">Year 2 - Semester 2</option>
+                    <option value="Year 2 - Semester 3">Year 2 - Semester 3</option>
+                    <option value="Year 3 - Semester 1">Year 3 - Semester 1</option>
+                    <option value="Year 3 - Semester 2">Year 3 - Semester 2</option>
+                    <option value="Year 3 - Semester 3">Year 3 - Semester 3</option>
                 </select>
             </div>
-            <div style="position: relative; flex: 1; min-width: 150px;">
-                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                <input type="text" id="financeSearch" placeholder="Search payments..." onkeyup="filterStudentPayments()" style="width: 100%; padding: 8px 12px 8px 36px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+            <div style="position: relative; flex: 1; min-width: 180px;">
+                <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;"></i>
+                <input type="text" id="financeSearch" placeholder="Search payments..." onkeyup="filterStudentPayments()" style="width: 100%; padding: 10px 14px 10px 40px; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 500; background: white; color: #0b1124; transition: all 0.2s; outline: none;" onfocus="this.style.borderColor='#7c3aed'; this.style.boxShadow='0 0 0 3px rgba(124,58,237,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
         </div>
 
         <!-- ===== PAYMENT HISTORY ===== -->
-        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 25px;">
-            <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <h4 style="margin: 0; color: #0A3D62;"><i class="fas fa-history"></i> Payment History</h4>
-                <span style="font-size: 13px; color: #94a3b8;" id="paymentRecordCount">0 records</span>
+        <div style="background: white; border-radius: 16px; border: 1px solid rgba(229,231,235,0.5); overflow: hidden; margin-bottom: 28px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
+            <div style="padding: 18px 24px; background: rgba(248,250,252,0.5); border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h4 style="margin: 0; color: #0A3D62; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-history" style="color: #7c3aed;"></i> Payment History
+                </h4>
+                <span style="font-size: 13px; color: #94a3b8; font-weight: 500; background: #f1f5f9; padding: 4px 14px; border-radius: 20px;" id="paymentRecordCount">0 records</span>
             </div>
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                     <thead>
-                        <tr>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Date</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Description</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Period</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Amount</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Method</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Reference</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; background: #f8fafc; border-bottom: 2px solid #e5e7eb;">Status</th>
+                        <tr style="background: #fafbfc;">
+                            <th style="padding: 14px 20px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Date</th>
+                            <th style="padding: 14px 20px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
+                            <th style="padding: 14px 20px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Period</th>
+                            <th style="padding: 14px 20px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
+                            <th style="padding: 14px 20px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Method</th>
+                            <th style="padding: 14px 20px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Reference</th>
+                            <th style="padding: 14px 20px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
                         </tr>
                     </thead>
                     <tbody id="studentPaymentHistory">
                         <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                                <p style="margin-top: 10px;">Loading payment history...</p>
+                            <td colspan="7" style="text-align: center; padding: 50px; color: #94a3b8;">
+                                <div style="display: inline-block; width: 36px; height: 36px; border: 3px solid #e5e7eb; border-top-color: #7c3aed; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                                <p style="margin-top: 12px; font-weight: 500;">Loading payment history...</p>
                             </td>
                         </tr>
                     </tbody>
@@ -3213,37 +3263,79 @@
         </div>
 
         <!-- ===== FEE STRUCTURE ===== -->
-        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 25px;">
-            <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <h4 style="margin: 0; color: #0A3D62;"><i class="fas fa-file-invoice"></i> Fee Structure</h4>
-                <span style="font-weight: 600; color: #4C1D95;" id="feeStructureTotal">Total: KES 0.00</span>
+        <div style="background: white; border-radius: 16px; border: 1px solid rgba(229,231,235,0.5); overflow: hidden; margin-bottom: 28px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
+            <div style="padding: 18px 24px; background: rgba(248,250,252,0.5); border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h4 style="margin: 0; color: #0A3D62; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-file-invoice" style="color: #7c3aed;"></i> Fee Structure
+                </h4>
+                <span style="font-weight: 700; color: #7c3aed; font-size: 15px;" id="feeStructureTotal">Total: KES 0.00</span>
             </div>
-            <div id="studentFeeStructureDisplay" style="padding: 16px 20px;">
+            <div id="studentFeeStructureDisplay" style="padding: 20px 24px;">
                 <div style="text-align: center; padding: 30px; color: #94a3b8;">
-                    <div style="display: inline-block; width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="margin-top: 8px;">Loading fee structure...</p>
+                    <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #7c3aed; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 10px; font-weight: 500;">Loading fee structure...</p>
                 </div>
             </div>
         </div>
 
         <!-- ===== QUICK ACTIONS ===== -->
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
-            <button onclick="initiatePayment()" style="background: #4C1D95; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.background='#6d28d9'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 15px rgba(76,29,149,0.3)'" onmouseout="this.style.background='#4C1D95'; this.style.transform='none'; this.style.boxShadow='none'">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
+            <button onclick="initiatePayment()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 14px 34px; border-radius: 14px; cursor: pointer; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 20px rgba(76,29,149,0.3);" 
+            onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 35px rgba(76,29,149,0.4)'" 
+            onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 20px rgba(76,29,149,0.3)'">
                 <i class="fas fa-credit-card"></i> Make Payment
             </button>
-            <button onclick="downloadStudentStatement()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+            <button onclick="downloadStudentStatement()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 14px 30px; border-radius: 14px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" 
+            onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#7c3aed'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.06)'" 
+            onmouseout="this.style.background='transparent'; this.style.borderColor='#e2e8f0'; this.style.transform='none'; this.style.boxShadow='none'">
                 <i class="fas fa-file-pdf"></i> Download Statement
             </button>
-            <button onclick="viewStudentInvoice()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+            <button onclick="viewStudentInvoice()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 14px 30px; border-radius: 14px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" 
+            onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#7c3aed'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.06)'" 
+            onmouseout="this.style.background='transparent'; this.style.borderColor='#e2e8f0'; this.style.transform='none'; this.style.boxShadow='none'">
                 <i class="fas fa-receipt"></i> View Invoices
             </button>
         </div>
 
         <!-- ===== LAST UPDATED ===== -->
-        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 12px 0; font-size: 12px; color: #94a3b8; border-top: 1px solid #e5e7eb;">
-            <span><i class="fas fa-clock"></i> Last updated: <span id="financeLastUpdated">Just now</span></span>
-            <span><i class="fas fa-lock" style="color: #10b981;"></i> Secured connection</span>
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 16px 0; font-size: 12px; color: #94a3b8; border-top: 1px solid rgba(229,231,235,0.5);">
+            <span><i class="fas fa-clock" style="margin-right: 4px;"></i> Last updated: <span id="financeLastUpdated">Just now</span></span>
+            <span><i class="fas fa-lock" style="color: #10b981; margin-right: 4px;"></i> Secured connection</span>
+            <span><i class="fas fa-shield-alt" style="color: #7c3aed; margin-right: 4px;"></i> Encrypted</span>
         </div>
+
+        <!-- ===== SPIN ANIMATION STYLE ===== -->
+        <style>
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+            /* Smooth transitions */
+            .finance-transition {
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            /* Glass morphism effects */
+            .glass {
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+            }
+            /* Custom scrollbar */
+            ::-webkit-scrollbar {
+                height: 6px;
+                width: 6px;
+            }
+            ::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 10px;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 10px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+            }
+        </style>
 
     </div>
 </section>
