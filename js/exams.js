@@ -1,7 +1,7 @@
 (function() {
     'use strict';
      
-    console.log('✅ exams.js - COMPLETE FIXED VERSION WITH TIMER & ROUND BUTTONS');
+    console.log('✅ exams.js - COMPLETE FIXED VERSION WITH CHART, TIMER & ROUND BUTTONS');
     
     // ============================================
     // 🕐 KENYA TIMEZONE HELPERS
@@ -69,7 +69,6 @@
             this.currentFilter = 'all';
             this.releasedResults = new Set();
             this.countdownInterval = null;
-            this.timerUpdateInterval = null;
             
             // User profile
             this.userProfile = {};
@@ -84,6 +83,9 @@
             this.userId = null;
             this.isTVETStudent = false;
             
+            // Chart state
+            this.currentChartView = 'both';
+            
             // Cache DOM elements
             this.cacheElements();
             
@@ -96,12 +98,11 @@
         }
         
         // ============================================
-        // ⏱️ COUNTDOWN TIMER - WITH HOURS, MINUTES, SECONDS
+        // ⏱️ COUNTDOWN TIMER
         // ============================================
         startCountdownTimer() {
             if (this.countdownInterval) clearInterval(this.countdownInterval);
             
-            // Update every second
             this.countdownInterval = setInterval(() => {
                 if (this.currentExams && this.currentExams.length > 0) {
                     this.updateAllCountdowns();
@@ -113,20 +114,15 @@
         
         updateAllCountdowns() {
             const kenyaNow = getKenyaNow();
-            let updated = false;
             
             this.currentExams.forEach(exam => {
-                // Only update exams that are available
                 if (exam.actionState === 'available' && exam.examStartDateTime && exam.examEndDateTime) {
                     if (kenyaNow >= exam.examStartDateTime && kenyaNow <= exam.examEndDateTime) {
                         const timeLeftMs = exam.examEndDateTime - kenyaNow;
-                        
-                        // Calculate hours, minutes, seconds
                         const hours = Math.floor(timeLeftMs / (1000 * 60 * 60));
                         const minutes = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
                         const seconds = Math.floor((timeLeftMs % (1000 * 60)) / 1000);
                         
-                        // Update the DOM
                         const rowElement = document.querySelector(`tr[data-exam-id="${exam.id}"]`);
                         if (rowElement) {
                             const timerElement = rowElement.querySelector('.exam-timer');
@@ -135,48 +131,6 @@
                                     <span class="timer-display">
                                         <i class="fas fa-hourglass-half"></i>
                                         ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}
-                                    </span>
-                                `;
-                                updated = true;
-                            }
-                        }
-                    } else if (kenyaNow > exam.examEndDateTime) {
-                        // Exam expired - update status
-                        const rowElement = document.querySelector(`tr[data-exam-id="${exam.id}"]`);
-                        if (rowElement) {
-                            const timerElement = rowElement.querySelector('.exam-timer');
-                            if (timerElement) {
-                                timerElement.innerHTML = `
-                                    <span class="timer-expired">
-                                        <i class="fas fa-clock"></i> Expired
-                                    </span>
-                                `;
-                            }
-                            // Update the action button
-                            const actionBtn = rowElement.querySelector('.exam-action-btn');
-                            if (actionBtn) {
-                                actionBtn.innerHTML = '<i class="fas fa-times-circle"></i> Missed';
-                                actionBtn.className = 'exam-action-btn btn-missed';
-                                actionBtn.disabled = true;
-                            }
-                        }
-                    }
-                } else if (exam.actionState === 'upcoming' && exam.examStartDateTime) {
-                    // Show countdown to start
-                    if (kenyaNow < exam.examStartDateTime) {
-                        const timeToStart = exam.examStartDateTime - kenyaNow;
-                        const hours = Math.floor(timeToStart / (1000 * 60 * 60));
-                        const minutes = Math.floor((timeToStart % (1000 * 60 * 60)) / (1000 * 60));
-                        const seconds = Math.floor((timeToStart % (1000 * 60)) / 1000);
-                        
-                        const rowElement = document.querySelector(`tr[data-exam-id="${exam.id}"]`);
-                        if (rowElement) {
-                            const timerElement = rowElement.querySelector('.exam-timer');
-                            if (timerElement) {
-                                timerElement.innerHTML = `
-                                    <span class="timer-upcoming">
-                                        <i class="fas fa-clock"></i>
-                                        ${hours > 0 ? hours + 'h ' : ''}${minutes}m ${seconds}s
                                     </span>
                                 `;
                             }
@@ -421,9 +375,7 @@
         applyDataFilter() {
             const kenyaNow = getKenyaNow();
             
-            // First, update all exams with proper status based on current date
             this.allExams = this.allExams.map(exam => {
-                // If exam date has passed and student didn't take it, mark as MISSED
                 if (exam.examEndDateTime && kenyaNow > exam.examEndDateTime && !exam.hasGrade) {
                     exam.isCompleted = true;
                     exam.actionState = 'expired';
@@ -431,19 +383,16 @@
                     exam.gradeClass = 'missed';
                     exam.buttonText = 'Missed';
                 }
-                // If exam date has passed and student took it but not released, mark as pending
                 else if (exam.examEndDateTime && kenyaNow > exam.examEndDateTime && exam.hasGrade && !exam.isReleased) {
                     exam.isCompleted = true;
                     exam.actionState = 'pending_release';
                     exam.gradeText = 'Pending Release';
                     exam.gradeClass = 'pending';
                 }
-                // If exam date is in the future, keep as current
                 else if (exam.examStartDateTime && kenyaNow < exam.examStartDateTime) {
                     exam.isCompleted = false;
                     exam.actionState = 'upcoming';
                 }
-                // If exam is currently available
                 else if (exam.examStartDateTime && kenyaNow >= exam.examStartDateTime && kenyaNow <= exam.examEndDateTime) {
                     exam.isCompleted = false;
                     exam.actionState = 'available';
@@ -451,7 +400,6 @@
                 return exam;
             });
             
-            // Now filter into current and completed
             this.currentExams = this.allExams.filter(exam => 
                 !exam.isCompleted && 
                 exam.actionState !== 'expired' && 
@@ -475,6 +423,7 @@
             this.displayTables();
             this.updateCounts();
             this.updatePerformanceSummary();
+            this.initPerformanceChart();
         }
         
         // ============================================
@@ -601,12 +550,10 @@
         }
         
         // ============================================
-        // 🔧 PROCESS EXAMS DATA - COMPLETE FIXED VERSION
+        // 🔧 PROCESS EXAMS DATA
         // ============================================
         processExamsData(exams, grades) {
-            // Block/Term normalization map
             const blockMap = {
-                // KRCHN Blocks
                 'Introductory': 'Introductory Block',
                 'Introductory Block': 'Introductory Block',
                 'Block 1': 'Block 1',
@@ -624,8 +571,6 @@
                 'Block 5': 'Block 5',
                 'Final': 'Final Block',
                 'Final Block': 'Final Block',
-                
-                // TVET Terms
                 'Year 1 Term 1': 'Year 1 Term 1',
                 'Y1T1': 'Year 1 Term 1',
                 'Year1Term1': 'Year 1 Term 1',
@@ -653,12 +598,10 @@
                 'Year 3 Term 3': 'Year 3 Term 3',
                 'Y3T3': 'Year 3 Term 3',
                 'Year3Term3': 'Year 3 Term 3',
-                
                 'General': 'General',
                 'All': 'All'
             };
             
-            // Get student info
             let rawBlockOrTerm = this.userBlock || this.userTerm || this.userProfile?.block || 
                                  this.userProfile?.current_block || this.userProfile?.term || 'General';
             
@@ -677,7 +620,6 @@
                 'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
             ];
             
-            // Build grade map
             const gradeMap = new Map();
             grades.forEach(grade => {
                 const gradeWithId = {
@@ -687,7 +629,6 @@
                 gradeMap.set(String(grade.exam_id), gradeWithId);
             });
             
-            // Filter exams - INTAKE FIRST with Block/Term support
             const filteredExams = exams.filter(exam => {
                 const rawExamBlock = exam.block || exam.block_term || exam.term || 'General';
                 const examBlockOrTerm = blockMap[rawExamBlock] || rawExamBlock;
@@ -697,7 +638,6 @@
                 const hasGrade = gradeMap.has(String(exam.id));
                 const intakeMatch = examIntake == studentIntake;
                 
-                // Block/Term match
                 let blockTermMatch = false;
                 
                 if (examBlockOrTerm === 'General' || examBlockOrTerm === 'All' || studentBlockOrTerm === 'General') {
@@ -705,7 +645,6 @@
                 } else if (examBlockOrTerm === studentBlockOrTerm) {
                     blockTermMatch = true;
                 } else if (isTVET) {
-                    // TVET: Match by Year and Term
                     const examYearMatch = examBlockOrTerm.match(/Year\s*(\d+)/i);
                     const studentYearMatch = studentBlockOrTerm.match(/Year\s*(\d+)/i);
                     const examTermMatch = examBlockOrTerm.match(/Term\s*(\d+)/i);
@@ -719,7 +658,6 @@
                         }
                     }
                 } else {
-                    // KRCHN: Match by Block number
                     const examNum = examBlockOrTerm.match(/\d+/);
                     const studentNum = studentBlockOrTerm.match(/\d+/);
                     if (examNum && studentNum && examNum[0] === studentNum[0]) {
@@ -729,7 +667,6 @@
                     }
                 }
                 
-                // Program match
                 let programMatch = false;
                 if (isTVET) {
                     programMatch = tvetPrograms.includes(examProgram) || 
@@ -743,7 +680,6 @@
                                    !examProgram;
                 }
                 
-                // Decision rules
                 let shouldShow = false;
                 
                 if (intakeMatch) {
@@ -762,7 +698,6 @@
             console.log(`📊 After filtering: ${filteredExams.length} of ${exams.length} exams kept`);
             exams = filteredExams;
             
-            // Build exam groups
             const kenyaNow = getKenyaNow();
             const examGroups = new Map();
             
@@ -815,12 +750,10 @@
                 }
             });
             
-            // Process each exam
             this.allExams = Array.from(examGroups.values()).map(group => {
                 const grade = group.grade;
                 const gradeId = grade?.id || grade?._id || grade?.grade_id || null;
                 
-                // Determine release status
                 let isReleased = false;
                 let isPendingRelease = false;
                 
@@ -845,7 +778,6 @@
                     }
                 }
                 
-                // Check if TVET
                 const examProgram = group.program_type || '';
                 const isExamTVET = this.TVET_PROGRAMS.includes(examProgram) || examProgram === 'TVET';
                 
@@ -856,7 +788,6 @@
                 const combinedCourse = Array.from(group.course_levels).join(' · ') || group.course || 'General';
                 const blockTermDisplay = isTVET ? (this.userTerm || group.block_term || 'Year 1 Term 1') : (group.block_term || 'General');
                 
-                // Extract scores
                 const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
                 const cat2Score = grade?.cat_2_score ?? null;
                 const finalScore = grade?.exam_score ?? null;
@@ -870,7 +801,6 @@
                 const examType = (group.exam_type || '').toUpperCase();
                 const isCatExam = examType.includes('CAT');
                 
-                // Calculate exam date/time
                 let examStartDateTime = null;
                 let examEndDateTime = null;
                 let formattedExamDateTime = 'TBA';
@@ -903,7 +833,6 @@
                     }
                 }
                 
-                // Determine status based on date
                 if (examStartDateTime && examEndDateTime) {
                     if (kenyaNow < examStartDateTime) {
                         examStatus = 'upcoming';
@@ -937,7 +866,6 @@
                 const hasValidLink = group.exam_link && group.exam_link.trim() !== '' && 
                                     (group.exam_link.startsWith('http') || group.exam_link.includes('docs.google.com'));
                 
-                // Determine final state
                 let finalStatus = examStatus;
                 let finalCanStart = false;
                 let finalMessage = statusMessage;
@@ -952,7 +880,6 @@
                 const isClosed = group.status === 'Completed' || group.status === 'Closed';
                 const isExpired = examStatus === 'expired' || isClosed;
                 
-                // 1. RELEASED + STUDENT TOOK IT
                 if (isReleased && hasTaken) {
                     isCompleted = true;
                     finalStatus = 'completed';
@@ -988,7 +915,6 @@
                         gradeClass = 'completed';
                     }
                 }
-                // 2. CLOSED + NOT TAKEN = MISSED
                 else if (isExpired && !hasTaken) {
                     finalStatus = 'expired';
                     finalCanStart = false;
@@ -999,7 +925,6 @@
                     gradeClass = 'missed';
                     displayPercentage = null;
                 }
-                // 3. PENDING RELEASE
                 else if (isPendingRelease) {
                     finalStatus = 'pending_release';
                     finalCanStart = false;
@@ -1010,7 +935,6 @@
                     gradeClass = 'pending';
                     displayPercentage = null;
                 }
-                // 4. TOOK BUT NOT RELEASED
                 else if (hasTaken && !isReleased) {
                     finalStatus = 'pending_release';
                     finalCanStart = false;
@@ -1021,7 +945,6 @@
                     gradeClass = 'pending';
                     displayPercentage = null;
                 }
-                // 5. AVAILABLE
                 else if (examStatus === 'available' && !hasTaken && hasValidLink) {
                     finalStatus = 'available';
                     finalCanStart = true;
@@ -1029,7 +952,6 @@
                     buttonText = 'Start Exam';
                     isCompleted = false;
                 }
-                // 6. UPCOMING
                 else if (examStatus === 'upcoming' && !hasTaken) {
                     finalStatus = 'upcoming';
                     finalCanStart = false;
@@ -1037,14 +959,12 @@
                     buttonText = 'Coming Soon';
                     isCompleted = false;
                 }
-                // 7. DEFAULT
                 else {
                     finalStatus = 'pending';
                     buttonText = 'Not Available';
                     isCompleted = false;
                 }
                 
-                // Format displays
                 let cat1Display = '--';
                 let cat2Display = '--';
                 let finalDisplay = '--';
@@ -1066,6 +986,8 @@
                 
                 const formattedGradedDate = grade?.graded_at ? 
                     formatKenyaDate(new Date(new Date(grade.graded_at).getTime() + (3 * 60 * 60 * 1000))) : '--';
+                
+                const gradedAt = grade?.graded_at || group.exam_date || null;
                 
                 return {
                     ...group,
@@ -1105,6 +1027,7 @@
                     examStartTime: group.exam_start_time,
                     formattedExamDateTime: formattedExamDateTime,
                     formattedGradedDate: formattedGradedDate,
+                    gradedAt: gradedAt,
                     programBadgeClass: programBadgeClass,
                     programIcon: programIcon,
                     programDisplay: combinedProgram,
@@ -1118,7 +1041,6 @@
                 };
             });
             
-            // Log results
             const releasedCount = this.allExams.filter(e => e.isReleased).length;
             const pendingCount = this.allExams.filter(e => e.actionState === 'pending_release').length;
             const currentCount = this.allExams.filter(e => !e.isCompleted && e.actionState !== 'expired' && e.actionState !== 'pending_release').length;
@@ -1134,7 +1056,7 @@
         }
         
         // ============================================
-        // 📊 DISPLAY TABLES - WITH ROUND BUTTONS & TIMER
+        // 📊 DISPLAY TABLES - WITH LATEST FIRST SORTING
         // ============================================
         displayTables() {
             this.displayCurrentTable();
@@ -1142,7 +1064,6 @@
             this.updateCounts();
             this.updateEmptyStates();
             
-            // Start timer updates after rendering
             setTimeout(() => this.updateAllCountdowns(), 100);
         }
         
@@ -1183,15 +1104,11 @@
                     examDisplayName = 'Assessment';
                 }
                 
-                // Check if exam is actually expired (date passed)
                 let isActuallyExpired = false;
                 if (exam.examEndDateTime && kenyaNow > exam.examEndDateTime) {
                     isActuallyExpired = true;
                 }
                 
-                // ============================================
-                // 🎯 ROUND ACTION BUTTON WITH TIMER
-                // ============================================
                 let actionHtml = '';
                 let timerHtml = '';
                 let timerClass = '';
@@ -1261,10 +1178,8 @@
                     `;
                 }
                 
-                // Status badge
                 let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
                 
-                // Assessment info
                 let assessmentCell = `
                     <div class="assessment-info-box">
                         <div class="assessment-row-top">
@@ -1307,9 +1222,17 @@
         displayCompletedTable() {
             if (!this.completedTable) return;
             
-            const completedReleased = this.completedExams.filter(exam => 
-                exam.isCompleted || exam.isReleased || exam.actionState === 'expired' || exam.actionState === 'pending_release'
-            );
+            // ✅ SORT: Latest first - newest to oldest
+            const completedReleased = this.completedExams
+                .filter(exam => 
+                    exam.isCompleted || exam.isReleased || 
+                    exam.actionState === 'expired' || exam.actionState === 'pending_release'
+                )
+                .sort((a, b) => {
+                    const dateA = a.gradedAt || a.examDate || a.examStartDateTime || a.created_at || new Date(0);
+                    const dateB = b.gradedAt || b.examDate || b.examStartDateTime || b.created_at || new Date(0);
+                    return new Date(dateB) - new Date(dateA);
+                });
             
             if (completedReleased.length === 0) {
                 this.completedTable.innerHTML = `
@@ -1371,7 +1294,6 @@
                     displayClass = 'missed';
                 }
                 
-                // Status badges
                 let statusBadges = '';
                 if (exam.isReleased) {
                     statusBadges = '<span class="badge-released">✅ Released</span>';
@@ -1424,9 +1346,6 @@
                 
                 let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
                 
-                // ============================================
-                // 🎯 ROUND ACTION BUTTON FOR COMPLETED
-                // ============================================
                 let actionHtml = '';
                 if (exam.isReleased && exam.hasGrade) {
                     actionHtml = `
@@ -1477,6 +1396,251 @@
         }
         
         // ============================================
+        // 📊 PERFORMANCE CHART - COMPLETE
+        // ============================================
+        
+        initPerformanceChart() {
+            const ctx = document.getElementById('performanceGraph');
+            if (!ctx) {
+                console.warn('⚠️ Performance graph canvas not found');
+                return;
+            }
+            
+            if (window.performanceChart) {
+                window.performanceChart.destroy();
+                window.performanceChart = null;
+            }
+            
+            const completedData = this.getCompletedChartData();
+            
+            if (completedData.length === 0) {
+                const noDataEl = document.getElementById('graphNoData');
+                const canvasEl = document.getElementById('performanceGraph');
+                if (noDataEl) noDataEl.style.display = 'block';
+                if (canvasEl) canvasEl.style.display = 'none';
+                console.log('📊 No data for performance chart');
+                return;
+            }
+            
+            const noDataEl = document.getElementById('graphNoData');
+            const canvasEl = document.getElementById('performanceGraph');
+            if (noDataEl) noDataEl.style.display = 'none';
+            if (canvasEl) canvasEl.style.display = 'block';
+            
+            const chartData = this.buildChartData(completedData, this.currentChartView || 'both');
+            
+            try {
+                window.performanceChart = new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    boxWidth: 12,
+                                    font: { size: 10 },
+                                    padding: 10,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ' + context.parsed.y + '%';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                grid: { display: true, color: 'rgba(0,0,0,0.05)' },
+                                ticks: { callback: function(value) { return value + '%'; } }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { 
+                                    maxRotation: 45,
+                                    minRotation: 30,
+                                    font: { size: 9 }
+                                }
+                            }
+                        },
+                        elements: {
+                            line: { tension: 0.3 },
+                            point: { radius: 4, hoverRadius: 6 }
+                        }
+                    }
+                });
+                console.log('✅ Performance chart initialized with', completedData.length, 'data points');
+            } catch (error) {
+                console.error('❌ Failed to create chart:', error);
+            }
+        }
+        
+        getCompletedChartData() {
+            const releasedExams = this.completedExams
+                .filter(exam => 
+                    exam.isReleased && exam.totalPercentage !== null
+                )
+                .sort((a, b) => {
+                    const dateA = a.gradedAt || a.examDate || a.examStartDateTime || new Date(0);
+                    const dateB = b.gradedAt || b.examDate || b.examStartDateTime || new Date(0);
+                    return new Date(dateA) - new Date(dateB);
+                });
+            
+            return releasedExams.map(exam => {
+                const isCat = exam.isCatExam || (exam.exam_type && exam.exam_type.toUpperCase().includes('CAT'));
+                
+                let cat1Score = null;
+                let cat2Score = null;
+                let examScore = null;
+                
+                if (exam.cat1Score !== null && exam.cat1Score !== undefined && exam.cat1Score > 0) {
+                    cat1Score = exam.cat1Score;
+                }
+                if (exam.cat2Score !== null && exam.cat2Score !== undefined && exam.cat2Score > 0) {
+                    cat2Score = exam.cat2Score;
+                }
+                if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
+                    examScore = exam.finalScore;
+                }
+                
+                let totalMarks = exam.marks_out_of || (isCat ? 30 : 100);
+                let displayScore = 0;
+                
+                if (isCat) {
+                    displayScore = exam.cat1Score || exam.cat2Score || exam.marks || exam.totalPercentage || 0;
+                    displayScore = Math.min(displayScore, totalMarks);
+                } else {
+                    displayScore = exam.marks || exam.totalPercentage || 0;
+                    displayScore = Math.min(displayScore, totalMarks);
+                }
+                
+                const pct = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : exam.totalPercentage || 0;
+                
+                return {
+                    name: exam.exam_name || exam.title || 'Assessment',
+                    totalPercentage: pct,
+                    cat1Score: cat1Score,
+                    cat2Score: cat2Score,
+                    examScore: examScore,
+                    isCat: isCat,
+                    isTVET: exam.isTVET || this.isTVETStudent,
+                    date: exam.gradedAt || exam.examDate || exam.examStartDateTime || new Date(),
+                    examId: exam.id
+                };
+            });
+        }
+        
+        buildChartData(data, view) {
+            const labels = data.map(d => {
+                const name = d.name.length > 20 ? d.name.substring(0, 18) + '...' : d.name;
+                return name;
+            });
+            
+            const catScores = data.map(d => d.cat1Score || d.cat2Score || null);
+            const examScores = data.map(d => d.examScore || null);
+            const overallScores = data.map(d => d.totalPercentage || null);
+            
+            let datasets = [];
+            
+            if (view === 'cats' || view === 'both') {
+                datasets.push({
+                    label: 'CAT Score',
+                    data: catScores,
+                    borderColor: '#4C1D95',
+                    backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#4C1D95',
+                    fill: true
+                });
+            }
+            
+            if (view === 'exams' || view === 'both') {
+                datasets.push({
+                    label: 'Exam Score',
+                    data: examScores,
+                    borderColor: '#059669',
+                    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#059669',
+                    fill: true
+                });
+            }
+            
+            if (view === 'both') {
+                datasets.push({
+                    label: 'Overall Average',
+                    data: overallScores,
+                    borderColor: '#FDB913',
+                    backgroundColor: 'rgba(253, 185, 19, 0.1)',
+                    tension: 0.3,
+                    borderDash: [5, 5],
+                    pointRadius: 3,
+                    pointBackgroundColor: '#FDB913',
+                    fill: true
+                });
+            }
+            
+            datasets.push({
+                label: 'Pass Mark (60%)',
+                data: labels.map(() => 60),
+                borderColor: '#ef4444',
+                backgroundColor: 'transparent',
+                borderDash: [3, 3],
+                pointRadius: 0,
+                fill: false,
+                borderWidth: 1.5
+            });
+            
+            return {
+                labels: labels,
+                datasets: datasets
+            };
+        }
+        
+        toggleGraphData(view) {
+            this.currentChartView = view;
+            
+            document.querySelectorAll('#graphToggleCats, #graphToggleExams, #graphToggleBoth').forEach(btn => {
+                if (btn) {
+                    btn.style.border = '1px solid #e2e8f0';
+                    btn.style.background = 'white';
+                    btn.style.color = '#64748b';
+                }
+            });
+            
+            let activeBtn = document.getElementById(`graphToggle${view.charAt(0).toUpperCase() + view.slice(1)}`);
+            if (activeBtn) {
+                activeBtn.style.border = '1px solid #4C1D95';
+                activeBtn.style.background = '#4C1D95';
+                activeBtn.style.color = 'white';
+            }
+            
+            this.updatePerformanceGraph();
+        }
+        
+        updatePerformanceGraph() {
+            if (window.performanceChart) {
+                const data = this.getCompletedChartData();
+                const chartData = this.buildChartData(data, this.currentChartView || 'both');
+                
+                window.performanceChart.data = chartData;
+                window.performanceChart.update();
+                console.log('📊 Performance chart updated with view:', this.currentChartView);
+            } else {
+                this.initPerformanceChart();
+            }
+        }
+        
+        // ============================================
         // 📊 VIEW DETAILED RESULTS
         // ============================================
         async viewDetailedResults(examId) {
@@ -1495,7 +1659,6 @@
                     return;
                 }
                 
-                // Get exam details
                 const { data: exam, error: examError } = await supabase
                     .from('exams')
                     .select('*')
@@ -1504,7 +1667,6 @@
                 
                 if (examError) throw examError;
                 
-                // Get questions
                 const { data: questions, error: questionsError } = await supabase
                     .from('exam_questions')
                     .select('*')
@@ -1513,7 +1675,6 @@
                 
                 if (questionsError) throw questionsError;
                 
-                // Get answers
                 const { data: answers, error: answersError } = await supabase
                     .from('exam_grades')
                     .select('*')
@@ -1523,7 +1684,6 @@
                 
                 if (answersError) throw answersError;
                 
-                // Get overall grade
                 const { data: grade, error: gradeError } = await supabase
                     .from('exam_grades')
                     .select('*')
@@ -1534,7 +1694,6 @@
                 
                 if (gradeError && gradeError.code !== 'PGRST116') throw gradeError;
                 
-                // Build question review
                 const questionReview = (questions || []).map(q => {
                     const answer = answers?.find(a => a.question_id === q.id);
                     const options = [];
@@ -1562,7 +1721,6 @@
                 const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
                 const passed = parseFloat(percentage) >= (exam?.pass_mark || 60);
                 
-                // Build questions HTML
                 let questionsHtml = '';
                 if (questionReview.length === 0) {
                     questionsHtml = `
@@ -1630,7 +1788,6 @@
                     });
                 }
                 
-                // Show modal
                 const modalHtml = `
                     <div id="detailedResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
                         <div style="background: white; border-radius: 16px; max-width: 750px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
@@ -1740,6 +1897,8 @@
             const latestAssessment = document.getElementById('latest-assessment-date');
             const totalSubmitted = document.getElementById('total-submitted');
             const overallAverage = document.getElementById('overall-average');
+            const catCount = document.getElementById('cat-count');
+            const examCount = document.getElementById('exam-count');
             
             if (completedReleased.length === 0) {
                 if (bestScore) bestScore.textContent = '--';
@@ -1753,6 +1912,8 @@
                 if (latestAssessment) latestAssessment.textContent = '--';
                 if (totalSubmitted) totalSubmitted.textContent = '0';
                 if (overallAverage) overallAverage.textContent = '--';
+                if (catCount) catCount.textContent = '0';
+                if (examCount) examCount.textContent = '0';
                 return;
             }
             
@@ -1770,12 +1931,16 @@
             const passRateValue = completedReleased.length > 0 ? (passed / completedReleased.length) * 100 : 0;
             
             const examDates = completedReleased
-                .map(e => e.examStartDateTime || e.examDate)
+                .map(e => e.gradedAt || e.examStartDateTime || e.examDate)
                 .filter(d => d)
                 .sort((a, b) => new Date(a) - new Date(b));
             
             const firstDate = examDates.length > 0 ? examDates[0] : null;
             const latestDate = examDates.length > 0 ? examDates[examDates.length - 1] : null;
+            
+            // Count CATs vs Exams
+            const cats = completedReleased.filter(e => e.isCatExam).length;
+            const exams = completedReleased.filter(e => !e.isCatExam).length;
             
             if (bestScore) bestScore.textContent = best.toFixed(1) + '%';
             if (lowestScore) lowestScore.textContent = lowest.toFixed(1) + '%';
@@ -1788,6 +1953,8 @@
             if (latestAssessment) latestAssessment.textContent = latestDate ? formatKenyaDate(latestDate) : '--';
             if (totalSubmitted) totalSubmitted.textContent = completedReleased.length;
             if (overallAverage) overallAverage.textContent = average.toFixed(1) + '%';
+            if (catCount) catCount.textContent = cats;
+            if (examCount) examCount.textContent = exams;
         }
         
         updateEmptyStates() {
@@ -1975,7 +2142,28 @@
     window.loadExams = () => window.examsModule?.refresh();
     window.refreshAssessments = () => window.examsModule?.refresh();
     
-    console.log('✅ Exams module ready - TVET, Timer & Round Buttons FIXED!');
+    // ============================================
+    // 📊 GRAPH TOGGLE FUNCTIONS - GLOBAL ACCESS
+    // ============================================
+    window.toggleGraphData = function(view) {
+        if (window.examsModule) {
+            window.examsModule.toggleGraphData(view);
+        } else {
+            console.warn('⚠️ ExamsModule not ready yet, retrying...');
+            setTimeout(() => window.toggleGraphData(view), 500);
+        }
+    };
+    
+    window.updatePerformanceGraph = function() {
+        if (window.examsModule) {
+            window.examsModule.updatePerformanceGraph();
+        } else {
+            console.warn('⚠️ ExamsModule not ready yet, retrying...');
+            setTimeout(window.updatePerformanceGraph, 500);
+        }
+    };
+    
+    console.log('✅ Exams module ready - TVET, Timer, Round Buttons, Chart & Latest First Sorted!');
 })();
 
 // ============================================
@@ -2000,12 +2188,9 @@
         return false;
     };
     
-    // Try immediately
     if (!dispatchEvent()) {
-        // Try after 500ms
         setTimeout(() => {
             if (!dispatchEvent()) {
-                // Try after 2s
                 setTimeout(dispatchEvent, 2000);
             }
         }, 500);
@@ -2020,384 +2205,3 @@ window.__examsData = {
 };
 
 console.log('✅ Exams module fully loaded and ready');
-
-// ============================================
-// 🎨 CSS for Round Buttons & Timer (Add to your CSS)
-// ============================================
-const style = document.createElement('style');
-style.textContent = `
-    /* Round Action Buttons */
-    .exam-action-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 16px;
-        border-radius: 50px;
-        border: none;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        min-width: 80px;
-        justify-content: center;
-    }
-    
-    .exam-action-btn i {
-        font-size: 13px;
-    }
-    
-    .btn-start {
-        background: linear-gradient(135deg, #38A169, #2F855A);
-        color: white;
-    }
-    .btn-start:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(56, 161, 105, 0.4);
-    }
-    
-    .btn-view {
-        background: linear-gradient(135deg, #3182CE, #2B6CB0);
-        color: white;
-    }
-    .btn-view:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(49, 130, 206, 0.4);
-    }
-    
-    .btn-upcoming {
-        background: linear-gradient(135deg, #ED8936, #DD6B20);
-        color: white;
-    }
-    
-    .btn-pending {
-        background: linear-gradient(135deg, #D69E2E, #B7791F);
-        color: white;
-    }
-    
-    .btn-missed {
-        background: linear-gradient(135deg, #E53E3E, #C53030);
-        color: white;
-        cursor: default;
-    }
-    
-    .btn-disabled {
-        background: #E2E8F0;
-        color: #718096;
-        cursor: default;
-    }
-    
-    .btn-disabled i {
-        color: #A0AEC0;
-    }
-    
-    /* Timer Display */
-    .exam-timer {
-        display: inline-block;
-        margin-top: 6px;
-        padding: 4px 12px;
-        border-radius: 50px;
-        font-size: 11px;
-        font-weight: 600;
-        font-family: 'Courier New', monospace;
-        background: rgba(0,0,0,0.05);
-        transition: all 0.3s ease;
-        min-width: 80px;
-        text-align: center;
-    }
-    
-    .exam-timer i {
-        margin-right: 4px;
-    }
-    
-    .timer-active {
-        background: #F0FFF4;
-        color: #38A169;
-        border: 1px solid #C6F6D5;
-        animation: pulse-green 1.5s ease-in-out infinite;
-    }
-    
-    .timer-upcoming {
-        background: #FFFAF0;
-        color: #DD6B20;
-        border: 1px solid #FEEBC8;
-    }
-    
-    .timer-expired {
-        background: #FFF5F5;
-        color: #E53E3E;
-        border: 1px solid #FED7D7;
-    }
-    
-    .has-timer .action-cell {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-    }
-    
-    @keyframes pulse-green {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    
-    /* Badge TVET Small */
-    .badge-tvet-small {
-        display: inline-block;
-        padding: 1px 8px;
-        border-radius: 50px;
-        font-size: 9px;
-        font-weight: 700;
-        background: #805AD5;
-        color: white;
-        margin-left: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    /* Assessment Info Box */
-    .assessment-info-box {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: 2px 0;
-    }
-    
-    .assessment-row-top {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-    
-    .assessment-name {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-    
-    .assessment-name strong {
-        font-size: 13px;
-        color: #2D3748;
-    }
-    
-    .exam-datetime {
-        font-size: 11px;
-        color: #718096;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-    
-    .exam-score {
-        font-size: 11px;
-        color: #4A5568;
-        font-weight: 500;
-    }
-    
-    .exam-pending {
-        font-size: 11px;
-        color: #D69E2E;
-        font-weight: 500;
-    }
-    
-    /* Status Badge */
-    .status-badge {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 50px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: capitalize;
-    }
-    
-    .status-badge.distinction {
-        background: #C6F6D5;
-        color: #065F46;
-    }
-    
-    .status-badge.credit {
-        background: #DBEAFE;
-        color: #1E40AF;
-    }
-    
-    .status-badge.pass {
-        background: #FEF3C7;
-        color: #92400E;
-    }
-    
-    .status-badge.fail {
-        background: #FEE2E2;
-        color: #991B1B;
-    }
-    
-    .status-badge.pending {
-        background: #F3F4F6;
-        color: #6B7280;
-    }
-    
-    .status-badge.missed {
-        background: #FEE2E2;
-        color: #991B1B;
-    }
-    
-    .status-badge.completed {
-        background: #E9D8FD;
-        color: #6B46C1;
-    }
-    
-    /* Grade Badge */
-    .grade-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 50px;
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .grade-badge.distinction {
-        background: #C6F6D5;
-        color: #065F46;
-    }
-    
-    .grade-badge.credit {
-        background: #DBEAFE;
-        color: #1E40AF;
-    }
-    
-    .grade-badge.pass {
-        background: #FEF3C7;
-        color: #92400E;
-    }
-    
-    .grade-badge.fail {
-        background: #FEE2E2;
-        color: #991B1B;
-    }
-    
-    .grade-badge.pending {
-        background: #F3F4F6;
-        color: #6B7280;
-    }
-    
-    .grade-badge.missed {
-        background: #FEE2E2;
-        color: #991B1B;
-    }
-    
-    /* Row states */
-    .row-released {
-        background-color: #FAFCFE !important;
-    }
-    
-    .row-pending {
-        background-color: #FFFAF0 !important;
-    }
-    
-    /* Badge released/pending */
-    .badge-released {
-        display: inline-block;
-        padding: 1px 8px;
-        border-radius: 50px;
-        font-size: 9px;
-        font-weight: 600;
-        background: #C6F6D5;
-        color: #065F46;
-    }
-    
-    .badge-pending {
-        display: inline-block;
-        padding: 1px 8px;
-        border-radius: 50px;
-        font-size: 9px;
-        font-weight: 600;
-        background: #FEF3C7;
-        color: #92400E;
-    }
-    
-    .badge-cat {
-        display: inline-block;
-        padding: 1px 8px;
-        border-radius: 50px;
-        font-size: 9px;
-        font-weight: 700;
-        background: #9F7AEA;
-        color: white;
-        text-transform: uppercase;
-    }
-    
-    .badge-final {
-        display: inline-block;
-        padding: 1px 8px;
-        border-radius: 50px;
-        font-size: 9px;
-        font-weight: 700;
-        background: #FC8181;
-        color: white;
-        text-transform: uppercase;
-    }
-    
-    /* TVET/KRCHN Badges */
-    .badge-tvet {
-        background: #805AD5;
-        color: white;
-        padding: 4px 12px;
-        border-radius: 50px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-    
-    .badge-krchn {
-        background: #3182CE;
-        color: white;
-        padding: 4px 12px;
-        border-radius: 50px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-    
-    .badge-tvet i, .badge-krchn i {
-        margin-right: 4px;
-    }
-    
-    .ms-2 {
-        margin-left: 8px;
-    }
-    
-    /* Loading spinner animation */
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    /* Table styling */
-    .assessment-row td {
-        vertical-align: middle;
-        padding: 12px 8px;
-    }
-    
-    .text-center {
-        text-align: center;
-    }
-    
-    .text-muted {
-        color: #A0AEC0;
-    }
-    
-    .py-4 {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-    }
-    
-    .d-block {
-        display: block;
-    }
-    
-    .mb-2 {
-        margin-bottom: 0.5rem;
-    }
-`;
-document.head.appendChild(style);
