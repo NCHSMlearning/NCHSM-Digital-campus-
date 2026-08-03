@@ -1,6 +1,7 @@
 // ============================================
 // ✅ attendance.js - COMPLETE WITH SESSION SUPPORT
-// NO "This site says" popups!
+// ✅ Beautiful modals - NO "This site says" popups!
+// ✅ Enhanced table styling matching the HTML
 // ============================================
 
 (function() {
@@ -24,6 +25,12 @@
     let currentStudent = null;
     let deviceTableExists = null;
     let activeSessions = [];
+    let attendanceStats = {
+        present: 0,
+        pending: 0,
+        absent: 0,
+        total: 0
+    };
     
     // ============================================
     // ✅ BEAUTIFUL MODALS - NO "This site says"!
@@ -320,6 +327,24 @@
         if (lonEl) lonEl.textContent = location.lon.toFixed(6);
         if (accEl) accEl.textContent = location.acc.toFixed(1);
         
+        // Update GPS status in header
+        const gpsStatus = document.getElementById('gps-status');
+        if (gpsStatus) {
+            if (location.acc < 50) {
+                gpsStatus.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981;"></i> <span>GPS Locked (${location.acc.toFixed(0)}m)</span>`;
+                gpsStatus.style.background = '#d1fae5';
+                gpsStatus.style.color = '#065f46';
+            } else if (location.acc < 200) {
+                gpsStatus.innerHTML = `<i class="fas fa-satellite" style="color: #f59e0b;"></i> <span>GPS OK (${location.acc.toFixed(0)}m)</span>`;
+                gpsStatus.style.background = '#fef3c7';
+                gpsStatus.style.color = '#92400e';
+            } else {
+                gpsStatus.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> <span>GPS Weak (${location.acc.toFixed(0)}m)</span>`;
+                gpsStatus.style.background = '#fee2e2';
+                gpsStatus.style.color = '#991b1b';
+            }
+        }
+        
         let addressDisplay = document.getElementById('location-address');
         if (!addressDisplay) {
             const locationInfo = document.getElementById('location-info');
@@ -327,7 +352,7 @@
                 const addressDiv = document.createElement('div');
                 addressDiv.id = 'location-address';
                 addressDiv.className = 'location-address';
-                addressDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #666;';
+                addressDiv.style.cssText = 'margin-top: 8px; font-size: 12px; color: #64748b;';
                 locationInfo.appendChild(addressDiv);
                 addressDisplay = addressDiv;
             }
@@ -338,7 +363,7 @@
     }
     
     // ============================================
-    // LOAD ACTIVE SESSIONS - NEW
+    // LOAD ACTIVE SESSIONS
     // ============================================
     
     async function loadActiveSessions() {
@@ -364,14 +389,14 @@
             if (error) throw error;
             
             activeSessions = sessions || [];
+            console.log(`✅ Loaded ${activeSessions.length} active sessions`);
             
-            // Add session option to the dropdown if there are active sessions
-            const targetSelect = document.getElementById('attendance-target');
-            if (targetSelect && activeSessions.length > 0) {
-                // We'll add session options when needed
+            // Update active sessions count in stats
+            const sessionsEl = document.getElementById('stats-active-sessions');
+            if (sessionsEl) {
+                sessionsEl.textContent = activeSessions.length;
             }
             
-            console.log(`✅ Loaded ${activeSessions.length} active sessions`);
             return activeSessions;
             
         } catch (error) {
@@ -381,215 +406,7 @@
     }
     
     // ============================================
-    // SIGN IN TO SESSION - NEW
-    // ============================================
-    
-    async function signInToSession(sessionId) {
-        const session = activeSessions.find(s => s.id === sessionId);
-        if (!session) {
-            showToast('Session not found.', 'error');
-            return;
-        }
-        
-        const location = await getAccurateLocation();
-        if (!location) {
-            showToast('Unable to get GPS location. Please enable GPS.', 'error');
-            return;
-        }
-        
-        let distance = 0;
-        let status = 'Present';
-        let targetName = session.location_name || session.session_title || 'Session';
-        
-        if (session.target_latitude && session.target_longitude) {
-            distance = calculateDistance(
-                location.lat, location.lon,
-                parseFloat(session.target_latitude), parseFloat(session.target_longitude)
-            );
-            const radius = session.target_radius || 100;
-            
-            if (distance <= radius) {
-                status = 'Present';
-            } else if (distance <= radius * 2) {
-                status = 'Pending';
-            } else {
-                status = 'Absent';
-            }
-        }
-        
-        const confirmed = await showConfirmModal({
-            icon: '📅',
-            title: 'Sign in to Session',
-            subtitle: 'Confirm your attendance for this session:',
-            details: {
-                'Session': session.session_title || session.title || 'Session',
-                'Date': session.session_date ? new Date(session.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A',
-                'Time': session.session_time || 'TBD',
-                'Location': session.location_name || 'N/A',
-                'Status': status
-            }
-        });
-        
-        if (!confirmed) {
-            showToast('Check-in cancelled', 'warning');
-            return;
-        }
-        
-        try {
-            const supabase = getSupabase();
-            const studentId = getCurrentStudentId();
-            
-            if (!supabase || !studentId) {
-                throw new Error('Not logged in');
-            }
-            
-            const record = {
-                student_id: studentId,
-                session_id: sessionId,
-                check_in_time: new Date().toISOString(),
-                session_type: session.session_type || 'Class',
-                target_id: session.id,
-                target_name: session.session_title || session.title || 'Session',
-                latitude: location.lat,
-                longitude: location.lon,
-                accuracy_m: location.acc || 0,
-                distance_meters: distance || 0,
-                is_verified: status === 'Present',
-                attendance_status: status,
-                target_latitude: session.target_latitude || null,
-                target_longitude: session.target_longitude || null,
-                location_address: location.address || null,
-                location_friendly_name: session.location_name || 'Session Location',
-                program: session.target_program || 'KRCHN',
-                block: session.block_term || 'N/A',
-                student_name: window.db?.currentUserProfile?.full_name || 'Student'
-            };
-            
-            const { error } = await supabase
-                .from('geo_attendance_logs')
-                .insert([record]);
-            
-            if (error) throw error;
-            
-            showSuccessModal({
-                target: session.session_title || session.title || 'Session',
-                type: session.session_type || 'Class',
-                distance: (distance || 0).toFixed(0),
-                accuracy: (location.acc || 0).toFixed(0),
-                status: status,
-                session: session.session_title || session.title || 'Session'
-            });
-            
-            await loadHistory();
-            await loadActiveSessions();
-            
-        } catch (error) {
-            console.error('Sign-in error:', error);
-            showToast('Failed to sign in: ' + error.message, 'error');
-        }
-    }
-    
-    // ============================================
-    // UI ELEMENTS
-    // ============================================
-    
-    function createStatsDisplayIfNeeded() {
-        if (document.getElementById('stats-present-count')) return;
-        const heading = Array.from(document.querySelectorAll('h1, h2, h3')).find(h => h.textContent && h.textContent.includes('Daily Attendance'));
-        if (heading && heading.parentElement) {
-            const statsContainer = document.createElement('div');
-            statsContainer.id = 'attendance-stats-container';
-            statsContainer.style.cssText = `
-                display: flex; gap: 20px; margin: 20px 0; padding: 15px 20px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                flex-wrap: wrap;
-            `;
-            statsContainer.innerHTML = `
-                <div style="flex:1; text-align:center; min-width: 100px;">
-                    <div style="font-size:12px; opacity:0.8;">📅 PRESENT TODAY</div>
-                    <div id="stats-present-count" style="font-size:36px; font-weight:bold; color:#4ade80;">0</div>
-                </div>
-                <div style="flex:1; text-align:center; min-width: 100px;">
-                    <div style="font-size:12px; opacity:0.8;">⏰ CURRENT TIME</div>
-                    <div id="stats-current-time" style="font-size:24px; font-weight:bold; font-family:monospace;">--:--:--</div>
-                </div>
-                <div style="flex:1; text-align:center; min-width: 100px;">
-                    <div style="font-size:12px; opacity:0.8;">📍 GPS STATUS</div>
-                    <div id="stats-gps-status" style="font-size:16px; font-weight:bold; color:#93c5fd;">Ready</div>
-                </div>
-                <div style="flex:1; text-align:center; min-width: 100px;">
-                    <div style="font-size:12px; opacity:0.8;">📚 ACTIVE SESSIONS</div>
-                    <div id="stats-active-sessions" style="font-size:36px; font-weight:bold; color:#fcd34d;">0</div>
-                </div>
-            `;
-            heading.parentElement.insertBefore(statsContainer, heading.nextSibling);
-        }
-    }
-    
-    function addForceGPSButton() {
-        const container = document.querySelector('.check-in-controls');
-        if (container && !document.getElementById('force-gps-btn')) {
-            const btn = document.createElement('button');
-            btn.id = 'force-gps-btn';
-            btn.innerHTML = '🔄 Get REAL GPS (Force Fresh)';
-            btn.style.cssText = `
-                background: #f59e0b;
-                color: white;
-                border: none;
-                padding: 10px 16px;
-                border-radius: 8px;
-                margin: 10px 0;
-                cursor: pointer;
-                font-size: 14px;
-                width: 100%;
-                transition: all 0.3s ease;
-            `;
-            btn.onclick = async function() {
-                const statusEl = document.getElementById('stats-gps-status');
-                if (statusEl) statusEl.textContent = '⏳ Getting GPS...';
-                try {
-                    const location = await getAccurateLocation();
-                    await updateLocationDisplay(location);
-                    showToast(`📍 GPS Locked! Accuracy: ±${location.acc.toFixed(0)}m`, 'success');
-                    if (statusEl) statusEl.textContent = '✅ GPS Locked';
-                    const checkBtn = document.getElementById('check-in-button');
-                    if (checkBtn) { checkBtn.disabled = false; checkBtn.innerHTML = '📍 Check In Now'; }
-                } catch(e) {
-                    showToast('GPS failed: ' + e.message, 'error');
-                    if (statusEl) statusEl.textContent = '❌ GPS Failed';
-                }
-            };
-            container.insertBefore(btn, container.firstChild);
-        }
-    }
-    
-    function fixDropdown() {
-        const targetSelect = document.getElementById('attendance-target');
-        if (!targetSelect) return;
-        const newSelect = targetSelect.cloneNode(true);
-        targetSelect.parentNode.replaceChild(newSelect, targetSelect);
-        newSelect.addEventListener('change', function() {
-            if (this.value && this.value !== '') {
-                const parts = this.value.split('|');
-                if (parts.length >= 6) {
-                    window.selectedTarget = {
-                        id: parts[0], name: parts[1], type: parts[2],
-                        latitude: parseFloat(parts[3]), longitude: parseFloat(parts[4]), radius: parseFloat(parts[5])
-                    };
-                    const checkBtn = document.getElementById('check-in-button');
-                    if (checkBtn) checkBtn.disabled = false;
-                }
-            } else {
-                window.selectedTarget = null;
-                const checkBtn = document.getElementById('check-in-button');
-                if (checkBtn) checkBtn.disabled = true;
-            }
-        });
-    }
-    
-    // ============================================
-    // LOAD DATA
+    // LOAD APPROVED UNITS
     // ============================================
     
     async function loadApprovedUnits() {
@@ -614,6 +431,10 @@
         } catch(e) { return []; }
     }
     
+    // ============================================
+    // LOAD CLINICAL LOCATIONS
+    // ============================================
+    
     async function loadClinicalLocations() {
         try {
             const supabase = getSupabase();
@@ -629,6 +450,10 @@
         } catch(e) { return []; }
     }
     
+    // ============================================
+    // POPULATE TARGET OPTIONS
+    // ============================================
+    
     async function populateTargetOptions(sessionType) {
         const targetSelect = document.getElementById('attendance-target');
         if (!targetSelect) return;
@@ -636,7 +461,6 @@
         targetSelect.disabled = true;
         let options = [];
         
-        // ✅ NEW: Add session options if there are active sessions
         if (sessionType === 'session' || (sessionType === 'class' && activeSessions.length > 0)) {
             options = activeSessions.map(session => ({
                 id: `session_${session.id}`,
@@ -683,255 +507,102 @@
         });
         targetSelect.disabled = false;
         const targetGroup = document.getElementById('target-control-group');
-        if (targetGroup) targetGroup.style.display = 'flex';
+        if (targetGroup) targetGroup.style.display = 'block';
     }
     
-   // ============================================
-// ✅ DO CHECK-IN - COMPLETE FIX
-// ============================================
-
-async function doCheckIn() {
-    const btn = document.getElementById('check-in-button');
-    const targetSelect = document.getElementById('attendance-target');
-    const sessionTypeSelect = document.getElementById('session-type');
+    // ============================================
+    // UPDATE STATS DISPLAY
+    // ============================================
     
-    if (!selectedTarget && targetSelect?.value) {
-        const parts = targetSelect.value.split('|');
-        if (parts.length >= 6) {
-            selectedTarget = {
-                id: parts[0], name: parts[1], type: parts[2],
-                latitude: parseFloat(parts[3]), longitude: parseFloat(parts[4]), radius: parseFloat(parts[5])
-            };
-        }
-    }
-    if (!selectedTarget) {
-        showToast('Please select a target first', 'warning');
-        return;
-    }
-    
-    btn.disabled = true;
-    btn.innerHTML = '📍 Getting GPS...';
-    
-    try {
-        // ✅ STEP 1: Get student ID
-        const studentId = getCurrentStudentId();
-        if (!studentId) {
-            showToast('Please log in first', 'error');
-            btn.disabled = false;
-            btn.innerHTML = '📍 Check In Now';
-            return;
-        }
-        
-        // ✅ STEP 2: Fetch FULL student profile from database
-        const supabase = getSupabase();
-        if (!supabase) {
-            showToast('Database not available', 'error');
-            btn.disabled = false;
-            btn.innerHTML = '📍 Check In Now';
-            return;
-        }
-        
-        // ✅ Get complete student profile
-        const { data: studentProfile, error: profileError } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('user_id, student_id, full_name, block, program, intake_year, department')
-            .eq('user_id', studentId)
-            .maybeSingle();
-        
-        if (profileError) {
-            console.error('Profile fetch error:', profileError);
-        }
-        
-        // ✅ Use profile data or fallbacks
-        const studentRegNumber = studentProfile?.student_id || 'UNKNOWN-' + studentId.substring(0, 8);
-        const studentFullName = studentProfile?.full_name || 'Student';
-        const studentBlock = studentProfile?.block || 'Not Assigned';
-        const studentProgram = studentProfile?.program || 'KRCHN';
-        const studentIntake = studentProfile?.intake_year || '2025';
-        
-        console.log(`👤 Student: ${studentFullName} (${studentRegNumber})`);
-        console.log(`📚 Block: ${studentBlock}, Program: ${studentProgram}`);
-        
-        // ✅ STEP 3: Get GPS location
-        const location = await getAccurateLocation();
-        await updateLocationDisplay(location);
-        
-        const distance = calculateDistance(location.lat, location.lon, selectedTarget.latitude, selectedTarget.longitude);
-        const radius = selectedTarget.radius || 50;
-        const accuracy = location.acc;
-        
-        let status = 'Absent', verificationNote = '';
-        if (accuracy > radius * 2) { 
-            status = 'Pending'; 
-            verificationNote = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m)`; 
-        } else if (distance <= radius) { 
-            status = 'Present'; 
-            verificationNote = `✅ Verified within ${radius}m`; 
-        } else if (distance <= radius * 2) { 
-            status = 'Pending'; 
-            verificationNote = `⚠️ Within ${radius * 2}m, needs review`; 
-        } else { 
-            status = 'Absent'; 
-            verificationNote = `❌ Too far (${distance.toFixed(0)}m)`; 
-        }
-        
-        // ✅ STEP 4: Show confirmation modal with student info
-        const confirmed = await showConfirmModal({
-            icon: '📍',
-            title: 'Verify Check-in',
-            subtitle: 'Please confirm your attendance details:',
-            details: {
-                'Student': studentFullName,
-                'Reg No': studentRegNumber,
-                'Block': studentBlock,
-                'Program': studentProgram,
-                'Target': selectedTarget.name,
-                'Type': selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'session' ? 'Session' : 'Clinical',
-                'Location': location.address || 'Unknown',
-                'Distance': distance.toFixed(0) + 'm',
-                'GPS Accuracy': '±' + accuracy.toFixed(0) + 'm',
-                'Status': status
-            }
-        });
-        
-        if (!confirmed) {
-            btn.disabled = false;
-            btn.innerHTML = '📍 Check In Now';
-            showToast('Check-in cancelled', 'warning');
-            return;
-        }
-        
-        btn.innerHTML = '💾 Saving...';
-        const sessionType = sessionTypeSelect?.value || 'class';
-        
-        // ✅ STEP 5: Build COMPLETE record with ALL fields
-        const record = {
-            // ✅ Student identification (ALL fields!)
-            student_id: studentId,
-            user_id: studentId,
-            registration_number: studentRegNumber,
-            student_name: studentFullName,
-            block: studentBlock,
-            program: studentProgram,
-            intake_year: studentIntake,
+    async function updateStatsDisplay() {
+        try {
+            const supabase = getSupabase();
+            const studentId = getCurrentStudentId();
+            if (!supabase || !studentId) return;
             
-            // ✅ Check-in details
-            check_in_time: new Date().toISOString(),
-            session_type: sessionType,
-            target_id: selectedTarget.id,
-            target_name: selectedTarget.name,
-            location_name: selectedTarget.name,
-            
-            // ✅ GPS data
-            latitude: location.lat,
-            longitude: location.lon,
-            accuracy_m: location.acc,
-            distance_meters: distance,
-            location_address: location.address || `${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}`,
-            location_friendly_name: selectedTarget.name,
-            
-            // ✅ Status
-            is_verified: status === 'Present',
-            attendance_status: status,
-            verification_source: 'GPS',
-            
-            // ✅ Target coordinates
-            target_latitude: selectedTarget.latitude,
-            target_longitude: selectedTarget.longitude,
-            target_radius: radius,
-            
-            // ✅ Role and timestamps
-            role: 'student',
-            created_at: new Date().toISOString()
-        };
-        
-        // ✅ Add session_id if checking into a session
-        if (selectedTarget.type === 'session' && selectedTarget.id.startsWith('session_')) {
-            const sessionId = selectedTarget.id.replace('session_', '');
-            record.session_id = sessionId;
-            
-            const session = activeSessions.find(s => s.id === sessionId);
-            if (session) {
-                record.unit_name = session.unit_name || session.session_title;
-                record.block = session.block_term || studentBlock;
-            }
-        }
-        
-        // ✅ Add unit info for class type
-        if (sessionType === 'class') {
-            const unitParts = selectedTarget.name.split(' - ');
-            record.unit_code = unitParts[0] || '';
-            record.unit_name = selectedTarget.name;
-        } else if (sessionType === 'clinical') {
-            record.clinical_area = selectedTarget.name;
-        }
-        
-        // ✅ STEP 6: Save to database
-        const { error } = await supabase.from('geo_attendance_logs').insert([record]);
-        if (error) {
-            console.error('Insert error:', error);
-            throw error;
-        }
-        
-        console.log(`✅ Check-in saved! Record:`, record);
-        
-        // ✅ STEP 7: Show success modal
-        showSuccessModal({
-            target: selectedTarget.name,
-            type: selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'session' ? 'Session' : 'Clinical',
-            distance: distance.toFixed(0),
-            accuracy: accuracy.toFixed(0),
-            status: status,
-            note: verificationNote,
-            session: selectedTarget.type === 'session' ? selectedTarget.name : null
-        });
-        
-        // ✅ Refresh everything
-        await updateStatsData();
-        await loadHistory();
-        await loadActiveSessions();
-        
-        // ✅ Update the stats display
-        const presentEl = document.getElementById('stats-present-count');
-        if (presentEl) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const { data: todayPresent } = await supabase
+            const todayISO = today.toISOString();
+            
+            // Get today's stats
+            const { data: todayRecords, error } = await supabase
                 .from('geo_attendance_logs')
-                .select('id', { count: 'exact' })
+                .select('attendance_status, is_verified')
                 .eq('student_id', studentId)
-                .eq('attendance_status', 'Present')
-                .gte('check_in_time', today.toISOString());
-            presentEl.textContent = todayPresent?.length || 0;
+                .gte('check_in_time', todayISO);
+            
+            if (error) throw error;
+            
+            const stats = {
+                present: 0,
+                pending: 0,
+                absent: 0,
+                total: todayRecords?.length || 0
+            };
+            
+            todayRecords?.forEach(record => {
+                const status = record.attendance_status || 'Pending';
+                if (status === 'Present' || status === 'Verified') stats.present++;
+                else if (status === 'Pending') stats.pending++;
+                else if (status === 'Absent') stats.absent++;
+            });
+            
+            attendanceStats = stats;
+            
+            // Update DOM elements
+            const presentEl = document.getElementById('presentCount');
+            const pendingEl = document.getElementById('pendingCount');
+            const absentEl = document.getElementById('absentCount');
+            const totalEl = document.getElementById('totalCount');
+            
+            if (presentEl) presentEl.textContent = stats.present;
+            if (pendingEl) pendingEl.textContent = stats.pending;
+            if (absentEl) absentEl.textContent = stats.absent;
+            if (totalEl) totalEl.textContent = stats.total;
+            
+            // Update history stats if visible
+            const histPresent = document.getElementById('hist-present');
+            const histPending = document.getElementById('hist-pending');
+            const histAbsent = document.getElementById('hist-absent');
+            const histRate = document.getElementById('hist-rate');
+            
+            if (histPresent) histPresent.textContent = stats.present;
+            if (histPending) histPending.textContent = stats.pending;
+            if (histAbsent) histAbsent.textContent = stats.absent;
+            if (histRate) {
+                const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
+                histRate.textContent = rate + '%';
+            }
+            
+            console.log(`📊 Stats updated: Present: ${stats.present}, Pending: ${stats.pending}, Absent: ${stats.absent}, Total: ${stats.total}`);
+            
+        } catch (error) {
+            console.error('Error updating stats:', error);
         }
-        
-    } catch(error) {
-        console.error('❌ Check-in error:', error);
-        showToast('Check-in failed: ' + error.message, 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '📍 Check In Now';
     }
-}
+    
     // ============================================
-    // ✅ LOAD HISTORY - FIXED
+    // LOAD HISTORY
     // ============================================
     
     async function loadHistory() {
         const table = document.getElementById('geo-attendance-history');
         if (!table) { console.warn('History table not found'); return; }
         
-        table.innerHTML = `<tr><td colspan="6">Loading attendance history...</td></tr>`;
+        table.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+            <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
+            <p style="margin: 0; font-size: 13px;">Loading attendance history...</p>
+        </td></tr>`;
         
         const supabase = getSupabase();
         if (!supabase) {
-            table.innerHTML = `<tr><td colspan="6" style="color:#ef4444;">Database not available</td></tr>`;
+            table.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #ef4444;">Database not available</td></tr>`;
             return;
         }
         
         const studentId = getCurrentStudentId();
         if (!studentId) {
-            table.innerHTML = `<tr><td colspan="6">Please log in to view history</td></tr>`;
+            table.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">Please log in to view history</td></tr>`;
             return;
         }
         
@@ -941,18 +612,24 @@ async function doCheckIn() {
                 .select('*')
                 .eq('student_id', studentId)
                 .order('check_in_time', { ascending: false })
-                .limit(20);
+                .limit(50);
             
             if (error) {
                 console.error('History error:', error);
-                table.innerHTML = `<tr><td colspan="6" style="color:#ef4444;">Error: ${error.message}</td></tr>`;
+                table.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #ef4444;">Error: ${error.message}</td></tr>`;
                 return;
             }
             
             if (!data || data.length === 0) {
-                table.innerHTML = `<tr><td colspan="6">No attendance records found</td></tr>`;
+                table.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-calendar-times" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                    No attendance records found
+                </td></tr>`;
                 return;
             }
+            
+            // Update stats with history data
+            await updateStatsDisplay();
             
             table.innerHTML = data.map(log => {
                 const accuracy = log.accuracy_m || log.accuracy_meters || 0;
@@ -964,77 +641,49 @@ async function doCheckIn() {
                     hour: '2-digit', minute: '2-digit'
                 });
                 let status = log.attendance_status || 'Pending';
-                let statusColor = '#f59e0b', statusIcon = '⏳';
-                if (status === 'Present' || status === 'Verified') { statusColor = '#10b981'; statusIcon = '✅'; }
-                else if (status === 'Absent') { statusColor = '#ef4444'; statusIcon = '❌'; }
-                const sessionIcon = log.session_type === 'class' ? '📚' : '🏥';
-                const targetName = log.target_name || log.location_name || 'Unknown';
+                let statusClass = 'status-badge-pending';
+                let statusIcon = '⏳';
+                if (status === 'Present' || status === 'Verified') { 
+                    statusClass = 'status-badge-present'; 
+                    statusIcon = '✅'; 
+                } else if (status === 'Absent') { 
+                    statusClass = 'status-badge-absent'; 
+                    statusIcon = '❌'; 
+                }
                 
-                // Show session link if session_id exists
-                const sessionLink = log.session_id ? ` (Session: ${log.session_id.substring(0, 8)})` : '';
+                const sessionIcon = log.session_type === 'class' ? '📚' : log.session_type === 'session' ? '📅' : '🏥';
+                const targetName = log.target_name || log.location_name || 'Unknown';
+                const distanceClass = distance < 100 ? 'distance-verified' : distance < 200 ? 'distance-pending' : 'distance-absent';
                 
                 return `<tr>
-                    <td style="white-space: nowrap; font-size: 12px;">${time}</td>
-                    <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
-                    <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">${targetName}</td>
-                    <td style="color: ${statusColor}; font-weight: 600;">${statusIcon} ${status}</td>
-                    <td>${dist}</td>
-                    <td>±${accuracy.toFixed(0)}m</td>
+                    <td style="padding: 10px 14px; white-space: nowrap; font-size: 12px; color: #475569;">${time}</td>
+                    <td style="padding: 10px 14px;">${sessionIcon} <span style="font-weight: 500; color: #1e293b;">${log.session_type || 'Unknown'}</span></td>
+                    <td style="padding: 10px 14px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
+                        <span style="font-weight: 500; color: #1e293b;">${targetName}</span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span class="${statusClass}">${statusIcon} ${status}</span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span class="${distanceClass}" style="font-weight: 600;">${dist}</span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="color: #64748b;">±${accuracy.toFixed(0)}m</span>
+                    </td>
                 </tr>`;
             }).join('');
+            
             console.log(`✅ Loaded ${data.length} history records`);
-            updatePresentCount(data);
             
         } catch(e) {
             console.error('History error:', e);
-            table.innerHTML = `<tr><td colspan="6" style="color:#ef4444;">Error: ${e.message}</td></tr>`;
+            table.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #ef4444;">Error: ${e.message}</td></tr>`;
         }
     }
     
-    function updatePresentCount(records) {
-        const presentEl = document.getElementById('stats-present-count');
-        if (!presentEl) return;
-        if (!records || records.length === 0) { presentEl.textContent = '0'; return; }
-        const today = new Date(); today.setHours(0,0,0,0);
-        const todayRecords = records.filter(log => {
-            const logDate = new Date(log.check_in_time);
-            return logDate >= today && (log.attendance_status === 'Present' || log.attendance_status === 'Verified');
-        });
-        presentEl.textContent = todayRecords.length;
-    }
-    
-    async function updateStatsData() {
-        const presentEl = document.getElementById('stats-present-count');
-        if (!presentEl) { createStatsDisplayIfNeeded(); return; }
-        const supabase = getSupabase();
-        const studentId = getCurrentStudentId();
-        if (!supabase || !studentId) { presentEl.textContent = '0'; return; }
-        try {
-            const today = new Date(); today.setHours(0,0,0,0);
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('id', { count: 'exact' })
-                .eq('student_id', studentId)
-                .eq('attendance_status', 'Present')
-                .gte('check_in_time', today.toISOString());
-            if (error) throw error;
-            presentEl.textContent = data?.length || 0;
-            
-            // Update active sessions count
-            const sessionsEl = document.getElementById('stats-active-sessions');
-            if (sessionsEl) {
-                sessionsEl.textContent = activeSessions.length;
-            }
-        } catch(e) { presentEl.textContent = '?'; }
-    }
-    
-    function startTimeUpdates() {
-        updateStatsData();
-        setInterval(() => {
-            const timeEl = document.getElementById('stats-current-time');
-            if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
-        }, 1000);
-    }
+    // ============================================
+    // FILTER HISTORY
+    // ============================================
     
     async function filterHistory() {
         const filter = document.getElementById('history-filter');
@@ -1053,7 +702,10 @@ async function doCheckIn() {
             else if (value === 'month') { const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth()-1); query = query.gte('check_in_time', monthAgo.toISOString()); }
             const { data, error } = await query.limit(50);
             if (error) throw error;
-            if (!data || data.length === 0) { table.innerHTML = `<tr><td colspan="6">No records for this period</td></tr>`; return; }
+            if (!data || data.length === 0) { 
+                table.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">No records for this period</td></tr>`; 
+                return; 
+            }
             table.innerHTML = data.map(log => {
                 const accuracy = log.accuracy_m || log.accuracy_meters || 0;
                 const distance = log.distance_meters || 0;
@@ -1064,21 +716,286 @@ async function doCheckIn() {
                     hour: '2-digit', minute: '2-digit'
                 });
                 let status = log.attendance_status || 'Pending';
-                let statusColor = '#f59e0b', statusIcon = '⏳';
-                if (status === 'Present' || status === 'Verified') { statusColor = '#10b981'; statusIcon = '✅'; }
-                else if (status === 'Absent') { statusColor = '#ef4444'; statusIcon = '❌'; }
-                const sessionIcon = log.session_type === 'class' ? '📚' : '🏥';
+                let statusClass = 'status-badge-pending';
+                let statusIcon = '⏳';
+                if (status === 'Present' || status === 'Verified') { 
+                    statusClass = 'status-badge-present'; 
+                    statusIcon = '✅'; 
+                } else if (status === 'Absent') { 
+                    statusClass = 'status-badge-absent'; 
+                    statusIcon = '❌'; 
+                }
+                const sessionIcon = log.session_type === 'class' ? '📚' : log.session_type === 'session' ? '📅' : '🏥';
                 const targetName = log.target_name || log.location_name || 'Unknown';
+                const distanceClass = distance < 100 ? 'distance-verified' : distance < 200 ? 'distance-pending' : 'distance-absent';
+                
                 return `<tr>
-                    <td style="white-space: nowrap; font-size: 12px;">${time}</td>
-                    <td>${sessionIcon} ${log.session_type || 'Unknown'}</td>
-                    <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">${targetName}</td>
-                    <td style="color: ${statusColor}; font-weight: 600;">${statusIcon} ${status}</td>
-                    <td>${dist}</td>
-                    <td>±${accuracy.toFixed(0)}m</td>
+                    <td style="padding: 10px 14px; white-space: nowrap; font-size: 12px; color: #475569;">${time}</td>
+                    <td style="padding: 10px 14px;">${sessionIcon} <span style="font-weight: 500; color: #1e293b;">${log.session_type || 'Unknown'}</span></td>
+                    <td style="padding: 10px 14px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
+                        <span style="font-weight: 500; color: #1e293b;">${targetName}</span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span class="${statusClass}">${statusIcon} ${status}</span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span class="${distanceClass}" style="font-weight: 600;">${dist}</span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="color: #64748b;">±${accuracy.toFixed(0)}m</span>
+                    </td>
                 </tr>`;
             }).join('');
         } catch(e) { console.error('Filter error:', e); }
+    }
+    
+    // ============================================
+    // DO CHECK-IN
+    // ============================================
+    
+    async function doCheckIn() {
+        const btn = document.getElementById('check-in-button');
+        const targetSelect = document.getElementById('attendance-target');
+        const sessionTypeSelect = document.getElementById('session-type');
+        
+        if (!selectedTarget && targetSelect?.value) {
+            const parts = targetSelect.value.split('|');
+            if (parts.length >= 6) {
+                selectedTarget = {
+                    id: parts[0], name: parts[1], type: parts[2],
+                    latitude: parseFloat(parts[3]), longitude: parseFloat(parts[4]), radius: parseFloat(parts[5])
+                };
+            }
+        }
+        if (!selectedTarget) {
+            showToast('Please select a target first', 'warning');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = '📍 Getting GPS...';
+        
+        try {
+            const studentId = getCurrentStudentId();
+            if (!studentId) {
+                showToast('Please log in first', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                return;
+            }
+            
+            const supabase = getSupabase();
+            if (!supabase) {
+                showToast('Database not available', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                return;
+            }
+            
+            // Get student profile
+            const { data: studentProfile, error: profileError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, student_id, full_name, block, program, intake_year, department')
+                .eq('user_id', studentId)
+                .maybeSingle();
+            
+            if (profileError) {
+                console.error('Profile fetch error:', profileError);
+            }
+            
+            const studentRegNumber = studentProfile?.student_id || 'UNKNOWN-' + studentId.substring(0, 8);
+            const studentFullName = studentProfile?.full_name || 'Student';
+            const studentBlock = studentProfile?.block || 'Not Assigned';
+            const studentProgram = studentProfile?.program || 'KRCHN';
+            const studentIntake = studentProfile?.intake_year || '2025';
+            
+            console.log(`👤 Student: ${studentFullName} (${studentRegNumber})`);
+            
+            // Get GPS location
+            const location = await getAccurateLocation();
+            await updateLocationDisplay(location);
+            
+            const distance = calculateDistance(location.lat, location.lon, selectedTarget.latitude, selectedTarget.longitude);
+            const radius = selectedTarget.radius || 50;
+            const accuracy = location.acc;
+            
+            let status = 'Absent', verificationNote = '';
+            if (accuracy > radius * 2) { 
+                status = 'Pending'; 
+                verificationNote = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m)`; 
+            } else if (distance <= radius) { 
+                status = 'Present'; 
+                verificationNote = `✅ Verified within ${radius}m`; 
+            } else if (distance <= radius * 2) { 
+                status = 'Pending'; 
+                verificationNote = `⚠️ Within ${radius * 2}m, needs review`; 
+            } else { 
+                status = 'Absent'; 
+                verificationNote = `❌ Too far (${distance.toFixed(0)}m)`; 
+            }
+            
+            // Show confirmation modal
+            const confirmed = await showConfirmModal({
+                icon: '📍',
+                title: 'Verify Check-in',
+                subtitle: 'Please confirm your attendance details:',
+                details: {
+                    'Student': studentFullName,
+                    'Reg No': studentRegNumber,
+                    'Block': studentBlock,
+                    'Program': studentProgram,
+                    'Target': selectedTarget.name,
+                    'Type': selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'session' ? 'Session' : 'Clinical',
+                    'Distance': distance.toFixed(0) + 'm',
+                    'GPS Accuracy': '±' + accuracy.toFixed(0) + 'm',
+                    'Status': status
+                }
+            });
+            
+            if (!confirmed) {
+                btn.disabled = false;
+                btn.innerHTML = '📍 Check In Now';
+                showToast('Check-in cancelled', 'warning');
+                return;
+            }
+            
+            btn.innerHTML = '💾 Saving...';
+            const sessionType = sessionTypeSelect?.value || 'class';
+            
+            // Build record
+            const record = {
+                student_id: studentId,
+                user_id: studentId,
+                registration_number: studentRegNumber,
+                student_name: studentFullName,
+                block: studentBlock,
+                program: studentProgram,
+                intake_year: studentIntake,
+                check_in_time: new Date().toISOString(),
+                session_type: sessionType,
+                target_id: selectedTarget.id,
+                target_name: selectedTarget.name,
+                location_name: selectedTarget.name,
+                latitude: location.lat,
+                longitude: location.lon,
+                accuracy_m: location.acc,
+                distance_meters: distance,
+                location_address: location.address || `${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}`,
+                location_friendly_name: selectedTarget.name,
+                is_verified: status === 'Present',
+                attendance_status: status,
+                verification_source: 'GPS',
+                target_latitude: selectedTarget.latitude,
+                target_longitude: selectedTarget.longitude,
+                target_radius: radius,
+                role: 'student',
+                created_at: new Date().toISOString()
+            };
+            
+            // Add session_id if checking into a session
+            if (selectedTarget.type === 'session' && selectedTarget.id.startsWith('session_')) {
+                const sessionId = selectedTarget.id.replace('session_', '');
+                record.session_id = sessionId;
+                
+                const session = activeSessions.find(s => s.id === sessionId);
+                if (session) {
+                    record.unit_name = session.unit_name || session.session_title;
+                    record.block = session.block_term || studentBlock;
+                }
+            }
+            
+            // Add unit info for class type
+            if (sessionType === 'class') {
+                const unitParts = selectedTarget.name.split(' - ');
+                record.unit_code = unitParts[0] || '';
+                record.unit_name = selectedTarget.name;
+            } else if (sessionType === 'clinical') {
+                record.clinical_area = selectedTarget.name;
+            }
+            
+            const { error } = await supabase.from('geo_attendance_logs').insert([record]);
+            if (error) throw error;
+            
+            console.log(`✅ Check-in saved! Record:`, record);
+            
+            showSuccessModal({
+                target: selectedTarget.name,
+                type: selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'session' ? 'Session' : 'Clinical',
+                distance: distance.toFixed(0),
+                accuracy: accuracy.toFixed(0),
+                status: status,
+                note: verificationNote,
+                session: selectedTarget.type === 'session' ? selectedTarget.name : null
+            });
+            
+            await updateStatsDisplay();
+            await loadHistory();
+            await loadActiveSessions();
+            
+        } catch(error) {
+            console.error('❌ Check-in error:', error);
+            showToast('Check-in failed: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '📍 Check In Now';
+        }
+    }
+    
+    // ============================================
+    // EXPORT ATTENDANCE HISTORY
+    // ============================================
+    
+    async function exportAttendanceHistory() {
+        try {
+            const supabase = getSupabase();
+            const studentId = getCurrentStudentId();
+            if (!supabase || !studentId) {
+                showToast('Please log in to export', 'error');
+                return;
+            }
+            
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('student_id', studentId)
+                .order('check_in_time', { ascending: false });
+            
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                showToast('No attendance records to export', 'warning');
+                return;
+            }
+            
+            // Create CSV
+            let csv = 'Date,Session Type,Target,Status,Distance,Accuracy,Address\n';
+            data.forEach(log => {
+                const date = new Date(log.check_in_time).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' });
+                const status = log.attendance_status || 'Pending';
+                const distance = (log.distance_meters || 0).toFixed(0) + 'm';
+                const accuracy = (log.accuracy_m || 0).toFixed(0) + 'm';
+                const target = log.target_name || log.location_name || 'Unknown';
+                const address = log.location_address || '';
+                csv += `${date},${log.session_type || 'Unknown'},${target},${status},${distance},${accuracy},${address}\n`;
+            });
+            
+            // Download
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Attendance_History_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast(`✅ Exported ${data.length} records`, 'success');
+            
+        } catch (error) {
+            console.error('Export error:', error);
+            showToast('Export failed: ' + error.message, 'error');
+        }
     }
     
     // ============================================
@@ -1095,53 +1012,43 @@ async function doCheckIn() {
                 retries++;
             }
             
-            createStatsDisplayIfNeeded();
-            addForceGPSButton();
-            fixDropdown();
-            
-            // ✅ NEW: Load active sessions first
             await loadActiveSessions();
-            
             await loadApprovedUnits();
             await loadClinicalLocations();
-            await updateStatsData();
-            startTimeUpdates();
+            await updateStatsDisplay();
             
             const sessionType = document.getElementById('session-type');
             if (sessionType) {
                 sessionType.addEventListener('change', async () => {
                     const targetGroup = document.getElementById('target-control-group');
-                    // ✅ NEW: Add 'session' option if there are active sessions
                     if (sessionType.value === 'session') {
-                        if (targetGroup) targetGroup.style.display = 'flex';
+                        if (targetGroup) targetGroup.style.display = 'block';
                         await populateTargetOptions('session');
                     } else if (sessionType.value === 'class') {
-                        if (targetGroup) targetGroup.style.display = 'flex';
+                        if (targetGroup) targetGroup.style.display = 'block';
                         await populateTargetOptions('class');
                     } else if (sessionType.value === 'clinical') {
-                        if (targetGroup) targetGroup.style.display = 'flex';
+                        if (targetGroup) targetGroup.style.display = 'block';
                         await populateTargetOptions('clinical');
                     } else {
                         if (targetGroup) targetGroup.style.display = 'none';
                     }
                 });
                 
-                // ✅ NEW: Add 'session' option to the dropdown
-                const sessionTypeSelect = document.getElementById('session-type');
-                if (sessionTypeSelect) {
-                    // Check if 'session' option already exists
+                // Add 'session' option if there are active sessions
+                if (activeSessions.length > 0) {
                     let hasSessionOption = false;
-                    for (let i = 0; i < sessionTypeSelect.options.length; i++) {
-                        if (sessionTypeSelect.options[i].value === 'session') {
+                    for (let i = 0; i < sessionType.options.length; i++) {
+                        if (sessionType.options[i].value === 'session') {
                             hasSessionOption = true;
                             break;
                         }
                     }
-                    if (!hasSessionOption && activeSessions.length > 0) {
+                    if (!hasSessionOption) {
                         const option = document.createElement('option');
                         option.value = 'session';
                         option.textContent = '📅 Active Session';
-                        sessionTypeSelect.appendChild(option);
+                        sessionType.appendChild(option);
                     }
                 }
                 
@@ -1152,9 +1059,6 @@ async function doCheckIn() {
             
             const filterSelect = document.getElementById('history-filter');
             if (filterSelect) filterSelect.addEventListener('change', filterHistory);
-            
-            const refreshBtn = document.getElementById('refresh-history');
-            if (refreshBtn) refreshBtn.addEventListener('click', () => { loadHistory(); updateStatsData(); loadActiveSessions(); });
             
             const checkBtn = document.getElementById('check-in-button');
             if (checkBtn) checkBtn.onclick = (e) => { e.preventDefault(); doCheckIn(); };
@@ -1172,13 +1076,15 @@ async function doCheckIn() {
     // EXPOSE
     // ============================================
     
-    window.refreshStats = updateStatsData;
+    window.refreshStats = updateStatsDisplay;
     window.refreshHistory = loadHistory;
     window.filterHistory = filterHistory;
     window.getAccurateLocation = getAccurateLocation;
     window.signInToSession = signInToSession;
     window.loadActiveSessions = loadActiveSessions;
+    window.exportAttendanceHistory = exportAttendanceHistory;
     window.attendanceSystemReady = true;
+    window.loadAttendanceHistory = loadHistory;
     
     // ============================================
     // START
