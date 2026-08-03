@@ -281,113 +281,144 @@
             </li>
         </ul>
     </li>
-    
-    <!-- ACADEMIC DROPDOWN -->
-    <li class="nav-dropdown" style="margin-bottom: 2px;">
-        <a 
-            href="#" 
-            class="dropdown-toggle"
-            style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 14px;
-                border-radius: 10px;
-                color: white;
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: 500;
-                transition: all 0.2s;
-                cursor: pointer;
-            "
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-            onmouseout="this.style.background='transparent'"
-        >
-            <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
-            <span>Academic</span>
-            <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
-        </a>
-        <ul 
-            class="dropdown-menu"
-            style="
-                list-style: none;
-                padding: 4px 0 4px 20px;
-                margin: 0;
-                display: none;
-            "
-        >
-            <li>
-                <a 
-                    href="#" 
-                    data-tab="cats"
-                    style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 14px;
-                        border-radius: 8px;
-                        color: rgba(255,255,255,0.8);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    "
-                    onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                    onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                >
-                    <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                    <span>Exams / CATS</span>
-                    <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="examBadge">0</span>
-                </a>
-            </li>
-            <li>
-                <a 
-                    href="#" 
-                    data-tab="marks-management"
-                    style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 14px;
-                        border-radius: 8px;
-                        color: rgba(255,255,255,0.8);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                        background: rgba(5,150,105,0.15);
-                        border-left: 3px solid #10b981;
-                    "
-                    onmouseover="this.style.background='rgba(5,150,105,0.3)'; this.style.color='white'"
-                    onmouseout="this.style.background='rgba(5,150,105,0.15)'; this.style.color='rgba(255,255,255,0.8)'"
-                >
-                    <i class="fas fa-pen-alt" style="width: 18px; text-align: center; font-size: 12px; color: #10b981;"></i>
-                    <span>Marks Entry</span>
-                    <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
-                </a>
-            </li>
-            <li>
-                <a 
-                    href="#" 
-                    data-tab="resources"
-                    style="
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        padding: 8px 14px;
-                        border-radius: 8px;
-                        color: rgba(255,255,255,0.8);
-                        text-decoration: none;
-                        font-size: 13px;
-                        transition: all 0.2s;
-                    "
-                    onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
-                    onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
-                >
-                    <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
-                    <span>Resources</span>
-                </a>
-            </li>
-        </ul>
-    </li>
+   <!-- ACADEMIC DROPDOWN -->
+<li class="nav-dropdown" style="margin-bottom: 2px;">
+    <a 
+        href="#" 
+        class="dropdown-toggle"
+        style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        "
+        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+        onmouseout="this.style.background='transparent'"
+    >
+        <i class="fas fa-graduation-cap" style="width: 20px; text-align: center;"></i>
+        <span>Academic</span>
+        <i class="fas fa-chevron-down" style="margin-left: auto; font-size: 12px;"></i>
+    </a>
+    <ul 
+        class="dropdown-menu"
+        style="
+            list-style: none;
+            padding: 4px 0 4px 20px;
+            margin: 0;
+            display: none;
+        "
+    >
+        <!-- Academic Portfolio -->
+        <li>
+            <a 
+                href="#" 
+                data-tab="academic-portfolio"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                    background: rgba(5,150,105,0.15);
+                    border-left: 3px solid #10b981;
+                "
+                onmouseover="this.style.background='rgba(5,150,105,0.3)'; this.style.color='white'"
+                onmouseout="this.style.background='rgba(5,150,105,0.15)'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-folder-open" style="width: 18px; text-align: center; font-size: 12px; color: #10b981;"></i>
+                <span>Academic Portfolio</span>
+                <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
+            </a>
+        </li>
+        
+        <!-- Exams / CATS -->
+        <li>
+            <a 
+                href="#" 
+                data-tab="cats"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-file-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Exams / CATS</span>
+                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;" id="examBadge">0</span>
+            </a>
+        </li>
+        
+        <!-- Marks Entry -->
+        <li>
+            <a 
+                href="#" 
+                data-tab="marks-management"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                    background: rgba(5,150,105,0.15);
+                    border-left: 3px solid #10b981;
+                "
+                onmouseover="this.style.background='rgba(5,150,105,0.3)'; this.style.color='white'"
+                onmouseout="this.style.background='rgba(5,150,105,0.15)'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-pen-alt" style="width: 18px; text-align: center; font-size: 12px; color: #10b981;"></i>
+                <span>Marks Entry</span>
+                <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
+            </a>
+        </li>
+        
+        <!-- Resources -->
+        <li>
+            <a 
+                href="#" 
+                data-tab="resources"
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    color: rgba(255,255,255,0.8);
+                    text-decoration: none;
+                    font-size: 13px;
+                    transition: all 0.2s;
+                "
+                onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'"
+                onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'"
+            >
+                <i class="fas fa-file-upload" style="width: 18px; text-align: center; font-size: 12px;"></i>
+                <span>Resources</span>
+            </a>
+        </li>
+    </ul>
+</li>
     
     <!-- REPORTS -->
     <li style="margin-bottom: 2px;">
@@ -2360,6 +2391,124 @@
                     <p style="font-size: 13px; color: #64748B; margin-top: 6px;" id="bulkProgressText">Processing... 0%</p>
                 </div>
             </div>
+        </div>
+    </div>
+</section>
+
+            <!-- ===== ACADEMIC PORTFOLIO SECTION ===== -->
+<section id="academic-portfolio-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+        <div>
+            <h2 style="margin: 0;"><i class="fas fa-folder-open" style="color: #10b981;"></i> Academic Portfolio</h2>
+            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Complete academic portfolio for your assigned units</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <span style="background: #d1fae5; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #065f46; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-check-circle"></i> <span id="apCompletionStatus">0%</span> Complete
+            </span>
+            <button onclick="AcademicPortfolio.refresh()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Academic Portfolio Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #10b981;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="background: #d1fae5; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-file-alt" style="color: #10b981;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 20px; font-weight: 800; color: #0A3D62;" id="apTotalSchemes">0</div>
+                    <div style="font-size: 11px; color: #6b7280;">Schemes</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #3b82f6;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="background: #dbeafe; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-chalkboard-teacher" style="color: #3b82f6;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 20px; font-weight: 800; color: #0A3D62;" id="apTotalLessonPlans">0</div>
+                    <div style="font-size: 11px; color: #6b7280;">Lesson Plans</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="background: #fef3c7; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-clock" style="color: #f59e0b;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 20px; font-weight: 800; color: #0A3D62;" id="apPendingHOD">0</div>
+                    <div style="font-size: 11px; color: #6b7280;">Pending HOD</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #8b5cf6;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="background: #ede9fe; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-check-circle" style="color: #8b5cf6;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 20px; font-weight: 800; color: #0A3D62;" id="apApprovedCount">0</div>
+                    <div style="font-size: 11px; color: #6b7280;">Approved</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Academic Portfolio Sub-Tabs -->
+    <div style="display: flex; gap: 6px; flex-wrap: wrap; background: white; border-radius: 12px; padding: 8px 12px; border: 1px solid #e5e7eb; margin-bottom: 20px; overflow-x: auto;">
+        <button onclick="AcademicPortfolio.switchTab('dashboard')" class="ap-tab-btn active" data-ap-tab="dashboard" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: #10b981; color: white; white-space: nowrap;">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('course-allocation')" class="ap-tab-btn" data-ap-tab="course-allocation" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-book"></i> Course Allocation
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('scheme-of-work')" class="ap-tab-btn" data-ap-tab="scheme-of-work" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-list-check"></i> Scheme of Work
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('lesson-plans')" class="ap-tab-btn" data-ap-tab="lesson-plans" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-chalkboard"></i> Lesson Plans
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('teaching-log')" class="ap-tab-btn" data-ap-tab="teaching-log" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-pen"></i> Teaching Log
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('materials')" class="ap-tab-btn" data-ap-tab="materials" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-file-upload"></i> Materials
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('assessments')" class="ap-tab-btn" data-ap-tab="assessments" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-check-double"></i> Assessments
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('exams')" class="ap-tab-btn" data-ap-tab="exams" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-file-signature"></i> Exams
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('analysis')" class="ap-tab-btn" data-ap-tab="analysis" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-chart-bar"></i> Analysis
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('clinical')" class="ap-tab-btn" data-ap-tab="clinical" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-stethoscope"></i> Clinical
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('evaluations')" class="ap-tab-btn" data-ap-tab="evaluations" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-star"></i> Evaluations
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('reflections')" class="ap-tab-btn" data-ap-tab="reflections" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-comment"></i> Reflections
+        </button>
+        <button onclick="AcademicPortfolio.switchTab('reports')" class="ap-tab-btn" data-ap-tab="reports" style="padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; background: transparent; color: #475569; white-space: nowrap;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <i class="fas fa-file-pdf"></i> Reports
+        </button>
+    </div>
+
+    <!-- Academic Portfolio Sub-Tab Content -->
+    <div id="ap-content">
+        <!-- Content loaded dynamically by JavaScript -->
+        <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 40px; color: #10b981;"></i>
+            <p style="margin-top: 15px;">Loading Academic Portfolio...</p>
         </div>
     </div>
 </section>
