@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH STREAK SYSTEM (LIGHTS UP AFTER 1 DAY) + TOTAL POINTS + LOGIN POINTS DISPLAY + FIXED TIME GREETING
+// dashboard.js - COMPLETE WORKING VERSION WITH STREAK SYSTEM + TOTAL POINTS + LOGIN POINTS DISPLAY + FIXED TIME GREETING + WORKING NAVIGATION + ALL FUNCTIONS
 
 class DashboardModule {
     constructor(supabaseClient) {
@@ -192,58 +192,147 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 🖱️ CLICKABLE STATS
+    // 🖱️ CLICKABLE STATS - COMPLETE FIX
     // ============================================================
     
     setupClickableStats() {
         console.log('🖱️ Setting up clickable stats...');
         
-        const clickableMap = [
-            { selector: '.attendance-card', tabId: 'attendance' },
-            { selector: '.mini-card[data-tab="cats"]', tabId: 'cats' },
-            { selector: '.mini-card[data-tab="hub-courses"]', tabId: 'hub-courses' },
-            { selector: '.mini-card[data-tab="profile"]', tabId: 'profile' },
-            { selector: '.mini-card[data-tab="resources"]', tabId: 'resources' },
-            { selector: '.mini-card[data-tab="nurseiq"]', tabId: 'nurseiq' },
-            { selector: '.mini-card[data-tab="hub-exam-card"]', tabId: 'hub-exam-card' },
-            { selector: '.mini-card[data-tab="reviews"]', tabId: 'reviews' },
-            { selector: '.mini-card[data-tab="newsletter"]', tabId: 'newsletter' },
-            { selector: '.mini-card[data-tab="streak"]', tabId: 'profile' },
-            { selector: '.action-btn[data-tab="resources"]', tabId: 'resources' },
-            { selector: '.action-btn[data-tab="profile"]', tabId: 'profile' },
-            { selector: '.next-exam-widget', tabId: 'cats' },
-            { selector: '#quick-next-class', tabId: 'calendar' }
-        ];
+        // Helper function to navigate
+        const navigateToSection = (tabId, sourceElement) => {
+            console.log(`📍 Navigating to: ${tabId}`);
+            this.navigateTo(tabId);
+            
+            // Visual feedback
+            if (sourceElement) {
+                sourceElement.style.transition = 'box-shadow 0.3s ease';
+                sourceElement.style.boxShadow = '0 0 0 3px #4C1D95, 0 4px 15px rgba(76, 29, 149, 0.3)';
+                setTimeout(() => { sourceElement.style.boxShadow = ''; }, 2000);
+            }
+        };
         
-        clickableMap.forEach(({ selector, tabId }) => {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(el => {
-                if (el.dataset.clickable === 'true') return;
-                el.dataset.clickable = 'true';
-                if (!el.style.cursor) el.style.cursor = 'pointer';
-                if (!el.title) el.title = `Click to view ${tabId.replace('-', ' ')}`;
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.navigateTo(tabId);
-                });
+        // ===== 1. ATTENDANCE CARD =====
+        document.querySelectorAll('.attendance-card').forEach(el => {
+            el.style.cursor = 'pointer';
+            el.title = 'Click to view Attendance';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateToSection('attendance', el);
             });
         });
         
+        // ===== 2. MINI CARDS with data-tab =====
+        document.querySelectorAll('.mini-card[data-tab]').forEach(el => {
+            const tabId = el.dataset.tab;
+            el.style.cursor = 'pointer';
+            el.title = `Click to view ${tabId.replace('-', ' ')}`;
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateToSection(tabId, el);
+            });
+        });
+        
+        // ===== 3. MINI CARD VALUES (clickable too) =====
         document.querySelectorAll('.mini-card-value').forEach(el => {
             const parent = el.closest('.mini-card');
-            if (parent && parent.dataset.tab) {
-                parent.style.cursor = 'pointer';
-                parent.addEventListener('click', () => {
-                    this.navigateTo(parent.dataset.tab);
+            if (parent && parent.dataset?.tab) {
+                el.style.cursor = 'pointer';
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    navigateToSection(parent.dataset.tab, parent);
                 });
             }
         });
         
+        // ===== 4. ACTION BUTTONS =====
+        document.querySelectorAll('.action-btn[data-tab]').forEach(el => {
+            const tabId = el.dataset.tab;
+            el.style.cursor = 'pointer';
+            el.title = `Click to view ${tabId.replace('-', ' ')}`;
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateToSection(tabId, el);
+            });
+        });
+        
+        // ===== 5. NEXT EXAM WIDGET =====
+        const nextExamWidget = document.querySelector('.next-exam-widget');
+        if (nextExamWidget) {
+            nextExamWidget.style.cursor = 'pointer';
+            nextExamWidget.title = 'Click to view Exams';
+            nextExamWidget.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateToSection('cats', nextExamWidget);
+            });
+        }
+        
+        // ===== 6. NEXT CLASS CARD =====
+        const nextClassCard = document.getElementById('quick-next-class');
+        if (nextClassCard) {
+            nextClassCard.style.cursor = 'pointer';
+            nextClassCard.title = 'Click to view Calendar';
+            nextClassCard.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateToSection('calendar', nextClassCard);
+            });
+        }
+        
+        // ===== 7. XP AREA =====
+        document.querySelectorAll('.xp-area').forEach(el => {
+            el.style.cursor = 'pointer';
+            el.title = 'Click to view Profile';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateToSection('profile', el);
+            });
+        });
+        
+        // ===== 8. ANNOUNCEMENT =====
+        const announcement = document.querySelector('.announcement');
+        if (announcement) {
+            announcement.style.cursor = 'pointer';
+            announcement.title = 'Click to view Messages';
+            announcement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateToSection('messages', announcement);
+            });
+        }
+        
+        // ===== 9. SECTION TITLES with view-all =====
+        document.querySelectorAll('.view-all').forEach(el => {
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const parentSection = el.closest('.section-title');
+                if (parentSection) {
+                    const nextElement = parentSection.nextElementSibling;
+                    if (nextElement && nextElement.id === 'leaderboard-container') {
+                        navigateToSection('profile', el);
+                    }
+                }
+            });
+        });
+        
+        // ===== 10. STREAK RESTORE BUTTON =====
+        const restoreBtn = document.getElementById('streak-restore-btn');
+        if (restoreBtn) {
+            restoreBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.restoreStreak();
+            });
+        }
+        
         console.log('✅ Clickable stats configured');
     }
     
+    // ============================================================
+    // 🔄 NAVIGATE TO TAB - COMPLETE FIX
+    // ============================================================
+    
     navigateTo(section) {
         console.log(`📍 Navigating to: ${section}`);
+        
+        // Map of friendly names to actual tab IDs
         const tabMap = {
             'attendance': 'attendance',
             'cats': 'cats',
@@ -258,23 +347,60 @@ class DashboardModule {
             'dashboard': 'dashboard',
             'reviews': 'reviews',
             'newsletter': 'newsletter',
-            'streak': 'profile'
+            'streak': 'profile',
+            'messages': 'messages',
+            'support-tickets': 'support-tickets',
+            'finance': 'finance',
+            'hub-register': 'hub-register',
+            'hub-lecture-card': 'hub-lecture-card',
+            'hub-courses': 'hub-courses'
         };
         
         const tabName = tabMap[section] || section;
-        const tabElement = document.querySelector(`[data-tab="${tabName}"]`);
-        if (tabElement) {
-            tabElement.click();
-            this.showToast(`📂 Opening ${section.replace('-', ' ').toUpperCase()}`, 1500);
+        
+        // Method 1: Find and click the navigation link
+        const navLink = document.querySelector(`.nav a[data-tab="${tabName}"]`);
+        if (navLink) {
+            navLink.click();
+            this.showToast(`📂 ${section.replace('-', ' ').toUpperCase()}`, 1500);
+            
+            // Highlight the source card if exists
             const sourceCard = document.querySelector(`[data-tab="${section}"]`);
             if (sourceCard) {
                 sourceCard.style.transition = 'box-shadow 0.3s ease';
                 sourceCard.style.boxShadow = '0 0 0 3px #4C1D95, 0 4px 15px rgba(76, 29, 149, 0.3)';
                 setTimeout(() => { sourceCard.style.boxShadow = ''; }, 2000);
             }
-        } else {
-            this.showToast(`📂 ${section.replace('-', ' ').toUpperCase()} section`, 2000);
+            return;
         }
+        
+        // Method 2: Find and show the tab content directly
+        const tabContent = document.getElementById(tabName);
+        if (tabContent) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(t => {
+                t.classList.remove('active');
+                t.style.display = 'none';
+            });
+            
+            // Show the target tab
+            tabContent.classList.add('active');
+            tabContent.style.display = 'block';
+            
+            // Update nav links
+            document.querySelectorAll('.nav a').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-tab') === tabName) {
+                    link.classList.add('active');
+                }
+            });
+            
+            this.showToast(`📂 ${section.replace('-', ' ').toUpperCase()}`, 1500);
+            return;
+        }
+        
+        // Method 3: Fallback - show a message
+        this.showToast(`📂 ${section.replace('-', ' ').toUpperCase()} section`, 2000);
     }
     
     // ============================================================
@@ -306,6 +432,7 @@ class DashboardModule {
             this.loadNewsletterSnapshot();
         });
         
+        // Leaderboard tabs
         document.querySelectorAll('.leaderboard-tabs span').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 document.querySelectorAll('.leaderboard-tabs span').forEach(t => t.classList.remove('active'));
@@ -315,18 +442,11 @@ class DashboardModule {
             });
         });
         
+        // View all achievements
         const viewAll = document.querySelector('.view-all');
         if (viewAll) {
             viewAll.addEventListener('click', () => {
                 this.showToast('All achievements feature coming soon!', 2000);
-            });
-        }
-        
-        // Streak restore button
-        const restoreBtn = document.getElementById('streak-restore-btn');
-        if (restoreBtn) {
-            restoreBtn.addEventListener('click', () => {
-                this.restoreStreak();
             });
         }
     }
@@ -1466,114 +1586,124 @@ class DashboardModule {
         }
     }
     
- async loadLeaderboardData(period = 'weekly') {
-    const container = document.getElementById('leaderboard-container');
-    if (!container) return;
-    
-    container.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-    
-    try {
-        // Get all students with their points
-        const { data: users, error } = await this.sb
-            .from('consolidated_user_profiles_table')
-            .select('id, full_name, login_count, gamification_points, total_points, block, program')
-            .eq('role', 'student')
-            .order('total_points', { ascending: false })
-            .limit(20);
+    async loadLeaderboardData(period = 'weekly') {
+        const container = document.getElementById('leaderboard-container');
+        if (!container) return;
         
-        if (error) throw error;
-        if (!users || users.length === 0) {
-            container.innerHTML = '<div style="padding: 30px; text-align: center; color: #94a3b8;">No students found</div>';
-            return;
-        }
+        container.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading leaderboard...</div>';
         
-        // Filter by period (you can adjust this logic)
-        let filteredUsers = users;
-        let periodLabel = 'All Time';
-        
-        if (period === 'weekly') {
-            periodLabel = 'This Week';
-            filteredUsers = users.slice(0, 10);
-        } else if (period === 'monthly') {
-            periodLabel = 'This Month';
-            filteredUsers = users.slice(0, 10);
-        } else {
-            periodLabel = 'All Time';
-            filteredUsers = users.slice(0, 10);
-        }
-        
-        // Build leaderboard HTML
-        let html = `
-            <div style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between;">
-                <span style="font-weight: 600; color: #0A3D62;">🏆 ${periodLabel}</span>
-                <span style="font-size: 11px; color: #94a3b8;">Top ${filteredUsers.length}</span>
-            </div>
-        `;
-        
-        filteredUsers.forEach((user, index) => {
-            const rank = index + 1;
-            let rankDisplay = `#${rank}`;
-            let rankBg = 'transparent';
+        try {
+            // Get all students with their total points
+            const { data: users, error } = await this.sb
+                .from('consolidated_user_profiles_table')
+                .select('id, full_name, login_count, gamification_points, total_points, block, program')
+                .eq('role', 'student')
+                .order('total_points', { ascending: false })
+                .limit(20);
             
-            if (rank === 1) {
-                rankDisplay = '👑';
-                rankBg = '#fef3c7';
-            } else if (rank === 2) {
-                rankDisplay = '🥈';
-                rankBg = '#f1f5f9';
-            } else if (rank === 3) {
-                rankDisplay = '🥉';
-                rankBg = '#fce4ec';
+            if (error) throw error;
+            if (!users || users.length === 0) {
+                container.innerHTML = '<div style="padding: 30px; text-align: center; color: #94a3b8;">No students found</div>';
+                return;
             }
             
-            const points = parseFloat(user.total_points) || 0;
-            const displayName = user.full_name || 'Student';
-            const isCurrentUser = user.id === this.userId;
+            // Filter by period
+            let filteredUsers = users;
+            let periodLabel = 'All Time';
             
-            html += `
-                <div style="
-                    display: flex; 
-                    align-items: center; 
-                    gap: 12px; 
-                    padding: 10px 16px; 
-                    border-bottom: 1px solid #f1f5f9;
-                    background: ${isCurrentUser ? '#ede9fe' : rankBg};
-                    ${isCurrentUser ? 'border-left: 3px solid #4C1D95;' : ''}
-                    transition: all 0.2s ease;
-                ">
-                    <span style="font-weight: 700; min-width: 32px; text-align: center; font-size: 18px;">${rankDisplay}</span>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">
-                            ${this.escapeHtml(displayName)}
-                            ${isCurrentUser ? ' <span style="font-size: 10px; background: #4C1D95; color: white; padding: 1px 8px; border-radius: 10px;">You</span>' : ''}
-                        </div>
-                        <div style="font-size: 11px; color: #94a3b8;">
-                            ${user.block || 'No block'} · ${user.program || 'N/A'}
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 700; color: #4C1D95; font-size: 16px;">${points}</div>
-                        <div style="font-size: 10px; color: #94a3b8;">pts</div>
-                    </div>
-                    ${rank === 1 ? '<span style="font-size: 11px; color: #f59e0b; background: #fef3c7; padding: 2px 10px; border-radius: 12px;">🏆 Top</span>' : ''}
+            if (period === 'weekly') {
+                periodLabel = 'This Week';
+                // For weekly, we could filter by last 7 days
+            } else if (period === 'monthly') {
+                periodLabel = 'This Month';
+                // For monthly, we could filter by last 30 days
+            } else {
+                periodLabel = 'All Time';
+            }
+            
+            // Show top 10
+            const topUsers = filteredUsers.slice(0, 10);
+            
+            let html = `
+                <div style="padding: 8px 16px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between;">
+                    <span style="font-weight: 600; color: #0A3D62;">🏆 ${periodLabel} Leaderboard</span>
+                    <span style="font-size: 11px; color: #94a3b8;">Top ${topUsers.length}</span>
                 </div>
             `;
-        });
-        
-        // Add footer
-        html += `
-            <div style="padding: 8px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; text-align: center; font-size: 11px; color: #94a3b8;">
-                Points = (Logins × 10) + Gamification Bonus
-            </div>
-        `;
-        
-        container.innerHTML = html;
-        
-    } catch (error) {
-        console.error('Leaderboard error:', error);
-        container.innerHTML = '<div style="padding: 30px; text-align: center; color: #94a3b8;">⚠️ Failed to load leaderboard</div>';
+            
+            topUsers.forEach((user, index) => {
+                const rank = index + 1;
+                let rankDisplay = `#${rank}`;
+                let rankBg = 'transparent';
+                let rankColor = '#1e293b';
+                
+                if (rank === 1) {
+                    rankDisplay = '👑';
+                    rankBg = '#fef3c7';
+                    rankColor = '#92400e';
+                } else if (rank === 2) {
+                    rankDisplay = '🥈';
+                    rankBg = '#f1f5f9';
+                } else if (rank === 3) {
+                    rankDisplay = '🥉';
+                    rankBg = '#fce4ec';
+                }
+                
+                const points = parseFloat(user.total_points) || 0;
+                const displayName = user.full_name || 'Student';
+                const isCurrentUser = user.id === this.userId;
+                
+                // Get initials for avatar
+                const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                
+                html += `
+                    <div style="
+                        display: flex; 
+                        align-items: center; 
+                        gap: 12px; 
+                        padding: 10px 16px; 
+                        border-bottom: 1px solid #f1f5f9;
+                        background: ${isCurrentUser ? '#ede9fe' : rankBg};
+                        ${isCurrentUser ? 'border-left: 3px solid #4C1D95;' : ''}
+                        transition: all 0.2s ease;
+                    ">
+                        <span style="font-weight: 700; min-width: 32px; text-align: center; font-size: 18px; color: ${rankColor};">${rankDisplay}</span>
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: ${isCurrentUser ? '#4C1D95' : '#e2e8f0'}; display: flex; align-items: center; justify-content: center; font-weight: 600; color: ${isCurrentUser ? 'white' : '#1e293b'}; font-size: 14px; flex-shrink: 0;">
+                            ${initials}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1e293b; font-size: 14px;">
+                                ${this.escapeHtml(displayName)}
+                                ${isCurrentUser ? ' <span style="font-size: 10px; background: #4C1D95; color: white; padding: 1px 8px; border-radius: 10px;">You</span>' : ''}
+                            </div>
+                            <div style="font-size: 11px; color: #94a3b8;">
+                                ${user.block || 'No block'} · ${user.program || 'N/A'}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 700; color: #4C1D95; font-size: 16px;">${points}</div>
+                            <div style="font-size: 10px; color: #94a3b8;">pts</div>
+                        </div>
+                        ${rank === 1 ? '<span style="font-size: 11px; color: #f59e0b; background: #fef3c7; padding: 2px 10px; border-radius: 12px;">🏆 Top</span>' : ''}
+                    </div>
+                `;
+            });
+            
+            // Add footer with point explanation
+            html += `
+                <div style="padding: 8px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; text-align: center; font-size: 11px; color: #94a3b8;">
+                    💡 Points = (Logins × 10) + Attendance + NurseIQ + Gamification
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            
+        } catch (error) {
+            console.error('Leaderboard error:', error);
+            container.innerHTML = '<div style="padding: 30px; text-align: center; color: #94a3b8;">⚠️ Failed to load leaderboard</div>';
+        }
     }
-}
+    
     // ============================================================
     // 📅 NEXT CLASS
     // ============================================================
@@ -1896,4 +2026,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready with Streak System (lights up after 1 day) + Total Points + Login Points Display + Fixed Time Greeting!');
+console.log('✅ Dashboard module ready with Streak System (lights up after 1 day) + Total Points + Login Points Display + Fixed Time Greeting + Working Navigation!');
