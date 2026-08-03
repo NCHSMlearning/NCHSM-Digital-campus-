@@ -338,18 +338,18 @@ console.log('✅ Global functions registered for lecturer');
 })();
 
 // ============================================================
-// LECTURER UI CLASS - UPDATED WITH UNITS ASSIGNED
+// LECTURER UI CLASS - UPDATED WITH ACADEMIC PORTFOLIO
 // ============================================================
 
 const LecturerUI = {
     currentTab: 'dashboard',
     sidebarOpen: false,
     
-    // Tab ID mapping - UPDATED with Units Assigned
+    // Tab ID mapping - UPDATED with Academic Portfolio
     tabMapping: {
         'dashboard': 'dashboard-content',
         'profile': 'profile-content',
-        'my-courses': 'my-courses-content',        // Units Assigned (kept for backward compatibility)
+        'my-courses': 'my-courses-content',        // Units Assigned
         'units-assigned': 'my-courses-content',    // Alias for Units Assigned
         'my-students': 'my-students-content',
         'sessions': 'sessions-content',
@@ -361,7 +361,9 @@ const LecturerUI = {
         'nurse-iq': 'nurse-iq-content',
         'messages': 'messages-content',
         'calendar': 'calendar-content',
-        'settings': 'settings-content'
+        'settings': 'settings-content',
+        // ===== NEW: Academic Portfolio =====
+        'academic-portfolio': 'academic-portfolio-content'
     },
     
     // Initialize UI
@@ -799,6 +801,33 @@ const LecturerUI = {
                 console.log('⚙️ Loading settings...');
                 if (window.LecturerProfile && typeof window.LecturerProfile.loadSettings === 'function') {
                     window.LecturerProfile.loadSettings();
+                }
+                break;
+                
+            // ===== NEW: Academic Portfolio =====
+            case 'academic-portfolio':
+                console.log('📁 Loading Academic Portfolio...');
+                if (window.AcademicPortfolio && typeof window.AcademicPortfolio.loadDashboard === 'function') {
+                    window.AcademicPortfolio.loadDashboard();
+                } else {
+                    console.warn('⚠️ AcademicPortfolio not found');
+                    // Fallback: show message
+                    const container = document.getElementById('ap-content');
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                                <i class="fas fa-folder-open" style="font-size: 40px; color: #10b981;"></i>
+                                <h3 style="color: #1e293b; margin-top: 15px;">Academic Portfolio</h3>
+                                <p style="color: #94a3b8;">Loading portfolio data...</p>
+                                <div style="margin-top: 20px;">
+                                    <div class="loading-spinner" style="border: 4px solid #e2e8f0; border-top: 4px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                                </div>
+                                <button onclick="AcademicPortfolio.refresh()" style="margin-top: 20px; background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer;">
+                                    <i class="fas fa-sync-alt"></i> Retry
+                                </button>
+                            </div>
+                        `;
+                    }
                 }
                 break;
                 
