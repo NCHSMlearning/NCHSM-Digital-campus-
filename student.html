@@ -4398,46 +4398,107 @@
 <!-- ==================== NURSEIQ / TVETIQ TAB ==================== -->
 <section id="nurseiq" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
-    <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== HEADER - DYNAMIC BASED ON STUDENT PROGRAM ========== -->
     <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
         <div>
-            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
-                <i class="fas fa-brain" style="color: #FDB913;" id="nurseiqIcon"></i> 
-                <span id="nurseiqTitle" style="color: white;">NurseIQ</span>
-                <span id="nurseiqSubtitleBadge" style="background: #FDB913; color: #0A3D62; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;">KRCHN</span>
-            </h2>
-            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;" id="nurseiqSubtitle">
-                <i class="fas fa-graduation-cap"></i> Practice questions for Kenya Registered Community Health Nursing program
-            </p>
-        </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-            <div style="background: rgba(255,255,255,0.12); padding: 6px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-user-md" style="color: #FDB913;" id="indicatorIcon"></i>
-                <span style="color: white; font-size: 13px; font-weight: 500;" id="indicatorText">Nursing Mode</span>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px; font-size: clamp(1.2rem, 2.5vw, 1.8rem);">
+                    <i class="fas fa-brain" style="color: #FDB913;" id="nurseiqIcon"></i> 
+                    <span id="nurseiqTitle" style="color: white;">NurseIQ</span>
+                    <span id="nurseiqSubtitleBadge" style="background: #FDB913; color: #0A3D62; padding: 2px 12px; border-radius: 20px; font-size: 10px; font-weight: 700;">KRCHN</span>
+                    <span id="programDisplayBadge" style="background: rgba(255,255,255,0.15); color: white; padding: 2px 12px; border-radius: 20px; font-size: 10px; font-weight: 500; display: none;">
+                        <i class="fas fa-user-graduate"></i> <span id="programDisplayName">Loading...</span>
+                    </span>
+                </h2>
+                <div style="background: rgba(255,255,255,0.12); padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-user-md" style="color: #FDB913; font-size: 12px;" id="indicatorIcon"></i>
+                    <span style="color: white; font-size: 12px; font-weight: 500;" id="indicatorText">Nursing Mode</span>
+                </div>
             </div>
-            <span style="font-size: 11px; color: rgba(255,255,255,0.6);">
-                <i class="fas fa-info-circle"></i> <span id="switchNoteText">Auto-detected from your profile</span>
-            </span>
+            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 13px;" id="nurseiqSubtitle">
+                <i class="fas fa-graduation-cap"></i> Practice questions for <span id="programDisplaySubtitle">KRCHN Nursing</span> program
+            </p>
+            <!-- Student Program Info Bar -->
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px;">
+                <span style="background: rgba(255,255,255,0.08); padding: 2px 10px; border-radius: 12px; font-size: 10px; color: rgba(255,255,255,0.6);">
+                    <i class="fas fa-id-card"></i> <span id="studentProgramCode">Loading...</span>
+                </span>
+                <span style="background: rgba(255,255,255,0.08); padding: 2px 10px; border-radius: 12px; font-size: 10px; color: rgba(255,255,255,0.6);">
+                    <i class="fas fa-calendar"></i> Intake: <span id="studentIntakeYear">2026</span>
+                </span>
+                <span style="background: rgba(255,255,255,0.08); padding: 2px 10px; border-radius: 12px; font-size: 10px; color: rgba(255,255,255,0.6);">
+                    <i class="fas fa-layer-group"></i> <span id="studentBlockTerm">Loading...</span>
+                </span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.08); padding: 4px 12px; border-radius: 16px;">
+                <span style="font-size: 10px; color: rgba(255,255,255,0.6);">
+                    <i class="fas fa-clock"></i> <span id="streakDisplay">🔥 0 day streak</span>
+                </span>
+            </div>
+            <button onclick="window.clearAllProgress?.()" style="background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.15); padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 11px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.2)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.7)'" title="Clear all your progress">
+                <i class="fas fa-trash-alt"></i> Reset
+            </button>
+            <button onclick="window.loadQuestionBankCards()" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
         </div>
     </div>
 
-    <!-- ========== SEARCH SECTION - MATCHING SUPER ADMIN ========== -->
-    <div style="background: white; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-            <div style="flex: 2; min-width: 180px; position: relative;">
+    <!-- ========== QUICK STATS ROW ========== -->
+    <div id="nurseiqQuickStats" style="display: none; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: #dbeafe; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-check-circle" style="color: #3B82F6;"></i>
+            </div>
+            <div>
+                <div style="font-size: 20px; font-weight: 700; color: #0A3D62;" id="nurseiqAnswered">0</div>
+                <div style="font-size: 10px; color: #94a3b8;">Answered</div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: #d1fae5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-check-double" style="color: #10b981;"></i>
+            </div>
+            <div>
+                <div style="font-size: 20px; font-weight: 700; color: #059669;" id="nurseiqCorrect">0</div>
+                <div style="font-size: 10px; color: #94a3b8;">Correct</div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: #fef3c7; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-bullseye" style="color: #f59e0b;"></i>
+            </div>
+            <div>
+                <div style="font-size: 20px; font-weight: 700; color: #d97706;" id="nurseiqAccuracyQuick">0%</div>
+                <div style="font-size: 10px; color: #94a3b8;">Accuracy</div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: #f3e8ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fas fa-fire" style="color: #7c3aed;"></i>
+            </div>
+            <div>
+                <div style="font-size: 20px; font-weight: 700; color: #6d28d9;" id="nurseiqStreakQuick">0</div>
+                <div style="font-size: 10px; color: #94a3b8;">Day Streak</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SEARCH SECTION - FILTERS ORDERED: Years → Levels → Categories ========== -->
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <!-- Search Bar -->
+            <div style="flex: 2; min-width: 160px; position: relative;">
                 <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                <input type="text" id="studentQuestionBankSearch" placeholder="Search courses, units, or topics..." style="width: 100%; padding: 10px 14px 10px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                <input type="text" id="studentQuestionBankSearch" placeholder="Search courses, units, or topics..." style="width: 100%; padding: 9px 14px 9px 38px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
             </div>
             
-            <select id="nurseiqLevelFilter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
-                <option value="all">📚 All Levels</option>
-                <option value="certificate">Certificate</option>
-                <option value="diploma">Diploma</option>
-                <option value="higher-diploma">Higher Diploma</option>
-                <option value="degree">Degree</option>
-            </select>
+            <!-- ✅ ORDER: All Years → Levels → Categories -->
             
-            <select id="nurseiqYearFilter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 120px;">
+            <!-- 1. YEAR FILTER -->
+            <select id="nurseiqYearFilter" style="padding: 9px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 110px; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
                 <option value="all">📅 All Years</option>
                 <option value="year1">Year 1</option>
                 <option value="year2">Year 2</option>
@@ -4445,46 +4506,69 @@
                 <option value="year4">Year 4</option>
             </select>
             
-            <select id="nurseiqCategoryFilter" style="padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 140px;">
-                <option value="all">📂 All Categories</option>
-                <option value="theory">Theory</option>
-                <option value="practical">Practical</option>
-                <option value="clinical">Clinical</option>
-                <option value="osce">OSCE</option>
-                <option value="tvet-core">TVET Core</option>
-                <option value="tvet-electives">TVET Electives</option>
+            <!-- 2. LEVEL FILTER -->
+            <select id="nurseiqLevelFilter" style="padding: 9px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 120px; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <option value="all">📚 All Levels</option>
+                <option value="certificate">Certificate</option>
+                <option value="diploma">Diploma</option>
+                <option value="higher-diploma">Higher Diploma</option>
+                <option value="degree">Degree</option>
             </select>
             
-            <button id="nurseiqSearchBtn" style="padding: 10px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <i class="fas fa-search"></i> Search
-            </button>
-            <button id="clearSearchBtn" style="padding: 10px 16px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f1f5f9'">
-                <i class="fas fa-times"></i> Clear
-            </button>
-            <button id="randomQuestionBtn" style="padding: 10px 20px; background: #FDB913; color: #0A3D62; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(253,185,19,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(253,185,19,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(253,185,19,0.3)'">
-                <i class="fas fa-random"></i> Random
-            </button>
+            <!-- 3. CATEGORY FILTER -->
+            <select id="nurseiqCategoryFilter" style="padding: 9px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                <option value="all">📂 All Categories</option>
+                <option value="theory">📖 Theory</option>
+                <option value="practical">💉 Practical</option>
+                <option value="clinical">🏥 Clinical</option>
+                <option value="osce">👨‍⚕️ OSCE</option>
+                <option value="tvet-core">⚙️ TVET Core</option>
+                <option value="tvet-electives">🔧 TVET Electives</option>
+            </select>
+            
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button id="nurseiqSearchBtn" style="padding: 9px 18px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <button id="clearSearchBtn" style="padding: 9px 14px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s ease;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f1f5f9'">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+                <button id="randomQuestionBtn" style="padding: 9px 18px; background: #FDB913; color: #0A3D62; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 13px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(253,185,19,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(253,185,19,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(253,185,19,0.3)'">
+                    <i class="fas fa-random"></i> Random
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- ========== STATS BAR - MATCHING SUPER ADMIN ========== -->
-    <div id="nurseiqStatsBar" style="display: none; background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px;">
+    <!-- ========== STATS BAR ========== -->
+    <div id="nurseiqStatsBar" style="display: none; background: white; border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px;">
             <div style="text-align: center;">
-                <div style="font-size: 24px; font-weight: 700; color: #0A3D62;" id="nurseiqTotalQuestions">0</div>
-                <div style="font-size: 11px; color: #94a3b8;">Total Questions</div>
+                <div style="font-size: 22px; font-weight: 700; color: #0A3D62;" id="nurseiqTotalQuestions">0</div>
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Total Questions</div>
+            </div>
+            <div style="text-align: center; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; padding: 0 8px;">
+                <div style="font-size: 22px; font-weight: 700; color: #4C1D95;" id="nurseiqTotalCourses">0</div>
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Courses</div>
             </div>
             <div style="text-align: center;">
-                <div style="font-size: 24px; font-weight: 700; color: #4C1D95;" id="nurseiqTotalCourses">0</div>
-                <div style="font-size: 11px; color: #94a3b8;">Courses</div>
+                <div style="font-size: 22px; font-weight: 700; color: #059669;" id="nurseiqAccuracy">0%</div>
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Your Accuracy</div>
             </div>
-            <div style="text-align: center;">
-                <div style="font-size: 24px; font-weight: 700; color: #059669;" id="nurseiqAccuracy">0%</div>
-                <div style="font-size: 11px; color: #94a3b8;">Your Accuracy</div>
+            <div style="text-align: center; border-left: 1px solid #e5e7eb; padding-left: 8px;">
+                <div style="font-size: 22px; font-weight: 700; color: #FDB913;" id="nurseiqPoints">0</div>
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Points Earned</div>
             </div>
-            <div style="text-align: center;">
-                <div style="font-size: 24px; font-weight: 700; color: #FDB913;" id="nurseiqPoints">0</div>
-                <div style="font-size: 11px; color: #94a3b8;">Points Earned</div>
+        </div>
+        <!-- Progress bar -->
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 4px;">
+                <span>Overall Progress</span>
+                <span id="nurseiqProgressPercent">0%</span>
+            </div>
+            <div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                <div id="nurseiqProgressBar" style="height: 100%; background: linear-gradient(90deg, #4C1D95, #7c3aed); width: 0%; border-radius: 3px; transition: width 0.5s ease;"></div>
             </div>
         </div>
     </div>
@@ -4492,34 +4576,63 @@
     <!-- ========== LOADING ========== -->
     <div id="studentQuestionBankLoading" style="display: none; text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
         <div style="width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-        <p style="color: #94a3b8; margin: 0;">Loading questions...</p>
+        <p style="color: #94a3b8; margin: 0; font-size: 14px;">Loading questions for <span id="loadingProgramDisplay">your program</span>...</p>
+        <p style="color: #cbd5e1; margin: 4px 0 0 0; font-size: 12px;">This may take a moment</p>
     </div>
 
     <!-- ========== WELCOME CONTENT ========== -->
     <div id="studentQuestionBankContent">
         <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-            <div style="width: 80px; height: 80px; border-radius: 50%; background: #f3e8ff; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;" id="welcomeIcon">
+            <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #f3e8ff, #ede9fe); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;" id="welcomeIcon">
                 <i class="fas fa-book-medical" style="font-size: 32px; color: #4C1D95;" id="welcomeIconElement"></i>
             </div>
-            <h3 style="color: #0A3D62; margin: 0 0 8px 0;" id="welcomeTitle">NurseIQ Question Bank</h3>
-            <p style="color: #94a3b8; margin: 0 0 20px 0;" id="welcomeText">Access practice questions organized by curriculum courses.</p>
-            <button id="loadCourseCatalogBtn" style="padding: 14px 32px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 16px; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(76,29,149,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 20px rgba(76,29,149,0.3)'">
+            <h3 style="color: #0A3D62; margin: 0 0 6px 0; font-size: 20px;" id="welcomeTitle">NurseIQ Question Bank</h3>
+            <p style="color: #94a3b8; margin: 0 0 4px 0; font-size: 14px;" id="welcomeText">Access practice questions organized by curriculum courses.</p>
+            <p style="color: #cbd5e1; margin: 0 0 20px 0; font-size: 13px;">
+                <i class="fas fa-info-circle"></i> 
+                <span id="welcomeProgramInfo">Loading program information...</span>
+            </p>
+            <button id="loadCourseCatalogBtn" style="padding: 14px 36px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 16px; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(76,29,149,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 20px rgba(76,29,149,0.3)'">
                 <i class="fas fa-play-circle"></i> 
                 <span id="loadBtnText">Load Course Catalog</span>
             </button>
+            <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <span style="background: #f1f5f9; padding: 4px 12px; border-radius: 12px; font-size: 11px; color: #64748b;">
+                    <i class="fas fa-question-circle"></i> <span id="totalQuestionsWelcome">0</span> questions
+                </span>
+                <span style="background: #f1f5f9; padding: 4px 12px; border-radius: 12px; font-size: 11px; color: #64748b;">
+                    <i class="fas fa-book"></i> <span id="totalCoursesWelcome">0</span> courses
+                </span>
+                <span style="background: #f1f5f9; padding: 4px 12px; border-radius: 12px; font-size: 11px; color: #64748b;">
+                    <i class="fas fa-user-graduate"></i> <span id="welcomeStudentProgram">Loading...</span>
+                </span>
+            </div>
         </div>
     </div>
 
     <!-- ========== COURSE CATALOG GRID ========== -->
     <div id="courseCatalogGrid" style="display: none; margin-top: 20px;">
         <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-            <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-book" style="color: #4C1D95;"></i> Course Catalog
-                </h3>
-                <span id="catalogCount" style="background: #4C1D95; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 courses</span>
+            <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <h3 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 8px; font-size: 16px;">
+                        <i class="fas fa-book" style="color: #4C1D95;"></i> Course Catalog
+                        <span style="font-size: 11px; font-weight: 400; color: #64748b; margin-left: 4px;">
+                            (<span id="catalogStudentProgram">Loading...</span>)
+                        </span>
+                    </h3>
+                    <span id="catalogCount" style="background: #4C1D95; color: white; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">0 courses</span>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <span style="font-size: 11px; color: #94a3b8;">
+                        <i class="fas fa-clock"></i> <span id="catalogLastUpdated">Updated: Just now</span>
+                    </span>
+                    <button onclick="window.loadQuestionBankCards()" style="background: transparent; border: none; color: #4C1D95; cursor: pointer; font-size: 13px; padding: 4px 8px; transition: all 0.3s ease;" onmouseover="this.style.color='#6d28d9'" onmouseout="this.style.color='#4C1D95'">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
             </div>
-            <div id="courseCatalogCards" style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+            <div id="courseCatalogCards" style="padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;">
                 <!-- Dynamic content -->
             </div>
         </div>
@@ -4528,20 +4641,46 @@
     <!-- ========== QUESTION VIEW ========== -->
     <div id="questionView" style="display: none; margin-top: 20px;">
         <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-            <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <button id="backToCatalogBtn" style="padding: 8px 16px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f1f5f9'">
+            <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button id="backToCatalogBtn" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s ease;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f1f5f9'">
                         <i class="fas fa-arrow-left"></i> Back
                     </button>
-                    <h3 id="questionCourseTitle" style="margin: 0; color: #0A3D62; font-size: 16px;">Course Questions</h3>
+                    <h3 id="questionCourseTitle" style="margin: 0; color: #0A3D62; font-size: 15px; font-weight: 600;">Course Questions</h3>
                 </div>
-                <span style="font-size: 12px; color: #94a3b8;" id="questionCount">0 questions</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 12px; color: #94a3b8;" id="questionCount">0 questions</span>
+                    <span style="font-size: 11px; color: #059669; background: #d1fae5; padding: 2px 10px; border-radius: 12px; font-weight: 500;" id="questionProgress">0%</span>
+                </div>
             </div>
-            <div id="questionList" style="padding: 20px;">
+            <div id="questionList" style="padding: 16px;">
                 <!-- Dynamic content -->
             </div>
         </div>
     </div>
+
+    <!-- ========== STYLES ========== -->
+    <style>
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .program-info-banner {
+            transition: all 0.3s ease;
+        }
+        .program-info-banner.nursing {
+            border-left-color: #4C1D95;
+        }
+        .program-info-banner.tvet {
+            border-left-color: #1a7a5a;
+        }
+        .course-card {
+            transition: all 0.2s ease;
+        }
+        .course-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        }
+    </style>
 
 </section>
 <!-- END NURSEIQ / TVETIQ -->
