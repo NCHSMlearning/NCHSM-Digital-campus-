@@ -4731,7 +4731,7 @@
         </div>
     </div>
 
- <!-- ============================================ -->
+<!-- ============================================ -->
 <!-- EXTERNAL SCRIPTS -->
 <!-- ============================================ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -4956,6 +4956,18 @@ function showTab(tabId) {
     } else if (tabId === 'profile') {
         if (window.LecturerProfile && typeof window.LecturerProfile.loadProfile === 'function') {
             window.LecturerProfile.loadProfile();
+        }
+    } else if (tabId === 'academic-portfolio') {
+        if (window.AcademicPortfolio && typeof window.AcademicPortfolio.loadDashboard === 'function') {
+            window.AcademicPortfolio.loadDashboard();
+        }
+    } else if (tabId === 'reports') {
+        if (window.LecturerReports && typeof window.LecturerReports.loadReports === 'function') {
+            window.LecturerReports.loadReports();
+        }
+    } else if (tabId === 'calendar') {
+        if (window.LecturerCalendar && typeof window.LecturerCalendar.loadCalendar === 'function') {
+            window.LecturerCalendar.loadCalendar();
         }
     }
 }
@@ -5307,6 +5319,10 @@ setTimeout(function() {
 <script src="js/lecturer-messages.js"></script>
 <script src="js/lecturer-reports.js"></script>
 <script src="js/lecturer-calendar.js"></script>
+
+<!-- ===== NEW: ACADEMIC PORTFOLIO MODULE ===== -->
+<script src="js/lecturer-academic-portfolio.js"></script>
+
 <!-- Main Entry Point -->
 <script src="js/lecturer-main.js"></script>
 
