@@ -6,8 +6,7 @@
     <title>Finance Module - NCHSM</title>
     
     <!-- ===== SUPABASE ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- ===== FONT AWESOME ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -21,35 +20,21 @@
     <!-- ===== EXTERNAL CSS ===== -->
     <link rel="stylesheet" href="css/finance-style.css">
 
-    <!-- ============================================================ -->
-    <!-- INLINE STYLES FOR CRITICAL LAYOUT (matches Super Admin)     -->
-    <!-- ============================================================ -->
     <style>
         /* ===== RESET & BASE ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f0f4ff;
             min-height: 100vh;
         }
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.3s ease;
-        }
-        .tab-content.active {
-            display: block;
-        }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .loading-spinner {
             display: inline-block;
             width: 30px;
@@ -82,15 +67,10 @@
             background: white;
             box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
         }
-        .search-box .search-icon {
-            color: #94a3b8;
-            font-size: 14px;
-        }
+        .search-box .search-icon { color: #94a3b8; font-size: 14px; }
 
         /* ===== PAYMENT MODAL STYLES ===== */
-        .payment-modal-content {
-            max-width: 700px;
-        }
+        .payment-modal-content { max-width: 700px; }
         .student-info-card {
             background: linear-gradient(135deg, #f8fafc, #eef2f7);
             border-radius: 12px;
@@ -104,9 +84,7 @@
             padding: 6px 0;
             border-bottom: 1px solid #e5e7eb;
         }
-        .student-info-card .info-row:last-child {
-            border-bottom: none;
-        }
+        .student-info-card .info-row:last-child { border-bottom: none; }
         .student-info-card .label {
             font-weight: 600;
             color: #475569;
@@ -116,11 +94,140 @@
             color: #0b1124;
             font-size: 13px;
         }
-        .student-info-card .value.positive {
-            color: #059669;
+        .student-info-card .value.positive { color: #059669; }
+        .student-info-card .value.negative { color: #dc2626; }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-top: 4px solid #4C1D95;
+            transition: all 0.2s;
+            cursor: pointer;
         }
-        .student-info-card .value.negative {
-            color: #dc2626;
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        .card h3 {
+            font-size: 12px;
+            color: #64748b;
+            margin: 0 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .card .data {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+            color: #0b1124;
+        }
+        .card .minor-data {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 4px 0 0 0;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+
+        /* ===== FILTER BAR ===== */
+        .filter-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-bar input,
+        .filter-bar select {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
+            background: #f8fafc;
+            min-width: 150px;
+        }
+        .filter-bar input:focus,
+        .filter-bar select:focus {
+            border-color: #4C1D95;
+            outline: none;
+        }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99998;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 850px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 18px;
+            background: none;
+            border: none;
+            font-size: 26px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .modal-close:hover { color: #1e293b; }
+
+        /* ===== TOAST ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 14px 24px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+        .toast-success { background: #059669; }
+        .toast-error { background: #dc2626; }
+        .toast-warning { background: #f59e0b; color: #0A3D62; }
+        .toast-info { background: #3b82f6; }
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
         /* ===== RESPONSIVE ===== */
@@ -131,6 +238,8 @@
             .finance-mobile-toggle { display: block; }
             .cards { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
             .search-box input { min-width: 150px; }
+            .filter-bar { flex-direction: column; align-items: stretch; }
+            .filter-bar input, .filter-bar select { min-width: 100%; }
         }
         @media (max-width: 480px) {
             .finance-main { padding: 14px; }
@@ -160,72 +269,25 @@
                     <span id="sidebarUserRole">Administrator</span>
                 </div>
             </div>
-
             <nav>
                 <ul class="finance-nav">
-                    <li>
-                        <a href="#" class="active" data-tab="dashboard">
-                            <i class="fas fa-tachometer-alt"></i>
-                            <span>Dashboard</span>
-                            <span class="badge" id="dashboardBadge">0</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" data-tab="accounts">
-                            <i class="fas fa-users"></i>
-                            <span>Student Accounts</span>
-                            <span class="badge" id="accountsBadge">0</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" data-tab="payments">
-                            <i class="fas fa-credit-card"></i>
-                            <span>Payments</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" data-tab="fee-structure">
-                            <i class="fas fa-file-invoice"></i>
-                            <span>Fee Structure</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" data-tab="reports">
-                            <i class="fas fa-chart-bar"></i>
-                            <span>Reports</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" data-tab="transactions">
-                            <i class="fas fa-exchange-alt"></i>
-                            <span>Transactions</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" data-tab="settings">
-                            <i class="fas fa-cog"></i>
-                            <span>Settings</span>
-                        </a>
-                    </li>
+                    <li><a href="#" class="active" data-tab="dashboard"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span><span class="badge" id="dashboardBadge">0</span></a></li>
+                    <li><a href="#" data-tab="accounts"><i class="fas fa-users"></i><span>Student Accounts</span><span class="badge" id="accountsBadge">0</span></a></li>
+                    <li><a href="#" data-tab="payments"><i class="fas fa-credit-card"></i><span>Payments</span></a></li>
+                    <li><a href="#" data-tab="fee-structure"><i class="fas fa-file-invoice"></i><span>Fee Structure</span></a></li>
+                    <li><a href="#" data-tab="reports"><i class="fas fa-chart-bar"></i><span>Reports</span></a></li>
+                    <li><a href="#" data-tab="transactions"><i class="fas fa-exchange-alt"></i><span>Transactions</span></a></li>
+                    <li><a href="#" data-tab="settings"><i class="fas fa-cog"></i><span>Settings</span></a></li>
                 </ul>
             </nav>
-
             <div class="finance-sidebar-footer">
-                <a href="#" onclick="logoutFinance()">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-                <a href="#" onclick="goToMainDashboard()">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back to Main</span>
-                </a>
+                <a href="#" onclick="logoutFinance()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+                <a href="#" onclick="goToMainDashboard()"><i class="fas fa-arrow-left"></i><span>Back to Main</span></a>
             </div>
         </aside>
 
         <!-- ===== MOBILE TOGGLE ===== -->
-        <button class="finance-mobile-toggle" onclick="toggleSidebar()">
-            <i class="fas fa-bars"></i>
-        </button>
+        <button class="finance-mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
 
         <!-- ===== MAIN CONTENT ===== -->
         <main class="finance-main">
@@ -258,7 +320,7 @@
             <!-- ============================================================ -->
             <section id="tab-dashboard" class="tab-content active">
                 <!-- Stats Cards -->
-                <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 25px;">
+                <div class="cards">
                     <div class="card" style="border-top: 4px solid #4C1D95;">
                         <h3 style="color: #4C1D95;">Total Students</h3>
                         <p class="data" id="totalStudents" style="color: #4C1D95;">0</p>
@@ -289,17 +351,23 @@
                         <p class="data" id="totalTransactions" style="color: #2563eb;">0</p>
                         <p class="minor-data">All time</p>
                     </div>
+                    <!-- ✅ PUBLISHED COUNT CARD -->
+                    <div class="card" style="border-top: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ecfdf5);">
+                        <h3 style="color: #059669; font-size: 12px;">📤 Published Payments</h3>
+                        <p class="data" id="finance_published_count" style="font-size: 28px; font-weight: 700; color: #059669;">0</p>
+                        <p class="minor-data" style="font-size: 11px;">Payments visible to students</p>
+                    </div>
                 </div>
 
                 <!-- Charts Row -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-bottom: 25px;">
-                    <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
                         <h4 style="margin: 0 0 15px 0; color: #0A3D62;">
                             <i class="fas fa-chart-line" style="color: #4C1D95;"></i> Monthly Collections
                         </h4>
                         <canvas id="monthlyCollectionsChart" height="200"></canvas>
                     </div>
-                    <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                    <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
                         <h4 style="margin: 0 0 15px 0; color: #0A3D62;">
                             <i class="fas fa-chart-pie" style="color: #4C1D95;"></i> Payment Status Distribution
                         </h4>
@@ -318,22 +386,10 @@
                     <div style="overflow-x: auto;">
                         <table class="modern-table">
                             <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Student</th>
-                                    <th>Program</th>
-                                    <th>Amount</th>
-                                    <th>Method</th>
-                                    <th>Status</th>
-                                </tr>
+                                <tr><th>Date</th><th>Student</th><th>Program</th><th>Amount</th><th>Method</th><th>Status</th></tr>
                             </thead>
                             <tbody id="recentTransactions">
-                                <tr>
-                                    <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <div class="loading-spinner"></div>
-                                        <p style="margin-top: 10px;">Loading transactions...</p>
-                                    </td>
-                                </tr>
+                                <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;"><div class="loading-spinner"></div><p style="margin-top:10px;">Loading transactions...</p></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -366,7 +422,7 @@
                     </div>
                 </div>
 
-                <!-- Enhanced Filter Bar with Search -->
+                <!-- Filter Bar -->
                 <div class="filter-bar">
                     <div class="search-box">
                         <i class="fas fa-search search-icon"></i>
@@ -388,12 +444,8 @@
                         <option value="DCH">DCH</option>
                         <option value="DHRIT">DHRIT</option>
                     </select>
-                    <button onclick="filterAccounts()" class="btn-action btn-primary btn-sm">
-                        <i class="fas fa-filter"></i> Apply
-                    </button>
-                    <button onclick="resetAccountFilters()" class="btn-action btn-outline btn-sm">
-                        <i class="fas fa-undo"></i> Reset
-                    </button>
+                    <button onclick="filterAccounts()" class="btn-action btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
+                    <button onclick="resetAccountFilters()" class="btn-action btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</button>
                     <span id="accountCount" style="font-size: 13px; color: #64748b; margin-left: auto;"></span>
                 </div>
 
@@ -415,12 +467,7 @@
                                 </tr>
                             </thead>
                             <tbody id="accountsTableBody">
-                                <tr>
-                                    <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <div class="loading-spinner"></div>
-                                        <p style="margin-top: 10px;">Loading accounts...</p>
-                                    </td>
-                                </tr>
+                                <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;"><div class="loading-spinner"></div><p style="margin-top:10px;">Loading accounts...</p></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -450,7 +497,7 @@
                     </div>
                 </div>
 
-                <!-- Enhanced Payment Search -->
+                <!-- Filter Bar -->
                 <div class="filter-bar">
                     <div class="search-box">
                         <i class="fas fa-search search-icon"></i>
@@ -470,12 +517,8 @@
                         <option value="Cheque">Cheque</option>
                         <option value="Card">Card</option>
                     </select>
-                    <button onclick="filterPaymentTable()" class="btn-action btn-primary btn-sm">
-                        <i class="fas fa-filter"></i> Apply
-                    </button>
-                    <button onclick="resetPaymentFilters()" class="btn-action btn-outline btn-sm">
-                        <i class="fas fa-undo"></i> Reset
-                    </button>
+                    <button onclick="filterPaymentTable()" class="btn-action btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
+                    <button onclick="resetPaymentFilters()" class="btn-action btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</button>
                     <span id="paymentCount" style="font-size: 13px; color: #64748b; margin-left: auto;"></span>
                 </div>
 
@@ -497,73 +540,64 @@
                                 </tr>
                             </thead>
                             <tbody id="paymentsTableBody">
-                                <tr>
-                                    <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <div class="loading-spinner"></div>
-                                        <p style="margin-top: 10px;">Loading payments...</p>
-                                    </td>
-                                </tr>
+                                <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;"><div class="loading-spinner"></div><p style="margin-top:10px;">Loading payments...</p></td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </section>
 
-           <!-- ============================================================ -->
-<!-- TAB 4: FEE STRUCTURE - WITH EDITABLE COMPONENTS              -->
-<!-- ============================================================ -->
-<section id="tab-fee-structure" class="tab-content">
-    <div style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-        <div>
-            <h3 style="color: white; margin: 0; font-weight: 600;">
-                <i class="fas fa-file-invoice"></i> Fee Structure Management
-            </h3>
-            <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
-                Configure fee components, templates, and structures for all programs
-            </p>
-        </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="openFeeTemplateModal()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
-                <i class="fas fa-copy"></i> Templates
-            </button>
-            <button onclick="openAddFeeModal()" class="btn-action" style="background: white; color: #6d28d9; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
-                <i class="fas fa-plus"></i> New Fee Structure
-            </button>
-            <button onclick="refreshFeeStructure()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-        </div>
-    </div>
+            <!-- ============================================================ -->
+            <!-- TAB 4: FEE STRUCTURE                                         -->
+            <!-- ============================================================ -->
+            <section id="tab-fee-structure" class="tab-content">
+                <div style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="color: white; margin: 0; font-weight: 600;">
+                            <i class="fas fa-file-invoice"></i> Fee Structure Management
+                        </h3>
+                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">
+                            Configure fee components, templates, and structures for all programs
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="openFeeTemplateModal()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                            <i class="fas fa-copy"></i> Templates
+                        </button>
+                        <button onclick="openAddFeeModal()" class="btn-action" style="background: white; color: #6d28d9; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
+                            <i class="fas fa-plus"></i> New Fee Structure
+                        </button>
+                        <button onclick="refreshFeeStructure()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
 
-    <!-- Fee Structure Search -->
-    <div class="filter-bar">
-        <div class="search-box">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" id="feeStructureSearch" placeholder="🔍 Search fee structures..." onkeyup="filterFeeStructures()">
-        </div>
-        <select id="feeStructureStatusFilter" onchange="filterFeeStructures()">
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-        </select>
-        <button onclick="filterFeeStructures()" class="btn-action btn-primary btn-sm">
-            <i class="fas fa-filter"></i> Apply
-        </button>
-        <button onclick="resetFeeStructureFilters()" class="btn-action btn-outline btn-sm">
-            <i class="fas fa-undo"></i> Reset
-        </button>
-        <span id="feeStructureCount" style="font-size: 13px; color: #64748b; margin-left: auto;"></span>
-    </div>
+                <!-- Fee Structure Search -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="feeStructureSearch" placeholder="🔍 Search fee structures..." onkeyup="filterFeeStructures()">
+                    </div>
+                    <select id="feeStructureStatusFilter" onchange="filterFeeStructures()">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                    <button onclick="filterFeeStructures()" class="btn-action btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
+                    <button onclick="resetFeeStructureFilters()" class="btn-action btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</button>
+                    <span id="feeStructureCount" style="font-size: 13px; color: #64748b; margin-left: auto;"></span>
+                </div>
 
-    <!-- Fee Structure Cards Container -->
-    <div id="feeStructureCardsContainer">
-        <div style="text-align: center; padding: 60px; color: #94a3b8;">
-            <div class="loading-spinner"></div>
-            <p style="margin-top: 10px;">Loading fee structures...</p>
-        </div>
-    </div>
-</section>
-            
+                <!-- Fee Structure Cards -->
+                <div id="feeStructureCardsContainer">
+                    <div style="text-align: center; padding: 60px; color: #94a3b8;">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 10px;">Loading fee structures...</p>
+                    </div>
+                </div>
+            </section>
+
             <!-- ============================================================ -->
             <!-- TAB 5: REPORTS                                               -->
             <!-- ============================================================ -->
@@ -581,39 +615,33 @@
 
                 <!-- Report Filters -->
                 <div class="filter-bar">
-                    <select id="reportType" onchange="generateReport()" class="form-control" style="min-width: 160px;">
+                    <select id="reportType" onchange="generateReport()" class="form-control" style="min-width:160px;">
                         <option value="summary">📊 Summary Report</option>
                         <option value="collections">💰 Collections Report</option>
                         <option value="outstanding">⚠️ Outstanding Report</option>
                         <option value="program">📚 Program-wise Report</option>
                     </select>
-                    <select id="reportProgram" onchange="generateReport()" class="form-control" style="min-width: 140px;">
+                    <select id="reportProgram" onchange="generateReport()" class="form-control" style="min-width:140px;">
                         <option value="all">All Programs</option>
                         <option value="KRCHN">KRCHN</option>
                         <option value="TVET">TVET</option>
                     </select>
-                    <select id="reportYear" onchange="generateReport()" class="form-control" style="min-width: 120px;">
+                    <select id="reportYear" onchange="generateReport()" class="form-control" style="min-width:120px;">
                         <option value="2024">2024</option>
                         <option value="2025">2025</option>
                         <option value="2026" selected>2026</option>
                         <option value="2027">2027</option>
                         <option value="2028">2028</option>
                     </select>
-                    <button onclick="generateReport()" class="btn-action btn-primary">
-                        <i class="fas fa-chart-bar"></i> Generate
-                    </button>
-                    <button onclick="exportReportToPDF()" class="btn-action btn-success">
-                        <i class="fas fa-file-pdf"></i> PDF
-                    </button>
-                    <button onclick="exportReportToCSV()" class="btn-action btn-outline">
-                        <i class="fas fa-file-excel"></i> CSV
-                    </button>
+                    <button onclick="generateReport()" class="btn-action btn-primary"><i class="fas fa-chart-bar"></i> Generate</button>
+                    <button onclick="exportReportToPDF()" class="btn-action btn-success"><i class="fas fa-file-pdf"></i> PDF</button>
+                    <button onclick="exportReportToCSV()" class="btn-action btn-outline"><i class="fas fa-file-excel"></i> CSV</button>
                 </div>
 
                 <!-- Report Content -->
-                <div id="reportContent" style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; min-height: 300px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                    <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                        <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
+                <div id="reportContent" style="background:white;border-radius:12px;padding:24px;border:1px solid #e5e7eb;min-height:300px;">
+                    <div style="text-align:center;padding:60px 20px;color:#94a3b8;">
+                        <i class="fas fa-file-alt" style="font-size:48px;display:block;margin-bottom:16px;"></i>
                         <h3>Select report type and click "Generate"</h3>
                         <p>View financial reports, collections, and outstanding balances</p>
                     </div>
@@ -639,28 +667,24 @@
                 <div class="filter-bar">
                     <div class="search-box">
                         <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="transactionSearch" placeholder="🔍 Search transactions..." onkeyup="filterTransactions()" class="form-control" style="min-width: 180px;">
+                        <input type="text" id="transactionSearch" placeholder="🔍 Search transactions..." onkeyup="filterTransactions()" class="form-control" style="min-width:180px;">
                     </div>
-                    <select id="transactionStatusFilter" onchange="filterTransactions()" class="form-control" style="min-width: 140px;">
+                    <select id="transactionStatusFilter" onchange="filterTransactions()" class="form-control" style="min-width:140px;">
                         <option value="all">All Status</option>
                         <option value="completed">✅ Completed</option>
                         <option value="pending">⏳ Pending</option>
                         <option value="failed">❌ Failed</option>
                     </select>
-                    <input type="date" id="transactionDateFrom" onchange="filterTransactions()" class="form-control" style="min-width: 140px;">
-                    <input type="date" id="transactionDateTo" onchange="filterTransactions()" class="form-control" style="min-width: 140px;">
-                    <button onclick="filterTransactions()" class="btn-action btn-primary btn-sm">
-                        <i class="fas fa-filter"></i> Apply
-                    </button>
-                    <button onclick="resetTransactionFilters()" class="btn-action btn-outline btn-sm">
-                        <i class="fas fa-undo"></i> Reset
-                    </button>
-                    <span id="transactionCount" style="font-size: 13px; color: #64748b; margin-left: auto;"></span>
+                    <input type="date" id="transactionDateFrom" onchange="filterTransactions()" class="form-control" style="min-width:140px;">
+                    <input type="date" id="transactionDateTo" onchange="filterTransactions()" class="form-control" style="min-width:140px;">
+                    <button onclick="filterTransactions()" class="btn-action btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
+                    <button onclick="resetTransactionFilters()" class="btn-action btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</button>
+                    <span id="transactionCount" style="font-size:13px;color:#64748b;margin-left:auto;"></span>
                 </div>
 
                 <!-- Transactions Table -->
                 <div class="table-container">
-                    <div style="overflow-x: auto;">
+                    <div style="overflow-x:auto;">
                         <table class="modern-table">
                             <thead>
                                 <tr>
@@ -676,12 +700,7 @@
                                 </tr>
                             </thead>
                             <tbody id="transactionsTableBody">
-                                <tr>
-                                    <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        <div class="loading-spinner"></div>
-                                        <p style="margin-top: 10px;">Loading transactions...</p>
-                                    </td>
-                                </tr>
+                                <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;"><div class="loading-spinner"></div><p style="margin-top:10px;">Loading transactions...</p></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -703,13 +722,11 @@
                     </div>
                 </div>
 
-                <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                    <h4 style="color: #0A3D62; margin: 0 0 16px 0;">
-                        <i class="fas fa-sliders-h"></i> General Settings
-                    </h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div style="background:white;border-radius:12px;padding:24px;border:1px solid #e5e7eb;">
+                    <h4 style="color:#0A3D62;margin:0 0 16px 0;"><i class="fas fa-sliders-h"></i> General Settings</h4>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
                         <div class="finance-form-group">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Module Status</label>
+                            <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Module Status</label>
                             <select id="moduleStatus" class="form-control">
                                 <option value="active">🟢 Active</option>
                                 <option value="maintenance">🟡 Maintenance</option>
@@ -717,14 +734,14 @@
                             </select>
                         </div>
                         <div class="finance-form-group">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Default Currency</label>
+                            <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Default Currency</label>
                             <select id="defaultCurrency" class="form-control">
                                 <option value="KES">KES - Kenyan Shilling</option>
                                 <option value="USD">USD - US Dollar</option>
                             </select>
                         </div>
                         <div class="finance-form-group">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Payment Terms</label>
+                            <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Payment Terms</label>
                             <select id="paymentTerms" class="form-control">
                                 <option value="30">30 Days</option>
                                 <option value="60">60 Days</option>
@@ -732,66 +749,51 @@
                             </select>
                         </div>
                         <div class="finance-form-group">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Late Fee (%)</label>
+                            <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Late Fee (%)</label>
                             <input type="number" id="lateFee" class="form-control" value="5" min="0" max="100">
                         </div>
                     </div>
-                    <div style="margin-top: 16px;">
-                        <button onclick="saveSettings()" class="btn-action btn-primary">
-                            <i class="fas fa-save"></i> Save Settings
-                        </button>
+                    <div style="margin-top:16px;">
+                        <button onclick="saveSettings()" class="btn-action btn-primary"><i class="fas fa-save"></i> Save Settings</button>
                     </div>
                 </div>
 
                 <!-- Data Management -->
-                <div style="background: white; border-radius: 12px; padding: 24px; margin-top: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                    <h4 style="color: #0A3D62; margin: 0 0 16px 0;">
-                        <i class="fas fa-database"></i> Data Management
-                    </h4>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                        <button onclick="exportAllData()" class="btn-action btn-success">
-                            <i class="fas fa-download"></i> Export All Data
-                        </button>
-                        <button onclick="backupData()" class="btn-action btn-warning">
-                            <i class="fas fa-archive"></i> Backup Data
-                        </button>
-                        <button onclick="clearCache()" class="btn-action btn-outline">
-                            <i class="fas fa-broom"></i> Clear Cache
-                        </button>
-                        <button onclick="resetModule()" class="btn-action btn-danger">
-                            <i class="fas fa-exclamation-triangle"></i> Reset Module
-                        </button>
+                <div style="background:white;border-radius:12px;padding:24px;margin-top:20px;border:1px solid #e5e7eb;">
+                    <h4 style="color:#0A3D62;margin:0 0 16px 0;"><i class="fas fa-database"></i> Data Management</h4>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <button onclick="exportAllData()" class="btn-action btn-success"><i class="fas fa-download"></i> Export All Data</button>
+                        <button onclick="backupData()" class="btn-action btn-warning"><i class="fas fa-archive"></i> Backup Data</button>
+                        <button onclick="clearCache()" class="btn-action btn-outline"><i class="fas fa-broom"></i> Clear Cache</button>
+                        <button onclick="resetModule()" class="btn-action btn-danger"><i class="fas fa-exclamation-triangle"></i> Reset Module</button>
                     </div>
-                    <div style="margin-top: 12px; padding: 12px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b; font-size: 13px; color: #92400e;">
+                    <div style="margin-top:12px;padding:12px;background:#fef3c7;border-radius:8px;border:1px solid #f59e0b;font-size:13px;color:#92400e;">
                         <i class="fas fa-info-circle"></i> 
                         <strong>Warning:</strong> Resetting the module will delete all financial data. This action cannot be undone.
                     </div>
                 </div>
 
                 <!-- Integration Status -->
-                <div style="background: white; border-radius: 12px; padding: 24px; margin-top: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                    <h4 style="color: #0A3D62; margin: 0 0 16px 0;">
-                        <i class="fas fa-link"></i> Integration Status
-                    </h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
-                        <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span><i class="fas fa-user-shield" style="color: #4C1D95;"></i> Super Admin</span>
+                <div style="background:white;border-radius:12px;padding:24px;margin-top:20px;border:1px solid #e5e7eb;">
+                    <h4 style="color:#0A3D62;margin:0 0 16px 0;"><i class="fas fa-link"></i> Integration Status</h4>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;">
+                        <div style="padding:16px;background:#f8fafc;border-radius:8px;border:1px solid #e5e7eb;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span><i class="fas fa-user-shield" style="color:#4C1D95;"></i> Super Admin</span>
                                 <span class="badge badge-success">Connected</span>
                             </div>
-                            <small style="color: #64748b;">Full access to all features</small>
+                            <small style="color:#64748b;">Full access to all features</small>
                         </div>
-                        <div style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span><i class="fas fa-user-graduate" style="color: #059669;"></i> Student Dashboard</span>
+                        <div style="padding:16px;background:#f8fafc;border-radius:8px;border:1px solid #e5e7eb;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span><i class="fas fa-user-graduate" style="color:#059669;"></i> Student Dashboard</span>
                                 <span class="badge badge-success">Connected</span>
                             </div>
-                            <small style="color: #64748b;">View balances, payment history</small>
+                            <small style="color:#64748b;">View balances, payment history</small>
                         </div>
                     </div>
                 </div>
             </section>
-
         </main>
     </div>
 
@@ -799,71 +801,42 @@
     <!-- ===== MODALS ===== -->
     <!-- ============================================================ -->
 
-    <!-- ===== PAYMENT MODAL (Enhanced) ===== -->
+    <!-- ===== PAYMENT MODAL ===== -->
     <div id="paymentModal" class="modal-overlay">
         <div class="modal-content payment-modal-content">
             <button class="modal-close" onclick="closePaymentModal()">&times;</button>
-            <h3 style="color: #0A3D62; margin-bottom: 16px;">
-                <i class="fas fa-receipt"></i> Record Payment
-            </h3>
+            <h3 style="color: #0A3D62; margin-bottom: 16px;"><i class="fas fa-receipt"></i> Record Payment</h3>
             
             <!-- Student Info Card -->
             <div id="paymentStudentInfo" class="student-info-card" style="display: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h4 style="margin: 0; color: #0A3D62; font-size: 15px;">
-                        <i class="fas fa-user-graduate"></i> Student Details
-                    </h4>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h4 style="margin:0;color:#0A3D62;font-size:15px;"><i class="fas fa-user-graduate"></i> Student Details</h4>
                     <span id="studentStatusBadge" class="badge badge-info">Active</span>
                 </div>
-                <div class="info-row">
-                    <span class="label">Student Name:</span>
-                    <span class="value" id="modalStudentName">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Student ID:</span>
-                    <span class="value" id="modalStudentId">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Program:</span>
-                    <span class="value" id="modalStudentProgram">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Intake Year:</span>
-                    <span class="value" id="modalStudentIntake">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Total Fees Due:</span>
-                    <span class="value" id="modalTotalDue">KES 0</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Total Paid:</span>
-                    <span class="value" id="modalTotalPaid">KES 0</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Current Balance:</span>
-                    <span class="value" id="modalBalance">KES 0</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Payment Status:</span>
-                    <span class="value" id="modalPaymentStatus">-</span>
-                </div>
+                <div class="info-row"><span class="label">Student Name:</span><span class="value" id="modalStudentName">-</span></div>
+                <div class="info-row"><span class="label">Student ID:</span><span class="value" id="modalStudentId">-</span></div>
+                <div class="info-row"><span class="label">Program:</span><span class="value" id="modalStudentProgram">-</span></div>
+                <div class="info-row"><span class="label">Intake Year:</span><span class="value" id="modalStudentIntake">-</span></div>
+                <div class="info-row"><span class="label">Total Fees Due:</span><span class="value" id="modalTotalDue">KES 0</span></div>
+                <div class="info-row"><span class="label">Total Paid:</span><span class="value" id="modalTotalPaid">KES 0</span></div>
+                <div class="info-row"><span class="label">Current Balance:</span><span class="value" id="modalBalance">KES 0</span></div>
+                <div class="info-row"><span class="label">Payment Status:</span><span class="value" id="modalPaymentStatus">-</span></div>
             </div>
 
-            <!-- Payment Form -->
             <form id="paymentModalForm" onsubmit="event.preventDefault(); recordPaymentFromModal();">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div class="finance-form-group" style="grid-column: 1 / -1;">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Select Student *</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="finance-form-group" style="grid-column:1/-1;">
+                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Select Student *</label>
                         <select id="modalPaymentStudent" class="form-control" required onchange="updateStudentInfo()">
                             <option value="">-- Select Student --</option>
                         </select>
                     </div>
                     <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Amount (KES) *</label>
+                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Amount (KES) *</label>
                         <input type="number" id="modalPaymentAmount" class="form-control" placeholder="0.00" required step="0.01" min="0">
                     </div>
                     <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Payment Method *</label>
+                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Payment Method *</label>
                         <select id="modalPaymentMethod" class="form-control" required>
                             <option value="Cash">Cash</option>
                             <option value="M-Pesa">M-Pesa</option>
@@ -873,15 +846,15 @@
                         </select>
                     </div>
                     <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Reference Number</label>
+                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Reference Number</label>
                         <input type="text" id="modalPaymentReference" class="form-control" placeholder="Transaction ref (optional)">
                     </div>
                     <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Payment Date *</label>
+                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Payment Date *</label>
                         <input type="date" id="modalPaymentDate" class="form-control" required>
                     </div>
                     <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Period *</label>
+                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Period *</label>
                         <select id="modalPaymentPeriod" class="form-control" required>
                             <option value="Term 1">Term 1</option>
                             <option value="Term 2">Term 2</option>
@@ -889,18 +862,14 @@
                             <option value="Full Year">Full Year</option>
                         </select>
                     </div>
-                    <div class="finance-form-group" style="grid-column: 1 / -1;">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Notes</label>
+                    <div class="finance-form-group" style="grid-column:1/-1;">
+                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Notes</label>
                         <textarea id="modalPaymentNotes" class="form-control" rows="2" placeholder="Additional notes (optional)"></textarea>
                     </div>
                 </div>
-                <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
-                    <button type="button" onclick="closePaymentModal()" class="btn-action btn-outline">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                    <button type="submit" class="btn-action btn-success">
-                        <i class="fas fa-save"></i> Record Payment
-                    </button>
+                <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
+                    <button type="button" onclick="closePaymentModal()" class="btn-action btn-outline"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="submit" class="btn-action btn-success"><i class="fas fa-save"></i> Record Payment</button>
                 </div>
             </form>
         </div>
@@ -908,179 +877,90 @@
 
     <!-- ===== FEE STRUCTURE MODAL ===== -->
     <div id="feeStructureModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-content" style="max-width:900px;">
             <button class="modal-close" onclick="closeFeeStructureModal()">&times;</button>
-            <h3 style="color: #0A3D62; margin-bottom: 16px;" id="feeModalTitle">
-                <i class="fas fa-plus-circle"></i> Add Fee Structure
-            </h3>
-            
+            <h3 style="color:#0A3D62;margin-bottom:16px;" id="feeModalTitle"><i class="fas fa-plus-circle"></i> Add Fee Structure</h3>
             <form id="feeStructureForm" onsubmit="event.preventDefault(); saveFeeStructureFull();">
                 <input type="hidden" id="feeStructureId">
-                
-                <!-- Program Info -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
-                    <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Program Name *</label>
-                        <input type="text" id="fee_program_name" class="form-control" placeholder="e.g., KRCHN Nursing" required>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Program Code</label>
-                        <input type="text" id="fee_program_code" class="form-control" placeholder="e.g., KRCHN">
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Level</label>
-                        <select id="fee_level" class="form-control">
-                            <option value="Certificate">Certificate</option>
-                            <option value="Diploma">Diploma</option>
-                            <option value="Degree">Degree</option>
-                            <option value="Artisan">Artisan</option>
-                        </select>
-                    </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
+                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Program Name *</label><input type="text" id="fee_program_name" class="form-control" placeholder="e.g., KRCHN Nursing" required></div>
+                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Program Code</label><input type="text" id="fee_program_code" class="form-control" placeholder="e.g., KRCHN"></div>
+                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Level</label><select id="fee_level" class="form-control"><option value="Certificate">Certificate</option><option value="Diploma">Diploma</option><option value="Degree">Degree</option><option value="Artisan">Artisan</option></select></div>
                 </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
-                    <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Duration</label>
-                        <input type="text" id="fee_duration" class="form-control" placeholder="e.g., 4 Modules">
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Mode</label>
-                        <select id="fee_mode" class="form-control">
-                            <option value="Physical">Physical</option>
-                            <option value="Online">Online</option>
-                            <option value="Physical/Online">Physical/Online</option>
-                        </select>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Block / Term *</label>
-                        <input type="text" id="fee_block_term" class="form-control" placeholder="e.g., Term 1, Block 1" required>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Intake Year</label>
-                        <select id="fee_intake_year" class="form-control">
-                            <option value="2024">2024</option>
-                            <option value="2025">2025</option>
-                            <option value="2026" selected>2026</option>
-                            <option value="2027">2027</option>
-                            <option value="2028">2028</option>
-                        </select>
-                    </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
+                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Duration</label><input type="text" id="fee_duration" class="form-control" placeholder="e.g., 4 Modules"></div>
+                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Mode</label><select id="fee_mode" class="form-control"><option value="Physical">Physical</option><option value="Online">Online</option><option value="Physical/Online">Physical/Online</option></select></div>
+                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Block / Term *</label><input type="text" id="fee_block_term" class="form-control" placeholder="e.g., Term 1, Block 1" required></div>
+                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Intake Year</label><select id="fee_intake_year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option><option value="2028">2028</option></select></div>
                 </div>
                 
                 <!-- Fee Components -->
-                <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="margin: 0; color: #0A3D62; font-size: 15px;">
-                            <i class="fas fa-list"></i> Fee Components
-                        </h4>
-                        <button type="button" onclick="addFeeComponentRow()" class="btn-action btn-primary btn-sm">
-                            <i class="fas fa-plus"></i> Add Component
-                        </button>
+                <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid #e5e7eb;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <h4 style="margin:0;color:#0A3D62;font-size:15px;"><i class="fas fa-list"></i> Fee Components</h4>
+                        <button type="button" onclick="addFeeComponentRow()" class="btn-action btn-primary btn-sm"><i class="fas fa-plus"></i> Add Component</button>
                     </div>
                     <div id="feeComponentsContainer">
-                        <!-- Dynamic rows -->
-                        <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                        <div class="fee-component-row" style="display:grid;grid-template-columns:1fr 120px 40px;gap:8px;margin-bottom:8px;">
                             <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE">
                             <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000">
-                            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                                <i class="fas fa-times"></i>
-                            </button>
+                            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding:4px 8px;"><i class="fas fa-times"></i></button>
                         </div>
-                        <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                        <div class="fee-component-row" style="display:grid;grid-template-columns:1fr 120px 40px;gap:8px;margin-bottom:8px;">
                             <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE">
                             <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
-                            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                                <i class="fas fa-times"></i>
-                            </button>
+                            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding:4px 8px;"><i class="fas fa-times"></i></button>
                         </div>
-                        <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                        <div class="fee-component-row" style="display:grid;grid-template-columns:1fr 120px 40px;gap:8px;margin-bottom:8px;">
                             <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE">
                             <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
-                            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                                <i class="fas fa-times"></i>
-                            </button>
+                            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding:4px 8px;"><i class="fas fa-times"></i></button>
                         </div>
                     </div>
-                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: 600; color: #475569;">Total:</span>
-                        <span id="feeTotalPreview" style="font-size: 18px; font-weight: 700; color: #059669;">KES 0</span>
+                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-weight:600;color:#475569;">Total:</span>
+                        <span id="feeTotalPreview" style="font-size:18px;font-weight:700;color:#059669;">KES 0</span>
                     </div>
                 </div>
                 
                 <!-- Hostel & Optional Fees -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-                    <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Hostel Fee (Optional)</label>
-                        <input type="number" id="fee_hostel" class="form-control" placeholder="0" value="18000">
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Status</label>
-                        <select id="fee_status" class="form-control">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Hostel Fee (Optional)</label><input type="number" id="fee_hostel" class="form-control" placeholder="0" value="18000"></div>
+                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Status</label><select id="fee_status" class="form-control"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
                 </div>
                 
                 <!-- Payment Info -->
-                <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
-                    <h4 style="margin: 0 0 12px 0; color: #0A3D62; font-size: 15px;">
-                        <i class="fas fa-credit-card"></i> Payment Information
-                    </h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div class="finance-form-group">
-                            <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">M-Pesa Paybill</label>
-                            <input type="text" id="fee_mpesa" class="form-control" value="BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo">
-                        </div>
-                        <div class="finance-form-group">
-                            <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Bank Details</label>
-                            <input type="text" id="fee_bank" class="form-control" value="Equity Bank | Branch: Nakuru | A/C: 0130200214036">
-                        </div>
-                        <div class="finance-form-group">
-                            <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Email</label>
-                            <input type="email" id="fee_email" class="form-control" value="nchsmfinance@gmail.com">
-                        </div>
-                        <div class="finance-form-group">
-                            <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">WhatsApp</label>
-                            <input type="text" id="fee_whatsapp" class="form-control" value="+254 103614355 | +254 703345771">
-                        </div>
+                <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid #e5e7eb;">
+                    <h4 style="margin:0 0 12px 0;color:#0A3D62;font-size:15px;"><i class="fas fa-credit-card"></i> Payment Information</h4>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="finance-form-group"><label style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">M-Pesa Paybill</label><input type="text" id="fee_mpesa" class="form-control" value="BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo"></div>
+                        <div class="finance-form-group"><label style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">Bank Details</label><input type="text" id="fee_bank" class="form-control" value="Equity Bank | Branch: Nakuru | A/C: 0130200214036"></div>
+                        <div class="finance-form-group"><label style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">Email</label><input type="email" id="fee_email" class="form-control" value="nchsmfinance@gmail.com"></div>
+                        <div class="finance-form-group"><label style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">WhatsApp</label><input type="text" id="fee_whatsapp" class="form-control" value="+254 103614355 | +254 703345771"></div>
                     </div>
                 </div>
                 
                 <!-- Terms -->
-                <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="margin: 0; color: #0A3D62; font-size: 15px;">
-                            <i class="fas fa-file-contract"></i> Terms & Conditions
-                        </h4>
-                        <button type="button" onclick="addFeeTermRow()" class="btn-action btn-primary btn-sm">
-                            <i class="fas fa-plus"></i> Add Term
-                        </button>
+                <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid #e5e7eb;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <h4 style="margin:0;color:#0A3D62;font-size:15px;"><i class="fas fa-file-contract"></i> Terms & Conditions</h4>
+                        <button type="button" onclick="addFeeTermRow()" class="btn-action btn-primary btn-sm"><i class="fas fa-plus"></i> Add Term</button>
                     </div>
                     <div id="feeTermsContainer">
-                        <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                        <div class="fee-term-row" style="display:grid;grid-template-columns:1fr 40px;gap:8px;margin-bottom:8px;">
                             <input type="text" class="form-control term-text" placeholder="Enter term" value="All fees are non-refundable once a student has commenced training.">
-                            <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                                <i class="fas fa-times"></i>
-                            </button>
+                            <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding:4px 8px;"><i class="fas fa-times"></i></button>
                         </div>
-                        <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                        <div class="fee-term-row" style="display:grid;grid-template-columns:1fr 40px;gap:8px;margin-bottom:8px;">
                             <input type="text" class="form-control term-text" placeholder="Enter term" value="Payments must be made via M-Pesa Pay bill or bank deposit only. CASH NOT ACCEPTED.">
-                            <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                                <i class="fas fa-times"></i>
-                            </button>
+                            <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding:4px 8px;"><i class="fas fa-times"></i></button>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Actions -->
-                <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
-                    <button type="button" onclick="closeFeeStructureModal()" class="btn-action btn-outline">
-                        Cancel
-                    </button>
-                    <button type="submit" class="btn-action btn-primary">
-                        <i class="fas fa-save"></i> Save Fee Structure
-                    </button>
+                <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
+                    <button type="button" onclick="closeFeeStructureModal()" class="btn-action btn-outline">Cancel</button>
+                    <button type="submit" class="btn-action btn-primary"><i class="fas fa-save"></i> Save Fee Structure</button>
                 </div>
             </form>
         </div>
@@ -1090,16 +970,9 @@
     <div id="paymentDetailModal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('paymentDetailModal')">&times;</button>
-            <h3 style="color: #0A3D62; margin-bottom: 16px;">
-                <i class="fas fa-receipt"></i> Payment Details
-            </h3>
-            <div id="paymentDetailBody">
-                <div style="text-align: center; padding: 40px;">
-                    <div class="loading-spinner"></div>
-                    <p style="margin-top: 10px; color: #94a3b8;">Loading...</p>
-                </div>
-            </div>
-            <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+            <h3 style="color:#0A3D62;margin-bottom:16px;"><i class="fas fa-receipt"></i> Payment Details</h3>
+            <div id="paymentDetailBody"><div style="text-align:center;padding:40px;"><div class="loading-spinner"></div><p style="margin-top:10px;color:#94a3b8;">Loading...</p></div></div>
+            <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
                 <button onclick="closeModal('paymentDetailModal')" class="btn-action btn-outline">Close</button>
             </div>
         </div>
@@ -1107,316 +980,201 @@
 
     <!-- Student Account Modal -->
     <div id="studentAccountModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-content" style="max-width:800px;">
             <button class="modal-close" onclick="closeModal('studentAccountModal')">&times;</button>
-            <h3 style="color: #0A3D62; margin-bottom: 16px;">
-                <i class="fas fa-user"></i> Student Account Details
-            </h3>
-            <div id="studentAccountBody">
-                <div style="text-align: center; padding: 40px;">
-                    <div class="loading-spinner"></div>
-                    <p style="margin-top: 10px; color: #94a3b8;">Loading...</p>
-                </div>
-            </div>
-            <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+            <h3 style="color:#0A3D62;margin-bottom:16px;"><i class="fas fa-user"></i> Student Account Details</h3>
+            <div id="studentAccountBody"><div style="text-align:center;padding:40px;"><div class="loading-spinner"></div><p style="margin-top:10px;color:#94a3b8;">Loading...</p></div></div>
+            <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
                 <button onclick="closeModal('studentAccountModal')" class="btn-action btn-outline">Close</button>
             </div>
         </div>
     </div>
 
-<!-- ============================================================ -->
-<!-- ===== JAVASCRIPT ===== -->
-<!-- ============================================================ -->
+    <!-- ============================================================ -->
+    <!-- ===== JAVASCRIPT ===== -->
+    <!-- ============================================================ -->
 
-<!-- Hide .html extension -->
-<script>
-    if (window.location.pathname.endsWith('.html')) {
-        const cleanPath = window.location.pathname.replace(/\.html$/, '');
-        window.history.replaceState({}, '', cleanPath);
-    }
-</script>
-
-<!-- Global Functions -->
-<script>
-    // ============================================================
-    // SHOW TAB
-    // ============================================================
-    window.showTab = function(tabId) {
-        console.log('📂 Opening tab:', tabId);
-        
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.style.display = 'none';
-            tab.classList.remove('active');
-        });
-        
-        const target = document.getElementById('tab-' + tabId);
-        if (target) {
-            target.style.display = 'block';
-            target.classList.add('active');
-            console.log('✅ Tab opened:', tabId);
-        } else {
-            console.warn('⚠️ Tab not found:', tabId);
-            const alt = document.getElementById(tabId);
-            if (alt) {
-                alt.style.display = 'block';
-                alt.classList.add('active');
-                console.log('✅ Tab opened (alt):', tabId);
-            }
+    <script>
+        if (window.location.pathname.endsWith('.html')) {
+            const cleanPath = window.location.pathname.replace(/\.html$/, '');
+            window.history.replaceState({}, '', cleanPath);
         }
-        
-        document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === tabId) {
-                link.classList.add('active');
+    </script>
+
+    <!-- Global Functions -->
+    <script>
+        window.showTab = function(tabId) {
+            console.log('📂 Opening tab:', tabId);
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+                tab.classList.remove('active');
+            });
+            const target = document.getElementById('tab-' + tabId);
+            if (target) {
+                target.style.display = 'block';
+                target.classList.add('active');
+                console.log('✅ Tab opened:', tabId);
+            } else {
+                console.warn('⚠️ Tab not found:', tabId);
+                const alt = document.getElementById(tabId);
+                if (alt) { alt.style.display = 'block'; alt.classList.add('active'); console.log('✅ Tab opened (alt):', tabId); }
             }
-        });
-        
-        const loaders = {
-            'dashboard': function() { 
-                if (typeof loadDashboardData === 'function') loadDashboardData(); 
-            },
-            'accounts': function() { 
-                if (typeof loadAccounts === 'function') loadAccounts(); 
-            },
-            'payments': function() { 
-                if (typeof loadPayments === 'function') loadPayments(); 
-            },
-            'fee-structure': function() { 
-                if (typeof loadFeeStructure === 'function') loadFeeStructure(); 
-            },
-            'transactions': function() { 
-                if (typeof loadTransactions === 'function') loadTransactions(); 
-            },
-            'settings': function() { 
-                if (typeof loadSettings === 'function') loadSettings(); 
+            document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-tab') === tabId) link.classList.add('active');
+            });
+            const loaders = {
+                'dashboard': function() { if (typeof loadDashboardData === 'function') loadDashboardData(); },
+                'accounts': function() { if (typeof loadAccounts === 'function') loadAccounts(); },
+                'payments': function() { if (typeof loadPayments === 'function') loadPayments(); },
+                'fee-structure': function() { if (typeof loadFeeStructure === 'function') loadFeeStructure(); },
+                'transactions': function() { if (typeof loadTransactions === 'function') loadTransactions(); },
+                'settings': function() { if (typeof loadSettings === 'function') loadSettings(); }
+            };
+            if (loaders[tabId]) setTimeout(loaders[tabId], 300);
+        };
+
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('financeSidebar');
+            if (sidebar) sidebar.classList.toggle('open');
+        };
+
+        window.goToMainDashboard = function() { window.location.href = '/home'; };
+
+        window.logoutFinance = function() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('finance_user');
+                sessionStorage.removeItem('finance_user');
+                window.location.href = 'financelogin.html';
             }
         };
-        
-        if (loaders[tabId]) {
-            setTimeout(loaders[tabId], 300);
-        }
-    };
-    
-    // ============================================================
-    // SIDEBAR TOGGLE
-    // ============================================================
-    window.toggleSidebar = function() {
-        const sidebar = document.getElementById('financeSidebar');
-        if (sidebar) {
-            sidebar.classList.toggle('open');
-        }
-    };
-    
-    // ============================================================
-    // GO TO MAIN DASHBOARD
-    // ============================================================
-    window.goToMainDashboard = function() {
-        window.location.href = '/home';
-    };
-    
-    // ============================================================
-    // LOGOUT
-    // ============================================================
-    window.logoutFinance = function() {
-        if (confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem('finance_user');
-            sessionStorage.removeItem('finance_user');
-            window.location.href = 'financelogin.html';
-        }
-    };
-    
-    console.log('✅ Global functions loaded');
-</script>
+        console.log('✅ Global functions loaded');
+    </script>
 
-<!-- External JS -->
-<script src="js/finance-config.js"></script>
-<script src="js/finance-api.js"></script>
-<script src="js/finance-app.js"></script>
+    <!-- External JS -->
+    <script src="js/finance-config.js"></script>
+    <script src="js/finance-api.js"></script>
+    <script src="js/finance-app.js"></script>
 
-<!-- Payment Modal Functions -->
-<script>
-    // ============================================================
-    // PAYMENT MODAL FUNCTIONS
-    // ============================================================
-    
-    let selectedStudentForPayment = null;
-    
-    function openPaymentModal(studentId) {
-        const modal = document.getElementById('paymentModal');
-        const studentSelect = document.getElementById('modalPaymentStudent');
-        
-        // Reset form
-        document.getElementById('paymentModalForm').reset();
-        document.getElementById('modalPaymentDate').value = new Date().toISOString().split('T')[0];
-        document.getElementById('paymentStudentInfo').style.display = 'none';
-        
-        // Populate student dropdown
-        if (allAccounts && allAccounts.length > 0) {
-            studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
-            allAccounts.forEach(student => {
-                const option = document.createElement('option');
-                option.value = student.student_id || student.id;
-                option.textContent = `${student.student_name} (${student.display_id || student.student_id || 'N/A'})`;
-                option.dataset.student = JSON.stringify(student);
-                studentSelect.appendChild(option);
-            });
-            
-            // If studentId provided, select that student
-            if (studentId) {
-                studentSelect.value = studentId;
-                updateStudentInfo();
+    <!-- Payment Modal Functions -->
+    <script>
+        let selectedStudentForPayment = null;
+
+        function openPaymentModal(studentId) {
+            const modal = document.getElementById('paymentModal');
+            const studentSelect = document.getElementById('modalPaymentStudent');
+            document.getElementById('paymentModalForm').reset();
+            document.getElementById('modalPaymentDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('paymentStudentInfo').style.display = 'none';
+            if (allAccounts && allAccounts.length > 0) {
+                studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+                allAccounts.forEach(student => {
+                    const option = document.createElement('option');
+                    option.value = student.student_id || student.id;
+                    option.textContent = `${student.student_name} (${student.display_id || student.student_id || 'N/A'})`;
+                    option.dataset.student = JSON.stringify(student);
+                    studentSelect.appendChild(option);
+                });
+                if (studentId) { studentSelect.value = studentId; updateStudentInfo(); }
             }
+            modal.classList.add('active');
         }
-        
-        modal.classList.add('active');
-    }
-    
-    function closePaymentModal() {
-        document.getElementById('paymentModal').classList.remove('active');
-        document.getElementById('paymentStudentInfo').style.display = 'none';
-        selectedStudentForPayment = null;
-    }
-    
-    function updateStudentInfo() {
-        const select = document.getElementById('modalPaymentStudent');
-        const selectedOption = select.options[select.selectedIndex];
-        
-        if (!selectedOption || !selectedOption.value) {
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
             document.getElementById('paymentStudentInfo').style.display = 'none';
             selectedStudentForPayment = null;
-            return;
         }
-        
-        try {
-            const student = JSON.parse(selectedOption.dataset.student);
-            selectedStudentForPayment = student;
-            
-            document.getElementById('paymentStudentInfo').style.display = 'block';
-            document.getElementById('modalStudentName').textContent = student.student_name || 'N/A';
-            document.getElementById('modalStudentId').textContent = student.display_id || student.student_id || 'N/A';
-            document.getElementById('modalStudentProgram').textContent = student.program || 'N/A';
-            document.getElementById('modalStudentIntake').textContent = student.intake_year || 'N/A';
-            
-            const totalDue = parseFloat(student.total_fees_due) || 0;
-            const totalPaid = parseFloat(student.total_paid) || 0;
-            const balance = parseFloat(student.balance) || 0;
-            
-            document.getElementById('modalTotalDue').textContent = formatCurrency(totalDue);
-            document.getElementById('modalTotalPaid').textContent = formatCurrency(totalPaid);
-            
-            const balanceEl = document.getElementById('modalBalance');
-            balanceEl.textContent = formatCurrency(balance);
-            balanceEl.className = 'value ' + (balance > 0 ? 'negative' : balance < 0 ? 'positive' : '');
-            
-            const statusEl = document.getElementById('modalPaymentStatus');
-            if (balance === 0) {
-                statusEl.textContent = '✅ Paid in Full';
-                statusEl.style.color = '#059669';
-            } else if (balance < 10000) {
-                statusEl.textContent = '⚠️ Partial Payment';
-                statusEl.style.color = '#d97706';
-            } else {
-                statusEl.textContent = '🔴 Outstanding';
-                statusEl.style.color = '#dc2626';
+
+        function updateStudentInfo() {
+            const select = document.getElementById('modalPaymentStudent');
+            const selectedOption = select.options[select.selectedIndex];
+            if (!selectedOption || !selectedOption.value) {
+                document.getElementById('paymentStudentInfo').style.display = 'none';
+                selectedStudentForPayment = null;
+                return;
             }
-            
-            document.getElementById('studentStatusBadge').textContent = student.payment_status || 'Active';
-            document.getElementById('studentStatusBadge').className = 'badge ' + 
-                (student.payment_status === 'paid' ? 'badge-success' : 
-                 student.payment_status === 'partial' ? 'badge-warning' : 'badge-danger');
-            
-        } catch (e) {
-            console.error('Error parsing student data:', e);
-            document.getElementById('paymentStudentInfo').style.display = 'none';
+            try {
+                const student = JSON.parse(selectedOption.dataset.student);
+                selectedStudentForPayment = student;
+                document.getElementById('paymentStudentInfo').style.display = 'block';
+                document.getElementById('modalStudentName').textContent = student.student_name || 'N/A';
+                document.getElementById('modalStudentId').textContent = student.display_id || student.student_id || 'N/A';
+                document.getElementById('modalStudentProgram').textContent = student.program || 'N/A';
+                document.getElementById('modalStudentIntake').textContent = student.intake_year || 'N/A';
+                const totalDue = parseFloat(student.total_fees_due) || 0;
+                const totalPaid = parseFloat(student.total_paid) || 0;
+                const balance = parseFloat(student.balance) || 0;
+                document.getElementById('modalTotalDue').textContent = formatCurrency(totalDue);
+                document.getElementById('modalTotalPaid').textContent = formatCurrency(totalPaid);
+                const balanceEl = document.getElementById('modalBalance');
+                balanceEl.textContent = formatCurrency(balance);
+                balanceEl.className = 'value ' + (balance > 0 ? 'negative' : balance < 0 ? 'positive' : '');
+                const statusEl = document.getElementById('modalPaymentStatus');
+                if (balance === 0) { statusEl.textContent = '✅ Paid in Full'; statusEl.style.color = '#059669'; }
+                else if (balance < 10000) { statusEl.textContent = '⚠️ Partial Payment'; statusEl.style.color = '#d97706'; }
+                else { statusEl.textContent = '🔴 Outstanding'; statusEl.style.color = '#dc2626'; }
+                document.getElementById('studentStatusBadge').textContent = student.payment_status || 'Active';
+                document.getElementById('studentStatusBadge').className = 'badge ' + (student.payment_status === 'paid' ? 'badge-success' : student.payment_status === 'partial' ? 'badge-warning' : 'badge-danger');
+            } catch (e) { console.error('Error parsing student data:', e); document.getElementById('paymentStudentInfo').style.display = 'none'; }
         }
-    }
-    
-    async function recordPaymentFromModal() {
-        const student = selectedStudentForPayment;
-        const amount = parseFloat(document.getElementById('modalPaymentAmount').value);
-        const method = document.getElementById('modalPaymentMethod').value;
-        const reference = document.getElementById('modalPaymentReference').value || null;
-        const date = document.getElementById('modalPaymentDate').value;
-        const period = document.getElementById('modalPaymentPeriod').value;
-        const notes = document.getElementById('modalPaymentNotes').value || null;
-        
-        if (!student) {
-            showToast('Please select a student', 'warning');
-            return;
-        }
-        
-        if (!amount || amount <= 0) {
-            showToast('Please enter a valid amount', 'warning');
-            return;
-        }
-        
-        if (!date) {
-            showToast('Please select a payment date', 'warning');
-            return;
-        }
-        
-        try {
-            const paymentData = {
-                studentId: student.student_id || student.id,
-                studentName: student.student_name,
-                studentEmail: student.student_email || '',
-                program: student.program || 'KRCHN',
-                amount: amount,
-                method: method,
-                reference: reference,
-                date: date,
-                period: period,
-                notes: notes
-            };
-            
-            await window.financeAPI.recordPayment(paymentData);
-            
-            showToast(`Payment of ${formatCurrency(amount)} recorded successfully for ${student.student_name}!`, 'success');
-            
-            closePaymentModal();
-            loadAllData();
-            
-        } catch (error) {
-            console.error('Error recording payment:', error);
-            showToast('Error recording payment: ' + error.message, 'error');
-        }
-    }
-    
-    // Click outside modal to close
-    document.addEventListener('click', function(e) {
-        const modal = document.getElementById('paymentModal');
-        if (e.target === modal) {
-            closePaymentModal();
-        }
-    });
-    
-    // ESC key to close modal
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            const modal = document.getElementById('paymentModal');
-            if (modal && modal.classList.contains('active')) {
+
+        async function recordPaymentFromModal() {
+            const student = selectedStudentForPayment;
+            const amount = parseFloat(document.getElementById('modalPaymentAmount').value);
+            const method = document.getElementById('modalPaymentMethod').value;
+            const reference = document.getElementById('modalPaymentReference').value || null;
+            const date = document.getElementById('modalPaymentDate').value;
+            const period = document.getElementById('modalPaymentPeriod').value;
+            const notes = document.getElementById('modalPaymentNotes').value || null;
+            if (!student) { showToast('Please select a student', 'warning'); return; }
+            if (!amount || amount <= 0) { showToast('Please enter a valid amount', 'warning'); return; }
+            if (!date) { showToast('Please select a payment date', 'warning'); return; }
+            try {
+                const paymentData = {
+                    studentId: student.student_id || student.id,
+                    studentName: student.student_name,
+                    studentEmail: student.student_email || '',
+                    program: student.program || 'KRCHN',
+                    amount: amount,
+                    method: method,
+                    reference: reference,
+                    date: date,
+                    period: period,
+                    notes: notes
+                };
+                await window.financeAPI.recordPayment(paymentData);
+                showToast(`Payment of ${formatCurrency(amount)} recorded successfully for ${student.student_name}!`, 'success');
                 closePaymentModal();
+                loadAllData();
+            } catch (error) {
+                console.error('Error recording payment:', error);
+                showToast('Error recording payment: ' + error.message, 'error');
             }
         }
-    });
-    
-    console.log('✅ Payment modal functions loaded');
-</script>
 
-<!-- Ensure Dashboard -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(function() {
-            if (typeof window.showTab === 'function') {
-                window.showTab('dashboard');
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('paymentModal');
+            if (e.target === modal) closePaymentModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('paymentModal');
+                if (modal && modal.classList.contains('active')) closePaymentModal();
             }
-            console.log('✅ Dashboard loaded');
-        }, 600);
-    });
-</script>
+        });
+        console.log('✅ Payment modal functions loaded');
+    </script>
 
-<!-- Code Protection -->
-<script src="code-protection.js"></script>
-   
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                if (typeof window.showTab === 'function') window.showTab('dashboard');
+                console.log('✅ Dashboard loaded');
+            }, 600);
+        });
+    </script>
+
+    <script src="code-protection.js"></script>
 </body>
 </html>
