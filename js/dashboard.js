@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH STREAK SYSTEM (LIGHTS UP AFTER 1 DAY) + TOTAL POINTS + LOGIN POINTS DISPLAY
+// dashboard.js - COMPLETE WORKING VERSION WITH STREAK SYSTEM (LIGHTS UP AFTER 1 DAY) + TOTAL POINTS + LOGIN POINTS DISPLAY + FIXED TIME GREETING
 
 class DashboardModule {
     constructor(supabaseClient) {
@@ -34,8 +34,15 @@ class DashboardModule {
         console.log('✅ DashboardModule initialized');
     }
     
+    // ============================================================
+    // 🕐 TIME HELPERS - FIXED FOR KENYA TIME
+    // ============================================================
+    
     getKenyaNow() {
-        return new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+        const now = new Date();
+        return new Date(now.toLocaleString('en-US', { 
+            timeZone: 'Africa/Nairobi' 
+        }));
     }
     
     formatKenyaDate(date) {
@@ -81,6 +88,56 @@ class DashboardModule {
             return 'Unknown';
         }
     }
+    
+    // ============================================================
+    // 🔧 TIME GREETING - FIXED TO USE ACTUAL TIME
+    // ============================================================
+    
+    updateTimeGreeting() {
+        const kenyaNow = this.getKenyaNow();
+        const hour = kenyaNow.getHours();
+        let greeting = '';
+        let emoji = '';
+        
+        // Determine greeting based on time of day
+        if (hour >= 5 && hour < 12) {
+            greeting = 'Good Morning';
+            emoji = '☀️';
+        } else if (hour >= 12 && hour < 17) {
+            greeting = 'Good Afternoon';
+            emoji = '🌤️';
+        } else if (hour >= 17 && hour < 21) {
+            greeting = 'Good Evening';
+            emoji = '🌅';
+        } else {
+            greeting = 'Good Night';
+            emoji = '🌙';
+        }
+        
+        // Update the welcome heading
+        const welcomeH1 = document.querySelector('.welcome h1');
+        if (welcomeH1) {
+            const studentName = this.elements.welcomeStudentName?.innerText || 'Student';
+            welcomeH1.innerHTML = `${greeting}, ${studentName}! ${emoji}`;
+        }
+        
+        // Update the time display if exists
+        const headerTime = this.elements.headerTime;
+        if (headerTime) {
+            headerTime.textContent = kenyaNow.toLocaleTimeString('en-KE', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Africa/Nairobi'
+            });
+        }
+        
+        console.log(`🕐 Time greeting updated: ${greeting} (${hour}:00)`);
+    }
+    
+    // ============================================================
+    // 📦 CACHE ELEMENTS
+    // ============================================================
     
     cacheElements() {
         this.elements = {
@@ -133,6 +190,10 @@ class DashboardModule {
             totalPointsDisplay: document.getElementById('total-points-display')
         };
     }
+    
+    // ============================================================
+    // 🖱️ CLICKABLE STATS
+    // ============================================================
     
     setupClickableStats() {
         console.log('🖱️ Setting up clickable stats...');
@@ -216,6 +277,10 @@ class DashboardModule {
         }
     }
     
+    // ============================================================
+    // 🎯 EVENT LISTENERS
+    // ============================================================
+    
     setupEventListeners() {
         document.addEventListener('nurseiqMetricsUpdated', (e) => {
             if (e.detail) {
@@ -266,6 +331,10 @@ class DashboardModule {
         }
     }
     
+    // ============================================================
+    // 🚀 INITIALIZE
+    // ============================================================
+    
     async initialize(userId, userProfile) {
         console.log('👤 Dashboard initializing...');
         
@@ -279,6 +348,7 @@ class DashboardModule {
             this.elements.welcomeStudentName.innerText = userProfile.full_name;
         }
         
+        // ✅ UPDATE GREETING WITH ACTUAL TIME
         this.updateTimeGreeting();
         this.updateLastLoginDisplay();
         
@@ -301,22 +371,9 @@ class DashboardModule {
         return true;
     }
     
-    updateTimeGreeting() {
-        const kenyaNow = this.getKenyaNow();
-        const hour = kenyaNow.getHours();
-        let greeting = '';
-        
-        if (hour >= 5 && hour < 12) greeting = 'Good Morning ☀️';
-        else if (hour >= 12 && hour < 17) greeting = 'Good Afternoon 🌤️';
-        else if (hour >= 17 && hour < 21) greeting = 'Good Evening 🌅';
-        else greeting = 'Good Night 🌙';
-        
-        const welcomeH1 = document.querySelector('.welcome h1');
-        const studentName = this.elements.welcomeStudentName?.innerText || 'Student';
-        if (welcomeH1) {
-            welcomeH1.innerHTML = `${greeting}, ${studentName}! 🎉`;
-        }
-    }
+    // ============================================================
+    // 👤 LAST LOGIN DISPLAY
+    // ============================================================
     
     updateLastLoginDisplay() {
         const element = this.elements.lastLoginTime;
@@ -376,7 +433,10 @@ class DashboardModule {
             });
     }
     
-    // ✅ CALCULATE DAILY STREAK
+    // ============================================================
+    // 🔥 DAILY STREAK
+    // ============================================================
+    
     async calculateDailyStreak() {
         try {
             if (!this.userId || !this.sb) return { streak: 0, maxStreak: 0, restores: 0 };
@@ -503,7 +563,6 @@ class DashboardModule {
         }
     }
     
-    // ✅ RESTORE STREAK
     async restoreStreak() {
         console.log('🔥 Restoring streak...');
         
@@ -562,7 +621,10 @@ class DashboardModule {
         }
     }
     
-    // ✅ UPDATE STREAK UI - LIGHTS UP AFTER 1 DAY
+    // ============================================================
+    // 🎨 UPDATE STREAK UI
+    // ============================================================
+    
     updateStreakUI() {
         const streak = this.metrics.login.streak || 0;
         const restoresLeft = 3 - (this.metrics.login.streakRestores || 0);
@@ -663,6 +725,10 @@ class DashboardModule {
         }
     }
     
+    // ============================================================
+    // 📊 LOAD ALL METRICS
+    // ============================================================
+    
     async loadAllMetrics() {
         console.log('📊 Loading dashboard metrics...');
         
@@ -761,8 +827,10 @@ class DashboardModule {
             if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
             if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
             
+            // Update last updated time
             if (this.elements.dashboardLastUpdated) {
-                this.elements.dashboardLastUpdated.textContent = this.getKenyaNow().toLocaleTimeString('en-KE', {
+                const now = this.getKenyaNow();
+                this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
@@ -798,6 +866,10 @@ class DashboardModule {
             }));
         } catch (e) { /* ignore */ }
     }
+    
+    // ============================================================
+    // 🔄 INDIVIDUAL METRICS (FALLBACK)
+    // ============================================================
     
     async loadIndividualMetrics() {
         console.log('⚠️ Falling back to individual metrics...');
@@ -953,6 +1025,10 @@ class DashboardModule {
         }
     }
     
+    // ============================================================
+    // ⭐ REVIEWS SNAPSHOT
+    // ============================================================
+    
     async loadReviewsSnapshot() {
         console.log('⭐ Loading reviews snapshot...');
         
@@ -1029,6 +1105,10 @@ class DashboardModule {
         }
     }
     
+    // ============================================================
+    // 📧 NEWSLETTER SNAPSHOT
+    // ============================================================
+    
     async loadNewsletterSnapshot() {
         console.log('📧 Loading newsletter snapshot...');
         
@@ -1104,7 +1184,10 @@ class DashboardModule {
         }
     }
     
-    // ========== UPDATE EXAMS METRIC - COMPLETE FIXED VERSION ==========
+    // ============================================================
+    // 📝 UPDATE EXAMS METRIC
+    // ============================================================
+    
     async updateExamsMetric() {
         let upcomingText = 'No upcoming exams';
         
@@ -1114,7 +1197,6 @@ class DashboardModule {
             const kenyaNow = this.getKenyaNow();
             const todayStr = kenyaNow.toISOString().split('T')[0];
             
-            // ✅ FIX: Use block_term and handle both formats
             const userBlock = this.userProfile.block || this.userProfile.current_block || 'Introductory';
             
             console.log('📅 Fetching exams for block:', userBlock);
@@ -1124,7 +1206,6 @@ class DashboardModule {
                 block: userBlock
             });
             
-            // ✅ FIX: Query both block and block_term
             const { data: exams, error } = await this.sb
                 .from('exams')
                 .select('*')
@@ -1385,7 +1466,10 @@ class DashboardModule {
         }
     }
     
-    // ✅ UPDATED LEADERBOARD - Login points + Verified Attendance + Exam Grades + NurseIQ
+    // ============================================================
+    // 🏆 LEADERBOARD
+    // ============================================================
+    
     async loadLeaderboardData(period = 'all') {
         const container = document.getElementById('leaderboard-container');
         if (!container) return;
@@ -1393,112 +1477,54 @@ class DashboardModule {
         container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
         
         try {
-            let query = this.sb
+            // Fetch users with their total points
+            const { data: users, error } = await this.sb
                 .from('consolidated_user_profiles_table')
-                .select('id, full_name, login_count, block, program, last_login')
-                .eq('role', 'student');
+                .select('id, full_name, login_count, block, program, gamification_points, total_points')
+                .eq('role', 'student')
+                .order('total_points', { ascending: false })
+                .limit(10);
             
-            if (period === 'weekly') {
-                const weekAgo = new Date();
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                query = query.gte('last_login', weekAgo.toISOString());
-            } else if (period === 'monthly') {
-                const monthAgo = new Date();
-                monthAgo.setMonth(monthAgo.getMonth() - 1);
-                query = query.gte('last_login', monthAgo.toISOString());
-            }
-            
-            const { data: students, error } = await query;
             if (error) throw error;
             
-            if (!students || students.length === 0) {
-                container.innerHTML = '<div class="empty-slim">No data yet</div>';
+            if (!users || users.length === 0) {
+                container.innerHTML = '<div class="empty-slim" style="text-align:center;padding:20px;color:#94a3b8;">No data yet</div>';
                 return;
             }
             
-            const studentIds = students.map(s => s.id);
-            
-            const { data: allAttendance } = await this.sb
-                .from('geo_attendance_logs')
-                .select('student_id, is_verified')
-                .in('student_id', studentIds);
-            
-            const { data: allProgress } = await this.sb
-                .from('user_progress')
-                .select('user_id, progress_data')
-                .in('user_id', studentIds);
-            
-            const { data: allAttempts } = await this.sb
-                .from('nurseiq_attempts')
-                .select('student_id, score, total_questions')
-                .in('student_id', studentIds);
-            
-            const { data: allExamGrades } = await this.sb
-                .from('exam_grades')
-                .select('student_id, total_score')
-                .in('student_id', studentIds);
-            
-            const scoredStudents = students.map(student => {
-                const loginPoints = (student.login_count || 0) * 10;
-                const studentAttendance = allAttendance?.filter(a => a.student_id === student.id) || [];
-                const verifiedCount = studentAttendance.filter(a => a.is_verified === true).length || 0;
-                const attendancePoints = verifiedCount * 10;
-                
-                const progress = allProgress?.find(p => p.user_id === student.id);
-                let nurseIQPoints = 0;
-                if (progress?.progress_data?.answers) {
-                    nurseIQPoints = Object.values(progress.progress_data.answers).filter(a => a.answered).length;
-                }
-                
-                const attempts = allAttempts?.filter(a => a.student_id === student.id) || [];
-                let attemptPoints = 0;
-                attempts.forEach(a => { attemptPoints += a.score || 0; });
-                if (attemptPoints > nurseIQPoints) nurseIQPoints = attemptPoints;
-                
-                const examGrades = allExamGrades?.filter(g => g.student_id === student.id) || [];
-                const examPoints = examGrades.reduce((sum, grade) => sum + (grade.total_score || 0), 0);
-                
-                const totalPoints = loginPoints + attendancePoints + nurseIQPoints + examPoints;
-                
-                return { 
-                    ...student, 
-                    loginPoints, 
-                    attendancePoints, 
-                    nurseIQPoints, 
-                    examPoints,
-                    totalPoints 
-                };
-            });
-            
-            scoredStudents.sort((a, b) => b.totalPoints - a.totalPoints);
-            const topStudents = scoredStudents.slice(0, 10);
-            
-            container.innerHTML = topStudents.map((student, index) => {
-                const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1).toString();
-                const name = student.full_name?.split(' ')[0] || 'Student';
+            container.innerHTML = users.map((user, index) => {
+                const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+                const name = user.full_name?.split(' ')[0] || 'Student';
+                const points = user.total_points || user.gamification_points || 0;
                 return `
                     <div class="leader-slim" style="
                         display: flex; 
                         align-items: center; 
                         gap: 12px; 
-                        padding: 6px 12px; 
+                        padding: 8px 12px; 
                         border-radius: 8px;
-                        background: ${index === 0 ? '#ede9fe' : 'transparent'};
+                        background: ${index === 0 ? '#ede9fe' : index === 1 ? '#fef3c7' : index === 2 ? '#fce4ec' : 'transparent'};
+                        border-bottom: 1px solid ${index < 9 ? '#f1f5f9' : 'transparent'};
                     ">
-                        <span class="rank" style="font-weight: 700; min-width: 24px; text-align: center;">${rankIcon}</span>
-                        <span class="name" style="flex: 1; font-weight: 500;">${this.escapeHtml(name)}</span>
-                        <span class="pts" style="font-weight: 700; color: #4C1D95;">${student.totalPoints} pts</span>
+                        <span style="font-weight: 700; min-width: 28px; text-align: center; font-size: 16px;">${rankIcon}</span>
+                        <span style="flex: 1; font-weight: 500; color: #1e293b;">${this.escapeHtml(name)}</span>
+                        <span style="font-weight: 700; color: #4C1D95;">${points} pts</span>
+                        ${index === 0 ? '<span style="font-size: 11px; color: #f59e0b; background: #fef3c7; padding: 2px 10px; border-radius: 12px;">🏆 Top</span>' : ''}
                     </div>
                 `;
             }).join('');
             
-            console.log(`✅ Leaderboard loaded with ${topStudents.length} students (${period} period)`);
+            console.log(`✅ Leaderboard loaded with ${users.length} users`);
             
         } catch (error) {
             console.error('Leaderboard error:', error);
-            container.innerHTML = '<div class="error-slim">Failed to load leaderboard</div>';
+            container.innerHTML = '<div class="error-slim" style="text-align:center;padding:20px;color:#94a3b8;">⚠️ Failed to load leaderboard</div>';
         }
     }
+    
+    // ============================================================
+    // 📅 NEXT CLASS
+    // ============================================================
     
     async loadQuickNextClass() {
         console.log('📅 Loading next class...');
@@ -1601,6 +1627,10 @@ class DashboardModule {
         }
     }
     
+    // ============================================================
+    // 📊 XP METRICS
+    // ============================================================
+    
     async loadXPMetrics() {
         let loginCount = 0;
         if (this.userId && this.sb) {
@@ -1635,7 +1665,10 @@ class DashboardModule {
         if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = percent + '%';
     }
     
-    // ✅ UPDATED: Now updates Login Points, Total Points, and everything else
+    // ============================================================
+    // 🎨 UPDATE UI FROM METRICS
+    // ============================================================
+    
     updateUIFromMetrics() {
         const m = this.metrics;
         
@@ -1701,7 +1734,23 @@ class DashboardModule {
         if (this.elements.userXp) this.elements.userXp.innerText = m.xp.current;
         if (this.elements.userXpMax) this.elements.userXpMax.innerText = m.xp.max;
         if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = m.xp.percent + '%';
+        
+        // Update last updated time
+        if (this.elements.dashboardLastUpdated) {
+            const now = this.getKenyaNow();
+            this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                timeZone: 'Africa/Nairobi'
+            });
+        }
     }
+    
+    // ============================================================
+    // ⏰ LIVE CLOCK
+    // ============================================================
     
     startLiveClock() {
         const headerTime = this.elements.headerTime;
@@ -1774,7 +1823,10 @@ class DashboardModule {
     }
 }
 
-// Initialize
+// ============================================================
+// 🚀 INITIALIZE
+// ============================================================
+
 let dashboardModule = null;
 
 function initDashboardModule(supabaseClient) {
@@ -1792,4 +1844,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready with Streak System (lights up after 1 day) + Total Points + Login Points Display!');
+console.log('✅ Dashboard module ready with Streak System (lights up after 1 day) + Total Points + Login Points Display + Fixed Time Greeting!');
