@@ -13,6 +13,9 @@ let allAccounts = [];
 let allPayments = [];
 let allTransactions = [];
 let allFeeStructures = [];
+let filteredPayments = [];
+let filteredFeeStructures = [];
+let filteredTransactions = [];
 
 // ============================================================
 // INITIALIZATION
@@ -460,6 +463,13 @@ async function loadAccounts() {
         const accounts = await window.financeAPI.getStudentAccounts();
         allAccounts = accounts || [];
         renderAccounts(allAccounts);
+        
+        // Update account count
+        const countEl = document.getElementById('accountCount');
+        if (countEl) {
+            countEl.textContent = `Showing ${allAccounts.length} students`;
+        }
+        
         console.log('✅ Student accounts loaded:', allAccounts.length);
     } catch (error) {
         console.error('❌ Error loading accounts:', error);
@@ -483,7 +493,6 @@ function renderAccounts(accounts) {
     }
 
     tbody.innerHTML = accounts.map(acc => {
-        // ✅ FIX: Use display_id if available, otherwise fallback to student_id
         const displayId = acc.display_id || acc.student_id || '-';
         const balance = parseFloat(acc.balance) || 0;
         const totalFeesDue = parseFloat(acc.total_fees_due) || 0;
@@ -503,7 +512,6 @@ function renderAccounts(accounts) {
             statusClass = 'finance-badge-warning';
         }
 
-        // Use the original UUID for actions (primary key)
         const originalId = acc.student_id || acc.id || '';
 
         return `
@@ -520,8 +528,8 @@ function renderAccounts(accounts) {
                     <button onclick="viewStudentAccount('${originalId}')" class="finance-btn finance-btn-primary finance-btn-sm">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button onclick="viewStudentPayments('${originalId}')" class="finance-btn finance-btn-outline finance-btn-sm">
-                        <i class="fas fa-receipt"></i>
+                    <button onclick="openPaymentModal('${originalId}')" class="finance-btn btn-success btn-sm" style="background: #059669; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-credit-card"></i>
                     </button>
                 </td>
             </tr>
@@ -560,6 +568,11 @@ function filterAccounts() {
     }
 
     renderAccounts(filtered);
+    
+    const countEl = document.getElementById('accountCount');
+    if (countEl) {
+        countEl.textContent = `Showing ${filtered.length} students`;
+    }
 }
 
 function resetAccountFilters() {
@@ -567,6 +580,11 @@ function resetAccountFilters() {
     document.getElementById('accountStatusFilter').value = 'all';
     document.getElementById('accountProgramFilter').value = 'all';
     renderAccounts(allAccounts);
+    const countEl = document.getElementById('accountCount');
+    if (countEl) {
+        countEl.textContent = `Showing ${allAccounts.length} students`;
+    }
+    showToast('Filters reset!', 'info');
 }
 
 function refreshAccounts() {
@@ -596,7 +614,6 @@ function viewStudentAccount(studentId) {
             const statusColor = balance === 0 ? '#059669' :
                                balance > 0 && balance <= 10000 ? '#d97706' : '#dc2626';
             
-            // Use display_id for display
             const displayId = student.display_id || student.student_id || '-';
             
             document.getElementById('studentAccountBody').innerHTML = `
@@ -610,6 +627,11 @@ function viewStudentAccount(studentId) {
                         <div><strong>Total Fees Due:</strong> ${formatCurrency(student.total_fees_due)}</div>
                         <div><strong>Total Paid:</strong> ${formatCurrency(student.total_paid)}</div>
                         <div style="grid-column: 1 / -1;"><strong>Status:</strong> <span style="color: ${statusColor}">${status}</span></div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <button onclick="closeModal('studentAccountModal'); openPaymentModal('${studentId}')" class="btn-action btn-success" style="width: 100%;">
+                            <i class="fas fa-credit-card"></i> Record Payment
+                        </button>
                     </div>
                     <hr style="margin: 15px 0;">
                     <h5 style="margin-bottom: 10px;">Recent Payments</h5>
@@ -693,6 +715,7 @@ async function loadPayments() {
         const payments = await window.financeAPI.getPayments();
         allPayments = payments || [];
         renderPayments(allPayments);
+        updatePaymentCount(allPayments.length);
         console.log('✅ Payments loaded:', allPayments.length);
     } catch (error) {
         console.error('❌ Error loading payments:', error);
@@ -743,11 +766,226 @@ function renderPayments(payments) {
     }).join('');
 }
 
-// ✅ ADDED: refreshPayments function
+// ============================================================
+// PAYMENT FILTER FUNCTIONS
+// ============================================================
+
+function filterPaymentTable() {
+    const search = document.getElementById('paymentSearch')?.value?.toLowerCase() || '';
+    const statusFilter = document.getElementById('paymentStatusFilter')?.value || 'all';
+    const methodFilter = document.getElementById('paymentMethodFilter')?.value || 'all';
+    
+    let filtered = allPayments || [];
+
+    if (search) {
+        filtered = filtered.filter(p => 
+            (p.student_name || '').toLowerCase().includes(search) ||
+            (p.reference_number || '').toLowerCase().includes(search) ||
+            (p.student_id || '').toLowerCase().includes(search)
+        );
+    }
+
+    if (statusFilter !== 'all') {
+        filtered = filtered.filter(p => p.status === statusFilter);
+    }
+
+    if (methodFilter !== 'all') {
+        filtered = filtered.filter(p => p.payment_method === methodFilter);
+    }
+
+    renderPayments(filtered);
+    updatePaymentCount(filtered.length);
+}
+
+function resetPaymentFilters() {
+    document.getElementById('paymentSearch').value = '';
+    document.getElementById('paymentStatusFilter').value = 'all';
+    document.getElementById('paymentMethodFilter').value = 'all';
+    filterPaymentTable();
+    showToast('Payment filters reset!', 'info');
+}
+
+function updatePaymentCount(count) {
+    const countEl = document.getElementById('paymentCount');
+    if (countEl) {
+        countEl.textContent = `Showing ${count} payments`;
+    }
+}
+
 function refreshPayments() {
     loadPayments();
     showToast('Payments refreshed!', 'success');
 }
+
+// ============================================================
+// PAYMENT MODAL FUNCTIONS
+// ============================================================
+
+let selectedStudentForPayment = null;
+
+function openPaymentModal(studentId) {
+    const modal = document.getElementById('paymentModal');
+    const studentSelect = document.getElementById('modalPaymentStudent');
+    
+    if (!modal) {
+        showToast('Payment modal not found', 'error');
+        return;
+    }
+    
+    // Reset form
+    document.getElementById('paymentModalForm').reset();
+    document.getElementById('modalPaymentDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('paymentStudentInfo').style.display = 'none';
+    
+    // Populate student dropdown
+    if (allAccounts && allAccounts.length > 0) {
+        studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
+        allAccounts.forEach(student => {
+            const option = document.createElement('option');
+            option.value = student.student_id || student.id;
+            option.textContent = `${student.student_name} (${student.display_id || student.student_id || 'N/A'})`;
+            option.dataset.student = JSON.stringify(student);
+            studentSelect.appendChild(option);
+        });
+        
+        // If studentId provided, select that student
+        if (studentId) {
+            studentSelect.value = studentId;
+            updateStudentInfo();
+        }
+    }
+    
+    modal.classList.add('active');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.remove('active');
+    document.getElementById('paymentStudentInfo').style.display = 'none';
+    selectedStudentForPayment = null;
+}
+
+function updateStudentInfo() {
+    const select = document.getElementById('modalPaymentStudent');
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (!selectedOption || !selectedOption.value) {
+        document.getElementById('paymentStudentInfo').style.display = 'none';
+        selectedStudentForPayment = null;
+        return;
+    }
+    
+    try {
+        const student = JSON.parse(selectedOption.dataset.student);
+        selectedStudentForPayment = student;
+        
+        document.getElementById('paymentStudentInfo').style.display = 'block';
+        document.getElementById('modalStudentName').textContent = student.student_name || 'N/A';
+        document.getElementById('modalStudentId').textContent = student.display_id || student.student_id || 'N/A';
+        document.getElementById('modalStudentProgram').textContent = student.program || 'N/A';
+        document.getElementById('modalStudentIntake').textContent = student.intake_year || 'N/A';
+        
+        const totalDue = parseFloat(student.total_fees_due) || 0;
+        const totalPaid = parseFloat(student.total_paid) || 0;
+        const balance = parseFloat(student.balance) || 0;
+        
+        document.getElementById('modalTotalDue').textContent = formatCurrency(totalDue);
+        document.getElementById('modalTotalPaid').textContent = formatCurrency(totalPaid);
+        
+        const balanceEl = document.getElementById('modalBalance');
+        balanceEl.textContent = formatCurrency(balance);
+        balanceEl.className = 'value ' + (balance > 0 ? 'negative' : balance < 0 ? 'positive' : '');
+        
+        const statusEl = document.getElementById('modalPaymentStatus');
+        if (balance === 0) {
+            statusEl.textContent = '✅ Paid in Full';
+            statusEl.style.color = '#059669';
+        } else if (balance < 10000) {
+            statusEl.textContent = '⚠️ Partial Payment';
+            statusEl.style.color = '#d97706';
+        } else {
+            statusEl.textContent = '🔴 Outstanding';
+            statusEl.style.color = '#dc2626';
+        }
+        
+        document.getElementById('studentStatusBadge').textContent = student.payment_status || 'Active';
+        document.getElementById('studentStatusBadge').className = 'badge ' + 
+            (student.payment_status === 'paid' ? 'badge-success' : 
+             student.payment_status === 'partial' ? 'badge-warning' : 'badge-danger');
+        
+    } catch (e) {
+        console.error('Error parsing student data:', e);
+        document.getElementById('paymentStudentInfo').style.display = 'none';
+    }
+}
+
+async function recordPaymentFromModal() {
+    const student = selectedStudentForPayment;
+    const amount = parseFloat(document.getElementById('modalPaymentAmount').value);
+    const method = document.getElementById('modalPaymentMethod').value;
+    const reference = document.getElementById('modalPaymentReference').value || null;
+    const date = document.getElementById('modalPaymentDate').value;
+    const period = document.getElementById('modalPaymentPeriod').value;
+    const notes = document.getElementById('modalPaymentNotes').value || null;
+    
+    if (!student) {
+        showToast('Please select a student', 'warning');
+        return;
+    }
+    
+    if (!amount || amount <= 0) {
+        showToast('Please enter a valid amount', 'warning');
+        return;
+    }
+    
+    if (!date) {
+        showToast('Please select a payment date', 'warning');
+        return;
+    }
+    
+    try {
+        const paymentData = {
+            studentId: student.student_id || student.id,
+            studentName: student.student_name,
+            studentEmail: student.student_email || '',
+            program: student.program || 'KRCHN',
+            amount: amount,
+            method: method,
+            reference: reference,
+            date: date,
+            period: period,
+            notes: notes
+        };
+        
+        await window.financeAPI.recordPayment(paymentData);
+        
+        showToast(`Payment of ${formatCurrency(amount)} recorded successfully for ${student.student_name}!`, 'success');
+        
+        closePaymentModal();
+        loadAllData();
+        
+    } catch (error) {
+        console.error('Error recording payment:', error);
+        showToast('Error recording payment: ' + error.message, 'error');
+    }
+}
+
+// Click outside modal to close
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('paymentModal');
+    if (e.target === modal) {
+        closePaymentModal();
+    }
+});
+
+// ESC key to close modal
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('paymentModal');
+        if (modal && modal.classList.contains('active')) {
+            closePaymentModal();
+        }
+    }
+});
 
 async function recordPayment() {
     const studentId = document.getElementById('paymentStudent')?.value;
@@ -909,6 +1147,7 @@ async function loadFeeStructure() {
         
         allFeeStructures = fees;
         renderFeeStructureCards(allFeeStructures);
+        updateFeeStructureCount(allFeeStructures.length);
         console.log('✅ Fee structure loaded:', allFeeStructures.length);
         
     } catch (error) {
@@ -1057,6 +1296,47 @@ function renderFeeStructureCards(fees) {
 }
 
 // ============================================================
+// FEE STRUCTURE FILTER FUNCTIONS
+// ============================================================
+
+function filterFeeStructures() {
+    const search = document.getElementById('feeStructureSearch')?.value?.toLowerCase() || '';
+    const statusFilter = document.getElementById('feeStructureStatusFilter')?.value || 'all';
+    
+    let filtered = allFeeStructures || [];
+
+    if (search) {
+        filtered = filtered.filter(f => 
+            (f.program || '').toLowerCase().includes(search) ||
+            (f.program_code || '').toLowerCase().includes(search) ||
+            (f.level || '').toLowerCase().includes(search)
+        );
+    }
+
+    if (statusFilter !== 'all') {
+        const isActive = statusFilter === 'active';
+        filtered = filtered.filter(f => f.is_active === isActive);
+    }
+
+    renderFeeStructureCards(filtered);
+    updateFeeStructureCount(filtered.length);
+}
+
+function resetFeeStructureFilters() {
+    document.getElementById('feeStructureSearch').value = '';
+    document.getElementById('feeStructureStatusFilter').value = 'all';
+    filterFeeStructures();
+    showToast('Fee structure filters reset!', 'info');
+}
+
+function updateFeeStructureCount(count) {
+    const countEl = document.getElementById('feeStructureCount');
+    if (countEl) {
+        countEl.textContent = `Showing ${count} fee structures`;
+    }
+}
+
+// ============================================================
 // FEE STRUCTURE MODAL FUNCTIONS
 // ============================================================
 
@@ -1069,7 +1349,6 @@ function openAddFeeModal() {
     document.getElementById('feeStructureId').value = '';
     title.innerHTML = '<i class="fas fa-plus-circle"></i> Add Fee Structure';
     
-    // Set default values with null checks
     const setValue = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.value = value;
@@ -1089,7 +1368,6 @@ function openAddFeeModal() {
     setValue('fee_email', 'nchsmfinance@gmail.com');
     setValue('fee_whatsapp', '+254 103614355 | +254 703345771');
     
-    // Reset components
     const compContainer = document.getElementById('feeComponentsContainer');
     if (compContainer) {
         compContainer.innerHTML = `
@@ -1117,7 +1395,6 @@ function openAddFeeModal() {
         `;
     }
     
-    // Reset terms
     const termContainer = document.getElementById('feeTermsContainer');
     if (termContainer) {
         termContainer.innerHTML = `
@@ -1153,7 +1430,6 @@ function openEditFeeModal(feeId) {
     title.innerHTML = '<i class="fas fa-edit"></i> Edit Fee Structure';
     document.getElementById('feeStructureId').value = feeId;
     
-    // Populate basic info with null checks
     const setValue = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.value = value || '';
@@ -1169,14 +1445,12 @@ function openEditFeeModal(feeId) {
     setValue('fee_hostel', fee.hostel || 18000);
     setValue('fee_status', fee.is_active !== false ? 'active' : 'inactive');
     
-    // Populate payment info
     const payment = fee.payment || {};
     setValue('fee_mpesa', payment.mpesa || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo');
     setValue('fee_bank', payment.bank || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036');
     setValue('fee_email', payment.email || 'nchsmfinance@gmail.com');
     setValue('fee_whatsapp', payment.whatsapp || '+254 103614355 | +254 703345771');
     
-    // Populate components
     const compContainer = document.getElementById('feeComponentsContainer');
     if (compContainer) {
         compContainer.innerHTML = '';
@@ -1195,7 +1469,6 @@ function openEditFeeModal(feeId) {
         }
     }
     
-    // Populate terms
     const termContainer = document.getElementById('feeTermsContainer');
     if (termContainer) {
         termContainer.innerHTML = '';
@@ -1287,7 +1560,6 @@ function updateFeeTotalPreview() {
 async function saveFeeStructureFull() {
     const feeId = document.getElementById('feeStructureId').value || null;
     
-    // Get basic info
     const program = document.getElementById('fee_program_name').value.trim();
     const programCode = document.getElementById('fee_program_code').value.trim();
     const level = document.getElementById('fee_level').value;
@@ -1308,7 +1580,6 @@ async function saveFeeStructureFull() {
         return;
     }
     
-    // Get components
     const compNames = document.querySelectorAll('.comp-name');
     const compAmounts = document.querySelectorAll('.comp-amount');
     const components = [];
@@ -1328,7 +1599,6 @@ async function saveFeeStructureFull() {
         return;
     }
     
-    // Get terms
     const termInputs = document.querySelectorAll('.term-text');
     const terms = [];
     termInputs.forEach(input => {
@@ -1338,7 +1608,6 @@ async function saveFeeStructureFull() {
         }
     });
     
-    // Get payment info
     const payment = {
         mpesa: document.getElementById('fee_mpesa').value.trim() || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo',
         bank: document.getElementById('fee_bank').value.trim() || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036',
@@ -1450,6 +1719,7 @@ async function loadTransactions() {
         const transactions = await window.financeAPI.getTransactions();
         allTransactions = transactions || [];
         renderTransactions(allTransactions);
+        updateTransactionCount(allTransactions.length);
         console.log('✅ Transactions loaded:', allTransactions.length);
     } catch (error) {
         console.error('❌ Error loading transactions:', error);
@@ -1526,6 +1796,7 @@ function filterTransactions() {
     }
 
     renderTransactions(filtered);
+    updateTransactionCount(filtered.length);
 }
 
 function resetTransactionFilters() {
@@ -1534,6 +1805,15 @@ function resetTransactionFilters() {
     document.getElementById('transactionDateFrom').value = '';
     document.getElementById('transactionDateTo').value = '';
     renderTransactions(allTransactions);
+    updateTransactionCount(allTransactions.length);
+    showToast('Transaction filters reset!', 'info');
+}
+
+function updateTransactionCount(count) {
+    const countEl = document.getElementById('transactionCount');
+    if (countEl) {
+        countEl.textContent = `Showing ${count} transactions`;
+    }
 }
 
 function viewTransaction(transactionId) {
