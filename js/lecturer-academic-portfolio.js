@@ -1,5 +1,5 @@
 // ============================================================
-// ACADEMIC PORTFOLIO MODULE - Phase 1 Implementation
+// ACADEMIC PORTFOLIO MODULE - Full Implementation
 // ============================================================
 // File: js/lecturer-academic-portfolio.js
 // ============================================================
@@ -23,26 +23,50 @@ const AcademicPortfolio = {
     init() {
         console.log('📁 Academic Portfolio initializing...');
         
-        // Get lecturer ID from window if available
-        if (window.CORRECT_LECTURER_ID) {
-            this.lecturerId = window.CORRECT_LECTURER_ID;
-        } else if (window.lecturerDB && window.lecturerDB.getCurrentUserProfile) {
-            const profile = window.lecturerDB.getCurrentUserProfile();
-            if (profile) {
-                this.lecturerId = profile.user_id || profile.id;
-            }
-        }
-        
+        // Get lecturer ID
+        this.lecturerId = this.getLecturerId();
         console.log('👤 Lecturer ID:', this.lecturerId);
+        
         this.setupNavigation();
         this.loadDashboard();
         this.setupEventListeners();
+        
+        console.log('✅ Academic Portfolio initialized successfully');
+    },
+    
+    getLecturerId() {
+        // Try multiple sources for lecturer ID
+        if (window.CORRECT_LECTURER_ID) {
+            return window.CORRECT_LECTURER_ID;
+        }
+        
+        if (window.lecturerDB && window.lecturerDB.getCurrentUserProfile) {
+            const profile = window.lecturerDB.getCurrentUserProfile();
+            if (profile) {
+                return profile.user_id || profile.id;
+            }
+        }
+        
+        // Try from localStorage
+        const saved = localStorage.getItem('lecturerId');
+        if (saved) return saved;
+        
+        // Try from supabase session
+        if (window.supabase) {
+            const session = window.supabase.auth.session();
+            if (session && session.user) {
+                return session.user.id;
+            }
+        }
+        
+        return null;
     },
     
     // ============================================================
     // NAVIGATION
     // ============================================================
     setupNavigation() {
+        // Handle main tab click (from sidebar)
         document.querySelectorAll('[data-tab="academic-portfolio"]').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -52,15 +76,31 @@ const AcademicPortfolio = {
                 this.loadDashboard();
             });
         });
+        
+        // Handle sub-tab clicks - re-bind after each render
+        this.bindSubTabs();
+    },
+    
+    bindSubTabs() {
+        document.querySelectorAll('.ap-tab-btn').forEach(btn => {
+            // Remove existing listeners to avoid duplicates
+            btn.removeEventListener('click', this._handleSubTabClick);
+            btn.addEventListener('click', this._handleSubTabClick.bind(this));
+        });
+    },
+    
+    _handleSubTabClick(e) {
+        const btn = e.currentTarget;
+        const tab = btn.dataset.apTab;
+        if (tab) {
+            this.switchTab(tab);
+        }
     },
     
     setupEventListeners() {
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'p') {
                 e.preventDefault();
-                if (typeof window.showTab === 'function') {
-                    window.showTab('academic-portfolio');
-                }
                 this.loadDashboard();
             }
         });
@@ -86,16 +126,14 @@ const AcademicPortfolio = {
         return 1;
     },
     
-    getRecentActivity() {
-        return [];
-    },
-    
     // ============================================================
     // TAB SWITCHING
     // ============================================================
     switchTab(tab) {
+        console.log('🔄 Switching to Academic Portfolio tab:', tab);
         this.currentTab = tab;
         
+        // Update tab button styles
         document.querySelectorAll('.ap-tab-btn').forEach(btn => {
             btn.classList.remove('active');
             btn.style.background = 'transparent';
@@ -107,6 +145,7 @@ const AcademicPortfolio = {
             }
         });
         
+        // Load appropriate content
         switch(tab) {
             case 'dashboard':
                 this.loadDashboard();
@@ -156,11 +195,12 @@ const AcademicPortfolio = {
     // REFRESH
     // ============================================================
     refresh() {
+        console.log('🔄 Refreshing Academic Portfolio...');
         this.switchTab(this.currentTab);
     },
     
     // ============================================================
-    // DASHBOARD (Phase 1)
+    // DASHBOARD
     // ============================================================
     async loadDashboard() {
         const container = document.getElementById('ap-content');
@@ -170,8 +210,9 @@ const AcademicPortfolio = {
         }
         
         try {
-            const user = await window.supabase?.auth?.getUser();
-            if (!user?.data?.user) {
+            // Check authentication
+            const user = await this.getCurrentUser();
+            if (!user) {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
                         <i class="fas fa-exclamation-triangle" style="font-size: 40px; color: #f59e0b;"></i>
@@ -181,7 +222,7 @@ const AcademicPortfolio = {
                 return;
             }
             
-            const userId = this.lecturerId || user.data.user.id;
+            const userId = this.lecturerId || user.id;
             
             // Fetch lecturer's subject assignments
             const { data: assignments, error: assignError } = await window.supabase
@@ -191,184 +232,17 @@ const AcademicPortfolio = {
             
             if (assignError) throw assignError;
             
-            // Get statistics from each table
-            const stats = {
-                totalCourses: assignments?.length || 0,
-                schemesCompleted: 0,
-                lessonPlans: 0,
-                pendingHOD: 0,
-                approved: 0,
-                teachingLogs: 0,
-                materials: 0
-            };
-            
-            // Count schemes
-            if (assignments && assignments.length > 0) {
-                const assignmentIds = assignments.map(a => a.id);
-                
-                const { count: schemeCount } = await window.supabase
-                    .from('schemes_of_work')
-                    .select('*', { count: 'exact', head: true })
-                    .in('lecturer_subject_assignment_id', assignmentIds);
-                
-                if (schemeCount) stats.schemesCompleted = schemeCount;
-                
-                const { count: lessonCount } = await window.supabase
-                    .from('lesson_plans')
-                    .select('*', { count: 'exact', head: true })
-                    .in('lecturer_subject_assignment_id', assignmentIds);
-                
-                if (lessonCount) stats.lessonPlans = lessonCount;
-                
-                const { count: pendingCount } = await window.supabase
-                    .from('schemes_of_work')
-                    .select('*', { count: 'exact', head: true })
-                    .in('lecturer_subject_assignment_id', assignmentIds)
-                    .eq('hod_approved', false)
-                    .neq('status', 'rejected');
-                
-                if (pendingCount) stats.pendingHOD = pendingCount;
-                
-                const { count: approvedCount } = await window.supabase
-                    .from('schemes_of_work')
-                    .select('*', { count: 'exact', head: true })
-                    .in('lecturer_subject_assignment_id', assignmentIds)
-                    .eq('hod_approved', true);
-                
-                if (approvedCount) stats.approved = approvedCount;
-                
-                const { count: logCount } = await window.supabase
-                    .from('teaching_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .in('lecturer_subject_assignment_id', assignmentIds);
-                
-                if (logCount) stats.teachingLogs = logCount;
-                
-                const { count: materialCount } = await window.supabase
-                    .from('teaching_materials')
-                    .select('*', { count: 'exact', head: true })
-                    .in('lecturer_subject_assignment_id', assignmentIds);
-                
-                if (materialCount) stats.materials = materialCount;
-            }
-            
-            // Calculate completion percentage
-            const totalItems = stats.totalCourses + stats.schemesCompleted + stats.lessonPlans;
-            const completedItems = stats.approved;
-            const completionPercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+            // Get statistics
+            const stats = await this.getPortfolioStats(assignments);
             
             // Update stats in the header
-            document.getElementById('apTotalSchemes').textContent = stats.schemesCompleted;
-            document.getElementById('apTotalLessonPlans').textContent = stats.lessonPlans;
-            document.getElementById('apPendingHOD').textContent = stats.pendingHOD;
-            document.getElementById('apApprovedCount').textContent = stats.approved;
-            document.getElementById('apCompletionStatus').textContent = completionPercent + '%';
+            this.updateStatsDisplay(stats);
             
             // Render dashboard
-            container.innerHTML = `
-                <div class="ap-dashboard">
-                    <!-- Welcome Banner -->
-                    <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 24px 30px; margin-bottom: 24px; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                        <div>
-                            <h3 style="margin: 0; font-size: 22px; font-weight: 700;">
-                                <i class="fas fa-folder-open"></i> Academic Portfolio Dashboard
-                            </h3>
-                            <p style="margin: 6px 0 0 0; opacity: 0.9; font-size: 14px;">
-                                Manage your teaching documentation for ${this.getCurrentAcademicYear()}
-                            </p>
-                        </div>
-                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 28px; font-weight: 800;">${completionPercent}%</div>
-                                <div style="font-size: 12px; opacity: 0.8;">Complete</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 28px; font-weight: 800;">${stats.pendingHOD}</div>
-                                <div style="font-size: 12px; opacity: 0.8;">Pending HOD</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Stats Grid -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #10b981;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="background: #d1fae5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-book" style="color: #10b981; font-size: 18px;"></i>
-                                </div>
-                                <div>
-                                    <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.totalCourses}</div>
-                                    <div style="font-size: 12px; color: #6b7280;">Courses</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #3b82f6;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="background: #dbeafe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-file-alt" style="color: #3b82f6; font-size: 18px;"></i>
-                                </div>
-                                <div>
-                                    <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.schemesCompleted}</div>
-                                    <div style="font-size: 12px; color: #6b7280;">Schemes</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #8b5cf6;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="background: #ede9fe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-chalkboard-teacher" style="color: #8b5cf6; font-size: 18px;"></i>
-                                </div>
-                                <div>
-                                    <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.lessonPlans}</div>
-                                    <div style="font-size: 12px; color: #6b7280;">Lesson Plans</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #f59e0b;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="background: #fef3c7; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-clock" style="color: #f59e0b; font-size: 18px;"></i>
-                                </div>
-                                <div>
-                                    <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.pendingHOD}</div>
-                                    <div style="font-size: 12px; color: #6b7280;">Pending HOD</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Quick Actions -->
-                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; margin-bottom: 24px;">
-                        <h4 style="margin: 0 0 16px 0; color: #0A3D62; font-size: 15px;">
-                            <i class="fas fa-bolt" style="color: #10b981;"></i> Quick Actions
-                        </h4>
-                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <button onclick="AcademicPortfolio.switchTab('scheme-of-work')" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-plus"></i> New Scheme
-                            </button>
-                            <button onclick="AcademicPortfolio.switchTab('lesson-plans')" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-plus"></i> New Lesson Plan
-                            </button>
-                            <button onclick="AcademicPortfolio.switchTab('teaching-log')" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-pen"></i> Log Teaching
-                            </button>
-                            <button onclick="AcademicPortfolio.switchTab('materials')" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-upload"></i> Upload Material
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Recent Activity -->
-                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
-                        <h4 style="margin: 0 0 16px 0; color: #0A3D62; font-size: 15px;">
-                            <i class="fas fa-clock" style="color: #10b981;"></i> Recent Activity
-                        </h4>
-                        <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
-                            No recent activity. Start by creating your first scheme of work!
-                        </div>
-                    </div>
-                </div>
-            `;
+            container.innerHTML = this.renderDashboardHTML(stats);
+            
+            // Re-bind sub-tab events
+            this.bindSubTabs();
             
         } catch (error) {
             console.error('Error loading dashboard:', error);
@@ -384,6 +258,213 @@ const AcademicPortfolio = {
         }
     },
     
+    async getCurrentUser() {
+        try {
+            const { data, error } = await window.supabase.auth.getUser();
+            if (error) throw error;
+            return data?.user;
+        } catch (error) {
+            console.error('Error getting user:', error);
+            return null;
+        }
+    },
+    
+    async getPortfolioStats(assignments) {
+        const stats = {
+            totalCourses: assignments?.length || 0,
+            schemesCompleted: 0,
+            lessonPlans: 0,
+            pendingHOD: 0,
+            approved: 0,
+            teachingLogs: 0,
+            materials: 0
+        };
+        
+        if (assignments && assignments.length > 0) {
+            const assignmentIds = assignments.map(a => a.id);
+            
+            // Count schemes
+            const { count: schemeCount } = await window.supabase
+                .from('schemes_of_work')
+                .select('*', { count: 'exact', head: true })
+                .in('lecturer_subject_assignment_id', assignmentIds);
+            
+            if (schemeCount) stats.schemesCompleted = schemeCount;
+            
+            // Count lesson plans
+            const { count: lessonCount } = await window.supabase
+                .from('lesson_plans')
+                .select('*', { count: 'exact', head: true })
+                .in('lecturer_subject_assignment_id', assignmentIds);
+            
+            if (lessonCount) stats.lessonPlans = lessonCount;
+            
+            // Count pending HOD
+            const { count: pendingCount } = await window.supabase
+                .from('schemes_of_work')
+                .select('*', { count: 'exact', head: true })
+                .in('lecturer_subject_assignment_id', assignmentIds)
+                .eq('hod_approved', false)
+                .neq('status', 'rejected');
+            
+            if (pendingCount) stats.pendingHOD = pendingCount;
+            
+            // Count approved
+            const { count: approvedCount } = await window.supabase
+                .from('schemes_of_work')
+                .select('*', { count: 'exact', head: true })
+                .in('lecturer_subject_assignment_id', assignmentIds)
+                .eq('hod_approved', true);
+            
+            if (approvedCount) stats.approved = approvedCount;
+            
+            // Count teaching logs
+            const { count: logCount } = await window.supabase
+                .from('teaching_logs')
+                .select('*', { count: 'exact', head: true })
+                .in('lecturer_subject_assignment_id', assignmentIds);
+            
+            if (logCount) stats.teachingLogs = logCount;
+            
+            // Count materials
+            const { count: materialCount } = await window.supabase
+                .from('teaching_materials')
+                .select('*', { count: 'exact', head: true })
+                .in('lecturer_subject_assignment_id', assignmentIds);
+            
+            if (materialCount) stats.materials = materialCount;
+        }
+        
+        return stats;
+    },
+    
+    updateStatsDisplay(stats) {
+        const completionPercent = this.calculateCompletion(stats);
+        
+        document.getElementById('apTotalSchemes').textContent = stats.schemesCompleted;
+        document.getElementById('apTotalLessonPlans').textContent = stats.lessonPlans;
+        document.getElementById('apPendingHOD').textContent = stats.pendingHOD;
+        document.getElementById('apApprovedCount').textContent = stats.approved;
+        document.getElementById('apCompletionStatus').textContent = completionPercent + '%';
+    },
+    
+    calculateCompletion(stats) {
+        const totalItems = stats.totalCourses + stats.schemesCompleted + stats.lessonPlans;
+        const completedItems = stats.approved;
+        return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+    },
+    
+    renderDashboardHTML(stats) {
+        const completionPercent = this.calculateCompletion(stats);
+        const academicYear = this.getCurrentAcademicYear();
+        
+        return `
+            <div class="ap-dashboard">
+                <!-- Welcome Banner -->
+                <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 24px 30px; margin-bottom: 24px; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 22px; font-weight: 700;">
+                            <i class="fas fa-folder-open"></i> Academic Portfolio Dashboard
+                        </h3>
+                        <p style="margin: 6px 0 0 0; opacity: 0.9; font-size: 14px;">
+                            Manage your teaching documentation for ${academicYear}
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 28px; font-weight: 800;">${completionPercent}%</div>
+                            <div style="font-size: 12px; opacity: 0.8;">Complete</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 28px; font-weight: 800;">${stats.pendingHOD}</div>
+                            <div style="font-size: 12px; opacity: 0.8;">Pending HOD</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats Grid -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #10b981;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="background: #d1fae5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-book" style="color: #10b981; font-size: 18px;"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.totalCourses}</div>
+                                <div style="font-size: 12px; color: #6b7280;">Courses</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #3b82f6;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="background: #dbeafe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-file-alt" style="color: #3b82f6; font-size: 18px;"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.schemesCompleted}</div>
+                                <div style="font-size: 12px; color: #6b7280;">Schemes</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #8b5cf6;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="background: #ede9fe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-chalkboard-teacher" style="color: #8b5cf6; font-size: 18px;"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.lessonPlans}</div>
+                                <div style="font-size: 12px; color: #6b7280;">Lesson Plans</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; border-left: 4px solid #f59e0b;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="background: #fef3c7; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-clock" style="color: #f59e0b; font-size: 18px;"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 24px; font-weight: 800; color: #0A3D62;">${stats.pendingHOD}</div>
+                                <div style="font-size: 12px; color: #6b7280;">Pending HOD</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; margin-bottom: 24px;">
+                    <h4 style="margin: 0 0 16px 0; color: #0A3D62; font-size: 15px;">
+                        <i class="fas fa-bolt" style="color: #10b981;"></i> Quick Actions
+                    </h4>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button onclick="AcademicPortfolio.switchTab('scheme-of-work')" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-plus"></i> New Scheme
+                        </button>
+                        <button onclick="AcademicPortfolio.switchTab('lesson-plans')" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-plus"></i> New Lesson Plan
+                        </button>
+                        <button onclick="AcademicPortfolio.switchTab('teaching-log')" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-pen"></i> Log Teaching
+                        </button>
+                        <button onclick="AcademicPortfolio.switchTab('materials')" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-upload"></i> Upload Material
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+                    <h4 style="margin: 0 0 16px 0; color: #0A3D62; font-size: 15px;">
+                        <i class="fas fa-clock" style="color: #10b981;"></i> Recent Activity
+                    </h4>
+                    <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                        <i class="fas fa-info-circle" style="display: block; font-size: 24px; margin-bottom: 10px;"></i>
+                        No recent activity yet. Start building your Academic Portfolio!
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+    
     // ============================================================
     // PHASE 1: COURSE ALLOCATION
     // ============================================================
@@ -392,13 +473,13 @@ const AcademicPortfolio = {
         if (!container) return;
         
         try {
-            const user = await window.supabase?.auth?.getUser();
-            if (!user?.data?.user) {
+            const user = await this.getCurrentUser();
+            if (!user) {
                 container.innerHTML = `<div style="text-align: center; padding: 60px;">Please log in.</div>`;
                 return;
             }
             
-            const userId = this.lecturerId || user.data.user.id;
+            const userId = this.lecturerId || user.id;
             
             const { data: assignments, error } = await window.supabase
                 .from('lecturer_subject_assignments')
@@ -443,6 +524,7 @@ const AcademicPortfolio = {
                     </button>
                 </div>
             `;
+            
         } catch (error) {
             console.error('Error loading course allocation:', error);
             container.innerHTML = `
@@ -464,13 +546,13 @@ const AcademicPortfolio = {
         if (!container) return;
         
         try {
-            const user = await window.supabase?.auth?.getUser();
-            if (!user?.data?.user) {
+            const user = await this.getCurrentUser();
+            if (!user) {
                 container.innerHTML = `<div style="text-align: center; padding: 60px;">Please log in.</div>`;
                 return;
             }
             
-            const userId = this.lecturerId || user.data.user.id;
+            const userId = this.lecturerId || user.id;
             
             // Get lecturer's assignments
             const { data: assignments } = await window.supabase
@@ -537,6 +619,7 @@ const AcademicPortfolio = {
                     </button>
                 </div>
             `;
+            
         } catch (error) {
             console.error('Error loading schemes:', error);
             container.innerHTML = `
@@ -747,28 +830,52 @@ const AcademicPortfolio = {
     // HELPER METHODS
     // ============================================================
     createNewScheme() {
-        // TODO: Implement scheme creation modal
-        alert('Scheme creation will be implemented in Phase 2.');
+        alert('📝 Scheme creation will be implemented in Phase 2.\n\nPlease check back soon!');
     },
     
     viewScheme(id) {
-        alert('View scheme functionality coming soon. ID: ' + id);
+        alert('👁️ View scheme functionality coming soon.\n\nScheme ID: ' + id);
     },
     
     editScheme(id) {
-        alert('Edit scheme functionality coming soon. ID: ' + id);
+        alert('✏️ Edit scheme functionality coming soon.\n\nScheme ID: ' + id);
     }
 };
 
 // ============================================================
-// INITIALIZE ON PAGE LOAD
+// MAKE GLOBALLY AVAILABLE
+// ============================================================
+window.AcademicPortfolio = AcademicPortfolio;
+
+// ============================================================
+// AUTO-INITIALIZE ON PAGE LOAD
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM ready - checking for Academic Portfolio initialization...');
+    
     // Wait for other modules to load
-    setTimeout(() => {
-        if (typeof AcademicPortfolio !== 'undefined') {
-            AcademicPortfolio.init();
-            console.log('✅ Academic Portfolio initialized with database tables');
+    const checkInterval = setInterval(() => {
+        if (window.lecturerDB && window.lecturerDB.isInitialized) {
+            clearInterval(checkInterval);
+            console.log('✅ lecturerDB ready, initializing Academic Portfolio...');
+            setTimeout(() => {
+                if (typeof AcademicPortfolio !== 'undefined') {
+                    AcademicPortfolio.init();
+                    console.log('✅ Academic Portfolio initialized successfully!');
+                } else {
+                    console.error('❌ AcademicPortfolio not found!');
+                }
+            }, 300);
         }
-    }, 1500);
+    }, 500);
+    
+    // Fallback - initialize after 3 seconds even if lecturerDB not ready
+    setTimeout(() => {
+        if (typeof AcademicPortfolio !== 'undefined' && !AcademicPortfolio.initialized) {
+            console.log('⏳ Fallback: Initializing Academic Portfolio...');
+            AcademicPortfolio.init();
+        }
+    }, 3000);
 });
+
+console.log('📁 Academic Portfolio module loaded');
