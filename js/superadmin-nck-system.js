@@ -1,12 +1,11 @@
-// ============================================
-// NCK XY FORMS & ASSESSMENT SYSTEM
-// COMPLETE UPDATED SCRIPT - ALL BUTTONS WORKING
-// WITH BLOCK 1, FAST ENTRY, PUBLISH, COLUMNS
-// ============================================
+// ============================================================
+// NCK XY FORMS & ASSESSMENT SYSTEM - COMPLETE
+// PURELY KRCHN NURSING - NO TVET
+// ============================================================
 
-// ============================================
+// ============================================================
 // GLOBAL VARIABLES
-// ============================================
+// ============================================================
 
 let currentNCKStudentsList = [];
 let currentNCKColumns = [];
@@ -65,9 +64,383 @@ const BLOCK_YEAR_MAP = {
     'Block 5': '2024'
 };
 
-// ============================================
-// MAIN LOAD FUNCTIONS - REFRESH DATA
-// ============================================
+// ============================================================
+// NCK MANAGE STUDENTS - ADD/DROP STUDENTS
+// ============================================================
+
+let nck_ms_allStudents = [];
+let nck_ms_enrolledStudents = [];
+let nck_ms_availableStudents = [];
+let nck_ms_selected = new Set();
+
+async function nckLoadManageStudents() {
+    console.log('📚 NCK: Loading Manage Students...');
+    
+    const block = document.getElementById('nck_block_select')?.value || 'Introductory';
+    const sheet = document.getElementById('nck_sheet_select')?.value || 'XY_FORMS';
+    const program = document.getElementById('nck_program_select')?.value || 'KRCHN';
+    
+    if (!block || !sheet) {
+        const tbody = document.getElementById('nck_ms_student_table_body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" style="padding: 40px; text-align: center; color: #94a3b8;">
+                        <i class="fas fa-info-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                        Please select a Block and Assessment Type first
+                    </td>
+                </tr>
+            `;
+        }
+        return;
+    }
+    
+    const unitDisplay = document.getElementById('nck_ms_current_unit');
+    if (unitDisplay) unitDisplay.textContent = `${sheet} (${block})`;
+    
+    try {
+        // Get enrolled students from nck_marks
+        const { data: enrolled, error: enrolledError } = await sb
+            .from('nck_marks')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', sheet)
+            .eq('program', program);
+        
+        if (enrolledError) throw enrolledError;
+        
+        // Get all KRCHN students from profiles
+        const { data: profiles, error: profilesError } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id, full_name, email, program, block, admission_number, status')
+            .eq('role', 'student')
+            .eq('block', block)
+            .eq('program', program);
+        
+        if (profilesError) throw profilesError;
+        
+        // Build enrolled map
+        const enrolledMap = {};
+        enrolled?.forEach(s => {
+            if (s.admission_number) enrolledMap[s.admission_number] = true;
+        });
+        
+        // Build available students
+        const available = profiles?.filter(s => !enrolledMap[s.admission_number]) || [];
+        
+        nck_ms_allStudents = profiles || [];
+        nck_ms_enrolledStudents = enrolled || [];
+        nck_ms_availableStudents = available;
+        nck_ms_selected = new Set();
+        
+        nckRenderManageStudents();
+        nckUpdateStudentSelect();
+        nckUpdateStats();
+        
+    } catch (error) {
+        console.error('❌ Error loading manage students:', error);
+        const tbody = document.getElementById('nck_ms_student_table_body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" style="padding: 40px; text-align: center; color: #dc2626;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                        Error: ${error.message}
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+function nckRenderManageStudents() {
+    const tbody = document.getElementById('nck_ms_student_table_body');
+    if (!tbody) return;
+    
+    const search = document.getElementById('nck_ms_search')?.value?.toLowerCase() || '';
+    const filtered = nck_ms_enrolledStudents.filter(s => 
+        (s.student_name || '').toLowerCase().includes(search) ||
+        (s.admission_number || '').toLowerCase().includes(search)
+    );
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="padding: 40px; text-align: center; color: #94a3b8;">
+            <i class="fas fa-users" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+            No students enrolled in this NCK unit
+        </td></tr>`;
+        return;
+    }
+    
+    let html = '';
+    filtered.forEach((s, i) => {
+        const admission = s.admission_number || 'N/A';
+        const name = s.student_name || 'Unknown';
+        const score = s.final_score || 0;
+        const status = s.status || 'pending';
+        const isPassing = score >= 60;
+        const isSelected = nck_ms_selected.has(admission);
+        
+        const statusColor = status === 'passed' ? '#d1fae5' : (status === 'failed' ? '#fee2e2' : '#fef3c7');
+        const statusText = status === 'passed' ? '✅ PASS' : (status === 'failed' ? '❌ FAIL' : '⏳ PENDING');
+        const statusTextColor = status === 'passed' ? '#065f46' : (status === 'failed' ? '#991b1b' : '#92400e');
+        
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                <td style="padding: 8px 6px; text-align: center;">
+                    <input type="checkbox" class="nck-ms-checkbox" data-admission="${admission}" 
+                           onchange="nckToggleStudent('${admission}')" ${isSelected ? 'checked' : ''} style="cursor: pointer;">
+                </td>
+                <td style="padding: 8px 6px; text-align: center; font-size: 12px;">${i + 1}</td>
+                <td style="padding: 8px 8px; font-weight: 500;">${escapeHtml(name)}</td>
+                <td style="padding: 8px 8px; font-size: 12px; color: #64748b;">${escapeHtml(admission)}</td>
+                <td style="padding: 8px 8px; font-size: 12px;">${escapeHtml(s.program || 'KRCHN')}</td>
+                <td style="padding: 8px 8px; font-size: 12px;">${escapeHtml(s.block || '')}</td>
+                <td style="padding: 8px 6px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : '#991b1b'};">${score}%</td>
+                <td style="padding: 8px 6px; text-align: center;">
+                    <span style="background: ${statusColor}; color: ${statusTextColor}; padding: 2px 10px; border-radius: 12px; font-weight: 600; font-size: 11px;">${statusText}</span>
+                </td>
+                <td style="padding: 8px 6px; text-align: center;">
+                    <button onclick="nckDropStudent('${admission}')" style="background: #dc2626; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                        <i class="fas fa-user-minus"></i> Drop
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    nckUpdateDropButton();
+}
+
+function nckUpdateStudentSelect() {
+    const select = document.getElementById('nck_ms_student_select');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">-- Select Student to Add --</option>';
+    nck_ms_availableStudents.forEach(s => {
+        select.innerHTML += `<option value="${s.admission_number}">${s.full_name} (${s.admission_number})</option>`;
+    });
+    const display = document.getElementById('nck_ms_available_count_display');
+    if (display) display.textContent = nck_ms_availableStudents.length;
+}
+
+function nckUpdateStats() {
+    const total = nck_ms_enrolledStudents.length;
+    const available = nck_ms_availableStudents.length;
+    const all = nck_ms_allStudents.length;
+    let passing = 0, failing = 0;
+    
+    nck_ms_enrolledStudents.forEach(s => {
+        if (s.final_score >= 60) passing++;
+        else if (s.final_score > 0) failing++;
+    });
+    
+    document.getElementById('nck_ms_enrolled_count').textContent = total;
+    document.getElementById('nck_ms_available_count').textContent = available;
+    document.getElementById('nck_ms_total_count').textContent = all;
+    document.getElementById('nck_ms_passing_count').textContent = passing;
+    document.getElementById('nck_ms_failing_count').textContent = failing;
+}
+
+function nckToggleStudent(admission) {
+    if (nck_ms_selected.has(admission)) nck_ms_selected.delete(admission);
+    else nck_ms_selected.add(admission);
+    nckUpdateDropButton();
+}
+
+function nckToggleAllStudents() {
+    const selectAll = document.getElementById('nck_ms_select_all');
+    const checkboxes = document.querySelectorAll('.nck-ms-checkbox');
+    const isChecked = selectAll?.checked || false;
+    checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+        const admission = cb.dataset.admission;
+        if (isChecked) nck_ms_selected.add(admission);
+        else nck_ms_selected.delete(admission);
+    });
+    nckUpdateDropButton();
+}
+
+function nckUpdateDropButton() {
+    const count = nck_ms_selected.size;
+    const btn = document.getElementById('nck_ms_drop_btn');
+    const countEl = document.getElementById('nck_ms_drop_count');
+    if (btn) btn.style.display = count > 0 ? 'inline-block' : 'none';
+    if (countEl) countEl.textContent = count;
+}
+
+function nckOpenAddStudentForm() {
+    const form = document.getElementById('nck_ms_add_form');
+    if (form) form.style.display = 'block';
+    nckUpdateStudentSelect();
+}
+
+function nckCloseAddStudentForm() {
+    const form = document.getElementById('nck_ms_add_form');
+    if (form) form.style.display = 'none';
+}
+
+async function nckAddSelectedStudent() {
+    const select = document.getElementById('nck_ms_student_select');
+    const admission = select?.value;
+    if (!admission) {
+        showNotification('Please select a student', 'warning');
+        return;
+    }
+    
+    const student = nck_ms_availableStudents.find(s => s.admission_number === admission);
+    if (!student) {
+        showNotification('Student not found', 'error');
+        return;
+    }
+    
+    const block = document.getElementById('nck_block_select')?.value || 'Introductory';
+    const sheet = document.getElementById('nck_sheet_select')?.value || 'XY_FORMS';
+    const program = document.getElementById('nck_program_select')?.value || 'KRCHN';
+    
+    try {
+        const { error } = await sb
+            .from('nck_marks')
+            .insert({
+                admission_number: admission,
+                student_name: student.full_name,
+                student_id: student.student_id,
+                block: block,
+                subject_name: sheet,
+                program: program,
+                status: 'pending',
+                final_score: 0,
+                scores: {},
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+        if (error) throw error;
+        showNotification(`✅ ${student.full_name} added to NCK`, 'success');
+        await nckLoadManageStudents();
+        loadNCKData();
+    } catch (e) {
+        showNotification('❌ Error: ' + e.message, 'error');
+    }
+}
+
+async function nckAddAllAvailableStudents() {
+    if (nck_ms_availableStudents.length === 0) {
+        showNotification('No available students to add', 'info');
+        return;
+    }
+    if (!confirm(`Add ${nck_ms_availableStudents.length} students to NCK?`)) return;
+    
+    const block = document.getElementById('nck_block_select')?.value || 'Introductory';
+    const sheet = document.getElementById('nck_sheet_select')?.value || 'XY_FORMS';
+    const program = document.getElementById('nck_program_select')?.value || 'KRCHN';
+    
+    let added = 0;
+    for (const s of nck_ms_availableStudents) {
+        const { error } = await sb
+            .from('nck_marks')
+            .insert({
+                admission_number: s.admission_number,
+                student_name: s.full_name,
+                student_id: s.student_id,
+                block: block,
+                subject_name: sheet,
+                program: program,
+                status: 'pending',
+                final_score: 0,
+                scores: {},
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+        if (!error) added++;
+    }
+    showNotification(`✅ ${added} students added to NCK`, 'success');
+    await nckLoadManageStudents();
+    loadNCKData();
+}
+
+async function nckDropStudent(admission) {
+    if (!confirm(`Remove this student from NCK?`)) return;
+    
+    const block = document.getElementById('nck_block_select')?.value || 'Introductory';
+    const sheet = document.getElementById('nck_sheet_select')?.value || 'XY_FORMS';
+    
+    try {
+        const { error } = await sb
+            .from('nck_marks')
+            .delete()
+            .eq('admission_number', admission)
+            .eq('block', block)
+            .eq('subject_name', sheet);
+        if (error) throw error;
+        showNotification('✅ Student removed from NCK', 'success');
+        await nckLoadManageStudents();
+        loadNCKData();
+    } catch (e) {
+        showNotification('❌ Error: ' + e.message, 'error');
+    }
+}
+
+async function nckDropSelectedStudents() {
+    const selected = Array.from(nck_ms_selected);
+    if (selected.length === 0) {
+        showNotification('No students selected', 'warning');
+        return;
+    }
+    if (!confirm(`Remove ${selected.length} students from NCK?`)) return;
+    
+    const block = document.getElementById('nck_block_select')?.value || 'Introductory';
+    const sheet = document.getElementById('nck_sheet_select')?.value || 'XY_FORMS';
+    
+    let removed = 0;
+    for (const admission of selected) {
+        const { error } = await sb
+            .from('nck_marks')
+            .delete()
+            .eq('admission_number', admission)
+            .eq('block', block)
+            .eq('subject_name', sheet);
+        if (!error) removed++;
+    }
+    nck_ms_selected = new Set();
+    showNotification(`✅ ${removed} students removed from NCK`, 'success');
+    await nckLoadManageStudents();
+    loadNCKData();
+}
+
+async function nckRemoveAllStudents() {
+    const count = nck_ms_enrolledStudents.length;
+    if (count === 0) {
+        showNotification('No students to remove', 'info');
+        return;
+    }
+    if (!confirm(`Remove ALL ${count} students from NCK?`)) return;
+    
+    const block = document.getElementById('nck_block_select')?.value || 'Introductory';
+    const sheet = document.getElementById('nck_sheet_select')?.value || 'XY_FORMS';
+    
+    try {
+        const { error } = await sb
+            .from('nck_marks')
+            .delete()
+            .eq('block', block)
+            .eq('subject_name', sheet);
+        if (error) throw error;
+        showNotification(`✅ All ${count} students removed from NCK`, 'success');
+        await nckLoadManageStudents();
+        loadNCKData();
+    } catch (e) {
+        showNotification('❌ Error: ' + e.message, 'error');
+    }
+}
+
+function nckRefreshManageStudents() {
+    nckLoadManageStudents();
+    showNotification('🔄 Students refreshed!', 'success');
+}
+
+// ============================================================
+// MAIN LOAD FUNCTIONS
+// ============================================================
 
 function loadNCKSystemData() {
     console.log('🏥 Loading NCK System...');
@@ -75,7 +448,6 @@ function loadNCKSystemData() {
     loadNCKData();
 }
 
-// REFRESH DATA BUTTON - Main refresh function
 async function refreshNCKData() {
     console.log('🔄 Refreshing NCK data...');
     showLoading('Refreshing NCK data...');
@@ -85,6 +457,7 @@ async function refreshNCKData() {
         currentNCKStudentsList = [];
         await loadNCKStats();
         await loadNCKData();
+        await nckLoadManageStudents();
         showNotification('✅ NCK data refreshed successfully!', false);
     } catch (err) {
         console.error('❌ Refresh error:', err);
@@ -100,7 +473,8 @@ async function loadNCKStats() {
             .from('consolidated_user_profiles_table')
             .select('student_id', { count: 'exact' })
             .eq('role', 'student')
-            .eq('status', 'approved');
+            .eq('status', 'approved')
+            .eq('program', 'KRCHN');
 
         if (sError) {
             console.error('❌ Error loading student stats:', sError);
@@ -111,48 +485,44 @@ async function loadNCKStats() {
         const totalEl = document.getElementById('nck_total_students');
         if (totalEl) totalEl.textContent = totalStudents;
 
-        // Get NCK marks from new tables
-        const { data: xyMarks, error: xyError } = await sb
-            .from('nck_xy_forms')
-            .select('average, status, published');
+        const { data: nckMarks, error: nError } = await sb
+            .from('nck_marks')
+            .select('final_score, published, status')
+            .eq('program', 'KRCHN');
 
-        const { data: assessmentMarks, error: assError } = await sb
-            .from('nck_assessment_case')
-            .select('average, status, published');
-
-        if (xyError && assError) {
-            console.error('❌ Error loading NCK stats:', xyError, assError);
+        if (nError) {
+            console.error('❌ Error loading NCK stats:', nError);
             return;
         }
 
-        const allMarks = [...(xyMarks || []), ...(assessmentMarks || [])];
-        
-        let totalScore = 0, scoredCount = 0, passedCount = 0, publishedCount = 0;
+        if (nckMarks) {
+            let totalScore = 0, scoredCount = 0, passedCount = 0, publishedCount = 0;
 
-        allMarks.forEach(m => {
-            const score = parseFloat(m.average) || 0;
-            if (score > 0) {
-                totalScore += score;
-                scoredCount++;
-                if (score >= 60) passedCount++;
-            }
-            if (m.published === true || m.published === 'true') publishedCount++;
-        });
+            nckMarks.forEach(m => {
+                const score = parseFloat(m.final_score) || 0;
+                if (score > 0) {
+                    totalScore += score;
+                    scoredCount++;
+                    if (score >= 60) passedCount++;
+                }
+                if (m.published === true || m.published === 'true') publishedCount++;
+            });
 
-        const avgScore = scoredCount > 0 ? (totalScore / scoredCount).toFixed(1) : 0;
-        const passRate = scoredCount > 0 ? ((passedCount / scoredCount) * 100).toFixed(1) : 0;
+            const avgScore = scoredCount > 0 ? (totalScore / scoredCount).toFixed(1) : 0;
+            const passRate = scoredCount > 0 ? ((passedCount / scoredCount) * 100).toFixed(1) : 0;
 
-        const passRateEl = document.getElementById('nck_pass_rate');
-        if (passRateEl) passRateEl.textContent = `${passRate}%`;
-        
-        const avgScoreEl = document.getElementById('nck_avg_score');
-        if (avgScoreEl) avgScoreEl.textContent = `${avgScore}%`;
-        
-        const atRiskEl = document.getElementById('nck_at_risk');
-        if (atRiskEl) atRiskEl.textContent = scoredCount - passedCount;
-        
-        const publishedEl = document.getElementById('nck_published_count');
-        if (publishedEl) publishedEl.textContent = publishedCount;
+            const passRateEl = document.getElementById('nck_pass_rate');
+            if (passRateEl) passRateEl.textContent = `${passRate}%`;
+            
+            const avgScoreEl = document.getElementById('nck_avg_score');
+            if (avgScoreEl) avgScoreEl.textContent = `${avgScore}%`;
+            
+            const atRiskEl = document.getElementById('nck_at_risk');
+            if (atRiskEl) atRiskEl.textContent = scoredCount - passedCount;
+            
+            const publishedEl = document.getElementById('nck_published_count');
+            if (publishedEl) publishedEl.textContent = publishedCount;
+        }
 
     } catch (err) {
         console.error('❌ Error loading NCK stats:', err);
@@ -162,16 +532,10 @@ async function loadNCKStats() {
 async function loadNCKData() {
     const blockSelect = document.getElementById('nck_block_select');
     const sheetSelect = document.getElementById('nck_sheet_select');
-    const programSelect = document.getElementById('nck_program_select');
 
     currentNCKBlock = blockSelect?.value || 'Introductory';
     currentNCKSheetType = sheetSelect?.value || 'XY_FORMS';
-    currentNCKProgram = programSelect?.value || 'KRCHN';
-
-    // Determine which table to use
-    const isXY = currentNCKSheetType === 'XY_FORMS';
-    const tableName = isXY ? 'nck_xy_forms' : 'nck_assessment_case';
-    const year = BLOCK_YEAR_MAP[currentNCKBlock] || '2025';
+    currentNCKProgram = 'KRCHN';
 
     const container = document.getElementById('nck_table_container');
     const placeholder = document.getElementById('nckPlaceholder');
@@ -190,16 +554,15 @@ async function loadNCKData() {
     `;
 
     try {
-        console.log(`📊 Loading: Block=${currentNCKBlock}, Sheet=${currentNCKSheetType}, Table=${tableName}, Year=${year}`);
+        console.log(`📊 Loading: Block=${currentNCKBlock}, Sheet=${currentNCKSheetType}, Program=KRCHN`);
 
-        // Get students from profiles
         const { data: students, error: sError } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, admission_number, block, program, status')
             .eq('role', 'student')
             .eq('status', 'approved')
             .eq('block', currentNCKBlock)
-            .eq('program', currentNCKProgram);
+            .eq('program', 'KRCHN');
 
         if (sError) {
             console.error('❌ Error loading students:', sError);
@@ -216,7 +579,7 @@ async function loadNCKData() {
             container.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 32px;"></i>
-                    <p style="margin-top: 10px;">No students found for ${currentNCKBlock} - ${currentNCKProgram}</p>
+                    <p style="margin-top: 10px;">No students found for ${currentNCKBlock} - KRCHN</p>
                     <button onclick="loadNCKData()" style="background: #4C1D95; padding: 10px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px;">
                         <i class="fas fa-sync-alt"></i> Try Again
                     </button>
@@ -236,11 +599,12 @@ async function loadNCKData() {
         const blockStudentsEl = document.getElementById('nck_block_students');
         if (blockStudentsEl) blockStudentsEl.textContent = students.length;
 
-        // Get NCK marks from the correct table
         const { data: marks, error: mError } = await sb
-            .from(tableName)
-            .select('*')
-            .eq('year', year);
+            .from('nck_marks')
+            .select('id, student_id, student_name, block, subject_name, program, scores, final_score, grade, status, graded_by, published, published_at')
+            .eq('block', currentNCKBlock)
+            .eq('subject_name', currentNCKSheetType)
+            .eq('program', 'KRCHN');
 
         if (mError) {
             console.error('❌ Error loading NCK marks:', mError);
@@ -248,15 +612,13 @@ async function loadNCKData() {
 
         console.log(`✅ Found ${marks?.length || 0} NCK marks`);
 
-        // Build marks map (using admission as key)
         currentNCKMarksMap = {};
         if (marks) {
             marks.forEach(m => {
-                currentNCKMarksMap[m.admission] = m;
+                currentNCKMarksMap[m.student_id] = m;
             });
         }
 
-        // Get columns from localStorage
         let columns = [];
         const savedColumns = localStorage.getItem(`nck_columns_${currentNCKSheetType}_${currentNCKBlock}`);
         if (savedColumns) {
@@ -267,7 +629,9 @@ async function loadNCKData() {
         }
 
         if (columns.length === 0) {
-            columns = isXY ? [...DEFAULT_XY_COLUMNS] : [...DEFAULT_ASSESSMENT_COLUMNS];
+            columns = currentNCKSheetType === 'XY_FORMS' 
+                ? [...DEFAULT_XY_COLUMNS] 
+                : [...DEFAULT_ASSESSMENT_COLUMNS];
         }
 
         currentNCKColumns = columns;
@@ -280,14 +644,13 @@ async function loadNCKData() {
 
         updateBlockDisplay();
 
-        // Build the table with the new data
         buildNCKTable(students, currentNCKMarksMap, columns);
-
-        // Load column settings
         loadColumnSettings(columns);
 
         if (placeholder) placeholder.style.display = 'none';
         if (dynamicContent) dynamicContent.style.display = 'block';
+
+        await nckLoadManageStudents();
 
     } catch (err) {
         console.error('❌ loadNCKData error:', err);
@@ -328,9 +691,9 @@ function updateBlockDisplay() {
     if (typeDisplayEl) typeDisplayEl.textContent = info.type;
 }
 
-// ============================================
-// TABLE BUILDING - FIXED FOR NEW TABLES
-// ============================================
+// ============================================================
+// TABLE BUILDING
+// ============================================================
 
 function buildNCKTable(students, marksMap, columns) {
     const container = document.getElementById('nck_table_container');
@@ -348,8 +711,9 @@ function buildNCKTable(students, marksMap, columns) {
 
     let cols = columns || [];
     if (cols.length === 0) {
-        const isXY = currentNCKSheetType === 'XY_FORMS';
-        cols = isXY ? [...DEFAULT_XY_COLUMNS] : [...DEFAULT_ASSESSMENT_COLUMNS];
+        cols = currentNCKSheetType === 'XY_FORMS' 
+            ? [...DEFAULT_XY_COLUMNS] 
+            : [...DEFAULT_ASSESSMENT_COLUMNS];
     }
 
     const tableWidth = 400 + (cols.length * 70);
@@ -394,77 +758,74 @@ function buildNCKTable(students, marksMap, columns) {
     `;
 
     students.forEach((student, idx) => {
-        const admission = student.admission_number || student.admission;
-        const mark = marksMap[admission] || {};
-        
-        // Get scores from the mark object
+        const studentId = student.student_id || student.admission_number;
+        const mark = marksMap[studentId] || {};
         let scores = {};
-        const isXY = currentNCKSheetType === 'XY_FORMS';
-        const colNames = isXY ? DEFAULT_XY_COLUMNS : DEFAULT_ASSESSMENT_COLUMNS;
-        
-        colNames.forEach(col => {
-            const colLower = col.toLowerCase();
-            const colKey = colLower.replace(/_/g, '').replace(/ /g, '_');
-            // Try different variations of column names in the mark object
-            scores[col] = mark[col] || mark[colLower] || mark[colKey] || 0;
-        });
+        try {
+            if (mark.scores) {
+                scores = typeof mark.scores === 'string' ? JSON.parse(mark.scores) : mark.scores;
+            }
+        } catch (e) {}
 
-        // Calculate average
+        const gradedBy = mark.graded_by || '';
+        const published = mark.published === true || mark.published === 'true';
+
         let totalScore = 0, scoredCount = 0;
-        colNames.forEach(col => {
+        cols.forEach(col => {
             const val = parseFloat(scores[col]) || 0;
             if (val > 0) { totalScore += val; scoredCount++; }
         });
 
         const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
         const status = avg > 0 ? (avg >= 60 ? 'PASS' : 'FAIL') : 'PENDING';
+        const statusClass = status === 'PASS' ? 'pass-row' : (status === 'FAIL' ? 'fail-row' : 'pending-row');
         const bgColor = status === 'PASS' ? '#d1fae5' : (status === 'FAIL' ? '#fee2e2' : '#fef3c7');
         const textColor = status === 'PASS' ? '#065f46' : (status === 'FAIL' ? '#991b1b' : '#92400e');
 
         html += `
-            <tr data-student-id="${admission}" style="border-bottom: 1px solid #e5e7eb;">
+            <tr class="${statusClass}" data-student-id="${studentId}" style="border-bottom: 1px solid #e5e7eb;">
                 <td style="position: sticky; left: 0; background: white; padding: 6px 4px; text-align: center; font-weight: 500; z-index: 1;">${idx + 1}</td>
                 <td style="position: sticky; left: 35px; background: white; padding: 6px 4px; font-weight: 600; z-index: 1;">
-                    <span style="cursor: pointer; color: #4C1D95; text-decoration: underline;" onclick="editNCKStudent('${admission}')">
+                    <span style="cursor: pointer; color: #4C1D95; text-decoration: underline;" onclick="editNCKStudent('${studentId}')">
                         ${escapeHtml(student.full_name)} <i class="fas fa-edit" style="font-size: 10px;"></i>
                     </span>
                 </td>
                 <td style="position: sticky; left: 195px; background: white; padding: 6px 4px; font-weight: 500; z-index: 1; font-size: 12px; color: #64748b;">
-                    ${escapeHtml(admission)}
+                    ${escapeHtml(student.admission_number || studentId)}
                 </td>
         `;
 
-        colNames.forEach(col => {
-            const val = scores[col] || '';
+        cols.forEach(col => {
+            const val = scores[col] !== undefined && scores[col] !== null ? scores[col] : '';
             const hasValue = val !== '' && parseFloat(val) > 0;
             const inputBg = hasValue ? '#d1fae5' : '#fff3e0';
             html += `
                 <td style="padding: 4px 2px; text-align: center;">
                     <input type="number" 
                            class="nck-score-input" 
-                           data-student="${admission}" 
+                           data-student="${studentId}" 
                            data-column="${escapeHtml(col)}"
                            value="${val}" 
                            min="0" 
                            max="100" 
                            step="0.5" 
                            style="width: 55px; padding: 4px; border-radius: 6px; text-align: center; background: ${inputBg}; border: 1px solid ${hasValue ? '#d1fae5' : '#fef3c7'}; font-size: 12px;" 
-                           onchange="updateNCKAverage('${admission}')">
+                           onchange="updateNCKAverage('${studentId}')">
                 </td>
             `;
         });
 
         html += `
-                <td style="font-weight: bold; text-align: center; background: ${bgColor}; font-size: 14px;" class="nck-avg-cell" id="nck_avg_${admission}">${avg.toFixed(1)}</td>
-                <td style="text-align: center;" class="nck-status-cell" id="nck_status_${admission}">
+                <td style="font-weight: bold; text-align: center; background: ${bgColor}; font-size: 14px;" class="nck-avg-cell" id="nck_avg_${studentId}">${avg.toFixed(1)}</td>
+                <td style="text-align: center;" class="nck-status-cell" id="nck_status_${studentId}">
                     <span style="background: ${bgColor}; color: ${textColor}; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 12px;">${status}</span>
                 </td>
                 <td style="text-align: center;">
-                    <input type="text" class="nck-graded-input" data-student="${admission}" value="${escapeHtml(mark.graded_by || '')}" placeholder="Lecturer" style="width: 120px; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px;">
+                    <input type="text" class="nck-graded-input" data-student="${studentId}" value="${escapeHtml(gradedBy)}" placeholder="Lecturer" style="width: 120px; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px;">
                 </td>
                 <td style="text-align: center;">
-                    <button onclick="togglePublishNCK('${admission}')" style="background: ${mark.published ? '#10b981' : '#8b5cf6'}; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                        <i class="fas ${mark.published ? 'fa-eye' : 'fa-eye-slash'}"></i> ${mark.published ? 'Published' : 'Publish'}
+                    <button onclick="togglePublishNCK('${studentId}')" style="background: ${published ? '#10b981' : '#8b5cf6'}; color: white; padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                        <i class="fas ${published ? 'fa-eye' : 'fa-eye-slash'}"></i> ${published ? 'Published' : 'Publish'}
                     </button>
                 </td>
             </tr>
@@ -475,9 +836,9 @@ function buildNCKTable(students, marksMap, columns) {
     container.innerHTML = html;
 }
 
-// ============================================
+// ============================================================
 // COLUMN SETTINGS
-// ============================================
+// ============================================================
 
 function loadColumnSettings(columns) {
     const container = document.getElementById('nck_column_settings');
@@ -669,9 +1030,9 @@ function updateColumnCounts() {
     if (blockColumnsEl) blockColumnsEl.textContent = currentNCKColumns.length;
 }
 
-// ============================================
+// ============================================================
 // AUTO-CALCULATION
-// ============================================
+// ============================================================
 
 function updateNCKAverage(studentId) {
     const inputs = document.querySelectorAll(`.nck-score-input[data-student="${studentId}"]`);
@@ -711,9 +1072,9 @@ function updateNCKAverage(studentId) {
     }
 }
 
-// ============================================
-// SAVE FUNCTIONS - SAVE ALL BUTTON
-// ============================================
+// ============================================================
+// SAVE FUNCTIONS
+// ============================================================
 
 async function saveAllNCKMarks() {
     const students = currentNCKStudentsList;
@@ -722,17 +1083,13 @@ async function saveAllNCKMarks() {
         return;
     }
 
-    const isXY = currentNCKSheetType === 'XY_FORMS';
-    const tableName = isXY ? 'nck_xy_forms' : 'nck_assessment_case';
-    const year = BLOCK_YEAR_MAP[currentNCKBlock] || '2025';
-
     showLoading('Saving all NCK marks...');
     let savedCount = 0, errorCount = 0;
 
     for (const student of students) {
-        const admission = student.admission_number || student.student_id;
+        const studentId = student.student_id || student.admission_number;
         const scores = {};
-        const inputs = document.querySelectorAll(`.nck-score-input[data-student="${admission}"]`);
+        const inputs = document.querySelectorAll(`.nck-score-input[data-student="${studentId}"]`);
 
         inputs.forEach(input => {
             const column = input.dataset.column;
@@ -740,50 +1097,45 @@ async function saveAllNCKMarks() {
             scores[column] = val;
         });
 
-        const colNames = isXY ? DEFAULT_XY_COLUMNS : DEFAULT_ASSESSMENT_COLUMNS;
         let totalScore = 0, scoredCount = 0;
-        colNames.forEach(col => {
-            const val = scores[col] || 0;
+        Object.values(scores).forEach(val => {
             if (val > 0) { totalScore += val; scoredCount++; }
         });
         const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
+        const grade = calculateNursingGrade(avg);
         const status = avg > 0 ? (avg >= 60 ? 'passed' : 'failed') : 'pending';
 
-        const gradedInput = document.querySelector(`.nck-graded-input[data-student="${admission}"]`);
+        const gradedInput = document.querySelector(`.nck-graded-input[data-student="${studentId}"]`);
         const gradedBy = gradedInput?.value || window.currentUser?.full_name || 'Admin';
-
-        // Build the update object
-        const updateData = {
-            admission: admission,
-            name: student.full_name || student.name,
-            year: year,
-            graded_by: gradedBy,
-            average: Math.round(avg * 10) / 10,
-            status: status,
-            updated_at: new Date().toISOString()
-        };
-
-        // Add scores based on table type
-        colNames.forEach(col => {
-            const colKey = isXY ? col.toLowerCase() : col.toLowerCase().replace(/ /g, '_').replace(/\//g, '_');
-            updateData[colKey] = scores[col] || 0;
-        });
 
         try {
             const { error } = await sb
-                .from(tableName)
-                .upsert(updateData, { 
-                    onConflict: 'admission, year' 
+                .from('nck_marks')
+                .upsert({
+                    student_id: studentId,
+                    full_name: student.full_name || 'Unknown',
+                    admission_number: student.admission_number || studentId,
+                    block: currentNCKBlock,
+                    subject_name: currentNCKSheetType,
+                    program: 'KRCHN',
+                    scores: JSON.stringify(scores),
+                    final_score: Math.round(avg * 10) / 10,
+                    grade: grade,
+                    status: status,
+                    graded_by: gradedBy,
+                    updated_at: new Date().toISOString()
+                }, { 
+                    onConflict: 'student_id, subject_name, block, program' 
                 });
 
             if (error) {
-                console.error('❌ Error saving student:', admission, error);
+                console.error('❌ Error saving student:', studentId, error);
                 errorCount++;
             } else {
                 savedCount++;
             }
         } catch (err) {
-            console.error('❌ Error saving student:', admission, err);
+            console.error('❌ Error saving student:', studentId, err);
             errorCount++;
         }
     }
@@ -797,9 +1149,9 @@ async function saveAllNCKMarks() {
     await loadNCKStats();
 }
 
-// ============================================
-// PUBLISH FUNCTIONS - PUBLISH ALL BUTTON
-// ============================================
+// ============================================================
+// PUBLISH FUNCTIONS
+// ============================================================
 
 async function publishAllNCKMarks() {
     const studentCount = currentNCKStudentsList?.length || 0;
@@ -810,21 +1162,19 @@ async function publishAllNCKMarks() {
 
     if (!confirm(`PUBLISH ALL NCK marks for "${currentNCKSheetType}" (${studentCount} students)?`)) return;
 
-    const isXY = currentNCKSheetType === 'XY_FORMS';
-    const tableName = isXY ? 'nck_xy_forms' : 'nck_assessment_case';
-    const year = BLOCK_YEAR_MAP[currentNCKBlock] || '2025';
-
     showLoading(`Publishing ${studentCount} records...`);
 
     try {
         const { error } = await sb
-            .from(tableName)
+            .from('nck_marks')
             .update({
                 published: true,
                 published_at: new Date().toISOString(),
                 published_by: window.currentUser?.full_name || 'Admin'
             })
-            .eq('year', year);
+            .eq('block', currentNCKBlock)
+            .eq('subject_name', currentNCKSheetType)
+            .eq('program', 'KRCHN');
 
         if (error) throw error;
 
@@ -843,18 +1193,16 @@ async function publishAllNCKMarks() {
 async function togglePublishNCK(studentId) {
     if (!confirm('Toggle publish status for this student?')) return;
 
-    const isXY = currentNCKSheetType === 'XY_FORMS';
-    const tableName = isXY ? 'nck_xy_forms' : 'nck_assessment_case';
-    const year = BLOCK_YEAR_MAP[currentNCKBlock] || '2025';
-
     showLoading('Updating publish status...');
 
     try {
         const { data: current, error: getError } = await sb
-            .from(tableName)
+            .from('nck_marks')
             .select('published')
-            .eq('admission', studentId)
-            .eq('year', year)
+            .eq('student_id', studentId)
+            .eq('block', currentNCKBlock)
+            .eq('subject_name', currentNCKSheetType)
+            .eq('program', 'KRCHN')
             .single();
 
         if (getError && getError.code !== 'PGRST116') throw getError;
@@ -862,14 +1210,16 @@ async function togglePublishNCK(studentId) {
         const currentStatus = current?.published === true || current?.published === 'true';
 
         const { error } = await sb
-            .from(tableName)
+            .from('nck_marks')
             .update({
                 published: !currentStatus,
                 published_at: !currentStatus ? new Date().toISOString() : null,
                 published_by: window.currentUser?.full_name || 'Admin'
             })
-            .eq('admission', studentId)
-            .eq('year', year);
+            .eq('student_id', studentId)
+            .eq('block', currentNCKBlock)
+            .eq('subject_name', currentNCKSheetType)
+            .eq('program', 'KRCHN');
 
         if (error) throw error;
 
@@ -895,13 +1245,13 @@ function openNCKStudentPublishModal() {
     if (listContainer && currentNCKStudentsList) {
         let html = '';
         currentNCKStudentsList.forEach((student, idx) => {
-            const admission = student.admission_number || student.student_id;
+            const studentId = student.student_id || student.admission_number;
             html += `
                 <div class="student-item" style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" class="nck-student-checkbox" id="nck_student_${idx}" value="${admission}">
+                    <input type="checkbox" class="nck-student-checkbox" id="nck_student_${idx}" value="${studentId}">
                     <label for="nck_student_${idx}" style="margin: 0; cursor: pointer; flex: 1; display: flex; justify-content: space-between;">
                         <span><strong>${escapeHtml(student.full_name)}</strong></span>
-                        <span style="color: #94a3b8; font-size: 12px;">${escapeHtml(admission)}</span>
+                        <span style="color: #94a3b8; font-size: 12px;">${escapeHtml(student.admission_number || studentId)}</span>
                     </label>
                 </div>
             `;
@@ -925,22 +1275,20 @@ async function publishSelectedStudents() {
 
     if (!confirm(`Publish marks for ${studentIds.length} selected students?`)) return;
 
-    const isXY = currentNCKSheetType === 'XY_FORMS';
-    const tableName = isXY ? 'nck_xy_forms' : 'nck_assessment_case';
-    const year = BLOCK_YEAR_MAP[currentNCKBlock] || '2025';
-
     showLoading(`Publishing ${studentIds.length} students...`);
 
     try {
         const { error } = await sb
-            .from(tableName)
+            .from('nck_marks')
             .update({
                 published: true,
                 published_at: new Date().toISOString(),
                 published_by: window.currentUser?.full_name || 'Admin'
             })
-            .in('admission', studentIds)
-            .eq('year', year);
+            .in('student_id', studentIds)
+            .eq('block', currentNCKBlock)
+            .eq('subject_name', currentNCKSheetType)
+            .eq('program', 'KRCHN');
 
         if (error) throw error;
 
@@ -984,9 +1332,9 @@ function updateSelectedCount() {
     if (publishCount) publishCount.textContent = count;
 }
 
-// ============================================
-// FAST ENTRY MODE - FULL SCREEN
-// ============================================
+// ============================================================
+// FAST ENTRY MODE
+// ============================================================
 
 function openFastEntryMode() {
     if (!currentNCKStudentsList || currentNCKStudentsList.length === 0) {
@@ -1000,7 +1348,6 @@ function openFastEntryMode() {
         return;
     }
 
-    // Populate student dropdown
     const select = document.getElementById('fastStudentSelect');
     if (select) {
         select.innerHTML = currentNCKStudentsList.map((s, i) => 
@@ -1011,19 +1358,16 @@ function openFastEntryMode() {
         };
     }
 
-    // Load first student
     if (currentNCKStudentsList.length > 0) {
         loadFastEntryFields(0);
     }
 
-    // Setup buttons
     const saveNextBtn = document.getElementById('saveNextBtn');
     if (saveNextBtn) saveNextBtn.onclick = applyFastEntry;
     
     const saveStayBtn = document.getElementById('saveStayBtn');
     if (saveStayBtn) saveStayBtn.onclick = applyFastEntryAndStay;
 
-    // Keyboard shortcuts
     document.addEventListener('keydown', handleFastEntryKeyboard);
 
     modal.style.display = 'flex';
@@ -1054,17 +1398,18 @@ function loadFastEntryFields(studentIdx) {
     const student = currentNCKStudentsList[studentIdx];
     if (!student) return;
 
-    const admission = student.admission_number || student.student_id;
-    const mark = currentNCKMarksMap[admission] || {};
-    
-    const isXY = currentNCKSheetType === 'XY_FORMS';
-    const colNames = isXY ? DEFAULT_XY_COLUMNS : DEFAULT_ASSESSMENT_COLUMNS;
+    const studentId = student.student_id || student.admission_number;
+    const mark = currentNCKMarksMap[studentId] || {};
+    let scores = {};
+    try {
+        if (mark.scores) {
+            scores = typeof mark.scores === 'string' ? JSON.parse(mark.scores) : mark.scores;
+        }
+    } catch (e) {}
 
-    // Get current avg
     let totalScore = 0, scoredCount = 0;
-    colNames.forEach(col => {
-        const colLower = col.toLowerCase();
-        const val = parseFloat(mark[col] || mark[colLower] || 0);
+    currentNCKColumns.forEach(col => {
+        const val = parseFloat(scores[col]) || 0;
         if (val > 0) { totalScore += val; scoredCount++; }
     });
     const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
@@ -1079,21 +1424,16 @@ function loadFastEntryFields(studentIdx) {
             `<span style="background: ${status === 'PASS' ? '#d1fae5' : (status === 'FAIL' ? '#fee2e2' : '#fef3c7')}; padding: 4px 12px; border-radius: 12px; font-weight: 600; color: ${status === 'PASS' ? '#065f46' : (status === 'FAIL' ? '#991b1b' : '#92400e')};">${status}</span>`;
     }
 
-    // Build fields
     const container = document.getElementById('fastEntryFields');
     if (!container) return;
 
     let html = '';
-    const groups = isXY ? CLINICAL_GROUPS : [
-        { title: '📋 ASSESSMENT AREAS', cols: colNames.map((_, i) => i), names: colNames }
-    ];
-
-    groups.forEach(group => {
+    CLINICAL_GROUPS.forEach(group => {
         html += `<div class="nck-fast-group"><h4>${group.title}</h4>`;
         for (let i = 0; i < group.cols.length; i++) {
             const colIdx = group.cols[i];
             const colName = group.names[i];
-            const val = mark[colName] || '';
+            const val = scores[colName] !== undefined && scores[colName] !== null ? scores[colName] : '';
             html += `
                 <div class="field">
                     <label>${colName}:</label>
@@ -1105,7 +1445,6 @@ function loadFastEntryFields(studentIdx) {
         html += `</div>`;
     });
 
-    // Add grading field
     const gradedBy = mark.graded_by || '';
     html += `
         <div class="nck-fast-grading">
@@ -1119,7 +1458,6 @@ function loadFastEntryFields(studentIdx) {
 
     container.innerHTML = html;
 
-    // Focus first input
     const firstInput = container.querySelector('input[type="number"]');
     if (firstInput) setTimeout(() => firstInput.focus(), 100);
 }
@@ -1128,11 +1466,8 @@ function updateFastPreview(studentIdx) {
     const student = currentNCKStudentsList[studentIdx];
     if (!student) return;
 
-    const isXY = currentNCKSheetType === 'XY_FORMS';
-    const colNames = isXY ? DEFAULT_XY_COLUMNS : DEFAULT_ASSESSMENT_COLUMNS;
-
     let scores = {};
-    colNames.forEach((col, idx) => {
+    currentNCKColumns.forEach((col, idx) => {
         const input = document.getElementById(`fast_${idx}`);
         if (input) {
             scores[col] = parseFloat(input.value) || 0;
@@ -1176,7 +1511,20 @@ async function applyFastEntry() {
     const student = currentNCKStudentsList[studentIdx];
     if (!student) return;
 
-    await saveFastEntryForStudent(student);
+    const studentId = student.student_id || student.admission_number;
+    const scores = {};
+    currentNCKColumns.forEach((col, idx) => {
+        const input = document.getElementById(`fast_${idx}`);
+        if (input) {
+            scores[col] = parseFloat(input.value) || 0;
+        }
+    });
+
+    const gradedInput = document.getElementById('fast_graded');
+    const gradedBy = gradedInput?.value || window.currentUser?.full_name || 'Admin';
+
+    await saveSingleStudentMarks(studentId, student.full_name, scores, gradedBy);
+
     const nextIdx = studentIdx + 1;
     if (nextIdx < currentNCKStudentsList.length) {
         select.value = nextIdx;
@@ -1196,19 +1544,9 @@ async function applyFastEntryAndStay() {
     const student = currentNCKStudentsList[studentIdx];
     if (!student) return;
 
-    await saveFastEntryForStudent(student);
-    showNotification(`✅ Saved ${student.full_name}. Continue editing.`, false);
-}
-
-async function saveFastEntryForStudent(student) {
-    const admission = student.admission_number || student.student_id;
-    const isXY = currentNCKSheetType === 'XY_FORMS';
-    const tableName = isXY ? 'nck_xy_forms' : 'nck_assessment_case';
-    const year = BLOCK_YEAR_MAP[currentNCKBlock] || '2025';
-    const colNames = isXY ? DEFAULT_XY_COLUMNS : DEFAULT_ASSESSMENT_COLUMNS;
-
+    const studentId = student.student_id || student.admission_number;
     const scores = {};
-    colNames.forEach((col, idx) => {
+    currentNCKColumns.forEach((col, idx) => {
         const input = document.getElementById(`fast_${idx}`);
         if (input) {
             scores[col] = parseFloat(input.value) || 0;
@@ -1218,35 +1556,37 @@ async function saveFastEntryForStudent(student) {
     const gradedInput = document.getElementById('fast_graded');
     const gradedBy = gradedInput?.value || window.currentUser?.full_name || 'Admin';
 
+    await saveSingleStudentMarks(studentId, student.full_name, scores, gradedBy);
+    showNotification(`✅ Saved ${student.full_name}. Continue editing.`, false);
+}
+
+async function saveSingleStudentMarks(studentId, studentName, scores, gradedBy) {
     let totalScore = 0, scoredCount = 0;
-    colNames.forEach(col => {
-        const val = scores[col] || 0;
+    Object.values(scores).forEach(val => {
         if (val > 0) { totalScore += val; scoredCount++; }
     });
     const avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
+    const grade = calculateNursingGrade(avg);
     const status = avg > 0 ? (avg >= 60 ? 'passed' : 'failed') : 'pending';
-
-    const updateData = {
-        admission: admission,
-        name: student.full_name || student.name,
-        year: year,
-        graded_by: gradedBy,
-        average: Math.round(avg * 10) / 10,
-        status: status,
-        updated_at: new Date().toISOString()
-    };
-
-    // Add scores
-    colNames.forEach(col => {
-        const colKey = isXY ? col.toLowerCase() : col.toLowerCase().replace(/ /g, '_').replace(/\//g, '_');
-        updateData[colKey] = scores[col] || 0;
-    });
 
     try {
         const { error } = await sb
-            .from(tableName)
-            .upsert(updateData, { 
-                onConflict: 'admission, year' 
+            .from('nck_marks')
+            .upsert({
+                student_id: studentId,
+                full_name: studentName || 'Unknown',
+                admission_number: studentId,
+                block: currentNCKBlock,
+                subject_name: currentNCKSheetType,
+                program: 'KRCHN',
+                scores: JSON.stringify(scores),
+                final_score: Math.round(avg * 10) / 10,
+                grade: grade,
+                status: status,
+                graded_by: gradedBy,
+                updated_at: new Date().toISOString()
+            }, { 
+                onConflict: 'student_id, subject_name, block, program' 
             });
 
         if (error) {
@@ -1255,8 +1595,14 @@ async function saveFastEntryForStudent(student) {
             return false;
         }
 
-        // Update marks map
-        currentNCKMarksMap[admission] = { ...currentNCKMarksMap[admission], ...updateData };
+        currentNCKMarksMap[studentId] = {
+            ...currentNCKMarksMap[studentId],
+            scores: JSON.stringify(scores),
+            final_score: Math.round(avg * 10) / 10,
+            grade: grade,
+            status: status,
+            graded_by: gradedBy
+        };
 
         return true;
     } catch (err) {
@@ -1266,9 +1612,9 @@ async function saveFastEntryForStudent(student) {
     }
 }
 
-// ============================================
+// ============================================================
 // FILL DOWN
-// ============================================
+// ============================================================
 
 function fillDownNCKValues() {
     const firstRow = document.querySelector('#nck_marks_table tbody tr');
@@ -1295,22 +1641,20 @@ function fillDownNCKValues() {
     showNotification('Values filled down from first row!', false);
 }
 
-// ============================================
-// EXPORT - EXPORT CSV BUTTON
-// ============================================
+// ============================================================
+// EXPORT
+// ============================================================
 
 async function exportNCKData() {
-    const isXY = currentNCKSheetType === 'XY_FORMS';
-    const tableName = isXY ? 'nck_xy_forms' : 'nck_assessment_case';
-    const year = BLOCK_YEAR_MAP[currentNCKBlock] || '2025';
-
     showLoading('Exporting NCK data...');
 
     try {
         const { data: marks, error } = await sb
-            .from(tableName)
+            .from('nck_marks')
             .select('*')
-            .eq('year', year);
+            .eq('block', currentNCKBlock)
+            .eq('subject_name', currentNCKSheetType)
+            .eq('program', 'KRCHN');
 
         if (error) {
             showNotification(`Error: ${error.message}`, true);
@@ -1322,24 +1666,21 @@ async function exportNCKData() {
             return;
         }
 
-        const colNames = isXY ? DEFAULT_XY_COLUMNS : DEFAULT_ASSESSMENT_COLUMNS;
-        const headers = ['Admission', 'Name', ...colNames, 'Average', 'Status', 'Graded By', 'Published'];
-        
-        const rows = marks.map(m => {
-            const row = [
-                m.admission || '',
-                m.name || '',
-            ];
-            colNames.forEach(col => {
-                const colKey = isXY ? col.toLowerCase() : col.toLowerCase().replace(/ /g, '_').replace(/\//g, '_');
-                row.push(m[colKey] || 0);
-            });
-            row.push(m.average || 0);
-            row.push(m.status || 'pending');
-            row.push(m.graded_by || '');
-            row.push(m.published ? 'Yes' : 'No');
-            return row;
-        });
+        const headers = ['Student ID', 'Full Name', 'Admission', 'Block', 'Subject', 'Program', 'Scores', 'Final Score', 'Grade', 'Status', 'Graded By', 'Published'];
+        const rows = marks.map(m => [
+            m.student_id || '',
+            m.full_name || '',
+            m.admission_number || '',
+            m.block || '',
+            m.subject_name || '',
+            m.program || '',
+            m.scores || '',
+            m.final_score || '',
+            m.grade || '',
+            m.status || '',
+            m.graded_by || '',
+            m.published ? 'Yes' : 'No'
+        ]);
 
         let csv = headers.join(',') + '\n';
         rows.forEach(row => {
@@ -1350,7 +1691,7 @@ async function exportNCKData() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `nck_${tableName}_${year}_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `nck_marks_${currentNCKSheetType}_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         URL.revokeObjectURL(url);
         showNotification('✅ Export complete!', false);
@@ -1363,9 +1704,9 @@ async function exportNCKData() {
     }
 }
 
-// ============================================
+// ============================================================
 // EDIT STUDENT
-// ============================================
+// ============================================================
 
 function editNCKStudent(studentId) {
     const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
@@ -1378,9 +1719,9 @@ function editNCKStudent(studentId) {
     }
 }
 
-// ============================================
+// ============================================================
 // HELPER FUNCTIONS
-// ============================================
+// ============================================================
 
 function calculateNursingGrade(score) {
     if (score >= 80) return 'A';
@@ -1478,9 +1819,9 @@ function hideLoading() {
     if (overlay) overlay.remove();
 }
 
-// ============================================
+// ============================================================
 // CSS STYLES
-// ============================================
+// ============================================================
 
 (function injectNCKStyles() {
     if (document.getElementById('nck-custom-styles')) return;
@@ -1593,9 +1934,9 @@ function hideLoading() {
     document.head.appendChild(styles);
 })();
 
-// ============================================
+// ============================================================
 // AUTO-INIT
-// ============================================
+// ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🏥 NCK System initializing...');
@@ -1607,9 +1948,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ============================================
-// GLOBAL EXPOSURE - ALL FUNCTIONS
-// ============================================
+// ============================================================
+// GLOBAL EXPOSURE
+// ============================================================
 
 window.loadNCKSystemData = loadNCKSystemData;
 window.loadNCKData = loadNCKData;
@@ -1649,5 +1990,23 @@ window.applyFastEntry = applyFastEntry;
 window.applyFastEntryAndStay = applyFastEntryAndStay;
 window.handleFastEntryKey = handleFastEntryKey;
 window.handleFastEntryKeyboard = handleFastEntryKeyboard;
+window.saveSingleStudentMarks = saveSingleStudentMarks;
+window.nckLoadManageStudents = nckLoadManageStudents;
+window.nckRenderManageStudents = nckRenderManageStudents;
+window.nckUpdateStudentSelect = nckUpdateStudentSelect;
+window.nckUpdateStats = nckUpdateStats;
+window.nckToggleStudent = nckToggleStudent;
+window.nckToggleAllStudents = nckToggleAllStudents;
+window.nckUpdateDropButton = nckUpdateDropButton;
+window.nckOpenAddStudentForm = nckOpenAddStudentForm;
+window.nckCloseAddStudentForm = nckCloseAddStudentForm;
+window.nckAddSelectedStudent = nckAddSelectedStudent;
+window.nckAddAllAvailableStudents = nckAddAllAvailableStudents;
+window.nckDropStudent = nckDropStudent;
+window.nckDropSelectedStudents = nckDropSelectedStudents;
+window.nckRemoveAllStudents = nckRemoveAllStudents;
+window.nckRefreshManageStudents = nckRefreshManageStudents;
 
 console.log('✅ NCK System module loaded successfully!');
+console.log('🎓 KRCHN Nursing Only - No TVET');
+console.log('📊 Features: XY FORMS, ASSESSMENT & CASE, Fast Entry, Manage Students');
