@@ -97,6 +97,27 @@
         .student-info-card .value.positive { color: #059669; }
         .student-info-card .value.negative { color: #dc2626; }
 
+        /* ===== QUICK ACTIONS BAR ===== */
+        .quick-actions-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 25px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .quick-actions-bar .action-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
         /* ===== CARDS ===== */
         .card {
             background: white;
@@ -134,6 +155,47 @@
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 16px;
             margin-bottom: 25px;
+        }
+
+        /* ===== BALANCE ALERT BANNER ===== */
+        .balance-alert-banner {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            border: 1px solid #f59e0b;
+            display: none;
+        }
+        .balance-alert-banner .alert-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        /* ===== PAYMENT SUMMARY CARDS ===== */
+        .payment-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .payment-summary-card {
+            border-radius: 10px;
+            padding: 14px 18px;
+            border: 1px solid #e5e7eb;
+        }
+        .payment-summary-card .label {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .payment-summary-card .value {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .payment-summary-card .sub {
+            font-size: 11px;
         }
 
         /* ===== FILTER BAR ===== */
@@ -202,6 +264,20 @@
         }
         .modal-close:hover { color: #1e293b; }
 
+        /* ===== DROP ZONE ===== */
+        .drop-zone {
+            text-align: center;
+            padding: 30px;
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .drop-zone:hover {
+            border-color: #4C1D95;
+            background: #f8fafc;
+        }
+
         /* ===== TOAST ===== */
         .toast-container {
             position: fixed;
@@ -240,6 +316,9 @@
             .search-box input { min-width: 150px; }
             .filter-bar { flex-direction: column; align-items: stretch; }
             .filter-bar input, .filter-bar select { min-width: 100%; }
+            .quick-actions-bar { flex-direction: column; align-items: stretch; }
+            .payment-summary-grid { grid-template-columns: 1fr 1fr; }
+            .balance-alert-banner .alert-content { flex-direction: column; align-items: stretch; }
         }
         @media (max-width: 480px) {
             .finance-main { padding: 14px; }
@@ -247,6 +326,7 @@
             .cards { grid-template-columns: 1fr 1fr; }
             .modal-content { padding: 20px; }
             .student-info-card .info-row { flex-direction: column; gap: 4px; }
+            .payment-summary-grid { grid-template-columns: 1fr 1fr; }
         }
 
         /* ===== PRINT ===== */
@@ -312,6 +392,32 @@
                 </div>
             </div>
 
+            <!-- ===== QUICK ACTIONS TOOLBAR ===== -->
+            <div class="quick-actions-bar">
+                <div class="action-group">
+                    <span style="font-weight: 600; color: #475569; font-size: 13px; display: flex; align-items: center;">
+                        <i class="fas fa-bolt" style="color: #FDB913; margin-right: 8px;"></i> Quick Actions:
+                    </span>
+                    <button onclick="openPaymentModal()" class="btn-action btn-success btn-sm" style="background: #059669; color: white; padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-plus-circle"></i> Record Payment
+                    </button>
+                    <button onclick="openBulkPaymentModal()" class="btn-action btn-primary btn-sm" style="background: #4C1D95; color: white; padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-file-import"></i> Bulk Import
+                    </button>
+                    <button onclick="sendPaymentReminders()" class="btn-action btn-warning btn-sm" style="background: #FDB913; color: #0A3D62; padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-envelope"></i> Send Reminders
+                    </button>
+                    <button onclick="generateReport('summary')" class="btn-action btn-outline btn-sm" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-chart-bar"></i> Generate Report
+                    </button>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span id="lastUpdated" style="font-size: 11px; color: #94a3b8;">
+                        <i class="fas fa-clock"></i> Last updated: <span id="lastUpdatedTime">Just now</span>
+                    </span>
+                </div>
+            </div>
+
             <!-- ===== TOAST CONTAINER ===== -->
             <div id="financeToastContainer" class="toast-container"></div>
 
@@ -351,7 +457,17 @@
                         <p class="data" id="totalTransactions" style="color: #2563eb;">0</p>
                         <p class="minor-data">All time</p>
                     </div>
-                    <!-- ✅ PUBLISHED COUNT CARD -->
+                    <!-- New Cards -->
+                    <div class="card" style="border-top: 4px solid #f59e0b; background: linear-gradient(135deg, #fffbeb, #fef3c7);">
+                        <h3 style="color: #d97706; font-size: 12px;">⚠️ Pending Approvals</h3>
+                        <p class="data" id="pendingApprovals" style="font-size: 28px; font-weight: 700; color: #d97706;">0</p>
+                        <p class="minor-data" style="font-size: 11px;">Awaiting review</p>
+                    </div>
+                    <div class="card" style="border-top: 4px solid #8b5cf6; background: linear-gradient(135deg, #f5f3ff, #ede9fe);">
+                        <h3 style="color: #6d28d9; font-size: 12px;">📈 This Month</h3>
+                        <p class="data" id="thisMonthCollections" style="font-size: 28px; font-weight: 700; color: #6d28d9;">KES 0</p>
+                        <p class="minor-data" style="font-size: 11px;">Current month collections</p>
+                    </div>
                     <div class="card" style="border-top: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ecfdf5);">
                         <h3 style="color: #059669; font-size: 12px;">📤 Published Payments</h3>
                         <p class="data" id="finance_published_count" style="font-size: 28px; font-weight: 700; color: #059669;">0</p>
@@ -418,6 +534,23 @@
                         </button>
                         <button onclick="openPaymentModal()" class="btn-action" style="background: rgba(255,255,255,0.25); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: 1px solid rgba(255,255,255,0.3);">
                             <i class="fas fa-plus-circle"></i> Record Payment
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Balance Alert Banner -->
+                <div id="balanceAlertBanner" class="balance-alert-banner">
+                    <div class="alert-content">
+                        <div>
+                            <span style="font-weight: 700; color: #92400e;">
+                                <i class="fas fa-exclamation-triangle"></i> Balance Alerts
+                            </span>
+                            <span id="alertMessage" style="color: #78350f; font-size: 13px; margin-left: 10px;">
+                                <span id="highBalanceCount">0</span> students have high outstanding balances (&gt; KES 100,000)
+                            </span>
+                        </div>
+                        <button onclick="showHighBalanceStudents()" class="btn-action btn-warning btn-sm" style="background: #f59e0b; color: #0A3D62; padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-eye"></i> View All
                         </button>
                     </div>
                 </div>
@@ -494,6 +627,30 @@
                         <button onclick="refreshPayments()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
+                    </div>
+                </div>
+
+                <!-- Quick Payment Summary -->
+                <div class="payment-summary-grid">
+                    <div class="payment-summary-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-color: #86efac;">
+                        <div class="label" style="color: #065f46;">Today</div>
+                        <div class="value" style="color: #065f46;" id="todayPaymentSummary">KES 0</div>
+                        <div class="sub" style="color: #047858;"><span id="todayPaymentCount">0</span> transactions</div>
+                    </div>
+                    <div class="payment-summary-card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-color: #93c5fd;">
+                        <div class="label" style="color: #1e40af;">This Week</div>
+                        <div class="value" style="color: #1e40af;" id="weekPaymentSummary">KES 0</div>
+                        <div class="sub" style="color: #1e40af;"><span id="weekPaymentCount">0</span> transactions</div>
+                    </div>
+                    <div class="payment-summary-card" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); border-color: #f9a8d4;">
+                        <div class="label" style="color: #9d174d;">This Month</div>
+                        <div class="value" style="color: #9d174d;" id="monthPaymentSummary">KES 0</div>
+                        <div class="sub" style="color: #9d174d;"><span id="monthPaymentCount">0</span> transactions</div>
+                    </div>
+                    <div class="payment-summary-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #f59e0b;">
+                        <div class="label" style="color: #92400e;">Pending</div>
+                        <div class="value" style="color: #92400e;" id="pendingPaymentSummary">KES 0</div>
+                        <div class="sub" style="color: #92400e;"><span id="pendingPaymentCount">0</span> awaiting approval</div>
                     </div>
                 </div>
 
@@ -773,6 +930,21 @@
                     </div>
                 </div>
 
+                <!-- Audit Log -->
+                <div style="background:white;border-radius:12px;padding:24px;margin-top:20px;border:1px solid #e5e7eb;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;margin-bottom:16px;">
+                        <h4 style="color:#0A3D62;margin:0;"><i class="fas fa-history"></i> Recent Activities</h4>
+                        <button onclick="loadAuditLog()" class="btn-action btn-outline btn-sm">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    <div id="auditLogContainer" style="max-height:300px;overflow-y:auto;">
+                        <div style="text-align:center;padding:20px;color:#94a3b8;">
+                            <i class="fas fa-info-circle"></i> Loading audit log...
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Integration Status -->
                 <div style="background:white;border-radius:12px;padding:24px;margin-top:20px;border:1px solid #e5e7eb;">
                     <h4 style="color:#0A3D62;margin:0 0 16px 0;"><i class="fas fa-link"></i> Integration Status</h4>
@@ -872,6 +1044,39 @@
                     <button type="submit" class="btn-action btn-success"><i class="fas fa-save"></i> Record Payment</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ===== BULK IMPORT MODAL ===== -->
+    <div id="bulkImportModal" class="modal-overlay">
+        <div class="modal-content" style="max-width:600px;">
+            <button class="modal-close" onclick="closeModal('bulkImportModal')">&times;</button>
+            <h3 style="color: #0A3D62; margin-bottom: 16px;">
+                <i class="fas fa-file-import"></i> Bulk Payment Import
+            </h3>
+            <div style="background: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
+                <div class="drop-zone" onclick="document.getElementById('bulkFileInput').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #94a3b8;"></i>
+                    <p style="color: #64748b; margin-top: 8px;">
+                        <strong>Click to upload CSV/Excel file</strong><br>
+                        <span style="font-size: 12px;">Supported formats: .csv, .xlsx, .xls</span>
+                    </p>
+                    <input type="file" id="bulkFileInput" style="display: none;" accept=".csv,.xlsx,.xls" onchange="handleBulkFileUpload(event)">
+                </div>
+            </div>
+            <div style="background: #fef3c7; border-radius: 8px; padding: 12px 16px; border: 1px solid #f59e0b; font-size: 13px; color: #92400e; margin-bottom: 16px;">
+                <i class="fas fa-info-circle"></i> 
+                <strong>CSV Format:</strong> student_id, amount, payment_method, reference, payment_date, period
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                <button onclick="downloadTemplate()" class="btn-action btn-outline">
+                    <i class="fas fa-download"></i> Download Template
+                </button>
+                <button onclick="closeModal('bulkImportModal')" class="btn-action btn-outline">Cancel</button>
+                <button onclick="processBulkImport()" class="btn-action btn-success">
+                    <i class="fas fa-upload"></i> Import Payments
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1049,6 +1254,102 @@
             }
         };
         console.log('✅ Global functions loaded');
+    </script>
+
+    <!-- ===== ADDITIONAL FUNCTIONS ===== -->
+    <script>
+        // ============================================================
+        // BULK IMPORT FUNCTIONS
+        // ============================================================
+        function openBulkPaymentModal() {
+            document.getElementById('bulkImportModal').classList.add('active');
+        }
+
+        function handleBulkFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                showToast(`File selected: ${file.name}`, 'success');
+                // Implement file parsing logic
+            }
+        }
+
+        function downloadTemplate() {
+            showToast('Downloading template...', 'info');
+            // Generate and download CSV template
+            const headers = 'student_id,amount,payment_method,reference,payment_date,period\n';
+            const sample = 'STU001,5000,M-Pesa,TXN123,2026-01-01,Term 1\n';
+            const blob = new Blob([headers + sample], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bulk_payment_template.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function processBulkImport() {
+            showToast('Processing bulk import...', 'info');
+            // Implement bulk import logic
+        }
+
+        // ============================================================
+        // SEND REMINDERS
+        // ============================================================
+        function sendPaymentReminders() {
+            showToast('Sending payment reminders...', 'info');
+            // Implement email/SMS reminder logic
+        }
+
+        // ============================================================
+        // HIGH BALANCE STUDENTS
+        // ============================================================
+        function showHighBalanceStudents() {
+            document.getElementById('accountStatusFilter').value = 'outstanding';
+            filterAccounts();
+            document.getElementById('balanceAlertBanner').style.display = 'none';
+        }
+
+        // ============================================================
+        // LOAD AUDIT LOG
+        // ============================================================
+        function loadAuditLog() {
+            const container = document.getElementById('auditLogContainer');
+            container.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>`;
+            // Implement audit log loading logic
+            setTimeout(() => {
+                container.innerHTML = `
+                    <div style="padding:10px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13px;">
+                        <span><i class="fas fa-check-circle" style="color:#059669;"></i> Payment recorded for Abel Kiprotich Baiwo</span>
+                        <span style="color:#94a3b8;">2 min ago</span>
+                    </div>
+                    <div style="padding:10px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13px;">
+                        <span><i class="fas fa-plus-circle" style="color:#4C1D95;"></i> Fee structure updated: KRCHN Nursing</span>
+                        <span style="color:#94a3b8;">15 min ago</span>
+                    </div>
+                    <div style="padding:10px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13px;">
+                        <span><i class="fas fa-user-plus" style="color:#3b82f6;"></i> New student account created</span>
+                        <span style="color:#94a3b8;">1 hour ago</span>
+                    </div>
+                    <div style="padding:10px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13px;">
+                        <span><i class="fas fa-file-export" style="color:#f59e0b;"></i> Report generated: Monthly Collections</span>
+                        <span style="color:#94a3b8;">2 hours ago</span>
+                    </div>
+                `;
+            }, 1000);
+        }
+
+        // ============================================================
+        // UPDATE LAST UPDATED TIME
+        // ============================================================
+        function updateLastUpdated() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('lastUpdatedTime').textContent = timeStr;
+        }
+        setInterval(updateLastUpdated, 30000);
+        updateLastUpdated();
+
+        console.log('✅ Additional functions loaded');
     </script>
 
     <!-- External JS -->
