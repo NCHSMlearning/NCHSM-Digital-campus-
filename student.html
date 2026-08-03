@@ -5574,7 +5574,63 @@ window.setTheme = setTheme;
     setTimeout(installSuperFix, 3000);
 })();
 </script>
-                    
+  <script>
+// ============================================================
+// 🔧 FIX GREETING - RUNS AFTER ALL LOADS
+// ============================================================
+(function fixGreetingNow() {
+    console.log('🔄 Fixing greeting...');
+    
+    const hour = new Date().getHours();
+    let greeting = 'Good Morning';
+    let emoji = '🌅';
+    
+    if (hour >= 5 && hour < 12) {
+        greeting = 'Good Morning';
+        emoji = '🌅';
+    } else if (hour >= 12 && hour < 17) {
+        greeting = 'Good Afternoon';
+        emoji = '☀️';
+    } else if (hour >= 17 && hour < 21) {
+        greeting = 'Good Evening';
+        emoji = '🌆';
+    } else {
+        greeting = 'Good Night';
+        emoji = '🌙';
+    }
+    
+    // Try different selectors
+    const h1 = document.querySelector('#dashboard .tab-content.active h1');
+    if (h1) {
+        // Check if it has the right structure
+        const greetingText = document.getElementById('greeting-text');
+        const greetingEmoji = document.getElementById('greeting-emoji');
+        const nameSpan = document.getElementById('welcome-student-name');
+        const name = nameSpan ? nameSpan.textContent : 'Student';
+        
+        if (greetingText && greetingEmoji) {
+            greetingText.textContent = greeting;
+            greetingEmoji.textContent = emoji;
+            console.log(`✅ Updated via IDs: ${greeting} ${emoji}`);
+        } else {
+            // Replace the whole h1
+            h1.innerHTML = `${greeting}, <span id="welcome-student-name" style="color: #FDB913;">${name}</span>! ${emoji}`;
+            console.log(`✅ Updated via fallback: ${greeting} ${emoji}`);
+        }
+    } else {
+        console.log('❌ h1 not found');
+        
+        // Try another selector
+        const h1Alt = document.querySelector('.welcome h1');
+        if (h1Alt) {
+            const nameSpan = document.getElementById('welcome-student-name');
+            const name = nameSpan ? nameSpan.textContent : 'Student';
+            h1Alt.innerHTML = `${greeting}, <span id="welcome-student-name" style="color: #FDB913;">${name}</span>! ${emoji}`;
+            console.log(`✅ Updated via alt selector: ${greeting} ${emoji}`);
+        }
+    }
+})();
+</script>                  
 <!-- PWA Service Worker Registration -->
 <script>
 if ('serviceWorker' in navigator) {
