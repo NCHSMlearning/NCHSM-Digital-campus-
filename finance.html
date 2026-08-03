@@ -1059,29 +1059,33 @@
             </div>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
-                <div class="finance-form-group">
-                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Duration</label>
-                    <input type="text" id="fee_duration" class="form-control" placeholder="e.g., 4 Modules">
-                </div>
-                <div class="finance-form-group">
-                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Mode</label>
-                    <select id="fee_mode" class="form-control">
-                        <option value="Physical">Physical</option>
-                        <option value="Online">Online</option>
-                        <option value="Physical/Online">Physical/Online</option>
-                    </select>
-                </div>
-                <div class="finance-form-group">
-                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Intake Year</label>
-                    <select id="fee_intake_year" class="form-control">
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026" selected>2026</option>
-                        <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                    </select>
-                </div>
-            </div>
+    <div class="finance-form-group">
+        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Duration</label>
+        <input type="text" id="fee_duration" class="form-control" placeholder="e.g., 4 Modules">
+    </div>
+    <div class="finance-form-group">
+        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Mode</label>
+        <select id="fee_mode" class="form-control">
+            <option value="Physical">Physical</option>
+            <option value="Online">Online</option>
+            <option value="Physical/Online">Physical/Online</option>
+        </select>
+    </div>
+    <div class="finance-form-group">
+        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Block / Term *</label>
+        <input type="text" id="fee_block_term" class="form-control" placeholder="e.g., Term 1, Block 1" required>
+    </div>
+    <div class="finance-form-group">
+        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Intake Year</label>
+        <select id="fee_intake_year" class="form-control">
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+    </div>
+</div>
             
             <!-- Fee Components -->
             <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
