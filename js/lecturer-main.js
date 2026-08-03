@@ -72,6 +72,25 @@ document.addEventListener('DOMContentLoaded', async function() {
                     'DME': 'Diploma in Medical Engineering'
                 };
                 return names[programCode] || programCode;
+            },
+            // ===== NEW: Portfolio helpers =====
+            getPortfolioCompletionStatus: function(stats) {
+                const totalItems = (stats.totalCourses || 0) + (stats.schemesCompleted || 0) + (stats.lessonPlans || 0);
+                const completedItems = stats.approved || 0;
+                if (totalItems === 0) return 0;
+                return Math.round((completedItems / totalItems) * 100);
+            },
+            getPortfolioStatusColor: function(percentage) {
+                if (percentage >= 80) return '#10b981';
+                if (percentage >= 50) return '#f59e0b';
+                return '#ef4444';
+            },
+            getPortfolioStatusLabel: function(percentage) {
+                if (percentage >= 80) return 'Excellent';
+                if (percentage >= 60) return 'Good';
+                if (percentage >= 40) return 'In Progress';
+                if (percentage >= 20) return 'Needs Attention';
+                return 'Not Started';
             }
         };
         console.log('✅ Utils fallback created in main');
@@ -254,7 +273,53 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         });
         
-        // 10. Load initial tab from URL or storage
+        // ==========================================
+        // 10. Initialize Academic Portfolio
+        // ==========================================
+        console.log('📁 Initializing Academic Portfolio...');
+        if (window.AcademicPortfolio && typeof window.AcademicPortfolio.init === 'function') {
+            // Set the lecturer ID for Academic Portfolio
+            if (window.AcademicPortfolio.lecturerId !== undefined) {
+                window.AcademicPortfolio.lecturerId = window.CORRECT_LECTURER_ID;
+            }
+            window.AcademicPortfolio.init();
+            console.log('✅ Academic Portfolio initialized');
+        } else {
+            console.warn('⚠️ AcademicPortfolio not found - module may not be loaded');
+            // Fallback: define it if missing
+            if (typeof window.AcademicPortfolio === 'undefined') {
+                window.AcademicPortfolio = {
+                    init: function() {
+                        console.log('⚠️ AcademicPortfolio fallback init called');
+                    },
+                    loadDashboard: function() {
+                        console.log('⚠️ AcademicPortfolio fallback loadDashboard called');
+                        const container = document.getElementById('ap-content');
+                        if (container) {
+                            container.innerHTML = `
+                                <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                                    <i class="fas fa-folder-open" style="font-size: 40px; color: #10b981;"></i>
+                                    <h3 style="color: #1e293b; margin-top: 15px;">Academic Portfolio</h3>
+                                    <p style="color: #94a3b8;">Loading portfolio module... Please refresh if this persists.</p>
+                                    <button onclick="window.location.reload()" style="margin-top: 20px; background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer;">
+                                        <i class="fas fa-sync-alt"></i> Refresh Page
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    },
+                    refresh: function() {
+                        this.loadDashboard();
+                    },
+                    switchTab: function(tab) {
+                        this.loadDashboard();
+                    }
+                };
+                console.log('✅ AcademicPortfolio fallback created');
+            }
+        }
+        
+        // 11. Load initial tab from URL or storage
         const savedTab = localStorage.getItem('nchsm_current_tab') || 'dashboard';
         if (window.LecturerUI) {
             console.log('📂 Loading tab:', savedTab);
@@ -300,7 +365,11 @@ window.LecturerModules = {
     Exams: window.LecturerExams,
     Marks: window.LecturerMarks,
     Resources: window.LecturerResources,
-    Messages: window.LecturerMessages
+    Messages: window.LecturerMessages,
+    Reports: window.LecturerReports,
+    Calendar: window.LecturerCalendar,
+    // ===== NEW: Academic Portfolio =====
+    AcademicPortfolio: window.AcademicPortfolio
 };
 
 console.log('✅ Lecturer main entry point loaded');
