@@ -483,29 +483,44 @@ function renderAccounts(accounts) {
     }
 
     tbody.innerHTML = accounts.map(acc => {
+        // ✅ FIX: Use display_id if available, otherwise fallback to student_id
+        const displayId = acc.display_id || acc.student_id || '-';
         const balance = parseFloat(acc.balance) || 0;
-        const status = balance === 0 ? 'paid' : 
-                      balance > 0 && balance <= 10000 ? 'partial' : 'outstanding';
-        const statusLabel = status === 'paid' ? '✅ Paid' :
-                           status === 'partial' ? '⚠️ Partial' : '🔴 Outstanding';
-        const statusClass = status === 'paid' ? 'finance-badge-success' :
-                           status === 'partial' ? 'finance-badge-warning' : 'finance-badge-danger';
+        const totalFeesDue = parseFloat(acc.total_fees_due) || 0;
+        const totalPaid = parseFloat(acc.total_paid) || 0;
+        
+        let status = 'outstanding';
+        let statusLabel = '🔴 Outstanding';
+        let statusClass = 'finance-badge-danger';
+        
+        if (balance === 0) {
+            status = 'paid';
+            statusLabel = '✅ Paid';
+            statusClass = 'finance-badge-success';
+        } else if (balance > 0 && balance <= 10000) {
+            status = 'partial';
+            statusLabel = '⚠️ Partial';
+            statusClass = 'finance-badge-warning';
+        }
+
+        // Use the original UUID for actions (primary key)
+        const originalId = acc.student_id || acc.id || '';
 
         return `
             <tr>
                 <td><strong>${acc.student_name || 'N/A'}</strong></td>
-                <td>${acc.student_id || '-'}</td>
+                <td>${displayId}</td>
                 <td>${acc.program || '-'}</td>
                 <td>${acc.intake_year || '-'}</td>
-                <td>${formatCurrency(acc.total_fees_due)}</td>
-                <td>${formatCurrency(acc.total_paid)}</td>
+                <td>${formatCurrency(totalFeesDue)}</td>
+                <td>${formatCurrency(totalPaid)}</td>
                 <td><strong>${formatCurrency(balance)}</strong></td>
                 <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
                 <td>
-                    <button onclick="viewStudentAccount('${acc.student_id}')" class="finance-btn finance-btn-primary finance-btn-sm">
+                    <button onclick="viewStudentAccount('${originalId}')" class="finance-btn finance-btn-primary finance-btn-sm">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button onclick="viewStudentPayments('${acc.student_id}')" class="finance-btn finance-btn-outline finance-btn-sm">
+                    <button onclick="viewStudentPayments('${originalId}')" class="finance-btn finance-btn-outline finance-btn-sm">
                         <i class="fas fa-receipt"></i>
                     </button>
                 </td>
@@ -524,6 +539,7 @@ function filterAccounts() {
     if (search) {
         filtered = filtered.filter(acc => 
             (acc.student_name || '').toLowerCase().includes(search) ||
+            (acc.display_id || '').toLowerCase().includes(search) ||
             (acc.student_id || '').toLowerCase().includes(search) ||
             (acc.program || '').toLowerCase().includes(search)
         );
@@ -580,11 +596,14 @@ function viewStudentAccount(studentId) {
             const statusColor = balance === 0 ? '#059669' :
                                balance > 0 && balance <= 10000 ? '#d97706' : '#dc2626';
             
+            // Use display_id for display
+            const displayId = student.display_id || student.student_id || '-';
+            
             document.getElementById('studentAccountBody').innerHTML = `
                 <div style="padding: 10px 0;">
                     <h4 style="color: #0A3D62; margin-bottom: 15px;">Student: ${student.student_name || 'N/A'}</h4>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8fafc; padding: 16px; border-radius: 8px;">
-                        <div><strong>Student ID:</strong> ${student.student_id || '-'}</div>
+                        <div><strong>Student ID:</strong> ${displayId}</div>
                         <div><strong>Program:</strong> ${student.program || '-'}</div>
                         <div><strong>Intake:</strong> ${student.intake_year || '-'}</div>
                         <div><strong>Balance:</strong> <strong style="color: ${statusColor}">${formatCurrency(balance)}</strong></div>
