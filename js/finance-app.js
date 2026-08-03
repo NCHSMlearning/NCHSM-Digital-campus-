@@ -724,6 +724,12 @@ function renderPayments(payments) {
     }).join('');
 }
 
+// ✅ ADDED: refreshPayments function
+function refreshPayments() {
+    loadPayments();
+    showToast('Payments refreshed!', 'success');
+}
+
 async function recordPayment() {
     const studentId = document.getElementById('paymentStudent')?.value;
     const amount = parseFloat(document.getElementById('paymentAmount')?.value);
@@ -1044,59 +1050,72 @@ function openAddFeeModal() {
     document.getElementById('feeStructureId').value = '';
     title.innerHTML = '<i class="fas fa-plus-circle"></i> Add Fee Structure';
     
-    // Set default values
-    const blockTermInput = document.getElementById('fee_block_term');
-    if (blockTermInput) blockTermInput.value = 'Term 1';
+    // Set default values with null checks
+    const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    };
     
-    const intakeYearInput = document.getElementById('fee_intake_year');
-    if (intakeYearInput) intakeYearInput.value = '2026';
-    
-    const hostelInput = document.getElementById('fee_hostel');
-    if (hostelInput) hostelInput.value = 18000;
-    
-    const statusInput = document.getElementById('fee_status');
-    if (statusInput) statusInput.value = 'active';
+    setValue('fee_program_name', '');
+    setValue('fee_program_code', '');
+    setValue('fee_level', 'Diploma');
+    setValue('fee_duration', '');
+    setValue('fee_mode', 'Physical/Online');
+    setValue('fee_block_term', 'Term 1');
+    setValue('fee_intake_year', '2026');
+    setValue('fee_hostel', 18000);
+    setValue('fee_status', 'active');
+    setValue('fee_mpesa', 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo');
+    setValue('fee_bank', 'Equity Bank | Branch: Nakuru | A/C: 0130200214036');
+    setValue('fee_email', 'nchsmfinance@gmail.com');
+    setValue('fee_whatsapp', '+254 103614355 | +254 703345771');
     
     // Reset components
-    document.getElementById('feeComponentsContainer').innerHTML = `
-        <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-            <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE">
-            <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000">
-            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-            <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE">
-            <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
-            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-            <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE">
-            <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
-            <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
+    const compContainer = document.getElementById('feeComponentsContainer');
+    if (compContainer) {
+        compContainer.innerHTML = `
+            <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE">
+                <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000">
+                <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE">
+                <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
+                <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE">
+                <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
+                <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    }
     
     // Reset terms
-    document.getElementById('feeTermsContainer').innerHTML = `
-        <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
-            <input type="text" class="form-control term-text" placeholder="Enter term" value="All fees are non-refundable once a student has commenced training.">
-            <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
-            <input type="text" class="form-control term-text" placeholder="Enter term" value="Payments must be made via M-Pesa Pay bill or bank deposit only. CASH NOT ACCEPTED.">
-            <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
+    const termContainer = document.getElementById('feeTermsContainer');
+    if (termContainer) {
+        termContainer.innerHTML = `
+            <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                <input type="text" class="form-control term-text" placeholder="Enter term" value="All fees are non-refundable once a student has commenced training.">
+                <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                <input type="text" class="form-control term-text" placeholder="Enter term" value="Payments must be made via M-Pesa Pay bill or bank deposit only. CASH NOT ACCEPTED.">
+                <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    }
     
     updateFeeTotalPreview();
     modal.classList.add('active');
@@ -1115,54 +1134,64 @@ function openEditFeeModal(feeId) {
     title.innerHTML = '<i class="fas fa-edit"></i> Edit Fee Structure';
     document.getElementById('feeStructureId').value = feeId;
     
-    // Populate basic info
-    document.getElementById('fee_program_name').value = fee.program || '';
-    document.getElementById('fee_program_code').value = fee.program_code || '';
-    document.getElementById('fee_level').value = fee.level || 'Diploma';
-    document.getElementById('fee_duration').value = fee.duration || '';
-    document.getElementById('fee_mode').value = fee.mode || 'Physical/Online';
-    document.getElementById('fee_block_term').value = fee.block_term || 'Term 1';
-    document.getElementById('fee_intake_year').value = fee.intake_year || '2026';
-    document.getElementById('fee_hostel').value = fee.hostel || 18000;
-    document.getElementById('fee_status').value = fee.is_active !== false ? 'active' : 'inactive';
+    // Populate basic info with null checks
+    const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value || '';
+    };
+    
+    setValue('fee_program_name', fee.program);
+    setValue('fee_program_code', fee.program_code);
+    setValue('fee_level', fee.level || 'Diploma');
+    setValue('fee_duration', fee.duration);
+    setValue('fee_mode', fee.mode || 'Physical/Online');
+    setValue('fee_block_term', fee.block_term || 'Term 1');
+    setValue('fee_intake_year', fee.intake_year || '2026');
+    setValue('fee_hostel', fee.hostel || 18000);
+    setValue('fee_status', fee.is_active !== false ? 'active' : 'inactive');
     
     // Populate payment info
-    document.getElementById('fee_mpesa').value = fee.payment?.mpesa || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo';
-    document.getElementById('fee_bank').value = fee.payment?.bank || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036';
-    document.getElementById('fee_email').value = fee.payment?.email || 'nchsmfinance@gmail.com';
-    document.getElementById('fee_whatsapp').value = fee.payment?.whatsapp || '+254 103614355 | +254 703345771';
+    const payment = fee.payment || {};
+    setValue('fee_mpesa', payment.mpesa || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo');
+    setValue('fee_bank', payment.bank || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036');
+    setValue('fee_email', payment.email || 'nchsmfinance@gmail.com');
+    setValue('fee_whatsapp', payment.whatsapp || '+254 103614355 | +254 703345771');
     
     // Populate components
     const compContainer = document.getElementById('feeComponentsContainer');
-    compContainer.innerHTML = '';
-    if (fee.components && fee.components.length > 0) {
-        fee.components.forEach(comp => {
-            compContainer.innerHTML += `
-                <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                    <input type="text" class="form-control comp-name" placeholder="Component name" value="${comp.label || comp.name || ''}">
-                    <input type="number" class="form-control comp-amount" placeholder="Amount" value="${comp.amount || 0}">
-                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-        });
+    if (compContainer) {
+        compContainer.innerHTML = '';
+        if (fee.components && fee.components.length > 0) {
+            fee.components.forEach(comp => {
+                compContainer.innerHTML += `
+                    <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="form-control comp-name" placeholder="Component name" value="${comp.label || comp.name || ''}">
+                        <input type="number" class="form-control comp-amount" placeholder="Amount" value="${comp.amount || 0}">
+                        <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            });
+        }
     }
     
     // Populate terms
     const termContainer = document.getElementById('feeTermsContainer');
-    termContainer.innerHTML = '';
-    if (fee.terms && fee.terms.length > 0) {
-        fee.terms.forEach(term => {
-            termContainer.innerHTML += `
-                <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
-                    <input type="text" class="form-control term-text" placeholder="Enter term" value="${term.replace(/"/g, '&quot;')}">
-                    <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-        });
+    if (termContainer) {
+        termContainer.innerHTML = '';
+        if (fee.terms && fee.terms.length > 0) {
+            fee.terms.forEach(term => {
+                termContainer.innerHTML += `
+                    <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="form-control term-text" placeholder="Enter term" value="${term.replace(/"/g, '&quot;')}">
+                        <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            });
+        }
     }
     
     updateFeeTotalPreview();
@@ -1587,6 +1616,14 @@ function resetModule() {
 }
 
 // ============================================================
+// FEE TEMPLATE MODAL
+// ============================================================
+
+function openFeeTemplateModal() {
+    showToast('Fee templates feature coming soon!', 'info');
+}
+
+// ============================================================
 // TOAST NOTIFICATIONS
 // ============================================================
 
@@ -1595,7 +1632,7 @@ function showToast(message, type = 'info') {
     if (!container) return;
     
     const toast = document.createElement('div');
-    toast.className = `finance-toast finance-toast-${type}`;
+    toast.className = `toast toast-${type}`;
     toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i> ${message}`;
     container.appendChild(toast);
     
@@ -1617,7 +1654,7 @@ function closeModal(modalId) {
 }
 
 document.addEventListener('click', function(e) {
-    document.querySelectorAll('.finance-modal.active').forEach(modal => {
+    document.querySelectorAll('.modal-overlay.active').forEach(modal => {
         if (e.target === modal) {
             modal.classList.remove('active');
         }
@@ -1626,7 +1663,7 @@ document.addEventListener('click', function(e) {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        document.querySelectorAll('.finance-modal.active').forEach(modal => {
+        document.querySelectorAll('.modal-overlay.active').forEach(modal => {
             modal.classList.remove('active');
         });
     }
