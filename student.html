@@ -398,8 +398,8 @@
 <!-- ==================== DASHBOARD SECTION ==================== -->
 <section id="dashboard" class="tab-content active" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
-    <!-- ========== WELCOME - MATCHING SUPER ADMIN ========== -->
-    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
+    <!-- ========== WELCOME - WITH PROPER CLASSES ========== -->
+    <div class="welcome" style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <div>
                 <h1 style="color: white; margin: 0; font-weight: 700; font-size: clamp(1.2rem, 3vw, 2rem);">
@@ -413,12 +413,21 @@
                 <span style="background: rgba(255,255,255,0.15); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
                     <i class="fas fa-circle" style="color: #10b981; font-size: 8px;"></i> Online
                 </span>
+                <span id="header-time" style="background: rgba(255,255,255,0.1); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px;">
+                    <i class="fas fa-clock"></i> Loading...
+                </span>
             </div>
         </div>
     </div>
 
-    <!-- ========== NEXT CLASS CARD - MATCHING SUPER ADMIN ========== -->
-    <div id="quick-next-class" style="display: none; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
+    <!-- ========== LAST LOGIN DISPLAY ========== -->
+    <div style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 8px 16px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #475569;">
+        <i class="fas fa-history" style="color: #4C1D95;"></i>
+        <span>Last login: <strong id="last-login-time">Loading...</strong></span>
+    </div>
+
+    <!-- ========== NEXT CLASS CARD ========== -->
+    <div id="quick-next-class" style="display: none; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px; cursor: pointer;">
         <div style="padding: 16px 20px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div style="display: flex; align-items: center; gap: 14px;">
                 <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;">
@@ -445,7 +454,7 @@
     </div>
 
     <!-- ========== NEXT EXAM WIDGET ========== -->
-    <div id="next-exam-widget" style="display: none; background: linear-gradient(135deg, #dc2626, #b91c1c); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; color: white;">
+    <div id="next-exam-widget" class="next-exam-widget" style="display: none; background: linear-gradient(135deg, #dc2626, #b91c1c); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; color: white; cursor: pointer;">
         <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
             <i class="fas fa-graduation-cap" style="font-size: 24px; color: #FDB913;"></i>
             <h4 style="margin: 0; font-weight: 600; font-size: 15px;">📝 Next Exam</h4>
@@ -455,7 +464,7 @@
         </div>
     </div>
 
-    <!-- ========== STATS ROW - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== STATS ROW ========== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
         <div style="background: white; border-radius: 12px; padding: 12px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
             <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569; margin-bottom: 4px;">
@@ -483,7 +492,7 @@
         </div>
     </div>
 
-    <!-- ========== ANNOUNCEMENT - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== ANNOUNCEMENT ========== -->
     <div style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; border: 1px solid #f59e0b; border-left: 4px solid #f59e0b; display: flex; align-items: flex-start; gap: 12px;">
         <i class="fas fa-bullhorn" style="color: #f59e0b; font-size: 18px; margin-top: 2px;"></i>
         <div>
@@ -492,7 +501,7 @@
         </div>
     </div>
 
-    <!-- ========== DAILY STREAK CARD - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== DAILY STREAK CARD ========== -->
     <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
         <div style="padding: 16px 20px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -515,12 +524,12 @@
                 <span class="milestone" data-day="14" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #e5e7eb; color: #94a3b8;">💎 14</span>
                 <span class="milestone" data-day="30" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #e5e7eb; color: #94a3b8;">👑 30</span>
             </div>
-            <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;" id="streak-lights">
-                <span id="light-1" style="font-size: 16px;">⭐</span>
-                <span id="light-2" style="font-size: 16px;">⭐</span>
-                <span id="light-3" style="font-size: 16px;">⭐</span>
-                <span id="light-4" style="font-size: 16px;">⭐</span>
-                <span id="light-5" style="font-size: 16px;">⭐</span>
+            <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;">
+                <span class="streak-light" id="light-1" style="font-size: 16px;">⭐</span>
+                <span class="streak-light" id="light-2" style="font-size: 16px;">⭐</span>
+                <span class="streak-light" id="light-3" style="font-size: 16px;">⭐</span>
+                <span class="streak-light" id="light-4" style="font-size: 16px;">⭐</span>
+                <span class="streak-light" id="light-5" style="font-size: 16px;">⭐</span>
             </div>
             <div id="streak-message" style="text-align: center; font-size: 13px; color: #64748b;">
                 <span id="streak-status-text">✨ Login today to start your streak!</span>
@@ -534,13 +543,14 @@
     <!-- ========== QUICK SNAPSHOT ========== -->
     <h4 style="color: #0A3D62; margin: 0 0 16px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
         <i class="fas fa-chart-simple" style="color: #FDB913;"></i> Quick Snapshot
+        <span class="view-all" style="font-size: 11px; color: #4C1D95; font-weight: 400; margin-left: auto; cursor: pointer;">View All →</span>
     </h4>
 
-    <!-- ========== ATTENDANCE CARD - MATCHING SUPER ADMIN ========== -->
-    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 16px; cursor: pointer;" onclick="window.location.href='#attendance'">
+    <!-- ========== ATTENDANCE CARD ========== -->
+    <div class="attendance-card" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 16px; cursor: pointer;" onclick="window.location.href='#attendance'">
         <div style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div>
-                <span style="font-size: 28px; font-weight: 700; color: #0A3D62;" id="dashboard-attendance-rate">0%</span>
+                <span class="attendance-percent" style="font-size: 28px; font-weight: 700; color: #0A3D62;" id="dashboard-attendance-rate">0%</span>
                 <span style="font-size: 13px; color: #64748b; margin-left: 8px;">Attendance</span>
             </div>
             <div id="attendance-warning-badge" style="padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e;">
@@ -556,69 +566,70 @@
 
     <!-- ========== MINI CARDS ROW 1 ========== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
-        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#cats'">
+        <div class="mini-card" data-tab="cats" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📝 Upcoming Exam</div>
-            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-upcoming-exam">--</div>
+            <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-upcoming-exam">--</div>
             <div style="font-size: 11px; color: #94a3b8;">Next CAT/Exam date</div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#hub-courses'">
+        <div class="mini-card" data-tab="hub-courses" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📚 Active Courses</div>
-            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-active-courses">0</div>
+            <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-active-courses">0</div>
             <div style="font-size: 11px; color: #94a3b8;">Currently enrolled</div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#profile'">
+        <div class="mini-card" data-tab="profile" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📖 Current Block</div>
-            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-current-block-value">--</div>
+            <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-current-block-value">--</div>
             <div style="font-size: 11px; color: #94a3b8;"><span id="dashboard-program-name">--</span> · Intake <span id="dashboard-intake-year">--</span></div>
         </div>
     </div>
 
     <!-- ========== MINI CARDS ROW 2 ========== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
-        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#resources'">
+        <div class="mini-card" data-tab="resources" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <i class="fas fa-folder-open" style="color: #4C1D95;"></i>
-            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-new-resources">0</div>
+            <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-new-resources">0</div>
             <div style="font-size: 11px; color: #94a3b8;">Resources</div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#nurseiq'">
+        <div class="mini-card" data-tab="nurseiq" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <i class="fas fa-brain" style="color: #4C1D95;"></i>
-            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-nurseiq-progress">--%</div>
+            <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-nurseiq-progress">--%</div>
             <div style="font-size: 11px; color: #94a3b8;">
                 Accuracy: <span id="dashboard-nurseiq-accuracy">--</span>% · Questions: <span id="dashboard-nurseiq-questions">0</span>
             </div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#hub-exam-card'">
+        <div class="mini-card" data-tab="hub-exam-card" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <i class="fas fa-id-card" style="color: #4C1D95;"></i>
-            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-exam-status">--</div>
+            <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-exam-status">--</div>
             <div style="font-size: 11px; color: #94a3b8;">Approved: <span id="dashboard-approved-units">0</span> units</div>
         </div>
     </div>
 
     <!-- ========== MINI CARDS ROW 3 ========== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
-        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#reviews'">
+        <div class="mini-card" data-tab="reviews" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">⭐ Reviews</div>
-            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-reviews-avg">0.0</div>
+            <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-reviews-avg">0.0</div>
             <div style="font-size: 11px; color: #94a3b8;">
                 <span id="dashboard-reviews-total">0</span> reviews · <span id="dashboard-reviews-pending">0</span> pending
+                <span id="reviewsBadge" style="display: none;"></span>
             </div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#newsletter'">
+        <div class="mini-card" data-tab="newsletter" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📧 Newsletter</div>
-            <div style="font-size: 14px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-newsletter-status">📧 Not Subscribed</div>
+            <div class="mini-card-value" style="font-size: 14px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-newsletter-status">📧 Not Subscribed</div>
             <div style="font-size: 11px; color: #94a3b8;" id="dashboard-newsletter-latest">No newsletters yet</div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#finance'">
+        <div class="mini-card" data-tab="streak" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">💰 Finance</div>
-            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-finance-balance">KES 0</div>
+            <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-finance-balance">KES 0</div>
             <div style="font-size: 11px; color: #94a3b8;" id="dashboard-finance-status">Balance</div>
         </div>
     </div>
 
-    <!-- ========== ACHIEVEMENTS - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== ACHIEVEMENTS ========== -->
     <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
         <i class="fas fa-trophy" style="color: #FDB913;"></i> Achievements
-        <span style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-left: auto; cursor: pointer;">View All →</span>
+        <span class="view-all" style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-left: auto; cursor: pointer;">View All →</span>
     </h4>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 20px;">
         <div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
@@ -641,13 +652,13 @@
         </div>
     </div>
 
-    <!-- ========== LEADERBOARD - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== LEADERBOARD ========== -->
     <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
         <i class="fas fa-trophy" style="color: #FDB913;"></i> Leaderboard
-        <span style="font-size: 11px; color: #94a3b8; font-weight: 400; display: flex; gap: 8px;">
-            <span style="cursor: pointer; color: #4C1D95; font-weight: 600;" onclick="switchLeaderboardTab('weekly')">Weekly</span>
-            <span style="cursor: pointer;" onclick="switchLeaderboardTab('monthly')">Monthly</span>
-            <span style="cursor: pointer;" onclick="switchLeaderboardTab('all')">All Time</span>
+        <span class="leaderboard-tabs" style="font-size: 11px; color: #94a3b8; font-weight: 400; display: flex; gap: 8px;">
+            <span class="active" style="cursor: pointer; color: #4C1D95; font-weight: 600;">Weekly</span>
+            <span style="cursor: pointer;">Monthly</span>
+            <span style="cursor: pointer;">All Time</span>
         </span>
     </h4>
     <div id="leaderboard-container" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
@@ -656,7 +667,7 @@
         </div>
     </div>
 
-    <!-- ========== ACTION REQUIRED - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== ACTION REQUIRED ========== -->
     <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
         <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Action Required
     </h4>
@@ -666,7 +677,7 @@
             <strong style="color: #92400e;">Review New Course Material</strong>
             <p style="margin: 0; color: #78350f; font-size: 13px;">New study materials posted for this block.</p>
         </div>
-        <button onclick="window.location.href='#resources'" style="padding: 6px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+        <button class="action-btn" data-tab="resources" style="padding: 6px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
             View →
         </button>
     </div>
@@ -676,12 +687,12 @@
             <strong style="color: #991b1b;">Missing Passport Photo</strong>
             <p style="margin: 0; color: #7f1d1d; font-size: 13px;">Your profile is incomplete. Please upload your passport photo.</p>
         </div>
-        <button onclick="window.location.href='#profile'" style="padding: 6px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+        <button class="action-btn" data-tab="profile" style="padding: 6px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
             Upload →
         </button>
     </div>
 
-    <!-- ========== FOOTER - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== FOOTER ========== -->
     <div style="margin-top: 20px; padding: 12px 0; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #94a3b8; flex-wrap: wrap; gap: 8px;">
         <span>
             <i class="fas fa-clock"></i> 
@@ -695,7 +706,6 @@
 
 </section>
 <!-- END DASHBOARD SECTION -->
-
 <!-- ==================== NEWSLETTER TAB ==================== -->
 <section id="newsletter" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
