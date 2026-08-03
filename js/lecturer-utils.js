@@ -98,6 +98,56 @@ const LecturerUtils = {
     },
     
     // ==========================================
+    // Academic Year Helpers
+    // ==========================================
+    
+    getCurrentAcademicYear() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        // If month is before July (6), we're in the first half of the year
+        if (month < 6) {
+            return `${year - 1}/${year}`;
+        }
+        return `${year}/${year + 1}`;
+    },
+    
+    getCurrentSemester() {
+        const now = new Date();
+        const month = now.getMonth();
+        if (month < 6) return 2; // Jan-Jun = Semester 2
+        return 1; // Jul-Dec = Semester 1
+    },
+    
+    getAcademicYearStart(yearStr) {
+        if (!yearStr) return null;
+        const parts = yearStr.split('/');
+        if (parts.length !== 2) return null;
+        return new Date(parseInt(parts[0]), 6, 1); // July 1st
+    },
+    
+    getAcademicYearEnd(yearStr) {
+        if (!yearStr) return null;
+        const parts = yearStr.split('/');
+        if (parts.length !== 2) return null;
+        return new Date(parseInt(parts[1]), 5, 30); // June 30th
+    },
+    
+    isAcademicYearActive(yearStr) {
+        if (!yearStr) return false;
+        const now = new Date();
+        const start = this.getAcademicYearStart(yearStr);
+        const end = this.getAcademicYearEnd(yearStr);
+        if (!start || !end) return false;
+        return now >= start && now <= end;
+    },
+    
+    getWeeksInSemester(semester = 1) {
+        // Standard academic semester has 14-16 weeks
+        return semester === 1 ? 16 : 14;
+    },
+    
+    // ==========================================
     // Program Helpers
     // ==========================================
     
@@ -132,12 +182,53 @@ const LecturerUtils = {
         return names[programCode] || programCode;
     },
     
+    getProgramShortName(programCode) {
+        const short = {
+            'KRCHN': 'KRCHN',
+            'DPOTT': 'DPOTT',
+            'DCH': 'DCH',
+            'DHRIT': 'DHRIT',
+            'DSL': 'DSL',
+            'DSW': 'DSW',
+            'DCJS': 'DCJS',
+            'DHSS': 'DHSS',
+            'DICT': 'DICT',
+            'DME': 'DME',
+            'CPOTT': 'CPOTT',
+            'CCH': 'CCH',
+            'CHRIT': 'CHRIT',
+            'CPC': 'CPC',
+            'CSL': 'CSL',
+            'CSW': 'CSW',
+            'CCJS': 'CCJS',
+            'CAG': 'CAG',
+            'CHSS': 'CHSS',
+            'CICT': 'CICT',
+            'ACH': 'ACH',
+            'AAG': 'AAG',
+            'ASW': 'ASW',
+            'CCA': 'CCA',
+            'PTE': 'PTE'
+        };
+        return short[programCode] || programCode;
+    },
+    
     getAcademicBlocks(program) {
         const structure = {
             'KRCHN': ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'],
             'TVET': ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
         };
         return structure[program] || structure['KRCHN'];
+    },
+    
+    getBlockDisplayName(block, program) {
+        if (!block) return 'Unknown Block';
+        const blocks = this.getAcademicBlocks(program);
+        const index = parseInt(block) - 1;
+        if (isNaN(index) || index < 0 || index >= blocks.length) {
+            return block;
+        }
+        return blocks[index];
     },
     
     isTVETProgram(programCode) {
@@ -203,6 +294,32 @@ const LecturerUtils = {
         if (score >= passThreshold) return 'PASS';
         if (score > 0) return 'FAIL';
         return 'PENDING';
+    },
+    
+    // ==========================================
+    // Portfolio/Teaching File Helpers
+    // ==========================================
+    
+    getPortfolioCompletionStatus(stats) {
+        // stats: { totalCourses, schemesCompleted, lessonPlans, approved }
+        const totalItems = (stats.totalCourses || 0) + (stats.schemesCompleted || 0) + (stats.lessonPlans || 0);
+        const completedItems = stats.approved || 0;
+        if (totalItems === 0) return 0;
+        return Math.round((completedItems / totalItems) * 100);
+    },
+    
+    getPortfolioStatusColor(percentage) {
+        if (percentage >= 80) return '#10b981';
+        if (percentage >= 50) return '#f59e0b';
+        return '#ef4444';
+    },
+    
+    getPortfolioStatusLabel(percentage) {
+        if (percentage >= 80) return 'Excellent';
+        if (percentage >= 60) return 'Good';
+        if (percentage >= 40) return 'In Progress';
+        if (percentage >= 20) return 'Needs Attention';
+        return 'Not Started';
     },
     
     // ==========================================
@@ -364,6 +481,35 @@ const LecturerUtils = {
         URL.revokeObjectURL(url);
     },
     
+    exportCSV(data, filename, headers = null) {
+        if (!data || !data.length) {
+            console.warn('No data to export');
+            return;
+        }
+        
+        const keys = headers || Object.keys(data[0]);
+        const headerRow = keys.join(',');
+        const rows = data.map(item => 
+            keys.map(key => {
+                const value = item[key] || '';
+                return typeof value === 'string' && value.includes(',') 
+                    ? `"${value}"` 
+                    : value;
+            }).join(',')
+        );
+        
+        const csv = [headerRow, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || `export_${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+    
     // ==========================================
     // Local Storage
     // ==========================================
@@ -391,7 +537,7 @@ const LecturerUtils = {
     },
     
     // ==========================================
-    // Debounce
+    // Debounce & Throttle
     // ==========================================
     
     debounce(func, wait = 300) {
@@ -399,6 +545,17 @@ const LecturerUtils = {
         return function(...args) {
             clearTimeout(timeout);
             timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    },
+    
+    throttle(func, limit = 300) {
+        let inThrottle;
+        return function(...args) {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
         };
     },
     
@@ -412,6 +569,59 @@ const LecturerUtils = {
     
     isValidPhone(phone) {
         return /^\+?[\d\s-()]{10,15}$/.test(phone);
+    },
+    
+    isValidURL(url) {
+        try {
+            new URL(url);
+            return true;
+        } catch {
+            return false;
+        }
+    },
+    
+    // ==========================================
+    // Color Helpers
+    // ==========================================
+    
+    getRandomColor(seed) {
+        const colors = [
+            '#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444',
+            '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1'
+        ];
+        if (seed !== undefined) {
+            const index = String(seed).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            return colors[index % colors.length];
+        }
+        return colors[Math.floor(Math.random() * colors.length)];
+    },
+    
+    // ==========================================
+    // Notification Helpers (using existing showNotification)
+    // ==========================================
+    
+    notify(message, type = 'info') {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(message, type);
+        } else {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+    },
+    
+    notifySuccess(message) {
+        this.notify(message, 'success');
+    },
+    
+    notifyError(message) {
+        this.notify(message, 'error');
+    },
+    
+    notifyWarning(message) {
+        this.notify(message, 'warning');
+    },
+    
+    notifyInfo(message) {
+        this.notify(message, 'info');
     }
 };
 
