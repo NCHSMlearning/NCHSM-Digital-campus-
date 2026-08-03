@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load all data
     setTimeout(loadAllData, 500);
+    
+    // Load balance alerts
+    setTimeout(loadBalanceAlerts, 1000);
 });
 
 // ============================================================
@@ -255,6 +258,7 @@ async function loadAllData() {
         await loadPayments();
         await loadFeeStructure();
         await loadTransactions();
+        await loadPaymentSummary();
         console.log('✅ All data loaded');
     } catch (error) {
         console.error('❌ Error loading data:', error);
@@ -283,6 +287,11 @@ async function loadDashboardData() {
         document.getElementById('overdueAccounts').textContent = stats.overdueAccounts || 0;
         document.getElementById('todayPayments').textContent = formatCurrency(stats.todayPayments || 0);
         document.getElementById('totalTransactions').textContent = stats.totalTransactions || 0;
+        document.getElementById('pendingApprovals').textContent = stats.pendingPayments || 0;
+        
+        // This month collections
+        const thisMonth = await calculateThisMonthCollections();
+        document.getElementById('thisMonthCollections').textContent = formatCurrency(thisMonth);
         
         document.getElementById('dashboardBadge').textContent = stats.overdueAccounts || 0;
         document.getElementById('accountsBadge').textContent = stats.totalStudents || 0;
@@ -295,6 +304,27 @@ async function loadDashboardData() {
     } catch (error) {
         console.error('❌ Error loading dashboard:', error);
         showToast('Error loading dashboard data', 'error');
+    }
+}
+
+async function calculateThisMonthCollections() {
+    try {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        
+        const payments = await window.financeAPI.getPayments({ 
+            status: 'completed',
+            limit: 1000 
+        });
+        
+        return payments
+            .filter(p => p.payment_date && p.payment_date >= startDate)
+            .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+    } catch (e) {
+        console.error('Error calculating month collections:', e);
+        return 0;
     }
 }
 
@@ -470,10 +500,32 @@ async function loadAccounts() {
             countEl.textContent = `Showing ${allAccounts.length} students`;
         }
         
+        // Load balance alerts
+        loadBalanceAlerts();
+        
         console.log('✅ Student accounts loaded:', allAccounts.length);
     } catch (error) {
         console.error('❌ Error loading accounts:', error);
         showToast('Error loading student accounts', 'error');
+    }
+}
+
+function loadBalanceAlerts() {
+    const highBalanceStudents = allAccounts.filter(acc => {
+        const balance = parseFloat(acc.balance) || 0;
+        return balance > 100000;
+    });
+    
+    const banner = document.getElementById('balanceAlertBanner');
+    const countEl = document.getElementById('highBalanceCount');
+    
+    if (highBalanceStudents.length > 0 && banner) {
+        banner.style.display = 'block';
+        if (countEl) {
+            countEl.textContent = highBalanceStudents.length;
+        }
+    } else if (banner) {
+        banner.style.display = 'none';
     }
 }
 
@@ -590,6 +642,12 @@ function resetAccountFilters() {
 function refreshAccounts() {
     loadAccounts();
     showToast('Accounts refreshed!', 'success');
+}
+
+function showHighBalanceStudents() {
+    document.getElementById('accountStatusFilter').value = 'outstanding';
+    filterAccounts();
+    document.getElementById('balanceAlertBanner').style.display = 'none';
 }
 
 function viewStudentAccount(studentId) {
@@ -815,6 +873,68 @@ function updatePaymentCount(count) {
 function refreshPayments() {
     loadPayments();
     showToast('Payments refreshed!', 'success');
+}
+
+// ============================================================
+// PAYMENT SUMMARY
+// ============================================================
+
+async function loadPaymentSummary() {
+    try {
+        const payments = await window.financeAPI.getPayments({ limit: 1000 });
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        
+        // Get week start (Monday)
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay() + 1);
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+        
+        // Get month start
+        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        
+        let todayTotal = 0, todayCount = 0;
+        let weekTotal = 0, weekCount = 0;
+        let monthTotal = 0, monthCount = 0;
+        let pendingTotal = 0, pendingCount = 0;
+        
+        payments.forEach(p => {
+            const amount = parseFloat(p.amount) || 0;
+            const date = p.payment_date;
+            
+            if (date === today && p.status === 'completed') {
+                todayTotal += amount;
+                todayCount++;
+            }
+            
+            if (date >= weekStartStr && p.status === 'completed') {
+                weekTotal += amount;
+                weekCount++;
+            }
+            
+            if (date >= monthStart && p.status === 'completed') {
+                monthTotal += amount;
+                monthCount++;
+            }
+            
+            if (p.status === 'pending') {
+                pendingTotal += amount;
+                pendingCount++;
+            }
+        });
+        
+        document.getElementById('todayPaymentSummary').textContent = formatCurrency(todayTotal);
+        document.getElementById('todayPaymentCount').textContent = todayCount;
+        document.getElementById('weekPaymentSummary').textContent = formatCurrency(weekTotal);
+        document.getElementById('weekPaymentCount').textContent = weekCount;
+        document.getElementById('monthPaymentSummary').textContent = formatCurrency(monthTotal);
+        document.getElementById('monthPaymentCount').textContent = monthCount;
+        document.getElementById('pendingPaymentSummary').textContent = formatCurrency(pendingTotal);
+        document.getElementById('pendingPaymentCount').textContent = pendingCount;
+        
+    } catch (error) {
+        console.error('Error loading payment summary:', error);
+    }
 }
 
 // ============================================================
@@ -1108,6 +1228,84 @@ async function deletePayment(paymentId) {
         console.error('Error deleting payment:', error);
         showToast('Error deleting payment: ' + error.message, 'error');
     }
+}
+
+// ============================================================
+// BULK IMPORT FUNCTIONS
+// ============================================================
+
+function openBulkPaymentModal() {
+    document.getElementById('bulkImportModal').classList.add('active');
+}
+
+function handleBulkFileUpload(event) {
+    const file = event.target.files[0];
+    if (file) {
+        showToast(`File selected: ${file.name}`, 'success');
+        // Implement file parsing logic
+    }
+}
+
+function downloadTemplate() {
+    showToast('Downloading template...', 'info');
+    // Generate and download CSV template
+    const headers = 'student_id,amount,payment_method,reference,payment_date,period\n';
+    const sample = 'STU001,5000,M-Pesa,TXN123,2026-01-01,Term 1\n';
+    const blob = new Blob([headers + sample], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bulk_payment_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function processBulkImport() {
+    showToast('Processing bulk import...', 'info');
+    // Implement bulk import logic
+}
+
+// ============================================================
+// SEND REMINDERS
+// ============================================================
+
+function sendPaymentReminders() {
+    showToast('Sending payment reminders...', 'info');
+    // Implement email/SMS reminder logic
+}
+
+// ============================================================
+// LOAD AUDIT LOG
+// ============================================================
+
+function loadAuditLog() {
+    const container = document.getElementById('auditLogContainer');
+    if (!container) return;
+    
+    container.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading audit log...</div>`;
+    
+    // Fetch recent payments as audit log
+    const recentPayments = allPayments.slice(0, 10);
+    
+    if (recentPayments.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:20px;color:#94a3b8;">
+                <i class="fas fa-info-circle"></i> No recent activities
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = recentPayments.map(p => `
+        <div style="padding:10px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13px;">
+            <span>
+                <i class="fas fa-${p.status === 'completed' ? 'check-circle' : 'clock'}" style="color: ${p.status === 'completed' ? '#059669' : '#f59e0b'};"></i>
+                ${p.status === 'completed' ? 'Payment recorded' : 'Payment pending'} for <strong>${p.student_name || 'Unknown'}</strong>
+                ${p.amount ? `- ${formatCurrency(p.amount)}` : ''}
+            </span>
+            <span style="color:#94a3b8;font-size:11px;">${formatDate(p.payment_date)}</span>
+        </div>
+    `).join('');
 }
 
 // ============================================================
@@ -1859,18 +2057,19 @@ function saveSettings() {
 // REPORTS
 // ============================================================
 
-function generateReport() {
-    showToast('Generating report...', 'info');
+function generateReport(type = 'summary') {
+    showToast(`Generating ${type} report...`, 'info');
     document.getElementById('reportContent').innerHTML = `
         <div style="padding: 30px; text-align: center;">
             <i class="fas fa-file-alt" style="font-size: 32px; color: #4C1D95; margin-bottom: 10px; display: block;"></i>
-            <h3 style="color: #0A3D62;">Financial Report</h3>
+            <h3 style="color: #0A3D62;">${type.charAt(0).toUpperCase() + type.slice(1)} Financial Report</h3>
             <p style="color: #64748b;">Report generated successfully. Use export buttons to download.</p>
             <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; text-align: left;">
                 <div><strong>Total Students:</strong> ${document.getElementById('totalStudents')?.textContent || '0'}</div>
                 <div><strong>Total Collected:</strong> ${document.getElementById('totalCollected')?.textContent || 'KES 0'}</div>
                 <div><strong>Outstanding:</strong> ${document.getElementById('outstandingBalance')?.textContent || 'KES 0'}</div>
                 <div><strong>Overdue:</strong> ${document.getElementById('overdueAccounts')?.textContent || '0'}</div>
+                <div><strong>Pending Approvals:</strong> ${document.getElementById('pendingApprovals')?.textContent || '0'}</div>
             </div>
         </div>
     `;
@@ -1967,6 +2166,21 @@ document.addEventListener('keydown', function(e) {
         });
     }
 });
+
+// ============================================================
+// UPDATE LAST UPDATED TIME
+// ============================================================
+
+function updateLastUpdated() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+    const el = document.getElementById('lastUpdatedTime');
+    if (el) {
+        el.textContent = timeStr;
+    }
+}
+setInterval(updateLastUpdated, 30000);
+updateLastUpdated();
 
 // ============================================================
 // INITIALIZATION COMPLETE
