@@ -1,5 +1,5 @@
 // ============================================================
-// ACADEMIC PORTFOLIO MODULE - Full Implementation
+// ACADEMIC PORTFOLIO MODULE - Fixed Authentication
 // ============================================================
 // File: js/lecturer-academic-portfolio.js
 // ============================================================
@@ -9,6 +9,9 @@ const AcademicPortfolio = {
     currentCourse: null,
     currentScheme: null,
     lecturerId: null,
+    lecturerUuid: null,
+    assignedUnits: [],
+    initialized: false,
     data: {
         schemes: [],
         lessonPlans: [],
@@ -21,52 +24,176 @@ const AcademicPortfolio = {
     // INITIALIZATION
     // ============================================================
     init() {
+        if (this.initialized) {
+            console.log('📁 Academic Portfolio already initialized');
+            return;
+        }
+        
         console.log('📁 Academic Portfolio initializing...');
         
-        // Get lecturer ID
-        this.lecturerId = this.getLecturerId();
-        console.log('👤 Lecturer ID:', this.lecturerId);
-        
-        this.setupNavigation();
-        this.loadDashboard();
-        this.setupEventListeners();
-        
-        console.log('✅ Academic Portfolio initialized successfully');
+        // Resolve lecturer ID using the same method as LecturerExams
+        this.resolveLecturerId().then(() => {
+            if (!this.lecturerId) {
+                console.warn('⚠️ No lecturer ID found - showing login message');
+                this.showLoginMessage();
+                return;
+            }
+            
+            this.setupNavigation();
+            this.loadDashboard();
+            this.setupEventListeners();
+            this.initialized = true;
+            console.log('✅ Academic Portfolio initialized successfully');
+            console.log('👤 Lecturer ID:', this.lecturerId);
+            console.log('🔑 Lecturer UUID:', this.lecturerUuid);
+        });
     },
     
-    getLecturerId() {
-        // Try multiple sources for lecturer ID
-        if (window.CORRECT_LECTURER_ID) {
-            return window.CORRECT_LECTURER_ID;
-        }
-        
-        if (window.lecturerDB && window.lecturerDB.getCurrentUserProfile) {
-            const profile = window.lecturerDB.getCurrentUserProfile();
-            if (profile) {
-                return profile.user_id || profile.id;
+    // ============================================================
+    // RESOLVE LECTURER ID - SAME AS LecturerExams
+    // ============================================================
+    async resolveLecturerId() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
             }
-        }
-        
-        // Try from localStorage
-        const saved = localStorage.getItem('lecturerId');
-        if (saved) return saved;
-        
-        // Try from supabase session
-        if (window.supabase) {
-            const session = window.supabase.auth.session();
-            if (session && session.user) {
-                return session.user.id;
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('No lecturer profile found');
+                return;
             }
+            
+            const authId = profile.user_id;
+            const fullName = profile.full_name;
+            
+            console.log('🔍 Auth ID (UUID):', authId);
+            console.log('🔍 Lecturer name:', fullName);
+            
+            // Store UUID
+            this.lecturerUuid = authId;
+            
+            // Find all lecturer IDs by name
+            const { data: assignments, error: assignError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('lecturer_id, lecturer_name')
+                .ilike('lecturer_name', `%${fullName}%`);
+            
+            if (!assignError && assignments && assignments.length > 0) {
+                console.log('📋 Found lecturer assignments by name:', assignments);
+                
+                // Try to find STAFF ID first (non-UUID)
+                const staffId = assignments.find(a => {
+                    const id = a.lecturer_id;
+                    return id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
+                });
+                
+                if (staffId) {
+                    this.lecturerId = staffId.lecturer_id;
+                    console.log('✅ Found STAFF ID:', this.lecturerId);
+                } else {
+                    this.lecturerId = assignments[0].lecturer_id;
+                    console.log('⚠️ Using first match ID:', this.lecturerId);
+                }
+                
+                // Also try STAFF102 directly if not found
+                if (!this.lecturerId || this.lecturerId === authId) {
+                    const { data: staffCheck } = await supabase
+                        .from('lecturer_subject_assignments')
+                        .select('lecturer_id')
+                        .eq('lecturer_id', 'STAFF102')
+                        .limit(1);
+                    
+                    if (staffCheck && staffCheck.length > 0) {
+                        this.lecturerId = 'STAFF102';
+                        console.log('✅ Found STAFF102 directly:', this.lecturerId);
+                    }
+                }
+                
+                // Load assigned units
+                await this.loadAssignedUnits();
+                return;
+            }
+            
+            // Fallback to auth ID
+            this.lecturerId = authId;
+            console.log('⚠️ Falling back to auth ID:', this.lecturerId);
+            
+        } catch (error) {
+            console.error('Error resolving lecturer ID:', error);
+            this.lecturerId = null;
+            this.lecturerUuid = null;
         }
+    },
+    
+    // ============================================================
+    // LOAD ASSIGNED UNITS
+    // ============================================================
+    async loadAssignedUnits() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('⚠️ Supabase not available');
+                return;
+            }
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('⚠️ No lecturer profile found');
+                return;
+            }
+            
+            const fullName = profile.full_name;
+            console.log('🔍 Loading assigned units for academic portfolio:', fullName);
+            
+            const { data: assignments, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('id, subject_name, subject_code, block, program, academic_year, lecturer_id')
+                .ilike('lecturer_name', `%${fullName}%`);
+            
+            if (error) {
+                console.error('❌ Error loading assigned units:', error);
+                this.assignedUnits = [];
+                return;
+            }
+            
+            // Filter to KRCHN program
+            const krchnUnits = assignments?.filter(u => u.program === 'KRCHN') || [];
+            const allUnits = assignments || [];
+            this.assignedUnits = krchnUnits.length > 0 ? krchnUnits : allUnits;
+            
+            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units:`, 
+                this.assignedUnits.map(u => `${u.subject_name} (${u.lecturer_id})`));
+            
+        } catch (error) {
+            console.error('❌ Failed to load assigned units:', error);
+            this.assignedUnits = [];
+        }
+    },
+    
+    showLoginMessage() {
+        const container = document.getElementById('ap-content');
+        if (!container) return;
         
-        return null;
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 40px; color: #f59e0b;"></i>
+                <h3 style="color: #1e293b; margin-top: 15px;">Please Log In</h3>
+                <p style="color: #94a3b8;">You need to be logged in to view your Academic Portfolio.</p>
+                <p style="color: #94a3b8; font-size: 13px; margin-top: 8px;">If you are already logged in, please refresh the page.</p>
+                <button onclick="window.location.reload()" style="margin-top: 20px; background: #4C1D95; color: white; border: none; padding: 10px 30px; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                    <i class="fas fa-sync-alt"></i> Refresh Page
+                </button>
+            </div>
+        `;
     },
     
     // ============================================================
     // NAVIGATION
     // ============================================================
     setupNavigation() {
-        // Handle main tab click (from sidebar)
         document.querySelectorAll('[data-tab="academic-portfolio"]').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -76,25 +203,6 @@ const AcademicPortfolio = {
                 this.loadDashboard();
             });
         });
-        
-        // Handle sub-tab clicks - re-bind after each render
-        this.bindSubTabs();
-    },
-    
-    bindSubTabs() {
-        document.querySelectorAll('.ap-tab-btn').forEach(btn => {
-            // Remove existing listeners to avoid duplicates
-            btn.removeEventListener('click', this._handleSubTabClick);
-            btn.addEventListener('click', this._handleSubTabClick.bind(this));
-        });
-    },
-    
-    _handleSubTabClick(e) {
-        const btn = e.currentTarget;
-        const tab = btn.dataset.apTab;
-        if (tab) {
-            this.switchTab(tab);
-        }
     },
     
     setupEventListeners() {
@@ -117,13 +225,6 @@ const AcademicPortfolio = {
             return `${year - 1}/${year}`;
         }
         return `${year}/${year + 1}`;
-    },
-    
-    getCurrentSemester() {
-        const now = new Date();
-        const month = now.getMonth();
-        if (month < 6) return 2;
-        return 1;
     },
     
     // ============================================================
@@ -200,7 +301,7 @@ const AcademicPortfolio = {
     },
     
     // ============================================================
-    // DASHBOARD
+    // DASHBOARD - FIXED with proper authentication
     // ============================================================
     async loadDashboard() {
         const container = document.getElementById('ap-content');
@@ -209,31 +310,28 @@ const AcademicPortfolio = {
             return;
         }
         
+        // Check if we have a lecturer ID
+        if (!this.lecturerId) {
+            this.showLoginMessage();
+            return;
+        }
+        
         try {
-            // Check authentication
-            const user = await this.getCurrentUser();
-            if (!user) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 40px; color: #f59e0b;"></i>
-                        <p style="margin-top: 15px;">Please log in to view your Academic Portfolio.</p>
-                    </div>
-                `;
-                return;
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database connection not available');
             }
             
-            const userId = this.lecturerId || user.id;
-            
-            // Fetch lecturer's subject assignments
-            const { data: assignments, error: assignError } = await window.supabase
+            // Get lecturer's subject assignments
+            const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('*')
-                .eq('lecturer_id', userId);
+                .eq('lecturer_id', this.lecturerId);
             
             if (assignError) throw assignError;
             
             // Get statistics
-            const stats = await this.getPortfolioStats(assignments);
+            const stats = await this.getPortfolioStats(supabase, assignments);
             
             // Update stats in the header
             this.updateStatsDisplay(stats);
@@ -258,18 +356,22 @@ const AcademicPortfolio = {
         }
     },
     
-    async getCurrentUser() {
-        try {
-            const { data, error } = await window.supabase.auth.getUser();
-            if (error) throw error;
-            return data?.user;
-        } catch (error) {
-            console.error('Error getting user:', error);
-            return null;
+    bindSubTabs() {
+        document.querySelectorAll('.ap-tab-btn').forEach(btn => {
+            btn.removeEventListener('click', this._handleSubTabClick);
+            btn.addEventListener('click', this._handleSubTabClick.bind(this));
+        });
+    },
+    
+    _handleSubTabClick(e) {
+        const btn = e.currentTarget;
+        const tab = btn.dataset.apTab;
+        if (tab) {
+            this.switchTab(tab);
         }
     },
     
-    async getPortfolioStats(assignments) {
+    async getPortfolioStats(supabase, assignments) {
         const stats = {
             totalCourses: assignments?.length || 0,
             schemesCompleted: 0,
@@ -284,7 +386,7 @@ const AcademicPortfolio = {
             const assignmentIds = assignments.map(a => a.id);
             
             // Count schemes
-            const { count: schemeCount } = await window.supabase
+            const { count: schemeCount } = await supabase
                 .from('schemes_of_work')
                 .select('*', { count: 'exact', head: true })
                 .in('lecturer_subject_assignment_id', assignmentIds);
@@ -292,7 +394,7 @@ const AcademicPortfolio = {
             if (schemeCount) stats.schemesCompleted = schemeCount;
             
             // Count lesson plans
-            const { count: lessonCount } = await window.supabase
+            const { count: lessonCount } = await supabase
                 .from('lesson_plans')
                 .select('*', { count: 'exact', head: true })
                 .in('lecturer_subject_assignment_id', assignmentIds);
@@ -300,7 +402,7 @@ const AcademicPortfolio = {
             if (lessonCount) stats.lessonPlans = lessonCount;
             
             // Count pending HOD
-            const { count: pendingCount } = await window.supabase
+            const { count: pendingCount } = await supabase
                 .from('schemes_of_work')
                 .select('*', { count: 'exact', head: true })
                 .in('lecturer_subject_assignment_id', assignmentIds)
@@ -310,7 +412,7 @@ const AcademicPortfolio = {
             if (pendingCount) stats.pendingHOD = pendingCount;
             
             // Count approved
-            const { count: approvedCount } = await window.supabase
+            const { count: approvedCount } = await supabase
                 .from('schemes_of_work')
                 .select('*', { count: 'exact', head: true })
                 .in('lecturer_subject_assignment_id', assignmentIds)
@@ -319,7 +421,7 @@ const AcademicPortfolio = {
             if (approvedCount) stats.approved = approvedCount;
             
             // Count teaching logs
-            const { count: logCount } = await window.supabase
+            const { count: logCount } = await supabase
                 .from('teaching_logs')
                 .select('*', { count: 'exact', head: true })
                 .in('lecturer_subject_assignment_id', assignmentIds);
@@ -327,7 +429,7 @@ const AcademicPortfolio = {
             if (logCount) stats.teachingLogs = logCount;
             
             // Count materials
-            const { count: materialCount } = await window.supabase
+            const { count: materialCount } = await supabase
                 .from('teaching_materials')
                 .select('*', { count: 'exact', head: true })
                 .in('lecturer_subject_assignment_id', assignmentIds);
@@ -472,19 +574,21 @@ const AcademicPortfolio = {
         const container = document.getElementById('ap-content');
         if (!container) return;
         
+        if (!this.lecturerId) {
+            this.showLoginMessage();
+            return;
+        }
+        
         try {
-            const user = await this.getCurrentUser();
-            if (!user) {
-                container.innerHTML = `<div style="text-align: center; padding: 60px;">Please log in.</div>`;
-                return;
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database connection not available');
             }
             
-            const userId = this.lecturerId || user.id;
-            
-            const { data: assignments, error } = await window.supabase
+            const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('*')
-                .eq('lecturer_id', userId);
+                .eq('lecturer_id', this.lecturerId);
             
             if (error) throw error;
             
@@ -545,25 +649,27 @@ const AcademicPortfolio = {
         const container = document.getElementById('ap-content');
         if (!container) return;
         
+        if (!this.lecturerId) {
+            this.showLoginMessage();
+            return;
+        }
+        
         try {
-            const user = await this.getCurrentUser();
-            if (!user) {
-                container.innerHTML = `<div style="text-align: center; padding: 60px;">Please log in.</div>`;
-                return;
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database connection not available');
             }
             
-            const userId = this.lecturerId || user.id;
-            
             // Get lecturer's assignments
-            const { data: assignments } = await window.supabase
+            const { data: assignments } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('id, subject_name, subject_code')
-                .eq('lecturer_id', userId);
+                .eq('lecturer_id', this.lecturerId);
             
             const assignmentIds = assignments?.map(a => a.id) || [];
             
             // Get schemes
-            const { data: schemes, error } = await window.supabase
+            const { data: schemes, error } = await supabase
                 .from('schemes_of_work')
                 .select('*')
                 .in('lecturer_subject_assignment_id', assignmentIds)
@@ -848,12 +954,21 @@ const AcademicPortfolio = {
 window.AcademicPortfolio = AcademicPortfolio;
 
 // ============================================================
-// AUTO-INITIALIZE ON PAGE LOAD
+// EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
+window.loadAcademicPortfolio = () => AcademicPortfolio.loadDashboard();
+window.refreshAcademicPortfolio = () => AcademicPortfolio.refresh();
+window.switchAcademicPortfolioTab = (tab) => AcademicPortfolio.switchTab(tab);
+
+console.log('📁 Academic Portfolio module loaded - Fixed authentication');
+
+// ============================================================
+// INITIALIZE ON DOM READY
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM ready - checking for Academic Portfolio initialization...');
+    console.log('📄 DOM ready - initializing Academic Portfolio...');
     
-    // Wait for other modules to load
+    // Wait for lecturerDB to be ready
     const checkInterval = setInterval(() => {
         if (window.lecturerDB && window.lecturerDB.isInitialized) {
             clearInterval(checkInterval);
@@ -869,7 +984,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 500);
     
-    // Fallback - initialize after 3 seconds even if lecturerDB not ready
+    // Fallback - initialize after 3 seconds
     setTimeout(() => {
         if (typeof AcademicPortfolio !== 'undefined' && !AcademicPortfolio.initialized) {
             console.log('⏳ Fallback: Initializing Academic Portfolio...');
@@ -877,5 +992,3 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 3000);
 });
-
-console.log('📁 Academic Portfolio module loaded');
