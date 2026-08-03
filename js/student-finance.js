@@ -3,6 +3,7 @@
 // Matches the updated finance HTML section
 // Supports KRCHN (Semesters) and TVET (Terms with Years)
 // Fee Structure is hidden by default - view on demand
+// ✅ "Total Program Fees" REMOVED from display
 // ============================================================
 
 // ============================================================
@@ -600,7 +601,7 @@ function renderPayments(payments) {
 }
 
 // ============================================================
-// 📄 RENDER FEE STRUCTURE
+// 📄 RENDER FEE STRUCTURE - NO TOTAL PROGRAM FEES
 // ============================================================
 
 function renderFeeStructureData(fees) {
@@ -625,7 +626,6 @@ function renderFeeStructureData(fees) {
     const programLevel = studentFinanceState.programLevel || 'diploma';
     const periods = getPeriods(programType, programLevel);
     
-    let total = 0;
     let html = `
         <div style="margin-bottom: 16px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
             <span style="font-weight: 600; color: #475569; font-size: 13px;">
@@ -643,43 +643,48 @@ function renderFeeStructureData(fees) {
             <span id="feeFilterCount" style="font-size: 12px; color: #94a3b8; margin-left: auto;"></span>
         </div>
         <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <table class="fee-structure-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
                 <thead>
                     <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
                         <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">${programType === 'KRCHN' ? 'Semester' : 'Term'}</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
                         <th style="padding: 12px 16px; text-align: right; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
-    fees.forEach((f) => {
-        total += f.amount || 0;
+    fees.forEach((f, index) => {
+        const isCurrent = index === 0;
+        const isPaid = index < 1;
+        const status = isPaid ? '✅ Paid' : (isCurrent ? '📌 Current' : '⏳ Upcoming');
+        const statusColor = isPaid ? '#059669' : (isCurrent ? '#4C1D95' : '#94a3b8');
+        
         html += `
             <tr>
-                <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 500; color: #0b1124;">${f.block}</td>
+                <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 500; color: #0b1124;">
+                    ${f.block}
+                    ${isCurrent ? '<span style="display: inline-block; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 600; margin-left: 6px;">Current</span>' : ''}
+                </td>
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; color: #64748b;">${f.description || 'Tuition fees'}</td>
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 600; color: #4C1D95;">KES ${(f.amount || 0).toLocaleString()}</td>
+                <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+                    <span style="color: ${statusColor}; font-weight: 600; font-size: 13px;">${status}</span>
+                </td>
             </tr>
         `;
     });
     
     html += `
                 </tbody>
-                <tfoot>
-                    <tr style="border-top: 2px solid #e5e7eb; background: #fafbfc;">
-                        <td colspan="2" style="padding: 12px 16px; font-weight: 700; color: #0A3D62; font-size: 15px;">Total Program Fees</td>
-                        <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #4C1D95; font-size: 16px;">KES ${total.toLocaleString()}</td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
         <div style="margin-top: 12px; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; padding: 8px 4px; border-top: 1px solid #f1f5f9;">
             <span>📚 Number of ${programType === 'KRCHN' ? 'Semesters' : 'Terms'}: <strong>${periods.length}</strong></span>
             <span>⏳ Duration: <strong>${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</strong></span>
         </div>
-        <div style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+        <div class="fee-structure-actions" style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
             <button onclick="generateFeeStructurePDF()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" 
             onmouseover="this.style.transform='translateY(-2px)'" 
             onmouseout="this.style.transform='none'">
@@ -716,7 +721,7 @@ function updateFinanceBadge(data) {
 }
 
 // ============================================================
-// 📄 GENERATE PDF
+// 📄 GENERATE PDF - WITH TOTAL PROGRAM FEES (for official use)
 // ============================================================
 
 function generateFeeStructurePDF() {
@@ -914,7 +919,6 @@ function filterStudentPayments() {
 }
 
 function applyFeeFilters() {
-    // Fee structure filters
     const yearFilter = document.getElementById('feeYearFilter')?.value || 'all';
     const periodFilter = document.getElementById('feePeriodFilter')?.value || 'all';
     
@@ -1243,3 +1247,4 @@ console.log('📊 Supports KRCHN (Semesters) and TVET (Terms with Years)');
 console.log('📚 TVET Certificate: 1 Year (3 Terms)');
 console.log('📚 TVET Diploma: 2 Years (6 Terms)');
 console.log('📄 Fee Structure is hidden by default - click to view');
+console.log('✅ "Total Program Fees" REMOVED from display (only in PDF/print)');
