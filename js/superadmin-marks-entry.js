@@ -1,6 +1,6 @@
 // ============================================================
-// TVET & NURSING GRADING SYSTEM - COMPLETE FIXED VERSION
-// WITH DIRECT KRCHN DETECTION
+// TVET & NURSING GRADING SYSTEM - COMPLETE DYNAMIC VERSION
+// WITH DIRECT KRCHN DETECTION & COLUMN-BASED CALCULATION
 // ============================================================
 
 // ============================================================
@@ -58,7 +58,7 @@ const TVET_PROGRAMS = [
 const NURSING_PROGRAMS = ['KRCHN'];
 
 // ============================================================
-// DETECT PROGRAM TYPE - DIRECT (No conflict with script.js)
+// DETECT PROGRAM TYPE - DIRECT
 // ============================================================
 
 function getProgramType(programCode) {
@@ -75,7 +75,95 @@ function getGradingConfig(programCode) {
 }
 
 // ============================================================
-// TVET MARKS CALCULATION - CORE FIXED FUNCTION
+// ✅ DYNAMIC COLUMN DETECTION - NEW FUNCTIONS
+// ============================================================
+
+function detectVisibleColumns() {
+    console.log('🔍 Detecting visible columns...');
+    
+    const table = document.querySelector('#me_marks_table');
+    if (!table) {
+        console.warn('⚠️ Table not found, using defaults');
+        return { hasCat1: true, hasCat2: true, hasExam: true };
+    }
+    
+    const headers = table.querySelectorAll('thead th');
+    let hasCat1 = false;
+    let hasCat2 = false;
+    let hasExam = false;
+    
+    headers.forEach((th) => {
+        const text = th.textContent.toLowerCase().trim();
+        const isVisible = th.style.display !== 'none';
+        
+        if ((text.includes('cat1') || text.includes('cat 1')) && isVisible) {
+            hasCat1 = true;
+        }
+        if ((text.includes('cat2') || text.includes('cat 2')) && isVisible) {
+            hasCat2 = true;
+        }
+        if (text.includes('exam') && isVisible) {
+            hasExam = true;
+        }
+    });
+    
+    // If no columns detected, use defaults
+    if (!hasCat1 && !hasCat2 && !hasExam) {
+        return { hasCat1: true, hasCat2: true, hasExam: true };
+    }
+    
+    return { hasCat1, hasCat2, hasExam };
+}
+
+function getAssessmentTypeFromColumns() {
+    const visible = detectVisibleColumns();
+    console.log('📊 Visible columns:', visible);
+    
+    if (visible.hasExam && !visible.hasCat1 && !visible.hasCat2) return 'exam_only';
+    if (visible.hasCat1 && !visible.hasCat2 && !visible.hasExam) return 'cat1_only';
+    if (!visible.hasCat1 && visible.hasCat2 && !visible.hasExam) return 'cat2_only';
+    if (visible.hasCat1 && visible.hasCat2 && !visible.hasExam) return 'cats_only';
+    if (visible.hasCat1 && !visible.hasCat2 && visible.hasExam) return 'single_cat';
+    if (!visible.hasCat1 && visible.hasCat2 && visible.hasExam) return 'single_cat';
+    return 'full';
+}
+
+function getMaxPossible(programCode, assessmentType) {
+    const isNursing = programCode === 'KRCHN';
+    const config = getGradingConfig(programCode);
+    
+    switch(assessmentType) {
+        case 'full':
+            return isNursing ? 100 : config.TOTAL_MAX;
+        case 'single_cat':
+            return isNursing ? 100 : 130;
+        case 'exam_only':
+            return isNursing ? 70 : 100;
+        case 'cats_only':
+            return 60;
+        case 'cat1_only':
+            return 30;
+        case 'cat2_only':
+            return 30;
+        default:
+            return isNursing ? 100 : config.TOTAL_MAX;
+    }
+}
+
+function getAssessmentTypeLabel(assessmentType) {
+    const labels = {
+        'full': 'Full (CAT1 + CAT2 + Exam)',
+        'single_cat': 'Single CAT (CAT + Exam)',
+        'exam_only': 'Exam Only',
+        'cats_only': 'CAT1 + CAT2 Only',
+        'cat1_only': 'CAT1 Only',
+        'cat2_only': 'CAT2 Only'
+    };
+    return labels[assessmentType] || assessmentType;
+}
+
+// ============================================================
+// TVET MARKS CALCULATION - UPDATED WITH DYNAMIC COLUMN SUPPORT
 // ============================================================
 
 function getTVETGrade(percentage, config) {
@@ -102,7 +190,6 @@ function getTVETGradeBgColor(grade, programCode) {
 }
 
 function calculateTVETMarks(cat1, cat2, exam, programCode) {
-    // ✅ Direct check - no conflict with script.js
     const isNursing = programCode === 'KRCHN';
     const config = isNursing ? GRADING_CONFIG.NURSING : GRADING_CONFIG.TVET;
     
@@ -112,39 +199,32 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     
     const clampedCat1 = Math.min(Math.max(c1, 0), config.CAT1_MAX);
     const clampedCat2 = Math.min(Math.max(c2, 0), config.CAT2_MAX);
-    
-    // Nursing exam is out of 70, TVET is out of 100
     const examMax = isNursing ? 70 : config.EXAM_MAX;
     const clampedExam = Math.min(Math.max(ex, 0), examMax);
     
-    const assessmentType = window.me_currentAssessmentType || 'full';
+    // ✅ Get assessment type from visible columns
+    const assessmentType = getAssessmentTypeFromColumns();
+    window.me_currentAssessmentType = assessmentType;
     
-    // ✅ FIX: Calculate based on assessment type with proper max
-    let rawTotal;
-    let maxPossible;
+    // ✅ Calculate total based on visible columns
+    let rawTotal = 0;
+    const visible = detectVisibleColumns();
     
-    if (assessmentType === 'full') {
-        rawTotal = clampedCat1 + clampedCat2 + clampedExam;
-        maxPossible = isNursing ? 100 : config.TOTAL_MAX; // Nursing: 30+30+70=100, TVET: 30+30+100=160
-    } else if (assessmentType === 'single_cat') {
-        rawTotal = clampedCat1 + clampedExam;
-        // Max for single_cat: CAT1(30) + Exam(Nursing:70/TVET:100)
-        maxPossible = isNursing ? 100 : 130; // 30 + 100 = 130
-    } else if (assessmentType === 'exam_only') {
-        rawTotal = clampedExam;
-        maxPossible = examMax; // Nursing: 70, TVET: 100
-    } else if (assessmentType === 'cats_only') {
-        rawTotal = clampedCat1 + clampedCat2;
-        maxPossible = 60; // 30 + 30 = 60
-    } else if (assessmentType === 'cat_only') {
-        rawTotal = clampedCat1;
-        maxPossible = config.CAT1_MAX; // 30
-    } else {
-        rawTotal = clampedCat1 + clampedCat2 + clampedExam;
+    if (visible.hasCat1) rawTotal += clampedCat1;
+    if (visible.hasCat2) rawTotal += clampedCat2;
+    if (visible.hasExam) rawTotal += clampedExam;
+    
+    // ✅ Get max possible based on visible columns
+    let maxPossible = 0;
+    if (visible.hasCat1) maxPossible += config.CAT1_MAX;
+    if (visible.hasCat2) maxPossible += config.CAT2_MAX;
+    if (visible.hasExam) maxPossible += isNursing ? 70 : config.EXAM_MAX;
+    
+    if (maxPossible === 0) {
         maxPossible = isNursing ? 100 : config.TOTAL_MAX;
     }
     
-    // ✅ FIX: Calculate percentage correctly based on max possible
+    // ✅ Calculate percentage
     let percentage;
     if (maxPossible > 0) {
         percentage = (rawTotal / maxPossible) * 100;
@@ -152,7 +232,6 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
         percentage = 0;
     }
     
-    // Cap at 100% and round to 2 decimal places
     percentage = Math.min(Math.round(percentage * 100) / 100, 100);
     
     const gradeInfo = getTVETGrade(percentage, config);
@@ -173,10 +252,12 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
         config: config,
         gradeType: config.GRADE_TYPE,
         gradeInfo: gradeInfo,
+        assessmentType: assessmentType,
+        visibleColumns: visible,
         display: {
-            cat1: `${clampedCat1}/${config.CAT1_MAX}`,
-            cat2: `${clampedCat2}/${config.CAT2_MAX}`,
-            exam: `${clampedExam}/${examMax}`,
+            cat1: visible.hasCat1 ? `${clampedCat1}/${config.CAT1_MAX}` : 'HIDDEN',
+            cat2: visible.hasCat2 ? `${clampedCat2}/${config.CAT2_MAX}` : 'HIDDEN',
+            exam: visible.hasExam ? `${clampedExam}/${examMax}` : 'HIDDEN',
             total: `${rawTotal}/${maxPossible}`,
             percentage: `${percentage}%`
         }
@@ -208,11 +289,9 @@ function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode)
     let cat1Val = Math.min(Math.max(parseFloat(cat1) || 0, 0), config.CAT1_MAX);
     let cat2Val = Math.min(Math.max(parseFloat(cat2) || 0, 0), config.CAT2_MAX);
     
-    // Nursing exam is out of 70, TVET is out of 100
     const examMax = isNursing ? 70 : config.EXAM_MAX;
     let examVal = Math.min(Math.max(parseFloat(exam) || 0, 0), examMax);
     
-    // ✅ FIX: Calculate based on assessment type with proper max
     switch(assessmentType) {
         case 'full': 
             total = cat1Val + cat2Val + examVal; 
@@ -230,9 +309,13 @@ function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode)
             total = cat1Val + cat2Val; 
             maxPossible = 60;
             break;
-        case 'cat_only': 
+        case 'cat1_only': 
             total = cat1Val; 
             maxPossible = config.CAT1_MAX;
+            break;
+        case 'cat2_only': 
+            total = cat2Val; 
+            maxPossible = config.CAT2_MAX;
             break;
         default: 
             total = cat1Val + cat2Val + examVal; 
@@ -270,7 +353,7 @@ function exportAllMarksData() {
     const config = getGradingConfig(program);
     const isCompetency = config.GRADE_TYPE === 'competency';
     
-    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Percentage', 'Grade', 'Points', 'Status'];
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Max', 'Percentage', 'Grade', 'Points', 'Status'];
     const rows = marks.map(m => {
         const result = calculateTVETMarks(m.cat1 || 0, m.cat2 || 0, m.exam || 0, program);
         return [
@@ -279,8 +362,9 @@ function exportAllMarksData() {
             result.cat1,
             result.cat2,
             result.exam,
+            result.total,
+            result.maxTotal,
             result.percentage > 0 ? result.percentage : '',
-            result.percentage > 0 ? `${result.percentage}%` : '',
             result.percentage > 0 ? result.grade : '',
             result.percentage > 0 ? result.points : '',
             result.percentage > 0 ? (isCompetency ? (result.isPassing ? 'COMPETENT' : 'NOT YET COMPETENT') : result.status) : ''
@@ -528,7 +612,7 @@ async function loadMEUnits() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY - COMPLETE WITH DYNAMIC COLUMN SUPPORT
+// LOAD MARKS ENTRY - WITH DYNAMIC COLUMN SUPPORT
 // ============================================================
 
 async function loadMarksEntry() {
@@ -670,7 +754,8 @@ async function loadMarksEntry() {
                 isPassing: result.isPassing,
                 final: result.percentage,
                 final_score: result.percentage,
-                assessmentType: m.assessment_type || assessmentType,
+                assessmentType: result.assessmentType || assessmentType,
+                visibleColumns: result.visibleColumns,
                 id: m.id || null,
                 approval_status: m.approval_status || 'draft',
                 published: m.published || false,
@@ -681,11 +766,16 @@ async function loadMarksEntry() {
         console.log(`📊 Displaying ${fullMarks.length} students`);
         me_currentMarks = fullMarks;
         
-        renderMarksEntryTable(fullMarks, unitCode, assessmentType, program);
-        updateMarksEntryStats(fullMarks, assessmentType, program);
+        // ✅ Get current assessment type from visible columns
+        const currentAssessmentType = getAssessmentTypeFromColumns();
+        const maxTotal = getMaxPossible(program, currentAssessmentType);
+        const visible = detectVisibleColumns();
+        
+        renderMarksEntryTable(fullMarks, unitCode, currentAssessmentType, program);
+        updateMarksEntryStats(fullMarks, currentAssessmentType, program);
         
         await loadUnitColumnSettings();
-        updateAssessmentTypeDisplay();
+        updateAssessmentTypeDisplay(currentAssessmentType, maxTotal, visible);
         showGradingSystemInfo(program);
         updateGradingDisplay(program);
         updateSelectedProgramDisplay();
@@ -720,7 +810,6 @@ async function loadMarksEntry() {
 function showGradingSystemInfo(program) {
     const config = getGradingConfig(program);
     const isNursing = program === 'KRCHN';
-    const programType = isNursing ? 'NURSING' : 'TVET';
     
     let container = document.getElementById('gradingSystemInfo');
     if (!container) {
@@ -795,32 +884,17 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     const isNursing = program === 'KRCHN';
     const isCompetency = config.GRADE_TYPE === 'competency';
     
-    const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
-    const passing = marks.filter(m => m.isPassing);
-    
-    // ✅ Determine which columns to show based on assessment type
-    const showCat1 = assessmentType !== 'exam_only';
-    const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
-    const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
-    
-    // ✅ Nursing exam max is 70, TVET is 100
+    // ✅ Get visible columns
+    const visible = detectVisibleColumns();
+    const maxTotal = getMaxPossible(program, assessmentType);
     const examMax = isNursing ? 70 : config.EXAM_MAX;
     
-    // ✅ Get max possible for this assessment type
-    let maxTotal;
-    if (assessmentType === 'full') {
-        maxTotal = isNursing ? 100 : config.TOTAL_MAX;
-    } else if (assessmentType === 'single_cat') {
-        maxTotal = isNursing ? 100 : 130;
-    } else if (assessmentType === 'exam_only') {
-        maxTotal = examMax;
-    } else if (assessmentType === 'cats_only') {
-        maxTotal = 60;
-    } else if (assessmentType === 'cat_only') {
-        maxTotal = config.CAT1_MAX;
-    } else {
-        maxTotal = isNursing ? 100 : config.TOTAL_MAX;
-    }
+    const showCat1 = visible.hasCat1;
+    const showCat2 = visible.hasCat2;
+    const showExam = visible.hasExam;
+    
+    const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
+    const passing = marks.filter(m => m.isPassing);
     
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
@@ -836,22 +910,25 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                 <span style="font-size: 11px; color: #475569; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">
                     Max: ${maxTotal}
                 </span>
+                <span style="font-size: 11px; color: #1e40af; margin-left: 12px; background: #dbeafe; padding: 2px 12px; border-radius: 40px;">
+                    ${getAssessmentTypeLabel(assessmentType)}
+                </span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button onclick="openMarksStudentManager()" class="btn-action" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                <button onclick="recalculateAllTotals()" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
+                    <i class="fas fa-calculator"></i> Recalculate
+                </button>
+                <button onclick="openMarksStudentManager()" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
                     <i class="fas fa-users"></i> Manage Students
                 </button>
-                <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                <button onclick="saveMarksEntry()" style="background: #059669; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
                     <i class="fas fa-save"></i> Save All
                 </button>
-                <button onclick="exportMarksEntry()" class="btn-action" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                <button onclick="exportMarksEntry()" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
                     <i class="fas fa-file-export"></i> Export CSV
                 </button>
-                <button onclick="loadMarksEntry()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
                 ${isUserAdmin() ? `
-                <button onclick="resetUnitColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
+                <button onclick="resetUnitColumns()" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
                     <i class="fas fa-undo"></i> Reset Columns
                 </button>
                 ` : ''}
@@ -888,8 +965,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         const gradeInfo = getTVETGrade(percentage, config);
         const isPassing = percentage >= config.PASS_MARK;
         
-        const displayTotal = result.percentage > 0 ? result.total : '--';
-        const displayMaxTotal = result.maxTotal;
+        const displayTotal = result.percentage > 0 ? `${result.total}/${result.maxTotal}` : '--';
         const displayPercentage = result.percentage > 0 ? `${result.percentage}%` : '--';
         const displayGrade = result.percentage > 0 ? result.grade : '--';
         const displayPoints = result.percentage > 0 ? result.points : '--';
@@ -939,13 +1015,19 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
             </table>
         </div>
         <div style="text-align: center; margin-top: 16px;">
-            <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
-                <i class="fas fa-save"></i> 💾 Save All Marks (Auto-Approved)
+            <button onclick="recalculateAllTotals()" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
+                <i class="fas fa-calculator"></i> 🔄 Recalculate All (Based on Visible Columns)
+            </button>
+            <button onclick="saveMarksEntry()" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
+                <i class="fas fa-save"></i> 💾 Save All Marks
             </button>
         </div>
     `;
     
     container.innerHTML = html;
+    
+    // Update assessment type display
+    updateAssessmentTypeDisplay(assessmentType, maxTotal, visible);
 }
 
 // ============================================================
@@ -963,10 +1045,11 @@ function updateMarksEntryRow(index) {
     const result = calculateTVETMarks(cat1, cat2, exam, program);
     const isPassing = result.isPassing;
     const gradeInfo = getTVETGrade(result.percentage, config);
+    const isCompetency = config.GRADE_TYPE === 'competency';
     
     const totalEl = document.getElementById(`me_total_${index}`);
     if (totalEl) {
-        totalEl.textContent = result.percentage > 0 ? result.total : '--';
+        totalEl.textContent = result.percentage > 0 ? `${result.total}/${result.maxTotal}` : '--';
         totalEl.style.color = isPassing ? '#065f46' : (result.percentage > 0 ? '#991b1b' : '#f59e0b');
     }
     
@@ -990,7 +1073,6 @@ function updateMarksEntryRow(index) {
     
     const statusEl = document.getElementById(`me_status_${index}`);
     if (statusEl) {
-        const isCompetency = config.GRADE_TYPE === 'competency';
         if (result.percentage > 0) {
             if (isCompetency) {
                 statusEl.innerHTML = isPassing 
@@ -1010,10 +1092,13 @@ function updateMarksEntryRow(index) {
         me_currentMarks[index].exam = exam;
         me_currentMarks[index].percentage = result.percentage;
         me_currentMarks[index].total = result.total;
+        me_currentMarks[index].maxTotal = result.maxTotal;
         me_currentMarks[index].grade = result.grade;
         me_currentMarks[index].points = result.points;
         me_currentMarks[index].status = result.status;
         me_currentMarks[index].isPassing = isPassing;
+        me_currentMarks[index].assessmentType = result.assessmentType;
+        me_currentMarks[index].visibleColumns = result.visibleColumns;
     }
 }
 
@@ -1051,6 +1136,69 @@ function updateMarksEntryStats(marks, assessmentType, program) {
     if (publishedEl && marks) {
         const publishedCount = marks.filter(m => m.published === true).length;
         publishedEl.textContent = publishedCount;
+    }
+}
+
+// ============================================================
+// RECALCULATE ALL TOTALS - NEW FUNCTION
+// ============================================================
+
+function recalculateAllTotals() {
+    const program = me_currentProgram;
+    const rows = document.querySelectorAll('#me_marks_container table tbody tr');
+    
+    if (!rows || rows.length === 0) return;
+    
+    // Update assessment type based on visible columns
+    const assessmentType = getAssessmentTypeFromColumns();
+    const maxTotal = getMaxPossible(program, assessmentType);
+    const visible = detectVisibleColumns();
+    
+    // Update each row
+    rows.forEach((row, index) => {
+        updateMarksEntryRow(index);
+    });
+    
+    // Update stats
+    if (me_currentMarks) {
+        updateMarksEntryStats(me_currentMarks, assessmentType, program);
+    }
+    
+    // Show notification
+    const label = getAssessmentTypeLabel(assessmentType);
+    if (typeof showNotification === 'function') {
+        showNotification(`📊 Switched to: ${label} (Max: ${maxTotal})`, 'info');
+    }
+}
+
+// ============================================================
+// ASSESSMENT TYPE DISPLAY - UPDATED
+// ============================================================
+
+function updateAssessmentTypeDisplay(assessmentType, maxTotal, visibleColumns) {
+    const label = getAssessmentTypeLabel(assessmentType);
+    const typeEl = document.getElementById('currentAssessmentType');
+    const maxEl = document.getElementById('currentMaxTotal');
+    const columnsEl = document.getElementById('visibleColumnsInfo');
+    
+    if (typeEl) {
+        typeEl.textContent = label;
+        typeEl.style.background = '#e0f2fe';
+        typeEl.style.padding = '2px 12px';
+        typeEl.style.borderRadius = '12px';
+        typeEl.style.fontSize = '12px';
+    }
+    
+    if (maxEl && maxTotal) {
+        maxEl.textContent = `Max: ${maxTotal}`;
+    }
+    
+    if (columnsEl && visibleColumns) {
+        const parts = [];
+        if (visibleColumns.hasCat1) parts.push('CAT1');
+        if (visibleColumns.hasCat2) parts.push('CAT2');
+        if (visibleColumns.hasExam) parts.push('Exam');
+        columnsEl.textContent = `📊 ${parts.join(' + ')}`;
     }
 }
 
@@ -1240,7 +1388,7 @@ function exportMarksEntry() {
         return;
     }
     
-    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Percentage', 'Grade', 'Points', 'Status'];
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Max', 'Percentage', 'Grade', 'Points', 'Status'];
     const rows = marks.map(m => {
         const result = calculateTVETMarks(m.cat1 || 0, m.cat2 || 0, m.exam || 0, program);
         return [
@@ -1249,8 +1397,9 @@ function exportMarksEntry() {
             result.cat1,
             result.cat2,
             result.exam,
+            result.total,
+            result.maxTotal,
             result.percentage > 0 ? result.percentage : '',
-            result.percentage > 0 ? `${result.percentage}%` : '',
             result.percentage > 0 ? result.grade : '',
             result.percentage > 0 ? result.points : '',
             result.percentage > 0 ? (isCompetency ? (result.isPassing ? 'COMPETENT' : 'NOT YET COMPETENT') : result.status) : ''
@@ -1297,7 +1446,7 @@ function refreshAssignmentHistory() {
 }
 
 // ============================================================
-// COLUMN MANAGEMENT
+// COLUMN MANAGEMENT - UPDATED
 // ============================================================
 
 async function loadUnitColumnSettings() {
@@ -1486,6 +1635,11 @@ async function saveUnitColumnSetting(columnId, visible) {
             showNotification(`✅ Column "${columnId}" ${visible ? 'shown' : 'hidden'}`, 'success');
         }
         applyColumnVisibility();
+        
+        // ✅ Recalculate all totals based on new visible columns
+        setTimeout(() => {
+            recalculateAllTotals();
+        }, 100);
         
     } catch (error) {
         console.error('❌ Error saving column:', error);
@@ -2972,164 +3126,6 @@ function updateSelectedCount() {
 }
 
 // ============================================================
-// ASSESSMENT TYPE DETECTION
-// ============================================================
-
-function detectVisibleColumns() {
-    console.log('🔍 Detecting visible columns...');
-    
-    const table = document.querySelector('#me_marks_table');
-    if (!table) {
-        console.warn('⚠️ Table not found, using defaults');
-        return { hasCat1: true, hasCat2: true, hasExam: true };
-    }
-    
-    const headers = table.querySelectorAll('thead th');
-    let hasCat1 = false;
-    let hasCat2 = false;
-    let hasExam = false;
-    
-    const savedColumns = me_columnSettings.columns || [];
-    const savedCat1 = savedColumns.find(c => c.id === 'cat1');
-    const savedCat2 = savedColumns.find(c => c.id === 'cat2');
-    const savedExam = savedColumns.find(c => c.id === 'exam');
-    
-    if (savedCat1 !== undefined) hasCat1 = savedCat1.visible !== false;
-    if (savedCat2 !== undefined) hasCat2 = savedCat2.visible !== false;
-    if (savedExam !== undefined) hasExam = savedExam.visible !== false;
-    
-    if (savedCat1 === undefined || savedCat2 === undefined || savedExam === undefined) {
-        headers.forEach((th, index) => {
-            const text = th.textContent.toLowerCase().trim();
-            const isVisible = th.style.display !== 'none';
-            
-            if (savedCat1 === undefined && (text.includes('cat1') || text.includes('cat 1'))) {
-                hasCat1 = isVisible;
-            }
-            if (savedCat2 === undefined && (text.includes('cat2') || text.includes('cat 2'))) {
-                hasCat2 = isVisible;
-            }
-            if (savedExam === undefined && text.includes('exam')) {
-                hasExam = isVisible;
-            }
-        });
-    }
-    
-    if (savedCat1 === undefined && !hasCat1) hasCat1 = true;
-    if (savedCat2 === undefined && !hasCat2) hasCat2 = true;
-    if (savedExam === undefined && !hasExam) hasExam = true;
-    
-    return { hasCat1, hasCat2, hasExam };
-}
-
-function getAutoAssessmentType() {
-    const visible = detectVisibleColumns();
-    console.log('📊 Visible columns for assessment:', visible);
-    
-    if (visible.hasExam && !visible.hasCat1 && !visible.hasCat2) return 'exam_only';
-    if (visible.hasCat1 && !visible.hasCat2 && !visible.hasExam) return 'cat_only';
-    if (!visible.hasCat1 && visible.hasCat2 && !visible.hasExam) return 'cat_only';
-    if (visible.hasCat1 && visible.hasCat2 && !visible.hasExam) return 'cats_only';
-    if (visible.hasCat1 && !visible.hasCat2 && visible.hasExam) return 'single_cat';
-    if (!visible.hasCat1 && visible.hasCat2 && visible.hasExam) return 'single_cat';
-    return 'full';
-}
-
-function updateAssessmentTypeDisplay() {
-    const autoType = getAutoAssessmentType();
-    const labels = {
-        'full': 'Full (CAT1+CAT2+Exam)',
-        'single_cat': 'Single CAT (CAT+Exam)',
-        'exam_only': 'Exam Only',
-        'cats_only': 'CAT1+CAT2 Only',
-        'cat_only': 'CAT Only'
-    };
-    
-    const labelEl = document.getElementById('autoAssessmentTypeLabel');
-    if (labelEl) labelEl.textContent = labels[autoType] || autoType;
-    
-    const assessmentSelect = document.getElementById('me_assessment_type');
-    if (assessmentSelect) assessmentSelect.value = autoType;
-    
-    me_currentAssessmentType = autoType;
-}
-
-function recalculateAllTotals() {
-    const assessmentType = me_currentAssessmentType;
-    const program = me_currentProgram;
-    const rows = document.querySelectorAll('#me_marks_container table tbody tr');
-    
-    rows.forEach((row, index) => {
-        const cat1Input = document.getElementById(`me_cat1_${index}`);
-        const cat2Input = document.getElementById(`me_cat2_${index}`);
-        const examInput = document.getElementById(`me_exam_${index}`);
-        
-        const cat1 = parseFloat(cat1Input?.value) || 0;
-        const cat2 = parseFloat(cat2Input?.value) || 0;
-        const exam = parseFloat(examInput?.value) || 0;
-        
-        const result = calculateTVETMarks(cat1, cat2, exam, program);
-        const isPassing = result.isPassing;
-        const gradeInfo = getTVETGrade(result.percentage, getGradingConfig(program));
-        
-        const totalEl = document.getElementById(`me_total_${index}`);
-        if (totalEl) {
-            totalEl.textContent = result.percentage > 0 ? result.total : '--';
-            totalEl.style.color = isPassing ? '#065f46' : (result.percentage > 0 ? '#991b1b' : '#f59e0b');
-        }
-        
-        const percentageEl = document.getElementById(`me_percentage_${index}`);
-        if (percentageEl) {
-            percentageEl.textContent = result.percentage > 0 ? `${result.percentage}%` : '--';
-            percentageEl.style.color = isPassing ? '#065f46' : (result.percentage > 0 ? '#991b1b' : '#f59e0b');
-        }
-        
-        const gradeEl = document.getElementById(`me_grade_${index}`);
-        if (gradeEl) {
-            gradeEl.textContent = result.percentage > 0 ? result.grade : '--';
-            gradeEl.style.color = gradeInfo.color || '#6b7280';
-        }
-        
-        const pointsEl = document.getElementById(`me_points_${index}`);
-        if (pointsEl) {
-            pointsEl.textContent = result.percentage > 0 ? result.points : '--';
-            pointsEl.style.color = gradeInfo.color || '#6b7280';
-        }
-        
-        const statusEl = document.getElementById(`me_status_${index}`);
-        if (statusEl) {
-            const isCompetency = getGradingConfig(program).GRADE_TYPE === 'competency';
-            if (result.percentage > 0) {
-                if (isCompetency) {
-                    statusEl.innerHTML = isPassing 
-                        ? `<span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">✅ COMPETENT</span>`
-                        : `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">❌ NOT YET COMPETENT</span>`;
-                } else {
-                    statusEl.innerHTML = `<span style="background:${gradeInfo.bgColor};color:${gradeInfo.color};padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;">${gradeInfo.icon || ''} ${gradeInfo.status}</span>`;
-                }
-            } else {
-                statusEl.innerHTML = '<span style="color:#94a3b8;">PENDING</span>';
-            }
-        }
-        
-        if (me_currentMarks && me_currentMarks[index]) {
-            me_currentMarks[index].cat1 = cat1;
-            me_currentMarks[index].cat2 = cat2;
-            me_currentMarks[index].exam = exam;
-            me_currentMarks[index].percentage = result.percentage;
-            me_currentMarks[index].total = result.total;
-            me_currentMarks[index].grade = result.grade;
-            me_currentMarks[index].points = result.points;
-            me_currentMarks[index].status = result.status;
-            me_currentMarks[index].isPassing = isPassing;
-        }
-    });
-    
-    updateMarksEntryStats(me_currentMarks, assessmentType, program);
-    updateAssessmentTypeDisplay();
-}
-
-// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 
@@ -3205,6 +3201,12 @@ window.calculateMarksEntryTotal = calculateMarksEntryTotal;
 window.getTVETGradeColor = getTVETGradeColor;
 window.getTVETGradeBgColor = getTVETGradeBgColor;
 
+// Dynamic column functions
+window.detectVisibleColumns = detectVisibleColumns;
+window.getAssessmentTypeFromColumns = getAssessmentTypeFromColumns;
+window.getMaxPossible = getMaxPossible;
+window.getAssessmentTypeLabel = getAssessmentTypeLabel;
+
 // Main functions
 window.loadMEBlocks = loadMEBlocks;
 window.loadMEUnits = loadMEUnits;
@@ -3221,6 +3223,7 @@ window.showGradingSystemInfo = showGradingSystemInfo;
 window.recalculateAllTotals = recalculateAllTotals;
 window.updateGradingDisplay = updateGradingDisplay;
 window.updateSelectedProgramDisplay = updateSelectedProgramDisplay;
+window.updateAssessmentTypeDisplay = updateAssessmentTypeDisplay;
 
 // Column management
 window.loadUnitColumnSettings = loadUnitColumnSettings;
@@ -3268,21 +3271,14 @@ window.toggleAllStudents = toggleAllStudents;
 window.toggleAllStudentsCheckbox = toggleAllStudentsCheckbox;
 window.updateSelectedCount = updateSelectedCount;
 
-// Assessment detection
-window.detectVisibleColumns = detectVisibleColumns;
-window.getAutoAssessmentType = getAutoAssessmentType;
-window.updateAssessmentTypeDisplay = updateAssessmentTypeDisplay;
-
 // Utility
 window.escapeHtml = escapeHtml;
 
-console.log('✅ TVET & Nursing Marks Entry System FULLY LOADED!');
+console.log('✅ TVET & Nursing Marks Entry System FULLY LOADED with Dynamic Column Support!');
+console.log('📊 When you add/drop columns, calculations automatically update!');
 console.log('📋 TVET: E(0-49%) → C(50-64%) → B(65-79%) → A(80-100%) | Points: E=0, C=2, B=3, A=4');
 console.log('📋 Nursing: D(0-59%) → C(60-64%) → B(65-74%) → A(75-100%) | Points: D=0.0, C=2.0, B=3.0, A=4.0');
-console.log('📊 Nursing Max: CAT1=30, CAT2=30, Exam=70 (Total=100)');
-console.log('📊 TVET Max: CAT1=30, CAT2=30, Exam=100 (Total=160)');
-console.log('✅ Selected Program Display initialized!');
-console.log('✅ exportAllMarksData() function is available!');
+console.log('📊 Assessment Types: Full, Single CAT, Exam Only, CATs Only, CAT1 Only, CAT2 Only');
 
 // Initialize selected program display on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -3314,7 +3310,6 @@ window.getProgramType = function(programCode) {
 };
 
 window.getGradingConfig = function(programCode) {
-    // Direct check for KRCHN
     if (programCode === 'KRCHN') {
         return window.GRADING_CONFIG.NURSING;
     }
