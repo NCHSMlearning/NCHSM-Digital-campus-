@@ -1,6 +1,6 @@
 // ============================================================
-// TVET & NURSING GRADING SYSTEM - COMPLETE UPDATED VERSION
-// WITH DIRECT KRCHN DETECTION (No conflict with script.js)
+// TVET & NURSING GRADING SYSTEM - COMPLETE FIXED VERSION
+// WITH DIRECT KRCHN DETECTION
 // ============================================================
 
 // ============================================================
@@ -41,7 +41,7 @@ const GRADING_CONFIG = {
             { min: 60, max: 64, grade: 'C', points: 2.0, status: 'Pass', comment: 'Pass - Satisfactory performance', color: '#92400e', bgColor: '#fef3c7', icon: '✅' },
             { min: 0, max: 59, grade: 'D', points: 0.0, status: 'Fail', comment: 'Fail - Needs improvement', color: '#991b1b', bgColor: '#fee2e2', icon: '❌' }
         ],
-        FORMULA: 'percentage = cat1 + cat2 + exam (out of 100)'
+        FORMULA: 'percentage = (cat1 + cat2 + exam) / 100 * 100'
     }
 };
 
@@ -63,13 +63,11 @@ const NURSING_PROGRAMS = ['KRCHN'];
 
 function getProgramType(programCode) {
     if (!programCode) return 'TVET';
-    // ✅ Direct check - no conflict with script.js
     if (programCode === 'KRCHN') return 'NURSING';
     return 'TVET';
 }
 
 function getGradingConfig(programCode) {
-    // ✅ Direct check - no conflict with script.js
     if (programCode === 'KRCHN') {
         return GRADING_CONFIG.NURSING;
     }
@@ -77,7 +75,7 @@ function getGradingConfig(programCode) {
 }
 
 // ============================================================
-// TVET MARKS CALCULATION - CORE FUNCTION
+// TVET MARKS CALCULATION - CORE FIXED FUNCTION
 // ============================================================
 
 function getTVETGrade(percentage, config) {
@@ -120,43 +118,57 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     const clampedExam = Math.min(Math.max(ex, 0), examMax);
     
     const assessmentType = window.me_currentAssessmentType || 'full';
-    let total;
-    if (assessmentType === 'single_cat') {
-        total = clampedCat1 + clampedExam;
+    
+    // ✅ FIX: Calculate based on assessment type with proper max
+    let rawTotal;
+    let maxPossible;
+    
+    if (assessmentType === 'full') {
+        rawTotal = clampedCat1 + clampedCat2 + clampedExam;
+        maxPossible = isNursing ? 100 : config.TOTAL_MAX; // Nursing: 30+30+70=100, TVET: 30+30+100=160
+    } else if (assessmentType === 'single_cat') {
+        rawTotal = clampedCat1 + clampedExam;
+        // Max for single_cat: CAT1(30) + Exam(Nursing:70/TVET:100)
+        maxPossible = isNursing ? 100 : 130; // 30 + 100 = 130
     } else if (assessmentType === 'exam_only') {
-        total = clampedExam;
+        rawTotal = clampedExam;
+        maxPossible = examMax; // Nursing: 70, TVET: 100
     } else if (assessmentType === 'cats_only') {
-        total = clampedCat1 + clampedCat2;
+        rawTotal = clampedCat1 + clampedCat2;
+        maxPossible = 60; // 30 + 30 = 60
     } else if (assessmentType === 'cat_only') {
-        total = clampedCat1;
+        rawTotal = clampedCat1;
+        maxPossible = config.CAT1_MAX; // 30
     } else {
-        total = clampedCat1 + clampedCat2 + clampedExam;
+        rawTotal = clampedCat1 + clampedCat2 + clampedExam;
+        maxPossible = isNursing ? 100 : config.TOTAL_MAX;
     }
     
+    // ✅ FIX: Calculate percentage correctly based on max possible
     let percentage;
-    if (isNursing) {
-        // Nursing: total is already out of 100 (30 + 30 + 70 = 100)
-        percentage = total;
+    if (maxPossible > 0) {
+        percentage = (rawTotal / maxPossible) * 100;
     } else {
-        // TVET: convert to percentage
-        percentage = (total / config.TOTAL_MAX) * 100;
+        percentage = 0;
     }
     
-    const roundedPercentage = Math.round(percentage * 100) / 100;
-    const gradeInfo = getTVETGrade(roundedPercentage, config);
+    // Cap at 100% and round to 2 decimal places
+    percentage = Math.min(Math.round(percentage * 100) / 100, 100);
+    
+    const gradeInfo = getTVETGrade(percentage, config);
     
     return {
         cat1: clampedCat1,
         cat2: clampedCat2,
         exam: clampedExam,
-        total: total,
-        maxTotal: isNursing ? 100 : config.TOTAL_MAX,
-        percentage: roundedPercentage,
+        total: rawTotal,
+        maxTotal: maxPossible,
+        percentage: percentage,
         grade: gradeInfo.grade,
         points: gradeInfo.points,
         status: gradeInfo.status,
         comment: gradeInfo.comment,
-        isPassing: roundedPercentage >= config.PASS_MARK,
+        isPassing: percentage >= config.PASS_MARK,
         programType: isNursing ? 'NURSING' : 'TVET',
         config: config,
         gradeType: config.GRADE_TYPE,
@@ -165,8 +177,8 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
             cat1: `${clampedCat1}/${config.CAT1_MAX}`,
             cat2: `${clampedCat2}/${config.CAT2_MAX}`,
             exam: `${clampedExam}/${examMax}`,
-            total: `${total}/${isNursing ? 100 : config.TOTAL_MAX}`,
-            percentage: `${roundedPercentage}%`
+            total: `${rawTotal}/${maxPossible}`,
+            percentage: `${percentage}%`
         }
     };
 }
@@ -192,6 +204,7 @@ function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode)
     const config = isNursing ? GRADING_CONFIG.NURSING : GRADING_CONFIG.TVET;
     
     let total = 0;
+    let maxPossible = 0;
     let cat1Val = Math.min(Math.max(parseFloat(cat1) || 0, 0), config.CAT1_MAX);
     let cat2Val = Math.min(Math.max(parseFloat(cat2) || 0, 0), config.CAT2_MAX);
     
@@ -199,23 +212,41 @@ function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode)
     const examMax = isNursing ? 70 : config.EXAM_MAX;
     let examVal = Math.min(Math.max(parseFloat(exam) || 0, 0), examMax);
     
+    // ✅ FIX: Calculate based on assessment type with proper max
     switch(assessmentType) {
-        case 'full': total = cat1Val + cat2Val + examVal; break;
-        case 'single_cat': total = cat1Val + examVal; break;
-        case 'exam_only': total = examVal; break;
-        case 'cats_only': total = cat1Val + cat2Val; break;
-        case 'cat_only': total = cat1Val; break;
-        default: total = cat1Val + cat2Val + examVal;
+        case 'full': 
+            total = cat1Val + cat2Val + examVal; 
+            maxPossible = isNursing ? 100 : config.TOTAL_MAX;
+            break;
+        case 'single_cat': 
+            total = cat1Val + examVal; 
+            maxPossible = isNursing ? 100 : 130;
+            break;
+        case 'exam_only': 
+            total = examVal; 
+            maxPossible = examMax;
+            break;
+        case 'cats_only': 
+            total = cat1Val + cat2Val; 
+            maxPossible = 60;
+            break;
+        case 'cat_only': 
+            total = cat1Val; 
+            maxPossible = config.CAT1_MAX;
+            break;
+        default: 
+            total = cat1Val + cat2Val + examVal; 
+            maxPossible = isNursing ? 100 : config.TOTAL_MAX;
     }
     
     let percentage;
-    if (isNursing) {
-        percentage = total;
+    if (maxPossible > 0) {
+        percentage = (total / maxPossible) * 100;
     } else {
-        percentage = (total / config.TOTAL_MAX) * 100;
+        percentage = 0;
     }
     
-    return Math.round(percentage * 10) / 10;
+    return Math.round(Math.min(percentage, 100) * 10) / 10;
 }
 
 // ============================================================
@@ -544,7 +575,6 @@ async function loadMarksEntry() {
         me_currentYear = year;
         me_currentAssessmentType = assessmentType;
         
-        // ✅ Direct config check - no conflict with script.js
         const config = getGradingConfig(program);
         const isNursing = program === 'KRCHN';
         const programType = isNursing ? 'NURSING' : 'TVET';
@@ -776,6 +806,22 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     // ✅ Nursing exam max is 70, TVET is 100
     const examMax = isNursing ? 70 : config.EXAM_MAX;
     
+    // ✅ Get max possible for this assessment type
+    let maxTotal;
+    if (assessmentType === 'full') {
+        maxTotal = isNursing ? 100 : config.TOTAL_MAX;
+    } else if (assessmentType === 'single_cat') {
+        maxTotal = isNursing ? 100 : 130;
+    } else if (assessmentType === 'exam_only') {
+        maxTotal = examMax;
+    } else if (assessmentType === 'cats_only') {
+        maxTotal = 60;
+    } else if (assessmentType === 'cat_only') {
+        maxTotal = config.CAT1_MAX;
+    } else {
+        maxTotal = isNursing ? 100 : config.TOTAL_MAX;
+    }
+    
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
             <div>
@@ -786,6 +832,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                 <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} passing</span>
                 <span style="font-size: 12px; color: #6b7280; margin-left: 12px; background: #f3f4f6; padding: 2px 12px; border-radius: 40px;">
                     📋 ${isCompetency ? 'TVET Competency' : 'Nursing Academic'}
+                </span>
+                <span style="font-size: 11px; color: #475569; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">
+                    Max: ${maxTotal}
                 </span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -819,7 +868,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                         ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-${config.CAT1_MAX})</th>` : ''}
                         ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-${config.CAT2_MAX})</th>` : ''}
                         ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${examMax})</th>` : ''}
-                        <th style="padding: 10px 8px; text-align: center;">Total (out of 100)</th>
+                        <th style="padding: 10px 8px; text-align: center;">Total (${maxTotal})</th>
                         <th style="padding: 10px 8px; text-align: center;">%</th>
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
                         <th style="padding: 10px 8px; text-align: center;">Points</th>
@@ -839,7 +888,8 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         const gradeInfo = getTVETGrade(percentage, config);
         const isPassing = percentage >= config.PASS_MARK;
         
-        const displayTotal = result.percentage > 0 ? result.percentage : '--';
+        const displayTotal = result.percentage > 0 ? result.total : '--';
+        const displayMaxTotal = result.maxTotal;
         const displayPercentage = result.percentage > 0 ? `${result.percentage}%` : '--';
         const displayGrade = result.percentage > 0 ? result.grade : '--';
         const displayPoints = result.percentage > 0 ? result.points : '--';
@@ -916,7 +966,7 @@ function updateMarksEntryRow(index) {
     
     const totalEl = document.getElementById(`me_total_${index}`);
     if (totalEl) {
-        totalEl.textContent = result.percentage > 0 ? result.percentage : '--';
+        totalEl.textContent = result.percentage > 0 ? result.total : '--';
         totalEl.style.color = isPassing ? '#065f46' : (result.percentage > 0 ? '#991b1b' : '#f59e0b');
     }
     
@@ -1335,7 +1385,7 @@ function renderUnitColumns() {
         { id: 'cat1', label: `CAT1 (0-${config.CAT1_MAX})`, required: false },
         { id: 'cat2', label: `CAT2 (0-${config.CAT2_MAX})`, required: false },
         { id: 'exam', label: `Exam (0-${examMax})`, required: false },
-        { id: 'total', label: 'Total (out of 100)', required: false },
+        { id: 'total', label: 'Total', required: false },
         { id: 'percentage', label: '%', required: false },
         { id: 'grade', label: 'Grade', required: false },
         { id: 'points', label: 'Points', required: false },
@@ -3024,7 +3074,7 @@ function recalculateAllTotals() {
         
         const totalEl = document.getElementById(`me_total_${index}`);
         if (totalEl) {
-            totalEl.textContent = result.percentage > 0 ? result.percentage : '--';
+            totalEl.textContent = result.percentage > 0 ? result.total : '--';
             totalEl.style.color = isPassing ? '#065f46' : (result.percentage > 0 ? '#991b1b' : '#f59e0b');
         }
         
