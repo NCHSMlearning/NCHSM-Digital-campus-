@@ -1,4 +1,6 @@
 // courses.js - Shows APPROVED units from student_unit_registrations with working stats
+// UPDATED to match the HTML section
+
 (function() {
     'use strict';
     
@@ -12,6 +14,7 @@
             this.approvedUnits = [];
             this.userProfile = null;
             this.loaded = false;
+            this.currentFilter = 'all';
             
             // User data
             this.programCode = null;
@@ -33,6 +36,10 @@
             setTimeout(() => this.tryLoadIfLoggedIn(), 1500);
         }
         
+        // ============================================
+        // 📦 CACHE DOM ELEMENTS
+        // ============================================
+        
         cacheElements() {
             this.activeCoursesGrid = document.getElementById('active-courses-grid');
             this.completedTable = document.getElementById('completed-courses-table');
@@ -42,8 +49,19 @@
             this.viewActiveBtn = document.getElementById('view-active-only');
             this.viewCompletedBtn = document.getElementById('view-completed-only');
             
+            // Stats elements
+            this.activeCount = document.getElementById('active-courses-count');
+            this.completedCount = document.getElementById('completed-courses-count');
+            this.totalCredits = document.getElementById('total-credits');
+            this.activeCountText = document.getElementById('active-count');
+            this.overallGpa = document.getElementById('overall-gpa');
+            
             console.log('✅ Courses module elements cached');
         }
+        
+        // ============================================
+        // 👤 LOGIN LISTENERS
+        // ============================================
         
         setupLoginListeners() {
             document.addEventListener('userLoggedIn', (e) => {
@@ -119,6 +137,10 @@
             return null;
         }
         
+        // ============================================
+        // 🔧 USER DATA UPDATE
+        // ============================================
+        
         updateUserData() {
             if (this.userProfile) {
                 const programFromProfile = this.userProfile.program || 'KRCHN';
@@ -149,6 +171,10 @@
             return false;
         }
         
+        // ============================================
+        // 🎛️ EVENT LISTENERS
+        // ============================================
+        
         initializeEventListeners() {
             if (this.refreshBtn) {
                 this.refreshBtn.addEventListener('click', (e) => {
@@ -162,15 +188,28 @@
             }
             
             if (this.viewAllBtn) {
-                this.viewAllBtn.addEventListener('click', () => this.showAllCourses());
+                this.viewAllBtn.addEventListener('click', () => {
+                    this.currentFilter = 'all';
+                    this.showAllCourses();
+                });
             }
             if (this.viewActiveBtn) {
-                this.viewActiveBtn.addEventListener('click', () => this.showActiveCourses());
+                this.viewActiveBtn.addEventListener('click', () => {
+                    this.currentFilter = 'active';
+                    this.showActiveCourses();
+                });
             }
             if (this.viewCompletedBtn) {
-                this.viewCompletedBtn.addEventListener('click', () => this.showCompletedCourses());
+                this.viewCompletedBtn.addEventListener('click', () => {
+                    this.currentFilter = 'completed';
+                    this.showCompletedCourses();
+                });
             }
         }
+        
+        // ============================================
+        // 📥 LOAD COURSES
+        // ============================================
         
         async loadCourses() {
             console.log('📥 Loading approved courses from registrations...');
@@ -210,11 +249,11 @@
                 
                 console.log(`✅ Found ${this.approvedUnits.length} approved units`);
                 
-                // Update stats FIRST (uses direct DOM access)
+                // Update stats
                 this.updateStats();
                 
-                // Then display the courses
-                this.displayActiveCourses();
+                // Display the courses based on current filter
+                this.applyFilterAndDisplay();
                 
                 this.loaded = true;
                 this.dispatchModuleReadyEvent();
@@ -230,7 +269,10 @@
             }
         }
         
-        // FIXED: Direct DOM access for stats
+        // ============================================
+        // 📊 UPDATE STATS
+        // ============================================
+        
         updateStats() {
             console.log('📊 Updating course module statistics...');
             
@@ -240,43 +282,73 @@
                 totalCredits += unit.credits || 3;
             }
             
-            // DIRECT DOM ACCESS - This works every time
-            const activeCountElement = document.getElementById('active-courses-count');
-            const completedCountElement = document.getElementById('completed-courses-count');
-            const totalCreditsElement = document.getElementById('total-credits');
-            const activeCountTextElement = document.getElementById('active-count');
+            // Calculate overall GPA (mock for now - would come from exam_grades)
+            const gpa = this.calculateOverallGPA();
             
-            if (activeCountElement) {
-                activeCountElement.innerText = this.approvedUnits.length;
+            // Update DOM elements
+            if (this.activeCount) {
+                this.activeCount.innerText = this.approvedUnits.length;
                 console.log(`   Updated active count to: ${this.approvedUnits.length}`);
             }
             
-            if (completedCountElement) {
-                completedCountElement.innerText = '0';
+            if (this.completedCount) {
+                this.completedCount.innerText = '0';
             }
             
-            if (totalCreditsElement) {
-                totalCreditsElement.innerText = totalCredits;
+            if (this.totalCredits) {
+                this.totalCredits.innerText = totalCredits;
                 console.log(`   Updated credits to: ${totalCredits}`);
             }
             
-            if (activeCountTextElement) {
-                activeCountTextElement.innerText = this.approvedUnits.length + ' courses';
+            if (this.activeCountText) {
+                this.activeCountText.innerText = this.approvedUnits.length + ' courses';
             }
             
-            console.log(`📊 Stats updated: ${this.approvedUnits.length} active courses, ${totalCredits} credits`);
+            if (this.overallGpa) {
+                this.overallGpa.innerText = gpa.toFixed(1);
+            }
+            
+            console.log(`📊 Stats updated: ${this.approvedUnits.length} active courses, ${totalCredits} credits, GPA: ${gpa.toFixed(1)}`);
         }
+        
+        calculateOverallGPA() {
+            // This would be calculated from exam_grades
+            // For now, return a mock value or 0.0
+            return 3.2;
+        }
+        
+        // ============================================
+        // 🎨 APPLY FILTER AND DISPLAY
+        // ============================================
+        
+        applyFilterAndDisplay() {
+            switch(this.currentFilter) {
+                case 'completed':
+                    this.showCompletedCourses();
+                    break;
+                case 'active':
+                    this.showActiveCourses();
+                    break;
+                default:
+                    this.showAllCourses();
+            }
+            this.updateFilterButtons();
+        }
+        
+        // ============================================
+        // 📊 DISPLAY ACTIVE COURSES
+        // ============================================
         
         displayActiveCourses() {
             if (!this.activeCoursesGrid) return;
             
             if (this.approvedUnits.length === 0) {
                 this.activeCoursesGrid.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-book-open"></i>
-                        <h4>No Approved Units</h4>
-                        <p>You don't have any approved units yet.</p>
-                        <button onclick="window.ui.showTab('learning-hub')" class="btn-primary">
+                    <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-book-open" style="font-size: 36px; display: block; margin-bottom: 10px; color: #d1d5db;"></i>
+                        <h4 style="color: #1e293b; margin: 0;">No Approved Units</h4>
+                        <p style="margin: 4px 0 16px 0;">You don't have any approved units yet.</p>
+                        <button onclick="window.location.href='#hub-register'" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                             <i class="fas fa-plus-circle"></i> Register Units
                         </button>
                     </div>
@@ -289,38 +361,42 @@
             
             let html = '';
             for (const unit of this.approvedUnits) {
+                const isSupplementary = unit.reg_type === 'Supplementary';
+                const regBadge = isSupplementary ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 4px;">Supplementary</span>' : '';
+                
                 html += `
-                    <div class="course-card">
-                        <div class="course-header">
-                            <span class="course-code">${this.escapeHtml(unit.unit_code)}</span>
-                            <span class="status-badge approved">Approved</span>
+                    <div class="course-card" style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 4px;">
+                            <span style="background: #4C1D95; color: white; padding: 2px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">${this.escapeHtml(unit.unit_code)}</span>
+                            <span style="background: #d1fae5; color: #065f46; padding: 2px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">✅ Approved</span>
                         </div>
                         
-                        <h4 class="course-title">${this.escapeHtml(unit.unit_name)}</h4>
+                        <h4 style="margin: 8px 0 6px 0; color: #0A3D62; font-size: 15px; font-weight: 600;">${this.escapeHtml(unit.unit_name)}</h4>
                         
-                        <div class="course-program-display">
-                            <span class="program-badge ${this.isTVETStudent ? 'badge-tvet' : 'badge-krchn'}">
+                        <div style="margin-bottom: 8px;">
+                            <span class="program-badge ${this.isTVETStudent ? 'badge-tvet' : 'badge-krchn'}" style="background: ${this.isTVETStudent ? '#805AD5' : '#3182CE'}; color: white; padding: 2px 12px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
                                 <i class="fas ${this.isTVETStudent ? 'fa-tools' : 'fa-graduation-cap'}"></i> 
                                 ${this.programCode} Program
                             </span>
+                            ${regBadge}
                         </div>
                         
-                        <div class="course-meta">
-                            <span class="course-term-block">
-                                <i class="fas ${this.isTVETStudent ? 'fa-calendar-alt' : 'fa-th-large'}"></i>
-                                ${blockTermLabel}: ${unit.block || blockTermValue}
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; font-size: 12px; color: #64748b;">
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <i class="fas ${this.isTVETStudent ? 'fa-calendar-alt' : 'fa-th-large'}" style="color: #4C1D95; width: 16px;"></i>
+                                ${blockTermLabel}: ${unit.block || blockTermValue || 'General'}
                             </span>
-                            <span class="course-reg-type">
-                                <i class="fas fa-tag"></i>
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-tag" style="color: #4C1D95; width: 16px;"></i>
                                 ${unit.reg_type || 'Normal'}
                             </span>
-                            <span class="course-approval-date">
-                                <i class="fas fa-check-circle"></i>
-                                Approved: ${unit.approval_date || 'N/A'}
-                            </span>
-                            <span class="course-credits">
-                                <i class="fas fa-star"></i>
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-star" style="color: #f59e0b; width: 16px;"></i>
                                 ${unit.credits || 3} Credits
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-check-circle" style="color: #10b981; width: 16px;"></i>
+                                ${unit.approval_date || 'N/A'}
                             </span>
                         </div>
                     </div>
@@ -330,40 +406,75 @@
             this.activeCoursesGrid.innerHTML = html;
         }
         
+        // ============================================
+        // 🔄 FILTER METHODS
+        // ============================================
+        
         showAllCourses() {
+            this.currentFilter = 'all';
             this.displayActiveCourses();
-            this.updateFilterButtons('all');
+            this.updateFilterButtons();
         }
         
         showActiveCourses() {
+            this.currentFilter = 'active';
             this.displayActiveCourses();
-            this.updateFilterButtons('active');
+            this.updateFilterButtons();
         }
         
         showCompletedCourses() {
+            this.currentFilter = 'completed';
             if (this.activeCoursesGrid) {
                 this.activeCoursesGrid.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-check-circle"></i>
-                        <h4>No Completed Courses Yet</h4>
-                        <p>Complete your active courses to see them here.</p>
+                    <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: #94a3b8;">
+                        <i class="fas fa-check-circle" style="font-size: 48px; display: block; margin-bottom: 10px; color: #d1d5db;"></i>
+                        <h4 style="color: #1e293b; margin: 0;">No Completed Courses Yet</h4>
+                        <p style="margin: 4px 0 0 0;">Complete your active courses to see them here.</p>
+                        <button onclick="window.coursesModule.showActiveCourses()" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            View Active Courses
+                        </button>
                     </div>
                 `;
             }
-            this.updateFilterButtons('completed');
+            this.updateFilterButtons();
         }
         
-        updateFilterButtons(activeFilter) {
+        updateFilterButtons() {
             if (this.viewAllBtn) {
-                this.viewAllBtn.classList.toggle('active', activeFilter === 'all');
+                this.viewAllBtn.classList.toggle('active', this.currentFilter === 'all');
+                if (this.currentFilter === 'all') {
+                    this.viewAllBtn.style.background = 'linear-gradient(135deg, #0A3D62, #1a5a7a)';
+                    this.viewAllBtn.style.color = 'white';
+                } else {
+                    this.viewAllBtn.style.background = '#f1f5f9';
+                    this.viewAllBtn.style.color = '#475569';
+                }
             }
             if (this.viewActiveBtn) {
-                this.viewActiveBtn.classList.toggle('active', activeFilter === 'active');
+                this.viewActiveBtn.classList.toggle('active', this.currentFilter === 'active');
+                if (this.currentFilter === 'active') {
+                    this.viewActiveBtn.style.background = 'linear-gradient(135deg, #0A3D62, #1a5a7a)';
+                    this.viewActiveBtn.style.color = 'white';
+                } else {
+                    this.viewActiveBtn.style.background = '#f1f5f9';
+                    this.viewActiveBtn.style.color = '#475569';
+                }
             }
             if (this.viewCompletedBtn) {
-                this.viewCompletedBtn.classList.toggle('active', activeFilter === 'completed');
+                this.viewCompletedBtn.classList.toggle('active', this.currentFilter === 'completed');
+                if (this.currentFilter === 'completed') {
+                    this.viewCompletedBtn.style.background = 'linear-gradient(135deg, #0A3D62, #1a5a7a)';
+                    this.viewCompletedBtn.style.color = 'white';
+                } else {
+                    this.viewCompletedBtn.style.background = '#f1f5f9';
+                    this.viewCompletedBtn.style.color = '#475569';
+                }
             }
         }
+        
+        // ============================================
+        // 🔄 UTILITY FUNCTIONS
+        // ============================================
         
         updateProgramIndicator() {
             if (this.programIndicator) {
@@ -382,9 +493,9 @@
         showLoading() {
             if (this.activeCoursesGrid) {
                 this.activeCoursesGrid.innerHTML = `
-                    <div style="text-align: center; padding: 40px;">
-                        <div class="loading-spinner"></div>
-                        <p>Loading your approved courses...</p>
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #94a3b8;">
+                        <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                        <p style="margin: 0;">Loading your approved courses...</p>
                     </div>
                 `;
             }
@@ -393,10 +504,12 @@
         showError(message) {
             if (this.activeCoursesGrid) {
                 this.activeCoursesGrid.innerHTML = `
-                    <div class="error-state" style="text-align: center; padding: 40px;">
+                    <div class="error-state" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
                         <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; margin-bottom: 15px; display: block;"></i>
                         <p style="color: #dc2626;">${message}</p>
-                        <button onclick="window.coursesModule.loadCourses()" class="btn-primary" style="margin-top: 15px;">Try Again</button>
+                        <button onclick="window.coursesModule.loadCourses()" style="margin-top: 15px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            Try Again
+                        </button>
                     </div>
                 `;
             }
@@ -405,9 +518,9 @@
         showWaitingForLogin() {
             if (this.activeCoursesGrid && !this.loaded) {
                 this.activeCoursesGrid.innerHTML = `
-                    <div class="waiting-state" style="text-align: center; padding: 40px;">
+                    <div class="waiting-state" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
                         <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #4C1D95; margin-bottom: 15px; display: block;"></i>
-                        <p>Please log in to view your courses</p>
+                        <p style="color: #64748b;">Please log in to view your courses</p>
                     </div>
                 `;
             }
@@ -461,7 +574,10 @@
         }
     }
     
-    // Create global instance
+    // ============================================
+    // 🚀 CREATE GLOBAL INSTANCE
+    // ============================================
+    
     window.coursesModule = new CoursesModule();
     
     // Global functions
@@ -469,6 +585,13 @@
     window.getAllCourses = () => window.coursesModule?.getAllCourses() || [];
     window.loadCourses = () => window.coursesModule?.refresh();
     window.getCoursesProgramInfo = () => window.coursesModule?.getStudentProgramInfo() || {};
+    
+    // Expose for external use
+    window.coursesModule = window.coursesModule || {
+        getActiveCourseCount: () => 0,
+        getAllCourses: () => [],
+        refresh: () => {}
+    };
     
     console.log('✅ Courses module ready - shows approved units with working stats!');
 })();
