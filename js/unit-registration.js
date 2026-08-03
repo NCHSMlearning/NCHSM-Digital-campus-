@@ -1,12 +1,14 @@
-// js/unit-registration.js - Works with KRCHN/TVET separation
+// js/unit-registration.js - Complete Version
+// Matches the updated HTML section with Supplementary Exam Support
+
 (function() {
     'use strict';
     
-    console.log('unit-registration.js - Loading with Supabase integration...');
+    console.log('✅ unit-registration.js - Loading with Supabase integration...');
     
     class UnitRegistrationModule {
         constructor() {
-            console.log('UnitRegistrationModule initialized');
+            console.log('🔧 UnitRegistrationModule initialized');
             
             // Store data
             this.allUnits = [];
@@ -15,16 +17,21 @@
             this.userProfile = null;
             this.loaded = false;
             this.maxUnits = 15;
-            this.isSubmitting = false;  // ✅ NEW: Prevent double submission
+            this.isSubmitting = false;
             
             // User data
             this.programCode = null;
             this.programType = null;
             this.intakeYear = null;
-            this.intakeMonth = null;  // ✅ NEW: Store intake month
+            this.intakeMonth = null;
             this.userBlock = null;
             this.userTerm = null;
             this.isTVETStudent = false;
+            
+            // ✅ Supplementary exam tracking
+            this.supplementaryUnits = [];
+            this.failedUnits = [];
+            this.hasSupplementaryEligibility = false;
             
             // DOM elements
             this.cacheElements();
@@ -39,9 +46,13 @@
             setTimeout(() => this.tryLoadIfLoggedIn(), 1500);
         }
         
+        // ============================================
+        // 👤 LOGIN LISTENERS
+        // ============================================
+        
         setupLoginListeners() {
             document.addEventListener('userLoggedIn', (e) => {
-                console.log('USER LOGGED IN EVENT RECEIVED!');
+                console.log('👤 USER LOGGED IN EVENT RECEIVED!');
                 this.userProfile = e.detail?.userProfile;
                 this.updateUserData();
                 this.loadUnits();
@@ -58,7 +69,7 @@
             });
             
             document.addEventListener('appReady', () => {
-                console.log('App ready event received');
+                console.log('📱 App ready event received');
                 this.tryLoadIfLoggedIn();
             });
         }
@@ -67,12 +78,12 @@
             const profile = this.getUserProfileFromAnySource();
             
             if (profile) {
-                console.log('User already logged in:', profile.full_name || profile.email);
+                console.log('👤 User already logged in:', profile.full_name || profile.email);
                 this.userProfile = profile;
                 this.updateUserData();
                 this.loadUnits();
             } else {
-                console.log('No user profile found yet, waiting for login...');
+                console.log('⏳ No user profile found yet, waiting for login...');
                 this.showWaitingForLogin();
             }
         }
@@ -106,6 +117,10 @@
             return null;
         }
         
+        // ============================================
+        // 🔧 USER DATA UPDATE
+        // ============================================
+        
         updateUserData() {
             if (this.userProfile) {
                 let programFromProfile = this.userProfile.program || 'KRCHN';
@@ -120,14 +135,13 @@
                 if (tvetPrograms.includes(programFromProfile) || programFromProfile === 'TVET') {
                     this.isTVETStudent = true;
                     this.programCode = programFromProfile;
-                    console.log('TVET Student detected. Program:', this.programCode);
+                    console.log('🔧 TVET Student detected. Program:', this.programCode);
                 } else {
                     this.isTVETStudent = false;
                     this.programCode = 'KRCHN';
-                    console.log('KRCHN Student detected');
+                    console.log('🎓 KRCHN Student detected');
                 }
                 
-                // ✅ NEW: Store intake year and month
                 this.intakeYear = this.userProfile.intake_year || 2025;
                 this.intakeMonth = this.userProfile.intake_month || null;
                 
@@ -140,7 +154,7 @@
                     this.userTerm = null;
                 }
                 
-                console.log('User data updated:', {
+                console.log('📊 User data updated:', {
                     programCode: this.programCode,
                     programType: this.isTVETStudent ? 'TVET' : 'KRCHN',
                     intake: this.intakeYear,
@@ -153,6 +167,10 @@
             return false;
         }
         
+        // ============================================
+        // 📦 CACHE DOM ELEMENTS
+        // ============================================
+        
         cacheElements() {
             this.availableBody = document.getElementById('availableUnitsBody');
             this.registeredBody = document.getElementById('registeredUnitsBody');
@@ -162,7 +180,15 @@
             this.refreshBtn = document.getElementById('refreshUnitsBtn');
             this.submitBtn = document.getElementById('submitRegistrationBtn');
             this.selectAllCheckbox = document.getElementById('selectAllUnits');
+            
+            // ✅ Registration Status Badge
+            this.registrationBadge = document.getElementById('registrationStatusBadge');
+            this.registrationStatusText = document.getElementById('registrationStatusText');
         }
+        
+        // ============================================
+        // 🎛️ EVENT LISTENERS
+        // ============================================
         
         initializeEventListeners() {
             if (this.refreshBtn) {
@@ -183,7 +209,6 @@
                         this.showError('Please log in first');
                         return;
                     }
-                    // ✅ Prevent double submission
                     if (this.isSubmitting) {
                         console.log('⏳ Submission already in progress...');
                         return;
@@ -216,13 +241,164 @@
                 this.regType.addEventListener('change', () => {
                     if (this.regType.value) {
                         this.loadAvailableUnits();
+                        // ✅ Update UI based on registration type
+                        this.updateRegistrationTypeUI(this.regType.value);
                     }
                 });
             }
         }
         
+        // ============================================
+        // 🎨 UPDATE UI BASED ON REGISTRATION TYPE
+        // ============================================
+        
+        updateRegistrationTypeUI(regType) {
+            const isSupplementary = regType === 'Supplementary';
+            const infoText = document.getElementById('registrationInfoText');
+            const warningBox = document.getElementById('registrationWarning');
+            
+            if (isSupplementary) {
+                if (infoText) {
+                    infoText.innerHTML = `
+                        <i class="fas fa-info-circle" style="color: #f59e0b;"></i>
+                        Supplementary Registration: You can re-register for units you previously failed.
+                        <strong>Max 3 units allowed.</strong>
+                    `;
+                    infoText.style.display = 'block';
+                }
+                if (warningBox) {
+                    warningBox.innerHTML = `
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Supplementary registration is for students who need to retake failed units. 
+                        Please select the units you wish to retake. These will be marked as Supplementary.</span>
+                    `;
+                    warningBox.style.display = 'flex';
+                }
+                // Show failed units if available
+                this.showFailedUnitsForSupplementary();
+            } else {
+                if (infoText) {
+                    infoText.innerHTML = `
+                        <i class="fas fa-info-circle" style="color: #3B82F6;"></i>
+                        Normal Registration: Select up to ${this.maxUnits} units for the current trimester.
+                        <strong>${this.isTVETStudent ? 'TVET' : 'KRCHN'}</strong> program.
+                    `;
+                    infoText.style.display = 'block';
+                }
+                if (warningBox) {
+                    warningBox.style.display = 'none';
+                }
+            }
+        }
+        
+        // ============================================
+        // 📊 SHOW FAILED UNITS FOR SUPPLEMENTARY
+        // ============================================
+        
+        async showFailedUnitsForSupplementary() {
+            try {
+                const supabase = window.db?.supabase;
+                const studentId = this.userProfile?.user_id || this.userProfile?.id;
+                
+                if (!studentId || !supabase) return;
+                
+                // Get failed units from exam grades
+                const { data: failedExams, error } = await supabase
+                    .from('exam_grades')
+                    .select('exam_id, marks, total_score, result_status')
+                    .eq('student_id', studentId)
+                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                    .eq('result_status', 'FAIL');
+                
+                if (error) throw error;
+                
+                this.failedUnits = failedExams || [];
+                this.hasSupplementaryEligibility = this.failedUnits.length > 0;
+                
+                // Get unit details for failed exams
+                if (this.failedUnits.length > 0) {
+                    const examIds = this.failedUnits.map(e => e.exam_id);
+                    const { data: exams, error: examError } = await supabase
+                        .from('exams')
+                        .select('id, exam_name, course_name, unit_code, block_term')
+                        .in('id', examIds);
+                    
+                    if (!examError && exams) {
+                        // Store supplementary units with details
+                        this.supplementaryUnits = exams.map(exam => {
+                            const grade = this.failedUnits.find(e => e.exam_id === exam.id);
+                            return {
+                                ...exam,
+                                marks: grade?.marks || 0,
+                                total_score: grade?.total_score || 0
+                            };
+                        });
+                    }
+                }
+                
+                // Update the UI to show failed units
+                this.updateSupplementaryUI();
+                
+            } catch (error) {
+                console.error('Error loading failed units:', error);
+            }
+        }
+        
+        updateSupplementaryUI() {
+            const container = document.getElementById('supplementaryUnitsContainer');
+            const countBadge = document.getElementById('supplementaryCount');
+            
+            if (!container) return;
+            
+            if (this.supplementaryUnits.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #94a3b8;">
+                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                        <p>No failed units found. You are eligible for normal registration.</p>
+                    </div>
+                `;
+                if (countBadge) countBadge.textContent = '0';
+                return;
+            }
+            
+            let html = `
+                <div style="margin-bottom: 12px; padding: 12px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b;">
+                    <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+                    <span style="font-weight: 600; color: #92400e;">You have ${this.supplementaryUnits.length} failed unit(s) eligible for supplementary registration.</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 200px; overflow-y: auto;">
+            `;
+            
+            this.supplementaryUnits.forEach((unit, index) => {
+                const isRegistered = this.registeredUnits.some(u => u.unit_code === unit.unit_code && u.reg_type === 'Supplementary');
+                html += `
+                    <div style="padding: 8px 12px; background: ${isRegistered ? '#d1fae5' : '#f8fafc'}; border-radius: 6px; border: 1px solid ${isRegistered ? '#10b981' : '#e5e7eb'}; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${this.escapeHtml(unit.unit_code || unit.exam_name)}</strong>
+                            <div style="font-size: 11px; color: #64748b;">${this.escapeHtml(unit.course_name || unit.exam_name)}</div>
+                        </div>
+                        <div>
+                            ${isRegistered ? 
+                                '<span style="color: #10b981; font-size: 11px; font-weight: 600;">✅ Registered</span>' :
+                                `<span style="font-size: 11px; color: #dc2626;">Score: ${unit.marks}%</span>`
+                            }
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div>`;
+            
+            container.innerHTML = html;
+            if (countBadge) countBadge.textContent = this.supplementaryUnits.length;
+        }
+        
+        // ============================================
+        // 📥 LOAD UNITS
+        // ============================================
+        
         async loadUnits() {
-            console.log('Loading units...');
+            console.log('📥 Loading units...');
             
             if (!this.userProfile) {
                 this.showError('Please log in to register units');
@@ -247,12 +423,15 @@
                 await this.loadMaxUnits(supabase);
                 await this.loadBlocks(supabase);
                 
+                // ✅ Load supplementary eligibility
+                await this.showFailedUnitsForSupplementary();
+                
                 this.loaded = true;
                 this.dispatchModuleReadyEvent();
-                console.log('Units loaded successfully');
+                console.log('✅ Units loaded successfully');
                 
             } catch (error) {
-                console.error('Error loading units:', error);
+                console.error('❌ Error loading units:', error);
                 this.showError(error.message);
             }
         }
@@ -277,11 +456,47 @@
                 
                 this.registeredUnits = data || [];
                 this.displayRegisteredUnits();
+                this.updateRegistrationStatus();
                 
             } catch (error) {
                 console.error('Error loading registered units:', error);
                 this.registeredUnits = [];
                 this.displayRegisteredUnits();
+            }
+        }
+        
+        // ============================================
+        // 📊 UPDATE REGISTRATION STATUS
+        // ============================================
+        
+        updateRegistrationStatus() {
+            const pendingCount = this.registeredUnits.filter(u => u.status === 'pending').length;
+            const approvedCount = this.registeredUnits.filter(u => u.status === 'approved').length;
+            const supplementaryCount = this.registeredUnits.filter(u => u.reg_type === 'Supplementary').length;
+            
+            const statusBadge = document.getElementById('registrationStatusBadge');
+            const statusText = document.getElementById('registrationStatusText');
+            
+            if (statusBadge && statusText) {
+                if (pendingCount > 0) {
+                    statusBadge.style.background = '#fef3c7';
+                    statusBadge.style.color = '#92400e';
+                    statusText.textContent = `${pendingCount} Pending Approval`;
+                } else if (approvedCount > 0) {
+                    statusBadge.style.background = '#d1fae5';
+                    statusBadge.style.color = '#065f46';
+                    statusText.textContent = `${approvedCount} Approved`;
+                } else {
+                    statusBadge.style.background = '#e2e8f0';
+                    statusBadge.style.color = '#64748b';
+                    statusText.textContent = 'No Registrations';
+                }
+            }
+            
+            // Update supplementary badge
+            const suppBadge = document.getElementById('supplementaryCount');
+            if (suppBadge) {
+                suppBadge.textContent = supplementaryCount;
             }
         }
         
@@ -301,7 +516,7 @@
                     .select('*')
                     .eq('status', 'active');
                 
-                // CRITICAL: Filter by program to separate KRCHN and TVET
+                // Filter by program
                 if (this.programCode) {
                     if (this.isTVETStudent) {
                         query = query.eq('program', this.programCode);
@@ -340,27 +555,38 @@
             }
         }
         
+        // ============================================
+        // 📊 DISPLAY AVAILABLE UNITS
+        // ============================================
+        
         displayAvailableUnits() {
             if (!this.availableBody) return;
             
             const registeredCodes = new Set(this.registeredUnits.map(u => u.unit_code));
             const pendingCodes = new Set(this.registeredUnits.filter(u => u.status === 'pending').map(u => u.unit_code));
+            const regType = this.regType?.value;
+            const isSupplementary = regType === 'Supplementary';
             
-            if (this.allUnits.length === 0) {
-                let message = 'No units available for your program.';
+            // ✅ For supplementary, only show failed units
+            let displayUnits = this.allUnits;
+            if (isSupplementary) {
+                const failedUnitCodes = this.supplementaryUnits.map(u => u.unit_code || u.exam_name);
+                displayUnits = this.allUnits.filter(u => failedUnitCodes.includes(u.unit_code));
+            }
+            
+            if (displayUnits.length === 0) {
+                let message = isSupplementary ? 
+                    'No failed units available for supplementary registration. You are eligible for normal registration.' :
+                    'No units available for your program.';
                 if (this.isTVETStudent) {
                     message = 'No TVET units found for your program. Please contact administrator.';
-                } else if (this.blockFilter?.value) {
-                    message = `No KRCHN units found for block: ${this.blockFilter.value}`;
-                } else {
-                    message = 'No KRCHN units found. Please contact administrator.';
                 }
                 this.availableBody.innerHTML = `<tr><td colspan="7" style="text-align:center">${message}</td></tr>`;
                 return;
             }
             
             let html = '';
-            for (const unit of this.allUnits) {
+            for (const unit of displayUnits) {
                 const isRegistered = registeredCodes.has(unit.unit_code);
                 const isPending = pendingCodes.has(unit.unit_code);
                 
@@ -380,9 +606,13 @@
                     statusClass = 'status-available';
                 }
                 
+                // ✅ Show supplementary badge for failed units
+                const isFailed = this.supplementaryUnits.some(u => u.unit_code === unit.unit_code || u.exam_name === unit.unit_code);
+                const suppBadge = isFailed && !isRegistered ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 600; margin-left: 4px;">Supplementary</span>' : '';
+                
                 html += `<tr>
                     <td style="text-align:center">${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${this.escapeHtml(unit.unit_code)}">` : '—'}</td>
-                    <td><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
+                    <td><strong>${this.escapeHtml(unit.unit_code)}</strong> ${suppBadge}</td>
                     <td>${this.escapeHtml(unit.unit_name)}</td>
                     <td>${this.escapeHtml(unit.block)}</td>
                     <td><span class="type-badge">${this.escapeHtml(unit.unit_type || 'Core')}</span></td>
@@ -396,6 +626,10 @@
             this.attachCheckboxEvents();
         }
         
+        // ============================================
+        // 📊 DISPLAY REGISTERED UNITS
+        // ============================================
+        
         displayRegisteredUnits() {
             if (!this.registeredBody) return;
             
@@ -408,9 +642,11 @@
             for (const unit of this.registeredUnits) {
                 const statusClass = unit.status === 'approved' ? 'status-approved' : 'status-pending';
                 const statusText = unit.status === 'approved' ? 'Approved' : 'Pending';
+                const isSupplementary = unit.reg_type === 'Supplementary';
+                const regBadge = isSupplementary ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 600; margin-left: 4px;">Supplementary</span>' : '';
                 
                 html += `<tr>
-                    <td><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
+                    <td><strong>${this.escapeHtml(unit.unit_code)}</strong> ${regBadge}</td>
                     <td>${this.escapeHtml(unit.unit_name)}</td>
                     <td>${this.escapeHtml(unit.block)}</td>
                     <td>${this.escapeHtml(unit.reg_type || 'Normal')}</td>
@@ -422,7 +658,7 @@
             
             this.registeredBody.innerHTML = html;
             
-            // Update counts in header
+            // Update counts
             const approvedCount = this.registeredUnits.filter(u => u.status === 'approved').length;
             const pendingCount = this.registeredUnits.filter(u => u.status === 'pending').length;
             const approvedSpan = document.getElementById('approved-units-count');
@@ -441,6 +677,10 @@
                 }
             }
         }
+        
+        // ============================================
+        // ✅ SELECT ALL / UPDATE COUNT
+        // ============================================
         
         updateSelectedCount() {
             const checkboxes = document.querySelectorAll('.unit-checkbox:checked');
@@ -475,10 +715,10 @@
         }
         
         // ============================================
-        // ✅ SUBMIT REGISTRATION - WITH DUPLICATE PREVENTION
+        // 📤 SUBMIT REGISTRATION - WITH SUPPLEMENTARY SUPPORT
         // ============================================
+        
         async submitRegistration() {
-            // ✅ Prevent double submission
             if (this.isSubmitting) {
                 console.log('⏳ Submission already in progress...');
                 this.showError('Please wait, your registration is already being processed.', 'warning');
@@ -499,7 +739,16 @@
                 return;
             }
             
-            // ✅ Check if any selected units are already registered
+            // ✅ For supplementary: Validate max 3 units
+            if (regType === 'Supplementary') {
+                const existingSupp = this.registeredUnits.filter(u => u.reg_type === 'Supplementary').length;
+                if (selectedCodes.length + existingSupp > 3) {
+                    this.showError('You can only register up to 3 supplementary units total.', 'warning');
+                    return;
+                }
+            }
+            
+            // Check if any selected units are already registered
             const alreadyRegistered = [];
             const newUnits = [];
             
@@ -512,16 +761,13 @@
                 }
             }
             
-            // ✅ If all units are already registered, show warning
             if (newUnits.length === 0) {
                 this.showError(`All selected units are already registered.\n\nAlready registered: ${alreadyRegistered.join(', ')}`, 'warning');
-                // Clear selections
                 document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
                 this.updateSelectedCount();
                 return;
             }
             
-            // ✅ If some units are already registered, ask user
             if (alreadyRegistered.length > 0) {
                 const confirmResult = await Swal.fire({
                     title: '⚠️ Some Units Already Registered',
@@ -538,14 +784,14 @@
             }
             
             const currentTotal = this.registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length;
-            if (newUnits.length + currentTotal > this.maxUnits) {
+            if (newUnits.length + currentTotal > this.maxUnits && regType !== 'Supplementary') {
                 this.showError(`You can only register up to ${this.maxUnits} units total. You currently have ${currentTotal} units.`, 'warning');
                 return;
             }
             
             const confirmResult = await Swal.fire({
                 title: 'Confirm Registration',
-                text: `Submit ${newUnits.length} unit(s) for approval?${alreadyRegistered.length > 0 ? ` (${alreadyRegistered.length} already registered, skipped)` : ''}`,
+                text: `Submit ${newUnits.length} unit(s) for ${regType} registration?${alreadyRegistered.length > 0 ? ` (${alreadyRegistered.length} already registered, skipped)` : ''}`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Yes, Submit',
@@ -554,7 +800,6 @@
             
             if (!confirmResult.isConfirmed) return;
             
-            // ✅ Set submitting flag and disable button
             this.isSubmitting = true;
             this.disableSubmitButton(true);
             
@@ -568,7 +813,6 @@
                 const supabase = window.db?.supabase;
                 const studentId = this.userProfile?.user_id || this.userProfile?.id;
                 
-                // Get unit details for only the new units
                 const { data: units, error: unitsError } = await supabase
                     .from('units_catalog')
                     .select('*')
@@ -583,7 +827,7 @@
                     program: unit.program,
                     block: unit.block,
                     intake_year: this.intakeYear,
-                    intake_month: this.intakeMonth,  // ✅ NEW: Store intake month
+                    intake_month: this.intakeMonth,
                     reg_type: regType,
                     status: 'pending',
                     submitted_date: new Date().toISOString(),
@@ -592,7 +836,7 @@
                     credits: unit.credits || 3
                 }));
                 
-                // ✅ Check for duplicate entries one more time before insert
+                // Check for duplicates one more time
                 const { data: existingRegs } = await supabase
                     .from('student_unit_registrations')
                     .select('unit_code')
@@ -605,7 +849,6 @@
                 if (finalRegistrations.length === 0) {
                     Swal.close();
                     this.showError('No new units to register. All selected units are already registered.', 'warning');
-                    // Clear selections
                     document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
                     this.updateSelectedCount();
                     this.isSubmitting = false;
@@ -618,7 +861,6 @@
                     .insert(finalRegistrations);
                 
                 if (error) {
-                    // ✅ Handle unique constraint violation
                     if (error.code === '23505') {
                         Swal.close();
                         this.showError('Some units were already registered. Please refresh and try again.', 'warning');
@@ -631,20 +873,18 @@
                 }
                 
                 Swal.close();
-                Swal.fire('Success', `${finalRegistrations.length} unit(s) submitted for approval!${alreadyRegistered.length > 0 ? ` (${alreadyRegistered.length} already registered, skipped)` : ''}`, 'success');
+                Swal.fire('Success', `${finalRegistrations.length} unit(s) submitted for ${regType} approval!${alreadyRegistered.length > 0 ? ` (${alreadyRegistered.length} already registered, skipped)` : ''}`, 'success');
                 
-                // Clear selections
                 document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
                 if (this.selectAllCheckbox) this.selectAllCheckbox.checked = false;
                 this.updateSelectedCount();
                 
-                // Refresh data
                 await this.loadUnits();
                 
-                // Dispatch event to update exam card
                 document.dispatchEvent(new CustomEvent('unitRegistrationReady', {
                     detail: { 
-                        approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length 
+                        approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length,
+                        supplementaryCount: this.registeredUnits.filter(u => u.reg_type === 'Supplementary').length
                     }
                 }));
                 
@@ -653,13 +893,15 @@
                 console.error('Error submitting registration:', error);
                 this.showError(`Failed to submit: ${error.message}`, 'error');
             } finally {
-                // ✅ Always re-enable button
                 this.isSubmitting = false;
                 this.disableSubmitButton(false);
             }
         }
         
-        // ✅ Helper: Disable/enable submit button
+        // ============================================
+        // 🔘 DISABLE SUBMIT BUTTON
+        // ============================================
+        
         disableSubmitButton(disabled) {
             if (this.submitBtn) {
                 this.submitBtn.disabled = disabled;
@@ -673,7 +915,10 @@
             }
         }
         
-        // ✅ Drop unit with duplicate check
+        // ============================================
+        // 🗑️ DROP UNIT
+        // ============================================
+        
         async dropUnit(unitCode) {
             const confirmResult = await Swal.fire({
                 title: 'Drop Unit?',
@@ -692,7 +937,6 @@
                 const supabase = window.db?.supabase;
                 const studentId = this.userProfile?.user_id || this.userProfile?.id;
                 
-                // ✅ Check if unit exists before deleting
                 const { data: existing } = await supabase
                     .from('student_unit_registrations')
                     .select('id, status')
@@ -718,10 +962,10 @@
                 Swal.fire('Success', `Unit ${unitCode} dropped successfully!`, 'success');
                 await this.loadUnits();
                 
-                // Dispatch event to update exam card
                 document.dispatchEvent(new CustomEvent('unitRegistrationReady', {
                     detail: { 
-                        approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length 
+                        approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length,
+                        supplementaryCount: this.registeredUnits.filter(u => u.reg_type === 'Supplementary').length
                     }
                 }));
                 
@@ -731,6 +975,10 @@
                 this.showError(`Failed to drop: ${error.message}`, 'error');
             }
         }
+        
+        // ============================================
+        // 📊 LOAD MAX UNITS
+        // ============================================
         
         async loadMaxUnits(supabase) {
             try {
@@ -752,6 +1000,10 @@
                 maxUnitsSpan.textContent = this.maxUnits;
             }
         }
+        
+        // ============================================
+        // 📚 LOAD BLOCKS
+        // ============================================
         
         async loadBlocks(supabase) {
             try {
@@ -815,12 +1067,16 @@
                     }
                 }
                 
-                console.log('Blocks loaded for', this.isTVETStudent ? 'TVET' : 'KRCHN', ':', blocks);
+                console.log('📚 Blocks loaded for', this.isTVETStudent ? 'TVET' : 'KRCHN', ':', blocks);
                 
             } catch (error) {
                 console.error('Error loading blocks:', error);
             }
         }
+        
+        // ============================================
+        // 🔄 UTILITY FUNCTIONS
+        // ============================================
         
         showLoading() {
             if (this.availableBody) {
@@ -842,7 +1098,7 @@
         showWaitingForLogin() {
             const container = document.querySelector('#hub-register');
             if (container && !this.loaded) {
-                console.log('Waiting for login to load unit registration');
+                console.log('⏳ Waiting for login to load unit registration');
             }
         }
         
@@ -853,13 +1109,15 @@
                     registeredCount: this.registeredUnits.length,
                     approvedCount: this.registeredUnits.filter(u => u.status === 'approved').length,
                     pendingCount: this.registeredUnits.filter(u => u.status === 'pending').length,
+                    supplementaryCount: this.registeredUnits.filter(u => u.reg_type === 'Supplementary').length,
                     maxUnits: this.maxUnits,
                     isTVETStudent: this.isTVETStudent,
                     programCode: this.programCode,
                     intakeYear: this.intakeYear,
-                    intakeMonth: this.intakeMonth,  // ✅ NEW
+                    intakeMonth: this.intakeMonth,
                     block: this.userBlock,
                     term: this.userTerm,
+                    hasSupplementaryEligibility: this.hasSupplementaryEligibility,
                     timestamp: new Date().toISOString()
                 }
             });
@@ -883,14 +1141,19 @@
                 programCode: this.programCode,
                 programType: this.isTVETStudent ? 'TVET' : 'KRCHN',
                 intakeYear: this.intakeYear,
-                intakeMonth: this.intakeMonth,  // ✅ NEW
+                intakeMonth: this.intakeMonth,
                 block: this.userBlock,
-                term: this.userTerm
+                term: this.userTerm,
+                hasSupplementaryEligibility: this.hasSupplementaryEligibility,
+                supplementaryUnits: this.supplementaryUnits.length
             };
         }
     }
     
-    // Create global instance
+    // ============================================
+    // 🚀 CREATE GLOBAL INSTANCE
+    // ============================================
+    
     window.unitRegistrationModule = new UnitRegistrationModule();
     
     // Global functions
@@ -898,5 +1161,5 @@
     window.loadUnitRegistration = () => window.unitRegistrationModule?.refresh();
     window.getUnitRegistrationInfo = () => window.unitRegistrationModule?.getStudentProgramInfo() || {};
     
-    console.log('Unit Registration module ready!');
+    console.log('✅ Unit Registration module ready with Supplementary Exam support!');
 })();
