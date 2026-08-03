@@ -396,260 +396,303 @@
         <!-- MAIN CONTENT AREA -->
         <main class="main" id="main-content">
 <!-- ==================== DASHBOARD SECTION ==================== -->
-<section id="dashboard" class="tab-content active" role="region">
-    
-    <div class="dashboard-container">
-        
-        <!-- WELCOME -->
-        <div class="welcome">
-            <h1>Good Morning, <span id="welcome-student-name">Student</span>! 🎉</h1>
-            <p id="student-welcome-message">Access your courses, schedule, and check your attendance status.</p>
-        </div>
+<section id="dashboard" class="tab-content active" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
-        <!-- ⭐ SUPER CLASSY NEXT CLASS CARD -->
-        <div id="quick-next-class" class="next-class-card" style="display: none;">
-            <div class="next-class-glow"></div>
-            <div class="next-class-inner">
-                <div class="next-class-time-badge">
-                    <div class="next-class-time-icon"><i class="fas fa-hourglass-half"></i></div>
-                    <div class="next-class-time-text">
-                        <div class="next-class-time-label">NEXT CLASS</div>
-                        <div class="next-class-time-value" id="quick-next-class-time">--:-- --:--</div>
-                    </div>
-                </div>
-                <div class="next-class-info">
-                    <div class="next-class-course">
-                        <span id="quick-next-class-name">--</span>
-                        <code id="quick-next-class-code">--</code>
-                    </div>
-                    <div class="next-class-meta">
-                        <div class="next-class-meta-item"><i class="fas fa-user-graduate"></i> <span id="quick-next-class-lecturer">--</span></div>
-                        <div class="next-class-meta-item"><i class="fas fa-map-marker-alt"></i> <span id="quick-next-class-venue">--</span></div>
-                    </div>
-                </div>
-                <div class="next-class-day-badge" id="quick-next-class-day-container">
-                    <i class="fas fa-calendar-day"></i>
-                    <span id="quick-next-class-day">--</span>
-                </div>
+    <!-- ========== WELCOME - MATCHING SUPER ADMIN ========== -->
+    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h1 style="color: white; margin: 0; font-weight: 700; font-size: clamp(1.2rem, 3vw, 2rem);">
+                    Good Morning, <span id="welcome-student-name" style="color: #FDB913;">Student</span>! 🎉
+                </h1>
+                <p id="student-welcome-message" style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
+                    <i class="fas fa-check-circle" style="color: #FDB913;"></i> Access your courses, schedule, and check your attendance status.
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <span style="background: rgba(255,255,255,0.15); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-circle" style="color: #10b981; font-size: 8px;"></i> Online
+                </span>
             </div>
         </div>
+    </div>
 
-        <!-- NEXT EXAM WIDGET -->
-        <div class="next-exam-widget" style="display: none;">
-            <div class="widget-header">
-                <i class="fas fa-graduation-cap" style="color: white;"></i>
-                <h4 style="margin: 0; color: white; font-weight: 600;">📝 Next Exam</h4>
-            </div>
-            <div id="next-exam-details" style="color: white;"></div>
-        </div>
-
-        <!-- STATS ROW (XP, NurseIQ, Attendance, Login, Total Points) -->
-<div class="stats-row">
-    <div class="xp-area">
-        <div class="label"><i class="fas fa-star"></i> Level <span id="user-level">4</span> · <span id="user-xp">30</span>/<span id="user-xp-max">100</span> XP</div>
-        <div class="progress-bg"><div class="progress-fill" id="xp-progress-fill" style="width:30%"></div></div>
-    </div>
-    <div class="xp-area">
-        <div class="label"><i class="fas fa-brain"></i> NurseIQ: <span id="dashboard-nurseiq-points">0</span> pts</div>
-    </div>
-    <div class="xp-area">
-        <div class="label"><i class="fas fa-calendar-check"></i> Attendance: <span id="attendance-points-value">200</span> pts</div>
-    </div>
-    <!-- ✅ ADD LOGIN POINTS -->
-    <div class="xp-area">
-        <div class="label" style="background: #ede9fe; color: #4C1D95;">
-            <i class="fas fa-sign-in-alt" style="color: #4C1D95;"></i> 
-            Login: <span id="login-points-display" style="font-weight: 700; color: #4C1D95;">110</span> pts
-            <span style="font-size: 9px; color: #6b7280; font-weight: 400; margin-left: 4px;">
-                (<span id="login-count-display">11</span> logins)
-            </span>
-        </div>
-    </div>
-    <div class="xp-area">
-        <div class="label" style="background: #fef3c7; color: #92400e;">
-            <i class="fas fa-trophy" style="color: #f59e0b;"></i> 
-            Total: <span id="total-points-display" style="font-weight: 700; color: #d97706;">310</span> pts
-        </div>
-    </div>
-</div>
-
-        <!-- ANNOUNCEMENT -->
-        <div class="announcement">
-            <div class="announcement-title"><i class="fas fa-bullhorn"></i> Official Announcement</div>
-            <div class="announcement-text" id="student-announcement">Loading latest announcement...</div>
-        </div>
-
-        <!-- ========== DAILY STREAK CARD - MAIN ========== -->
-        <div class="streak-container" id="streak-container">
-            <div class="streak-header">
-                <div class="streak-fire" id="streak-fire">
-                    <span class="streak-emoji" id="streak-emoji">🔥</span>
-                    <span class="streak-label">Daily Streak</span>
+    <!-- ========== NEXT CLASS CARD - MATCHING SUPER ADMIN ========== -->
+    <div id="quick-next-class" style="display: none; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
+        <div style="padding: 16px 20px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-hourglass-half" style="font-size: 20px; color: #FDB913;"></i>
                 </div>
-                <div class="streak-counter">
-                    <span class="streak-number" id="daily-streak-display">0</span>
-                    <span class="streak-unit">days</span>
+                <div>
+                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8;">Next Class</div>
+                    <div style="font-size: 18px; font-weight: 700;" id="quick-next-class-time">--:-- --:--</div>
                 </div>
             </div>
-            
-            <!-- Streak Progress Bar -->
-            <div class="streak-progress-container">
-                <div class="streak-progress-bg">
-                    <div class="streak-progress-fill" id="streak-progress-fill" style="width: 0%;"></div>
-                </div>
-                <div class="streak-milestones">
-                    <span class="milestone active" data-day="1">🔥 1</span>
-                    <span class="milestone" data-day="3">🌱 3</span>
-                    <span class="milestone" data-day="7">🌿 7</span>
-                    <span class="milestone" data-day="14">💎 14</span>
-                    <span class="milestone" data-day="30">👑 30</span>
+            <div style="flex: 1; min-width: 100px;">
+                <div style="font-size: 15px; font-weight: 600;" id="quick-next-class-name">--</div>
+                <code id="quick-next-class-code" style="background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 4px; font-size: 12px;">--</code>
+                <div style="font-size: 12px; opacity: 0.8; margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap;">
+                    <span><i class="fas fa-user-graduate"></i> <span id="quick-next-class-lecturer">--</span></span>
+                    <span><i class="fas fa-map-marker-alt"></i> <span id="quick-next-class-venue">--</span></span>
                 </div>
             </div>
-            
-            <!-- Streak Lights -->
-            <div class="streak-lights" id="streak-lights">
-                <span class="streak-light" id="light-1">⭐</span>
-                <span class="streak-light" id="light-2">⭐</span>
-                <span class="streak-light" id="light-3">⭐</span>
-                <span class="streak-light" id="light-4">⭐</span>
-                <span class="streak-light" id="light-5">⭐</span>
+            <div id="quick-next-class-day-container" style="background: rgba(255,255,255,0.15); padding: 6px 16px; border-radius: 20px; text-align: center;">
+                <i class="fas fa-calendar-day"></i>
+                <span id="quick-next-class-day" style="font-weight: 600; margin-left: 4px;">--</span>
             </div>
-            
-            <!-- Streak Status -->
-            <div class="streak-message" id="streak-message">
+        </div>
+    </div>
+
+    <!-- ========== NEXT EXAM WIDGET ========== -->
+    <div id="next-exam-widget" style="display: none; background: linear-gradient(135deg, #dc2626, #b91c1c); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; color: white;">
+        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <i class="fas fa-graduation-cap" style="font-size: 24px; color: #FDB913;"></i>
+            <h4 style="margin: 0; font-weight: 600; font-size: 15px;">📝 Next Exam</h4>
+            <div style="flex: 1;" id="next-exam-details">
+                <span style="font-weight: 500;">Loading...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== STATS ROW - MATCHING SUPER ADMIN ========== -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div style="background: white; border-radius: 12px; padding: 12px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569; margin-bottom: 4px;">
+                <i class="fas fa-star" style="color: #FDB913;"></i> Level <span id="user-level" style="font-weight: 700; color: #0A3D62;">4</span> · <span id="user-xp" style="font-weight: 600; color: #0A3D62;">30</span>/<span id="user-xp-max" style="color: #94a3b8;">100</span> XP
+            </div>
+            <div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                <div id="xp-progress-fill" style="height: 100%; background: linear-gradient(90deg, #FDB913, #4C1D95); width: 30%; border-radius: 3px; transition: width 0.5s ease;"></div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 12px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-brain" style="color: #4C1D95;"></i>
+            <span style="font-size: 13px; color: #475569;">NurseIQ: <strong id="dashboard-nurseiq-points" style="color: #0A3D62;">0</strong> pts</span>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 12px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-calendar-check" style="color: #059669;"></i>
+            <span style="font-size: 13px; color: #475569;">Attendance: <strong id="attendance-points-value" style="color: #0A3D62;">200</strong> pts</span>
+        </div>
+        <div style="background: linear-gradient(135deg, #ede9fe, #f3e8ff); border-radius: 12px; padding: 12px 16px; border: 1px solid #c4b5fd; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-sign-in-alt" style="color: #4C1D95;"></i>
+            <span style="font-size: 13px; color: #475569;">Login: <strong id="login-points-display" style="color: #4C1D95;">110</strong> pts <span style="font-size: 10px; color: #94a3b8;">(<span id="login-count-display">11</span> logins)</span></span>
+        </div>
+        <div style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border-radius: 12px; padding: 12px 16px; border: 1px solid #f59e0b; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-trophy" style="color: #f59e0b;"></i>
+            <span style="font-size: 13px; color: #92400e;">Total: <strong id="total-points-display" style="color: #d97706;">310</strong> pts</span>
+        </div>
+    </div>
+
+    <!-- ========== ANNOUNCEMENT - MATCHING SUPER ADMIN ========== -->
+    <div style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; border: 1px solid #f59e0b; border-left: 4px solid #f59e0b; display: flex; align-items: flex-start; gap: 12px;">
+        <i class="fas fa-bullhorn" style="color: #f59e0b; font-size: 18px; margin-top: 2px;"></i>
+        <div>
+            <div style="font-weight: 700; color: #92400e; font-size: 14px;">Official Announcement</div>
+            <div id="student-announcement" style="color: #78350f; font-size: 13px; margin-top: 2px;">Loading latest announcement...</div>
+        </div>
+    </div>
+
+    <!-- ========== DAILY STREAK CARD - MATCHING SUPER ADMIN ========== -->
+    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
+        <div style="padding: 16px 20px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 24px;" id="streak-emoji">🔥</span>
+                <span style="font-weight: 600; font-size: 15px;">Daily Streak</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 28px; font-weight: 700; color: #FDB913;" id="daily-streak-display">0</span>
+                <span style="font-size: 13px; opacity: 0.8;">days</span>
+            </div>
+        </div>
+        <div style="padding: 16px 20px;">
+            <div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; margin-bottom: 12px;">
+                <div id="streak-progress-fill" style="height: 100%; background: linear-gradient(90deg, #FDB913, #4C1D95); width: 0%; border-radius: 3px; transition: width 0.5s ease;"></div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 12px;">
+                <span class="milestone active" data-day="1" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #4C1D95; color: white;">🔥 1</span>
+                <span class="milestone" data-day="3" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #e5e7eb; color: #94a3b8;">🌱 3</span>
+                <span class="milestone" data-day="7" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #e5e7eb; color: #94a3b8;">🌿 7</span>
+                <span class="milestone" data-day="14" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #e5e7eb; color: #94a3b8;">💎 14</span>
+                <span class="milestone" data-day="30" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #e5e7eb; color: #94a3b8;">👑 30</span>
+            </div>
+            <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;" id="streak-lights">
+                <span id="light-1" style="font-size: 16px;">⭐</span>
+                <span id="light-2" style="font-size: 16px;">⭐</span>
+                <span id="light-3" style="font-size: 16px;">⭐</span>
+                <span id="light-4" style="font-size: 16px;">⭐</span>
+                <span id="light-5" style="font-size: 16px;">⭐</span>
+            </div>
+            <div id="streak-message" style="text-align: center; font-size: 13px; color: #64748b;">
                 <span id="streak-status-text">✨ Login today to start your streak!</span>
             </div>
-            
-            <!-- Restore Button -->
-            <button class="streak-restore-btn" id="streak-restore-btn" style="display: none;">
+            <button id="streak-restore-btn" style="display: none; margin-top: 10px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                 <i class="fas fa-undo"></i> 💫 Restore Streak
             </button>
         </div>
-
-        <!-- QUICK SNAPSHOT -->
-        <div class="section-title">📊 Quick Snapshot</div>
-
-        <!-- ATTENDANCE CARD -->
-        <div class="attendance-card" data-tab="attendance">
-            <div class="attendance-header">
-                <div>
-                    <span class="attendance-percent" id="dashboard-attendance-rate">0%</span>
-                    <span class="attendance-label">Attendance</span>
-                </div>
-                <div class="warning-badge" id="attendance-warning-badge">
-                    <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">BELOW 75%</span>
-                </div>
-            </div>
-            <div class="vp-row">
-                <span> <strong id="dashboard-verified-count">0</strong>/<strong id="dashboard-total-count">0</strong></span>
-                <span>⏳ <strong id="dashboard-pending-count">0</strong></span>
-                <span><i class="fas fa-info-circle"></i> +10 pts/verified</span>
-            </div>
-        </div>
-
-        <!-- MINI CARDS ROW 1 -->
-        <div class="mini-cards">
-            <div class="mini-card" data-tab="cats">
-                <div class="mini-label">📝 Upcoming Exam</div>
-                <div class="mini-card-value" id="dashboard-upcoming-exam">--</div>
-                <div class="mini-sub">Next CAT/Exam date</div>
-            </div>
-            <div class="mini-card" data-tab="hub-courses">
-                <div class="mini-label">📚 Active Courses</div>
-                <div class="mini-card-value" id="dashboard-active-courses">0</div>
-                <div class="mini-sub">Currently enrolled</div>
-            </div>
-            <div class="mini-card" data-tab="profile">
-                <div class="mini-label">📖 Current Block</div>
-                <div class="mini-card-value" id="dashboard-current-block-value">--</div>
-                <div class="mini-sub"><span id="dashboard-program-name">--</span> · Intake <span id="dashboard-intake-year">--</span></div>
-            </div>
-        </div>
-
-        <!-- MINI CARDS ROW 2 -->
-        <div class="mini-cards">
-            <div class="mini-card" data-tab="resources">
-                <i class="fas fa-folder-open"></i>
-                <div class="mini-card-value" id="dashboard-new-resources">0</div>
-                <div class="mini-sub">Resources</div>
-            </div>
-            <div class="mini-card" data-tab="nurseiq">
-                <i class="fas fa-brain"></i>
-                <div class="mini-card-value" id="dashboard-nurseiq-progress">--%</div>
-                <div class="mini-sub">
-                    Accuracy: <span id="dashboard-nurseiq-accuracy">--</span>% · 
-                    Questions: <span id="dashboard-nurseiq-questions">0</span>
-                </div>
-            </div>
-            <div class="mini-card" data-tab="hub-exam-card">
-                <i class="fas fa-id-card"></i>
-                <div class="mini-card-value exam-status" id="dashboard-exam-status">--</div>
-                <div class="mini-sub">Approved: <span id="dashboard-approved-units">0</span> units</div>
-            </div>
-        </div>
-
-        <!-- MINI CARDS ROW 3 - REVIEWS, NEWSLETTER, STREAK MINI -->
-        <div class="mini-cards">
-            <div class="mini-card" data-tab="reviews">
-                <div class="mini-label">⭐ Reviews</div>
-                <div class="mini-card-value" id="dashboard-reviews-avg">0.0</div>
-                <div class="mini-sub">
-                    <span id="dashboard-reviews-total">0</span> reviews · 
-                    <span id="dashboard-reviews-pending">0</span> pending
-                </div>
-            </div>
-            <div class="mini-card" data-tab="newsletter">
-                <div class="mini-label">📧 Newsletter</div>
-                <div class="mini-card-value" id="dashboard-newsletter-status">📧 Not Subscribed</div>
-                <div class="mini-sub" id="dashboard-newsletter-latest">No newsletters yet</div>
-            </div>
-        </div>
-
-        <!-- ========== ACHIEVEMENTS SECTION ========== -->
-        <div class="section-title">🏆 Achievements <span class="view-all">View All →</span></div>
-        <div class="achievements-slim">
-            <div class="achieve-slim"><i class="fas fa-check-circle"></i> First Step <span class="pts">+10</span></div>
-            <div class="achieve-slim"><i class="fas fa-fire"></i> On Fire! <span class="pts">+50</span></div>
-            <div class="achieve-slim"><i class="fas fa-rocket"></i> Unstoppable <span class="pts">+100</span></div>
-            <div class="achieve-slim"><i class="fas fa-crown"></i> Legendary <span class="pts">+500</span></div>
-            <div class="achieve-slim"><i class="fas fa-calendar-week"></i> Perfect Week <span class="pts">+100</span></div>
-            <div class="achieve-slim"><i class="fas fa-graduation-cap"></i> Course Master <span class="pts">+200</span></div>
-            <div class="achieve-slim"><i class="fas fa-medal"></i> Quiz Champ <span class="pts">+50</span></div>
-            <div class="achieve-slim"><i class="fas fa-stethoscope"></i> NurseIQ Master <span class="pts">+100</span></div>
-        </div>
-
-        <!-- ========== LEADERBOARD SECTION ========== -->
-        <div class="section-title">🏅 Leaderboard <span class="leaderboard-tabs">Weekly · Monthly · All Time</span></div>
-        <div class="leaderboard-slim" id="leaderboard-container">
-            <div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-        </div>
-
-        <!-- ========== ACTION REQUIRED SECTION ========== -->
-        <div class="section-title">⚠️ Action Required</div>
-        <div class="action-card warning">
-            <i class="fas fa-book-medical"></i>
-            <div class="action-content"><strong>Review New Course Material</strong><p>New study materials posted for this block.</p></div>
-            <button class="action-btn" data-tab="resources">View →</button>
-        </div>
-        <div class="action-card alert" id="action-passport" style="display: none;">
-            <i class="fas fa-id-card"></i>
-            <div class="action-content"><strong>Missing Passport Photo</strong><p>Your profile is incomplete. Please upload your passport photo.</p></div>
-            <button class="action-btn" data-tab="profile">Upload →</button>
-        </div>
-        
-        <!-- LAST UPDATED TIMESTAMP -->
-        <div class="dashboard-footer" style="margin-top: 20px; padding: 10px 0; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #6b7280;">
-            <span>
-                <i class="fas fa-clock"></i> 
-                Last updated: <span id="dashboard-last-updated">Just now</span>
-            </span>
-            <span>
-                <i class="fas fa-user"></i> 
-                <span id="dashboard-student-id">Loading...</span>
-            </span>
-        </div>
-        
     </div>
+
+    <!-- ========== QUICK SNAPSHOT ========== -->
+    <h4 style="color: #0A3D62; margin: 0 0 16px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-chart-simple" style="color: #FDB913;"></i> Quick Snapshot
+    </h4>
+
+    <!-- ========== ATTENDANCE CARD - MATCHING SUPER ADMIN ========== -->
+    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 16px; cursor: pointer;" onclick="window.location.href='#attendance'">
+        <div style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <span style="font-size: 28px; font-weight: 700; color: #0A3D62;" id="dashboard-attendance-rate">0%</span>
+                <span style="font-size: 13px; color: #64748b; margin-left: 8px;">Attendance</span>
+            </div>
+            <div id="attendance-warning-badge" style="padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e;">
+                <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">BELOW 75%</span>
+            </div>
+        </div>
+        <div style="padding: 0 20px 16px 20px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #64748b;">
+            <span><strong id="dashboard-verified-count" style="color: #059669;">0</strong>/<strong id="dashboard-total-count" style="color: #0A3D62;">0</strong> verified</span>
+            <span>⏳ <strong id="dashboard-pending-count" style="color: #f59e0b;">0</strong> pending</span>
+            <span><i class="fas fa-info-circle"></i> +10 pts/verified</span>
+        </div>
+    </div>
+
+    <!-- ========== MINI CARDS ROW 1 ========== -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#cats'">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📝 Upcoming Exam</div>
+            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-upcoming-exam">--</div>
+            <div style="font-size: 11px; color: #94a3b8;">Next CAT/Exam date</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#hub-courses'">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📚 Active Courses</div>
+            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-active-courses">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Currently enrolled</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#profile'">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📖 Current Block</div>
+            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-current-block-value">--</div>
+            <div style="font-size: 11px; color: #94a3b8;"><span id="dashboard-program-name">--</span> · Intake <span id="dashboard-intake-year">--</span></div>
+        </div>
+    </div>
+
+    <!-- ========== MINI CARDS ROW 2 ========== -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#resources'">
+            <i class="fas fa-folder-open" style="color: #4C1D95;"></i>
+            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-new-resources">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Resources</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#nurseiq'">
+            <i class="fas fa-brain" style="color: #4C1D95;"></i>
+            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-nurseiq-progress">--%</div>
+            <div style="font-size: 11px; color: #94a3b8;">
+                Accuracy: <span id="dashboard-nurseiq-accuracy">--</span>% · Questions: <span id="dashboard-nurseiq-questions">0</span>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#hub-exam-card'">
+            <i class="fas fa-id-card" style="color: #4C1D95;"></i>
+            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-exam-status">--</div>
+            <div style="font-size: 11px; color: #94a3b8;">Approved: <span id="dashboard-approved-units">0</span> units</div>
+        </div>
+    </div>
+
+    <!-- ========== MINI CARDS ROW 3 ========== -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#reviews'">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">⭐ Reviews</div>
+            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-reviews-avg">0.0</div>
+            <div style="font-size: 11px; color: #94a3b8;">
+                <span id="dashboard-reviews-total">0</span> reviews · <span id="dashboard-reviews-pending">0</span> pending
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#newsletter'">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📧 Newsletter</div>
+            <div style="font-size: 14px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-newsletter-status">📧 Not Subscribed</div>
+            <div style="font-size: 11px; color: #94a3b8;" id="dashboard-newsletter-latest">No newsletters yet</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onclick="window.location.href='#finance'">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">💰 Finance</div>
+            <div style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-finance-balance">KES 0</div>
+            <div style="font-size: 11px; color: #94a3b8;" id="dashboard-finance-status">Balance</div>
+        </div>
+    </div>
+
+    <!-- ========== ACHIEVEMENTS - MATCHING SUPER ADMIN ========== -->
+    <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-trophy" style="color: #FDB913;"></i> Achievements
+        <span style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-left: auto; cursor: pointer;">View All →</span>
+    </h4>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 20px;">
+        <div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
+            <i class="fas fa-check-circle" style="color: #10b981;"></i> First Step <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+10</span>
+        </div>
+        <div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
+            <i class="fas fa-fire" style="color: #f59e0b;"></i> On Fire! <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+50</span>
+        </div>
+        <div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
+            <i class="fas fa-rocket" style="color: #8B5CF6;"></i> Unstoppable <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+100</span>
+        </div>
+        <div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
+            <i class="fas fa-crown" style="color: #FDB913;"></i> Legendary <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+500</span>
+        </div>
+        <div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
+            <i class="fas fa-calendar-week" style="color: #3B82F6;"></i> Perfect Week <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+100</span>
+        </div>
+        <div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
+            <i class="fas fa-graduation-cap" style="color: #059669;"></i> Course Master <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+200</span>
+        </div>
+    </div>
+
+    <!-- ========== LEADERBOARD - MATCHING SUPER ADMIN ========== -->
+    <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-trophy" style="color: #FDB913;"></i> Leaderboard
+        <span style="font-size: 11px; color: #94a3b8; font-weight: 400; display: flex; gap: 8px;">
+            <span style="cursor: pointer; color: #4C1D95; font-weight: 600;" onclick="switchLeaderboardTab('weekly')">Weekly</span>
+            <span style="cursor: pointer;" onclick="switchLeaderboardTab('monthly')">Monthly</span>
+            <span style="cursor: pointer;" onclick="switchLeaderboardTab('all')">All Time</span>
+        </span>
+    </h4>
+    <div id="leaderboard-container" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
+        <div style="padding: 20px; text-align: center; color: #94a3b8;">
+            <i class="fas fa-spinner fa-spin"></i> Loading...
+        </div>
+    </div>
+
+    <!-- ========== ACTION REQUIRED - MATCHING SUPER ADMIN ========== -->
+    <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Action Required
+    </h4>
+    <div style="background: #fef3c7; border-radius: 12px; padding: 14px 20px; margin-bottom: 12px; border: 1px solid #f59e0b; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <i class="fas fa-book-medical" style="color: #f59e0b; font-size: 20px;"></i>
+        <div style="flex: 1;">
+            <strong style="color: #92400e;">Review New Course Material</strong>
+            <p style="margin: 0; color: #78350f; font-size: 13px;">New study materials posted for this block.</p>
+        </div>
+        <button onclick="window.location.href='#resources'" style="padding: 6px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+            View →
+        </button>
+    </div>
+    <div id="action-passport" style="display: none; background: #fee2e2; border-radius: 12px; padding: 14px 20px; margin-bottom: 16px; border: 1px solid #fecaca; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <i class="fas fa-id-card" style="color: #dc2626; font-size: 20px;"></i>
+        <div style="flex: 1;">
+            <strong style="color: #991b1b;">Missing Passport Photo</strong>
+            <p style="margin: 0; color: #7f1d1d; font-size: 13px;">Your profile is incomplete. Please upload your passport photo.</p>
+        </div>
+        <button onclick="window.location.href='#profile'" style="padding: 6px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+            Upload →
+        </button>
+    </div>
+
+    <!-- ========== FOOTER - MATCHING SUPER ADMIN ========== -->
+    <div style="margin-top: 20px; padding: 12px 0; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #94a3b8; flex-wrap: wrap; gap: 8px;">
+        <span>
+            <i class="fas fa-clock"></i> 
+            Last updated: <span id="dashboard-last-updated">Just now</span>
+        </span>
+        <span>
+            <i class="fas fa-user"></i> 
+            <span id="dashboard-student-id">Loading...</span>
+        </span>
+    </div>
+
 </section>
 <!-- END DASHBOARD SECTION -->
 
