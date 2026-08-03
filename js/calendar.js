@@ -1,4 +1,5 @@
-// calendar.js - COMPLETE FIXED VERSION WITH TIMETABLE INSIDE CALENDAR TAB
+// calendar.js - COMPLETE UPDATED VERSION WITH TIMETABLE INSIDE CALENDAR TAB
+// Enhanced to match the new HTML styling
 // ============================================
 
 let cachedCalendarEvents = [];
@@ -44,10 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ========== SETUP FUNCTIONS ==========
 function updateTodayDate() {
     const todayElement = document.getElementById('current-date-display');
-    if (!todayElement) {
-        console.log('⚠️ current-date-display element not found');
-        return;
-    }
+    if (!todayElement) return;
     
     const today = new Date();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -80,7 +78,184 @@ function setupCalendarEventListeners() {
         });
     }
     
+    const exportBtn = document.getElementById('export-calendar');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function() {
+            exportCalendarToPDF();
+        });
+    }
+    
+    const viewToggle = document.getElementById('calendar-view-toggle');
+    if (viewToggle) {
+        viewToggle.addEventListener('click', function() {
+            toggleCalendarView();
+        });
+    }
+    
     console.log('✅ Calendar event listeners setup complete');
+}
+
+// ========== VIEW TOGGLE ==========
+function toggleCalendarView() {
+    const tableContainer = document.getElementById('calendar-table-container');
+    const toggleBtn = document.getElementById('calendar-view-toggle');
+    
+    if (!tableContainer || !toggleBtn) return;
+    
+    const currentDisplay = tableContainer.style.display;
+    if (currentDisplay === 'none' || !currentDisplay) {
+        tableContainer.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fas fa-list"></i> List View';
+        toggleBtn.style.background = '#4C1D95';
+        toggleBtn.style.color = 'white';
+    } else {
+        tableContainer.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-calendar-alt"></i> Calendar View';
+        toggleBtn.style.background = '#f1f5f9';
+        toggleBtn.style.color = '#475569';
+    }
+}
+
+// ========== EXPORT CALENDAR ==========
+function exportCalendarToPDF() {
+    if (cachedCalendarEvents.length === 0) {
+        showToast('No events to export', 'warning');
+        return;
+    }
+    
+    showToast('Generating calendar export...', 'info');
+    
+    // Create printable content
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>NCHSM Calendar - ${new Date().toLocaleDateString()}</title>
+            <style>
+                body { font-family: 'Inter', Arial, sans-serif; padding: 30px; max-width: 1200px; margin: 0 auto; }
+                .header { text-align: center; padding: 20px 0; border-bottom: 3px solid #4C1D95; margin-bottom: 20px; }
+                .header h1 { color: #0A3D62; margin: 0; }
+                .header p { color: #64748b; margin: 4px 0 0; }
+                table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+                th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb; }
+                td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+                .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+                .status-upcoming { background: #dbeafe; color: #1e40af; }
+                .status-completed { background: #d1fae5; color: #065f46; }
+                .today-badge { background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 8px; }
+                .type-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+                .footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #94a3b8; }
+                @media print { body { padding: 20px; } }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>📅 NCHSM Academic Calendar</h1>
+                <p>Generated on ${new Date().toLocaleString()}</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Event / Details</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${cachedCalendarEvents.map(event => `
+                        <tr>
+                            <td>
+                                <strong>${event.formattedDate}</strong>
+                                ${new Date(event.date).toDateString() === new Date().toDateString() ? '<span class="today-badge">TODAY</span>' : ''}
+                                <br>
+                                <span style="font-size: 11px; color: #64748b;">
+                                    <i class="fas fa-clock"></i> ${event.formattedTime}
+                                </span>
+                                ${event.venue ? `<br><span style="font-size: 11px; color: #64748b;">📍 ${event.venue}</span>` : ''}
+                            </td>
+                            <td>
+                                <strong>${event.title}</strong>
+                                <p style="margin: 4px 0 0; font-size: 12px; color: #64748b;">${event.details || 'No details'}</p>
+                            </td>
+                            <td>
+                                <span class="type-badge" style="background: ${event.color}20; color: ${event.color};">
+                                    ${event.type}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge ${new Date(event.date + 'T' + (event.startTime || '00:00:00')) < new Date() ? 'status-completed' : 'status-upcoming'}">
+                                    ${new Date(event.date + 'T' + (event.startTime || '00:00:00')) < new Date() ? '✅ Completed' : '⏳ Upcoming'}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div style="margin-top: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center;">
+                <div><strong style="color: #0A3D62;">${cachedCalendarEvents.length}</strong> Total Events</div>
+                <div><strong style="color: #059669;">${cachedCalendarEvents.filter(e => new Date(e.date + 'T' + (e.startTime || '00:00:00')) >= new Date()).length}</strong> Upcoming</div>
+                <div><strong style="color: #d97706;">${cachedCalendarEvents.filter(e => e.type.includes('EXAM') || e.type.includes('CAT')).length}</strong> Exams</div>
+                <div><strong style="color: #6d28d9;">${cachedCalendarEvents.filter(e => e.type.includes('Clinical')).length}</strong> Clinical</div>
+            </div>
+            <div class="footer">
+                <p>Nakuru College of Health Sciences and Management (NCHSM)</p>
+                <p>This calendar is auto-generated from the student portal.</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    const blob = new Blob([printContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `NCHSM_Calendar_${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast('✅ Calendar exported successfully!', 'success');
+}
+
+// ========== TOAST NOTIFICATION ==========
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#4f46e5'};
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 9999;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 90%;
+        animation: slideUpToast 0.3s ease;
+        font-family: 'Inter', system-ui, sans-serif;
+    `;
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+    toast.innerHTML = `<span style="font-size: 18px;">${icons[type] || 'ℹ️'}</span> ${message}`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 // ========== TIMETABLE FUNCTIONS ==========
@@ -99,6 +274,7 @@ async function loadCalendarTimetable() {
     if (emptyDiv) emptyDiv.style.display = 'none';
     
     try {
+        // Get student block
         let studentBlock = null;
         
         if (window.currentUserProfile?.block) {
@@ -112,10 +288,10 @@ async function loadCalendarTimetable() {
                 if (user) {
                     const { data: profile } = await supabase
                         .from('consolidated_user_profiles_table')
-                        .select('block')
+                        .select('block, current_block')
                         .eq('user_id', user.id)
                         .single();
-                    studentBlock = profile?.block;
+                    studentBlock = profile?.block || profile?.current_block || 'Introductory';
                 }
             }
         }
@@ -160,11 +336,21 @@ async function loadCalendarTimetable() {
         // Generate week buttons
         if (weekButtonsDiv) {
             weekButtonsDiv.innerHTML = uniqueWeeks.map(week => `
-                <button class="week-btn-calendar" data-week="${week}">Week ${week}</button>
+                <button class="week-btn-calendar" data-week="${week}" style="
+                    padding: 6px 16px;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 20px;
+                    background: white;
+                    color: #64748b;
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-weight: 500;
+                    transition: all 0.3s ease;
+                " onmouseover="if(!this.classList.contains('active')){this.style.background='#f1f5f9'}" 
+                   onmouseout="if(!this.classList.contains('active')){this.style.background='white'}">
+                    Week ${week}
+                </button>
             `).join('');
-            
-            // Style the container
-            weekButtonsDiv.style.cssText = 'display: flex; gap: 5px; flex-wrap: wrap;';
             
             // Add click handlers
             weekButtonsDiv.querySelectorAll('.week-btn-calendar').forEach((btn, index) => {
@@ -174,7 +360,7 @@ async function loadCalendarTimetable() {
                     
                     weekButtonsDiv.querySelectorAll('.week-btn-calendar').forEach(b => {
                         b.classList.remove('active');
-                        b.style.background = 'transparent';
+                        b.style.background = 'white';
                         b.style.color = '#64748b';
                     });
                     this.classList.add('active');
@@ -250,36 +436,39 @@ function renderCalendarTimetable(weekNumber) {
                 min-width: 600px;
             }
             .timetable-compact th {
-                background: #4C1D95;
+                background: #0A3D62;
                 color: white;
-                padding: 12px;
+                padding: 10px 14px;
                 text-align: left;
                 font-weight: 600;
-                font-size: 12px;
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             }
             .timetable-compact td {
-                padding: 10px 12px;
-                border-bottom: 1px solid #f0f0f0;
-                vertical-align: top;
+                padding: 10px 14px;
+                border-bottom: 1px solid #f1f5f9;
+                vertical-align: middle;
             }
             .timetable-compact tr:hover td {
-                background: #faf5ff;
+                background: #f8fafc;
             }
             .timetable-day {
                 font-weight: 600;
-                width: 70px;
-                background: #faf5ff;
+                color: #0A3D62;
+                width: 60px;
             }
             .timetable-time {
                 font-family: monospace;
-                font-size: 11px;
+                font-size: 12px;
                 white-space: nowrap;
                 width: 80px;
+                color: #475569;
             }
             .badge-tiny {
                 display: inline-block;
-                padding: 2px 6px;
-                border-radius: 4px;
+                padding: 2px 8px;
+                border-radius: 12px;
                 font-size: 9px;
                 margin-left: 6px;
                 font-weight: 600;
@@ -288,13 +477,22 @@ function renderCalendarTimetable(weekNumber) {
             .badge-holiday { background: #fee2e2; color: #dc2626; }
             .badge-pending { background: #f3f4f6; color: #6b7280; }
             .badge-study { background: #e0e7ff; color: #4338ca; }
+            .week-header {
+                background: #f8fafc;
+                font-weight: 600;
+                color: #0A3D62;
+            }
+            .week-header td {
+                padding: 8px 14px;
+                background: #f1f5f9;
+            }
         </style>
         <div style="overflow-x: auto;">
             <table class="timetable-compact">
                 <thead>
                     <tr>
-                        <th>Day</th>
-                        <th>Time</th>
+                        <th style="width: 60px;">Day</th>
+                        <th style="width: 80px;">Time</th>
                         <th>Course</th>
                         <th>Lecturer</th>
                         <th>Venue</th>
@@ -310,7 +508,7 @@ function renderCalendarTimetable(weekNumber) {
             html += `
                 <tr>
                     <td class="timetable-day">${shortDayNames[day]}</td>
-                    <td colspan="4" style="color: #9ca3af; text-align: center;">— No classes —</td>
+                    <td colspan="4" style="color: #9ca3af; text-align: center; font-size: 12px;">— No classes —</td>
                 </tr>
             `;
         } else {
@@ -339,9 +537,9 @@ function renderCalendarTimetable(weekNumber) {
                     <tr>
                         ${idx === 0 ? `<td class="timetable-day" rowspan="${classes.length}">${shortDayNames[day]}</td>` : ''}
                         <td class="timetable-time">${startTime} - ${endTime}</td>
-                        <td><strong>${escapeHtml(courseDisplay)}</strong>${badges}</td>
-                        <td>${escapeHtml(lecturerName)}</td>
-                        <td>${escapeHtml(cls.venue || 'TBD')}</td>
+                        <td><strong style="color: #1e293b;">${escapeHtml(courseDisplay)}</strong>${badges}</td>
+                        <td style="color: #475569;">${escapeHtml(lecturerName)}</td>
+                        <td style="color: #475569;">${escapeHtml(cls.venue || 'TBD')}</td>
                     </tr>
                 `;
             });
@@ -379,7 +577,7 @@ async function loadAcademicCalendar() {
         const tableContainer = document.getElementById('calendar-table-container');
         
         if (emptyState) emptyState.style.display = 'none';
-        if (loadingState) loadingState.style.display = 'flex';
+        if (loadingState) loadingState.style.display = 'block';
         if (tableContainer) tableContainer.style.display = 'none';
         
         updateTodayDate();
@@ -387,7 +585,7 @@ async function loadAcademicCalendar() {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="4" style="padding: 40px; text-align: center;">
-                    <div style="display: inline-block; width: 40px; height: 40px; border: 3px solid #f3f4f6; border-top-color: #6d28d9; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <div style="display: inline-block; width: 40px; height: 40px; border: 3px solid #f3f4f6; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                     <p style="margin-top: 10px; color: #6b7280;">Loading your academic calendar...</p>
                 </td>
             </tr>
@@ -511,56 +709,49 @@ function renderCalendarTable(events, tableBody) {
         const isPast = eventDate < now;
         
         html += `
-            <tr class="calendar-event-row" data-id="${event.id}" ${isPast ? 'style="opacity: 0.8;"' : ''}>
-                <td class="date-col">
-                    <div class="date-time-container">
-                        <div class="event-date">
-                            <strong>${event.formattedDate}</strong>
-                            ${isToday ? '<span class="today-badge">TODAY</span>' : ''}
-                        </div>
-                        <div class="event-time">
-                            <i class="fas fa-clock"></i>
-                            ${event.formattedTime}
+            <tr class="calendar-event-row" data-id="${event.id}" style="${isPast ? 'opacity: 0.8;' : ''} cursor: pointer;" onclick="showEventDetails(${JSON.stringify(event).replace(/"/g, '&quot;')})">
+                <td style="padding: 12px 16px;">
+                    <div>
+                        <div style="font-weight: 600; color: #0A3D62;">${event.formattedDate}</div>
+                        ${isToday ? '<span style="display: inline-block; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-top: 4px;">TODAY</span>' : ''}
+                        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                            <i class="fas fa-clock"></i> ${event.formattedTime}
                         </div>
                         ${event.venue ? `
-                            <div class="event-venue">
-                                <i class="fas fa-map-marker-alt"></i>
-                                ${escapeHtml(event.venue)}
+                            <div style="font-size: 12px; color: #64748b;">
+                                <i class="fas fa-map-marker-alt"></i> ${escapeHtml(event.venue)}
                             </div>
                         ` : ''}
                     </div>
                 </td>
-                <td>
-                    <div class="event-details">
-                        <h3 class="event-title">
-                            ${escapeHtml(event.title)}
-                            ${event.program && event.program !== 'General' ? 
-                                `<span class="program-badge">${event.program}</span>` : ''}
-                        </h3>
-                        <p class="event-description">${escapeHtml(event.details || 'No details provided')}</p>
+                <td style="padding: 12px 16px;">
+                    <div>
+                        <div style="font-weight: 600; color: #1e293b;">${escapeHtml(event.title)}</div>
+                        ${event.program && event.program !== 'General' ? `
+                            <span style="display: inline-block; background: #4C1D95; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-top: 4px;">${event.program}</span>
+                        ` : ''}
+                        <p style="margin: 4px 0 0; font-size: 13px; color: #64748b;">${escapeHtml(event.details || 'No details provided')}</p>
                         ${event.organizer ? `
-                            <div class="event-organizer">
-                                <i class="fas fa-user"></i>
-                                ${escapeHtml(event.organizer)}
+                            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                                <i class="fas fa-user"></i> ${escapeHtml(event.organizer)}
                             </div>
                         ` : ''}
-                        <div class="event-source">
-                            <i class="fas fa-database"></i>
-                            Source: ${event.source}
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                            <i class="fas fa-database"></i> Source: ${event.source}
                             ${event.courseName ? ` • Course: ${escapeHtml(event.courseName)}` : ''}
                         </div>
                     </div>
                 </td>
-                <td class="type-col">
-                    <span class="event-type-badge" style="background-color: ${event.color}15; color: ${event.color}; border-color: ${event.color}30;">
-                        <i class="${event.icon}"></i>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: ${event.color}20; color: ${event.color}; border: 1px solid ${event.color}30;">
+                        <i class="${event.icon}" style="margin-right: 4px;"></i>
                         ${event.type}
                     </span>
                 </td>
-                <td class="status-col">
+                <td style="padding: 12px 16px; text-align: center;">
                     ${isPast ? 
-                        '<span class="status-badge status-completed"><i class="fas fa-check-circle"></i> Completed</span>' :
-                        '<span class="status-badge status-upcoming"><i class="fas fa-clock"></i> Upcoming</span>'
+                        '<span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #d1fae5; color: #065f46;"><i class="fas fa-check-circle"></i> Completed</span>' :
+                        '<span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #dbeafe; color: #1e40af;"><i class="fas fa-clock"></i> Upcoming</span>'
                     }
                 </td>
             </tr>
@@ -568,22 +759,100 @@ function renderCalendarTable(events, tableBody) {
     });
     
     tableBody.innerHTML = html;
-    
-    document.querySelectorAll('.calendar-event-row').forEach(row => {
-        row.addEventListener('click', function() {
-            const eventId = this.getAttribute('data-id');
-            const event = events.find(e => e.id === eventId);
-            if (event) {
-                showEventDetails(event);
-            }
-        });
-    });
-    
     console.log('✅ Table rendered');
 }
 
 function showEventDetails(event) {
-    alert(`📅 ${event.title}\n\n📆 Date: ${event.formattedDate}\n⏰ Time: ${event.formattedTime}\n📍 Venue: ${event.venue || 'TBD'}\n📝 Details: ${event.details || 'No additional details'}`);
+    // If event is a string (from onclick), parse it
+    if (typeof event === 'string') {
+        try {
+            event = JSON.parse(event);
+        } catch (e) {
+            console.error('Error parsing event:', e);
+            return;
+        }
+    }
+    
+    const isPast = new Date(event.date + 'T' + (event.startTime || '00:00:00')) < new Date();
+    
+    // Create a beautiful modal
+    const modalHtml = `
+        <div id="eventDetailModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 99999; display: flex; align-items: center; justify-content: center; animation: fadeInBackdrop 0.3s ease;">
+            <div style="background: white; border-radius: 16px; max-width: 500px; width: 92%; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUpModal 0.35s ease; max-height: 90vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 24px;">${event.icon ? `<i class="${event.icon}"></i>` : '📅'}</span>
+                            <h2 style="margin: 0; font-size: 20px; color: #0A3D62;">${escapeHtml(event.title)}</h2>
+                        </div>
+                        <span style="display: inline-block; padding: 2px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${event.color}20; color: ${event.color}; margin-top: 4px;">${event.type}</span>
+                    </div>
+                    <button onclick="document.getElementById('eventDetailModal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; padding: 16px; background: #f8fafc; border-radius: 12px;">
+                    <div>
+                        <div style="font-size: 11px; color: #94a3b8;">Date</div>
+                        <div style="font-weight: 600; color: #0A3D62;">${event.formattedDate}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; color: #94a3b8;">Time</div>
+                        <div style="font-weight: 600; color: #0A3D62;">${event.formattedTime}</div>
+                    </div>
+                    ${event.venue ? `
+                    <div style="grid-column: span 2;">
+                        <div style="font-size: 11px; color: #94a3b8;">Location</div>
+                        <div style="font-weight: 600; color: #0A3D62;">${escapeHtml(event.venue)}</div>
+                    </div>
+                    ` : ''}
+                    ${event.organizer ? `
+                    <div style="grid-column: span 2;">
+                        <div style="font-size: 11px; color: #94a3b8;">Organizer</div>
+                        <div style="font-weight: 600; color: #0A3D62;">${escapeHtml(event.organizer)}</div>
+                    </div>
+                    ` : ''}
+                    <div style="grid-column: span 2;">
+                        <div style="font-size: 11px; color: #94a3b8;">Status</div>
+                        <div style="font-weight: 600; color: ${isPast ? '#059669' : '#3B82F6'};">${isPast ? '✅ Completed' : '⏳ Upcoming'}</div>
+                    </div>
+                </div>
+                
+                ${event.details ? `
+                <div style="margin: 16px 0; padding: 12px 16px; background: #f0f7ff; border-radius: 8px; border-left: 3px solid #3B82F6;">
+                    <div style="font-size: 11px; color: #94a3b8;">Details</div>
+                    <div style="color: #475569;">${escapeHtml(event.details)}</div>
+                </div>
+                ` : ''}
+                
+                <button onclick="document.getElementById('eventDetailModal').remove()" style="width: 100%; padding: 12px; border: none; border-radius: 10px; background: #4C1D95; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#4C1D95'">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existing = document.getElementById('eventDetailModal');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Add styles if not exists
+    if (!document.getElementById('modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'modal-styles';
+        style.textContent = `
+            @keyframes fadeInBackdrop {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideUpModal {
+                from { opacity: 0; transform: translateY(30px) scale(0.95); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }
 
 // ========== DATABASE FUNCTIONS ==========
@@ -730,7 +999,7 @@ function showEmptyState(message = 'No scheduled events found') {
     if (emptyState) {
         const titleEl = emptyState.querySelector('h3');
         if (titleEl) titleEl.textContent = message;
-        emptyState.style.display = 'flex';
+        emptyState.style.display = 'block';
     }
     if (tableContainer) {
         tableContainer.style.display = 'none';
@@ -821,5 +1090,7 @@ function escapeHtml(str) {
 window.loadAcademicCalendar = loadAcademicCalendar;
 window.filterCalendarEvents = filterCalendarEvents;
 window.loadCalendarTimetable = loadCalendarTimetable;
+window.toggleCalendarView = toggleCalendarView;
+window.exportCalendarToPDF = exportCalendarToPDF;
 
-console.log('📅 calendar.js loaded - WITH TIMETABLE INSIDE CALENDAR TAB');
+console.log('📅 calendar.js updated - Enhanced with new HTML styling!');
