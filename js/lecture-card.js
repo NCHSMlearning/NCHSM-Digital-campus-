@@ -1,5 +1,7 @@
 // lecture-card.js - Complete Lecture Card Module
 // Works for ALL blocks and ALL programs (KRCHN & TVET)
+// UPDATED to match the HTML section
+
 (function() {
     'use strict';
     
@@ -13,9 +15,55 @@
         lecturerMap: {},
         unitDetailsMap: {},
         allTimetableData: [],
+        studentProfile: null,
+        registeredUnits: [],
+        approvals: null,
         
         init: function() {
             console.log('✅ Lecture Card Module ready');
+            
+            // Set up event listeners for the buttons
+            this.setupEventListeners();
+            
+            // Auto-load when the tab is shown
+            const lectureCardTab = document.querySelector('[data-tab="hub-lecture-card"]');
+            if (lectureCardTab) {
+                lectureCardTab.addEventListener('click', () => {
+                    setTimeout(() => this.loadLectureCard(), 300);
+                });
+            }
+            
+            // Also load if it's already the active tab
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab && activeTab.id === 'hub-lecture-card') {
+                setTimeout(() => this.loadLectureCard(), 500);
+            }
+        },
+        
+        setupEventListeners: function() {
+            // Print button - will be attached after content loads
+            const printBtn = document.getElementById('print-lecture-card-btn');
+            if (printBtn) {
+                printBtn.removeEventListener('click', this.printCard);
+                printBtn.addEventListener('click', () => this.printCard());
+                printBtn.hasListener = true;
+            }
+            
+            // Refresh button
+            const refreshBtn = document.getElementById('refresh-lecture-card-btn');
+            if (refreshBtn) {
+                refreshBtn.removeEventListener('click', () => this.loadLectureCard());
+                refreshBtn.addEventListener('click', () => this.loadLectureCard());
+                refreshBtn.hasListener = true;
+            }
+            
+            // Download PDF button
+            const downloadBtn = document.getElementById('download-lecture-card-btn');
+            if (downloadBtn) {
+                downloadBtn.removeEventListener('click', this.downloadPDF);
+                downloadBtn.addEventListener('click', () => this.downloadPDF());
+                downloadBtn.hasListener = true;
+            }
         },
         
         loadLectureCard: async function() {
@@ -24,66 +72,265 @@
             const container = document.getElementById('lecture-card-content');
             if (!container) return;
             
+            // Update status badge
+            this.updateStatusBadge('loading');
+            
             // Get student's block and program from profile
-            if (window.currentUserProfile) {
-                this.userBlock = window.currentUserProfile.block || window.currentUserProfile.term || 'Block 4';
-                this.userProgram = window.currentUserProfile.program || 'KRCHN';
-                
-                // Check if TVET student
-                const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-                                      'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-                                      'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
-                this.isTVETStudent = tvetPrograms.includes(this.userProgram);
-            }
+            await this.getStudentInfo();
             
             console.log(`📌 Student: ${this.userProgram}, Block: ${this.userBlock}, TVET: ${this.isTVETStudent}`);
             
             container.innerHTML = `
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Loading lecture card for ${this.userBlock}...</p>
+                <div class="loading-state" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                    <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                    <p style="margin: 0;">Loading lecture card for ${this.userBlock || 'your block'}...</p>
                 </div>
             `;
             
             const printBtn = document.getElementById('print-lecture-card-btn');
+            const downloadBtn = document.getElementById('download-lecture-card-btn');
             if (printBtn) printBtn.style.display = 'none';
+            if (downloadBtn) downloadBtn.style.display = 'none';
             
             try {
-                const studentProfile = await this.getStudentProfile();
-                const registeredUnits = await this.getRegisteredUnits();
+                await this.getStudentProfile();
+                await this.getRegisteredUnits();
                 await this.buildLecturerMapFromTimetables();
-                const approvals = await this.getApprovals();
+                await this.getApprovals();
                 
-                const cardHTML = this.generateLectureCard(studentProfile, registeredUnits, approvals);
+                const cardHTML = this.generateLectureCard();
                 container.innerHTML = cardHTML;
                 
+                // Show action buttons
                 if (printBtn) printBtn.style.display = 'inline-flex';
+                if (downloadBtn) downloadBtn.style.display = 'inline-flex';
                 
-                if (printBtn && !printBtn.hasListener) {
-                    printBtn.removeEventListener('click', this.printCard);
-                    printBtn.addEventListener('click', () => this.printCard());
-                    printBtn.hasListener = true;
-                }
+                // Update status badge
+                this.updateStatusBadge(this.approvals?.allApproved ? 'active' : 'pending');
                 
-                const refreshBtn = document.getElementById('refresh-lecture-card-btn');
-                if (refreshBtn && !refreshBtn.hasListener) {
-                    refreshBtn.removeEventListener('click', () => this.loadLectureCard());
-                    refreshBtn.addEventListener('click', () => this.loadLectureCard());
-                    refreshBtn.hasListener = true;
-                }
+                // Dispatch event
+                document.dispatchEvent(new CustomEvent('lectureCardLoaded', {
+                    detail: {
+                        block: this.userBlock,
+                        program: this.userProgram,
+                        units: this.registeredUnits.length,
+                        approved: this.approvals?.allApproved || false
+                    }
+                }));
                 
             } catch (error) {
                 console.error('❌ Error loading lecture card:', error);
                 container.innerHTML = `
-                    <div class="error-state" style="text-align: center; padding: 40px;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626;"></i>
-                        <p style="margin-top: 16px;">Failed to load lecture card. Please try again.</p>
-                        <button onclick="window.lectureCardModule?.loadLectureCard()" class="btn-primary" style="margin-top: 16px;">
+                    <div class="error-state" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; display: block; margin-bottom: 12px;"></i>
+                        <h3 style="color: #1e293b; margin: 0;">Failed to Load Lecture Card</h3>
+                        <p style="margin: 8px 0 16px 0;">${error.message || 'Please try again.'}</p>
+                        <button onclick="window.lectureCardModule?.loadLectureCard()" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                             <i class="fas fa-sync-alt"></i> Retry
                         </button>
                     </div>
                 `;
+                this.updateStatusBadge('error');
             }
+        },
+        
+        updateStatusBadge: function(status) {
+            const badge = document.getElementById('lectureCardStatusBadge');
+            const text = document.getElementById('lectureCardStatusText');
+            
+            if (!badge || !text) return;
+            
+            switch(status) {
+                case 'active':
+                    badge.style.background = '#d1fae5';
+                    badge.style.color = '#059669';
+                    text.textContent = 'Active ✓';
+                    break;
+                case 'pending':
+                    badge.style.background = '#fef3c7';
+                    badge.style.color = '#92400e';
+                    text.textContent = 'Pending Approval';
+                    break;
+                case 'loading':
+                    badge.style.background = '#e2e8f0';
+                    badge.style.color = '#64748b';
+                    text.textContent = 'Loading...';
+                    break;
+                case 'error':
+                    badge.style.background = '#fee2e2';
+                    badge.style.color = '#dc2626';
+                    text.textContent = 'Error';
+                    break;
+                default:
+                    badge.style.background = '#e2e8f0';
+                    badge.style.color = '#64748b';
+                    text.textContent = 'Unknown';
+            }
+        },
+        
+        getStudentInfo: function() {
+            return new Promise((resolve) => {
+                // Try multiple sources for student info
+                const sources = [
+                    () => window.currentUserProfile,
+                    () => window.db?.currentUserProfile,
+                    () => window.userProfile,
+                    () => {
+                        try {
+                            return JSON.parse(localStorage.getItem('userProfile'));
+                        } catch(e) { return null; }
+                    },
+                    () => {
+                        try {
+                            return JSON.parse(sessionStorage.getItem('userProfile'));
+                        } catch(e) { return null; }
+                    }
+                ];
+                
+                let profile = null;
+                for (const source of sources) {
+                    const result = source();
+                    if (result && (result.full_name || result.student_id || result.id || result.user_id)) {
+                        profile = result;
+                        break;
+                    }
+                }
+                
+                if (profile) {
+                    this.studentProfile = profile;
+                    this.userProgram = profile.program || profile.course || 'KRCHN';
+                    this.userBlock = profile.block || profile.current_block || profile.term || 'Block 4';
+                    
+                    // Check if TVET student
+                    const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+                                          'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+                                          'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+                    this.isTVETStudent = tvetPrograms.includes(this.userProgram);
+                } else {
+                    // Fallback defaults
+                    this.studentProfile = {
+                        full_name: 'Student Name',
+                        student_id: 'NCHSM/2024/001',
+                        program: 'KRCHN',
+                        intake_year: '2024',
+                        block: 'Block 4'
+                    };
+                    this.userProgram = 'KRCHN';
+                    this.userBlock = 'Block 4';
+                    this.isTVETStudent = false;
+                }
+                
+                // Also try to get from consolidated_user_profiles_table via RPC
+                this.fetchProfileFromDB().then(dbProfile => {
+                    if (dbProfile) {
+                        this.studentProfile = { ...this.studentProfile, ...dbProfile };
+                        this.userProgram = dbProfile.program || this.userProgram;
+                        this.userBlock = dbProfile.block || dbProfile.current_block || this.userBlock;
+                    }
+                    resolve();
+                }).catch(() => resolve());
+            });
+        },
+        
+        fetchProfileFromDB: async function() {
+            try {
+                const supabase = window.db?.supabase;
+                if (!supabase) return null;
+                
+                const userId = window.db?.currentUserId || window.currentUser?.id;
+                if (!userId) return null;
+                
+                const { data, error } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .maybeSingle();
+                
+                if (error || !data) return null;
+                return data;
+            } catch (e) {
+                return null;
+            }
+        },
+        
+        getStudentProfile: async function() {
+            // Already loaded in getStudentInfo
+            return this.studentProfile;
+        },
+        
+        getRegisteredUnits: async function() {
+            console.log('📚 Fetching registered units...');
+            
+            // Try to get from unit registration module
+            if (window.unitRegistrationModule && window.unitRegistrationModule.registeredUnits) {
+                const registered = window.unitRegistrationModule.registeredUnits;
+                const approvedUnits = registered.filter(u => 
+                    u.status === 'approved' && (u.block === this.userBlock || u.block === this.userTerm)
+                );
+                
+                if (approvedUnits && approvedUnits.length > 0) {
+                    console.log('✅ Found approved units:', approvedUnits.length);
+                    this.registeredUnits = approvedUnits.map(unit => ({
+                        name: unit.unit_name,
+                        code: unit.unit_code,
+                        credits: unit.credits || 3,
+                        block: unit.block
+                    }));
+                    return;
+                }
+            }
+            
+            // If no registered units from module, try fetching from database
+            try {
+                const supabase = window.db?.supabase;
+                if (supabase) {
+                    const userId = window.db?.currentUserId || window.currentUser?.id;
+                    if (userId) {
+                        const { data, error } = await supabase
+                            .from('student_unit_registrations')
+                            .select('*')
+                            .eq('student_id', userId)
+                            .eq('status', 'approved')
+                            .order('submitted_date', { ascending: false });
+                        
+                        if (!error && data && data.length > 0) {
+                            console.log('✅ Found approved units from DB:', data.length);
+                            this.registeredUnits = data.map(unit => ({
+                                name: unit.unit_name,
+                                code: unit.unit_code,
+                                credits: unit.credits || 3,
+                                block: unit.block
+                            }));
+                            return;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not fetch units from DB:', e);
+            }
+            
+            // If no registered units, get units from timetables for this block
+            if (this.allTimetableData && this.allTimetableData.length > 0) {
+                const uniqueCourses = new Map();
+                this.allTimetableData.forEach(item => {
+                    const courseName = item.course_name || item.session_name;
+                    if (courseName && !uniqueCourses.has(courseName)) {
+                        uniqueCourses.set(courseName, {
+                            name: courseName,
+                            code: this.extractUnitCode(courseName),
+                            credits: 3
+                        });
+                    }
+                });
+                
+                const unitsFromTimetable = Array.from(uniqueCourses.values());
+                console.log(`📋 Found ${unitsFromTimetable.length} units from timetable for ${this.userBlock}`);
+                this.registeredUnits = unitsFromTimetable;
+                return;
+            }
+            
+            console.log(`⚠️ No units found for block: ${this.userBlock}`);
+            this.registeredUnits = [];
         },
         
         buildLecturerMapFromTimetables: async function() {
@@ -97,14 +344,20 @@
                 }
                 
                 // Query timetables for the student's specific block
-                const { data, error } = await supabase
+                let query = supabase
                     .from('timetables')
                     .select('course_name, session_name, lecturer_name, venue, block')
-                    .eq('block', this.userBlock)
                     .not('lecturer_name', 'is', null)
                     .neq('lecturer_name', '—')
                     .neq('lecturer_name', 'TBA (Pending)')
                     .neq('lecturer_name', '');
+                
+                // If we have a block, filter by it
+                if (this.userBlock) {
+                    query = query.eq('block', this.userBlock);
+                }
+                
+                const { data, error } = await query;
                 
                 if (error) {
                     console.warn('Error fetching timetables:', error);
@@ -145,80 +398,6 @@
             } catch (e) {
                 console.warn('Could not build lecturer map:', e);
             }
-        },
-        
-        getStudentProfile: async function() {
-            const sources = [
-                () => window.currentUserProfile,
-                () => window.db?.currentUserProfile,
-                () => {
-                    try {
-                        return JSON.parse(localStorage.getItem('userProfile'));
-                    } catch(e) { return null; }
-                }
-            ];
-            
-            for (const source of sources) {
-                const profile = source();
-                if (profile && (profile.full_name || profile.student_id)) {
-                    if (!profile.block && this.userBlock) {
-                        profile.block = this.userBlock;
-                    }
-                    return profile;
-                }
-            }
-            
-            return {
-                full_name: 'Student Name',
-                student_id: 'NCHSM/2024/001',
-                program: this.userProgram || 'KRCHN',
-                intake_year: '2024',
-                block: this.userBlock || 'Block 4'
-            };
-        },
-        
-        getRegisteredUnits: async function() {
-            console.log('📚 Fetching registered units...');
-            
-            // Try to get from unit registration module
-            if (window.unitRegistrationModule && window.unitRegistrationModule.registeredUnits) {
-                const registered = window.unitRegistrationModule.registeredUnits;
-                const approvedUnits = registered.filter(u => 
-                    u.status === 'approved' && u.block === this.userBlock
-                );
-                
-                if (approvedUnits && approvedUnits.length > 0) {
-                    console.log('✅ Found approved units:', approvedUnits.length);
-                    return approvedUnits.map(unit => ({
-                        name: unit.unit_name,
-                        code: unit.unit_code,
-                        credits: unit.credits || 3,
-                        block: unit.block
-                    }));
-                }
-            }
-            
-            // If no registered units, get units from timetables for this block
-            if (this.allTimetableData && this.allTimetableData.length > 0) {
-                const uniqueCourses = new Map();
-                this.allTimetableData.forEach(item => {
-                    const courseName = item.course_name || item.session_name;
-                    if (courseName && !uniqueCourses.has(courseName)) {
-                        uniqueCourses.set(courseName, {
-                            name: courseName,
-                            code: this.extractUnitCode(courseName),
-                            credits: 3
-                        });
-                    }
-                });
-                
-                const unitsFromTimetable = Array.from(uniqueCourses.values());
-                console.log(`📋 Found ${unitsFromTimetable.length} units from timetable for ${this.userBlock}`);
-                return unitsFromTimetable;
-            }
-            
-            console.log(`⚠️ No units found for block: ${this.userBlock}`);
-            return [];
         },
         
         extractUnitCode: function(courseName) {
@@ -303,15 +482,22 @@
         getApprovals: async function() {
             let hasData = false;
             
-            if (window.unitRegistrationModule?.registeredUnits) {
-                hasData = window.unitRegistrationModule.registeredUnits.some(u => u.status === 'approved');
-            }
-            
-            if (!hasData && this.allTimetableData.length > 0) {
+            if (this.registeredUnits && this.registeredUnits.length > 0) {
                 hasData = true;
             }
             
-            return {
+            // Also check if there are approved units in the registration module
+            if (window.unitRegistrationModule?.registeredUnits) {
+                const approved = window.unitRegistrationModule.registeredUnits.some(u => u.status === 'approved');
+                if (approved) hasData = true;
+            }
+            
+            // Check if timetables exist
+            if (this.allTimetableData && this.allTimetableData.length > 0) {
+                hasData = true;
+            }
+            
+            this.approvals = {
                 finance: hasData,
                 hod: hasData,
                 registrar: hasData,
@@ -319,20 +505,29 @@
                 valid_block: this.userBlock || 'Current Block',
                 allApproved: hasData
             };
+            
+            return this.approvals;
         },
         
-        generateLectureCard: function(student, units, approvals) {
+        generateLectureCard: function() {
+            const student = this.studentProfile || {};
+            const units = this.registeredUnits || [];
+            const approvals = this.approvals || { allApproved: false, issued_date: new Date().toLocaleDateString('en-GB'), valid_block: this.userBlock };
             const currentYear = new Date().getFullYear();
             const nextYear = currentYear + 1;
             const displayBlock = this.userBlock || student.block || 'Current Block';
             const programType = this.isTVETStudent ? 'TVET' : 'KRCHN';
+            const studentName = student.full_name || student.name || 'Student Name';
+            const studentId = student.student_id || student.registration_number || student.id?.substring(0, 8) || 'N/A';
+            const intakeYear = student.intake_year || student.admission_year || '2024';
             
             // Build units table rows
             let unitsRows = '';
             
             if (units.length === 0) {
-                unitsRows = `<tr><td colspan="3" style="padding: 30px; text-align: center;">
-                    <i class="fas fa-info-circle"></i> No units found for ${displayBlock}.<br>
+                unitsRows = `<tr><td colspan="3" style="padding: 30px; text-align: center; color: #94a3b8;">
+                    <i class="fas fa-info-circle" style="display: block; margin-bottom: 8px; font-size: 20px;"></i>
+                    No units found for ${displayBlock}.<br>
                     Please contact academic office.
                 </td></tr>`;
             } else {
@@ -343,7 +538,7 @@
                     
                     unitsRows += `
                         <tr>
-                            <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center; width: 50px;">${index + 1}</td>
+                            <td style="padding: 12px; border: 1px solid #e5e7eb; text-align: center; width: 50px; font-weight: 500;">${index + 1}</td>
                             <td style="padding: 12px; border: 1px solid #e5e7eb;">
                                 <strong>${this.escapeHtml(unitCode)}</strong><br>
                                 <span style="font-size: 12px; color: #4b5563;">${this.escapeHtml(unitName)}</span>
@@ -356,52 +551,60 @@
             
             const approvalStatus = approvals.allApproved ? 'ACTIVE' : 'PENDING APPROVAL';
             const statusColor = approvals.allApproved ? '#059669' : '#f59e0b';
+            const statusBg = approvals.allApproved ? '#d1fae5' : '#fef3c7';
+            const statusBorder = approvals.allApproved ? '#059669' : '#f59e0b';
             
             return `
-                <div class="official-lecture-card" style="max-width: 800px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden;">
+                <div class="official-lecture-card" style="max-width: 850px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #e5e7eb; overflow: hidden;">
                     <div style="padding: 24px;">
+                        <!-- Header -->
                         <div style="text-align: center; border-bottom: 2px solid #4C1D95; padding-bottom: 16px; margin-bottom: 20px;">
-                            <h2 style="color: #4C1D95; margin: 0; font-size: 24px;">NCHSM - OFFICIAL LECTURE CARD</h2>
-                            <p style="margin: 5px 0 0; color: #6b7280;">${currentYear}/${nextYear} ACADEMIC YEAR</p>
-                            <p style="margin: 5px 0 0; color: #4C1D95; font-weight: 500;">${programType} | BLOCK: ${this.escapeHtml(displayBlock)}</p>
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 4px;">
+                                <div style="width: 50px; height: 50px; border-radius: 50%; background: #4C1D95; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="fas fa-chalkboard" style="color: white; font-size: 24px;"></i>
+                                </div>
+                                <h2 style="color: #4C1D95; margin: 0; font-size: 22px; font-weight: 700;">NCHSM</h2>
+                            </div>
+                            <h3 style="margin: 0; color: #0A3D62; font-size: 16px; font-weight: 600;">OFFICIAL LECTURE CARD</h3>
+                            <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">${currentYear}/${nextYear} ACADEMIC YEAR</p>
+                            <p style="margin: 4px 0 0; color: #4C1D95; font-weight: 600; font-size: 13px;">${programType} | BLOCK: <span style="font-weight: 700;">${this.escapeHtml(displayBlock)}</span></p>
                         </div>
                         
-                        ${approvals.allApproved ? `
-                        <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 12px 16px; margin-bottom: 20px; border-radius: 8px;">
+                        <!-- Status Badge -->
+                        <div style="background: ${statusBg}; border-left: 4px solid ${statusBorder}; padding: 10px 16px; margin-bottom: 20px; border-radius: 6px;">
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <i class="fas fa-check-circle" style="color: #059669;"></i>
-                                <span style="font-size: 14px; color: #065f46; font-weight: 500;">✓ Fully Approved - Valid for class attendance</span>
+                                <i class="fas ${approvals.allApproved ? 'fa-check-circle' : 'fa-clock'}" style="color: ${statusColor};"></i>
+                                <span style="font-size: 13px; color: ${statusColor}; font-weight: 500;">
+                                    ${approvals.allApproved ? '✓ Fully Approved - Valid for class attendance' : '⏳ Pending Approval - Please complete registration'}
+                                </span>
                             </div>
                         </div>
-                        ` : `
-                        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin-bottom: 20px; border-radius: 8px;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <i class="fas fa-clock" style="color: #f59e0b;"></i>
-                                <span style="font-size: 14px; color: #92400e;">Pending Approval - Please complete registration</span>
-                            </div>
-                        </div>
-                        `}
                         
-                        <div style="margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 12px;">
+                        <!-- Student Info -->
+                        <div style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                                <div><strong>Student:</strong> ${this.escapeHtml(student.full_name || student.name || 'N/A')}</div>
-                                <div><strong>Reg No:</strong> ${this.escapeHtml(student.student_id || student.registration_number || 'N/A')}</div>
-                                <div><strong>Program:</strong> ${this.escapeHtml(student.program || this.userProgram || 'KRCHN')}</div>
-                                <div><strong>Intake:</strong> ${this.escapeHtml(student.intake_year || student.admission_year || '2024')}</div>
-                                <div><strong>Current Block:</strong> ${this.escapeHtml(displayBlock)}</div>
-                                <div><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: 600;">${approvalStatus}</span></div>
+                                <div><strong style="font-size: 13px; color: #475569;">Student:</strong> <span style="font-size: 13px; color: #1e293b;">${this.escapeHtml(studentName)}</span></div>
+                                <div><strong style="font-size: 13px; color: #475569;">Reg No:</strong> <span style="font-size: 13px; color: #1e293b;">${this.escapeHtml(studentId)}</span></div>
+                                <div><strong style="font-size: 13px; color: #475569;">Program:</strong> <span style="font-size: 13px; color: #1e293b;">${this.escapeHtml(student.program || this.userProgram || 'KRCHN')}</span></div>
+                                <div><strong style="font-size: 13px; color: #475569;">Intake:</strong> <span style="font-size: 13px; color: #1e293b;">${this.escapeHtml(intakeYear)}</span></div>
+                                <div><strong style="font-size: 13px; color: #475569;">Current Block:</strong> <span style="font-size: 13px; color: #1e293b; font-weight: 600;">${this.escapeHtml(displayBlock)}</span></div>
+                                <div><strong style="font-size: 13px; color: #475569;">Status:</strong> <span style="color: ${statusColor}; font-weight: 600;">${approvalStatus}</span></div>
                             </div>
                         </div>
                         
-                        <div style="margin-bottom: 24px;">
-                            <h3 style="color: #4C1D95; margin-bottom: 12px; font-size: 18px;">REGISTERED UNITS</h3>
+                        <!-- Units Table -->
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: #0A3D62; margin-bottom: 12px; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-book" style="color: #4C1D95;"></i> REGISTERED UNITS
+                                <span style="font-size: 11px; background: #e2e8f0; color: #475569; padding: 2px 10px; border-radius: 12px; font-weight: 400;">${units.length}</span>
+                            </h4>
                             <div style="overflow-x: auto;">
-                                <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px;">
+                                <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px;">
                                     <thead style="background: #f3f4f6;">
                                         <tr>
-                                            <th style="padding: 12px; text-align: left; border: 1px solid #e5e7eb; width: 50px;">NO</th>
-                                            <th style="padding: 12px; text-align: left; border: 1px solid #e5e7eb;">UNIT</th>
-                                            <th style="padding: 12px; text-align: left; border: 1px solid #e5e7eb;">LECTURER</th>
+                                            <th style="padding: 10px 12px; text-align: left; border: 1px solid #e5e7eb; width: 50px; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">NO</th>
+                                            <th style="padding: 10px 12px; text-align: left; border: 1px solid #e5e7eb; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">UNIT</th>
+                                            <th style="padding: 10px 12px; text-align: left; border: 1px solid #e5e7eb; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">LECTURER</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -411,35 +614,41 @@
                             </div>
                         </div>
                         
-                        <div style="margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 12px;">
-                            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+                        <!-- Validity -->
+                        <div style="margin-bottom: 20px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 13px;">
                                 <div><span style="color: #6b7280;">ISSUED:</span> <strong>${approvals.issued_date}</strong></div>
-                                <div><span style="color: #6b7280;">VALID FOR:</span> <strong>${approvals.valid_block}</strong></div>
+                                <div><span style="color: #6b7280;">VALID FOR:</span> <strong>${this.escapeHtml(approvals.valid_block)}</strong></div>
                                 <div><span style="color: #6b7280;">Valid Until:</span> <strong>End of Block</strong></div>
                             </div>
                         </div>
                         
-                        <div style="border-top: 1px solid #e5e7eb; padding-top: 24px;">
-                            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 24px;">
-                                <div style="text-align: center; flex: 1;">
-                                    <div style="border-top: 2px solid #059669; width: 200px; margin: 0 auto;"></div>
-                                    <div style="font-size: 12px; margin-top: 5px;">Finance Officer</div>
+                        <!-- Signatures -->
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                                <div style="text-align: center;">
+                                    <div style="border-top: 2px solid #059669; width: 180px; margin: 0 auto;"></div>
+                                    <div style="font-size: 11px; margin-top: 5px; color: #475569;">Finance Officer</div>
+                                    <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Fees Clearance</div>
                                 </div>
-                                <div style="text-align: center; flex: 1;">
-                                    <div style="border-top: 2px solid #059669; width: 200px; margin: 0 auto;"></div>
-                                    <div style="font-size: 12px; margin-top: 5px;">Head of Department</div>
+                                <div style="text-align: center;">
+                                    <div style="border-top: 2px solid #059669; width: 180px; margin: 0 auto;"></div>
+                                    <div style="font-size: 11px; margin-top: 5px; color: #475569;">Head of Department</div>
+                                    <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Academic Approval</div>
                                 </div>
-                                <div style="text-align: center; flex: 1;">
-                                    <div style="border-top: 1px solid #374151; width: 200px; margin: 0 auto;"></div>
-                                    <div style="font-size: 12px; margin-top: 5px;">Principal</div>>
+                                <div style="text-align: center;">
+                                    <div style="border-top: 2px solid #059669; width: 180px; margin: 0 auto;"></div>
+                                    <div style="font-size: 11px; margin-top: 5px; color: #475569;">Principal</div>
+                                    <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Final Authorization</div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div style="margin-top: 24px; padding: 12px; background: #eef2ff; border-radius: 8px; text-align: center;">
+                        <!-- Footer Note -->
+                        <div style="margin-top: 20px; padding: 12px; background: #eef2ff; border-radius: 6px; text-align: center;">
                             <p style="margin: 0; font-size: 12px; color: #4C1D95;">
                                 <i class="fas fa-info-circle"></i> This card must be presented to your lecturer on the first day of each unit.
-                                Valid for ${this.escapeHtml(displayBlock)} only.
+                                Valid for <strong>${this.escapeHtml(displayBlock)}</strong> only.
                             </p>
                         </div>
                     </div>
@@ -466,16 +675,20 @@
                     <title>NCHSM Lecture Card</title>
                     <meta charset="UTF-8">
                     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
                     <style>
-                        body { font-family: 'Inter', sans-serif; margin: 0; padding: 20px; }
+                        body { font-family: 'Inter', sans-serif; margin: 0; padding: 20px; background: white; }
                         @media print { body { padding: 0; } }
                         .no-print { display: none; }
                         @media print { .no-print { display: none; } }
+                        .official-lecture-card { max-width: 850px; margin: 0 auto; }
                     </style>
                 </head>
                 <body>
                     ${cardContent.innerHTML}
-                    <div style="text-align: center; margin-top: 20px; font-size: 10px;" class="no-print">Printed on ${currentDate}</div>
+                    <div style="text-align: center; margin-top: 20px; font-size: 10px; color: #94a3b8;" class="no-print">
+                        Printed on ${currentDate} | NCHSM Student Portal
+                    </div>
                 </body>
                 </html>
             `);
@@ -488,6 +701,56 @@
             }, 500);
         },
         
+        downloadPDF: function() {
+            // Get the card content
+            const cardContent = document.getElementById('lecture-card-content');
+            if (!cardContent) return;
+            
+            // Show a loading state
+            const downloadBtn = document.getElementById('download-lecture-card-btn');
+            if (downloadBtn) {
+                const originalText = downloadBtn.innerHTML;
+                downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                downloadBtn.disabled = true;
+            }
+            
+            // Use html2pdf if available, otherwise use print
+            if (typeof html2pdf !== 'undefined') {
+                const element = cardContent.cloneNode(true);
+                const opt = {
+                    margin:       10,
+                    filename:     `Lecture_Card_${this.userBlock || 'Current'}.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                
+                // Remove any "no-print" elements
+                element.querySelectorAll('.no-print').forEach(el => el.remove());
+                
+                html2pdf().set(opt).from(element).save().then(() => {
+                    if (downloadBtn) {
+                        downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download PDF';
+                        downloadBtn.disabled = false;
+                    }
+                }).catch(() => {
+                    // Fallback to print
+                    this.printCard();
+                    if (downloadBtn) {
+                        downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download PDF';
+                        downloadBtn.disabled = false;
+                    }
+                });
+            } else {
+                // Fallback to print
+                this.printCard();
+                if (downloadBtn) {
+                    downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download PDF';
+                    downloadBtn.disabled = false;
+                }
+            }
+        },
+        
         escapeHtml: function(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -496,13 +759,28 @@
         }
     };
     
+    // ============================================
+    // 🚀 GLOBAL EXPOSURE
+    // ============================================
+    
     window.lectureCardModule = LectureCardModule;
     
+    // Initialize on DOM ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => LectureCardModule.init());
     } else {
         LectureCardModule.init();
     }
+    
+    // Also init when app is ready
+    document.addEventListener('appReady', () => {
+        setTimeout(() => LectureCardModule.loadLectureCard(), 500);
+    });
+    
+    // Listen for user login
+    document.addEventListener('userLoggedIn', () => {
+        setTimeout(() => LectureCardModule.loadLectureCard(), 800);
+    });
     
     console.log('✅ Lecture Card Module loaded and ready (works for ALL blocks and programs)');
 })();
