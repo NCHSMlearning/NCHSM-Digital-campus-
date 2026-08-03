@@ -1466,62 +1466,114 @@ class DashboardModule {
         }
     }
     
-    // ============================================================
-    // 🏆 LEADERBOARD
-    // ============================================================
+ async loadLeaderboardData(period = 'weekly') {
+    const container = document.getElementById('leaderboard-container');
+    if (!container) return;
     
-    async loadLeaderboardData(period = 'all') {
-        const container = document.getElementById('leaderboard-container');
-        if (!container) return;
+    container.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    
+    try {
+        // Get all students with their points
+        const { data: users, error } = await this.sb
+            .from('consolidated_user_profiles_table')
+            .select('id, full_name, login_count, gamification_points, total_points, block, program')
+            .eq('role', 'student')
+            .order('total_points', { ascending: false })
+            .limit(20);
         
-        container.innerHTML = '<div class="loading-slim"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        if (error) throw error;
+        if (!users || users.length === 0) {
+            container.innerHTML = '<div style="padding: 30px; text-align: center; color: #94a3b8;">No students found</div>';
+            return;
+        }
         
-        try {
-            // Fetch users with their total points
-            const { data: users, error } = await this.sb
-                .from('consolidated_user_profiles_table')
-                .select('id, full_name, login_count, block, program, gamification_points, total_points')
-                .eq('role', 'student')
-                .order('total_points', { ascending: false })
-                .limit(10);
+        // Filter by period (you can adjust this logic)
+        let filteredUsers = users;
+        let periodLabel = 'All Time';
+        
+        if (period === 'weekly') {
+            periodLabel = 'This Week';
+            filteredUsers = users.slice(0, 10);
+        } else if (period === 'monthly') {
+            periodLabel = 'This Month';
+            filteredUsers = users.slice(0, 10);
+        } else {
+            periodLabel = 'All Time';
+            filteredUsers = users.slice(0, 10);
+        }
+        
+        // Build leaderboard HTML
+        let html = `
+            <div style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between;">
+                <span style="font-weight: 600; color: #0A3D62;">🏆 ${periodLabel}</span>
+                <span style="font-size: 11px; color: #94a3b8;">Top ${filteredUsers.length}</span>
+            </div>
+        `;
+        
+        filteredUsers.forEach((user, index) => {
+            const rank = index + 1;
+            let rankDisplay = `#${rank}`;
+            let rankBg = 'transparent';
             
-            if (error) throw error;
-            
-            if (!users || users.length === 0) {
-                container.innerHTML = '<div class="empty-slim" style="text-align:center;padding:20px;color:#94a3b8;">No data yet</div>';
-                return;
+            if (rank === 1) {
+                rankDisplay = '👑';
+                rankBg = '#fef3c7';
+            } else if (rank === 2) {
+                rankDisplay = '🥈';
+                rankBg = '#f1f5f9';
+            } else if (rank === 3) {
+                rankDisplay = '🥉';
+                rankBg = '#fce4ec';
             }
             
-            container.innerHTML = users.map((user, index) => {
-                const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
-                const name = user.full_name?.split(' ')[0] || 'Student';
-                const points = user.total_points || user.gamification_points || 0;
-                return `
-                    <div class="leader-slim" style="
-                        display: flex; 
-                        align-items: center; 
-                        gap: 12px; 
-                        padding: 8px 12px; 
-                        border-radius: 8px;
-                        background: ${index === 0 ? '#ede9fe' : index === 1 ? '#fef3c7' : index === 2 ? '#fce4ec' : 'transparent'};
-                        border-bottom: 1px solid ${index < 9 ? '#f1f5f9' : 'transparent'};
-                    ">
-                        <span style="font-weight: 700; min-width: 28px; text-align: center; font-size: 16px;">${rankIcon}</span>
-                        <span style="flex: 1; font-weight: 500; color: #1e293b;">${this.escapeHtml(name)}</span>
-                        <span style="font-weight: 700; color: #4C1D95;">${points} pts</span>
-                        ${index === 0 ? '<span style="font-size: 11px; color: #f59e0b; background: #fef3c7; padding: 2px 10px; border-radius: 12px;">🏆 Top</span>' : ''}
+            const points = parseFloat(user.total_points) || 0;
+            const displayName = user.full_name || 'Student';
+            const isCurrentUser = user.id === this.userId;
+            
+            html += `
+                <div style="
+                    display: flex; 
+                    align-items: center; 
+                    gap: 12px; 
+                    padding: 10px 16px; 
+                    border-bottom: 1px solid #f1f5f9;
+                    background: ${isCurrentUser ? '#ede9fe' : rankBg};
+                    ${isCurrentUser ? 'border-left: 3px solid #4C1D95;' : ''}
+                    transition: all 0.2s ease;
+                ">
+                    <span style="font-weight: 700; min-width: 32px; text-align: center; font-size: 18px;">${rankDisplay}</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">
+                            ${this.escapeHtml(displayName)}
+                            ${isCurrentUser ? ' <span style="font-size: 10px; background: #4C1D95; color: white; padding: 1px 8px; border-radius: 10px;">You</span>' : ''}
+                        </div>
+                        <div style="font-size: 11px; color: #94a3b8;">
+                            ${user.block || 'No block'} · ${user.program || 'N/A'}
+                        </div>
                     </div>
-                `;
-            }).join('');
-            
-            console.log(`✅ Leaderboard loaded with ${users.length} users`);
-            
-        } catch (error) {
-            console.error('Leaderboard error:', error);
-            container.innerHTML = '<div class="error-slim" style="text-align:center;padding:20px;color:#94a3b8;">⚠️ Failed to load leaderboard</div>';
-        }
+                    <div style="text-align: right;">
+                        <div style="font-weight: 700; color: #4C1D95; font-size: 16px;">${points}</div>
+                        <div style="font-size: 10px; color: #94a3b8;">pts</div>
+                    </div>
+                    ${rank === 1 ? '<span style="font-size: 11px; color: #f59e0b; background: #fef3c7; padding: 2px 10px; border-radius: 12px;">🏆 Top</span>' : ''}
+                </div>
+            `;
+        });
+        
+        // Add footer
+        html += `
+            <div style="padding: 8px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; text-align: center; font-size: 11px; color: #94a3b8;">
+                Points = (Logins × 10) + Gamification Bonus
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Leaderboard error:', error);
+        container.innerHTML = '<div style="padding: 30px; text-align: center; color: #94a3b8;">⚠️ Failed to load leaderboard</div>';
     }
-    
+}
     // ============================================================
     // 📅 NEXT CLASS
     // ============================================================
