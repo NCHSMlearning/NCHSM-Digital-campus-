@@ -1,6 +1,6 @@
 // ============================================================
-// TVET & NURSING GRADING SYSTEM - COMPLETE DYNAMIC VERSION
-// WITH DIRECT KRCHN DETECTION & COLUMN-BASED CALCULATION
+// TVET & NURSING GRADING SYSTEM - COMPLETE FIXED VERSION
+// WITH CORRECT NURSING FULL ASSESSMENT (MAX: 100)
 // ============================================================
 
 // ============================================================
@@ -58,7 +58,7 @@ const TVET_PROGRAMS = [
 const NURSING_PROGRAMS = ['KRCHN'];
 
 // ============================================================
-// DETECT PROGRAM TYPE - DIRECT
+// DETECT PROGRAM TYPE
 // ============================================================
 
 function getProgramType(programCode) {
@@ -75,7 +75,7 @@ function getGradingConfig(programCode) {
 }
 
 // ============================================================
-// ✅ DYNAMIC COLUMN DETECTION - NEW FUNCTIONS
+// DYNAMIC COLUMN DETECTION
 // ============================================================
 
 function detectVisibleColumns() {
@@ -107,17 +107,33 @@ function detectVisibleColumns() {
         }
     });
     
-    // If no columns detected, use defaults
     if (!hasCat1 && !hasCat2 && !hasExam) {
+        const inputs = table.querySelectorAll('input[type="number"]');
+        inputs.forEach(input => {
+            const id = input.id || '';
+            if (id.includes('cat1')) hasCat1 = true;
+            if (id.includes('cat2')) hasCat2 = true;
+            if (id.includes('exam')) hasExam = true;
+        });
+    }
+    
+    if (!hasCat1 && !hasCat2 && !hasExam) {
+        console.warn('⚠️ No columns detected, using defaults');
         return { hasCat1: true, hasCat2: true, hasExam: true };
     }
     
+    console.log('📊 Final detection:', { hasCat1, hasCat2, hasExam });
     return { hasCat1, hasCat2, hasExam };
 }
 
 function getAssessmentTypeFromColumns() {
     const visible = detectVisibleColumns();
-    console.log('📊 Visible columns:', visible);
+    console.log('📊 Visible columns for assessment:', visible);
+    
+    // ✅ CRITICAL FIX: Check FULL first
+    if (visible.hasCat1 && visible.hasCat2 && visible.hasExam) {
+        return 'full';
+    }
     
     if (visible.hasExam && !visible.hasCat1 && !visible.hasCat2) return 'exam_only';
     if (visible.hasCat1 && !visible.hasCat2 && !visible.hasExam) return 'cat1_only';
@@ -125,6 +141,7 @@ function getAssessmentTypeFromColumns() {
     if (visible.hasCat1 && visible.hasCat2 && !visible.hasExam) return 'cats_only';
     if (visible.hasCat1 && !visible.hasCat2 && visible.hasExam) return 'single_cat';
     if (!visible.hasCat1 && visible.hasCat2 && visible.hasExam) return 'single_cat';
+    
     return 'full';
 }
 
@@ -132,21 +149,29 @@ function getMaxPossible(programCode, assessmentType) {
     const isNursing = programCode === 'KRCHN';
     const config = getGradingConfig(programCode);
     
-    switch(assessmentType) {
-        case 'full':
-            return isNursing ? 100 : config.TOTAL_MAX;
-        case 'single_cat':
-            return isNursing ? 100 : 130;
-        case 'exam_only':
-            return isNursing ? 70 : 100;
-        case 'cats_only':
-            return 60;
-        case 'cat1_only':
-            return 30;
-        case 'cat2_only':
-            return 30;
-        default:
-            return isNursing ? 100 : config.TOTAL_MAX;
+    console.log(`📊 Getting max for: ${programCode}, ${assessmentType}`);
+    
+    if (isNursing) {
+        switch(assessmentType) {
+            case 'full': return 100;      // 30 + 30 + 70 = 100
+            case 'single_cat': return 100; // 30 + 70 = 100
+            case 'exam_only': return 70;
+            case 'cats_only': return 60;   // 30 + 30 = 60
+            case 'cat1_only': return 30;
+            case 'cat2_only': return 30;
+            default: return 100;
+        }
+    } else {
+        // TVET
+        switch(assessmentType) {
+            case 'full': return config.TOTAL_MAX; // 160
+            case 'single_cat': return 130;        // 30 + 100 = 130
+            case 'exam_only': return 100;
+            case 'cats_only': return 60;
+            case 'cat1_only': return 30;
+            case 'cat2_only': return 30;
+            default: return config.TOTAL_MAX;
+        }
     }
 }
 
@@ -163,7 +188,7 @@ function getAssessmentTypeLabel(assessmentType) {
 }
 
 // ============================================================
-// TVET MARKS CALCULATION - UPDATED WITH DYNAMIC COLUMN SUPPORT
+// GRADE FUNCTIONS
 // ============================================================
 
 function getTVETGrade(percentage, config) {
@@ -188,6 +213,10 @@ function getTVETGradeBgColor(grade, programCode) {
     const gradeInfo = config.GRADE_MAPPING.find(g => g.grade === grade);
     return gradeInfo ? gradeInfo.bgColor : '#f3f4f6';
 }
+
+// ============================================================
+// ✅ CORE CALCULATION - FIXED
+// ============================================================
 
 function calculateTVETMarks(cat1, cat2, exam, programCode) {
     const isNursing = programCode === 'KRCHN';
@@ -214,11 +243,8 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     if (visible.hasCat2) rawTotal += clampedCat2;
     if (visible.hasExam) rawTotal += clampedExam;
     
-    // ✅ Get max possible based on visible columns
-    let maxPossible = 0;
-    if (visible.hasCat1) maxPossible += config.CAT1_MAX;
-    if (visible.hasCat2) maxPossible += config.CAT2_MAX;
-    if (visible.hasExam) maxPossible += isNursing ? 70 : config.EXAM_MAX;
+    // ✅ Get max possible based on program and assessment type
+    let maxPossible = getMaxPossible(programCode, assessmentType);
     
     if (maxPossible === 0) {
         maxPossible = isNursing ? 100 : config.TOTAL_MAX;
@@ -226,7 +252,7 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     
     // ✅ Calculate percentage
     let percentage;
-    if (maxPossible > 0) {
+    if (maxPossible > 0 && rawTotal > 0) {
         percentage = (rawTotal / maxPossible) * 100;
     } else {
         percentage = 0;
@@ -235,6 +261,15 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     percentage = Math.min(Math.round(percentage * 100) / 100, 100);
     
     const gradeInfo = getTVETGrade(percentage, config);
+    
+    console.log(`📊 Calculation:`, {
+        program: isNursing ? 'NURSING' : 'TVET',
+        assessmentType,
+        rawTotal,
+        maxPossible,
+        percentage,
+        grade: gradeInfo.grade
+    });
     
     return {
         cat1: clampedCat1,
@@ -282,45 +317,20 @@ function getMarksEntryGrade(score, programCode) {
 
 function calculateMarksEntryTotal(cat1, cat2, exam, assessmentType, programCode) {
     const isNursing = programCode === 'KRCHN';
-    const config = isNursing ? GRADING_CONFIG.NURSING : GRADING_CONFIG.TVET;
+    const config = getGradingConfig(programCode);
     
     let total = 0;
-    let maxPossible = 0;
     let cat1Val = Math.min(Math.max(parseFloat(cat1) || 0, 0), config.CAT1_MAX);
     let cat2Val = Math.min(Math.max(parseFloat(cat2) || 0, 0), config.CAT2_MAX);
-    
     const examMax = isNursing ? 70 : config.EXAM_MAX;
     let examVal = Math.min(Math.max(parseFloat(exam) || 0, 0), examMax);
     
-    switch(assessmentType) {
-        case 'full': 
-            total = cat1Val + cat2Val + examVal; 
-            maxPossible = isNursing ? 100 : config.TOTAL_MAX;
-            break;
-        case 'single_cat': 
-            total = cat1Val + examVal; 
-            maxPossible = isNursing ? 100 : 130;
-            break;
-        case 'exam_only': 
-            total = examVal; 
-            maxPossible = examMax;
-            break;
-        case 'cats_only': 
-            total = cat1Val + cat2Val; 
-            maxPossible = 60;
-            break;
-        case 'cat1_only': 
-            total = cat1Val; 
-            maxPossible = config.CAT1_MAX;
-            break;
-        case 'cat2_only': 
-            total = cat2Val; 
-            maxPossible = config.CAT2_MAX;
-            break;
-        default: 
-            total = cat1Val + cat2Val + examVal; 
-            maxPossible = isNursing ? 100 : config.TOTAL_MAX;
-    }
+    const visible = detectVisibleColumns();
+    if (visible.hasCat1) total += cat1Val;
+    if (visible.hasCat2) total += cat2Val;
+    if (visible.hasExam) total += examVal;
+    
+    const maxPossible = getMaxPossible(programCode, assessmentType);
     
     let percentage;
     if (maxPossible > 0) {
@@ -612,7 +622,7 @@ async function loadMEUnits() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY - WITH DYNAMIC COLUMN SUPPORT
+// LOAD MARKS ENTRY
 // ============================================================
 
 async function loadMarksEntry() {
@@ -766,7 +776,6 @@ async function loadMarksEntry() {
         console.log(`📊 Displaying ${fullMarks.length} students`);
         me_currentMarks = fullMarks;
         
-        // ✅ Get current assessment type from visible columns
         const currentAssessmentType = getAssessmentTypeFromColumns();
         const maxTotal = getMaxPossible(program, currentAssessmentType);
         const visible = detectVisibleColumns();
@@ -873,7 +882,7 @@ function updateGradingDisplay(program) {
 }
 
 // ============================================================
-// RENDER MARKS ENTRY TABLE - WITH DYNAMIC COLUMN SUPPORT
+// RENDER MARKS ENTRY TABLE
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
@@ -884,7 +893,6 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     const isNursing = program === 'KRCHN';
     const isCompetency = config.GRADE_TYPE === 'competency';
     
-    // ✅ Get visible columns
     const visible = detectVisibleColumns();
     const maxTotal = getMaxPossible(program, assessmentType);
     const examMax = isNursing ? 70 : config.EXAM_MAX;
@@ -1026,7 +1034,6 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     
     container.innerHTML = html;
     
-    // Update assessment type display
     updateAssessmentTypeDisplay(assessmentType, maxTotal, visible);
 }
 
@@ -1140,39 +1147,43 @@ function updateMarksEntryStats(marks, assessmentType, program) {
 }
 
 // ============================================================
-// RECALCULATE ALL TOTALS - NEW FUNCTION
+// RECALCULATE ALL TOTALS
 // ============================================================
 
 function recalculateAllTotals() {
+    console.log('🔄 Recalculating all totals...');
     const program = me_currentProgram;
     const rows = document.querySelectorAll('#me_marks_container table tbody tr');
     
-    if (!rows || rows.length === 0) return;
+    if (!rows || rows.length === 0) {
+        console.warn('⚠️ No rows to recalculate');
+        return;
+    }
     
-    // Update assessment type based on visible columns
     const assessmentType = getAssessmentTypeFromColumns();
     const maxTotal = getMaxPossible(program, assessmentType);
     const visible = detectVisibleColumns();
     
-    // Update each row
+    console.log(`📊 Recalculating with: ${assessmentType}, Max: ${maxTotal}`);
+    
     rows.forEach((row, index) => {
         updateMarksEntryRow(index);
     });
     
-    // Update stats
     if (me_currentMarks) {
         updateMarksEntryStats(me_currentMarks, assessmentType, program);
     }
     
-    // Show notification
     const label = getAssessmentTypeLabel(assessmentType);
     if (typeof showNotification === 'function') {
         showNotification(`📊 Switched to: ${label} (Max: ${maxTotal})`, 'info');
     }
+    
+    console.log('✅ Recalculation complete!');
 }
 
 // ============================================================
-// ASSESSMENT TYPE DISPLAY - UPDATED
+// ASSESSMENT TYPE DISPLAY
 // ============================================================
 
 function updateAssessmentTypeDisplay(assessmentType, maxTotal, visibleColumns) {
@@ -1203,7 +1214,7 @@ function updateAssessmentTypeDisplay(assessmentType, maxTotal, visibleColumns) {
 }
 
 // ============================================================
-// SAVE MARKS ENTRY - WITH AUTO-APPROVE
+// SAVE MARKS ENTRY
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1446,7 +1457,7 @@ function refreshAssignmentHistory() {
 }
 
 // ============================================================
-// COLUMN MANAGEMENT - UPDATED
+// COLUMN MANAGEMENT
 // ============================================================
 
 async function loadUnitColumnSettings() {
@@ -1636,7 +1647,6 @@ async function saveUnitColumnSetting(columnId, visible) {
         }
         applyColumnVisibility();
         
-        // ✅ Recalculate all totals based on new visible columns
         setTimeout(() => {
             recalculateAllTotals();
         }, 100);
@@ -1768,7 +1778,7 @@ async function resetUnitColumns() {
 }
 
 // ============================================================
-// LECTURER ASSIGNMENT FUNCTIONS
+// LECTURER ASSIGNMENT FUNCTIONS - FIXED
 // ============================================================
 
 async function loadLecturerAssignments() {
@@ -1795,12 +1805,13 @@ async function loadLecturerAssignments() {
     }
     
     try {
+        // ✅ FIX: Use consolidated_user_profiles_table with correct columns
         const { data: lecturers, error: lecturerError } = await sb
-            .from('staff_records')
-            .select('*')
-            .eq('program', program)
+            .from('consolidated_user_profiles_table')
+            .select('user_id, email, full_name, phone, role, program, status, staff_id')
+            .eq('role', 'lecturer')
             .in('status', ['active', 'approved'])
-            .order('first_name', { ascending: true });
+            .order('full_name', { ascending: true });
         
         if (lecturerError) throw lecturerError;
         
@@ -1829,13 +1840,14 @@ async function loadLecturerAssignments() {
         
         let html = '';
         lecturers.forEach(lecturer => {
-            const isAssigned = !!assignedMap[lecturer.id];
-            const fullName = lecturer.other_names ? `${lecturer.first_name} ${lecturer.other_names}` : lecturer.first_name;
+            const lecturerId = lecturer.user_id || lecturer.staff_id || lecturer.id;
+            const isAssigned = !!assignedMap[lecturerId];
+            const fullName = lecturer.full_name || 'Unknown';
             
             html += `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: ${isAssigned ? '#d1fae5' : '#f8fafc'}; border-radius: 8px; border: 1px solid ${isAssigned ? '#10b981' : '#e2e8f0'};">
                     <div>
-                        <strong style="font-size: 13px; color: #1e293b;">${fullName}</strong>
+                        <strong style="font-size: 13px; color: #1e293b;">${escapeHtml(fullName)}</strong>
                         <span style="font-size: 11px; color: #64748b; display: block;">${lecturer.email || ''}</span>
                         <span style="font-size: 10px; color: #94a3b8;">
                             <span style="background: ${program === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; padding: 2px 8px; border-radius: 4px;">
@@ -1848,11 +1860,11 @@ async function loadLecturerAssignments() {
                             <span style="background: #10b981; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
                                 <i class="fas fa-check"></i> Assigned
                             </span>
-                            <button onclick="removeLecturerAssignment('${lecturer.id}', '${unit}', '${block}')" style="background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 11px;">
+                            <button onclick="removeLecturerAssignment('${lecturerId}', '${unit}', '${block}')" style="background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 11px;">
                                 <i class="fas fa-times"></i> Remove
                             </button>
                         ` : `
-                            <button onclick="assignLecturerToUnit('${lecturer.id}', '${fullName}', '${unit}', '${block}')" style="background: #4C1D95; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 11px;">
+                            <button onclick="assignLecturerToUnit('${lecturerId}', '${fullName}', '${unit}', '${block}')" style="background: #4C1D95; color: white; border: none; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 11px;">
                                 <i class="fas fa-user-plus"></i> Assign
                             </button>
                         `}
@@ -1928,12 +1940,12 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
     let lecturerName = 'this lecturer';
     try {
         const { data: lecturer } = await sb
-            .from('staff_records')
-            .select('first_name, other_names')
-            .eq('id', lecturerId)
+            .from('consolidated_user_profiles_table')
+            .select('full_name')
+            .eq('user_id', lecturerId)
             .maybeSingle();
         if (lecturer) {
-            lecturerName = lecturer.other_names ? `${lecturer.first_name} ${lecturer.other_names}` : lecturer.first_name;
+            lecturerName = lecturer.full_name || 'this lecturer';
         }
     } catch (e) {}
     
@@ -2041,9 +2053,9 @@ async function loadAssignmentHistory() {
             const fullName = a.lecturer_name || 'Unknown';
             
             const { data: lecturer } = await sb
-                .from('staff_records')
-                .select('*')
-                .eq('id', a.lecturer_id)
+                .from('consolidated_user_profiles_table')
+                .select('full_name, email')
+                .eq('user_id', a.lecturer_id)
                 .maybeSingle();
             
             const email = lecturer?.email || a.lecturer_email || 'N/A';
@@ -3292,15 +3304,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================================================
-// ⭐ FORCE OVERRIDE - Ensures our functions win over script.js
+// FORCE OVERRIDE
 // ============================================================
 
 console.log('🔧 Force overriding getProgramType from script.js...');
 
-// Make sure NURSING_PROGRAMS is on window
 window.NURSING_PROGRAMS = ['KRCHN'];
 
-// Override the global functions (overwriting script.js versions)
 window.getProgramType = function(programCode) {
     if (!programCode) return 'TVET';
     if (window.NURSING_PROGRAMS && window.NURSING_PROGRAMS.includes(programCode)) {
@@ -3316,7 +3326,6 @@ window.getGradingConfig = function(programCode) {
     return window.GRADING_CONFIG.TVET;
 };
 
-// Test
 console.log('🧪 getProgramType("KRCHN"):', window.getProgramType('KRCHN'));
 console.log('🧪 getGradingConfig("KRCHN").EXAM_MAX:', window.getGradingConfig('KRCHN').EXAM_MAX);
 
