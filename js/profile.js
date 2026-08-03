@@ -1,5 +1,12 @@
+// ============================================================
+// 📋 PROFILE MODULE - COMPLETE VERSION
+// Matches the updated profile HTML section
+// ============================================================
+
 class ProfileModule {
     constructor() {
+        console.log('👤 ProfileModule initializing...');
+        
         this.userId = null;
         this.userProfile = null;
         this.isEditing = false;
@@ -8,10 +15,44 @@ class ProfileModule {
         this.pendingDocuments = {};
         
         this.initializeElements();
+        this.setupEventListeners();
+        this.setupPasswordResetListeners();
+        this.setupDocumentListeners();
+        this.setupPhotoUpload();
+        
+        // Initialize after db is ready
+        this.initialize();
     }
     
+    // ============================================================
+    // 🕐 TIME HELPERS
+    // ============================================================
+    
+    getKenyaNow() {
+        const now = new Date();
+        return new Date(now.toLocaleString('en-US', { 
+            timeZone: 'Africa/Nairobi' 
+        }));
+    }
+    
+    formatKenyaDate(date) {
+        if (!date) return 'N/A';
+        const d = new Date(date);
+        return d.toLocaleDateString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+    
+    // ============================================================
+    // 📦 INITIALIZE ELEMENTS
+    // ============================================================
+    
     initializeElements() {
-        // Get form and containers
+        // Form and containers
         this.profileForm = document.getElementById('profile-form');
         this.profileStatus = document.getElementById('profile-status');
         
@@ -21,12 +62,12 @@ class ProfileModule {
         
         // ==================== FORM FIELDS ====================
         
-        // Personal Information - ✅ NOW EDITABLE
-        this.profileName = document.getElementById('profile-name-input'); // ← Changed to input
+        // Personal Information - EDITABLE
+        this.profileName = document.getElementById('profile-name-input');
         this.profileStudentId = document.getElementById('profile-student-id');
         this.profileEmail = document.getElementById('profile-email');
-        this.profilePhone = document.getElementById('profile-phone-input'); // ← Should be input
-        this.profileAltPhone = document.getElementById('profile-alt-phone-input'); // ← Should be input
+        this.profilePhone = document.getElementById('profile-phone-input');
+        this.profileAltPhone = document.getElementById('profile-alt-phone-input');
         this.profileDob = document.getElementById('profile-dob-input');
         this.profileGender = document.getElementById('profile-gender-input');
         this.profileNationalId = document.getElementById('profile-national-id-input');
@@ -69,15 +110,15 @@ class ProfileModule {
         this.changePasswordBtn = document.getElementById('change-password-btn');
         this.passwordFeedback = document.getElementById('password-feedback');
         
-        // Action buttons
+        // ==================== ACTION BUTTONS ====================
         this.editProfileButton = document.getElementById('edit-profile-button');
         this.saveProfileButton = document.getElementById('save-profile-button');
         this.cancelEditButton = document.getElementById('cancel-edit-button');
-        
-        this.setupEventListeners();
-        this.setupPasswordResetListeners();
-        this.setupDocumentListeners();
     }
+    
+    // ============================================================
+    // 🎯 SETUP EVENT LISTENERS
+    // ============================================================
     
     setupEventListeners() {
         // Edit profile button
@@ -123,16 +164,22 @@ class ProfileModule {
                 }
             });
         }
-        
-        // Passport file input change
+    }
+    
+    // ============================================================
+    // 📷 PHOTO UPLOAD SETUP
+    // ============================================================
+    
+    setupPhotoUpload() {
         if (this.passportFileInput) {
             this.passportFileInput.addEventListener('change', (e) => this.handlePassportFileSelect(e));
         }
     }
     
-    // ============================================
-    // DOCUMENT UPLOAD LISTENERS
-    // ============================================
+    // ============================================================
+    // 📄 DOCUMENT UPLOAD SETUP
+    // ============================================================
+    
     setupDocumentListeners() {
         if (this.docKcseInput) {
             this.docKcseInput.addEventListener('change', (e) => this.handleDocumentUpload(e, 'kcse'));
@@ -142,9 +189,224 @@ class ProfileModule {
         }
     }
     
-    // ============================================
-    // DOCUMENT UPLOAD HANDLERS
-    // ============================================
+    // ============================================================
+    // 🔐 PASSWORD RESET SETUP
+    // ============================================================
+    
+    setupPasswordResetListeners() {
+        if (!this.newPassword) return;
+        
+        this.newPassword.addEventListener('input', () => {
+            this.validatePasswordRequirements(this.newPassword.value);
+        });
+        
+        if (this.confirmPassword) {
+            this.confirmPassword.addEventListener('input', () => {
+                this.validateConfirmPassword();
+            });
+        }
+        
+        if (this.changePasswordBtn) {
+            this.changePasswordBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.changeUserPassword();
+            });
+        }
+    }
+    
+    // ============================================================
+    // 🚀 INITIALIZE
+    // ============================================================
+    
+    async initialize() {
+        console.log('👤 ProfileModule initializing...');
+        
+        // Try to get userId from various sources
+        const getUserId = () => {
+            if (window.db?.currentUserId) return window.db.currentUserId;
+            if (window.currentUser?.id) return window.currentUser.id;
+            if (window.user?.id) return window.user.id;
+            if (window.auth?.user?.id) return window.auth.user.id;
+            return null;
+        };
+        
+        const userId = getUserId();
+        
+        if (userId) {
+            this.userId = userId;
+            this.userProfile = window.db?.currentUserProfile || {};
+            console.log('✅ ProfileModule initialized with userId:', userId);
+            await this.loadProfile();
+        } else {
+            console.warn('⚠️ No userId found, waiting for auth...');
+            // Listen for auth events
+            document.addEventListener('userDataLoaded', () => {
+                const newUserId = getUserId();
+                if (newUserId) {
+                    this.userId = newUserId;
+                    this.userProfile = window.db?.currentUserProfile || {};
+                    this.loadProfile();
+                }
+            });
+            
+            // Also check after a delay
+            setTimeout(() => {
+                const delayedUserId = getUserId();
+                if (delayedUserId && !this.userId) {
+                    this.userId = delayedUserId;
+                    this.userProfile = window.db?.currentUserProfile || {};
+                    this.loadProfile();
+                }
+            }, 2000);
+        }
+    }
+    
+    // ============================================================
+    // 📥 LOAD PROFILE
+    // ============================================================
+    
+    async loadProfile() {
+        if (!this.userId) {
+            console.warn('⚠️ No userId for profile load');
+            return;
+        }
+        
+        this.showStatus('Loading profile...', 'info');
+        
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) {
+                this.showStatus('Database connection not available', 'error');
+                return;
+            }
+            
+            const { data, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', this.userId)
+                .maybeSingle();
+            
+            if (error) {
+                console.warn('Error loading profile:', error);
+                this.showStatus(`Error loading profile: ${error.message}`, 'error');
+                return;
+            }
+            
+            this.userProfile = data || {};
+            this.clearStatus();
+            this.populateProfileForm();
+            await this.loadProfilePhoto();
+            this.updateDocumentStatus();
+            this.updateBlockProgress();
+            this.updateUIState('view');
+            
+            console.log('✅ Profile loaded successfully');
+            
+        } catch (error) {
+            console.error('Load profile error:', error);
+            this.showStatus(`Error: ${error.message}`, 'error');
+        }
+    }
+    
+    // ============================================================
+    // 📝 POPULATE PROFILE FORM
+    // ============================================================
+    
+    populateProfileForm() {
+        if (!this.userProfile) return;
+        
+        // Personal Information - EDITABLE
+        if (this.profileName) this.profileName.value = this.userProfile.full_name || '';
+        if (this.profileStudentId) this.profileStudentId.textContent = this.userProfile.student_id || this.userProfile.reg_no || '-';
+        if (this.profileEmail) this.profileEmail.textContent = this.userProfile.email || '-';
+        if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
+        if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';
+        
+        // Date of Birth
+        if (this.profileDob && this.userProfile.date_of_birth) {
+            const dob = new Date(this.userProfile.date_of_birth);
+            if (!isNaN(dob)) {
+                this.profileDob.value = dob.toISOString().split('T')[0];
+            }
+        } else if (this.profileDob) {
+            this.profileDob.value = '';
+        }
+        
+        // Gender
+        if (this.profileGender) {
+            this.profileGender.value = this.userProfile.gender || '';
+        }
+        
+        // National ID
+        if (this.profileNationalId) this.profileNationalId.value = this.userProfile.national_id || '';
+        
+        // Address
+        if (this.profileAddress) this.profileAddress.value = this.userProfile.address || '';
+        
+        // Guardian Information
+        if (this.profileGuardianName) this.profileGuardianName.value = this.userProfile.guardian_name || '';
+        if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';
+        
+        // Academic Information - READ ONLY
+        if (this.profileProgram) this.profileProgram.value = this.userProfile.program || '';
+        if (this.profileBlock) {
+            const isTVET = this.isTVETStudent();
+            const blockOrTerm = isTVET ? this.userProfile.term || this.userProfile.block : this.userProfile.block || this.userProfile.current_block;
+            this.profileBlock.value = blockOrTerm || 'Introductory';
+        }
+        if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
+        if (this.profileIntakeMonth) this.profileIntakeMonth.value = this.userProfile.intake_month || '';
+        
+        // Update quick stats
+        this.updateQuickStats();
+    }
+    
+    // ============================================================
+    // 🖼️ LOAD PROFILE PHOTO
+    // ============================================================
+    
+    async loadProfilePhoto() {
+        if (!this.userProfile) return;
+        
+        const photoUrl = this.userProfile.passport_url || this.userProfile.profile_photo_url;
+        let finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
+            encodeURIComponent(this.userProfile.full_name || 'Student') + 
+            '&background=4C1D95&color=fff&size=120';
+        
+        if (photoUrl) {
+            try {
+                if (photoUrl.startsWith('http')) {
+                    finalPhotoSrc = photoUrl;
+                } else {
+                    const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+                    finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/passports/${photoUrl}?t=${new Date().getTime()}`;
+                }
+                
+                // Test if image loads
+                await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = finalPhotoSrc;
+                });
+            } catch (error) {
+                console.warn('Photo load error:', error);
+                finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
+                    encodeURIComponent(this.userProfile.full_name || 'Student') + 
+                    '&background=4C1D95&color=fff&size=120';
+            }
+        }
+        
+        if (this.passportPreview) {
+            this.passportPreview.src = finalPhotoSrc;
+            this.passportPreview.alt = photoUrl ? 'Your passport photo' : 'Upload passport photo';
+        }
+    }
+    
+    // ============================================================
+    // 📄 DOCUMENT UPLOAD HANDLERS
+    // ============================================================
+    
     async handleDocumentUpload(event, docType) {
         const file = event.target.files[0];
         if (!file) return;
@@ -226,33 +488,301 @@ class ProfileModule {
         }
     }
     
-    // ============================================
-    // PASSWORD RESET LISTENERS
-    // ============================================
-    setupPasswordResetListeners() {
-        if (!this.newPassword) return;
+    // ============================================================
+    // 📸 PASSPORT PHOTO HANDLERS
+    // ============================================================
+    
+    handlePassportFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
         
-        this.newPassword.addEventListener('input', () => {
-            this.validatePasswordRequirements(this.newPassword.value);
-        });
-        
-        if (this.confirmPassword) {
-            this.confirmPassword.addEventListener('input', () => {
-                this.validateConfirmPassword();
-            });
+        const validation = this.validatePassportFile(file);
+        if (!validation.valid) {
+            this.showStatus(validation.message, 'error');
+            event.target.value = '';
+            return;
         }
         
-        if (this.changePasswordBtn) {
-            this.changePasswordBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.changeUserPassword();
-            });
+        this.pendingPhotoFile = file;
+        if (this.photoObjectURL) URL.revokeObjectURL(this.photoObjectURL);
+        this.photoObjectURL = URL.createObjectURL(file);
+        if (this.passportPreview) this.passportPreview.src = this.photoObjectURL;
+        
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        this.showStatus(`Ready to upload: ${file.name} (${fileSize} MB)`, 'info');
+    }
+    
+    validatePassportFile(file) {
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        const maxSize = 2 * 1024 * 1024;
+        if (!validTypes.includes(file.type)) {
+            return { valid: false, message: 'Invalid file type. Please upload JPG, PNG, or WebP image.' };
+        }
+        if (file.size > maxSize) {
+            const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+            return { valid: false, message: `File too large (${fileSizeMB} MB). Maximum size is 2 MB.` };
+        }
+        return { valid: true };
+    }
+    
+    async uploadPassportPhoto() {
+        const file = this.pendingPhotoFile;
+        if (!file) return;
+        
+        this.showStatus('Uploading photo...', 'info');
+        
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) throw new Error('No database connection');
+            
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${this.userId}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('passports')
+                .upload(filePath, file, { cacheControl: '3600', upsert: true, contentType: file.type });
+            
+            if (uploadError) throw uploadError;
+            
+            const { data: urlData } = supabase.storage.from('passports').getPublicUrl(filePath);
+            const publicUrl = urlData.publicUrl;
+            
+            const { error: updateError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .update({ 
+                    passport_url: publicUrl, 
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', this.userId);
+            
+            if (updateError) throw updateError;
+            
+            this.showStatus('Photo uploaded successfully!', 'success');
+            this.pendingPhotoFile = null;
+            await this.loadProfile();
+            
+            setTimeout(() => {
+                if (this.profileStatus && this.profileStatus.textContent === 'Photo uploaded successfully!') {
+                    this.clearStatus();
+                }
+            }, 3000);
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            this.showStatus(`Upload failed: ${error.message}`, 'error');
+            throw error;
         }
     }
     
-    // ============================================
-    // PASSWORD STRENGTH FUNCTIONS
-    // ============================================
+    // ============================================================
+    // 📊 DOCUMENT STATUS
+    // ============================================================
+    
+    getDocumentStatusText(status) {
+        const statusMap = {
+            'pending': '⏳ Pending',
+            'uploaded': '✅ Uploaded',
+            'verified': '✅ Verified',
+            'rejected': '❌ Rejected'
+        };
+        return statusMap[status] || '⏳ Pending';
+    }
+    
+    getStatusColor(status) {
+        const colors = {
+            'pending': '#f59e0b',
+            'uploaded': '#10b981',
+            'verified': '#059669',
+            'rejected': '#dc2626'
+        };
+        return colors[status] || '#6b7280';
+    }
+    
+    updateDocumentStatus() {
+        if (!this.userProfile) return;
+        
+        if (this.docKcseBadge) {
+            const status = this.userProfile.doc_kcse || 'pending';
+            this.docKcseBadge.textContent = this.getDocumentStatusText(status);
+            this.docKcseBadge.style.background = this.getStatusColor(status);
+            this.docKcseBadge.style.color = 'white';
+        }
+        if (this.docIdBadge) {
+            const status = this.userProfile.doc_id || 'pending';
+            this.docIdBadge.textContent = this.getDocumentStatusText(status);
+            this.docIdBadge.style.background = this.getStatusColor(status);
+            this.docIdBadge.style.color = 'white';
+        }
+        if (this.docKcseFilename && this.userProfile.doc_kcse === 'uploaded') {
+            this.docKcseFilename.textContent = '✅ Document uploaded';
+        }
+        if (this.docIdFilename && this.userProfile.doc_id === 'uploaded') {
+            this.docIdFilename.textContent = '✅ Document uploaded';
+        }
+    }
+    
+    // ============================================================
+    // 🔍 TVET HELPERS
+    // ============================================================
+    
+    isTVETStudent() {
+        const tvetPrograms = [
+            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+            'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
+        ];
+        const program = this.userProfile?.program || '';
+        return tvetPrograms.includes(program) || program === 'TVET';
+    }
+    
+    // ============================================================
+    // 📊 BLOCK PROGRESS
+    // ============================================================
+    
+    getCurrentBlockNumber() {
+        const isTVET = this.isTVETStudent();
+        const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Term 1' : 'Introductory');
+        const blockOrder = isTVET ? {
+            'Introductory': 1, 'Term 1': 1, 'Term 2': 2, 'Term 3': 3,
+            'Term 4': 4, 'Term 5': 5, 'Term 6': 6, 'Final': 7
+        } : {
+            'Introductory': 1, 'Block 1': 2, 'Block 2': 3, 'Block 3': 4,
+            'Block 4': 5, 'Block 5': 6, 'Final': 7
+        };
+        return blockOrder[currentBlock] || 1;
+    }
+    
+    getCompletedBlocksCount() {
+        return this.getCurrentBlockNumber() - 1;
+    }
+    
+    getProgressPercent() {
+        return Math.round((this.getCompletedBlocksCount() / 7) * 100);
+    }
+    
+    updateBlockProgress() {
+        if (!this.userProfile) return;
+        
+        const isTVET = this.isTVETStudent();
+        const currentBlock = this.userProfile.block || this.userProfile.current_block || (isTVET ? 'Term 1' : 'Introductory');
+        
+        let blockOrder;
+        if (isTVET) {
+            blockOrder = {
+                'Introductory': 1, 'Term 1': 1, 'Term 2': 2, 'Term 3': 3,
+                'Term 4': 4, 'Term 5': 5, 'Term 6': 6, 'Final': 7
+            };
+        } else {
+            blockOrder = {
+                'Introductory': 1, 'Block 1': 2, 'Block 2': 3, 'Block 3': 4,
+                'Block 4': 5, 'Block 5': 6, 'Final': 7
+            };
+        }
+        
+        const totalBlocks = 7;
+        const currentBlockNumber = blockOrder[currentBlock] || 1;
+        const completedBlocksCount = currentBlockNumber - 1;
+        const progressPercent = Math.round((completedBlocksCount / totalBlocks) * 100);
+        
+        if (this.blockProgressFill) {
+            this.blockProgressFill.style.width = `${progressPercent}%`;
+        }
+        if (this.blockProgressText) {
+            this.blockProgressText.textContent = `${progressPercent}% Complete`;
+        }
+        if (this.currentBlockStatus) {
+            this.currentBlockStatus.textContent = `Current: ${currentBlock}`;
+        }
+        
+        this.updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent);
+        this.updateBlockTimeline(currentBlock, isTVET);
+        this.updateCompletedBlocks(completedBlocksCount, isTVET);
+    }
+    
+    updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent) {
+        if (this.profileBlockNumber) {
+            const blockNum = currentBlockNumber || this.getCurrentBlockNumber();
+            this.profileBlockNumber.textContent = blockNum;
+        }
+        if (this.profileCompletedBlocks) {
+            const completed = completedBlocksCount !== undefined ? completedBlocksCount : this.getCompletedBlocksCount();
+            this.profileCompletedBlocks.textContent = completed;
+        }
+        if (this.profileProgress) {
+            const progress = progressPercent !== undefined ? progressPercent : this.getProgressPercent();
+            this.profileProgress.textContent = `${progress}%`;
+        }
+    }
+    
+    updateBlockTimeline(currentBlock, isTVET) {
+        if (!this.blockTimeline) return;
+        
+        let blocks;
+        if (isTVET) {
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Final'];
+        } else {
+            blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        }
+        
+        const currentIndex = blocks.indexOf(currentBlock);
+        
+        let html = '';
+        blocks.forEach((block, index) => {
+            let statusClass = 'upcoming';
+            let icon = '⏳';
+            if (index < currentIndex) {
+                statusClass = 'completed';
+                icon = '✅';
+            } else if (index === currentIndex) {
+                statusClass = 'current';
+                icon = '📌';
+            }
+            
+            html += `<span class="block-step ${statusClass}" style="padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; 
+                ${statusClass === 'completed' ? 'background: #d1fae5; color: #065f46;' : 
+                  statusClass === 'current' ? 'background: #4C1D95; color: white;' : 
+                  'background: #e2e8f0; color: #94a3b8;'}">
+                ${icon} ${block}
+            </span>`;
+            
+            if (index < blocks.length - 1) {
+                html += `<span class="block-connector ${index < currentIndex ? 'completed' : ''}" 
+                    style="color: ${index < currentIndex ? '#10b981' : '#d1d5db'}; font-size: 12px;">➜</span>`;
+            }
+        });
+        this.blockTimeline.innerHTML = html;
+    }
+    
+    updateCompletedBlocks(completedCount, isTVET) {
+        if (!this.completedBlocksContainer) return;
+        
+        let blocks;
+        if (isTVET) {
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5'];
+        } else {
+            blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5'];
+        }
+        
+        const completedBlocksList = blocks.slice(0, completedCount);
+        
+        if (completedBlocksList.length === 0) {
+            this.completedBlocksContainer.innerHTML = '<span style="background: #e2e8f0; color: #64748b; padding: 4px 12px; border-radius: 12px; font-size: 12px;">None yet</span>';
+            return;
+        }
+        
+        let html = '';
+        completedBlocksList.forEach(block => {
+            html += `<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                ✅ ${block}
+            </span>`;
+        });
+        this.completedBlocksContainer.innerHTML = html;
+    }
+    
+    // ============================================================
+    // 🔐 PASSWORD FUNCTIONS
+    // ============================================================
+    
     validatePasswordRequirements(password) {
         const requirements = {
             length: password.length >= 8,
@@ -327,8 +857,12 @@ class ProfileModule {
             const supabase = this.getSupabaseClient();
             if (!supabase) throw new Error('Database connection not available');
             
-            const email = this.userProfile?.email;
-            if (!email) throw new Error('User email not found');
+            const email = this.userProfile?.email || this.userProfile?.user_email;
+            if (!email) {
+                throw new Error('User email not found. Please contact support.');
+            }
+            
+            console.log('🔄 Changing password for user:', email);
             
             const { error: signInError } = await supabase.auth.signInWithPassword({
                 email: email,
@@ -373,513 +907,21 @@ class ProfileModule {
         }
     }
     
-    async logAudit(action_type, details, target_id = null, status = 'SUCCESS') {
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-            
-            const logData = {
-                user_id: this.userId,
-                user_role: 'student',
-                action_type: action_type,
-                details: details,
-                target_id: target_id,
-                status: status,
-                ip_address: await this.getIPAddress()
-            };
-            await supabase.from('audit_logs').insert([logData]);
-        } catch (error) {
-            console.error('Audit logging failed:', error);
-        }
-    }
-    
-    async getIPAddress() {
-        try {
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
-            return data.ip;
-        } catch (error) {
-            return null;
-        }
-    }
-    
-    async initialize() {
-        this.userId = this.getCurrentUserId();
-        if (!this.userId) {
-            setTimeout(() => this.initialize(), 1000);
-            return;
-        }
-        this.userProfile = this.getUserProfile();
-        await this.loadProfile();
-    }
-    
-    getCurrentUserId() {
-        if (window.db && window.db.currentUserId) {
-            return window.db.currentUserId;
-        }
-        return null;
-    }
-    
-    getUserProfile() {
-        if (window.db && window.db.currentUserProfile) {
-            return window.db.currentUserProfile;
-        }
-        return null;
-    }
-    
-    getSupabaseClient() {
-        if (window.db && window.db.supabase) {
-            return window.db.supabase;
-        }
-        return null;
-    }
-    
-    async loadProfile() {
-        if (!this.userId) return;
-        this.showStatus('Loading profile...', 'info');
-        
-        try {
-            let profile;
-            if (window.db && window.db.loadUserProfile) {
-                profile = await window.db.loadUserProfile();
-            } else {
-                const supabase = this.getSupabaseClient();
-                if (!supabase) return;
-                
-                const { data, error } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .eq('user_id', this.userId)
-                    .maybeSingle();
-                
-                if (error) {
-                    console.warn('Error loading profile:', error);
-                    return;
-                }
-                profile = data;
-            }
-            
-            this.userProfile = profile;
-            this.clearStatus();
-            this.populateProfileForm();
-            await this.loadProfilePhoto();
-            this.updateDocumentStatus();
-            this.updateBlockProgress();
-            this.updateUIState('view');
-            
-        } catch (error) {
-            console.error('Load profile error:', error);
-            this.showStatus(`Error: ${error.message}`, 'error');
-        }
-    }
-    
-    populateProfileForm() {
-        if (!this.userProfile) return;
-        
-        // ✅ Personal Information - EDITABLE
-        if (this.profileName) this.profileName.value = this.userProfile.full_name || '';
-        if (this.profileStudentId) this.profileStudentId.textContent = this.userProfile.student_id || this.userProfile.reg_no || '-';
-        if (this.profileEmail) this.profileEmail.textContent = this.userProfile.email || '-';
-        if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
-        if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';
-        
-        // Date of Birth
-        if (this.profileDob && this.userProfile.date_of_birth) {
-            const dob = new Date(this.userProfile.date_of_birth);
-            if (!isNaN(dob)) {
-                this.profileDob.value = dob.toISOString().split('T')[0];
-            }
-        } else if (this.profileDob) {
-            this.profileDob.value = '';
-        }
-        
-        // Gender
-        if (this.profileGender) {
-            this.profileGender.value = this.userProfile.gender || '';
-        }
-        
-        // National ID
-        if (this.profileNationalId) this.profileNationalId.value = this.userProfile.national_id || '';
-        
-        // Address
-        if (this.profileAddress) this.profileAddress.value = this.userProfile.address || '';
-        
-        // Guardian Information
-        if (this.profileGuardianName) this.profileGuardianName.value = this.userProfile.guardian_name || '';
-        if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';
-        
-        // Academic Information - READ ONLY
-        if (this.profileProgram) this.profileProgram.value = this.userProfile.program || '';
-        if (this.profileBlock) {
-            const isTVET = this.isTVETStudent();
-            const blockOrTerm = isTVET ? this.userProfile.term || this.userProfile.block : this.userProfile.block || this.userProfile.current_block;
-            this.profileBlock.value = blockOrTerm || 'Introductory';
-        }
-        if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
-        if (this.profileIntakeMonth) this.profileIntakeMonth.value = this.userProfile.intake_month || '';
-        
-        // Update quick stats
-        this.updateQuickStats();
-    }
-    
-    isTVETStudent() {
-        const tvetPrograms = [
-            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-            'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
-        ];
-        const program = this.userProfile?.program || '';
-        return tvetPrograms.includes(program) || program === 'TVET';
-    }
-    
-    getDocumentStatusText(status) {
-        const statusMap = {
-            'pending': '⏳ Pending',
-            'uploaded': '✅ Uploaded',
-            'verified': '✅ Verified',
-            'rejected': '❌ Rejected'
-        };
-        return statusMap[status] || '⏳ Pending';
-    }
-    
-    updateDocumentStatus() {
-        if (!this.userProfile) return;
-        
-        if (this.docKcseBadge) {
-            const status = this.userProfile.doc_kcse || 'pending';
-            this.docKcseBadge.textContent = this.getDocumentStatusText(status);
-            this.docKcseBadge.style.background = this.getStatusColor(status);
-            this.docKcseBadge.style.color = 'white';
-        }
-        if (this.docIdBadge) {
-            const status = this.userProfile.doc_id || 'pending';
-            this.docIdBadge.textContent = this.getDocumentStatusText(status);
-            this.docIdBadge.style.background = this.getStatusColor(status);
-            this.docIdBadge.style.color = 'white';
-        }
-        if (this.docKcseFilename && this.userProfile.doc_kcse === 'uploaded') {
-            this.docKcseFilename.textContent = '✅ Document uploaded';
-        }
-        if (this.docIdFilename && this.userProfile.doc_id === 'uploaded') {
-            this.docIdFilename.textContent = '✅ Document uploaded';
-        }
-    }
-    
-    getStatusColor(status) {
-        const colors = {
-            'pending': '#f59e0b',
-            'uploaded': '#10b981',
-            'verified': '#059669',
-            'rejected': '#dc2626'
-        };
-        return colors[status] || '#6b7280';
-    }
-    
-    updateBlockProgress() {
-        if (!this.userProfile) return;
-        
-        const isTVET = this.isTVETStudent();
-        const currentBlock = this.userProfile.block || this.userProfile.current_block || (isTVET ? 'Term 1' : 'Introductory');
-        
-        let blockOrder;
-        if (isTVET) {
-            blockOrder = {
-                'Introductory': 1, 'Term 1': 1, 'Term 2': 2, 'Term 3': 3,
-                'Term 4': 4, 'Term 5': 5, 'Term 6': 6, 'Final': 7
-            };
-        } else {
-            blockOrder = {
-                'Introductory': 1, 'Block 1': 2, 'Block 2': 3, 'Block 3': 4,
-                'Block 4': 5, 'Block 5': 6, 'Final': 7
-            };
-        }
-        
-        const totalBlocks = 7;
-        const currentBlockNumber = blockOrder[currentBlock] || 1;
-        const completedBlocksCount = currentBlockNumber - 1;
-        const progressPercent = Math.round((completedBlocksCount / totalBlocks) * 100);
-        
-        if (this.blockProgressFill) {
-            this.blockProgressFill.style.width = `${progressPercent}%`;
-        }
-        if (this.blockProgressText) {
-            this.blockProgressText.textContent = `${progressPercent}% Complete`;
-        }
-        if (this.currentBlockStatus) {
-            this.currentBlockStatus.textContent = `Current: ${currentBlock}`;
-        }
-        
-        this.updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent);
-        this.updateBlockTimeline(currentBlock, isTVET);
-        this.updateCompletedBlocks(completedBlocksCount, isTVET);
-    }
-    
-    updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent) {
-        if (this.profileBlockNumber) {
-            const blockNum = currentBlockNumber || this.getCurrentBlockNumber();
-            this.profileBlockNumber.textContent = blockNum;
-        }
-        if (this.profileCompletedBlocks) {
-            const completed = completedBlocksCount !== undefined ? completedBlocksCount : this.getCompletedBlocksCount();
-            this.profileCompletedBlocks.textContent = completed;
-        }
-        if (this.profileProgress) {
-            const progress = progressPercent !== undefined ? progressPercent : this.getProgressPercent();
-            this.profileProgress.textContent = `${progress}%`;
-        }
-    }
-    
-    getCurrentBlockNumber() {
-        const isTVET = this.isTVETStudent();
-        const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Term 1' : 'Introductory');
-        const blockOrder = isTVET ? {
-            'Introductory': 1, 'Term 1': 1, 'Term 2': 2, 'Term 3': 3,
-            'Term 4': 4, 'Term 5': 5, 'Term 6': 6, 'Final': 7
-        } : {
-            'Introductory': 1, 'Block 1': 2, 'Block 2': 3, 'Block 3': 4,
-            'Block 4': 5, 'Block 5': 6, 'Final': 7
-        };
-        return blockOrder[currentBlock] || 1;
-    }
-    
-    getCompletedBlocksCount() {
-        return this.getCurrentBlockNumber() - 1;
-    }
-    
-    getProgressPercent() {
-        return Math.round((this.getCompletedBlocksCount() / 7) * 100);
-    }
-    
-    updateBlockTimeline(currentBlock, isTVET) {
-        if (!this.blockTimeline) return;
-        
-        let blocks;
-        if (isTVET) {
-            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Final'];
-        } else {
-            blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-        }
-        
-        const currentIndex = blocks.indexOf(currentBlock);
-        
-        let html = '';
-        blocks.forEach((block, index) => {
-            let statusClass = 'upcoming';
-            let icon = '⏳';
-            if (index < currentIndex) {
-                statusClass = 'completed';
-                icon = '✅';
-            } else if (index === currentIndex) {
-                statusClass = 'current';
-                icon = '📌';
-            }
-            
-            html += `<span class="block-step ${statusClass}" style="padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; 
-                ${statusClass === 'completed' ? 'background: #d1fae5; color: #065f46;' : 
-                  statusClass === 'current' ? 'background: #4C1D95; color: white;' : 
-                  'background: #e2e8f0; color: #94a3b8;'}">
-                ${icon} ${block}
-            </span>`;
-            
-            if (index < blocks.length - 1) {
-                html += `<span class="block-connector ${index < currentIndex ? 'completed' : ''}" 
-                    style="color: ${index < currentIndex ? '#10b981' : '#d1d5db'}; font-size: 12px;">➜</span>`;
-            }
-        });
-        this.blockTimeline.innerHTML = html;
-    }
-    
-    updateCompletedBlocks(completedCount, isTVET) {
-        if (!this.completedBlocksContainer) return;
-        
-        let blocks;
-        if (isTVET) {
-            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5'];
-        } else {
-            blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5'];
-        }
-        
-        const completedBlocksList = blocks.slice(0, completedCount);
-        
-        if (completedBlocksList.length === 0) {
-            this.completedBlocksContainer.innerHTML = '<span style="background: #e2e8f0; color: #64748b; padding: 4px 12px; border-radius: 12px; font-size: 12px;">None yet</span>';
-            return;
-        }
-        
-        let html = '';
-        completedBlocksList.forEach(block => {
-            html += `<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-                ✅ ${block}
-            </span>`;
-        });
-        this.completedBlocksContainer.innerHTML = html;
-    }
-    
-    async loadProfilePhoto() {
-        if (!this.userProfile) return;
-        
-        // ✅ FIX: Check both fields
-        const photoUrl = this.userProfile.passport_url || this.userProfile.profile_photo_url;
-        let finalPhotoSrc = 'https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=120';
-        
-        if (photoUrl) {
-            try {
-                if (photoUrl.startsWith('http')) {
-                    finalPhotoSrc = photoUrl;
-                } else {
-                    const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
-                    finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/passports/${photoUrl}?t=${new Date().getTime()}`;
-                }
-                
-                await new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = resolve;
-                    img.onerror = reject;
-                    img.src = finalPhotoSrc;
-                });
-            } catch (error) {
-                console.warn('Photo load error:', error);
-                finalPhotoSrc = 'https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=120';
-            }
-        }
-        
-        if (this.passportPreview) {
-            this.passportPreview.src = finalPhotoSrc;
-            this.passportPreview.alt = photoUrl ? 'Your passport photo' : 'Upload passport photo';
-        }
-    }
-    
-    updateUIState(state) {
-        switch(state) {
-            case 'view': this.updateViewMode(); break;
-            case 'edit': this.updateEditMode(); break;
-            case 'saving': this.updateSavingMode(); break;
-        }
-    }
-    
-    updateViewMode() {
-        this.isEditing = false;
-        if (this.editProfileButton) this.editProfileButton.style.display = 'inline-flex';
-        if (this.saveProfileButton) this.saveProfileButton.style.display = 'none';
-        if (this.cancelEditButton) this.cancelEditButton.style.display = 'none';
-        if (this.profileForm) this.profileForm.classList.remove('editing');
-        this.setFieldsReadonly(true);
-        if (this.pendingPhotoFile) {
-            this.pendingPhotoFile = null;
-            this.loadProfilePhoto();
-        }
-        if (this.passportFileInput) this.passportFileInput.value = '';
-        this.clearStatus();
-    }
-    
-    updateEditMode() {
-        this.isEditing = true;
-        if (this.editProfileButton) this.editProfileButton.style.display = 'none';
-        if (this.saveProfileButton) this.saveProfileButton.style.display = 'inline-flex';
-        if (this.cancelEditButton) this.cancelEditButton.style.display = 'inline-flex';
-        if (this.profileForm) this.profileForm.classList.add('editing');
-        this.setFieldsReadonly(false);
-        this.showStatus('Edit mode enabled. Make your changes and click Save.', 'info');
-        setTimeout(() => {
-            if (this.profileName) this.profileName.focus();
-        }, 100);
-    }
-    
-    updateSavingMode() {
-        if (this.saveProfileButton) {
-            this.saveProfileButton.disabled = true;
-            this.saveProfileButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        }
-    }
-    
-    setFieldsReadonly(readonly) {
-        // ✅ EDITABLE FIELDS (inputs)
-        const editableFields = [
-            this.profileName,      // ← NOW INCLUDED!
-            this.profilePhone,
-            this.profileAltPhone,
-            this.profileDob,
-            this.profileGender,
-            this.profileNationalId,
-            this.profileAddress,
-            this.profileGuardianName,
-            this.profileGuardianPhone
-        ];
-        
-        editableFields.forEach(field => {
-            if (field) {
-                if (field.tagName === 'SELECT') {
-                    field.disabled = readonly;
-                } else {
-                    field.readOnly = readonly;
-                }
-                if (!readonly) {
-                    field.classList.add('editable');
-                    field.style.background = '#fffbeb';
-                    field.style.borderColor = '#f59e0b';
-                } else {
-                    field.classList.remove('editable');
-                    field.style.background = '#f8fafc';
-                    field.style.borderColor = '#e2e8f0';
-                }
-            }
-        });
-        
-        // Date of Birth special handling
-        if (this.profileDob) {
-            if (!readonly) {
-                this.profileDob.removeAttribute('readonly');
-                this.profileDob.disabled = false;
-                this.profileDob.style.cursor = 'pointer';
-            } else {
-                this.profileDob.setAttribute('readonly', 'readonly');
-                this.profileDob.disabled = false;
-            }
-        }
-        
-        // ✅ READ-ONLY FIELDS (display text)
-        const readonlyFields = [
-            this.profileStudentId,
-            this.profileEmail,
-            this.profileProgram,
-            this.profileBlock,
-            this.profileIntakeYear,
-            this.profileIntakeMonth
-        ];
-        
-        readonlyFields.forEach(field => {
-            if (field) {
-                if (field.tagName === 'INPUT' || field.tagName === 'SELECT') {
-                    field.readOnly = true;
-                    field.disabled = true;
-                }
-                field.classList.remove('editable');
-            }
-        });
-    }
-    
-    enableEditing() {
-        this.updateUIState('edit');
-    }
-    
-    cancelEditing() {
-        this.populateProfileForm();
-        if (this.pendingPhotoFile) {
-            this.pendingPhotoFile = null;
-            this.loadProfilePhoto();
-        }
-        if (this.passportFileInput) this.passportFileInput.value = '';
-        this.updateUIState('view');
-    }
+    // ============================================================
+    // 💾 SAVE PROFILE
+    // ============================================================
     
     async saveProfile() {
-        if (!this.userId) return;
+        if (!this.userId) {
+            this.showStatus('Not logged in', 'error');
+            return;
+        }
         if (!this.validateForm()) return;
         this.updateUIState('saving');
         
         try {
             const updates = {
-                full_name: this.profileName ? this.profileName.value.trim() : '', // ← NOW INCLUDED!
+                full_name: this.profileName ? this.profileName.value.trim() : '',
                 phone: this.profilePhone ? this.profilePhone.value.trim() : '',
                 alt_phone: this.profileAltPhone ? this.profileAltPhone.value.trim() : '',
                 date_of_birth: this.profileDob ? this.profileDob.value : null,
@@ -994,23 +1036,24 @@ class ProfileModule {
         }
     }
     
+    // ============================================================
+    // ✅ VALIDATION
+    // ============================================================
+    
     validateForm() {
         let isValid = true;
         this.clearAllErrors();
         
-        // ✅ Validate Name
         if (this.profileName && !this.profileName.value.trim()) {
             this.showFieldError(this.profileName, 'Full name is required');
             isValid = false;
         }
         
-        // Validate Phone
         if (this.profilePhone && !this.profilePhone.value.trim()) {
             this.showFieldError(this.profilePhone, 'Phone number is required');
             isValid = false;
         }
         
-        // Validate DOB
         if (this.profileDob && this.profileDob.value) {
             const dobValue = this.profileDob.value;
             const dobDate = new Date(dobValue);
@@ -1032,7 +1075,6 @@ class ProfileModule {
             }
         }
         
-        // Validate Guardian Phone
         if (this.profileGuardianPhone && this.profileGuardianPhone.value.trim()) {
             const phoneRegex = /^[\d\s\-\+\(\)]{10,20}$/;
             if (!phoneRegex.test(this.profileGuardianPhone.value.trim())) {
@@ -1069,86 +1111,151 @@ class ProfileModule {
         });
     }
     
-    handlePassportFileSelect(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        
-        const validation = this.validatePassportFile(file);
-        if (!validation.valid) {
-            this.showStatus(validation.message, 'error');
-            event.target.value = '';
-            return;
+    // ============================================================
+    // 🎨 UI STATE MANAGEMENT
+    // ============================================================
+    
+    updateUIState(state) {
+        switch(state) {
+            case 'view': this.updateViewMode(); break;
+            case 'edit': this.updateEditMode(); break;
+            case 'saving': this.updateSavingMode(); break;
         }
-        
-        this.pendingPhotoFile = file;
-        if (this.photoObjectURL) URL.revokeObjectURL(this.photoObjectURL);
-        this.photoObjectURL = URL.createObjectURL(file);
-        if (this.passportPreview) this.passportPreview.src = this.photoObjectURL;
-        
-        const fileSize = (file.size / 1024 / 1024).toFixed(2);
-        this.showStatus(`Ready to upload: ${file.name} (${fileSize} MB)`, 'info');
     }
     
-    validatePassportFile(file) {
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        const maxSize = 2 * 1024 * 1024;
-        if (!validTypes.includes(file.type)) {
-            return { valid: false, message: 'Invalid file type. Please upload JPG, PNG, or WebP image.' };
-        }
-        if (file.size > maxSize) {
-            const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-            return { valid: false, message: `File too large (${fileSizeMB} MB). Maximum size is 2 MB.` };
-        }
-        return { valid: true };
-    }
-    
-    async uploadPassportPhoto() {
-        const file = this.pendingPhotoFile;
-        if (!file) return;
-        
-        this.showStatus('Uploading photo...', 'info');
-        
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) throw new Error('No database connection');
-            
-            const fileExt = file.name.split('.').pop();
-            const filePath = `${this.userId}.${fileExt}`;
-            
-            const { error: uploadError } = await supabase.storage
-                .from('passports')
-                .upload(filePath, file, { cacheControl: '3600', upsert: true, contentType: file.type });
-            
-            if (uploadError) throw uploadError;
-            
-            const { data: urlData } = supabase.storage.from('passports').getPublicUrl(filePath);
-            const publicUrl = urlData.publicUrl;
-            
-            const { error: updateError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .update({ 
-                    passport_url: publicUrl, 
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', this.userId);
-            
-            if (updateError) throw updateError;
-            
-            this.showStatus('Photo uploaded successfully!', 'success');
+    updateViewMode() {
+        this.isEditing = false;
+        if (this.editProfileButton) this.editProfileButton.style.display = 'inline-flex';
+        if (this.saveProfileButton) this.saveProfileButton.style.display = 'none';
+        if (this.cancelEditButton) this.cancelEditButton.style.display = 'none';
+        if (this.profileForm) this.profileForm.classList.remove('editing');
+        this.setFieldsReadonly(true);
+        if (this.pendingPhotoFile) {
             this.pendingPhotoFile = null;
-            await this.loadProfile();
-            
-            setTimeout(() => {
-                if (this.profileStatus && this.profileStatus.textContent === 'Photo uploaded successfully!') {
-                    this.clearStatus();
-                }
-            }, 3000);
-            
-        } catch (error) {
-            console.error('Upload error:', error);
-            this.showStatus(`Upload failed: ${error.message}`, 'error');
-            throw error;
+            this.loadProfilePhoto();
         }
+        if (this.passportFileInput) this.passportFileInput.value = '';
+        this.clearStatus();
+    }
+    
+    updateEditMode() {
+        this.isEditing = true;
+        if (this.editProfileButton) this.editProfileButton.style.display = 'none';
+        if (this.saveProfileButton) this.saveProfileButton.style.display = 'inline-flex';
+        if (this.cancelEditButton) this.cancelEditButton.style.display = 'inline-flex';
+        if (this.profileForm) this.profileForm.classList.add('editing');
+        this.setFieldsReadonly(false);
+        this.showStatus('Edit mode enabled. Make your changes and click Save.', 'info');
+        setTimeout(() => {
+            if (this.profileName) this.profileName.focus();
+        }, 100);
+    }
+    
+    updateSavingMode() {
+        if (this.saveProfileButton) {
+            this.saveProfileButton.disabled = true;
+            this.saveProfileButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        }
+    }
+    
+    setFieldsReadonly(readonly) {
+        const editableFields = [
+            this.profileName,
+            this.profilePhone,
+            this.profileAltPhone,
+            this.profileDob,
+            this.profileGender,
+            this.profileNationalId,
+            this.profileAddress,
+            this.profileGuardianName,
+            this.profileGuardianPhone
+        ];
+        
+        editableFields.forEach(field => {
+            if (field) {
+                if (field.tagName === 'SELECT') {
+                    field.disabled = readonly;
+                } else {
+                    field.readOnly = readonly;
+                }
+                if (!readonly) {
+                    field.classList.add('editable');
+                    field.style.background = '#fffbeb';
+                    field.style.borderColor = '#f59e0b';
+                } else {
+                    field.classList.remove('editable');
+                    field.style.background = '#f8fafc';
+                    field.style.borderColor = '#e2e8f0';
+                }
+            }
+        });
+        
+        if (this.profileDob) {
+            if (!readonly) {
+                this.profileDob.removeAttribute('readonly');
+                this.profileDob.disabled = false;
+                this.profileDob.style.cursor = 'pointer';
+            } else {
+                this.profileDob.setAttribute('readonly', 'readonly');
+                this.profileDob.disabled = false;
+            }
+        }
+        
+        const readonlyFields = [
+            this.profileStudentId,
+            this.profileEmail,
+            this.profileProgram,
+            this.profileBlock,
+            this.profileIntakeYear,
+            this.profileIntakeMonth
+        ];
+        
+        readonlyFields.forEach(field => {
+            if (field) {
+                if (field.tagName === 'INPUT' || field.tagName === 'SELECT') {
+                    field.readOnly = true;
+                    field.disabled = true;
+                }
+                field.classList.remove('editable');
+            }
+        });
+    }
+    
+    enableEditing() {
+        this.updateUIState('edit');
+    }
+    
+    cancelEditing() {
+        this.populateProfileForm();
+        if (this.pendingPhotoFile) {
+            this.pendingPhotoFile = null;
+            this.loadProfilePhoto();
+        }
+        if (this.passportFileInput) this.passportFileInput.value = '';
+        this.updateUIState('view');
+    }
+    
+    // ============================================================
+    // 🔄 REFRESH
+    // ============================================================
+    
+    refresh() {
+        this.loadProfile();
+        this.showStatus('Profile refreshed!', 'success');
+    }
+    
+    // ============================================================
+    // 🔧 UTILITY FUNCTIONS
+    // ============================================================
+    
+    getSupabaseClient() {
+        if (window.db && window.db.supabase) {
+            return window.db.supabase;
+        }
+        if (window.supabase) {
+            return window.supabase;
+        }
+        return null;
     }
     
     showStatus(message, type = 'info') {
@@ -1185,56 +1292,106 @@ class ProfileModule {
         }
     }
     
-    refresh() {
-        this.loadProfile();
-        this.showStatus('Profile refreshed!', 'success');
+    async logAudit(action_type, details, target_id = null, status = 'SUCCESS') {
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            const logData = {
+                user_id: this.userId,
+                user_role: 'student',
+                action_type: action_type,
+                details: details,
+                target_id: target_id,
+                status: status,
+                ip_address: await this.getIPAddress()
+            };
+            await supabase.from('audit_logs').insert([logData]);
+        } catch (error) {
+            console.error('Audit logging failed:', error);
+        }
+    }
+    
+    async getIPAddress() {
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            return data.ip;
+        } catch (error) {
+            return null;
+        }
     }
 }
 
-// Create global instance
+// ============================================================
+// 🚀 GLOBAL INITIALIZATION
+// ============================================================
+
 let profileModule = null;
 
 function initProfileModule() {
-    if (!document.getElementById('profile-form')) return null;
+    if (!document.getElementById('profile-form')) {
+        console.warn('⚠️ Profile form not found, waiting...');
+        return null;
+    }
+    
     if (profileModule) return profileModule;
     
     try {
         profileModule = new ProfileModule();
-        const waitForDatabase = () => {
-            if (window.db && window.db.isInitialized) {
-                profileModule.initialize();
-            } else {
-                setTimeout(waitForDatabase, 500);
-            }
-        };
-        waitForDatabase();
+        console.log('✅ ProfileModule instantiated');
         return profileModule;
     } catch (error) {
-        console.error('Profile init error:', error);
+        console.error('❌ ProfileModule initialization error:', error);
         return null;
     }
 }
 
+// ============================================================
+// 📌 EVENT LISTENERS
+// ============================================================
+
+// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    const profileTab = document.querySelector('[data-tab="profile"]');
+    // Initialize after a short delay to ensure everything is loaded
+    setTimeout(() => {
+        initProfileModule();
+    }, 500);
+});
+
+// Also initialize when user data is loaded
+document.addEventListener('userDataLoaded', () => {
+    setTimeout(() => {
+        if (!profileModule) {
+            initProfileModule();
+        } else if (profileModule.userId) {
+            profileModule.loadProfile();
+        }
+    }, 300);
+});
+
+// Profile tab click handler
+document.addEventListener('click', (e) => {
+    const profileTab = e.target.closest('[data-tab="profile"]');
     if (profileTab) {
-        profileTab.addEventListener('click', () => {
-            setTimeout(() => {
-                if (!profileModule) {
-                    initProfileModule();
-                } else {
-                    profileModule.loadProfile();
-                }
-            }, 300);
-        });
-    }
-    if (document.getElementById('profile') && document.getElementById('profile').style.display !== 'none') {
-        setTimeout(() => initProfileModule(), 1000);
+        setTimeout(() => {
+            if (!profileModule) {
+                initProfileModule();
+            } else {
+                profileModule.loadProfile();
+            }
+        }, 300);
     }
 });
 
+// ============================================================
+// 🌐 EXPOSE GLOBALLY
+// ============================================================
+
 window.ProfileModule = ProfileModule;
 window.initProfileModule = initProfileModule;
+
+// StudentProfile API for external calls
 window.StudentProfile = {
     refresh: () => {
         if (profileModule) {
@@ -1245,7 +1402,17 @@ window.StudentProfile = {
                 setTimeout(() => instance.refresh(), 500);
             }
         }
+    },
+    load: () => {
+        if (profileModule) {
+            profileModule.loadProfile();
+        } else {
+            const instance = initProfileModule();
+            if (instance) {
+                setTimeout(() => instance.loadProfile(), 500);
+            }
+        }
     }
 };
 
-console.log('✅ Profile module loaded with editable name and phone fields');
+console.log('✅ ProfileModule loaded with editable name and phone fields');
