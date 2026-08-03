@@ -1,9 +1,9 @@
 // ============================================
-// js/nurseiq.js - COMPLETE FIXED VERSION
-// ✅ ONLY uses existing users - NO placeholder creation
-// ✅ Full TVET/KRCHN support
-// ✅ All features working
-// ✅ Matches the updated HTML section
+// js/nurseiq.js - COMPLETE UPDATED VERSION
+// ✅ Questions grouped by course (Medical Surgical together)
+// ✅ Latest question banks on top
+// ✅ Full TVET/KRCHN support with dynamic program detection
+// ✅ Filter order: Years → Levels → Categories
 // ============================================
 
 // ============================================
@@ -44,27 +44,23 @@ const PROGRAM_DISPLAY_NAMES = {
 };
 
 // ============================================
-// HELPER: Get Current User ID - ONLY EXISTING USERS
+// HELPER: Get Current User ID
 // ============================================
 function getCurrentUserId() {
-    // ✅ ONLY return REAL user ID from existing user
     if (window.currentUserProfile?.user_id) return window.currentUserProfile.user_id;
     if (window.currentUser?.id) return window.currentUser.id;
     if (window.userData?.id) return window.userData.id;
     
-    // ✅ Check localStorage for REAL user
     const storedUserId = localStorage.getItem('userId') || 
                         localStorage.getItem('currentUserId') ||
                         localStorage.getItem('user_id');
     if (storedUserId) return storedUserId;
     
-    // ✅ Check session for REAL user
     const sessionUserId = sessionStorage.getItem('userId') ||
                          sessionStorage.getItem('currentUserId') ||
                          sessionStorage.getItem('user_id');
     if (sessionUserId) return sessionUserId;
     
-    // ✅ Check Supabase session
     try {
         const sessionData = sessionStorage.getItem('supabase.auth.token');
         if (sessionData) {
@@ -75,7 +71,6 @@ function getCurrentUserId() {
         }
     } catch (e) {}
     
-    // ❌ NEVER create anonymous IDs - return null if not logged in
     console.warn('⚠️ No existing user found. Please login first.');
     return null;
 }
@@ -90,12 +85,45 @@ class NurseIQModule {
         this.userProfile = null;
         this.currentProgram = 'nursing';
         this.programDisplayName = 'KRCHN Nursing';
+        this.programCode = 'KRCHN';
+        this.intakeYear = null;
+        this.userBlock = null;
+        this.isTVETStudent = false;
+        
+        // DOM elements
         this.studentQuestionBankSearch = null;
         this.nurseiqSearchBtn = null;
         this.clearSearchBtn = null;
         this.loadCourseCatalogBtn = null;
         this.studentQuestionBankLoading = null;
         this.studentQuestionBankContent = null;
+        
+        // Stats elements
+        this.nurseiqTotalQuestions = null;
+        this.nurseiqTotalCourses = null;
+        this.nurseiqAccuracy = null;
+        this.nurseiqPoints = null;
+        this.nurseiqProgressPercent = null;
+        this.nurseiqProgressBar = null;
+        this.nurseiqAnswered = null;
+        this.nurseiqCorrect = null;
+        this.nurseiqAccuracyQuick = null;
+        this.nurseiqStreakQuick = null;
+        this.streakDisplay = null;
+        
+        // Catalog elements
+        this.catalogCount = null;
+        this.catalogLastUpdated = null;
+        this.catalogStudentProgram = null;
+        
+        // Welcome elements
+        this.totalQuestionsWelcome = null;
+        this.totalCoursesWelcome = null;
+        this.welcomeProgramInfo = null;
+        this.welcomeStudentProgram = null;
+        this.loadingProgramDisplay = null;
+        
+        // Test state
         this.currentTestQuestions = [];
         this.currentQuestionIndex = 0;
         this.userTestAnswers = {};
@@ -105,33 +133,16 @@ class NurseIQModule {
         this.initialized = false;
         this.storageKey = 'nurseiq_user_progress';
         this.lastCourseProgressKey = 'nurseiq_last_course';
-        this.currentSessionAnswers = {};
         this.progressVersion = '2.0';
         this.dashboardMetricsKey = 'nurseiq_dashboard_metrics';
         this.saveTimeout = null;
         this.activeSessionId = null;
         this.testStartTime = null;
-        this.lastProgressUpdate = null;
-        this.heartbeatInterval = null;
         this._isSaving = false;
-        
-        // DOM elements for the new HTML
-        this.nurseiqTitle = document.getElementById('nurseiqTitle');
-        this.nurseiqSubtitle = document.getElementById('nurseiqSubtitle');
-        this.nurseiqSubtitleBadge = document.getElementById('nurseiqSubtitleBadge');
-        this.nurseiqIcon = document.getElementById('nurseiqIcon');
-        this.welcomeIconElement = document.getElementById('welcomeIconElement');
-        this.welcomeTitle = document.getElementById('welcomeTitle');
-        this.welcomeText = document.getElementById('welcomeText');
-        this.loadBtnText = document.getElementById('loadBtnText');
-        this.indicatorText = document.getElementById('indicatorText');
-        this.indicatorIcon = document.getElementById('indicatorIcon');
-        this.switchNoteText = document.getElementById('switchNoteText');
-        this.nurseiqProgramIndicator = document.getElementById('nurseiqProgramIndicator');
     }
     
     // ============================================
-    // GET USER PROFILE - ONLY EXISTING USERS
+    // GET USER PROFILE
     // ============================================
     getUserProfile() {
         let profile = null;
@@ -148,267 +159,6 @@ class NurseIQModule {
         }
         
         return profile;
-    }
-    
-    // ============================================
-    // CHECK IF USER EXISTS - READ ONLY, NO CREATE
-    // ============================================
-    async userExists(userId) {
-        if (!userId) return false;
-        
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return false;
-            
-            const { data, error } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, email, role, program, student_id, block, intake_year')
-                .eq('user_id', userId)
-                .maybeSingle();
-            
-            if (error) {
-                console.error('❌ Error checking user:', error);
-                return false;
-            }
-            
-            if (data) {
-                this.userProfile = data;
-                console.log('✅ Existing user found:', data.full_name);
-                return true;
-            }
-            
-            console.warn('⚠️ User not found in database:', userId);
-            return false;
-            
-        } catch (error) {
-            console.error('❌ Error in userExists:', error);
-            return false;
-        }
-    }
-    
-    // ============================================
-    // ENSURE USER EXISTS - READ ONLY, NO CREATE
-    // ============================================
-    async ensureUserExists() {
-        // ✅ This is now READ-ONLY - does NOT create users
-        if (!this.userId) {
-            console.warn('⚠️ No user ID found - please login');
-            return false;
-        }
-        
-        const exists = await this.userExists(this.userId);
-        if (!exists) {
-            console.warn('⚠️ User not found - please register/login first');
-            this.showNotification('Please login to access NurseIQ features', 'warning');
-            return false;
-        }
-        
-        return true;
-    }
-    
-    // ============================================
-    // PROGRAM DETECTION
-    // ============================================
-    detectUserProgram() {
-        console.log('🔍 Detecting user program...');
-        const profile = this.getUserProfile();
-        
-        if (profile) {
-            this.userProfile = profile;
-            console.log('📊 User profile data:', profile);
-            
-            if (profile.program) {
-                const programCode = String(profile.program).toUpperCase().trim();
-                console.log(`  Checking program: "${programCode}"`);
-                
-                if (TVET_PROGRAMS.includes(programCode)) {
-                    this.currentProgram = 'tvet';
-                    this.programDisplayName = PROGRAM_DISPLAY_NAMES[programCode] || programCode;
-                    console.log(`✅ Detected TVET: ${programCode} - ${this.programDisplayName}`);
-                    this.updateUIForProgram();
-                    return 'tvet';
-                }
-                
-                if (programCode === 'KRCHN') {
-                    this.currentProgram = 'nursing';
-                    this.programDisplayName = 'KRCHN Nursing';
-                    console.log('✅ Detected KRCHN Nursing');
-                    this.updateUIForProgram();
-                    return 'nursing';
-                }
-            }
-            
-            if (profile.program_type) {
-                const typeLower = String(profile.program_type).toLowerCase();
-                if (typeLower === 'tvet' || typeLower === 'vocational' || typeLower === 'technical') {
-                    this.currentProgram = 'tvet';
-                    this.programDisplayName = 'TVET Program';
-                    console.log('✅ Detected TVET from program_type');
-                    this.updateUIForProgram();
-                    return 'tvet';
-                } else if (typeLower === 'nursing' || typeLower === 'health') {
-                    this.currentProgram = 'nursing';
-                    this.programDisplayName = 'Nursing Program';
-                    console.log('✅ Detected Nursing from program_type');
-                    this.updateUIForProgram();
-                    return 'nursing';
-                }
-            }
-        }
-        
-        console.log('⚠️ No program detected, defaulting to Nursing');
-        this.currentProgram = 'nursing';
-        this.programDisplayName = 'KRCHN Nursing (Default)';
-        this.updateUIForProgram();
-        return 'nursing';
-    }
-    
-    // ============================================
-    // UPDATE MODULE NAME DYNAMICALLY
-    // ============================================
-    updateUIForProgram() {
-        const isNursing = this.currentProgram === 'nursing';
-        const isTVET = this.currentProgram === 'tvet';
-        
-        console.log(`🔄 Updating UI for: ${this.currentProgram} (${this.programDisplayName})`);
-        
-        if (isNursing) {
-            if (this.nurseiqTitle) this.nurseiqTitle.textContent = 'NurseIQ';
-            if (this.nurseiqIcon) this.nurseiqIcon.className = 'fas fa-brain';
-            if (this.nurseiqSubtitleBadge) {
-                this.nurseiqSubtitleBadge.textContent = 'KRCHN';
-                this.nurseiqSubtitleBadge.style.background = '#4C1D95';
-                this.nurseiqSubtitleBadge.style.color = 'white';
-                this.nurseiqSubtitleBadge.style.padding = '2px 12px';
-                this.nurseiqSubtitleBadge.style.borderRadius = '20px';
-                this.nurseiqSubtitleBadge.style.fontSize = '11px';
-                this.nurseiqSubtitleBadge.style.fontWeight = '700';
-                this.nurseiqSubtitleBadge.style.display = 'inline-block';
-                this.nurseiqSubtitleBadge.style.marginLeft = '8px';
-            }
-            if (this.nurseiqSubtitle) {
-                this.nurseiqSubtitle.textContent = 'Practice questions for Kenya Registered Community Health Nursing program';
-            }
-            if (this.indicatorText) this.indicatorText.textContent = 'Nursing Mode';
-            if (this.indicatorIcon) this.indicatorIcon.className = 'fas fa-user-md';
-            if (this.switchNoteText) this.switchNoteText.textContent = `Program: ${this.programDisplayName || 'KRCHN Nursing'}`;
-            if (this.welcomeIconElement) this.welcomeIconElement.className = 'fas fa-book-medical';
-            if (this.welcomeTitle) this.welcomeTitle.textContent = 'NurseIQ Question Bank';
-            if (this.welcomeText) {
-                this.welcomeText.textContent = 'Access practice questions organized by curriculum courses.';
-            }
-            if (this.loadBtnText) this.loadBtnText.textContent = 'Load Course Catalog';
-        } else if (isTVET) {
-            if (this.nurseiqTitle) this.nurseiqTitle.textContent = 'TVETIQ';
-            if (this.nurseiqIcon) this.nurseiqIcon.className = 'fas fa-tools';
-            if (this.nurseiqSubtitleBadge) {
-                this.nurseiqSubtitleBadge.textContent = 'TVET';
-                this.nurseiqSubtitleBadge.style.background = '#1a7a5a';
-                this.nurseiqSubtitleBadge.style.color = 'white';
-                this.nurseiqSubtitleBadge.style.padding = '2px 12px';
-                this.nurseiqSubtitleBadge.style.borderRadius = '20px';
-                this.nurseiqSubtitleBadge.style.fontSize = '11px';
-                this.nurseiqSubtitleBadge.style.fontWeight = '700';
-                this.nurseiqSubtitleBadge.style.display = 'inline-block';
-                this.nurseiqSubtitleBadge.style.marginLeft = '8px';
-            }
-            if (this.nurseiqSubtitle) {
-                this.nurseiqSubtitle.textContent = `Practice questions for ${this.programDisplayName || 'TVET Program'}`;
-            }
-            if (this.indicatorText) this.indicatorText.textContent = `TVET Mode`;
-            if (this.indicatorIcon) this.indicatorIcon.className = 'fas fa-tools';
-            if (this.switchNoteText) this.switchNoteText.textContent = `Program: ${this.programDisplayName || 'TVET Program'}`;
-            if (this.welcomeIconElement) this.welcomeIconElement.className = 'fas fa-tools';
-            if (this.welcomeTitle) this.welcomeTitle.textContent = 'TVETIQ Question Bank';
-            if (this.welcomeText) {
-                this.welcomeText.textContent = `Access practice questions organized for ${this.programDisplayName || 'TVET Program'}.`;
-            }
-            if (this.loadBtnText) this.loadBtnText.textContent = 'Load TVET Courses';
-        }
-        
-        this.updateFilterOptions();
-        
-        localStorage.setItem('nurseiq_program_mode', this.currentProgram);
-        localStorage.setItem('nurseiq_program_display', this.programDisplayName);
-        
-        document.dispatchEvent(new CustomEvent('nurseiqProgramChanged', {
-            detail: { 
-                program: this.currentProgram,
-                displayName: this.programDisplayName,
-                isTVET: isTVET,
-                isNursing: isNursing
-            }
-        }));
-        
-        console.log('✅ UI updated for program:', this.currentProgram, '-', this.programDisplayName);
-    }
-    
-    updateFilterOptions() {
-        const isTVET = this.currentProgram === 'tvet';
-        const isNursing = this.currentProgram === 'nursing';
-        
-        const categoryFilter = document.getElementById('nurseiqCategoryFilter');
-        if (categoryFilter) {
-            categoryFilter.innerHTML = '';
-            const allOption = document.createElement('option');
-            allOption.value = 'all';
-            allOption.textContent = '📂 All Categories';
-            categoryFilter.appendChild(allOption);
-            
-            if (isNursing) {
-                const nursingCategories = [
-                    { value: 'theory', label: '📖 Theory' },
-                    { value: 'clinical', label: '🏥 Clinical' },
-                    { value: 'practical', label: '💉 Practical' },
-                    { value: 'osce', label: '👨‍⚕️ OSCE' },
-                    { value: 'pharmacology', label: '💊 Pharmacology' },
-                    { value: 'anatomy', label: '🧬 Anatomy' },
-                    { value: 'physiology', label: '🫀 Physiology' },
-                    { value: 'pathology', label: '🔬 Pathology' },
-                    { value: 'microbiology', label: '🦠 Microbiology' },
-                    { value: 'nutrition', label: '🍎 Nutrition' }
-                ];
-                nursingCategories.forEach(cat => {
-                    const option = document.createElement('option');
-                    option.value = cat.value;
-                    option.textContent = cat.label;
-                    categoryFilter.appendChild(option);
-                });
-            } else if (isTVET) {
-                const tvetCategories = [
-                    { value: 'tvet-core', label: '⚙️ TVET Core' },
-                    { value: 'tvet-electives', label: '🔧 TVET Electives' },
-                    { value: 'tvet-practical', label: '🛠️ Practical Skills' },
-                    { value: 'tvet-theory', label: '📚 Theory' },
-                    { value: 'tvet-clinical', label: '🏥 Clinical' },
-                    { value: 'tvet-lab', label: '🔬 Laboratory' }
-                ];
-                tvetCategories.forEach(cat => {
-                    const option = document.createElement('option');
-                    option.value = cat.value;
-                    option.textContent = cat.label;
-                    categoryFilter.appendChild(option);
-                });
-            }
-        }
-        
-        const levelFilter = document.getElementById('nurseiqLevelFilter');
-        if (levelFilter && isTVET) {
-            levelFilter.innerHTML = '';
-            const tvetLevels = [
-                { value: 'all', label: '📚 All Levels' },
-                { value: 'artisan', label: '🔧 Artisan' },
-                { value: 'certificate', label: '📜 Certificate' },
-                { value: 'diploma', label: '🎓 Diploma' },
-                { value: 'higher-diploma', label: '🎓 Higher Diploma' }
-            ];
-            tvetLevels.forEach(level => {
-                const option = document.createElement('option');
-                option.value = level.value;
-                option.textContent = level.label;
-                levelFilter.appendChild(option);
-            });
-        }
     }
     
     // ============================================
@@ -458,18 +208,347 @@ class NurseIQModule {
     }
     
     // ============================================
-    // INITIALIZE ELEMENTS
+    // CHECK IF USER EXISTS
     // ============================================
-    async initializeElements() {
-        console.log('🔍 Initializing NurseIQ...');
-        await this.waitForElement('#loadCourseCatalogBtn');
+    async userExists(userId) {
+        if (!userId) return false;
         
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return false;
+            
+            const { data, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name, email, role, program, student_id, block, intake_year, intake_month')
+                .eq('user_id', userId)
+                .maybeSingle();
+            
+            if (error) {
+                console.error('❌ Error checking user:', error);
+                return false;
+            }
+            
+            if (data) {
+                this.userProfile = data;
+                console.log('✅ Existing user found:', data.full_name);
+                return true;
+            }
+            
+            console.warn('⚠️ User not found in database:', userId);
+            return false;
+            
+        } catch (error) {
+            console.error('❌ Error in userExists:', error);
+            return false;
+        }
+    }
+    
+    // ============================================
+    // ENSURE USER EXISTS
+    // ============================================
+    async ensureUserExists() {
+        if (!this.userId) {
+            console.warn('⚠️ No user ID found - please login');
+            return false;
+        }
+        
+        const exists = await this.userExists(this.userId);
+        if (!exists) {
+            console.warn('⚠️ User not found - please register/login first');
+            this.showNotification('Please login to access NurseIQ features', 'warning');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // ============================================
+    // DETECT USER PROGRAM
+    // ============================================
+    detectUserProgram() {
+        console.log('🔍 Detecting user program...');
+        const profile = this.getUserProfile();
+        
+        if (profile) {
+            this.userProfile = profile;
+            console.log('📊 User profile data:', profile);
+            
+            let programCode = profile.program || 'KRCHN';
+            this.programCode = String(programCode).toUpperCase().trim();
+            this.intakeYear = profile.intake_year || 2026;
+            this.userBlock = profile.block || profile.current_block || 'Introductory';
+            
+            if (TVET_PROGRAMS.includes(this.programCode) || this.programCode === 'TVET') {
+                this.isTVETStudent = true;
+                this.currentProgram = 'tvet';
+                this.programDisplayName = PROGRAM_DISPLAY_NAMES[this.programCode] || this.programCode;
+                console.log(`✅ Detected TVET: ${this.programCode} - ${this.programDisplayName}`);
+            } else {
+                this.isTVETStudent = false;
+                this.currentProgram = 'nursing';
+                this.programDisplayName = 'KRCHN Nursing';
+                console.log('✅ Detected KRCHN Nursing');
+            }
+            
+            this.updateStudentInfoDisplay();
+            this.updateUIForProgram();
+            return this.currentProgram;
+        }
+        
+        console.log('⚠️ No program detected, defaulting to Nursing');
+        this.currentProgram = 'nursing';
+        this.programDisplayName = 'KRCHN Nursing (Default)';
+        this.updateUIForProgram();
+        return 'nursing';
+    }
+    
+    // ============================================
+    // UPDATE STUDENT INFO DISPLAY
+    // ============================================
+    updateStudentInfoDisplay() {
+        const programCodeEl = document.getElementById('studentProgramCode');
+        if (programCodeEl) programCodeEl.textContent = this.programCode || 'N/A';
+        
+        const intakeEl = document.getElementById('studentIntakeYear');
+        if (intakeEl) intakeEl.textContent = this.intakeYear || '2026';
+        
+        const blockEl = document.getElementById('studentBlockTerm');
+        if (blockEl) {
+            blockEl.textContent = this.isTVETStudent ? 
+                (this.userProfile?.term || this.userBlock || 'Term 1') : 
+                (this.userBlock || 'Introductory');
+        }
+        
+        const welcomeStudentProgram = document.getElementById('welcomeStudentProgram');
+        if (welcomeStudentProgram) welcomeStudentProgram.textContent = this.programDisplayName || this.programCode || 'Loading...';
+        
+        const catalogStudentProgram = document.getElementById('catalogStudentProgram');
+        if (catalogStudentProgram) catalogStudentProgram.textContent = this.programDisplayName || this.programCode || 'Loading...';
+        
+        const loadingProgramDisplay = document.getElementById('loadingProgramDisplay');
+        if (loadingProgramDisplay) loadingProgramDisplay.textContent = this.programDisplayName || this.programCode || 'your program';
+        
+        const welcomeProgramInfo = document.getElementById('welcomeProgramInfo');
+        if (welcomeProgramInfo) welcomeProgramInfo.textContent = `${this.programDisplayName} - ${this.isTVETStudent ? 'TVET' : 'Nursing'} Program`;
+    }
+    
+    // ============================================
+    // UPDATE UI FOR PROGRAM
+    // ============================================
+    updateUIForProgram() {
+        const isNursing = this.currentProgram === 'nursing';
+        const isTVET = this.currentProgram === 'tvet';
+        
+        console.log(`🔄 Updating UI for: ${this.currentProgram} (${this.programDisplayName})`);
+        
+        // Title and icon
+        const titleEl = document.getElementById('nurseiqTitle');
+        const iconEl = document.getElementById('nurseiqIcon');
+        const badgeEl = document.getElementById('nurseiqSubtitleBadge');
+        const subtitleEl = document.getElementById('nurseiqSubtitle');
+        const indicatorText = document.getElementById('indicatorText');
+        const indicatorIcon = document.getElementById('indicatorIcon');
+        const switchNoteText = document.getElementById('switchNoteText');
+        const programDisplayBadge = document.getElementById('programDisplayBadge');
+        const programDisplayNameEl = document.getElementById('programDisplayName');
+        const programDisplaySubtitle = document.getElementById('programDisplaySubtitle');
+        
+        // Welcome elements
+        const welcomeIcon = document.getElementById('welcomeIconElement');
+        const welcomeTitle = document.getElementById('welcomeTitle');
+        const welcomeText = document.getElementById('welcomeText');
+        const loadBtnText = document.getElementById('loadBtnText');
+        
+        if (isNursing) {
+            if (titleEl) titleEl.textContent = 'NurseIQ';
+            if (iconEl) iconEl.className = 'fas fa-brain';
+            if (badgeEl) {
+                badgeEl.textContent = 'KRCHN';
+                badgeEl.style.background = '#FDB913';
+                badgeEl.style.color = '#0A3D62';
+            }
+            if (subtitleEl) {
+                subtitleEl.innerHTML = `<i class="fas fa-graduation-cap"></i> Practice questions for <span id="programDisplaySubtitle">KRCHN Nursing</span> program`;
+            }
+            if (indicatorText) indicatorText.textContent = 'Nursing Mode';
+            if (indicatorIcon) indicatorIcon.className = 'fas fa-user-md';
+            if (switchNoteText) switchNoteText.textContent = `Program: ${this.programDisplayName || 'KRCHN Nursing'}`;
+            if (programDisplayBadge) {
+                programDisplayBadge.style.display = 'inline-block';
+                programDisplayBadge.style.background = 'rgba(253,185,19,0.2)';
+                programDisplayBadge.style.color = '#FDB913';
+            }
+            if (programDisplayNameEl) programDisplayNameEl.textContent = this.programDisplayName || 'KRCHN';
+            if (programDisplaySubtitle) programDisplaySubtitle.textContent = 'KRCHN Nursing';
+            if (welcomeIcon) welcomeIcon.className = 'fas fa-book-medical';
+            if (welcomeTitle) welcomeTitle.textContent = 'NurseIQ Question Bank';
+            if (welcomeText) welcomeText.textContent = 'Access practice questions organized by curriculum courses.';
+            if (loadBtnText) loadBtnText.textContent = 'Load Course Catalog';
+            
+        } else if (isTVET) {
+            if (titleEl) titleEl.textContent = 'TVETIQ';
+            if (iconEl) iconEl.className = 'fas fa-tools';
+            if (badgeEl) {
+                badgeEl.textContent = 'TVET';
+                badgeEl.style.background = '#1a7a5a';
+                badgeEl.style.color = 'white';
+            }
+            if (subtitleEl) {
+                subtitleEl.innerHTML = `<i class="fas fa-graduation-cap"></i> Practice questions for <span id="programDisplaySubtitle">${this.programDisplayName}</span> program`;
+            }
+            if (indicatorText) indicatorText.textContent = 'TVET Mode';
+            if (indicatorIcon) indicatorIcon.className = 'fas fa-tools';
+            if (switchNoteText) switchNoteText.textContent = `Program: ${this.programDisplayName || 'TVET Program'}`;
+            if (programDisplayBadge) {
+                programDisplayBadge.style.display = 'inline-block';
+                programDisplayBadge.style.background = 'rgba(26,122,90,0.2)';
+                programDisplayBadge.style.color = '#1a7a5a';
+            }
+            if (programDisplayNameEl) programDisplayNameEl.textContent = this.programDisplayName || 'TVET';
+            if (programDisplaySubtitle) programDisplaySubtitle.textContent = this.programDisplayName || 'TVET Program';
+            if (welcomeIcon) welcomeIcon.className = 'fas fa-tools';
+            if (welcomeTitle) welcomeTitle.textContent = 'TVETIQ Question Bank';
+            if (welcomeText) welcomeText.textContent = `Access practice questions organized for ${this.programDisplayName || 'TVET Program'}.`;
+            if (loadBtnText) loadBtnText.textContent = 'Load TVET Courses';
+        }
+        
+        // Update welcome program info
+        const welcomeProgramInfo = document.getElementById('welcomeProgramInfo');
+        if (welcomeProgramInfo) welcomeProgramInfo.textContent = `${this.programDisplayName} - ${isTVET ? 'TVET' : 'Nursing'} Program`;
+        
+        this.updateFilterOptions();
+        
+        localStorage.setItem('nurseiq_program_mode', this.currentProgram);
+        localStorage.setItem('nurseiq_program_display', this.programDisplayName);
+        
+        document.dispatchEvent(new CustomEvent('nurseiqProgramChanged', {
+            detail: { 
+                program: this.currentProgram,
+                displayName: this.programDisplayName,
+                isTVET: isTVET,
+                isNursing: isNursing,
+                programCode: this.programCode
+            }
+        }));
+        
+        console.log('✅ UI updated for program:', this.currentProgram, '-', this.programDisplayName);
+    }
+    
+    // ============================================
+    // UPDATE FILTER OPTIONS - ORDERED: Years → Levels → Categories
+    // ============================================
+    updateFilterOptions() {
+        const isTVET = this.currentProgram === 'tvet';
+        const isNursing = this.currentProgram === 'nursing';
+        
+        // Year filter - same for both
+        const yearFilter = document.getElementById('nurseiqYearFilter');
+        if (yearFilter) {
+            yearFilter.innerHTML = `
+                <option value="all">📅 All Years</option>
+                <option value="year1">Year 1</option>
+                <option value="year2">Year 2</option>
+                <option value="year3">Year 3</option>
+                <option value="year4">Year 4</option>
+            `;
+        }
+        
+        // Level filter - changes based on program
+        const levelFilter = document.getElementById('nurseiqLevelFilter');
+        if (levelFilter) {
+            levelFilter.innerHTML = '';
+            const levels = isNursing ? [
+                { value: 'all', label: '📚 All Levels' },
+                { value: 'certificate', label: 'Certificate' },
+                { value: 'diploma', label: 'Diploma' },
+                { value: 'higher-diploma', label: 'Higher Diploma' },
+                { value: 'degree', label: 'Degree' }
+            ] : [
+                { value: 'all', label: '📚 All Levels' },
+                { value: 'artisan', label: '🔧 Artisan' },
+                { value: 'certificate', label: '📜 Certificate' },
+                { value: 'diploma', label: '🎓 Diploma' },
+                { value: 'higher-diploma', label: '🎓 Higher Diploma' }
+            ];
+            levels.forEach(level => {
+                const option = document.createElement('option');
+                option.value = level.value;
+                option.textContent = level.label;
+                levelFilter.appendChild(option);
+            });
+        }
+        
+        // Category filter - changes based on program
+        const categoryFilter = document.getElementById('nurseiqCategoryFilter');
+        if (categoryFilter) {
+            categoryFilter.innerHTML = '';
+            const categories = isNursing ? [
+                { value: 'all', label: '📂 All Categories' },
+                { value: 'theory', label: '📖 Theory' },
+                { value: 'practical', label: '💉 Practical' },
+                { value: 'clinical', label: '🏥 Clinical' },
+                { value: 'osce', label: '👨‍⚕️ OSCE' },
+                { value: 'pharmacology', label: '💊 Pharmacology' },
+                { value: 'anatomy', label: '🧬 Anatomy' },
+                { value: 'physiology', label: '🫀 Physiology' }
+            ] : [
+                { value: 'all', label: '📂 All Categories' },
+                { value: 'tvet-core', label: '⚙️ TVET Core' },
+                { value: 'tvet-electives', label: '🔧 TVET Electives' },
+                { value: 'tvet-practical', label: '🛠️ Practical Skills' },
+                { value: 'tvet-theory', label: '📚 Theory' },
+                { value: 'tvet-clinical', label: '🏥 Clinical' }
+            ];
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.value;
+                option.textContent = cat.label;
+                categoryFilter.appendChild(option);
+            });
+        }
+    }
+    
+    // ============================================
+    // CACHE DOM ELEMENTS
+    // ============================================
+    cacheElements() {
         this.studentQuestionBankSearch = document.getElementById('studentQuestionBankSearch');
         this.nurseiqSearchBtn = document.getElementById('nurseiqSearchBtn');
         this.clearSearchBtn = document.getElementById('clearSearchBtn');
         this.loadCourseCatalogBtn = document.getElementById('loadCourseCatalogBtn');
         this.studentQuestionBankLoading = document.getElementById('studentQuestionBankLoading');
         this.studentQuestionBankContent = document.getElementById('studentQuestionBankContent');
+        
+        this.nurseiqTotalQuestions = document.getElementById('nurseiqTotalQuestions');
+        this.nurseiqTotalCourses = document.getElementById('nurseiqTotalCourses');
+        this.nurseiqAccuracy = document.getElementById('nurseiqAccuracy');
+        this.nurseiqPoints = document.getElementById('nurseiqPoints');
+        this.nurseiqProgressPercent = document.getElementById('nurseiqProgressPercent');
+        this.nurseiqProgressBar = document.getElementById('nurseiqProgressBar');
+        this.nurseiqAnswered = document.getElementById('nurseiqAnswered');
+        this.nurseiqCorrect = document.getElementById('nurseiqCorrect');
+        this.nurseiqAccuracyQuick = document.getElementById('nurseiqAccuracyQuick');
+        this.nurseiqStreakQuick = document.getElementById('nurseiqStreakQuick');
+        this.streakDisplay = document.getElementById('streakDisplay');
+        
+        this.catalogCount = document.getElementById('catalogCount');
+        this.catalogLastUpdated = document.getElementById('catalogLastUpdated');
+        this.catalogStudentProgram = document.getElementById('catalogStudentProgram');
+        
+        this.totalQuestionsWelcome = document.getElementById('totalQuestionsWelcome');
+        this.totalCoursesWelcome = document.getElementById('totalCoursesWelcome');
+        this.welcomeProgramInfo = document.getElementById('welcomeProgramInfo');
+        this.welcomeStudentProgram = document.getElementById('welcomeStudentProgram');
+        this.loadingProgramDisplay = document.getElementById('loadingProgramDisplay');
+    }
+    
+    // ============================================
+    // INITIALIZE ELEMENTS
+    // ============================================
+    async initializeElements() {
+        console.log('🔍 Initializing NurseIQ elements...');
+        await this.waitForElement('#loadCourseCatalogBtn');
+        this.cacheElements();
         
         if (this.studentQuestionBankSearch) {
             let searchTimeout;
@@ -525,7 +604,7 @@ class NurseIQModule {
     }
     
     // ============================================
-    // INITIALIZE - ONLY IF USER EXISTS
+    // INITIALIZE
     // ============================================
     async initialize() {
         console.log('🚀 Initializing NurseIQ Module...');
@@ -554,29 +633,11 @@ class NurseIQModule {
             this.initialized = true;
             this.updateDashboardMetrics();
             
-            window.addEventListener('beforeunload', () => {
-                if (this.activeSessionId) {
-                    this.endActiveSession();
-                }
-                if (this.userTestAnswers && Object.keys(this.userTestAnswers).length > 0) {
-                    this.saveProgressToDatabase();
-                }
-            });
-            
             setInterval(() => {
                 if (this.userTestAnswers && Object.keys(this.userTestAnswers).length > 0) {
                     this.saveProgressToDatabase();
                 }
-                if (this.activeSessionId) {
-                    this.updateProgressForAdmin();
-                }
             }, 30000);
-            
-            document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && this.activeSessionId) {
-                    this.sendHeartbeat();
-                }
-            });
             
             console.log('✅ NurseIQ Module initialized successfully');
             
@@ -586,7 +647,7 @@ class NurseIQModule {
     }
     
     // ============================================
-    // USER PROGRESS - ONLY FOR EXISTING USERS
+    // USER PROGRESS
     // ============================================
     async loadUserProgress() {
         try {
@@ -603,7 +664,6 @@ class NurseIQModule {
                 console.log('📊 Loaded from localStorage:', Object.keys(this.userTestAnswers).length, 'answered questions');
             }
             
-            // ✅ Load from database - EXISTING user only
             if (this.userId && !this.userId.startsWith('anonymous_')) {
                 const supabase = this.getSupabaseClient();
                 if (supabase) {
@@ -705,28 +765,8 @@ class NurseIQModule {
         }
     }
     
-    async saveAttemptToDatabase(score, totalQuestions) {
-        if (!this.userId || this.userId.startsWith('anonymous_')) return;
-        
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-            
-            await supabase
-                .from('nurseiq_attempts')
-                .insert({
-                    student_id: this.userId,
-                    score: score,
-                    total_questions: totalQuestions,
-                    completed_at: new Date().toISOString()
-                });
-        } catch (error) {
-            console.warn('Could not save attempt to database:', error);
-        }
-    }
-    
     // ============================================
-    // DASHBOARD METRICS
+    // GET DASHBOARD METRICS
     // ============================================
     getNurseIQDashboardMetrics() {
         try {
@@ -908,232 +948,101 @@ class NurseIQModule {
     }
     
     // ============================================
-    // ACTIVE TEST TRACKING
+    // LOAD QUESTION BANK - GROUPED BY COURSE & SORTED BY LATEST
     // ============================================
-    async trackActiveSession(courseId, courseName) {
+    async loadQuestionBankCards() {
+        if (!this.userId) {
+            console.warn('⚠️ No user - please login');
+            this.showNotification('Please login to access the question bank', 'warning');
+            return;
+        }
+        
         try {
-            console.log('📊 Tracking active test session...');
-            
+            console.log('📚 Loading question bank...');
+            this.showLoading();
             const supabase = this.getSupabaseClient();
-            if (!supabase) {
-                console.warn('⚠️ No Supabase client, skipping active session tracking');
-                return;
-            }
+            if (!supabase) throw new Error('No database connection');
             
-            if (!this.userId || this.userId.startsWith('anonymous_')) {
-                console.warn('⚠️ Anonymous user, skipping active session tracking');
-                return;
-            }
-            
-            const { data: existing, error: checkError } = await supabase
-                .from('active_test_sessions')
-                .select('id')
-                .eq('user_id', this.userId)
+            // Fetch questions with course info
+            const { data: questions, error } = await supabase
+                .from('medical_assessments')
+                .select(`*, courses (id, course_name, unit_code, color, description)`)
                 .eq('is_active', true)
-                .maybeSingle();
+                .eq('is_published', true)
+                .order('updated_at', { ascending: false }); // ✅ Latest first
             
-            if (existing) {
-                await supabase
-                    .from('active_test_sessions')
-                    .update({ 
-                        is_active: false,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', existing.id);
-            }
+            if (error) throw error;
+            console.log(`✅ Fetched ${questions?.length || 0} questions`);
             
-            let programType = this.currentProgram || 'nursing';
+            // ============================================
+            // ✅ GROUP BY COURSE - Medical Surgical stays together
+            // ============================================
+            const coursesMap = {};
+            const courseUpdatedDates = {};
             
-            const sessionData = {
-                user_id: this.userId,
-                course_id: courseId,
-                course_name: courseName,
-                program_type: programType,
-                started_at: new Date().toISOString(),
-                last_activity: new Date().toISOString(),
-                total_questions: this.currentCourseQuestions?.length || 0,
-                answered_questions: 0,
-                correct_answers: 0,
-                current_question_index: 0,
-                is_active: true,
-                session_data: {
-                    userAgent: navigator.userAgent,
-                    screenSize: `${window.innerWidth}x${window.innerHeight}`,
-                    program: this.programDisplayName
+            questions.forEach(question => {
+                const courseId = question.course_id || 'general';
+                const courseName = question.courses?.course_name || 'General Nursing';
+                const unitCode = question.courses?.unit_code || 'KRCHN';
+                const courseColor = question.courses?.color || '#4f46e5';
+                
+                if (!coursesMap[courseId]) {
+                    coursesMap[courseId] = {
+                        id: courseId,
+                        name: courseName,
+                        unit_code: unitCode,
+                        color: courseColor,
+                        description: question.courses?.description || '',
+                        questions: [],
+                        stats: { total: 0, active: 0, hard: 0, medium: 0, easy: 0, lastUpdated: null },
+                        userStats: null
+                    };
+                    courseUpdatedDates[courseId] = new Date(0);
                 }
-            };
-            
-            const { data, error } = await supabase
-                .from('active_test_sessions')
-                .insert([sessionData])
-                .select()
-                .single();
-            
-            if (error) {
-                console.warn('⚠️ Failed to create active session:', error);
-                return;
-            }
-            
-            this.activeSessionId = data.id;
-            this.testStartTime = Date.now();
-            this.lastProgressUpdate = Date.now();
-            
-            this.startHeartbeat();
-            
-            document.dispatchEvent(new CustomEvent('studentTestStarted', {
-                detail: {
-                    userId: this.userId,
-                    sessionId: this.activeSessionId,
-                    courseId: courseId,
-                    courseName: courseName,
-                    programType: programType
-                }
-            }));
-            
-            console.log('✅ Active test session created:', this.activeSessionId);
-            
-        } catch (error) {
-            console.error('❌ Error tracking active session:', error);
-        }
-    }
-    
-    startHeartbeat() {
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-        }
-        
-        this.heartbeatInterval = setInterval(() => {
-            this.sendHeartbeat();
-        }, 30000);
-        
-        console.log('💓 Heartbeat started (every 30s)');
-    }
-    
-    async sendHeartbeat() {
-        if (!this.activeSessionId) return;
-        
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-            
-            let answered = 0;
-            let correct = 0;
-            
-            if (this.userTestAnswers) {
-                for (const [key, answer] of Object.entries(this.userTestAnswers)) {
-                    if (answer && answer.answered) {
-                        answered++;
-                        if (answer.correct) correct++;
+                
+                coursesMap[courseId].questions.push(question);
+                coursesMap[courseId].stats.total++;
+                coursesMap[courseId].stats.active++;
+                
+                if (question.difficulty === 'hard') coursesMap[courseId].stats.hard++;
+                else if (question.difficulty === 'medium') coursesMap[courseId].stats.medium++;
+                else if (question.difficulty === 'easy') coursesMap[courseId].stats.easy++;
+                
+                // Track latest update per course
+                if (question.updated_at) {
+                    const updatedDate = new Date(question.updated_at);
+                    if (updatedDate > courseUpdatedDates[courseId]) {
+                        courseUpdatedDates[courseId] = updatedDate;
                     }
                 }
-            }
+            });
             
-            const { error } = await supabase
-                .from('active_test_sessions')
-                .update({
-                    last_activity: new Date().toISOString(),
-                    answered_questions: answered,
-                    correct_answers: correct,
-                    current_question_index: this.currentQuestionIndex || 0
-                })
-                .eq('id', this.activeSessionId);
+            // ✅ Apply latest update date to each course
+            Object.keys(coursesMap).forEach(courseId => {
+                coursesMap[courseId].stats.lastUpdated = courseUpdatedDates[courseId] || new Date();
+                coursesMap[courseId].userStats = this.getCourseUserStats(courseId, coursesMap[courseId].questions);
+            });
             
-            if (error) {
-                console.warn('⚠️ Heartbeat failed:', error);
-            } else {
-                this.lastProgressUpdate = Date.now();
-            }
+            // ✅ SORT COURSES BY LATEST UPDATE (NEWEST FIRST)
+            const coursesArray = Object.values(coursesMap);
+            coursesArray.sort((a, b) => {
+                const dateA = a.stats.lastUpdated || new Date(0);
+                const dateB = b.stats.lastUpdated || new Date(0);
+                return dateB - dateA; // Newest first
+            });
             
-        } catch (error) {
-            console.warn('⚠️ Heartbeat error:', error);
-        }
-    }
-    
-    async endActiveSession() {
-        if (!this.activeSessionId) return;
-        
-        try {
-            console.log('🏁 Ending active test session:', this.activeSessionId);
-            
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-            
-            if (this.heartbeatInterval) {
-                clearInterval(this.heartbeatInterval);
-                this.heartbeatInterval = null;
-            }
-            
-            const { error } = await supabase
-                .from('active_test_sessions')
-                .update({
-                    is_active: false,
-                    ended_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', this.activeSessionId);
-            
-            if (error) {
-                console.warn('⚠️ Failed to end session:', error);
-            } else {
-                console.log('✅ Active session ended');
-            }
-            
-            document.dispatchEvent(new CustomEvent('studentTestFinished', {
-                detail: {
-                    userId: this.userId,
-                    sessionId: this.activeSessionId,
-                    courseId: this.currentCourseForTest?.id
-                }
-            }));
-            
-            this.activeSessionId = null;
-            this.testStartTime = null;
+            this.displayQuestionBankCards(coursesArray);
             
         } catch (error) {
-            console.error('❌ Error ending session:', error);
-        }
-    }
-    
-    async updateProgressForAdmin() {
-        if (!this.activeSessionId) return;
-        
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) return;
-            
-            let answered = 0;
-            let correct = 0;
-            
-            if (this.userTestAnswers) {
-                for (const [key, answer] of Object.entries(this.userTestAnswers)) {
-                    if (answer && answer.answered) {
-                        answered++;
-                        if (answer.correct) correct++;
-                    }
-                }
-            }
-            
-            const { error } = await supabase
-                .from('active_test_sessions')
-                .update({
-                    answered_questions: answered,
-                    correct_answers: correct,
-                    current_question_index: this.currentQuestionIndex || 0,
-                    last_activity: new Date().toISOString()
-                })
-                .eq('id', this.activeSessionId);
-            
-            if (error) {
-                console.warn('⚠️ Failed to update progress:', error);
-            }
-            
-        } catch (error) {
-            console.warn('⚠️ Progress update error:', error);
+            console.error('❌ Error loading question bank:', error);
+            this.showError(`Failed to load: ${error.message || 'Please try again'}`);
+        } finally {
+            this.hideLoading();
         }
     }
     
     // ============================================
-    // COURSE USER STATS
+    // GET COURSE USER STATS
     // ============================================
     getCourseUserStats(courseId, questions) {
         const courseQuestions = questions.filter(q => q.course_id === courseId);
@@ -1180,83 +1089,7 @@ class NurseIQModule {
     }
     
     // ============================================
-    // LOAD QUESTION BANK
-    // ============================================
-    async loadQuestionBankCards() {
-        if (!this.userId) {
-            console.warn('⚠️ No user - please login');
-            this.showNotification('Please login to access the question bank', 'warning');
-            return;
-        }
-        
-        try {
-            console.log('📚 Loading question bank...');
-            this.showLoading();
-            const supabase = this.getSupabaseClient();
-            if (!supabase) throw new Error('No database connection');
-            
-            const { data: questions, error } = await supabase
-                .from('medical_assessments')
-                .select(`*, courses (id, course_name, unit_code, color, description)`)
-                .eq('is_active', true)
-                .eq('is_published', true);
-            
-            if (error) throw error;
-            console.log(`✅ Fetched ${questions?.length || 0} questions`);
-            
-            const coursesMap = {};
-            questions.forEach(question => {
-                const courseId = question.course_id || 'general';
-                const courseName = question.courses?.course_name || 'General Nursing';
-                const unitCode = question.courses?.unit_code || 'KRCHN';
-                const courseColor = question.courses?.color || '#4f46e5';
-                
-                if (!coursesMap[courseId]) {
-                    coursesMap[courseId] = {
-                        id: courseId,
-                        name: courseName,
-                        unit_code: unitCode,
-                        color: courseColor,
-                        description: question.courses?.description || '',
-                        questions: [],
-                        stats: { total: 0, active: 0, hard: 0, medium: 0, easy: 0, lastUpdated: null },
-                        userStats: null
-                    };
-                }
-                
-                coursesMap[courseId].questions.push(question);
-                coursesMap[courseId].stats.total++;
-                coursesMap[courseId].stats.active++;
-                
-                if (question.difficulty === 'hard') coursesMap[courseId].stats.hard++;
-                else if (question.difficulty === 'medium') coursesMap[courseId].stats.medium++;
-                else if (question.difficulty === 'easy') coursesMap[courseId].stats.easy++;
-                
-                if (question.updated_at) {
-                    const updatedDate = new Date(question.updated_at);
-                    if (!coursesMap[courseId].stats.lastUpdated || updatedDate > coursesMap[courseId].stats.lastUpdated) {
-                        coursesMap[courseId].stats.lastUpdated = updatedDate;
-                    }
-                }
-            });
-            
-            Object.keys(coursesMap).forEach(courseId => {
-                coursesMap[courseId].userStats = this.getCourseUserStats(courseId, coursesMap[courseId].questions);
-            });
-            
-            const coursesArray = Object.values(coursesMap);
-            this.displayQuestionBankCards(coursesArray);
-            
-        } catch (error) {
-            console.error('❌ Error loading question bank:', error);
-            this.showError(`Failed to load: ${error.message || 'Please try again'}`);
-        } finally {
-            this.hideLoading();
-        }
-    }
-    
-    // ============================================
-    // DISPLAY QUESTION BANK CARDS
+    // DISPLAY QUESTION BANK CARDS - GROUPED & SORTED
     // ============================================
     displayQuestionBankCards(courses) {
         if (!this.studentQuestionBankContent) return;
@@ -1267,66 +1100,7 @@ class NurseIQModule {
         const iconClass = isTVET ? 'fa-tools' : 'fa-graduation-cap';
         const color = isTVET ? '#1a7a5a' : '#4C1D95';
 
-        let filteredCourses = courses;
-
-        if (isTVET) {
-            const tvetKeywords = [
-                'tvet', 'cdacc', 'nita', 'vocational', 'technical',
-                'craft', 'artisan', 'trade', 'occupational',
-                'dipott', 'cch', 'chrit', 'cpc', 'csl', 'csw', 'ccjs', 'cag', 'chss', 'cict',
-                'dpott', 'dch', 'dhr', 'dsl', 'dsw', 'dcjs', 'dhss', 'dict', 'dme',
-                'ach', 'aag', 'asw', 'cca', 'pte'
-            ];
-
-            filteredCourses = courses.filter(course => {
-                const courseName = course.name.toLowerCase();
-                const unitCode = (course.unit_code || '').toLowerCase();
-
-                for (const keyword of tvetKeywords) {
-                    if (courseName.includes(keyword) || unitCode.includes(keyword)) {
-                        return true;
-                    }
-                }
-                if (course.description && course.description.toLowerCase().includes('tvet')) {
-                    return true;
-                }
-                return false;
-            });
-
-            console.log(`📊 Filtered to ${filteredCourses.length} TVET courses out of ${courses.length}`);
-        }
-
-        if (isNursing) {
-            const nursingKeywords = [
-                'nursing', 'krchn', 'health', 'medical', 'clinical',
-                'midwifery', 'pediatric', 'anatomy', 'physiology',
-                'surgical', 'medical surgical', 'immunization',
-                'leadership', 'management', 'pharmacology',
-                'obstetrics', 'gynecology', 'psychiatry', 'mental health',
-                'public health', 'epidemiology', 'nutrition',
-                'nchsgn', 'nchsm', 'nchsch'
-            ];
-
-            filteredCourses = courses.filter(course => {
-                const courseName = course.name.toLowerCase();
-                const unitCode = (course.unit_code || '').toLowerCase();
-
-                for (const keyword of nursingKeywords) {
-                    if (courseName.includes(keyword) || unitCode.includes(keyword)) {
-                        return true;
-                    }
-                }
-                if (course.description) {
-                    const desc = course.description.toLowerCase();
-                    if (desc.includes('nursing') || desc.includes('health') || desc.includes('clinical')) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-
-            console.log(`📊 Filtered to ${filteredCourses.length} Nursing courses out of ${courses.length}`);
-        }
+        let filteredCourses = this.filterCoursesByProgram(courses);
 
         const searchTerm = this.studentQuestionBankSearch?.value?.toLowerCase() || '';
         if (searchTerm) {
@@ -1359,7 +1133,7 @@ class NurseIQModule {
                 <span style="color: #64748b; margin-left: 4px;">| Showing ${filteredCourses.length} ${isTVET ? 'TVET' : 'Nursing'} courses</span>
                 ${filteredCourses.length === 0 ? `<span style="color: #dc2626; margin-left: 8px;">⚠️ No ${isTVET ? 'TVET' : 'Nursing'} courses available</span>` : ''}
                 <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">
-                    <i class="fas fa-user"></i> ${this.programDisplayName || (isTVET ? 'TVET Student' : 'KRCHN Student')}
+                    <i class="fas fa-clock"></i> Latest updates on top
                 </span>
             </div>
         `;
@@ -1440,6 +1214,9 @@ class NurseIQModule {
                                             <i class="fas fa-question-circle"></i> ${course.stats.total} questions
                                         </span>
                                         ${isTVET ? `<span style="background: #1a7a5a20; color: #1a7a5a; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">TVET</span>` : ''}
+                                        <span style="font-size: 11px; color: #94a3b8;">
+                                            <i class="fas fa-clock"></i> Updated: ${lastUpdated}
+                                        </span>
                                     </div>
                                 </div>
                                 <div class="course-icon" style="width: 40px; height: 40px; background: ${courseColor}; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
@@ -1520,9 +1297,74 @@ class NurseIQModule {
 
         html += `</div>`;
         this.studentQuestionBankContent.innerHTML = html;
-        console.log(`✅ ${filteredCourses.length} courses displayed for ${isTVET ? 'TVET' : 'Nursing'} mode`);
+        console.log(`✅ ${filteredCourses.length} courses displayed, sorted by latest updates`);
     }
-
+    
+    // ============================================
+    // FILTER COURSES BY PROGRAM
+    // ============================================
+    filterCoursesByProgram(courses) {
+        const isTVET = this.currentProgram === 'tvet';
+        const isNursing = this.currentProgram === 'nursing';
+        
+        if (isTVET) {
+            const tvetKeywords = [
+                'tvet', 'cdacc', 'nita', 'vocational', 'technical',
+                'craft', 'artisan', 'trade', 'occupational',
+                'dipott', 'cch', 'chrit', 'cpc', 'csl', 'csw', 'ccjs', 'cag', 'chss', 'cict',
+                'dpott', 'dch', 'dhr', 'dsl', 'dsw', 'dcjs', 'dhss', 'dict', 'dme',
+                'ach', 'aag', 'asw', 'cca', 'pte'
+            ];
+            
+            return courses.filter(course => {
+                const courseName = course.name.toLowerCase();
+                const unitCode = (course.unit_code || '').toLowerCase();
+                
+                for (const keyword of tvetKeywords) {
+                    if (courseName.includes(keyword) || unitCode.includes(keyword)) {
+                        return true;
+                    }
+                }
+                if (course.description && course.description.toLowerCase().includes('tvet')) {
+                    return true;
+                }
+                return false;
+            });
+        }
+        
+        if (isNursing) {
+            const nursingKeywords = [
+                'nursing', 'krchn', 'health', 'medical', 'clinical',
+                'midwifery', 'pediatric', 'anatomy', 'physiology',
+                'surgical', 'medical surgical', 'immunization',
+                'leadership', 'management', 'pharmacology',
+                'obstetrics', 'gynecology', 'psychiatry', 'mental health',
+                'public health', 'epidemiology', 'nutrition',
+                'nchsgn', 'nchsm', 'nchsch'
+            ];
+            
+            return courses.filter(course => {
+                const courseName = course.name.toLowerCase();
+                const unitCode = (course.unit_code || '').toLowerCase();
+                
+                for (const keyword of nursingKeywords) {
+                    if (courseName.includes(keyword) || unitCode.includes(keyword)) {
+                        return true;
+                    }
+                }
+                if (course.description) {
+                    const desc = course.description.toLowerCase();
+                    if (desc.includes('nursing') || desc.includes('health') || desc.includes('clinical')) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+        
+        return courses;
+    }
+    
     // ============================================
     // START COURSE TEST
     // ============================================
@@ -1530,8 +1372,6 @@ class NurseIQModule {
         try {
             console.log(`Starting test for course: ${courseName}`);
             this.showLoading();
-            
-            await this.trackActiveSession(courseId, courseName);
             
             const supabase = this.getSupabaseClient();
             if (!supabase) throw new Error('No database connection');
@@ -1574,9 +1414,8 @@ class NurseIQModule {
             
             this.currentQuestionIndex = actualStartIndex;
             
+            // Display the interactive questions
             this.displayInteractiveQuestions(courseName, questions);
-            
-            await this.updateProgressForAdmin();
             
         } catch (error) {
             console.error('Error starting test:', error);
@@ -1598,180 +1437,60 @@ class NurseIQModule {
         
         let html = `
             <div class="interactive-questions-container">
-                <div class="questions-header-bar">
-                    <div class="header-content">
-                        <button onclick="window.loadQuestionBankCards()" class="header-back-btn">
-                            <i class="fas fa-arrow-left"></i> Back to Courses
+                <div class="questions-header-bar" style="background: #f8fafc; border-bottom: 2px solid ${courseColor}; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button onclick="window.loadQuestionBankCards()" style="padding: 6px 14px; background: #e5e7eb; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px;">
+                            <i class="fas fa-arrow-left"></i> Back
                         </button>
-                        
-                        <div class="header-course-info">
-                            <h2 class="course-name">${courseName}</h2>
-                            <p class="practice-mode">Interactive Q&A Practice Mode</p>
-                        </div>
-                        
-                        <div class="header-progress-stats">
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Question</div>
-                                <div class="progress-value-top">
-                                    <span id="currentQuestionCountTop">${this.currentQuestionIndex + 1}</span>/<span id="totalQuestionsTop">${questions.length}</span>
-                                </div>
-                            </div>
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Answered</div>
-                                <div class="progress-value-top" id="answeredCountTop">${userStats.answered}</div>
-                            </div>
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Correct</div>
-                                <div class="progress-value-top" id="correctCountTop">${userStats.correct}</div>
-                            </div>
-                            <div class="progress-stat-top">
-                                <div class="progress-label-top">Accuracy</div>
-                                <div class="progress-value-top" id="accuracyTop">${userStats.accuracy}%</div>
-                            </div>
-                        </div>
+                        <h3 style="margin: 0; color: #0A3D62; font-size: 16px; font-weight: 600;">${courseName}</h3>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 13px; color: #64748b;">
+                            <i class="fas fa-question-circle"></i> ${questions.length} questions
+                        </span>
+                        <span style="font-size: 13px; color: #059669; background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-weight: 600;">
+                            ${userStats.completion}% Complete
+                        </span>
                     </div>
                 </div>
-                
-                <div class="questions-main-container">
-                    <div class="question-panel">
-                        <div class="question-header">
-                            <div class="question-meta">
-                                <span class="question-number-badge">Q${this.currentQuestionIndex + 1}</span>
-                                <span class="question-type">Multiple Choice</span>
-                                <span class="difficulty-badge difficulty-medium" id="difficultyBadge">Medium</span>
+                <div style="padding: 16px;">
+                    <div id="questionDisplay" style="margin-bottom: 16px;">
+                        <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+                                <span style="font-weight: 600; color: #4C1D95; font-size: 14px;">Question ${this.currentQuestionIndex + 1} of ${questions.length}</span>
+                                <span id="difficultyBadge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e;">Medium</span>
                             </div>
-                            
-                            <div class="mini-navigation">
-                                <button onclick="window.prevQuestion()" class="mini-nav-btn" id="miniPrevBtn" ${this.currentQuestionIndex === 0 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <div class="mini-dots" id="miniDotsContainer">
-                                    ${this.generateMiniDots(questions.length)}
-                                </div>
-                                <button onclick="window.nextQuestion()" class="mini-nav-btn" id="miniNextBtn" ${this.currentQuestionIndex === questions.length - 1 ? 'disabled' : ''}>
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
+                            <div id="questionText" style="font-size: 15px; line-height: 1.6; color: #1e293b;">
+                                Loading question...
                             </div>
                         </div>
-                        
-                        <div class="question-card">
-                            <div class="question-text" id="questionText">Loading question...</div>
+                        <div id="optionsContainer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <!-- Options will be loaded here -->
                         </div>
-                        
-                        <div class="options-panel">
-                            <h3 class="options-title"><i class="fas fa-list-ol"></i> Select Your Answer:</h3>
-                            <div id="optionsContainer" class="options-container-improved"></div>
-                        </div>
-                        
-                        <div class="action-buttons-panel-horizontal">
-                            <button onclick="window.checkAnswer()" id="checkAnswerBtn" class="action-btn-horizontal primary-action-btn">
-                                <i class="fas fa-check-circle"></i> Check Answer
-                            </button>
-                            <button onclick="window.resetQuestion()" id="resetBtn" class="action-btn-horizontal secondary-action-btn">
-                                <i class="fas fa-redo"></i> Reset
-                            </button>
-                            <button onclick="window.markForReview()" id="markBtn" class="action-btn-horizontal warning-action-btn">
-                                <i class="fas fa-flag"></i> <span id="markBtnText">Mark for Review</span>
-                            </button>
-                        </div>
-                        
-                        <div class="compact-navigation">
-                            <button onclick="window.prevQuestion()" id="prevBtn" class="compact-nav-btn compact-nav-prev">
-                                <i class="fas fa-chevron-left"></i> Previous
-                            </button>
-                            
-                            <div class="compact-progress">
-                                <div class="compact-progress-bar">
-                                    <div class="compact-progress-fill" id="progressFill" style="width: ${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%;"></div>
-                                </div>
-                                <span class="compact-progress-text" id="progressPercent">${Math.round(((this.currentQuestionIndex + 1) / questions.length) * 100)}%</span>
-                            </div>
-                            
-                            <button onclick="window.nextQuestion()" id="nextBtn" class="compact-nav-btn compact-nav-next">
-                                Next <i class="fas fa-chevron-right"></i>
-                            </button>
-                            
-                            <button onclick="window.finishPractice()" class="compact-nav-btn compact-nav-finish">
-                                <i class="fas fa-flag-checkered"></i> Finish
-                            </button>
-                        </div>
-                        
-                        <div id="answerRevealSection" class="answer-reveal-section" style="display: none;">
-                            <div class="answer-header">
-                                <h3><i class="fas fa-check-double"></i> Answer & Explanation</h3>
-                                <button onclick="window.hideAnswer()" class="hide-answer-btn">
-                                    <i class="fas fa-times"></i> Hide
-                                </button>
-                            </div>
-                            
-                            <div class="correct-answer-box">
-                                <div class="correct-answer-label">
-                                    <i class="fas fa-check-circle"></i> Correct Answer:
-                                </div>
-                                <div class="correct-answer-text" id="correctAnswerText">Loading...</div>
-                            </div>
-                            
-                            <div class="explanation-box">
-                                <div class="explanation-label">
-                                    <i class="fas fa-info-circle"></i> Explanation:
-                                </div>
-                                <div class="explanation-content">
-                                    <div class="explanation-text" id="explanationText">Select an option and click "Check Answer" to see the explanation.</div>
-                                </div>
-                            </div>
+                        <div id="explanationContainer" style="display: none; margin-top: 16px; padding: 16px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #3B82F6;">
+                            <div style="font-weight: 600; color: #1e40af; margin-bottom: 4px;">💡 Explanation</div>
+                            <div id="explanationText" style="color: #475569;"></div>
                         </div>
                     </div>
-                    
-                    <div class="stats-panel">
-                        <div class="horizontal-nav-card">
-                            <h3 class="nav-title"><i class="fas fa-list-ol"></i> Questions Navigator</h3>
-                            <div class="horizontal-question-grid" id="questionGridContainer"></div>
-                            <div class="grid-controls">
-                                <button onclick="window.scrollQuestions('left')" class="grid-scroll-btn">
-                                    <i class="fas fa-chevron-left"></i>
-                                </button>
-                                <button onclick="window.jumpToQuestion()" class="grid-jump-btn">
-                                    Jump to Question
-                                </button>
-                                <button onclick="window.scrollQuestions('right')" class="grid-scroll-btn">
-                                    <i class="fas fa-chevron-right"></i>
-                                </button>
-                            </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="window.prevQuestion()" id="prevBtn" style="padding: 8px 16px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </button>
+                            <button onclick="window.nextQuestion()" id="nextBtn" style="padding: 8px 16px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </button>
                         </div>
-                        
-                        <div class="course-overview-card">
-                            <h3 class="overview-title"><i class="fas fa-chart-bar"></i> Course Progress</h3>
-                            <div class="overview-stats">
-                                <div class="overview-stat">
-                                    <div class="overview-value">${userStats.completion}%</div>
-                                    <div class="overview-label">Completion</div>
-                                </div>
-                                <div class="overview-stat">
-                                    <div class="overview-value">${userStats.accuracy}%</div>
-                                    <div class="overview-label">Accuracy</div>
-                                </div>
-                                <div class="overview-stat">
-                                    <div class="overview-value">${userStats.answered}</div>
-                                    <div class="overview-label">Answered</div>
-                                </div>
-                                <div class="overview-stat">
-                                    <div class="overview-value">${questions.length}</div>
-                                    <div class="overview-label">Total</div>
-                                </div>
-                            </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar" style="width: ${userStats.completion}%; background: ${courseColor};"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="tips-card">
-                            <h3 class="tips-title"><i class="fas fa-graduation-cap"></i> Study Tips</h3>
-                            <ul class="tips-list">
-                                <li><i class="fas fa-check"></i> Read each question carefully</li>
-                                <li><i class="fas fa-check"></i> Review explanations thoroughly</li>
-                                <li><i class="fas fa-check"></i> Mark difficult questions</li>
-                                <li><i class="fas fa-check"></i> Aim for 80%+ accuracy</li>
-                            </ul>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="window.checkAnswer()" id="checkAnswerBtn" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                <i class="fas fa-check-circle"></i> Check Answer
+                            </button>
+                            <button onclick="window.resetQuestion()" style="padding: 8px 16px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                                <i class="fas fa-redo"></i> Reset
+                            </button>
+                            <button onclick="window.finishPractice()" style="padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                <i class="fas fa-flag-checkered"></i> Finish
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1780,14 +1499,10 @@ class NurseIQModule {
         
         this.studentQuestionBankContent.innerHTML = html;
         
+        // Load first question after rendering
         setTimeout(() => {
             this.loadCurrentInteractiveQuestion();
-            this.updateQuestionGrid();
-            this.updateProgressBar();
-            this.updateMiniDots();
-            this.updateTopProgressStats();
-            this.updateNavigationButtons();
-        }, 100);
+        }, 50);
     }
     
     // ============================================
@@ -1799,53 +1514,28 @@ class NurseIQModule {
         
         const questionText = document.getElementById('questionText');
         if (questionText) {
-            questionText.innerHTML = question.question_text || 'Question text not available';
+            questionText.textContent = question.question_text || 'Question text not available';
         }
         
         const difficultyBadge = document.getElementById('difficultyBadge');
         if (difficultyBadge) {
             difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
-            difficultyBadge.classList.remove('difficulty-easy', 'difficulty-medium', 'difficulty-hard');
+            difficultyBadge.className = '';
+            difficultyBadge.style.cssText = `padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;`;
             if (question.difficulty === 'easy') {
-                difficultyBadge.classList.add('difficulty-easy');
+                difficultyBadge.style.background = '#d1fae5';
+                difficultyBadge.style.color = '#065f46';
             } else if (question.difficulty === 'hard') {
-                difficultyBadge.classList.add('difficulty-hard');
+                difficultyBadge.style.background = '#fee2e2';
+                difficultyBadge.style.color = '#991b1b';
             } else {
-                difficultyBadge.classList.add('difficulty-medium');
+                difficultyBadge.style.background = '#fef3c7';
+                difficultyBadge.style.color = '#92400e';
             }
         }
         
+        // Load options
         this.loadAnswerOptions(question);
-        this.updateCounters();
-        this.updateTopProgressStats();
-        this.updateNavigationButtons();
-        this.updateMarkButton();
-        
-        const savedAnswer = this.userTestAnswers[question.id];
-        const answerRevealSection = document.getElementById('answerRevealSection');
-        
-        if (savedAnswer?.answered) {
-            this.userTestAnswers[this.currentQuestionIndex] = {
-                ...savedAnswer,
-                selectedOption: savedAnswer.selectedOption,
-                selectedOptionIndex: savedAnswer.selectedOptionIndex,
-                answered: true,
-                correct: savedAnswer.correct
-            };
-            this.showUserAnswer(this.userTestAnswers[this.currentQuestionIndex]);
-            
-            if (answerRevealSection) {
-                answerRevealSection.style.display = 'block';
-                this.showAnswerRevealSection();
-            }
-        } else {
-            if (answerRevealSection) {
-                answerRevealSection.style.display = 'none';
-            }
-            this.resetOptionSelection();
-        }
-        
-        this.highlightCurrentQuestionInGrid();
     }
     
     // ============================================
@@ -1863,7 +1553,6 @@ class NurseIQModule {
         
         if (options.length === 0) options = ['Option A', 'Option B', 'Option C', 'Option D'];
         
-        const correctAnswer = question.correct_answer || '';
         const optionLabels = ['A', 'B', 'C', 'D'];
         let optionsHtml = '';
         
@@ -1871,16 +1560,16 @@ class NurseIQModule {
             if (index >= optionLabels.length) return;
             const optionId = `option-${this.currentQuestionIndex}-${index}`;
             const optionLetter = optionLabels[index];
-            const isCorrectAnswer = option === correctAnswer;
             
             optionsHtml += `
-                <div class="option-item-improved" data-option-index="${index}" data-is-correct="${isCorrectAnswer}">
-                    <div class="option-radio-improved">
-                        <input type="radio" id="${optionId}" name="question-${this.currentQuestionIndex}" value="${option}" class="option-input-hidden">
-                        <label for="${optionId}" class="option-label-improved">
-                            <span class="option-letter-circle">${optionLetter}</span>
-                            <span class="option-text-improved">${option}</span>
-                        </label>
+                <div style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: white;" 
+                     onclick="window.selectOption(${index})" 
+                     id="option-container-${index}"
+                     onmouseover="this.style.borderColor='#4C1D95'; this.style.background='#f8fafc'"
+                     onmouseout="if(!this.classList.contains('selected')){this.style.borderColor='#e2e8f0'; this.style.background='white'}">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="width: 24px; height: 24px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px;">${optionLetter}</span>
+                        <span>${option}</span>
                     </div>
                 </div>
             `;
@@ -1888,52 +1577,56 @@ class NurseIQModule {
         
         optionsContainer.innerHTML = optionsHtml;
         
-        optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
-            item.addEventListener('click', () => this.selectOption(item));
-        });
-        
+        // Check if already answered
         const savedAnswer = this.userTestAnswers[question.id];
         if (savedAnswer?.answered) {
-            optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
-                const optionText = item.querySelector('.option-text-improved')?.textContent || '';
-                if (optionText === savedAnswer.selectedOption) {
-                    this.selectOption(item);
-                }
-            });
+            const selectedIndex = savedAnswer.selectedOptionIndex;
+            if (selectedIndex !== undefined) {
+                this.selectOption(selectedIndex);
+            }
         }
     }
     
     // ============================================
     // SELECT OPTION
     // ============================================
-    selectOption(optionItem) {
-        this.resetOptionSelection();
-        const radioInput = optionItem.querySelector('.option-input-hidden');
-        if (radioInput) {
-            radioInput.checked = true;
-            optionItem.classList.add('selected-improved');
-            const optionIndex = optionItem.dataset.optionIndex;
-            const optionText = optionItem.querySelector('.option-text-improved')?.textContent || '';
+    selectOption(index) {
+        // Reset all options
+        document.querySelectorAll('#optionsContainer > div').forEach(el => {
+            el.classList.remove('selected', 'correct', 'incorrect');
+            el.style.borderColor = '#e2e8f0';
+            el.style.background = 'white';
+        });
+        
+        // Select the chosen option
+        const selectedElement = document.getElementById(`option-container-${index}`);
+        if (selectedElement) {
+            selectedElement.classList.add('selected');
+            selectedElement.style.borderColor = '#4C1D95';
+            selectedElement.style.background = '#ede9fe';
+        }
+        
+        // Store selection
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        if (question) {
+            const optionText = this.getOptionText(index);
             this.userTestAnswers[this.currentQuestionIndex] = {
-                ...this.userTestAnswers[this.currentQuestionIndex],
                 selectedOption: optionText,
-                selectedOptionIndex: parseInt(optionIndex),
+                selectedOptionIndex: index,
                 answered: false
             };
         }
     }
     
-    resetOptionSelection() {
-        const optionsContainer = document.getElementById('optionsContainer');
-        if (!optionsContainer) return;
-        optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
-            item.classList.remove('selected-improved', 'correct-improved', 'incorrect-improved');
-        });
+    getOptionText(index) {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        const savedAnswer = this.userTestAnswers[question.id];
-        if (!savedAnswer?.answered) {
-            delete this.userTestAnswers[this.currentQuestionIndex];
-        }
+        if (!question) return '';
+        const options = [];
+        if (question.option_a) options.push(question.option_a);
+        if (question.option_b) options.push(question.option_b);
+        if (question.option_c) options.push(question.option_c);
+        if (question.option_d) options.push(question.option_d);
+        return options[index] || '';
     }
     
     // ============================================
@@ -1941,139 +1634,181 @@ class NurseIQModule {
     // ============================================
     checkAnswer() {
         const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
-        if (!userAnswer || !userAnswer.selectedOption) {
+        if (!userAnswer || userAnswer.selectedOptionIndex === undefined) {
             this.showNotification('Please select an answer first!', 'warning');
             return;
         }
         
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         const correctAnswer = question.correct_answer || '';
-        const isCorrect = userAnswer.selectedOption === correctAnswer;
+        const selectedOption = userAnswer.selectedOption;
+        const isCorrect = selectedOption === correctAnswer;
         
-        userAnswer.answered = true;
-        userAnswer.correct = isCorrect;
-        userAnswer.timestamp = new Date().toISOString();
-        userAnswer.correctAnswer = correctAnswer;
-        userAnswer.courseId = question.course_id;
-        userAnswer.courseName = this.currentCourseForTest.name;
-        userAnswer.questionText = question.question_text;
-        userAnswer.difficulty = question.difficulty;
+        // Highlight correct/incorrect
+        const selectedIndex = userAnswer.selectedOptionIndex;
+        const selectedElement = document.getElementById(`option-container-${selectedIndex}`);
         
+        // Find correct option
+        let correctIndex = -1;
+        const options = [];
+        if (question.option_a) options.push(question.option_a);
+        if (question.option_b) options.push(question.option_b);
+        if (question.option_c) options.push(question.option_c);
+        if (question.option_d) options.push(question.option_d);
+        options.forEach((opt, idx) => {
+            if (opt === correctAnswer) correctIndex = idx;
+        });
+        
+        if (selectedElement) {
+            if (isCorrect) {
+                selectedElement.classList.add('correct');
+                selectedElement.style.borderColor = '#10b981';
+                selectedElement.style.background = '#d1fae5';
+            } else {
+                selectedElement.classList.add('incorrect');
+                selectedElement.style.borderColor = '#dc2626';
+                selectedElement.style.background = '#fee2e2';
+            }
+        }
+        
+        // Show correct answer
+        if (correctIndex >= 0) {
+            const correctElement = document.getElementById(`option-container-${correctIndex}`);
+            if (correctElement && !isCorrect) {
+                correctElement.style.borderColor = '#10b981';
+                correctElement.style.background = '#d1fae5';
+                correctElement.classList.add('correct');
+            }
+        }
+        
+        // Update user answer
         this.userTestAnswers[question.id] = {
-            selectedOption: userAnswer.selectedOption,
-            selectedOptionIndex: userAnswer.selectedOptionIndex,
+            ...userAnswer,
             answered: true,
             correct: isCorrect,
             correctAnswer: correctAnswer,
-            timestamp: userAnswer.timestamp,
-            questionText: question.question_text,
+            timestamp: new Date().toISOString(),
             courseId: question.course_id,
-            courseName: this.currentCourseForTest.name,
-            difficulty: question.difficulty,
-            explanationViewed: true
+            courseName: this.currentCourseForTest?.name,
+            questionText: question.question_text,
+            difficulty: question.difficulty
         };
         
-        this.showUserAnswer(userAnswer);
-        this.updateCounters();
-        this.updateTopProgressStats();
-        this.showAnswerRevealSection();
-        this.updateQuestionGrid();
-        this.showFeedbackNotification(isCorrect);
-        this.saveUserProgress();
-        this.updateProgressForAdmin();
-        
-        document.dispatchEvent(new CustomEvent('studentTestProgress', {
-            detail: {
-                userId: this.userId,
-                sessionId: this.activeSessionId,
-                questionIndex: this.currentQuestionIndex,
-                isCorrect: isCorrect,
-                answered: Object.values(this.userTestAnswers).filter(a => a?.answered).length,
-                total: this.currentCourseQuestions.length
-            }
-        }));
-    }
-    
-    // ============================================
-    // SHOW USER ANSWER
-    // ============================================
-    showUserAnswer(userAnswer) {
-        const optionsContainer = document.getElementById('optionsContainer');
-        if (!optionsContainer) return;
-        
-        optionsContainer.querySelectorAll('.option-item-improved').forEach(item => {
-            const optionText = item.querySelector('.option-text-improved')?.textContent || '';
-            if (optionText === userAnswer.selectedOption) {
-                item.classList.add('selected-improved');
-                const radioInput = item.querySelector('.option-input-hidden');
-                if (radioInput) radioInput.checked = true;
-                if (userAnswer.answered) {
-                    if (userAnswer.correct) {
-                        item.classList.add('correct-improved');
-                    } else {
-                        item.classList.add('incorrect-improved');
-                        optionsContainer.querySelectorAll('.option-item-improved').forEach(correctItem => {
-                            const correctOptionText = correctItem.querySelector('.option-text-improved')?.textContent || '';
-                            if (correctOptionText === userAnswer.correctAnswer) {
-                                correctItem.classList.add('correct-improved');
-                            }
-                        });
-                    }
-                }
-            }
-        });
-    }
-    
-    // ============================================
-    // SHOW ANSWER REVEAL SECTION
-    // ============================================
-    showAnswerRevealSection() {
-        const answerRevealSection = document.getElementById('answerRevealSection');
-        if (!answerRevealSection) return;
-        
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        if (!question) return;
-        
-        const correctAnswer = question.correct_answer || 'Correct answer not available';
-        const correctAnswerText = document.getElementById('correctAnswerText');
-        if (correctAnswerText) correctAnswerText.textContent = correctAnswer;
-        
+        // Show explanation
+        const explanationContainer = document.getElementById('explanationContainer');
         const explanationText = document.getElementById('explanationText');
-        if (explanationText) {
-            explanationText.innerHTML = question.explanation || '<div class="no-explanation">No detailed explanation available for this question.</div>';
+        if (explanationContainer && explanationText) {
+            explanationContainer.style.display = 'block';
+            explanationText.textContent = question.explanation || 'No explanation available for this question.';
         }
         
-        answerRevealSection.style.display = 'block';
-        answerRevealSection.style.opacity = '1';
-        answerRevealSection.style.visibility = 'visible';
+        this.saveUserProgress();
+        this.showNotification(isCorrect ? '✅ Correct! Well done!' : '❌ Incorrect. Review the explanation.', isCorrect ? 'success' : 'error');
+    }
+    
+    // ============================================
+    // RESET QUESTION
+    // ============================================
+    resetQuestion() {
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        if (question) {
+            delete this.userTestAnswers[question.id];
+            delete this.userTestAnswers[this.currentQuestionIndex];
+        }
         
-        const questionCard = document.querySelector('.question-card');
-        if (questionCard) {
-            questionCard.classList.add('has-answer');
+        // Reset UI
+        document.querySelectorAll('#optionsContainer > div').forEach(el => {
+            el.classList.remove('selected', 'correct', 'incorrect');
+            el.style.borderColor = '#e2e8f0';
+            el.style.background = 'white';
+        });
+        
+        const explanationContainer = document.getElementById('explanationContainer');
+        if (explanationContainer) explanationContainer.style.display = 'none';
+        
+        this.saveUserProgress();
+        this.showNotification('Question reset. Try again!', 'info');
+    }
+    
+    // ============================================
+    // PREVIOUS QUESTION
+    // ============================================
+    prevQuestion() {
+        if (this.currentQuestionIndex > 0) {
+            this.currentQuestionIndex--;
+            this.loadCurrentInteractiveQuestion();
+            this.updateQuestionButtons();
         }
     }
     
     // ============================================
-    // HIDE ANSWER
+    // NEXT QUESTION
     // ============================================
-    hideAnswer() {
-        const answerRevealSection = document.getElementById('answerRevealSection');
-        if (answerRevealSection) answerRevealSection.style.display = 'none';
+    nextQuestion() {
+        if (this.currentQuestionIndex < this.currentCourseQuestions.length - 1) {
+            this.currentQuestionIndex++;
+            this.loadCurrentInteractiveQuestion();
+            this.updateQuestionButtons();
+        }
+    }
+    
+    updateQuestionButtons() {
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        
+        if (prevBtn) prevBtn.disabled = this.currentQuestionIndex === 0;
+        if (nextBtn) nextBtn.disabled = this.currentQuestionIndex === this.currentCourseQuestions.length - 1;
     }
     
     // ============================================
-    // SHOW FEEDBACK NOTIFICATION
+    // FINISH PRACTICE
     // ============================================
-    showFeedbackNotification(isCorrect) {
-        const notification = document.createElement('div');
-        notification.className = `feedback-notification ${isCorrect ? 'success' : 'error'}`;
-        notification.innerHTML = `<i class="fas fa-${isCorrect ? 'check-circle' : 'times-circle'}"></i>
-                                <span>${isCorrect ? 'Correct! Well done!' : 'Incorrect. Review the explanation below.'}</span>`;
-        document.querySelector('.questions-main-container')?.appendChild(notification);
-        setTimeout(() => {
-            notification.classList.add('fade-out');
-            setTimeout(() => notification.remove(), 500);
-        }, 3000);
+    async finishPractice() {
+        const userStats = this.getCourseUserStats(this.currentCourseForTest.id, this.currentCourseQuestions);
+        const answeredCount = userStats.answered;
+        const correctCount = userStats.correct;
+        const accuracy = userStats.accuracy;
+        const totalQuestions = this.currentCourseQuestions.length;
+        
+        const allAnswered = answeredCount === totalQuestions;
+        const warningMessage = allAnswered ? '' : `⚠️ You have ${totalQuestions - answeredCount} unanswered questions.`;
+        
+        const confirmFinish = confirm(
+            `Finish Practice Session?\n\n` +
+            `📊 Summary:\n` +
+            `✅ Answered: ${answeredCount}/${totalQuestions}\n` +
+            `🎯 Correct: ${correctCount}\n` +
+            `📈 Accuracy: ${accuracy}%\n` +
+            `${warningMessage}\n\n` +
+            `Click OK to finish and see your results.`
+        );
+        
+        if (confirmFinish) {
+            this.loadQuestionBankCards();
+            this.showNotification(`🎉 Practice complete! ${accuracy}% accuracy`, 'success');
+            await this.saveAttemptToDatabase(correctCount, totalQuestions);
+            this.saveUserProgress();
+        }
+    }
+    
+    async saveAttemptToDatabase(score, totalQuestions) {
+        if (!this.userId || this.userId.startsWith('anonymous_')) return;
+        
+        try {
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            await supabase
+                .from('nurseiq_attempts')
+                .insert({
+                    student_id: this.userId,
+                    score: score,
+                    total_questions: totalQuestions,
+                    completed_at: new Date().toISOString()
+                });
+        } catch (error) {
+            console.warn('Could not save attempt to database:', error);
+        }
     }
     
     // ============================================
@@ -2093,12 +1828,9 @@ class NurseIQModule {
         if (this.studentQuestionBankLoading) this.studentQuestionBankLoading.style.display = 'block';
         if (this.studentQuestionBankContent) {
             this.studentQuestionBankContent.innerHTML = `
-                <div class="loading-content">
-                    <div class="spinner-container">
-                        <div class="spinner"></div>
-                        <div class="spinner-ring"></div>
-                    </div>
-                    <div class="loading-text">Loading question bank...</div>
+                <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                    <div style="width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+                    <p style="margin: 8px 0 0 0;">Loading questions for ${this.programDisplayName || 'your program'}...</p>
                 </div>
             `;
         }
@@ -2111,18 +1843,13 @@ class NurseIQModule {
     showError(message) {
         if (this.studentQuestionBankContent) {
             this.studentQuestionBankContent.innerHTML = `
-                <div class="error-state">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Failed to Load Question Bank</h3>
-                    <p>${message}</p>
-                    <div class="mt-2">
-                        <button onclick="window.loadQuestionBankCards()" class="btn btn-primary mr-2">
-                            <i class="fas fa-redo"></i> Try Again
-                        </button>
-                        <button onclick="window.clearQuestionBankSearch()" class="btn btn-secondary">
-                            <i class="fas fa-times"></i> Clear Search
-                        </button>
-                    </div>
+                <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; display: block; margin-bottom: 16px;"></i>
+                    <h3 style="color: #1e293b; margin: 0;">Failed to Load Question Bank</h3>
+                    <p style="color: #64748b; margin: 8px 0 16px 0;">${message}</p>
+                    <button onclick="window.loadQuestionBankCards()" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
                 </div>
             `;
         }
@@ -2182,12 +1909,8 @@ window.nextQuestion = function() {
     if (window.nurseiqModule) window.nurseiqModule.nextQuestion(); 
 };
 
-window.goToQuestion = function(index) { 
-    if (window.nurseiqModule) window.nurseiqModule.goToQuestion(index); 
-};
-
-window.jumpToQuestion = function() { 
-    if (window.nurseiqModule) window.nurseiqModule.jumpToQuestion(); 
+window.selectOption = function(index) { 
+    if (window.nurseiqModule) window.nurseiqModule.selectOption(index); 
 };
 
 window.checkAnswer = function() { 
@@ -2198,24 +1921,8 @@ window.resetQuestion = function() {
     if (window.nurseiqModule) window.nurseiqModule.resetQuestion(); 
 };
 
-window.showAnswer = function() { 
-    if (window.nurseiqModule) window.nurseiqModule.showAnswer(); 
-};
-
-window.hideAnswer = function() { 
-    if (window.nurseiqModule) window.nurseiqModule.hideAnswer(); 
-};
-
-window.markForReview = function() { 
-    if (window.nurseiqModule) window.nurseiqModule.markForReview(); 
-};
-
 window.finishPractice = function() { 
     if (window.nurseiqModule) window.nurseiqModule.finishPractice(); 
-};
-
-window.scrollQuestions = function(direction) { 
-    if (window.nurseiqModule) window.nurseiqModule.scrollQuestions(direction); 
 };
 
 window.clearAllProgress = function() { 
@@ -2248,4 +1955,4 @@ if (document.readyState === 'loading') {
     setTimeout(() => window.initNurseIQ().catch(console.error), 1000);
 }
 
-console.log('✅ NurseIQ module loaded - ONLY uses existing users, NO placeholder creation!');
+console.log('✅ NurseIQ module loaded - Questions grouped by course, latest on top!');
