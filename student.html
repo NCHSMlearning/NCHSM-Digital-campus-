@@ -398,27 +398,28 @@
 <!-- ==================== DASHBOARD SECTION - FULL DARK THEME ==================== -->
 <section id="dashboard" class="tab-content active" style="padding: 20px; max-width: 100%; overflow-x: hidden; background: #f1f5f9;">
 
-   <!-- ========== WELCOME - DYNAMIC GREETING ========== -->
-<div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-        <div>
-            <h1 style="color: white; margin: 0; font-weight: 700; font-size: clamp(1.2rem, 3vw, 2rem);">
-                <span id="greeting-text">Good Morning</span>, <span id="welcome-student-name" style="color: #FDB913;">Student</span>! <span id="greeting-emoji">🎉</span>
-            </h1>
-            <p id="student-welcome-message" style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
-                <i class="fas fa-check-circle" style="color: #FDB913;"></i> Access your courses, schedule, and check your attendance status.
-            </p>
-        </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-            <span style="background: rgba(255,255,255,0.15); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-                <i class="fas fa-circle" style="color: #10b981; font-size: 8px;"></i> Online
-            </span>
-            <span id="header-time" style="background: rgba(255,255,255,0.1); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px;">
-                <i class="fas fa-clock"></i> Loading...
-            </span>
+    <!-- ========== WELCOME - DYNAMIC GREETING (.welcome class added) ========== -->
+    <div class="welcome" style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h1 style="color: white; margin: 0; font-weight: 700; font-size: clamp(1.2rem, 3vw, 2rem);">
+                    <span id="greeting-text">Good Morning</span>, <span id="welcome-student-name" style="color: #FDB913;">Student</span>! <span id="greeting-emoji">🎉</span>
+                </h1>
+                <p id="student-welcome-message" style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
+                    <i class="fas fa-check-circle" style="color: #FDB913;"></i> Access your courses, schedule, and check your attendance status.
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <span style="background: rgba(255,255,255,0.15); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-circle" style="color: #10b981; font-size: 8px;"></i> Online
+                </span>
+                <span id="header-time" style="background: rgba(255,255,255,0.1); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px;">
+                    <i class="fas fa-clock"></i> Loading...
+                </span>
+            </div>
         </div>
     </div>
-</div>
+
     <!-- ========== LAST LOGIN DISPLAY ========== -->
     <div style="background: white; border-radius: 8px; padding: 8px 16px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #475569;">
         <i class="fas fa-history" style="color: #4C1D95;"></i>
@@ -544,24 +545,25 @@
         <i class="fas fa-chart-simple" style="color: #FDB913;"></i> Quick Snapshot
         <span class="view-all" style="font-size: 11px; color: #4C1D95; font-weight: 400; margin-left: auto; cursor: pointer;">View All →</span>
     </h4>
-<!-- ========== ATTENDANCE CARD - DARK THEME ========== -->
-<div class="attendance-card" style="background: #1e293b; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.3); overflow: hidden; margin-bottom: 16px; cursor: pointer;" onclick="window.location.href='#attendance'">
-    <div style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #334155;">
-        <div>
-            <span class="attendance-percent" id="dashboard-attendance-rate" style="font-size: 32px; font-weight: 700; transition: color 0.3s ease; color: #f1f5f9;">0%</span>
-            <span style="font-size: 14px; color: #94a3b8; margin-left: 8px;">Attendance</span>
+
+    <!-- ========== ATTENDANCE CARD - DARK THEME ========== -->
+    <div class="attendance-card" style="background: #1e293b; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.3); overflow: hidden; margin-bottom: 16px; cursor: pointer;" onclick="window.location.href='#attendance'">
+        <div style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #334155;">
+            <div>
+                <span class="attendance-percent" id="dashboard-attendance-rate" style="font-size: 32px; font-weight: 700; transition: color 0.3s ease; color: #f1f5f9;">0%</span>
+                <span style="font-size: 14px; color: #94a3b8; margin-left: 8px;">Attendance</span>
+            </div>
+            <div id="attendance-warning-badge" style="padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e; transition: all 0.3s ease;">
+                <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">LOADING...</span>
+            </div>
         </div>
-        <div id="attendance-warning-badge" style="padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e; transition: all 0.3s ease;">
-            <i class="fas fa-exclamation-triangle"></i> <span id="warning-text">LOADING...</span>
+        <div style="padding: 12px 20px 16px 20px; display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px; color: #94a3b8; background: #0f172a;">
+            <span><strong id="dashboard-verified-count" style="color: #34d399;">0</strong> verified</span>
+            <span><strong id="dashboard-total-count" style="color: #94a3b8;">0</strong> total</span>
+            <span>⏳ <strong id="dashboard-pending-count" style="color: #fbbf24;">0</strong> pending</span>
+            <span><i class="fas fa-info-circle" style="color: #8b5cf6;"></i> +10 pts/verified</span>
         </div>
     </div>
-    <div style="padding: 12px 20px 16px 20px; display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px; color: #94a3b8; background: #0f172a;">
-        <span><strong id="dashboard-verified-count" style="color: #34d399;">0</strong> verified</span>
-        <span><strong id="dashboard-total-count" style="color: #94a3b8;">0</strong> total</span>
-        <span>⏳ <strong id="dashboard-pending-count" style="color: #fbbf24;">0</strong> pending</span>
-        <span><i class="fas fa-info-circle" style="color: #8b5cf6;"></i> +10 pts/verified</span>
-    </div>
-</div>
 
     <!-- ========== MINI CARDS ROW 1 ========== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
@@ -706,6 +708,59 @@
 </section>
 <!-- END DASHBOARD SECTION -->
 
+<!-- ========== STYLES ========== -->
+<style>
+    /* ============================================================
+       STREAK STYLES - DARK BACKGROUND VERSION
+       ============================================================ */
+    .milestone.reached {
+        background: rgba(253, 185, 19, 0.25) !important;
+        color: #FDB913 !important;
+        border-color: #FDB913 !important;
+        box-shadow: 0 0 20px rgba(253, 185, 19, 0.2);
+    }
+    .milestone.active {
+        background: #FDB913 !important;
+        color: #0A3D62 !important;
+        border-color: #FDB913 !important;
+        box-shadow: 0 0 25px rgba(253, 185, 19, 0.4);
+        transform: scale(1.05);
+    }
+    .streak-light.active {
+        opacity: 1 !important;
+        transform: scale(1.2);
+        filter: drop-shadow(0 0 12px rgba(253, 185, 19, 0.8));
+    }
+    .streak-light.active:nth-child(1) { color: #FDB913 !important; }
+    .streak-light.active:nth-child(2) { color: #FF6B6B !important; }
+    .streak-light.active:nth-child(3) { color: #4ECDC4 !important; }
+    .streak-light.active:nth-child(4) { color: #45B7D1 !important; }
+    .streak-light.active:nth-child(5) { color: #96CEB4 !important; }
+    @keyframes streakPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.3); }
+        100% { transform: scale(1); }
+    }
+    .streak-light.active {
+        animation: streakPulse 1.5s ease-in-out infinite;
+    }
+    .streak-light.active:nth-child(2) { animation-delay: 0.2s; }
+    .streak-light.active:nth-child(3) { animation-delay: 0.4s; }
+    .streak-light.active:nth-child(4) { animation-delay: 0.6s; }
+    .streak-light.active:nth-child(5) { animation-delay: 0.8s; }
+    #streak-progress-fill { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+    #xp-progress-fill { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    /* ============================================================
+       ATTENDANCE STYLES
+       ============================================================ */
+    .attendance-percent.attendance-critical { color: #dc2626 !important; }
+    .attendance-percent.attendance-warning { color: #f59e0b !important; }
+    .attendance-percent.attendance-good { color: #059669 !important; }
+    #attendance-warning-badge.attendance-critical { background: #fee2e2 !important; color: #991b1b !important; }
+    #attendance-warning-badge.attendance-warning { background: #fef3c7 !important; color: #92400e !important; }
+    #attendance-warning-badge.attendance-good { background: #d1fae5 !important; color: #065f46 !important; }
+</style>
 <!-- ========== STYLES ========== -->
 <style>
     /* ============================================================
