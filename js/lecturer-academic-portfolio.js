@@ -8,6 +8,7 @@ const AcademicPortfolio = {
     currentTab: 'dashboard',
     currentCourse: null,
     currentScheme: null,
+    lecturerId: null,
     data: {
         schemes: [],
         lessonPlans: [],
@@ -21,6 +22,18 @@ const AcademicPortfolio = {
     // ============================================================
     init() {
         console.log('📁 Academic Portfolio initializing...');
+        
+        // Get lecturer ID from window if available
+        if (window.CORRECT_LECTURER_ID) {
+            this.lecturerId = window.CORRECT_LECTURER_ID;
+        } else if (window.lecturerDB && window.lecturerDB.getCurrentUserProfile) {
+            const profile = window.lecturerDB.getCurrentUserProfile();
+            if (profile) {
+                this.lecturerId = profile.user_id || profile.id;
+            }
+        }
+        
+        console.log('👤 Lecturer ID:', this.lecturerId);
         this.setupNavigation();
         this.loadDashboard();
         this.setupEventListeners();
@@ -30,22 +43,24 @@ const AcademicPortfolio = {
     // NAVIGATION
     // ============================================================
     setupNavigation() {
-        // Handle main tab click (from sidebar)
         document.querySelectorAll('[data-tab="academic-portfolio"]').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
-                showTab('academic-portfolio');
+                if (typeof window.showTab === 'function') {
+                    window.showTab('academic-portfolio');
+                }
                 this.loadDashboard();
             });
         });
     },
     
     setupEventListeners() {
-        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'p') {
                 e.preventDefault();
-                showTab('academic-portfolio');
+                if (typeof window.showTab === 'function') {
+                    window.showTab('academic-portfolio');
+                }
                 this.loadDashboard();
             }
         });
@@ -58,7 +73,6 @@ const AcademicPortfolio = {
         const now = new Date();
         const year = now.getFullYear();
         const month = now.getMonth();
-        // If month is before July (7), we're in the first half of the year
         if (month < 6) {
             return `${year - 1}/${year}`;
         }
@@ -68,16 +82,12 @@ const AcademicPortfolio = {
     getCurrentSemester() {
         const now = new Date();
         const month = now.getMonth();
-        if (month < 6) return 2; // Jan-Jun = Semester 2
-        return 1; // Jul-Dec = Semester 1
+        if (month < 6) return 2;
+        return 1;
     },
     
     getRecentActivity() {
-        // Placeholder - can be expanded with real data
-        return [
-            // { title: 'Created Scheme of Work', description: 'Nursing 101 - Block A', time: '2 hours ago', icon: 'fas fa-file-alt', color: '#d1fae5', iconColor: '#10b981' },
-            // { title: 'Uploaded Lesson Plan', description: 'Week 3 - Maternal Health', time: '5 hours ago', icon: 'fas fa-chalkboard', color: '#dbeafe', iconColor: '#3b82f6' },
-        ];
+        return [];
     },
     
     // ============================================================
@@ -86,7 +96,6 @@ const AcademicPortfolio = {
     switchTab(tab) {
         this.currentTab = tab;
         
-        // Update tab button styles
         document.querySelectorAll('.ap-tab-btn').forEach(btn => {
             btn.classList.remove('active');
             btn.style.background = 'transparent';
@@ -98,7 +107,6 @@ const AcademicPortfolio = {
             }
         });
         
-        // Load appropriate content
         switch(tab) {
             case 'dashboard':
                 this.loadDashboard();
@@ -173,84 +181,81 @@ const AcademicPortfolio = {
                 return;
             }
             
-            const userId = user.data.user.id;
+            const userId = this.lecturerId || user.data.user.id;
             
-            // Fetch allocations with course details
-            const { data: allocations, error: allocError } = await window.supabase
-                .from('course_allocations')
-                .select(`
-                    *,
-                    courses (id, title, code, credits)
-                `)
-                .eq('lecturer_id', userId)
-                .eq('academic_year', this.getCurrentAcademicYear());
+            // Fetch lecturer's subject assignments
+            const { data: assignments, error: assignError } = await window.supabase
+                .from('lecturer_subject_assignments')
+                .select('*')
+                .eq('lecturer_id', userId);
             
-            if (allocError) throw allocError;
+            if (assignError) throw assignError;
             
-            // Get statistics
+            // Get statistics from each table
             const stats = {
-                totalCourses: allocations?.length || 0,
+                totalCourses: assignments?.length || 0,
                 schemesCompleted: 0,
                 lessonPlans: 0,
                 pendingHOD: 0,
-                approved: 0
+                approved: 0,
+                teachingLogs: 0,
+                materials: 0
             };
             
-            // For each allocation, get scheme and lesson plan counts
-            if (allocations && allocations.length > 0) {
-                for (const alloc of allocations) {
-                    // Count schemes
-                    const { count: schemeCount } = await window.supabase
-                        .from('schemes_of_work')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('course_allocation_id', alloc.id);
-                    
-                    if (schemeCount && schemeCount > 0) {
-                        stats.schemesCompleted += schemeCount;
-                    }
-                    
-                    // Count lesson plans
-                    const { count: lessonCount } = await window.supabase
-                        .from('lesson_plans')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('course_allocation_id', alloc.id);
-                    
-                    if (lessonCount) {
-                        stats.lessonPlans += lessonCount;
-                    }
-                    
-                    // Count pending HOD
-                    const { count: pendingCount } = await window.supabase
-                        .from('schemes_of_work')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('course_allocation_id', alloc.id)
-                        .eq('hod_approved', false)
-                        .neq('status', 'rejected');
-                    
-                    if (pendingCount) {
-                        stats.pendingHOD += pendingCount;
-                    }
-                    
-                    // Count approved
-                    const { count: approvedCount } = await window.supabase
-                        .from('schemes_of_work')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('course_allocation_id', alloc.id)
-                        .eq('hod_approved', true);
-                    
-                    if (approvedCount) {
-                        stats.approved += approvedCount;
-                    }
-                }
+            // Count schemes
+            if (assignments && assignments.length > 0) {
+                const assignmentIds = assignments.map(a => a.id);
+                
+                const { count: schemeCount } = await window.supabase
+                    .from('schemes_of_work')
+                    .select('*', { count: 'exact', head: true })
+                    .in('lecturer_subject_assignment_id', assignmentIds);
+                
+                if (schemeCount) stats.schemesCompleted = schemeCount;
+                
+                const { count: lessonCount } = await window.supabase
+                    .from('lesson_plans')
+                    .select('*', { count: 'exact', head: true })
+                    .in('lecturer_subject_assignment_id', assignmentIds);
+                
+                if (lessonCount) stats.lessonPlans = lessonCount;
+                
+                const { count: pendingCount } = await window.supabase
+                    .from('schemes_of_work')
+                    .select('*', { count: 'exact', head: true })
+                    .in('lecturer_subject_assignment_id', assignmentIds)
+                    .eq('hod_approved', false)
+                    .neq('status', 'rejected');
+                
+                if (pendingCount) stats.pendingHOD = pendingCount;
+                
+                const { count: approvedCount } = await window.supabase
+                    .from('schemes_of_work')
+                    .select('*', { count: 'exact', head: true })
+                    .in('lecturer_subject_assignment_id', assignmentIds)
+                    .eq('hod_approved', true);
+                
+                if (approvedCount) stats.approved = approvedCount;
+                
+                const { count: logCount } = await window.supabase
+                    .from('teaching_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .in('lecturer_subject_assignment_id', assignmentIds);
+                
+                if (logCount) stats.teachingLogs = logCount;
+                
+                const { count: materialCount } = await window.supabase
+                    .from('teaching_materials')
+                    .select('*', { count: 'exact', head: true })
+                    .in('lecturer_subject_assignment_id', assignmentIds);
+                
+                if (materialCount) stats.materials = materialCount;
             }
             
             // Calculate completion percentage
             const totalItems = stats.totalCourses + stats.schemesCompleted + stats.lessonPlans;
             const completedItems = stats.approved;
             const completionPercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-            
-            // Generate recent activity
-            const recentActivity = this.getRecentActivity();
             
             // Update stats in the header
             document.getElementById('apTotalSchemes').textContent = stats.schemesCompleted;
@@ -358,22 +363,8 @@ const AcademicPortfolio = {
                         <h4 style="margin: 0 0 16px 0; color: #0A3D62; font-size: 15px;">
                             <i class="fas fa-clock" style="color: #10b981;"></i> Recent Activity
                         </h4>
-                        <div id="apRecentActivity">
-                            ${recentActivity.length > 0 ? 
-                                recentActivity.map(activity => `
-                                    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                                        <div style="width: 36px; height: 36px; border-radius: 50%; background: ${activity.color || '#d1fae5'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                            <i class="${activity.icon || 'fas fa-file-alt'}" style="color: ${activity.iconColor || '#10b981'};"></i>
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <div style="font-size: 14px; color: #1e293b; font-weight: 500;">${activity.title}</div>
-                                            <div style="font-size: 12px; color: #94a3b8;">${activity.description || ''}</div>
-                                        </div>
-                                        <div style="font-size: 12px; color: #94a3b8; white-space: nowrap;">${activity.time || ''}</div>
-                                    </div>
-                                `).join('') :
-                                '<div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">No recent activity. Start by creating your first scheme of work!</div>'
-                            }
+                        <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                            No recent activity. Start by creating your first scheme of work!
                         </div>
                     </div>
                 </div>
@@ -400,19 +391,69 @@ const AcademicPortfolio = {
         const container = document.getElementById('ap-content');
         if (!container) return;
         
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                <i class="fas fa-book" style="font-size: 40px; color: #10b981;"></i>
-                <h3 style="color: #1e293b; margin-top: 15px;">Course Allocation</h3>
-                <p style="color: #94a3b8;">View and manage your assigned courses.</p>
-                <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px dashed #e2e8f0;">
-                    <p style="color: #64748b; font-size: 14px;">📌 Phase 1: Course allocation management coming soon.</p>
-                    <button onclick="AcademicPortfolio.switchTab('dashboard')" style="margin-top: 10px; background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
+        try {
+            const user = await window.supabase?.auth?.getUser();
+            if (!user?.data?.user) {
+                container.innerHTML = `<div style="text-align: center; padding: 60px;">Please log in.</div>`;
+                return;
+            }
+            
+            const userId = this.lecturerId || user.data.user.id;
+            
+            const { data: assignments, error } = await window.supabase
+                .from('lecturer_subject_assignments')
+                .select('*')
+                .eq('lecturer_id', userId);
+            
+            if (error) throw error;
+            
+            container.innerHTML = `
+                <div style="padding: 20px;">
+                    <h3 style="color: #0A3D62; margin-bottom: 20px;">Course Allocation</h3>
+                    ${assignments && assignments.length > 0 ? `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                            ${assignments.map(assignment => `
+                                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+                                    <h4 style="margin: 0 0 4px 0; color: #0A3D62;">${assignment.subject_name}</h4>
+                                    <p style="margin: 0; color: #64748b; font-size: 14px;">${assignment.subject_code || 'No code'}</p>
+                                    <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <span style="background: #dbeafe; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">${assignment.program}</span>
+                                        <span style="background: #d1fae5; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">${assignment.block}</span>
+                                        <span style="background: #fef3c7; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #92400e;">${assignment.academic_year || '2025'}</span>
+                                    </div>
+                                    <div style="margin-top: 12px; display: flex; gap: 8px;">
+                                        <button onclick="AcademicPortfolio.switchTab('scheme-of-work')" style="background: #10b981; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                            <i class="fas fa-file-alt"></i> Scheme
+                                        </button>
+                                        <button onclick="AcademicPortfolio.switchTab('lesson-plans')" style="background: #3b82f6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                            <i class="fas fa-chalkboard"></i> Lesson Plans
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-book" style="font-size: 40px; display: block; margin-bottom: 16px;"></i>
+                            <p>No course allocations found.</p>
+                        </div>
+                    `}
+                    <button onclick="AcademicPortfolio.switchTab('dashboard')" style="margin-top: 20px; background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
                         <i class="fas fa-arrow-left"></i> Back to Dashboard
                     </button>
                 </div>
-            </div>
-        `;
+            `;
+        } catch (error) {
+            console.error('Error loading course allocation:', error);
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #ef4444;">
+                    <p>Error loading course allocation: ${error.message}</p>
+                    <button onclick="AcademicPortfolio.loadCourseAllocation()" style="margin-top: 10px; background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+        }
     },
     
     // ============================================================
@@ -422,23 +463,95 @@ const AcademicPortfolio = {
         const container = document.getElementById('ap-content');
         if (!container) return;
         
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                <i class="fas fa-list-check" style="font-size: 40px; color: #10b981;"></i>
-                <h3 style="color: #1e293b; margin-top: 15px;">Scheme of Work</h3>
-                <p style="color: #94a3b8;">Create and manage your course schemes of work.</p>
-                <div style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px dashed #e2e8f0;">
-                    <p style="color: #64748b; font-size: 14px;">📌 Phase 1: Scheme of work management coming soon.</p>
-                    <button onclick="AcademicPortfolio.switchTab('dashboard')" style="margin-top: 10px; background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
+        try {
+            const user = await window.supabase?.auth?.getUser();
+            if (!user?.data?.user) {
+                container.innerHTML = `<div style="text-align: center; padding: 60px;">Please log in.</div>`;
+                return;
+            }
+            
+            const userId = this.lecturerId || user.data.user.id;
+            
+            // Get lecturer's assignments
+            const { data: assignments } = await window.supabase
+                .from('lecturer_subject_assignments')
+                .select('id, subject_name, subject_code')
+                .eq('lecturer_id', userId);
+            
+            const assignmentIds = assignments?.map(a => a.id) || [];
+            
+            // Get schemes
+            const { data: schemes, error } = await window.supabase
+                .from('schemes_of_work')
+                .select('*')
+                .in('lecturer_subject_assignment_id', assignmentIds)
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            
+            container.innerHTML = `
+                <div style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                        <h3 style="color: #0A3D62; margin: 0;">Scheme of Work</h3>
+                        <button onclick="AcademicPortfolio.createNewScheme()" style="background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-plus"></i> New Scheme
+                        </button>
+                    </div>
+                    
+                    ${schemes && schemes.length > 0 ? `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 16px;">
+                            ${schemes.map(scheme => `
+                                <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; border-left: 4px solid ${scheme.hod_approved ? '#10b981' : scheme.status === 'rejected' ? '#ef4444' : '#f59e0b'};">
+                                    <h4 style="margin: 0 0 4px 0; color: #0A3D62;">${scheme.title}</h4>
+                                    <p style="margin: 0; color: #64748b; font-size: 13px;">${scheme.description || 'No description'}</p>
+                                    <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <span style="background: ${scheme.hod_approved ? '#d1fae5' : scheme.status === 'rejected' ? '#fee2e2' : '#fef3c7'}; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: ${scheme.hod_approved ? '#065f46' : scheme.status === 'rejected' ? '#991b1b' : '#92400e'};">
+                                            ${scheme.hod_approved ? '✅ Approved' : scheme.status === 'rejected' ? '❌ Rejected' : '⏳ Pending'}
+                                        </span>
+                                        <span style="background: #dbeafe; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">${scheme.total_weeks || 14} weeks</span>
+                                        <span style="background: #ede9fe; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #5b21b6;">${scheme.academic_year || '2025'}</span>
+                                    </div>
+                                    <div style="margin-top: 12px; display: flex; gap: 8px;">
+                                        <button onclick="AcademicPortfolio.viewScheme('${scheme.id}')" style="background: #4C1D95; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                            <i class="fas fa-eye"></i> View
+                                        </button>
+                                        <button onclick="AcademicPortfolio.editScheme('${scheme.id}')" style="background: #f59e0b; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-list-check" style="font-size: 40px; display: block; margin-bottom: 16px;"></i>
+                            <p>No schemes of work created yet.</p>
+                            <button onclick="AcademicPortfolio.createNewScheme()" style="margin-top: 10px; background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
+                                <i class="fas fa-plus"></i> Create Your First Scheme
+                            </button>
+                        </div>
+                    `}
+                    
+                    <button onclick="AcademicPortfolio.switchTab('dashboard')" style="margin-top: 20px; background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
                         <i class="fas fa-arrow-left"></i> Back to Dashboard
                     </button>
                 </div>
-            </div>
-        `;
+            `;
+        } catch (error) {
+            console.error('Error loading schemes:', error);
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #ef4444;">
+                    <p>Error loading schemes: ${error.message}</p>
+                    <button onclick="AcademicPortfolio.loadSchemeOfWork()" style="margin-top: 10px; background: #10b981; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+        }
     },
     
     // ============================================================
-    // PHASE 1: LESSON PLANS
+    // PLACEHOLDER METHODS FOR OTHER TABS
     // ============================================================
     async loadLessonPlans() {
         const container = document.getElementById('ap-content');
@@ -459,9 +572,6 @@ const AcademicPortfolio = {
         `;
     },
     
-    // ============================================================
-    // PHASE 2: TEACHING LOG
-    // ============================================================
     async loadTeachingLog() {
         const container = document.getElementById('ap-content');
         if (!container) return;
@@ -481,9 +591,6 @@ const AcademicPortfolio = {
         `;
     },
     
-    // ============================================================
-    // PHASE 2: MATERIALS
-    // ============================================================
     async loadMaterials() {
         const container = document.getElementById('ap-content');
         if (!container) return;
@@ -503,9 +610,6 @@ const AcademicPortfolio = {
         `;
     },
     
-    // ============================================================
-    // PHASE 3: ASSESSMENTS
-    // ============================================================
     async loadAssessments() {
         const container = document.getElementById('ap-content');
         if (!container) return;
@@ -525,9 +629,6 @@ const AcademicPortfolio = {
         `;
     },
     
-    // ============================================================
-    // PHASE 3: EXAMS
-    // ============================================================
     async loadExams() {
         const container = document.getElementById('ap-content');
         if (!container) return;
@@ -547,9 +648,6 @@ const AcademicPortfolio = {
         `;
     },
     
-    // ============================================================
-    // PHASE 3: ANALYSIS
-    // ============================================================
     async loadAnalysis() {
         const container = document.getElementById('ap-content');
         if (!container) return;
@@ -569,9 +667,6 @@ const AcademicPortfolio = {
         `;
     },
     
-    // ============================================================
-    // PHASE 4: CLINICAL SUPERVISION
-    // ============================================================
     async loadClinical() {
         const container = document.getElementById('ap-content');
         if (!container) return;
@@ -591,9 +686,6 @@ const AcademicPortfolio = {
         `;
     },
     
-    // ============================================================
-    // PHASE 4: EVALUATIONS
-    // ============================================================
     async loadEvaluations() {
         const container = document.getElementById('ap-content');
         if (!container) return;
@@ -613,9 +705,6 @@ const AcademicPortfolio = {
         `;
     },
     
-    // ============================================================
-    // PHASE 4: REFLECTIONS
-    // ============================================================
     async loadReflections() {
         const container = document.getElementById('ap-content');
         if (!container) return;
@@ -635,9 +724,6 @@ const AcademicPortfolio = {
         `;
     },
     
-    // ============================================================
-    // PHASE 4: REPORTS
-    // ============================================================
     async loadReports() {
         const container = document.getElementById('ap-content');
         if (!container) return;
@@ -655,6 +741,22 @@ const AcademicPortfolio = {
                 </div>
             </div>
         `;
+    },
+    
+    // ============================================================
+    // HELPER METHODS
+    // ============================================================
+    createNewScheme() {
+        // TODO: Implement scheme creation modal
+        alert('Scheme creation will be implemented in Phase 2.');
+    },
+    
+    viewScheme(id) {
+        alert('View scheme functionality coming soon. ID: ' + id);
+    },
+    
+    editScheme(id) {
+        alert('Edit scheme functionality coming soon. ID: ' + id);
     }
 };
 
@@ -662,11 +764,11 @@ const AcademicPortfolio = {
 // INITIALIZE ON PAGE LOAD
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize after other modules have loaded
+    // Wait for other modules to load
     setTimeout(() => {
         if (typeof AcademicPortfolio !== 'undefined') {
             AcademicPortfolio.init();
-            console.log('✅ Academic Portfolio initialized');
+            console.log('✅ Academic Portfolio initialized with database tables');
         }
-    }, 1000);
+    }, 1500);
 });
