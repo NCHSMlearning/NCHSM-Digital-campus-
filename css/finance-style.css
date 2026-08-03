@@ -219,6 +219,39 @@
     background: #ef4444;
 }
 
+/* ===== SEARCH BOX STYLES ===== */
+.search-box {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 200px;
+}
+
+.search-box input {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+    background: #f8fafc;
+    min-width: 200px;
+    flex: 1;
+    transition: border-color 0.2s;
+}
+
+.search-box input:focus {
+    border-color: #4C1D95;
+    outline: none;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+}
+
+.search-box .search-icon {
+    color: #94a3b8;
+    font-size: 14px;
+}
+
 /* ===== BUTTONS ===== */
 .finance-btn {
     display: inline-flex;
@@ -610,6 +643,49 @@
     gap: 20px;
 }
 
+/* ===== PAYMENT MODAL STYLES ===== */
+.payment-modal-content {
+    max-width: 700px;
+}
+
+.student-info-card {
+    background: linear-gradient(135deg, #f8fafc, #eef2f7);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #e5e7eb;
+}
+
+.student-info-card .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.student-info-card .info-row:last-child {
+    border-bottom: none;
+}
+
+.student-info-card .label {
+    font-weight: 600;
+    color: #475569;
+    font-size: 13px;
+}
+
+.student-info-card .value {
+    color: #0b1124;
+    font-size: 13px;
+}
+
+.student-info-card .value.positive {
+    color: #059669;
+}
+
+.student-info-card .value.negative {
+    color: #dc2626;
+}
+
 /* ===== MODAL STYLES ===== */
 .modal-overlay {
     display: none;
@@ -702,6 +778,70 @@
     gap: 16px;
 }
 
+/* ===== FILTER BAR ===== */
+.filter-bar {
+    background: white;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-bar .form-control {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+    background: #f8fafc;
+    min-width: 150px;
+}
+
+.filter-bar .form-control:focus {
+    border-color: #4C1D95;
+    outline: none;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+}
+
+.filter-bar .search-box {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-bar .search-box input {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+    background: #f8fafc;
+    width: 100%;
+    transition: border-color 0.2s;
+}
+
+.filter-bar .search-box input:focus {
+    border-color: #4C1D95;
+    outline: none;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+}
+
+.filter-bar .search-box .search-icon {
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+/* ===== COUNTER ===== */
+.filter-bar .counter {
+    font-size: 13px;
+    color: #64748b;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
 /* ===== TOAST NOTIFICATIONS ===== */
 #financeToastContainer {
     position: fixed;
@@ -760,6 +900,10 @@
     .form-row {
         grid-template-columns: 1fr;
     }
+    .filter-bar .search-box {
+        min-width: 150px;
+        flex: 1 1 100%;
+    }
 }
 
 @media (max-width: 768px) {
@@ -786,6 +930,27 @@
     }
     .fee-pdf-header .program-meta {
         flex-wrap: wrap;
+    }
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-bar .form-control {
+        min-width: 100%;
+    }
+    .filter-bar .search-box {
+        min-width: 100%;
+    }
+    .filter-bar .counter {
+        margin-left: 0;
+        text-align: center;
+    }
+    .student-info-card .info-row {
+        flex-direction: column;
+        gap: 4px;
+    }
+    .payment-modal-content {
+        max-width: 100%;
     }
 }
 
@@ -814,6 +979,10 @@
     .fee-pdf-actions .finance-btn {
         flex: none;
         width: 100%;
+    }
+    .filter-bar {
+        padding: 12px 14px;
+        gap: 8px;
     }
 }
 
@@ -844,6 +1013,9 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
+    .modal-overlay {
+        display: none !important;
+    }
 }
 
 /* ===== LOADING SPINNER ===== */
@@ -861,28 +1033,6 @@
     to {
         transform: rotate(360deg);
     }
-}
-
-/* ===== FILTER BAR ===== */
-.filter-bar {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-    align-items: center;
-}
-
-.filter-bar .form-control {
-    padding: 6px 12px;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 13px;
-    background: white;
-}
-
-.filter-bar .form-control:focus {
-    outline: none;
-    border-color: #0A3D62;
 }
 
 /* ===== EMPTY STATE ===== */
@@ -905,4 +1055,24 @@
 
 .empty-state p {
     margin: 0 0 16px 0;
+}
+
+/* ===== BTN SUCCESS (for payment buttons) ===== */
+.btn-success {
+    background: #059669;
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+}
+
+.btn-success:hover {
+    background: #047857;
+    transform: translateY(-1px);
 }
