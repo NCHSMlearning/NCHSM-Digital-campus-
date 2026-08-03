@@ -619,7 +619,7 @@
             <div class="mini-card-value" style="font-size: 14px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-newsletter-status">📧 Not Subscribed</div>
             <div style="font-size: 11px; color: #94a3b8;" id="dashboard-newsletter-latest">No newsletters yet</div>
         </div>
-        <div class="mini-card" data-tab="streak" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
+        <div class="mini-card" data-tab="finance" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
             <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">💰 Finance</div>
             <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-finance-balance">KES 0</div>
             <div style="font-size: 11px; color: #94a3b8;" id="dashboard-finance-status">Balance</div>
@@ -652,20 +652,20 @@
         </div>
     </div>
 
-    <!-- ========== LEADERBOARD ========== -->
-    <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-        <i class="fas fa-trophy" style="color: #FDB913;"></i> Leaderboard
-        <span class="leaderboard-tabs" style="font-size: 11px; color: #94a3b8; font-weight: 400; display: flex; gap: 8px;">
-            <span class="active" style="cursor: pointer; color: #4C1D95; font-weight: 600;">Weekly</span>
-            <span style="cursor: pointer;">Monthly</span>
-            <span style="cursor: pointer;">All Time</span>
-        </span>
-    </h4>
-    <div id="leaderboard-container" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
-        <div style="padding: 20px; text-align: center; color: #94a3b8;">
-            <i class="fas fa-spinner fa-spin"></i> Loading...
-        </div>
+   <!-- ========== LEADERBOARD ========== -->
+<h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+    <i class="fas fa-trophy" style="color: #FDB913;"></i> Leaderboard
+    <span class="leaderboard-tabs" style="font-size: 11px; color: #94a3b8; font-weight: 400; display: flex; gap: 8px;">
+        <span class="active" style="cursor: pointer; color: #4C1D95; font-weight: 600;" onclick="switchLeaderboardTab('weekly')">Weekly</span>
+        <span style="cursor: pointer;" onclick="switchLeaderboardTab('monthly')">Monthly</span>
+        <span style="cursor: pointer;" onclick="switchLeaderboardTab('all')">All Time</span>
+    </span>
+</h4>
+<div id="leaderboard-container" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
+    <div style="padding: 20px; text-align: center; color: #94a3b8;">
+        <i class="fas fa-spinner fa-spin"></i> Loading...
     </div>
+</div>
 
     <!-- ========== ACTION REQUIRED ========== -->
     <h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
