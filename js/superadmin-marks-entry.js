@@ -231,33 +231,93 @@ function calculateTVETMarks(cat1, cat2, exam, programCode) {
     const examMax = isNursing ? 70 : config.EXAM_MAX;
     const clampedExam = Math.min(Math.max(ex, 0), examMax);
     
-    // ✅ Get assessment type from visible columns
     const assessmentType = getAssessmentTypeFromColumns();
     window.me_currentAssessmentType = assessmentType;
     
-    // ✅ Calculate total based on visible columns
-    let rawTotal = 0;
     const visible = detectVisibleColumns();
     
-    if (visible.hasCat1) rawTotal += clampedCat1;
-    if (visible.hasCat2) rawTotal += clampedCat2;
-    if (visible.hasExam) rawTotal += clampedExam;
+    let rawTotal = 0;
+    let maxPossible = 0;
+    let percentage = 0;
     
-    // ✅ Get max possible based on program and assessment type
-    let maxPossible = getMaxPossible(programCode, assessmentType);
-    
-    if (maxPossible === 0) {
-        maxPossible = isNursing ? 100 : config.TOTAL_MAX;
-    }
-    
-    // ✅ Calculate percentage
-    let percentage;
-    if (maxPossible > 0 && rawTotal > 0) {
-        percentage = (rawTotal / maxPossible) * 100;
+    if (isNursing) {
+        // ✅ NURSING CALCULATION - WITH WEIGHTED SCORES
+        switch(assessmentType) {
+            case 'full':
+                // CAT1 (15%) + CAT2 (15%) + Exam (70%)
+                const cat1Weighted = (clampedCat1 / config.CAT1_MAX) * 15;
+                const cat2Weighted = (clampedCat2 / config.CAT2_MAX) * 15;
+                const examWeighted = (clampedExam / 70) * 70;
+                percentage = cat1Weighted + cat2Weighted + examWeighted;
+                rawTotal = clampedCat1 + clampedCat2 + clampedExam;
+                maxPossible = 100;
+                break;
+                
+            case 'single_cat':
+                // CAT1 (30%) + Exam (70%)
+                const cat1WeightedSingle = (clampedCat1 / config.CAT1_MAX) * 30;
+                const examWeightedSingle = (clampedExam / 70) * 70;
+                percentage = cat1WeightedSingle + examWeightedSingle;
+                rawTotal = clampedCat1 + clampedExam;
+                maxPossible = 100;
+                break;
+                
+            case 'exam_only':
+                rawTotal = clampedExam;
+                maxPossible = 70;
+                percentage = (rawTotal / maxPossible) * 100;
+                break;
+                
+            case 'cats_only':
+                // CAT1 (50%) + CAT2 (50%)
+                const cat1WeightedCats = (clampedCat1 / config.CAT1_MAX) * 50;
+                const cat2WeightedCats = (clampedCat2 / config.CAT2_MAX) * 50;
+                percentage = cat1WeightedCats + cat2WeightedCats;
+                rawTotal = clampedCat1 + clampedCat2;
+                maxPossible = 60;
+                break;
+                
+            case 'cat1_only':
+                rawTotal = clampedCat1;
+                maxPossible = 30;
+                percentage = (rawTotal / maxPossible) * 100;
+                break;
+                
+            case 'cat2_only':
+                rawTotal = clampedCat2;
+                maxPossible = 30;
+                percentage = (rawTotal / maxPossible) * 100;
+                break;
+                
+            default:
+                // Fallback to full assessment
+                const cat1W = (clampedCat1 / config.CAT1_MAX) * 15;
+                const cat2W = (clampedCat2 / config.CAT2_MAX) * 15;
+                const examW = (clampedExam / 70) * 70;
+                percentage = cat1W + cat2W + examW;
+                rawTotal = clampedCat1 + clampedCat2 + clampedExam;
+                maxPossible = 100;
+        }
     } else {
-        percentage = 0;
+        // ✅ TVET CALCULATION - UNCHANGED
+        if (visible.hasCat1) rawTotal += clampedCat1;
+        if (visible.hasCat2) rawTotal += clampedCat2;
+        if (visible.hasExam) rawTotal += clampedExam;
+        
+        if (assessmentType === 'full') maxPossible = config.TOTAL_MAX;
+        else if (assessmentType === 'single_cat') maxPossible = 130;
+        else if (assessmentType === 'exam_only') maxPossible = 100;
+        else if (assessmentType === 'cats_only') maxPossible = 60;
+        else if (assessmentType === 'cat1_only') maxPossible = 30;
+        else if (assessmentType === 'cat2_only') maxPossible = 30;
+        else maxPossible = config.TOTAL_MAX;
+        
+        if (maxPossible > 0) {
+            percentage = (rawTotal / maxPossible) * 100;
+        }
     }
     
+    // Cap at 100% and round to 2 decimal places
     percentage = Math.min(Math.round(percentage * 100) / 100, 100);
     
     const gradeInfo = getTVETGrade(percentage, config);
@@ -926,6 +986,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                 <button onclick="recalculateAllTotals()" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
                     <i class="fas fa-calculator"></i> Recalculate
                 </button>
+                <button onclick="refreshMarksData()" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
                 <button onclick="openMarksStudentManager()" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 12px;">
                     <i class="fas fa-users"></i> Manage Students
                 </button>
@@ -953,8 +1016,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                         ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-${config.CAT1_MAX})</th>` : ''}
                         ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-${config.CAT2_MAX})</th>` : ''}
                         ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${examMax})</th>` : ''}
-                        <th style="padding: 10px 8px; text-align: center;">Total (${maxTotal})</th>
-                        <th style="padding: 10px 8px; text-align: center;">%</th>
+                        <th style="padding: 10px 8px; text-align: center;">Total (100)</th>
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
                         <th style="padding: 10px 8px; text-align: center;">Points</th>
                         <th style="padding: 10px 8px; text-align: center;">Status</th>
@@ -973,8 +1035,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         const gradeInfo = getTVETGrade(percentage, config);
         const isPassing = percentage >= config.PASS_MARK;
         
-        const displayTotal = result.percentage > 0 ? `${result.total}/${result.maxTotal}` : '--';
-        const displayPercentage = result.percentage > 0 ? `${result.percentage}%` : '--';
+        const displayTotal = result.percentage > 0 ? `${result.percentage}%` : '--';
         const displayGrade = result.percentage > 0 ? result.grade : '--';
         const displayPoints = result.percentage > 0 ? result.points : '--';
         
@@ -1010,7 +1071,6 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                 <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${examMax}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
             <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.percentage > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
-            <td id="me_percentage_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (result.percentage > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayPercentage}</td>
             <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color || '#6b7280'};">${displayGrade}</td>
             <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color || '#6b7280'};">${displayPoints}</td>
             <td id="me_status_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">${statusBadge}</td>
@@ -1024,7 +1084,10 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
         </div>
         <div style="text-align: center; margin-top: 16px;">
             <button onclick="recalculateAllTotals()" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
-                <i class="fas fa-calculator"></i> 🔄 Recalculate All (Based on Visible Columns)
+                <i class="fas fa-calculator"></i> 🔄 Recalculate All
+            </button>
+            <button onclick="refreshMarksData()" style="background: #6b7280; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
+                <i class="fas fa-sync-alt"></i> 🔄 Refresh Data
             </button>
             <button onclick="saveMarksEntry()" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
                 <i class="fas fa-save"></i> 💾 Save All Marks
