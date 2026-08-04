@@ -1,7 +1,7 @@
 (function() {
     'use strict';
      
-    console.log('✅ exams.js - COMPLETE FIXED VERSION WITH WORKING TABS, CHART, TIMER & ROUND BUTTONS');
+    console.log('✅ exams.js - COMPLETE FIXED VERSION WITH CHART, TIMER & ROUND BUTTONS');
     
     // ============================================
     // 🕐 KENYA TIMEZONE HELPERS
@@ -91,146 +91,10 @@
             
             // Initialize
             this.initializeEventListeners();
-            this.initializeTabSystem();
             this.updateFilterButtons();
             this.initializeUserData();
             this.setupAutoRefresh();
             this.startCountdownTimer();
-        }
-        
-        // ============================================
-        // 📋 TAB SYSTEM - FIXED
-        // ============================================
-        initializeTabSystem() {
-            console.log('📋 Initializing tab system...');
-            
-            // Get all tab elements
-            const tabs = document.querySelectorAll('.tab-btn');
-            const tabContents = document.querySelectorAll('.tab-content');
-            
-            if (tabs.length === 0) {
-                console.warn('⚠️ No tabs found, creating default tabs...');
-                this.createDefaultTabs();
-                return;
-            }
-            
-            // Set up click handlers for tabs
-            tabs.forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const tabId = tab.getAttribute('data-tab');
-                    if (tabId) {
-                        this.switchTab(tabId);
-                    }
-                });
-            });
-            
-            // Set default active tab
-            const activeTab = document.querySelector('.tab-btn.active');
-            if (activeTab) {
-                const tabId = activeTab.getAttribute('data-tab');
-                if (tabId) {
-                    this.switchTab(tabId);
-                }
-            } else if (tabs.length > 0) {
-                const firstTab = tabs[0];
-                const tabId = firstTab.getAttribute('data-tab');
-                if (tabId) {
-                    firstTab.classList.add('active');
-                    this.switchTab(tabId);
-                }
-            }
-            
-            console.log('✅ Tab system initialized');
-        }
-        
-        createDefaultTabs() {
-            // Create default tab structure if not present
-            const tabsContainer = document.querySelector('.tabs-container');
-            if (!tabsContainer) return;
-            
-            tabsContainer.innerHTML = `
-                <button class="tab-btn active" data-tab="current">
-                    <i class="fas fa-clock"></i> Current Assessments
-                    <span class="tab-badge" id="current-tab-badge">0</span>
-                </button>
-                <button class="tab-btn" data-tab="completed">
-                    <i class="fas fa-check-circle"></i> Completed
-                    <span class="tab-badge" id="completed-tab-badge">0</span>
-                </button>
-                <button class="tab-btn" data-tab="all">
-                    <i class="fas fa-list"></i> All Exams
-                    <span class="tab-badge" id="all-tab-badge">0</span>
-                </button>
-                <button class="tab-btn" data-tab="summary">
-                    <i class="fas fa-chart-bar"></i> Summary
-                </button>
-            `;
-            
-            // Re-initialize tab system
-            this.initializeTabSystem();
-        }
-        
-        switchTab(tabId) {
-            console.log(`🔄 Switching to tab: ${tabId}`);
-            
-            // Update tab buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.getAttribute('data-tab') === tabId) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            // Update tab contents
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.style.display = 'none';
-                content.classList.remove('active');
-                if (content.getAttribute('data-tab') === tabId) {
-                    content.style.display = 'block';
-                    content.classList.add('active');
-                }
-            });
-            
-            // Special handling for summary tab
-            if (tabId === 'summary') {
-                this.updatePerformanceSummary();
-                setTimeout(() => this.initPerformanceChart(), 100);
-            }
-            
-            // Update badges
-            this.updateTabBadges();
-            
-            // Trigger resize for charts
-            if (tabId === 'summary') {
-                setTimeout(() => {
-                    if (window.performanceChart) {
-                        window.performanceChart.resize();
-                    }
-                }, 200);
-            }
-            
-            // Store current tab
-            this.currentTab = tabId;
-        }
-        
-        updateTabBadges() {
-            const currentBadge = document.getElementById('current-tab-badge');
-            const completedBadge = document.getElementById('completed-tab-badge');
-            const allBadge = document.getElementById('all-tab-badge');
-            
-            if (currentBadge) {
-                currentBadge.textContent = this.currentExams.length;
-                currentBadge.style.display = this.currentExams.length > 0 ? 'inline' : 'none';
-            }
-            if (completedBadge) {
-                completedBadge.textContent = this.completedExams.length;
-                completedBadge.style.display = this.completedExams.length > 0 ? 'inline' : 'none';
-            }
-            if (allBadge) {
-                allBadge.textContent = this.allExams.length;
-                allBadge.style.display = this.allExams.length > 0 ? 'inline' : 'none';
-            }
         }
         
         // ============================================
@@ -282,10 +146,8 @@
         cacheElements() {
             this.currentTable = document.getElementById('current-assessments-table');
             this.completedTable = document.getElementById('completed-assessments-table');
-            this.allTable = document.getElementById('all-assessments-table');
             this.currentEmpty = document.getElementById('current-empty');
             this.completedEmpty = document.getElementById('completed-empty');
-            this.allEmpty = document.getElementById('all-empty');
             this.currentCount = document.getElementById('current-count');
             this.completedCount = document.getElementById('completed-count');
             this.completedAverage = document.getElementById('completed-average');
@@ -293,21 +155,6 @@
             this.completedHeaderCount = document.getElementById('completed-assessments-count');
             this.overallAverage = document.getElementById('overall-average');
             this.programIndicator = document.getElementById('program-indicator');
-            
-            // Summary elements
-            this.bestScore = document.getElementById('best-score');
-            this.lowestScore = document.getElementById('lowest-score');
-            this.passRate = document.getElementById('pass-rate');
-            this.distinctionCount = document.getElementById('distinction-count');
-            this.creditCount = document.getElementById('credit-count');
-            this.passCount = document.getElementById('pass-count');
-            this.failCount = document.getElementById('fail-count');
-            this.firstAssessment = document.getElementById('first-assessment-date');
-            this.latestAssessment = document.getElementById('latest-assessment-date');
-            this.totalSubmitted = document.getElementById('total-submitted');
-            this.overallAverageDisplay = document.getElementById('overall-average-display');
-            this.catCount = document.getElementById('cat-count');
-            this.examCount = document.getElementById('exam-count');
         }
         
         // ============================================
@@ -507,20 +354,21 @@
         showFilteredSections() {
             const currentSection = document.querySelector('.current-section');
             const completedSection = document.querySelector('.completed-section');
-            const allSection = document.querySelector('.all-section');
             
-            if (this.currentFilter === 'current') {
-                if (currentSection) currentSection.style.display = 'block';
-                if (completedSection) completedSection.style.display = 'none';
-                if (allSection) allSection.style.display = 'none';
-            } else if (this.currentFilter === 'completed') {
-                if (currentSection) currentSection.style.display = 'none';
-                if (completedSection) completedSection.style.display = 'block';
-                if (allSection) allSection.style.display = 'none';
-            } else {
-                if (currentSection) currentSection.style.display = 'block';
-                if (completedSection) completedSection.style.display = 'block';
-                if (allSection) allSection.style.display = 'block';
+            if (!currentSection || !completedSection) return;
+            
+            switch(this.currentFilter) {
+                case 'current':
+                    currentSection.style.display = 'block';
+                    completedSection.style.display = 'none';
+                    break;
+                case 'completed':
+                    currentSection.style.display = 'none';
+                    completedSection.style.display = 'block';
+                    break;
+                default:
+                    currentSection.style.display = 'block';
+                    completedSection.style.display = 'block';
             }
         }
         
@@ -575,7 +423,6 @@
             this.displayTables();
             this.updateCounts();
             this.updatePerformanceSummary();
-            this.updateTabBadges();
             this.initPerformanceChart();
         }
         
@@ -703,7 +550,7 @@
         }
         
         // ============================================
-        // 🔧 PROCESS EXAMS DATA - FIXED WITH SCORES
+        // 🔧 PROCESS EXAMS DATA
         // ============================================
         processExamsData(exams, grades) {
             const blockMap = {
@@ -781,12 +628,6 @@
                 };
                 gradeMap.set(String(grade.exam_id), gradeWithId);
             });
-            
-            // Debug: Log grade fields
-            if (grades.length > 0) {
-                console.log('📊 Grade sample fields:', Object.keys(grades[0]));
-                console.log('📊 Grade sample:', grades[0]);
-            }
             
             const filteredExams = exams.filter(exam => {
                 const rawExamBlock = exam.block || exam.block_term || exam.term || 'General';
@@ -888,8 +729,7 @@
                         programs: new Set(),
                         grade: null,
                         status: exam.status,
-                        released: exam.released || false,
-                        total_marks: exam.total_marks || marksOutOf
+                        released: exam.released || false
                     });
                 }
                 
@@ -948,10 +788,9 @@
                 const combinedCourse = Array.from(group.course_levels).join(' · ') || group.course || 'General';
                 const blockTermDisplay = isTVET ? (this.userTerm || group.block_term || 'Year 1 Term 1') : (group.block_term || 'General');
                 
-                // ✅ FIX: Extract scores properly
-                const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? grade?.cat1_score ?? null;
-                const cat2Score = grade?.cat_2_score ?? grade?.cat2_score ?? null;
-                const finalScore = grade?.exam_score ?? grade?.final_score ?? grade?.total_score ?? null;
+                const cat1Score = grade?.cat_1_score ?? grade?.cat_score ?? null;
+                const cat2Score = grade?.cat_2_score ?? null;
+                const finalScore = grade?.exam_score ?? null;
                 const totalPercentage = grade?.total_score ? parseFloat(grade.total_score) : null;
                 const marks = grade?.marks ? parseFloat(grade.marks) : null;
                 
@@ -961,69 +800,6 @@
                 
                 const examType = (group.exam_type || '').toUpperCase();
                 const isCatExam = examType.includes('CAT');
-                const totalMarks = group.marks_out_of || (isCatExam ? 30 : 100);
-                
-                // ✅ FIX: Calculate scores
-                let displayScore = 0;
-                let displayPercentage = null;
-                let cat1Display = '--';
-                let cat2Display = '--';
-                let finalDisplay = '--';
-                
-                if (isReleased && hasTaken) {
-                    // Get the score based on exam type
-                    if (isCatExam) {
-                        displayScore = cat1Score || cat2Score || marks || 0;
-                        displayScore = Math.min(displayScore, totalMarks);
-                        
-                        if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
-                        if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
-                        if (isReleased && displayScore > 0) {
-                            cat1Display = `${displayScore}/${totalMarks}`;
-                            cat2Display = `${displayScore}/${totalMarks}`;
-                        }
-                    } else {
-                        displayScore = finalScore || marks || totalPercentage || 0;
-                        displayScore = Math.min(displayScore, totalMarks);
-                        
-                        if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
-                        if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
-                        if (finalScore !== null && finalScore !== undefined) finalDisplay = `${finalScore}`;
-                        if (marks !== null && marks !== undefined) finalDisplay = `${marks}`;
-                    }
-                    
-                    // Calculate percentage
-                    if (totalMarks > 0 && displayScore > 0) {
-                        displayPercentage = Math.round((displayScore / totalMarks) * 100);
-                    }
-                }
-                
-                let gradeText = 'Not Started';
-                let gradeClass = 'pending';
-                
-                if (isReleased && hasTaken) {
-                    if (displayPercentage !== null) {
-                        if (displayPercentage >= 85) {
-                            gradeText = 'Distinction';
-                            gradeClass = 'distinction';
-                        } else if (displayPercentage >= 75) {
-                            gradeText = 'Credit';
-                            gradeClass = 'credit';
-                        } else if (displayPercentage >= 60) {
-                            gradeText = 'Pass';
-                            gradeClass = 'pass';
-                        } else if (displayPercentage > 0) {
-                            gradeText = 'Fail';
-                            gradeClass = 'fail';
-                        } else {
-                            gradeText = 'Completed';
-                            gradeClass = 'completed';
-                        }
-                    } else {
-                        gradeText = 'Completed';
-                        gradeClass = 'completed';
-                    }
-                }
                 
                 let examStartDateTime = null;
                 let examEndDateTime = null;
@@ -1095,6 +871,11 @@
                 let finalMessage = statusMessage;
                 let buttonText = '';
                 let isCompleted = false;
+                let displayPercentage = null;
+                let gradeText = 'Not Started';
+                let gradeClass = 'pending';
+                let displayScore = 0;
+                let totalMarks = group.marks_out_of || 100;
                 
                 const isClosed = group.status === 'Completed' || group.status === 'Closed';
                 const isExpired = examStatus === 'expired' || isClosed;
@@ -1105,6 +886,34 @@
                     finalCanStart = false;
                     finalMessage = '✅ Results Released';
                     buttonText = 'View Results';
+                    
+                    if (isCatExam) {
+                        displayScore = cat1Score || cat2Score || marks || 0;
+                        displayScore = Math.min(displayScore, 30);
+                    } else {
+                        displayScore = marks || totalPercentage || 0;
+                        displayScore = Math.min(displayScore, totalMarks);
+                    }
+                    
+                    const calcPercentage = totalMarks > 0 ? (displayScore / totalMarks) * 100 : 0;
+                    displayPercentage = Math.round(calcPercentage);
+                    
+                    if (displayPercentage >= 85) {
+                        gradeText = 'Distinction';
+                        gradeClass = 'distinction';
+                    } else if (displayPercentage >= 75) {
+                        gradeText = 'Credit';
+                        gradeClass = 'credit';
+                    } else if (displayPercentage >= 60) {
+                        gradeText = 'Pass';
+                        gradeClass = 'pass';
+                    } else if (displayPercentage > 0) {
+                        gradeText = 'Fail';
+                        gradeClass = 'fail';
+                    } else {
+                        gradeText = 'Completed';
+                        gradeClass = 'completed';
+                    }
                 }
                 else if (isExpired && !hasTaken) {
                     finalStatus = 'expired';
@@ -1156,6 +965,25 @@
                     isCompleted = false;
                 }
                 
+                let cat1Display = '--';
+                let cat2Display = '--';
+                let finalDisplay = '--';
+                
+                if (isReleased || hasTaken) {
+                    if (isCatExam) {
+                        if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
+                        if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
+                        if (isReleased && displayScore > 0) {
+                            cat1Display = `${displayScore}/${totalMarks}`;
+                            cat2Display = `${displayScore}/${totalMarks}`;
+                        }
+                    } else {
+                        if (cat1Score !== null && cat1Score !== undefined) cat1Display = `${cat1Score}`;
+                        if (cat2Score !== null && cat2Score !== undefined) cat2Display = `${cat2Score}`;
+                        if (finalScore !== null && finalScore !== undefined) finalDisplay = `${finalScore}`;
+                    }
+                }
+                
                 const formattedGradedDate = grade?.graded_at ? 
                     formatKenyaDate(new Date(new Date(grade.graded_at).getTime() + (3 * 60 * 60 * 1000))) : '--';
                 
@@ -1195,7 +1023,6 @@
                     cat2Display: cat2Display,
                     finalDisplay: finalDisplay,
                     displayScore: displayScore,
-                    displayPercentage: displayPercentage,
                     examDate: group.exam_date,
                     examStartTime: group.exam_start_time,
                     formattedExamDateTime: formattedExamDateTime,
@@ -1229,12 +1056,11 @@
         }
         
         // ============================================
-        // 📊 DISPLAY TABLES - WITH SCORES
+        // 📊 DISPLAY TABLES - WITH LATEST FIRST SORTING
         // ============================================
         displayTables() {
             this.displayCurrentTable();
             this.displayCompletedTable();
-            this.displayAllTable();
             this.updateCounts();
             this.updateEmptyStates();
             
@@ -1354,18 +1180,6 @@
                 
                 let statusHtml = `<span class="status-badge ${exam.gradeClass}">${exam.gradeText}</span>`;
                 
-                // ✅ FIX: Show scores in current table
-                let scoreDisplay = '';
-                if (exam.hasGrade && exam.isReleased) {
-                    scoreDisplay = `
-                        <div class="exam-score-display" style="margin-top: 4px; font-size: 0.85rem; color: #0A3D62;">
-                            <i class="fas fa-star" style="color: #FDB913;"></i> 
-                            Score: <strong>${exam.displayScore || 0}</strong> / ${exam.marks_out_of || 100}
-                            ${exam.displayPercentage !== null ? ` (${exam.displayPercentage}%)` : ''}
-                        </div>
-                    `;
-                }
-                
                 let assessmentCell = `
                     <div class="assessment-info-box">
                         <div class="assessment-row-top">
@@ -1383,7 +1197,6 @@
                         <div class="exam-expired">
                             <i class="fas fa-exclamation-circle"></i> This exam has expired
                         </div>` : ''}
-                        ${scoreDisplay}
                     </div>
                 `;
                 
@@ -1394,7 +1207,7 @@
                         <td class="text-center">${exam.cat1Display}</td>
                         <td class="text-center">${exam.cat2Display}</td>
                         <td class="text-center">${exam.finalDisplay}</td>
-                        <td class="text-center total-cell">${exam.displayPercentage !== null ? exam.displayPercentage + '%' : '--'}</td>
+                        <td class="text-center total-cell">${exam.totalPercentage !== null ? exam.totalPercentage.toFixed(1) + '%' : '--'}</td>
                         <td class="text-center action-cell">
                             ${actionHtml}
                             ${timerHtml}
@@ -1409,6 +1222,7 @@
         displayCompletedTable() {
             if (!this.completedTable) return;
             
+            // ✅ SORT: Latest first - newest to oldest
             const completedReleased = this.completedExams
                 .filter(exam => 
                     exam.isCompleted || exam.isReleased || 
@@ -1445,14 +1259,26 @@
                     examDisplayName = 'Assessment';
                 }
                 
-                let displayScore = exam.displayScore || 0;
                 let totalMarks = exam.marks_out_of || (isCatExam ? 30 : 100);
-                let displayPercentage = exam.displayPercentage !== null ? exam.displayPercentage + '%' : '--';
+                let displayScore = 0;
+                let displayPercentage = '--';
+                
+                if (exam.isReleased && exam.hasGrade) {
+                    if (isCatExam) {
+                        displayScore = exam.cat1Score || exam.cat2Score || exam.marks || 0;
+                    } else {
+                        displayScore = exam.marks || exam.totalPercentage || 0;
+                    }
+                    displayScore = Math.min(displayScore, totalMarks);
+                    const calcPct = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : 0;
+                    displayPercentage = calcPct + '%';
+                }
+                
                 let displayGrade = exam.gradeText || 'Not Started';
                 let displayClass = exam.gradeClass || 'pending';
                 
-                if (exam.isReleased && exam.hasGrade && exam.displayPercentage !== null) {
-                    const pct = exam.displayPercentage;
+                if (exam.isReleased && exam.hasGrade && displayPercentage !== '--') {
+                    const pct = parseInt(displayPercentage);
                     if (pct >= 85) { displayGrade = 'Distinction'; displayClass = 'distinction'; }
                     else if (pct >= 75) { displayGrade = 'Credit'; displayClass = 'credit'; }
                     else if (pct >= 60) { displayGrade = 'Pass'; displayClass = 'pass'; }
@@ -1462,12 +1288,10 @@
                 if (exam.actionState === 'pending_release') {
                     displayGrade = 'Pending Release';
                     displayClass = 'pending';
-                    displayPercentage = '--';
                 }
                 if (exam.actionState === 'expired' && !exam.hasGrade) {
                     displayGrade = 'Missed';
                     displayClass = 'missed';
-                    displayPercentage = '--';
                 }
                 
                 let statusBadges = '';
@@ -1475,30 +1299,6 @@
                     statusBadges = '<span class="badge-released">✅ Released</span>';
                 } else if (exam.actionState === 'pending_release') {
                     statusBadges = '<span class="badge-pending">⏳ Pending</span>';
-                }
-                
-                // ✅ FIX: Show scores in completed table
-                let scoreDisplay = '';
-                if (exam.isReleased && exam.hasGrade && exam.displayScore > 0) {
-                    scoreDisplay = `
-                        <div class="exam-score" style="margin-top: 4px; font-weight: 600; color: #0A3D62;">
-                            📊 Score: <strong>${displayScore}</strong> / ${totalMarks}
-                            ${exam.displayPercentage !== null ? ` (${exam.displayPercentage}%)` : ''}
-                        </div>
-                        ${isCatExam ? `
-                        <div style="font-size: 0.8rem; color: #64748B; margin-top: 2px;">
-                            CAT1: ${exam.cat1Display || '--'} | CAT2: ${exam.cat2Display || '--'}
-                        </div>` : `
-                        <div style="font-size: 0.8rem; color: #64748B; margin-top: 2px;">
-                            Final: ${exam.finalDisplay || '--'}
-                        </div>`}
-                    `;
-                } else if (exam.actionState === 'pending_release') {
-                    scoreDisplay = `
-                        <div class="exam-pending" style="margin-top: 4px; color: #F59E0B;">
-                            ⏳ Results pending release
-                        </div>
-                    `;
                 }
                 
                 let assessmentCell = `
@@ -1514,7 +1314,14 @@
                         <div class="exam-datetime">
                             <i class="fas fa-calendar-check"></i> ${exam.formattedGradedDate !== '--' ? exam.formattedGradedDate : exam.formattedExamDateTime}
                         </div>
-                        ${scoreDisplay}
+                        ${exam.isReleased && exam.hasGrade ? `
+                        <div class="exam-score">
+                            📊 ${displayScore} / ${totalMarks} marks
+                        </div>` : ''}
+                        ${exam.actionState === 'pending_release' ? `
+                        <div class="exam-pending">
+                            ⏳ Results pending release
+                        </div>` : ''}
                     </div>
                 `;
                 
@@ -1530,7 +1337,6 @@
                         if (exam.cat1Score) cat1Display = `${exam.cat1Score}`;
                         if (exam.cat2Score) cat2Display = `${exam.cat2Score}`;
                         if (exam.finalScore) finalDisplay = `${exam.finalScore}`;
-                        if (exam.marks) finalDisplay = `${exam.marks}`;
                     }
                 } else if (exam.actionState === 'pending_release') {
                     cat1Display = '🔒';
@@ -1589,123 +1395,8 @@
             this.completedTable.innerHTML = html;
         }
         
-        displayAllTable() {
-            if (!this.allTable) return;
-            
-            const allExams = [...this.allExams].sort((a, b) => {
-                const dateA = a.gradedAt || a.examDate || a.examStartDateTime || new Date(0);
-                const dateB = b.gradedAt || b.examDate || b.examStartDateTime || new Date(0);
-                return new Date(dateB) - new Date(dateA);
-            });
-            
-            if (allExams.length === 0) {
-                this.allTable.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
-                            <i class="fas fa-inbox fa-2x d-block mb-2"></i>
-                            No exams available.
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            const html = allExams.map(exam => {
-                const isCatExam = exam.isCatExam;
-                const isTVET = exam.isTVET || this.isTVETStudent;
-                
-                let examDisplayName = 'Assessment';
-                if (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name !== '') {
-                    examDisplayName = exam.exam_name;
-                } else if (typeof exam.title === 'string' && exam.title !== '[object Object]' && exam.title !== '') {
-                    examDisplayName = exam.title;
-                } else {
-                    examDisplayName = 'Assessment';
-                }
-                
-                let displayScore = exam.displayScore || 0;
-                let totalMarks = exam.marks_out_of || (isCatExam ? 30 : 100);
-                let displayPercentage = exam.displayPercentage !== null ? exam.displayPercentage + '%' : '--';
-                let displayGrade = exam.gradeText || 'Not Started';
-                let displayClass = exam.gradeClass || 'pending';
-                
-                let statusBadges = '';
-                let statusIcon = '';
-                
-                if (exam.isReleased && exam.hasGrade) {
-                    statusBadges = '<span class="badge-released">✅ Released</span>';
-                    statusIcon = '📊';
-                } else if (exam.actionState === 'pending_release') {
-                    statusBadges = '<span class="badge-pending">⏳ Pending</span>';
-                    statusIcon = '⏳';
-                } else if (exam.actionState === 'available') {
-                    statusBadges = '<span class="badge-available">🟢 Available</span>';
-                    statusIcon = '🟢';
-                } else if (exam.actionState === 'upcoming') {
-                    statusBadges = '<span class="badge-upcoming">📅 Upcoming</span>';
-                    statusIcon = '📅';
-                } else if (exam.actionState === 'expired') {
-                    statusBadges = '<span class="badge-expired">🔒 Expired</span>';
-                    statusIcon = '🔒';
-                }
-                
-                let scoreDisplay = '';
-                if (exam.isReleased && exam.hasGrade && exam.displayScore > 0) {
-                    scoreDisplay = `
-                        <div class="exam-score" style="margin-top: 4px; font-weight: 600; color: #0A3D62;">
-                            📊 Score: <strong>${displayScore}</strong> / ${totalMarks}
-                            ${exam.displayPercentage !== null ? ` (${exam.displayPercentage}%)` : ''}
-                        </div>
-                    `;
-                }
-                
-                let assessmentCell = `
-                    <div class="assessment-info-box">
-                        <div class="assessment-row-top">
-                            <div class="assessment-name">
-                                <strong>${this.escapeHtml(examDisplayName)}</strong>
-                                <span class="${isCatExam ? 'badge-cat' : 'badge-final'}">${isCatExam ? 'CAT' : 'Exam'}</span>
-                                ${isTVET ? '<span class="badge-tvet-small">TVET</span>' : ''}
-                                ${statusBadges}
-                            </div>
-                        </div>
-                        <div class="exam-datetime">
-                            <i class="fas fa-calendar"></i> ${exam.formattedExamDateTime || 'TBA'}
-                        </div>
-                        ${scoreDisplay}
-                    </div>
-                `;
-                
-                let gradeBadge = `<span class="grade-badge ${displayClass}">${displayGrade}</span>`;
-                
-                return `
-                    <tr class="assessment-row ${isCatExam ? 'cat-exam' : 'final-exam'}" data-exam-id="${exam.id}">
-                        <td class="assessment-cell">${assessmentCell}</td>
-                        <td class="text-center status-cell">${gradeBadge}</td>
-                        <td class="text-center">${exam.cat1Display || '--'}</td>
-                        <td class="text-center">${exam.cat2Display || '--'}</td>
-                        <td class="text-center">${exam.finalDisplay || '--'}</td>
-                        <td class="text-center total-cell"><strong>${displayPercentage}</strong></td>
-                        <td class="text-center grade-cell">
-                            ${exam.isReleased && exam.hasGrade ? `
-                                <button class="exam-action-btn btn-view" onclick="window.examsModule?.viewDetailedResults(${exam.id})">
-                                    <i class="fas fa-clipboard-list"></i> Details
-                                </button>
-                            ` : `
-                                <span class="exam-action-btn btn-disabled">
-                                    <i class="fas fa-info-circle"></i> ${exam.actionState || 'Unknown'}
-                                </span>
-                            `}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            
-            this.allTable.innerHTML = html;
-        }
-        
         // ============================================
-        // 📊 PERFORMANCE CHART
+        // 📊 PERFORMANCE CHART - COMPLETE
         // ============================================
         
         initPerformanceChart() {
@@ -1794,7 +1485,7 @@
         getCompletedChartData() {
             const releasedExams = this.completedExams
                 .filter(exam => 
-                    exam.isReleased && exam.displayPercentage !== null
+                    exam.isReleased && exam.totalPercentage !== null
                 )
                 .sort((a, b) => {
                     const dateA = a.gradedAt || a.examDate || a.examStartDateTime || new Date(0);
@@ -1818,22 +1509,19 @@
                 if (exam.finalScore !== null && exam.finalScore !== undefined && exam.finalScore > 0) {
                     examScore = exam.finalScore;
                 }
-                if (exam.marks !== null && exam.marks !== undefined && exam.marks > 0) {
-                    examScore = exam.marks;
-                }
                 
                 let totalMarks = exam.marks_out_of || (isCat ? 30 : 100);
                 let displayScore = 0;
                 
                 if (isCat) {
-                    displayScore = exam.cat1Score || exam.cat2Score || exam.marks || exam.displayScore || 0;
+                    displayScore = exam.cat1Score || exam.cat2Score || exam.marks || exam.totalPercentage || 0;
                     displayScore = Math.min(displayScore, totalMarks);
                 } else {
-                    displayScore = exam.marks || exam.finalScore || exam.displayScore || 0;
+                    displayScore = exam.marks || exam.totalPercentage || 0;
                     displayScore = Math.min(displayScore, totalMarks);
                 }
                 
-                const pct = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : exam.displayPercentage || 0;
+                const pct = totalMarks > 0 ? Math.round((displayScore / totalMarks) * 100) : exam.totalPercentage || 0;
                 
                 return {
                     name: exam.exam_name || exam.title || 'Assessment',
@@ -2161,7 +1849,6 @@
         updateCounts() {
             const currentCount = this.currentExams.length;
             const completedCount = this.completedExams.length;
-            const allCount = this.allExams.length;
             
             if (this.currentCount) {
                 this.currentCount.textContent = `${currentCount} pending`;
@@ -2176,9 +1863,9 @@
                 this.completedHeaderCount.textContent = completedCount;
             }
             
-            const scoredExams = this.completedExams.filter(exam => exam.displayPercentage !== null && exam.isReleased);
+            const scoredExams = this.completedExams.filter(exam => exam.totalPercentage !== null && exam.isReleased);
             if (scoredExams.length > 0) {
-                const total = scoredExams.reduce((sum, exam) => sum + exam.displayPercentage, 0);
+                const total = scoredExams.reduce((sum, exam) => sum + exam.totalPercentage, 0);
                 const average = total / scoredExams.length;
                 if (this.completedAverage) {
                     this.completedAverage.textContent = `Average: ${average.toFixed(1)}%`;
@@ -2191,13 +1878,12 @@
                 if (this.overallAverage) this.overallAverage.textContent = '--';
             }
             
-            this.updateTabBadges();
             this.updatePerformanceSummary();
         }
         
         updatePerformanceSummary() {
             const completedReleased = this.completedExams.filter(exam => 
-                exam.isReleased && exam.displayPercentage !== null
+                exam.isReleased && exam.totalPercentage !== null
             );
             
             const bestScore = document.getElementById('best-score');
@@ -2210,7 +1896,7 @@
             const firstAssessment = document.getElementById('first-assessment-date');
             const latestAssessment = document.getElementById('latest-assessment-date');
             const totalSubmitted = document.getElementById('total-submitted');
-            const overallAverage = document.getElementById('overall-average-display');
+            const overallAverage = document.getElementById('overall-average');
             const catCount = document.getElementById('cat-count');
             const examCount = document.getElementById('exam-count');
             
@@ -2231,15 +1917,15 @@
                 return;
             }
             
-            const percentages = completedReleased.map(e => e.displayPercentage);
+            const percentages = completedReleased.map(e => e.totalPercentage);
             const best = Math.max(...percentages);
             const lowest = Math.min(...percentages);
             const average = percentages.reduce((a, b) => a + b, 0) / percentages.length;
             
-            const distinctions = completedReleased.filter(e => e.displayPercentage >= 85).length;
-            const credits = completedReleased.filter(e => e.displayPercentage >= 75 && e.displayPercentage < 85).length;
-            const passes = completedReleased.filter(e => e.displayPercentage >= 60 && e.displayPercentage < 75).length;
-            const fails = completedReleased.filter(e => e.displayPercentage < 60).length;
+            const distinctions = completedReleased.filter(e => e.totalPercentage >= 85).length;
+            const credits = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
+            const passes = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
+            const fails = completedReleased.filter(e => e.totalPercentage < 60).length;
             
             const passed = distinctions + credits + passes;
             const passRateValue = completedReleased.length > 0 ? (passed / completedReleased.length) * 100 : 0;
@@ -2252,6 +1938,7 @@
             const firstDate = examDates.length > 0 ? examDates[0] : null;
             const latestDate = examDates.length > 0 ? examDates[examDates.length - 1] : null;
             
+            // Count CATs vs Exams
             const cats = completedReleased.filter(e => e.isCatExam).length;
             const exams = completedReleased.filter(e => !e.isCatExam).length;
             
@@ -2277,16 +1964,13 @@
             if (this.completedEmpty) {
                 this.completedEmpty.style.display = this.completedExams.length === 0 ? 'block' : 'none';
             }
-            if (this.allEmpty) {
-                this.allEmpty.style.display = this.allExams.length === 0 ? 'block' : 'none';
-            }
         }
         
         // ============================================
         // 📜 TRANSCRIPT
         // ============================================
         showProfessionalTranscript() {
-            const completedReleased = this.completedExams.filter(e => e.isReleased && e.displayPercentage !== null);
+            const completedReleased = this.completedExams.filter(e => e.isReleased && e.totalPercentage !== null);
             if (completedReleased.length === 0) {
                 const noResultsModal = `
                     <div id="noResultsModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
@@ -2306,10 +1990,10 @@
                 return;
             }
             
-            const avg = completedReleased.reduce((sum, e) => sum + e.displayPercentage, 0) / completedReleased.length;
-            const distinctionCount = completedReleased.filter(e => e.displayPercentage >= 85).length;
-            const creditCount = completedReleased.filter(e => e.displayPercentage >= 75 && e.displayPercentage < 85).length;
-            const passCount = completedReleased.filter(e => e.displayPercentage >= 60 && e.displayPercentage < 75).length;
+            const avg = completedReleased.reduce((sum, e) => sum + e.totalPercentage, 0) / completedReleased.length;
+            const distinctionCount = completedReleased.filter(e => e.totalPercentage >= 85).length;
+            const creditCount = completedReleased.filter(e => e.totalPercentage >= 75 && e.totalPercentage < 85).length;
+            const passCount = completedReleased.filter(e => e.totalPercentage >= 60 && e.totalPercentage < 75).length;
             
             const transcriptModal = `
                 <div id="transcriptModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; display: flex; align-items: center; justify-content: center;">
@@ -2391,7 +2075,6 @@
             `;
             if (this.currentTable) this.currentTable.innerHTML = loadingHTML;
             if (this.completedTable) this.completedTable.innerHTML = loadingHTML;
-            if (this.allTable) this.allTable.innerHTML = loadingHTML;
         }
         
         showError(message) {
@@ -2411,7 +2094,6 @@
             `;
             if (this.currentTable) this.currentTable.innerHTML = errorHTML;
             if (this.completedTable) this.completedTable.innerHTML = errorHTML;
-            if (this.allTable) this.allTable.innerHTML = errorHTML;
         }
         
         hideLoading() {}
@@ -2481,7 +2163,7 @@
         }
     };
     
-    console.log('✅ Exams module ready - TVET, Timer, Tabs, Chart & Latest First Sorted!');
+    console.log('✅ Exams module ready - TVET, Timer, Round Buttons, Chart & Latest First Sorted!');
 })();
 
 // ============================================
