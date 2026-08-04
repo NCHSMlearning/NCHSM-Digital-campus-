@@ -136,8 +136,14 @@ window.cache = cache;
 
 // ========== SPA ROUTER - CLEAN URL NAVIGATION (USING / INSTEAD OF #) ==========
 const SPA_ROUTER = {
-    // Valid tabs in your app
-    validTabs: ['dashboard', 'profile', 'calendar', 'learning-hub', 'attendance', 'cats', 'resources', 'messages', 'support-tickets', 'nurseiq', 'exam-card'],
+    // ✅ Updated validTabs with Supplementary and all student tabs
+    validTabs: [
+        'dashboard', 'profile', 'calendar', 'learning-hub', 'attendance', 
+        'cats', 'resources', 'messages', 'support-tickets', 'nurseiq', 
+        'exam-card', 'unit-registration', 'hub-courses', 'hub-register', 
+        'hub-online-learning', 'hub-exam-card', 'hub-lecture-card', 
+        'academic-reports', 'reviews', 'newsletter', 'supplementary'
+    ],
     
     // Get current tab from URL path (using / instead of #)
     getCurrentTab() {
@@ -274,6 +280,18 @@ const SPA_ROUTER = {
             }
         });
         
+        // Also intercept sidebar links (the new premium ones)
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('.nav-premium a[data-tab], .dropdown-submenu-premium a[data-tab]');
+            if (link) {
+                e.preventDefault();
+                const tab = link.getAttribute('data-tab');
+                if (tab && this.validTabs.includes(tab)) {
+                    this.navigateTo(tab);
+                }
+            }
+        });
+        
         // Initialize - show correct tab on page load
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.showTabFromURL());
@@ -285,6 +303,7 @@ const SPA_ROUTER = {
         document.addEventListener('appReady', () => this.showTabFromURL());
         
         console.log('✅ SPA Router initialized with clean / URLs');
+        console.log(`📋 Valid tabs: ${this.validTabs.join(', ')}`);
     }
 };
 
@@ -302,10 +321,16 @@ window.SPA_ROUTER = SPA_ROUTER;
 window.navigateToTab = (tabId) => {
     if (SPA_ROUTER.validTabs.includes(tabId)) {
         SPA_ROUTER.navigateTo(tabId);
+    } else {
+        console.warn(`⚠️ Invalid tab: ${tabId}`);
     }
 };
 
 // Helper to get current tab
 window.getCurrentTab = () => SPA_ROUTER.getCurrentTab();
 
+// Helper to check if tab is valid
+window.isValidTab = (tabId) => SPA_ROUTER.validTabs.includes(tabId);
+
 console.log('✅ utils.js loaded with SPA Router (clean / URLs)');
+console.log('📋 Supplementary tab support added!');
