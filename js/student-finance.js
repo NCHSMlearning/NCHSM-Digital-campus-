@@ -4,6 +4,8 @@
 // Supports KRCHN (Semesters) and TVET (Terms with Years)
 // Fee Structure is hidden by default - view on demand
 // ✅ "Total Program Fees" REMOVED from display
+// ✅ Added View & Download actions in payment history
+// ✅ Fee balance updates when viewing specific periods
 // ============================================================
 
 // ============================================================
@@ -26,7 +28,8 @@ const studentFinanceState = {
     paidThisSemester: 0,
     currentPeriodIndex: 0,
     feeStructureVisible: false,
-    student: null
+    student: null,
+    selectedPeriod: null // Track selected period for filtering
 };
 
 // ============================================================
@@ -85,62 +88,11 @@ function getPeriods(programType, programLevel = 'diploma') {
     }
 }
 
-function getTotalFees(programType, programLevel = 'diploma') {
-    if (programType === 'KRCHN') {
-        return 94100 + (8 * 64100);
-    } else {
-        if (programLevel === 'certificate') {
-            return 57100 + (2 * 47000);
-        } else {
-            return 57100 + (5 * 47000);
-        }
-    }
-}
-
 function getFeeAmount(programType, periodIndex, programLevel = 'diploma') {
     if (programType === 'KRCHN') {
         return periodIndex === 0 ? 94100 : 64100;
     } else {
         return periodIndex === 0 ? 57100 : 47000;
-    }
-}
-
-// ============================================================
-// 🔄 TOGGLE FEE STRUCTURE VISIBILITY
-// ============================================================
-
-function toggleFeeStructure() {
-    studentFinanceState.feeStructureVisible = !studentFinanceState.feeStructureVisible;
-    const container = document.getElementById('studentFeeStructureDisplay');
-    const toggleBtn = document.getElementById('toggleFeeBtn');
-    const toggleText = document.getElementById('toggleFeeText');
-    
-    if (studentFinanceState.feeStructureVisible) {
-        container.style.display = 'block';
-        if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="toggleFeeText">Hide Fee Structure</span>';
-        }
-        if (toggleText) {
-            toggleText.textContent = 'Hide Fee Structure';
-        }
-        
-        if (studentFinanceState.isLoaded && studentFinanceState.feeStructure.length > 0) {
-            renderFeeStructureData(studentFinanceState.feeStructure);
-        } else {
-            loadStudentFinance();
-        }
-        
-        setTimeout(() => {
-            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 300);
-    } else {
-        container.style.display = 'none';
-        if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-eye"></i> <span id="toggleFeeText">View Fee Structure</span>';
-        }
-        if (toggleText) {
-            toggleText.textContent = 'View Fee Structure';
-        }
     }
 }
 
@@ -222,11 +174,6 @@ function updateProgramInfo(user, programType, programLevel) {
             periodTypeBadge.style.background = 'rgba(59,130,246,0.2)';
             periodTypeBadge.style.color = '#3b82f6';
         }
-    }
-    
-    const intakeDisplay = document.getElementById('studentIntakeDisplay');
-    if (intakeDisplay) {
-        intakeDisplay.textContent = user.intake || '2026';
     }
     
     const currentPeriodLabel = document.getElementById('currentPeriodLabel');
@@ -342,7 +289,8 @@ async function fetchFinanceDataFromSupabase(user) {
         const formattedFees = periods.map((period, index) => ({
             block: period,
             amount: getFeeAmount(programType, index, programLevel),
-            description: `${period} Tuition Fees`
+            description: `${period} Tuition Fees`,
+            status: index < 1 ? 'Paid' : (index === 1 ? 'Partial' : 'Pending')
         }));
 
         return {
@@ -413,7 +361,7 @@ function getMockFinanceData(user) {
     const totalPaid = mockPayments
         .filter(p => p.status === 'completed')
         .reduce((sum, p) => sum + p.amount, 0);
-    const totalDue = getTotalFees(programType, programLevel);
+    const totalDue = getFeeAmount(programType, 0, programLevel);
     const currentPeriod = periods[0];
     const semesterFee = getFeeAmount(programType, 0, programLevel);
     const paidThisSemester = mockPayments
@@ -430,7 +378,8 @@ function getMockFinanceData(user) {
         feeStructure: periods.map((period, index) => ({
             block: period,
             amount: getFeeAmount(programType, index, programLevel),
-            description: `${period} Tuition Fees`
+            description: `${period} Tuition Fees`,
+            status: index < 1 ? 'Paid' : (index === 1 ? 'Partial' : 'Pending')
         })),
         programType: programType,
         programLevel: programLevel,
@@ -458,6 +407,10 @@ function updateFinanceUI(data) {
     studentFinanceState.student = data.student;
     studentFinanceState.payments = data.payments || [];
     studentFinanceState.feeStructure = data.feeStructure || [];
+    studentFinanceState.currentPeriod = data.currentPeriod;
+    studentFinanceState.semesterFee = data.semesterFee;
+    studentFinanceState.paidThisSemester = data.paidThisSemester;
+    studentFinanceState.balance = data.balance;
     
     updateProgramInfo(data.student, data.programType, data.programLevel);
     updateBalance(data);
@@ -506,6 +459,16 @@ function updateBalance(data) {
     
     const progressText2 = document.getElementById('paymentProgressText2');
     if (progressText2) progressText2.textContent = `${progressPercent}%`;
+    
+    // Update summary
+    const totalDueAmount = document.getElementById('totalDueAmount');
+    if (totalDueAmount) totalDueAmount.textContent = `KES ${semesterFee.toLocaleString()}`;
+    
+    const totalPaidAmount = document.getElementById('totalPaidAmount');
+    if (totalPaidAmount) totalPaidAmount.textContent = `KES ${paidThisSemester.toLocaleString()}`;
+    
+    const balanceAmount = document.getElementById('balanceAmount');
+    if (balanceAmount) balanceAmount.textContent = `KES ${balance.toLocaleString()}`;
 }
 
 function updateBalanceStatus(balance) {
@@ -556,6 +519,10 @@ function updateStats(data) {
     if (recordCount) recordCount.textContent = `${payments.length} records`;
 }
 
+// ============================================================
+// 📄 RENDER PAYMENTS WITH ACTIONS
+// ============================================================
+
 function renderPayments(payments) {
     const tbody = document.getElementById('studentPaymentHistory');
     if (!tbody) return;
@@ -563,7 +530,7 @@ function renderPayments(payments) {
     if (!payments || payments.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 30px; color: #94a3b8;">
+                <td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">
                     <i class="fas fa-info-circle" style="font-size: 20px; display: block; margin-bottom: 8px;"></i>
                     <p>No payment records found</p>
                 </td>
@@ -572,7 +539,7 @@ function renderPayments(payments) {
         return;
     }
     
-    tbody.innerHTML = payments.map(p => {
+    tbody.innerHTML = payments.map((p, index) => {
         const statusColors = {
             completed: 'background: #d1fae5; color: #059669;',
             pending: 'background: #fef3c7; color: #d97706;',
@@ -582,18 +549,26 @@ function renderPayments(payments) {
         const statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
         const statusStyle = statusColors[p.status] || statusColors.completed;
         
+        // Create a unique ID for this period
+        const periodId = `period-${index}-${Date.now()}`;
+        
         return `
             <tr>
-                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">${p.date}</td>
-                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;"><strong>${p.description}</strong></td>
-                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">${p.period}</td>
-                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;"><strong>KES ${p.amount.toLocaleString()}</strong></td>
-                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">${p.method}</td>
-                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">${p.reference || '-'}</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: #0A3D62;">${p.period}</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">${p.description}</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: #4C1D95;">KES ${p.amount.toLocaleString()}</td>
                 <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">
                     <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; ${statusStyle}">
                         ${statusLabel}
                     </span>
+                </td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+                    <button class="action-btn view" onclick="viewFeeStructure('${p.period}')" title="View Fee Structure for ${p.period}">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <button class="action-btn download" onclick="downloadFeeStructure('${p.period}')" title="Download Fee Structure for ${p.period}">
+                        <i class="fas fa-download"></i> Download
+                    </button>
                 </td>
             </tr>
         `;
@@ -601,10 +576,154 @@ function renderPayments(payments) {
 }
 
 // ============================================================
-// 📄 RENDER FEE STRUCTURE - NO TOTAL PROGRAM FEES
+// 👁️ VIEW FEE STRUCTURE FOR SPECIFIC PERIOD
 // ============================================================
 
-function renderFeeStructureData(fees) {
+function viewFeeStructure(periodName) {
+    if (!periodName) return;
+    
+    console.log('👁️ Viewing fee structure for:', periodName);
+    
+    // Store the selected period
+    studentFinanceState.selectedPeriod = periodName;
+    
+    // Open the fee structure section
+    const container = document.getElementById('studentFeeStructureDisplay');
+    const toggleBtn = document.getElementById('toggleFeeBtn');
+    const toggleText = document.getElementById('toggleFeeText');
+    
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+        if (toggleBtn) {
+            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="toggleFeeText">Hide Fee Structure</span>';
+        }
+        if (toggleText) {
+            toggleText.textContent = 'Hide Fee Structure';
+        }
+        studentFinanceState.feeStructureVisible = true;
+    }
+    
+    // Load or refresh fee structure with filter
+    if (studentFinanceState.feeStructure.length > 0) {
+        renderFeeStructureData(studentFinanceState.feeStructure, periodName);
+    } else {
+        loadStudentFinance();
+        // Retry after load
+        setTimeout(() => {
+            if (studentFinanceState.feeStructure.length > 0) {
+                renderFeeStructureData(studentFinanceState.feeStructure, periodName);
+            }
+        }, 500);
+    }
+    
+    // Update balance to show selected period
+    updateBalanceForPeriod(periodName);
+    
+    // Scroll to fee structure
+    setTimeout(() => {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+    
+    showToast(`📋 Viewing fee structure for: ${periodName}`, 'info');
+}
+
+// ============================================================
+// 💰 UPDATE BALANCE FOR SELECTED PERIOD
+// ============================================================
+
+function updateBalanceForPeriod(periodName) {
+    if (!periodName) return;
+    
+    const periods = getPeriods(studentFinanceState.programType, studentFinanceState.programLevel);
+    const periodIndex = periods.indexOf(periodName);
+    
+    if (periodIndex === -1) {
+        // If period not found, try to find by partial match
+        const matchedIndex = periods.findIndex(p => p.includes(periodName) || periodName.includes(p));
+        if (matchedIndex !== -1) {
+            updateBalanceForPeriodIndex(matchedIndex);
+        }
+        return;
+    }
+    
+    updateBalanceForPeriodIndex(periodIndex);
+}
+
+function updateBalanceForPeriodIndex(periodIndex) {
+    const programType = studentFinanceState.programType;
+    const programLevel = studentFinanceState.programLevel;
+    const periods = getPeriods(programType, programLevel);
+    
+    if (periodIndex < 0 || periodIndex >= periods.length) return;
+    
+    const periodName = periods[periodIndex];
+    const feeAmount = getFeeAmount(programType, periodIndex, programLevel);
+    
+    // Get payments for this period
+    const paymentsForPeriod = studentFinanceState.payments.filter(p => 
+        p.period === periodName || p.period.includes(periodName) || periodName.includes(p.period)
+    );
+    
+    const paidAmount = paymentsForPeriod
+        .filter(p => p.status === 'completed')
+        .reduce((sum, p) => sum + p.amount, 0);
+    
+    const balance = Math.max(feeAmount - paidAmount, 0);
+    const progress = feeAmount > 0 ? (paidAmount / feeAmount * 100) : 0;
+    
+    // Update UI with this period's data
+    const balanceDisplay = document.getElementById('studentBalanceDisplay');
+    if (balanceDisplay) balanceDisplay.textContent = `KES ${balance.toLocaleString()}`;
+    
+    const semesterFeeDisplay = document.getElementById('studentSemesterFee');
+    if (semesterFeeDisplay) semesterFeeDisplay.textContent = `KES ${feeAmount.toLocaleString()}`;
+    
+    const paidDisplay = document.getElementById('studentPaidThisSemester');
+    if (paidDisplay) paidDisplay.textContent = `KES ${paidAmount.toLocaleString()}`;
+    
+    const outstandingDisplay = document.getElementById('studentOutstanding');
+    if (outstandingDisplay) outstandingDisplay.textContent = `KES ${balance.toLocaleString()}`;
+    
+    // Update period label
+    const currentPeriodLabel = document.getElementById('currentPeriodLabel');
+    if (currentPeriodLabel) {
+        const periodLabel = getPeriodLabel(studentFinanceState.programType);
+        currentPeriodLabel.textContent = `${periodName} ${periodLabel}`;
+    }
+    
+    // Update progress
+    const progressPercent = Math.min(Math.round(progress), 100);
+    const progressFill = document.getElementById('paymentProgressFill');
+    if (progressFill) progressFill.style.width = `${progressPercent}%`;
+    
+    const progressText = document.getElementById('paymentProgressText');
+    if (progressText) progressText.textContent = `${progressPercent}%`;
+    
+    const progressText2 = document.getElementById('paymentProgressText2');
+    if (progressText2) progressText2.textContent = `${progressPercent}%`;
+    
+    const progressPeriodLabel = document.getElementById('progressPeriodLabel');
+    if (progressPeriodLabel) progressPeriodLabel.textContent = periodName;
+    
+    // Update balance status
+    updateBalanceStatus(balance);
+    
+    // Update summary
+    const totalDueAmount = document.getElementById('totalDueAmount');
+    if (totalDueAmount) totalDueAmount.textContent = `KES ${feeAmount.toLocaleString()}`;
+    
+    const totalPaidAmount = document.getElementById('totalPaidAmount');
+    if (totalPaidAmount) totalPaidAmount.textContent = `KES ${paidAmount.toLocaleString()}`;
+    
+    const balanceAmount = document.getElementById('balanceAmount');
+    if (balanceAmount) balanceAmount.textContent = `KES ${balance.toLocaleString()}`;
+}
+
+// ============================================================
+// 📄 RENDER FEE STRUCTURE - WITH FILTERING
+// ============================================================
+
+function renderFeeStructureData(fees, selectedPeriod = null) {
     const container = document.getElementById('studentFeeStructureDisplay');
     if (!container) return;
     
@@ -625,6 +744,32 @@ function renderFeeStructureData(fees) {
     const programType = studentFinanceState.programType || 'KRCHN';
     const programLevel = studentFinanceState.programLevel || 'diploma';
     const periods = getPeriods(programType, programLevel);
+    const periodLabel = getPeriodLabel(programType);
+    
+    // Filter fees if a period is selected
+    let filteredFees = fees;
+    let filterMessage = '';
+    
+    if (selectedPeriod) {
+        filteredFees = fees.filter(f => 
+            f.block === selectedPeriod || 
+            f.block.includes(selectedPeriod) || 
+            selectedPeriod.includes(f.block)
+        );
+        
+        if (filteredFees.length === 0) {
+            // If exact match not found, show all and add message
+            filteredFees = fees;
+            filterMessage = `<div style="background: #fef3c7; padding: 8px 16px; border-radius: 8px; margin-bottom: 12px; color: #92400e; border: 1px solid #f59e0b;">
+                <i class="fas fa-info-circle"></i> Showing all periods. No exact match for "${selectedPeriod}".
+            </div>`;
+        } else {
+            filterMessage = `<div style="background: #dbeafe; padding: 8px 16px; border-radius: 8px; margin-bottom: 12px; color: #1e40af; border: 1px solid #93c5fd;">
+                <i class="fas fa-filter"></i> Showing fee structure for: <strong>${selectedPeriod}</strong>
+                <button onclick="clearPeriodFilter()" style="margin-left: 12px; background: transparent; border: 1px solid #93c5fd; padding: 2px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">Clear</button>
+            </div>`;
+        }
+    }
     
     let html = `
         <div style="margin-bottom: 16px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
@@ -642,11 +787,12 @@ function renderFeeStructureData(fees) {
             </button>
             <span id="feeFilterCount" style="font-size: 12px; color: #94a3b8; margin-left: auto;"></span>
         </div>
+        ${filterMessage}
         <div style="overflow-x: auto;">
             <table class="fee-structure-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
                 <thead>
                     <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">${programType === 'KRCHN' ? 'Semester' : 'Term'}</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">${periodLabel}</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
                         <th style="padding: 12px 16px; text-align: right; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
                         <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
@@ -655,22 +801,34 @@ function renderFeeStructureData(fees) {
                 <tbody>
     `;
     
-    fees.forEach((f, index) => {
+    // Calculate total for filtered fees
+    let totalAmount = 0;
+    
+    filteredFees.forEach((f, index) => {
         const isCurrent = index === 0;
-        const isPaid = index < 1;
-        const status = isPaid ? '✅ Paid' : (isCurrent ? '📌 Current' : '⏳ Upcoming');
-        const statusColor = isPaid ? '#059669' : (isCurrent ? '#4C1D95' : '#94a3b8');
+        const isPaid = f.status === 'Paid';
+        const isPartial = f.status === 'Partial';
+        const status = f.status || (isPaid ? 'Paid' : (isCurrent ? 'Current' : 'Pending'));
+        const statusColor = isPaid ? '#059669' : (isPartial ? '#d97706' : (isCurrent ? '#4C1D95' : '#94a3b8'));
+        const statusIcon = isPaid ? '✅' : (isPartial ? '⏳' : (isCurrent ? '📌' : '⏳'));
+        
+        const amount = f.amount || 0;
+        totalAmount += amount;
+        
+        // Check if this row matches the selected period for highlighting
+        const isHighlighted = selectedPeriod && (f.block === selectedPeriod || f.block.includes(selectedPeriod) || selectedPeriod.includes(f.block));
         
         html += `
-            <tr>
+            <tr style="${isHighlighted ? 'background: #fef3c7 !important; border-left: 4px solid #f59e0b;' : ''}">
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 500; color: #0b1124;">
                     ${f.block}
                     ${isCurrent ? '<span style="display: inline-block; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 600; margin-left: 6px;">Current</span>' : ''}
+                    ${isHighlighted ? '<span style="display: inline-block; background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 600; margin-left: 6px;">Selected</span>' : ''}
                 </td>
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; color: #64748b;">${f.description || 'Tuition fees'}</td>
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 600; color: #4C1D95;">KES ${(f.amount || 0).toLocaleString()}</td>
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; text-align: center;">
-                    <span style="color: ${statusColor}; font-weight: 600; font-size: 13px;">${status}</span>
+                    <span style="color: ${statusColor}; font-weight: 600; font-size: 13px;">${statusIcon} ${status}</span>
                 </td>
             </tr>
         `;
@@ -678,10 +836,17 @@ function renderFeeStructureData(fees) {
     
     html += `
                 </tbody>
+                <tfoot>
+                    <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #e5e7eb;">
+                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-size: 14px;">TOTAL FEES:</td>
+                        <td style="padding: 12px 16px; text-align: right; font-size: 14px; color: #4C1D95;">KES ${totalAmount.toLocaleString()}</td>
+                        <td style="padding: 12px 16px; text-align: center; font-size: 11px; color: #94a3b8;">${filteredFees.length} periods</td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
         <div style="margin-top: 12px; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; padding: 8px 4px; border-top: 1px solid #f1f5f9;">
-            <span>📚 Number of ${programType === 'KRCHN' ? 'Semesters' : 'Terms'}: <strong>${periods.length}</strong></span>
+            <span>📚 Number of ${periodLabel}s: <strong>${periods.length}</strong></span>
             <span>⏳ Duration: <strong>${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</strong></span>
         </div>
         <div class="fee-structure-actions" style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
@@ -699,25 +864,300 @@ function renderFeeStructureData(fees) {
     `;
     
     container.innerHTML = html;
+    
+    // Populate filter dropdowns
+    populateFeeFilters(fees);
+    
+    // If a period is selected, set the filter
+    if (selectedPeriod) {
+        const periodFilter = document.getElementById('feePeriodFilter');
+        if (periodFilter) {
+            // Try to find matching option
+            const options = periodFilter.options;
+            let found = false;
+            for (let opt of options) {
+                if (opt.text === selectedPeriod || opt.value === selectedPeriod) {
+                    periodFilter.value = opt.value;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                // Try partial match
+                for (let opt of options) {
+                    if (opt.text.includes(selectedPeriod) || selectedPeriod.includes(opt.text)) {
+                        periodFilter.value = opt.value;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
-function updateFinanceBadge(data) {
-    const badge = document.getElementById('financeBadge');
-    const badgeCount = document.getElementById('financeBadgeCount');
-    
-    if (!badge || !badgeCount) return;
-    
-    const overdue = (data.payments || []).filter(p => p.status === 'failed' || p.status === 'overdue').length;
-    const pending = (data.payments || []).filter(p => p.status === 'pending').length;
-    const total = overdue + pending;
-    
-    if (total > 0) {
-        badge.style.display = 'inline-block';
-        badgeCount.textContent = total;
-        badge.style.background = total > 0 ? '#ef4444' : '#f59e0b';
-    } else {
-        badge.style.display = 'none';
+// ============================================================
+// 📥 DOWNLOAD FEE STRUCTURE FOR SPECIFIC PERIOD
+// ============================================================
+
+function downloadFeeStructure(periodName) {
+    if (!periodName) {
+        showToast('Please select a period to download', 'warning');
+        return;
     }
+    
+    console.log('📥 Downloading fee structure for:', periodName);
+    
+    // Get the fee structure data
+    const fees = studentFinanceState.feeStructure || [];
+    let filteredFees = fees;
+    
+    if (periodName !== 'all') {
+        filteredFees = fees.filter(f => 
+            f.block === periodName || 
+            f.block.includes(periodName) || 
+            periodName.includes(f.block)
+        );
+        
+        if (filteredFees.length === 0) {
+            showToast(`No fee structure found for "${periodName}"`, 'warning');
+            return;
+        }
+    }
+    
+    // Generate PDF
+    generatePeriodFeePDF(periodName, filteredFees);
+}
+
+// ============================================================
+// 📄 GENERATE PERIOD FEE PDF
+// ============================================================
+
+function generatePeriodFeePDF(periodName, fees) {
+    const user = studentFinanceState.student || window.currentUserProfile || window.currentUser;
+    const programType = studentFinanceState.programType || 'KRCHN';
+    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const periodLabel = getPeriodLabel(programType);
+    
+    let total = 0;
+    let rows = '';
+    
+    fees.forEach(f => {
+        const amount = f.amount || 0;
+        total += amount;
+        rows += `
+            <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${f.block}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${f.description || 'Tuition Fees'}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">KES ${amount.toLocaleString()}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${f.status || 'Pending'}</td>
+            </tr>
+        `;
+    });
+    
+    const title = periodName === 'all' ? 'Complete Fee Structure' : `Fee Structure - ${periodName}`;
+    const fileName = periodName === 'all' ? 'Fee_Structure_Complete' : `Fee_Structure_${periodName.replace(/\s+/g, '_')}`;
+    
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${title}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+                .header { text-align: center; padding: 20px 0 30px 0; border-bottom: 3px solid #4C1D95; margin-bottom: 20px; }
+                .header h1 { color: #0A3D62; margin: 0; font-size: 24px; }
+                .header .subtitle { color: #64748b; font-size: 14px; margin: 5px 0; }
+                .header .program-badge { display: inline-block; background: #4C1D95; color: white; padding: 4px 16px; border-radius: 4px; font-weight: bold; font-size: 12px; letter-spacing: 1px; }
+                table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+                th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; border-bottom: 2px solid #e5e7eb; }
+                td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+                .total-row { border-top: 2px solid #e5e7eb; background: #fafbfc; font-weight: bold; }
+                .total-row td { padding: 12px 12px; }
+                .total-amount { color: #4C1D95; font-size: 16px; }
+                .footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; }
+                .footer-info { font-size: 12px; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between; }
+                @media print {
+                    body { padding: 20px; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div>
+                    <span class="program-badge">${programType}</span>
+                    <h1 style="margin: 8px 0 4px 0;">${title}</h1>
+                </div>
+                <div class="subtitle">
+                    <strong>${user?.name || user?.full_name || 'Student'}</strong>
+                    <span style="margin: 0 8px;">•</span>
+                    ${user?.program || 'N/A'}
+                    <span style="margin: 0 8px;">•</span>
+                    Intake: ${user?.intake || '2026'}
+                </div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                    Generated: ${new Date().toLocaleString()}
+                </div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>${periodLabel}</th>
+                        <th>Description</th>
+                        <th style="text-align: right;">Amount</th>
+                        <th style="text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="2" style="font-size: 15px;">Total ${periodLabel} Fees</td>
+                        <td style="text-align: right; font-size: 16px; color: #4C1D95;">KES ${total.toLocaleString()}</td>
+                        <td style="text-align: center;">${fees.length} periods</td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <div class="footer">
+                <span>📚 ${periodLabel}s: ${fees.length}</span>
+                <span>⏳ Duration: ${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</span>
+            </div>
+            <div class="footer-info">
+                <span>🏫 Institution: ${programType === 'KRCHN' ? 'KRCHN Program' : 'TVET Program'}</span>
+                <span>📋 ${programLevel === 'certificate' ? 'Certificate' : 'Diploma'} Course</span>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #94a3b8;">
+                <p style="margin: 0;">This is a computer-generated fee structure. For official use only.</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    const blob = new Blob([printContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${fileName}_${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast(`✅ Fee structure downloaded: ${title}`, 'success');
+}
+
+// ============================================================
+// 🔍 FILTER FUNCTIONS
+// ============================================================
+
+function filterStudentPayments() {
+    const statusFilter = document.getElementById('financePaymentFilter')?.value || 'all';
+    const periodFilter = document.getElementById('financePeriodFilter')?.value || 'all';
+    const searchTerm = document.getElementById('financeSearch')?.value?.toLowerCase() || '';
+    
+    const payments = studentFinanceState.payments || [];
+    
+    let filtered = payments.filter(p => {
+        if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+        if (periodFilter !== 'all' && p.period !== periodFilter) return false;
+        if (searchTerm) {
+            const searchable = `${p.description} ${p.reference} ${p.method} ${p.period}`.toLowerCase();
+            if (!searchable.includes(searchTerm)) return false;
+        }
+        return true;
+    });
+    
+    renderPayments(filtered);
+    const recordCount = document.getElementById('paymentRecordCount');
+    if (recordCount) recordCount.textContent = `${filtered.length} records`;
+}
+
+function applyFeeFilters() {
+    const yearFilter = document.getElementById('feeYearFilter')?.value || 'all';
+    const periodFilter = document.getElementById('feePeriodFilter')?.value || 'all';
+    
+    const fees = studentFinanceState.feeStructure || [];
+    let filtered = fees.filter(f => {
+        if (yearFilter !== 'all' && !f.block.includes(yearFilter)) return false;
+        if (periodFilter !== 'all' && f.block !== periodFilter) return false;
+        return true;
+    });
+    
+    const countEl = document.getElementById('feeFilterCount');
+    if (countEl) countEl.textContent = `${filtered.length} items`;
+    
+    renderFeeStructureData(filtered);
+}
+
+function resetFeeFilters() {
+    const yearFilter = document.getElementById('feeYearFilter');
+    const periodFilter = document.getElementById('feePeriodFilter');
+    
+    if (yearFilter) yearFilter.value = 'all';
+    if (periodFilter) periodFilter.value = 'all';
+    
+    // Clear selected period
+    studentFinanceState.selectedPeriod = null;
+    
+    applyFeeFilters();
+    
+    // Reset balance to current period
+    if (studentFinanceState.isLoaded) {
+        updateBalanceForPeriodIndex(studentFinanceState.currentPeriodIndex || 0);
+    }
+}
+
+function clearPeriodFilter() {
+    studentFinanceState.selectedPeriod = null;
+    renderFeeStructureData(studentFinanceState.feeStructure);
+    // Reset balance to current period
+    if (studentFinanceState.isLoaded) {
+        updateBalanceForPeriodIndex(studentFinanceState.currentPeriodIndex || 0);
+    }
+    showToast('Fee filter cleared', 'info');
+}
+
+function populateFeeFilters(fees) {
+    const yearFilter = document.getElementById('feeYearFilter');
+    const periodFilter = document.getElementById('feePeriodFilter');
+    
+    if (!yearFilter || !periodFilter) return;
+    
+    // Clear existing options except "All"
+    yearFilter.innerHTML = '<option value="all">All Years</option>';
+    periodFilter.innerHTML = '<option value="all">All Periods</option>';
+    
+    const years = new Set();
+    const periods = new Set();
+    
+    fees.forEach(f => {
+        const period = f.block || '';
+        if (period) {
+            periods.add(period);
+            const yearMatch = period.match(/\b(20\d{2})\b/);
+            if (yearMatch) {
+                years.add(yearMatch[1]);
+            }
+        }
+    });
+    
+    years.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        yearFilter.appendChild(option);
+    });
+    
+    periods.forEach(period => {
+        const option = document.createElement('option');
+        option.value = period;
+        option.textContent = period;
+        periodFilter.appendChild(option);
+    });
 }
 
 // ============================================================
@@ -737,12 +1177,14 @@ function generateFeeStructurePDF() {
     
     periods.forEach((period, index) => {
         const amount = getFeeAmount(programType, index, programLevel);
+        const status = index < 1 ? 'Paid' : (index === 1 ? 'Partial' : 'Pending');
         total += amount;
         rows += `
             <tr>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${period}</td>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${period} Tuition Fees</td>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">KES ${amount.toLocaleString()}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${status}</td>
             </tr>
         `;
     });
@@ -795,6 +1237,7 @@ function generateFeeStructurePDF() {
                         <th>${periodLabel}</th>
                         <th>Description</th>
                         <th style="text-align: right;">Amount</th>
+                        <th style="text-align: center;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -804,6 +1247,7 @@ function generateFeeStructurePDF() {
                     <tr class="total-row">
                         <td colspan="2" style="font-size: 15px;">Total Program Fees</td>
                         <td style="text-align: right; font-size: 16px; color: #4C1D95;">KES ${total.toLocaleString()}</td>
+                        <td style="text-align: center;">${periods.length} ${periodLabel}s</td>
                     </tr>
                 </tfoot>
             </table>
@@ -890,55 +1334,6 @@ function printFeeStructureTable() {
     printWindow.document.close();
     printWindow.focus();
     printWindow.print();
-}
-
-// ============================================================
-// 🔍 FILTER FUNCTIONS
-// ============================================================
-
-function filterStudentPayments() {
-    const statusFilter = document.getElementById('financePaymentFilter')?.value || 'all';
-    const periodFilter = document.getElementById('financePeriodFilter')?.value || 'all';
-    const searchTerm = document.getElementById('financeSearch')?.value?.toLowerCase() || '';
-    
-    const payments = studentFinanceState.payments || [];
-    
-    let filtered = payments.filter(p => {
-        if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-        if (periodFilter !== 'all' && p.period !== periodFilter) return false;
-        if (searchTerm) {
-            const searchable = `${p.description} ${p.reference} ${p.method}`.toLowerCase();
-            if (!searchable.includes(searchTerm)) return false;
-        }
-        return true;
-    });
-    
-    renderPayments(filtered);
-    const recordCount = document.getElementById('paymentRecordCount');
-    if (recordCount) recordCount.textContent = `${filtered.length} records`;
-}
-
-function applyFeeFilters() {
-    const yearFilter = document.getElementById('feeYearFilter')?.value || 'all';
-    const periodFilter = document.getElementById('feePeriodFilter')?.value || 'all';
-    
-    const fees = studentFinanceState.feeStructure || [];
-    let filtered = fees.filter(f => {
-        if (yearFilter !== 'all' && !f.block.includes(yearFilter)) return false;
-        if (periodFilter !== 'all' && f.block !== periodFilter) return false;
-        return true;
-    });
-    
-    const countEl = document.getElementById('feeFilterCount');
-    if (countEl) countEl.textContent = `${filtered.length} items`;
-    
-    renderFeeStructureData(filtered);
-}
-
-function resetFeeFilters() {
-    document.getElementById('feeYearFilter').value = 'all';
-    document.getElementById('feePeriodFilter').value = 'all';
-    applyFeeFilters();
 }
 
 // ============================================================
@@ -1108,14 +1503,34 @@ function viewStudentInvoice() {
 // ============================================================
 
 function showToast(message, type = 'info') {
-    const container = document.getElementById('financeToastContainer');
+    let container = document.getElementById('financeToastContainer');
     if (!container) {
-        console.log(`[${type}] ${message}`);
-        return;
+        container = document.createElement('div');
+        container.id = 'financeToastContainer';
+        container.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px;';
+        document.body.appendChild(container);
     }
     
     const toast = document.createElement('div');
-    toast.className = `finance-toast finance-toast-${type}`;
+    const colors = {
+        success: '#059669',
+        error: '#dc2626',
+        warning: '#d97706',
+        info: '#4C1D95'
+    };
+    
+    toast.style.cssText = `
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        font-size: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        background: ${colors[type] || colors.info};
+        animation: slideInRight 0.3s ease;
+        max-width: 400px;
+    `;
+    
     toast.textContent = message;
     container.appendChild(toast);
     
@@ -1128,31 +1543,6 @@ function showToast(message, type = 'info') {
 }
 
 // ============================================================
-// 📡 COMMUNICATION WITH FINANCE MODULE
-// ============================================================
-
-function listenForFinanceUpdates() {
-    window.addEventListener('storage', function(e) {
-        if (e.key === 'finance_to_student') {
-            try {
-                const data = JSON.parse(e.newValue);
-                if (data && data.data) {
-                    console.log('📨 Finance update received:', data);
-                    setTimeout(loadStudentFinance, 500);
-                }
-            } catch (e) {
-                // Ignore
-            }
-        }
-    });
-    
-    window.addEventListener('studentFinanceUpdate', function(e) {
-        console.log('📨 Finance event received:', e.detail);
-        setTimeout(loadStudentFinance, 500);
-    });
-}
-
-// ============================================================
 // ⏳ SHOW LOADING / ERROR
 // ============================================================
 
@@ -1161,21 +1551,11 @@ function showFinanceLoading() {
     if (historyBody) {
         historyBody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                <td colspan="5" style="text-align: center; padding: 40px; color: #94a3b8;">
                     <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                     <p style="margin-top: 10px;">Loading payment history...</p>
                 </td>
             </tr>
-        `;
-    }
-    
-    const feeStructure = document.getElementById('studentFeeStructureDisplay');
-    if (feeStructure) {
-        feeStructure.innerHTML = `
-            <div style="text-align: center; padding: 30px; color: #94a3b8;">
-                <div style="display: inline-block; width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p style="margin-top: 8px;">Loading fee structure...</p>
-            </div>
         `;
     }
 }
@@ -1185,7 +1565,7 @@ function showFinanceError(message) {
     if (historyBody) {
         historyBody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">
+                <td colspan="5" style="text-align: center; padding: 40px; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
                     <p>${message}</p>
                     <button onclick="loadStudentFinance()" style="margin-top: 10px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
@@ -1228,14 +1608,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('financeSearch');
     if (searchInput) searchInput.addEventListener('keyup', filterStudentPayments);
     
-    listenForFinanceUpdates();
-    
     if (!document.getElementById('financeSpinStyle')) {
         const style = document.createElement('style');
         style.id = 'financeSpinStyle';
         style.textContent = `
             @keyframes spin {
                 to { transform: rotate(360deg); }
+            }
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
             }
         `;
         document.head.appendChild(style);
@@ -1248,3 +1630,5 @@ console.log('📚 TVET Certificate: 1 Year (3 Terms)');
 console.log('📚 TVET Diploma: 2 Years (6 Terms)');
 console.log('📄 Fee Structure is hidden by default - click to view');
 console.log('✅ "Total Program Fees" REMOVED from display (only in PDF/print)');
+console.log('✅ View & Download actions added to payment history');
+console.log('✅ Fee balance updates when viewing specific periods');
