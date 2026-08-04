@@ -12351,18 +12351,16 @@ function updateVisualization() {
     showFeedback('Updating visualization with new parameters...', 'info');
 }
 // Add this at the end of your script.js, before the closing of the file
-
 // =====================================================
 // UNIT REGISTRATIONS & APPROVALS - COMPLETE SCRIPT
 // WITH SUPPLEMENTARY REGISTRATION SUPPORT
-// MATCHES THE UPDATED HTML SECTION
+// FIXED: Student names now load correctly
 // =====================================================
 
 // =====================================================
-// GLOBALS & HELPERS - Check if already defined
+// GLOBALS & HELPERS
 // =====================================================
 
-// Only declare if not already defined
 if (typeof window.isTVETProgram === 'undefined') {
     window.isTVETProgram = function(program) {
         const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 
@@ -12422,7 +12420,7 @@ if (typeof window.showFeedback === 'undefined') {
 }
 
 // =====================================================
-// GLOBALS - Only initialize if not already set
+// GLOBALS
 // =====================================================
 
 if (typeof window.pendingRegistrationsData === 'undefined') {
@@ -12441,12 +12439,8 @@ if (typeof window.selectedGroups === 'undefined') {
     window.selectedGroups = new Set();
 }
 
-// Aliases for local use
-const pendingRegistrationsData = window.pendingRegistrationsData;
-const pendingProgramFilter = window.pendingProgramFilter;
-const registrationsData = window.registrationsData;
-const expandedGroups = window.expandedGroups;
-const selectedGroups = window.selectedGroups;
+// Cache for student names
+let studentNameCache = {};
 
 // =====================================================
 // DASHBOARD LOADER
@@ -12478,7 +12472,6 @@ async function loadUnitRegistrationStats() {
                 r.reg_type === 'Retake'
             ).length;
             
-            // Update summary cards
             const pendingEl = document.getElementById('pendingRegistrations');
             const approvedEl = document.getElementById('approvedRegistrations');
             const totalEl = document.getElementById('totalRegistrations');
@@ -12488,22 +12481,18 @@ async function loadUnitRegistrationStats() {
             if (approvedEl) approvedEl.textContent = approved;
             if (totalEl) totalEl.textContent = data.length;
             
-            // Get unique students count
             const uniqueStudents = new Set(data.map(r => r.student_id).filter(id => id));
             if (studentsEl) studentsEl.textContent = uniqueStudents.size;
             
-            // Update badges
             const pendingBadge = document.getElementById('pendingCountBadge');
             if (pendingBadge) pendingBadge.textContent = pending;
             
             const approvedBadge = document.getElementById('approvedCountBadge');
             if (approvedBadge) approvedBadge.textContent = approved;
             
-            // Update student group count
             const groupCount = document.getElementById('studentGroupCount');
             if (groupCount) groupCount.textContent = uniqueStudents.size;
             
-            // Update supplementary badge in tab
             const suppBadge = document.getElementById('suppTabBadge');
             if (suppBadge) {
                 if (pending > 0) {
@@ -12522,7 +12511,122 @@ async function loadUnitRegistrationStats() {
 }
 
 // =====================================================
-// PENDING REGISTRATIONS - WITH SUPPLEMENTARY FILTER
+// FIXED: Get Student Name from Multiple Sources
+// =====================================================
+
+async function getStudentName(studentId) {
+    if (!studentId) return 'Unknown Student';
+    
+    // Check cache first
+    if (studentNameCache[studentId]) {
+        return studentNameCache[studentId];
+    }
+    
+    try {
+        // Method 1: Try consolidated_user_profiles_table by ID
+        const { data: profileById, error: err1 } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name, admission_number, program, block, email')
+            .eq('id', studentId)
+            .maybeSingle();
+        
+        if (!err1 && profileById && profileById.full_name) {
+            studentNameCache[studentId] = {
+                full_name: profileById.full_name,
+                admission_number: profileById.admission_number || studentId.substring(0, 12),
+                program: profileById.program || 'N/A',
+                block: profileById.block || 'N/A',
+                email: profileById.email || null
+            };
+            return studentNameCache[studentId];
+        }
+        
+        // Method 2: Try auth.users to get email, then look up profile by email
+        const { data: authUser, error: err2 } = await sb
+            .from('auth.users')
+            .select('id, email, raw_user_meta_data')
+            .eq('id', studentId)
+            .maybeSingle();
+        
+        if (!err2 && authUser) {
+            const email = authUser.email;
+            const meta = authUser.raw_user_meta_data || {};
+            
+            // If we have email, try to find profile by email
+            if (email) {
+                const { data: profileByEmail, error: err3 } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('full_name, admission_number, program, block, email')
+                    .eq('email', email)
+                    .maybeSingle();
+                
+                if (!err3 && profileByEmail && profileByEmail.full_name) {
+                    studentNameCache[studentId] = {
+                        full_name: profileByEmail.full_name,
+                        admission_number: profileByEmail.admission_number || studentId.substring(0, 12),
+                        program: profileByEmail.program || 'N/A',
+                        block: profileByEmail.block || 'N/A',
+                        email: profileByEmail.email || email
+                    };
+                    return studentNameCache[studentId];
+                }
+            }
+            
+            // Fallback: use auth metadata
+            if (meta.full_name) {
+                studentNameCache[studentId] = {
+                    full_name: meta.full_name,
+                    admission_number: meta.admission_number || meta.student_id || studentId.substring(0, 12),
+                    program: meta.program || meta.course || 'N/A',
+                    block: meta.current_block || meta.block || 'N/A',
+                    email: email || null
+                };
+                return studentNameCache[studentId];
+            }
+        }
+        
+        // Method 3: Try direct by student_id in consolidated_user_profiles_table
+        const { data: profileByStudentId, error: err4 } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name, admission_number, program, block, email')
+            .eq('student_id', studentId)
+            .maybeSingle();
+        
+        if (!err4 && profileByStudentId && profileByStudentId.full_name) {
+            studentNameCache[studentId] = {
+                full_name: profileByStudentId.full_name,
+                admission_number: profileByStudentId.admission_number || studentId.substring(0, 12),
+                program: profileByStudentId.program || 'N/A',
+                block: profileByStudentId.block || 'N/A',
+                email: profileByStudentId.email || null
+            };
+            return studentNameCache[studentId];
+        }
+        
+        // Not found - return unknown
+        studentNameCache[studentId] = {
+            full_name: 'Unknown Student',
+            admission_number: studentId.substring(0, 12),
+            program: 'N/A',
+            block: 'N/A',
+            email: null
+        };
+        return studentNameCache[studentId];
+        
+    } catch (error) {
+        console.warn(`Error getting student name for ${studentId}:`, error);
+        return {
+            full_name: 'Unknown Student',
+            admission_number: studentId.substring(0, 12),
+            program: 'N/A',
+            block: 'N/A',
+            email: null
+        };
+    }
+}
+
+// =====================================================
+// FIXED: PENDING REGISTRATIONS WITH CORRECT STUDENT NAMES
 // =====================================================
 
 async function loadUnitPendingRegistrations() {
@@ -12553,6 +12657,7 @@ async function loadUnitPendingRegistrations() {
     `;
     
     try {
+        // Get pending registrations
         const { data: registrations, error } = await sb
             .from('student_unit_registrations')
             .select('*')
@@ -12575,44 +12680,25 @@ async function loadUnitPendingRegistrations() {
             return;
         }
         
-        // Get student details
+        // Get unique student IDs
         const studentIds = [...new Set(window.pendingRegistrationsData.map(r => r.student_id).filter(id => id))];
         let studentInfo = {};
         
-        if (studentIds.length > 0) {
-            const { data: profiles, error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id, program, block, intake_year, intake_month, phone, email')
-                .in('user_id', studentIds);
-            
-            if (!profileError && profiles) {
-                profiles.forEach(p => {
-                    studentInfo[p.user_id] = {
-                        full_name: p.full_name || 'Unknown',
-                        student_id: p.student_id || p.user_id,
-                        program: p.program || 'N/A',
-                        block: p.block || 'N/A',
-                        intake_year: p.intake_year || 'N/A',
-                        intake_month: p.intake_month || '',
-                        phone: p.phone || 'N/A',
-                        email: p.email || 'N/A'
-                    };
-                });
-            }
+        // Load student names for all IDs
+        for (const id of studentIds) {
+            const info = await getStudentName(id);
+            studentInfo[id] = info;
         }
         
         // Handle null student IDs
-        const nullRegistrations = window.pendingRegistrationsData.filter(r => r.student_id === null);
         let nullStudentInfo = null;
+        const nullRegistrations = window.pendingRegistrationsData.filter(r => r.student_id === null);
         if (nullRegistrations.length > 0) {
             nullStudentInfo = {
                 full_name: '⚠️ Unknown Student (Needs Review)',
-                student_id: 'N/A',
+                admission_number: 'N/A',
                 program: 'N/A',
                 block: 'N/A',
-                intake_year: 'N/A',
-                intake_month: '',
-                phone: 'N/A',
                 email: 'N/A'
             };
         }
@@ -12626,23 +12712,17 @@ async function loadUnitPendingRegistrations() {
             if (!studentId) {
                 info = nullStudentInfo || {
                     full_name: '⚠️ Unknown Student',
-                    student_id: 'N/A',
+                    admission_number: 'N/A',
                     program: 'N/A',
                     block: 'N/A',
-                    intake_year: 'N/A',
-                    intake_month: '',
-                    phone: 'N/A',
                     email: 'N/A'
                 };
             } else {
                 info = studentInfo[studentId] || {
                     full_name: '⚠️ Unknown Student',
-                    student_id: studentId.substring(0, 8) || 'N/A',
+                    admission_number: studentId.substring(0, 12),
                     program: 'N/A',
                     block: 'N/A',
-                    intake_year: 'N/A',
-                    intake_month: '',
-                    phone: 'N/A',
                     email: 'N/A'
                 };
             }
@@ -12654,11 +12734,9 @@ async function loadUnitPendingRegistrations() {
                 groupedByStudent[key] = {
                     id: studentId,
                     name: info.full_name,
-                    student_id: info.student_id,
+                    admission_number: info.admission_number,
                     program: info.program,
                     block: info.block,
-                    intake: info.intake_year + (info.intake_month ? ' ' + info.intake_month : ''),
-                    phone: info.phone,
                     email: info.email,
                     programType: programType,
                     isTVET: programType === 'TVET',
@@ -12675,6 +12753,7 @@ async function loadUnitPendingRegistrations() {
             });
         }
         
+        // Rest of the rendering code (same as before, but uses the corrected studentInfo)
         const sortedGroups = Object.values(groupedByStudent).sort((a, b) => a.name.localeCompare(b.name));
         
         // Build HTML with Supplementary support
@@ -12763,7 +12842,7 @@ async function loadUnitPendingRegistrations() {
                             </strong>
                             <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px;">
                                 <span style="font-size: 12px; color: #6b7280;">
-                                    <i class="fas fa-id-card"></i> ${window.escapeHtml(student.student_id)}
+                                    <i class="fas fa-id-card"></i> ${window.escapeHtml(student.admission_number)}
                                 </span>
                                 <span style="font-size: 12px; color: #6b7280;">
                                     <i class="fas fa-graduation-cap"></i> ${window.escapeHtml(student.program)}
@@ -12771,14 +12850,6 @@ async function loadUnitPendingRegistrations() {
                                 <span style="font-size: 12px; color: #6b7280;">
                                     <i class="fas fa-layer-group"></i> ${window.escapeHtml(student.block)}
                                 </span>
-                                <span style="font-size: 12px; color: #6b7280;">
-                                    <i class="fas fa-calendar"></i> ${window.escapeHtml(student.intake)}
-                                </span>
-                                ${student.phone && student.phone !== 'N/A' ? `
-                                    <span style="font-size: 12px; color: #6b7280;">
-                                        <i class="fas fa-phone"></i> ${window.escapeHtml(student.phone)}
-                                    </span>
-                                ` : ''}
                                 <span style="font-size: 12px; color: #6b7280;">
                                     <i class="fas fa-clock"></i> ${submittedDate}
                                 </span>
@@ -12971,7 +13042,6 @@ async function loadUnitPendingRegistrations() {
 function filterPendingByProgram(type) {
     window.pendingProgramFilter = type;
     
-    // Update button styles
     document.querySelectorAll('.pending-filter-btn').forEach(btn => {
         btn.classList.remove('active');
         btn.style.background = '#e5e7eb';
@@ -13178,21 +13248,13 @@ async function loadApprovedRegistrations() {
             return;
         }
         
-        // Get student names
+        // Get student names using the same fix
         const studentIds = [...new Set(registrations.map(r => r.student_id).filter(id => id))];
         let studentMap = {};
         
-        if (studentIds.length > 0) {
-            const { data: profiles, error: err } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id')
-                .in('user_id', studentIds);
-            
-            if (!err && profiles) {
-                profiles.forEach(p => {
-                    studentMap[p.user_id] = p.full_name;
-                });
-            }
+        for (const id of studentIds) {
+            const info = await getStudentName(id);
+            studentMap[id] = info.full_name;
         }
         
         // Build HTML
@@ -13233,15 +13295,12 @@ async function loadApprovedRegistrations() {
         
         tbody.innerHTML = html;
         
-        // Update badge count
         const approvedBadge = document.getElementById('approvedCountBadge');
         if (approvedBadge) approvedBadge.textContent = registrations.length;
         
-        // Update stats
         const approvedEl = document.getElementById('approvedRegistrations');
         if (approvedEl) approvedEl.textContent = registrations.length;
         
-        // Update filter count
         const filterCount = document.getElementById('registrationsFilterCount');
         if (filterCount) filterCount.textContent = registrations.length;
         
@@ -13411,10 +13470,10 @@ function renderGroupedRegistrations(data) {
         return;
     }
     
-    // Group by student - use student_id or student_name as key
+    // Group by student - use student_id
     const groups = {};
     data.forEach(reg => {
-        const key = reg.student_id || reg.student_name || 'unknown_student';
+        const key = reg.student_id || 'unknown_student';
         if (!groups[key]) {
             groups[key] = {
                 id: reg.student_id || key,
@@ -13427,14 +13486,12 @@ function renderGroupedRegistrations(data) {
         groups[key].registrations.push(reg);
     });
     
-    // Update counts
     const groupCount = document.getElementById('studentGroupCount');
     if (groupCount) groupCount.textContent = Object.keys(groups).length;
     
     const filterCount = document.getElementById('registrationsFilterCount');
     if (filterCount) filterCount.textContent = data.length;
     
-    // Render each group
     let html = '';
     
     for (const key in groups) {
@@ -13442,7 +13499,6 @@ function renderGroupedRegistrations(data) {
         const isExpanded = window.expandedGroups.has(key);
         const regs = group.registrations;
         
-        // Determine group status
         const allApproved = regs.every(r => r.status === 'approved');
         const hasPending = regs.some(r => r.status === 'pending');
         const hasRejected = regs.some(r => r.status === 'rejected');
@@ -13462,7 +13518,6 @@ function renderGroupedRegistrations(data) {
             statusLabel = 'Has Pending';
         }
         
-        // Program color
         const progColors = {
             'KRCHN': '#4C1D95',
             'DPOTT': '#2563eb',
@@ -13477,7 +13532,6 @@ function renderGroupedRegistrations(data) {
         };
         const progColor = progColors[group.program] || '#6b7280';
         
-        // Count supplementary units
         const suppCount = regs.filter(r => 
             r.reg_type === 'Supplementary' || 
             r.reg_type === 'Resit' || 
@@ -13623,7 +13677,7 @@ function toggleGroup(studentId) {
 function expandAllGroups() {
     const groups = {};
     window.registrationsData.forEach(reg => {
-        const key = reg.student_id || reg.student_name || 'unknown_student';
+        const key = reg.student_id || 'unknown_student';
         groups[key] = true;
     });
     for (const key in groups) {
@@ -13670,7 +13724,7 @@ function approveSelectedGroups() {
     
     const ids = [];
     window.registrationsData.forEach(reg => {
-        const key = reg.student_id || reg.student_name || 'unknown_student';
+        const key = reg.student_id || 'unknown_student';
         if (window.selectedGroups.has(key) && reg.status === 'pending') {
             ids.push(reg.id);
         }
@@ -13707,7 +13761,7 @@ function rejectSelectedGroups() {
     
     const ids = [];
     window.registrationsData.forEach(reg => {
-        const key = reg.student_id || reg.student_name || 'unknown_student';
+        const key = reg.student_id || 'unknown_student';
         if (window.selectedGroups.has(key) && reg.status === 'pending') {
             ids.push(reg.id);
         }
@@ -13933,7 +13987,10 @@ window.rejectRegistration = rejectRegistration;
 window.viewRegistrationDetails = viewRegistrationDetails;
 window.togglePendingList = togglePendingList;
 
-console.log('✅ Unit Registration Management module loaded with Supplementary support!');
+// Clear cache on page refresh
+window.studentNameCache = {};
+
+console.log('✅ Unit Registration Management module loaded with Supplementary support and fixed student names!');
 // =====================================================
 // ADDITIONAL STYLING FOR TABLES
 // =====================================================
