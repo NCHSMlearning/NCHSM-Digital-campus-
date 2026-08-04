@@ -184,7 +184,7 @@
             this.selectAllSupp = document.getElementById('selectAllSupp');
             this.eligibleCount = document.getElementById('eligibleUnitsCount');
             this.suppRegisteredCount = document.getElementById('suppRegisteredCount');
-            this.suppTabBadge = document.getElementById('suppTabBadge');
+            this.suppTabBadge = document.getElementById('suppBadge');
         }
         
         // ============================================================
@@ -313,6 +313,75 @@
                     this.loadUnits();
                 }
             });
+            
+            // Sub-tab switching for Regular/Supplementary
+            this.setupSubTabSwitching();
+        }
+        
+        // ============================================================
+        // SUB-TAB SWITCHING
+        // ============================================================
+        
+        setupSubTabSwitching() {
+            const subTabs = document.querySelectorAll('.reg-sub-tab');
+            const regularContent = document.getElementById('regular-registration');
+            const suppContent = document.getElementById('supplementary-registration');
+            
+            if (!subTabs.length) {
+                console.log('No sub-tabs found, skipping setup');
+                return;
+            }
+            
+            console.log('🔘 Setting up sub-tab switching...');
+            
+            // Set default - show regular
+            if (regularContent) regularContent.style.display = 'block';
+            if (suppContent) suppContent.style.display = 'none';
+            
+            subTabs.forEach(tab => {
+                tab.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const tabType = this.dataset.subtab;
+                    console.log('🔘 Sub-tab clicked:', tabType);
+                    
+                    // Remove active class from all tabs
+                    subTabs.forEach(t => {
+                        t.classList.remove('active');
+                        t.style.color = '#6b7280';
+                        t.style.borderBottom = '3px solid transparent';
+                    });
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    this.style.color = '#4C1D95';
+                    this.style.borderBottom = '3px solid #4C1D95';
+                    
+                    // Show corresponding content
+                    if (tabType === 'supplementary') {
+                        if (regularContent) regularContent.style.display = 'none';
+                        if (suppContent) {
+                            suppContent.style.display = 'block';
+                            console.log('✅ Supplementary tab shown');
+                            // Load supplementary data
+                            if (window.studentDashboard) {
+                                window.studentDashboard.loadSupplementaryData();
+                            }
+                        }
+                    } else {
+                        if (suppContent) suppContent.style.display = 'none';
+                        if (regularContent) {
+                            regularContent.style.display = 'block';
+                            console.log('✅ Regular tab shown');
+                            // Load regular units
+                            if (window.studentDashboard) {
+                                window.studentDashboard.loadUnits();
+                            }
+                        }
+                    }
+                });
+            });
+            
+            console.log('✅ Sub-tab switching setup complete');
         }
         
         // ============================================================
@@ -922,6 +991,11 @@
                     this.eligibleCount.textContent = `${failedUnits.length} units`;
                 }
                 
+                // Update badge
+                if (this.suppTabBadge) {
+                    this.suppTabBadge.textContent = failedUnits.length;
+                }
+                
                 console.log(`✅ Loaded ${failedUnits.length} eligible supplementary units`);
                 
             } catch (error) {
@@ -1107,6 +1181,114 @@
         }
         
         // ============================================================
+        // REGISTER SUPPLEMENTARY UNITS
+        // ============================================================
+        
+        async registerSupplementaryUnits() {
+            // Check if we have a registration type selected
+            const regType = this.suppRegType?.value;
+            if (!regType) {
+                this.showError('Please select a registration type (Resit/Retake).', 'warning');
+                return;
+            }
+            
+            // Get selected units from checkboxes
+            const selectedCheckboxes = document.querySelectorAll('.supp-unit-checkbox:checked:not([disabled])');
+            const selectedUnits = Array.from(selectedCheckboxes).map(cb => {
+                try {
+                    return JSON.parse(cb.dataset.unit);
+                } catch (e) {
+                    // If data-unit is not JSON, use the checkbox data
+                    return {
+                        unit_code: cb.dataset.code || cb.value,
+                        unit_name: cb.dataset.name || cb.dataset.unit || 'Unknown'
+                    };
+                }
+            });
+            
+            // Also check dropdown selection
+            const dropDownUnit = this.suppUnitSelect?.value;
+            if (dropDownUnit && !selectedUnits.find(u => u.unit_code === dropDownUnit)) {
+                // Add dropdown selection to list
+                const unitData = this.failedUnits.find(u => u.unit_code === dropDownUnit);
+                if (unitData) {
+                    selectedUnits.push(unitData);
+                }
+            }
+            
+            if (selectedUnits.length === 0) {
+                this.showError('Please select at least one unit or choose from dropdown.', 'warning');
+                return;
+            }
+            
+            // Max 3 supplementary units
+            if (selectedUnits.length > 3) {
+                this.showError('You can only register for a maximum of 3 supplementary units.', 'warning');
+                return;
+            }
+            
+            // Payment reference (optional but recommended)
+            const paymentRef = this.suppPaymentRef?.value.trim() || 'N/A';
+            
+            if (!confirm(`Register ${selectedUnits.length} unit(s) for ${regType}?`)) return;
+            
+            this.isSubmitting = true;
+            if (this.registerSuppBtn) {
+                this.registerSuppBtn.disabled = true;
+                this.registerSuppBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            }
+            
+            try {
+                const supabase = this.getSupabase();
+                if (!supabase) throw new Error('Database connection not available');
+                
+                // Create registration records
+                const registrations = selectedUnits.map(unit => ({
+                    student_id: this.studentId,
+                    unit_code: unit.unit_code,
+                    unit_name: unit.unit_name || unit.exam_name || unit.unit_code,
+                    program: this.programCode,
+                    block: unit.block || 'N/A',
+                    intake_year: this.intakeYear,
+                    reg_type: regType,
+                    status: 'pending',
+                    payment_reference: paymentRef,
+                    submitted_date: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                    credits: unit.credits || 3
+                }));
+                
+                const { error } = await supabase
+                    .from('student_unit_registrations')
+                    .insert(registrations);
+                
+                if (error) throw error;
+                
+                this.showSuccess(`${registrations.length} supplementary unit(s) registered successfully!`);
+                
+                // Clear selections
+                document.querySelectorAll('.supp-unit-checkbox:checked').forEach(cb => cb.checked = false);
+                if (this.suppUnitSelect) this.suppUnitSelect.value = '';
+                if (this.suppPaymentRef) this.suppPaymentRef.value = '';
+                if (this.selectAllSupp) this.selectAllSupp.checked = false;
+                
+                // Reload data
+                await this.loadSupplementaryData();
+                await this.loadUnits();
+                
+            } catch (error) {
+                console.error('❌ Error registering supplementary units:', error);
+                this.showError(`Failed to register: ${error.message}`, 'error');
+            } finally {
+                this.isSubmitting = false;
+                if (this.registerSuppBtn) {
+                    this.registerSuppBtn.disabled = false;
+                    this.registerSuppBtn.innerHTML = '<i class="fas fa-check"></i> Register Supplementary Units';
+                }
+            }
+        }
+        
+        // ============================================================
         // DROP UNIT
         // ============================================================
         
@@ -1139,11 +1321,218 @@
                 
                 this.showSuccess(`Unit ${unitCode} dropped successfully!`);
                 await this.loadUnits();
+                await this.loadSupplementaryData();
                 
             } catch (error) {
                 console.error('Error dropping unit:', error);
                 this.showError(`Failed to drop: ${error.message}`, 'error');
             }
+        }
+        
+        // ============================================================
+        // SUPPLEMENTARY EXAM CARD DOWNLOAD
+        // ============================================================
+        
+        async downloadSupplementaryExamCard(regId, unitCode) {
+            try {
+                console.log(`📄 Downloading exam card for ${unitCode} (ID: ${regId})`);
+                
+                // Show loading
+                Swal.fire({
+                    title: 'Generating Exam Card...',
+                    text: 'Please wait while we prepare your exam card.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                const supabase = this.getSupabase();
+                if (!supabase) throw new Error('Database connection not available');
+                
+                // Get the registration details
+                const { data: reg, error } = await supabase
+                    .from('student_unit_registrations')
+                    .select('*')
+                    .eq('id', regId)
+                    .single();
+                
+                if (error) throw error;
+                if (!reg) throw new Error('Registration not found');
+                
+                // Get student details
+                const { data: student, error: studentError } = await supabase
+                    .from('students')
+                    .select('full_name, admission_number, program, email, phone')
+                    .eq('id', this.studentId)
+                    .single();
+                
+                if (studentError) throw studentError;
+                
+                // Close loading
+                Swal.close();
+                
+                // Generate PDF - Check if jsPDF is available
+                if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
+                    // Fallback: Show a printable version
+                    this.showExamCardHTML(reg, student);
+                    return;
+                }
+                
+                // Use jsPDF
+                const { jsPDF } = window.jspdf || jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                
+                // Header
+                doc.setFillColor(76, 29, 149);
+                doc.rect(0, 0, 210, 40, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(16);
+                doc.text('NCHSM - SUPPLEMENTARY EXAM CARD', 105, 15, { align: 'center' });
+                doc.setFontSize(10);
+                doc.text('Nakuru College of Health Sciences and Management', 105, 25, { align: 'center' });
+                doc.setTextColor(0, 0, 0);
+                
+                // Student Info
+                doc.setFontSize(12);
+                let y = 55;
+                doc.text('STUDENT INFORMATION', 20, y);
+                doc.setDrawColor(76, 29, 149);
+                doc.line(20, y + 2, 190, y + 2);
+                y += 10;
+                
+                doc.setFontSize(10);
+                doc.text(`Name: ${student.full_name || 'N/A'}`, 20, y);
+                doc.text(`Admission: ${student.admission_number || 'N/A'}`, 120, y);
+                y += 8;
+                doc.text(`Program: ${student.program || 'N/A'}`, 20, y);
+                doc.text(`Date: ${new Date().toLocaleDateString()}`, 120, y);
+                y += 12;
+                
+                // Exam Details
+                doc.setFontSize(12);
+                doc.text('EXAM DETAILS', 20, y);
+                doc.line(20, y + 2, 190, y + 2);
+                y += 10;
+                
+                doc.setFontSize(10);
+                doc.text(`Unit Code: ${reg.unit_code}`, 20, y);
+                y += 8;
+                doc.text(`Unit Name: ${reg.unit_name}`, 20, y);
+                y += 8;
+                doc.text(`Registration Type: ${reg.reg_type}`, 20, y);
+                y += 8;
+                doc.text(`Status: ${reg.status.toUpperCase()}`, 20, y);
+                y += 8;
+                doc.text(`Registration Date: ${new Date(reg.submitted_date).toLocaleDateString()}`, 20, y);
+                y += 12;
+                
+                // Footer
+                doc.setFillColor(240, 240, 240);
+                doc.rect(20, 260, 170, 20, 'F');
+                doc.setFontSize(8);
+                doc.text('This exam card is valid for the current supplementary examination period.', 105, 268, { align: 'center' });
+                doc.text('Please present this card at the examination venue.', 105, 275, { align: 'center' });
+                
+                // Save
+                const fileName = `Supplementary_Exam_Card_${reg.unit_code}_${student.admission_number || 'student'}.pdf`;
+                doc.save(fileName);
+                
+                this.showSuccess('Exam card downloaded successfully!');
+                
+            } catch (error) {
+                console.error('Error downloading exam card:', error);
+                Swal.close();
+                this.showError(`Failed to download exam card: ${error.message}`, 'error');
+            }
+        }
+        
+        showExamCardHTML(reg, student) {
+            // Create a printable HTML version
+            const win = window.open('', '_blank');
+            if (!win) {
+                this.showError('Please allow popups to view the exam card.', 'warning');
+                return;
+            }
+            
+            win.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Supplementary Exam Card - ${reg.unit_code}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 40px; }
+                        .card { max-width: 600px; margin: 0 auto; border: 2px solid #4C1D95; padding: 30px; border-radius: 8px; }
+                        .header { text-align: center; border-bottom: 2px solid #4C1D95; padding-bottom: 20px; margin-bottom: 20px; }
+                        .header h1 { color: #4C1D95; margin: 0; }
+                        .header p { margin: 5px 0; color: #666; }
+                        .info { margin: 20px 0; }
+                        .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #eee; }
+                        .info-label { font-weight: bold; width: 120px; }
+                        .info-value { flex: 1; }
+                        .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #4C1D95; font-size: 12px; color: #666; }
+                        .status-approved { color: #059669; font-weight: bold; }
+                        .status-pending { color: #f59e0b; font-weight: bold; }
+                        .btn-print { display: block; margin: 20px auto; padding: 10px 30px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+                        .btn-print:hover { background: #3b1580; }
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <div class="header">
+                            <h1>NCHSM</h1>
+                            <p>Nakuru College of Health Sciences and Management</p>
+                            <p><strong>SUPPLEMENTARY EXAM CARD</strong></p>
+                        </div>
+                        <div class="info">
+                            <div class="info-row">
+                                <span class="info-label">Student Name:</span>
+                                <span class="info-value">${student.full_name || 'N/A'}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Admission:</span>
+                                <span class="info-value">${student.admission_number || 'N/A'}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Program:</span>
+                                <span class="info-value">${student.program || 'N/A'}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Unit Code:</span>
+                                <span class="info-value"><strong>${reg.unit_code}</strong></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Unit Name:</span>
+                                <span class="info-value">${reg.unit_name}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Registration Type:</span>
+                                <span class="info-value">${reg.reg_type}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Status:</span>
+                                <span class="info-value ${reg.status === 'approved' ? 'status-approved' : 'status-pending'}">${reg.status.toUpperCase()}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Registration Date:</span>
+                                <span class="info-value">${new Date(reg.submitted_date).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <div class="footer">
+                            <p>This exam card is valid for the current supplementary examination period.</p>
+                            <p>Please present this card at the examination venue.</p>
+                            <p><em>Generated: ${new Date().toLocaleString()}</em></p>
+                        </div>
+                    </div>
+                    <button class="btn-print" onclick="window.print()">🖨️ Print Exam Card</button>
+                    <script>
+                        // Auto-print after a short delay
+                        setTimeout(() => window.print(), 1000);
+                    <\/script>
+                </body>
+                </html>
+            `);
+            win.document.close();
         }
         
         // ============================================================
@@ -1160,19 +1549,31 @@
         }
         
         showError(message, type = 'error') {
-            if (type === 'warning') {
-                Swal.fire('Warning', message, 'warning');
+            if (typeof Swal !== 'undefined') {
+                if (type === 'warning') {
+                    Swal.fire('Warning', message, 'warning');
+                } else {
+                    Swal.fire('Error', message, 'error');
+                }
             } else {
-                Swal.fire('Error', message, 'error');
+                alert(message);
             }
         }
         
         showSuccess(message) {
-            Swal.fire('Success', message, 'success');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Success', message, 'success');
+            } else {
+                alert('Success: ' + message);
+            }
         }
         
         showInfo(message) {
-            Swal.fire('Info', message, 'info');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Info', message, 'info');
+            } else {
+                alert('Info: ' + message);
+            }
         }
         
         showWaitingForLogin() {
@@ -1232,15 +1633,26 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             window.studentDashboard = new StudentDashboard();
+            // Create alias for compatibility
+            window.unitRegistrationModule = window.studentDashboard;
+            console.log('✅ unitRegistrationModule alias created');
         });
     } else {
         window.studentDashboard = new StudentDashboard();
+        // Create alias for compatibility
+        window.unitRegistrationModule = window.studentDashboard;
+        console.log('✅ unitRegistrationModule alias created');
     }
     
-    // Global functions for HTML onclick
+    // ============================================================
+    // GLOBAL FUNCTIONS FOR HTML ONCLICK
+    // ============================================================
+    
     window.dropUnit = (unitCode) => {
         if (window.studentDashboard) {
             window.studentDashboard.dropUnit(unitCode);
+        } else {
+            console.error('❌ studentDashboard not available');
         }
     };
     
@@ -1253,9 +1665,56 @@
     window.downloadSupplementaryExamCard = (regId, unitCode) => {
         if (window.studentDashboard) {
             window.studentDashboard.downloadSupplementaryExamCard(regId, unitCode);
+        } else {
+            console.error('❌ studentDashboard not available');
+        }
+    };
+    
+    window.registerSupplementaryUnits = () => {
+        if (window.studentDashboard) {
+            window.studentDashboard.registerSupplementaryUnits();
+        } else {
+            console.error('❌ studentDashboard not available');
+        }
+    };
+    
+    window.switchRegTab = (tab) => {
+        console.log('🔄 Switching to tab:', tab);
+        const subTabs = document.querySelectorAll('.reg-sub-tab');
+        const regularContent = document.getElementById('regular-registration');
+        const suppContent = document.getElementById('supplementary-registration');
+        
+        // Update tab styles
+        subTabs.forEach(t => {
+            t.classList.remove('active');
+            t.style.color = '#6b7280';
+            t.style.borderBottom = '3px solid transparent';
+        });
+        
+        const activeTab = document.querySelector(`.reg-sub-tab[data-subtab="${tab}"]`);
+        if (activeTab) {
+            activeTab.classList.add('active');
+            activeTab.style.color = '#4C1D95';
+            activeTab.style.borderBottom = '3px solid #4C1D95';
+        }
+        
+        // Show/hide content
+        if (regularContent) {
+            regularContent.style.display = tab === 'regular' ? 'block' : 'none';
+        }
+        if (suppContent) {
+            suppContent.style.display = tab === 'supplementary' ? 'block' : 'none';
+        }
+        
+        // Load data
+        if (tab === 'supplementary' && window.studentDashboard) {
+            window.studentDashboard.loadSupplementaryData();
+        } else if (tab === 'regular' && window.studentDashboard) {
+            window.studentDashboard.loadUnits();
         }
     };
     
     console.log('✅ Student Dashboard ready with Supplementary support!');
+    console.log('📌 Use window.studentDashboard or window.unitRegistrationModule to access the API');
     
 })();
