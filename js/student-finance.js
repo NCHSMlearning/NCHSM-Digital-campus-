@@ -6,6 +6,7 @@
 // ✅ View & Download fee structure actions
 // ✅ Fee balance updates when viewing specific periods
 // ✅ Email notification after successful payment
+// ✅ Communicates with Super Admin Finance Module
 // ============================================================
 
 // ============================================================
@@ -30,6 +31,7 @@ const studentFinanceState = {
     feeStructureVisible: false,
     student: null,
     selectedPeriod: null,
+    selectedPaymentMethod: 'mpesa',
     // STK Payment State
     stkPayment: {
         isProcessing: false,
@@ -41,6 +43,110 @@ const studentFinanceState = {
         status: 'idle' // idle, processing, success, failed, cancelled
     }
 };
+
+// ============================================================
+// 🔗 COMMUNICATION WITH SUPER ADMIN MODULE
+// ============================================================
+
+/**
+ * Send event to Super Admin Finance Module
+ * This allows the student module to communicate with the admin dashboard
+ */
+function notifySuperAdmin(eventType, data) {
+    try {
+        // If the admin module is loaded, it will have a listener for these events
+        const adminEvent = new CustomEvent('studentFinanceEvent', {
+            detail: {
+                type: eventType,
+                data: data,
+                timestamp: new Date().toISOString(),
+                source: 'student-module'
+            }
+        });
+        
+        // Dispatch event globally
+        window.dispatchEvent(adminEvent);
+        
+        console.log(`📤 Notified Super Admin: ${eventType}`, data);
+        
+        // Also try to call admin function directly if available
+        if (typeof window.handleStudentFinanceEvent === 'function') {
+            window.handleStudentFinanceEvent(eventType, data);
+        }
+        
+        // If Supabase is available, log to admin_events table
+        if (typeof supabase !== 'undefined' && supabase) {
+            supabase
+                .from('admin_events')
+                .insert([{
+                    event_type: eventType,
+                    event_data: data,
+                    source: 'student-finance',
+                    created_at: new Date().toISOString()
+                }])
+                .then(({ error }) => {
+                    if (error) {
+                        console.warn('⚠️ Could not log admin event:', error);
+                    }
+                })
+                .catch(e => console.warn('⚠️ Admin event logging error:', e));
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Error notifying Super Admin:', error);
+        return false;
+    }
+}
+
+/**
+ * Listen for events from Super Admin Module
+ */
+function listenForAdminEvents() {
+    window.addEventListener('adminFinanceEvent', function(event) {
+        console.log('📥 Received admin event:', event.detail);
+        const { type, data } = event.detail;
+        
+        switch(type) {
+            case 'fee_structure_updated':
+                // Refresh fee structure
+                if (studentFinanceState.feeStructureVisible) {
+                    loadStudentFinance();
+                    showToast('📋 Fee structure updated by admin', 'info');
+                }
+                break;
+                
+            case 'payment_verified':
+                // Payment was verified by admin
+                if (data && data.studentId === studentFinanceState.student?.id) {
+                    loadStudentFinance();
+                    showToast('✅ Payment verified by admin', 'success');
+                }
+                break;
+                
+            case 'balance_updated':
+                // Balance was updated by admin
+                if (data && data.studentId === studentFinanceState.student?.id) {
+                    loadStudentFinance();
+                    showToast('💰 Balance updated by admin', 'info');
+                }
+                break;
+                
+            case 'payment_recorded':
+                // Admin recorded a payment for this student
+                if (data && data.studentId === studentFinanceState.student?.id) {
+                    loadStudentFinance();
+                    showToast('💳 Payment recorded by admin', 'success');
+                }
+                break;
+                
+            default:
+                console.log('📥 Unhandled admin event:', type);
+        }
+    });
+    
+    console.log('👂 Listening for admin finance events');
+}
 
 // ============================================================
 // 🔔 UPDATE FINANCE BADGE
@@ -88,6 +194,15 @@ function updateFinanceBadge(data) {
         
         // Add pulse animation
         badge.style.animation = 'pulse-badge 2s infinite';
+        
+        // Notify Super Admin about overdue payments
+        if (overdue > 0) {
+            notifySuperAdmin('overdue_payments', {
+                studentId: studentFinanceState.student?.id,
+                count: overdue,
+                payments: payments.filter(p => p.status === 'failed' || p.status === 'overdue')
+            });
+        }
     } else {
         badge.style.display = 'none';
         badge.style.animation = 'none';
@@ -134,6 +249,12 @@ function toggleFeeStructure() {
         setTimeout(() => {
             container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 300);
+        
+        // Notify Super Admin
+        notifySuperAdmin('fee_structure_viewed', {
+            studentId: studentFinanceState.student?.id,
+            timestamp: new Date().toISOString()
+        });
         
     } else {
         // Hide fee structure
@@ -330,7 +451,7 @@ async function sendPaymentConfirmationEmail(studentId, paymentData) {
 </body>
 </html>`;
 
-        // Send via Edge Function (using your pattern)
+        // Send via Edge Function
         const result = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
             method: 'POST',
             headers: {
@@ -349,6 +470,16 @@ async function sendPaymentConfirmationEmail(studentId, paymentData) {
         
         if (data.success) {
             console.log(`✅ Payment confirmation email sent to ${student.email}`);
+            
+            // Notify Super Admin
+            notifySuperAdmin('email_sent', {
+                studentId: studentId,
+                studentEmail: student.email,
+                type: 'payment_confirmation',
+                amount: amount,
+                period: period
+            });
+            
             return true;
         } else {
             console.error('❌ Email failed:', data.error);
@@ -553,6 +684,15 @@ async function processSTKPush(amount, period, phoneNumber, displayPhone) {
     studentFinanceState.stkPayment.amount = amount;
     studentFinanceState.stkPayment.period = period;
     studentFinanceState.stkPayment.status = 'processing';
+    
+    // Notify Super Admin
+    notifySuperAdmin('stk_payment_initiated', {
+        studentId: studentFinanceState.student?.id,
+        amount: amount,
+        period: period,
+        phoneNumber: phoneNumber,
+        timestamp: new Date().toISOString()
+    });
 }
 
 /**
@@ -671,6 +811,15 @@ async function initiateSTKTransaction(amount, period, phoneNumber) {
         });
         
         showToast('❌ Payment failed: ' + error.message, 'error');
+        
+        // Notify Super Admin
+        notifySuperAdmin('stk_payment_failed', {
+            studentId: studentFinanceState.student?.id,
+            amount: amount,
+            period: period,
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
     }
 }
 
@@ -759,7 +908,7 @@ function handleSTKSuccess(result, amount, period) {
     const transactionId = result.transactionId || result.checkoutRequestID || `TXN-${Date.now()}`;
     const reference = `PAY-${Date.now()}`;
     
-    // Save payment to database first
+    // Save payment to database
     const paymentRecord = {
         student_id: user?.id || 'student_001',
         student_name: user?.full_name || user?.name || 'Student',
@@ -788,7 +937,7 @@ function handleSTKSuccess(result, amount, period) {
         date: new Date().toISOString()
     };
     
-    // Send email asynchronously (don't block the UI)
+    // Send email asynchronously
     if (user?.id) {
         sendPaymentConfirmationEmail(user.id, paymentData)
             .then(sent => {
@@ -802,6 +951,18 @@ function handleSTKSuccess(result, amount, period) {
                 console.error('❌ Email sending error:', err);
             });
     }
+    
+    // Notify Super Admin
+    notifySuperAdmin('payment_completed', {
+        studentId: user?.id,
+        studentName: user?.full_name || user?.name,
+        amount: amount,
+        period: period,
+        transactionId: transactionId,
+        reference: reference,
+        method: 'M-Pesa STK',
+        timestamp: new Date().toISOString()
+    });
     
     // Update Swal dialog
     Swal.update({
@@ -839,6 +1000,80 @@ function handleSTKSuccess(result, amount, period) {
     }, 1000);
     
     showToast(`✅ Payment of KES ${amount.toLocaleString()} successful! Confirmation email sent.`, 'success');
+}
+
+/**
+ * Handle STK Payment Failure
+ */
+function handleSTKFailure(result) {
+    studentFinanceState.stkPayment.status = 'failed';
+    studentFinanceState.stkPayment.isProcessing = false;
+    
+    Swal.update({
+        html: `
+            <div style="text-align: center;">
+                <i class="fas fa-times-circle" style="font-size: 50px; color: #dc2626; margin-bottom: 16px;"></i>
+                <p style="font-size: 16px; font-weight: 600; color: #dc2626;">Payment Failed</p>
+                <p style="color: #64748b; font-size: 14px;">${result.message || 'Transaction was not completed successfully.'}</p>
+                <div style="margin-top: 12px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="retrySTKPayment()" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-redo"></i> Retry Payment
+                    </button>
+                    <button onclick="Swal.close()" style="padding: 10px 24px; background: #64748b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `,
+        showConfirmButton: false
+    });
+    
+    showToast('❌ Payment failed. Please try again.', 'error');
+    
+    // Notify Super Admin
+    notifySuperAdmin('payment_failed', {
+        studentId: studentFinanceState.student?.id,
+        amount: studentFinanceState.stkPayment.amount,
+        period: studentFinanceState.stkPayment.period,
+        error: result.message || 'Unknown error',
+        timestamp: new Date().toISOString()
+    });
+}
+
+/**
+ * Handle STK Payment Timeout
+ */
+function handleSTKTimeout(checkoutRequestID) {
+    studentFinanceState.stkPayment.status = 'failed';
+    studentFinanceState.stkPayment.isProcessing = false;
+    
+    Swal.update({
+        html: `
+            <div style="text-align: center;">
+                <i class="fas fa-clock" style="font-size: 50px; color: #d97706; margin-bottom: 16px;"></i>
+                <p style="font-size: 16px; font-weight: 600; color: #d97706;">Payment Timeout</p>
+                <p style="color: #64748b; font-size: 14px;">Payment confirmation timed out. Please check your M-Pesa messages.</p>
+                <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Transaction ID:</strong> ${checkoutRequestID}</p>
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Status:</strong> Pending confirmation</p>
+                </div>
+                <div style="margin-top: 12px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="checkSTKStatusManually('${checkoutRequestID}')" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-search"></i> Check Status
+                    </button>
+                    <button onclick="retrySTKPayment()" style="padding: 10px 24px; background: #d97706; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-redo"></i> Retry
+                    </button>
+                    <button onclick="Swal.close()" style="padding: 10px 24px; background: #64748b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `,
+        showConfirmButton: false
+    });
+    
+    showToast('⏳ Payment timeout. Please check your M-Pesa.', 'warning');
 }
 
 /**
@@ -998,6 +1233,7 @@ async function loadStudentFinance() {
         const programLevel = getProgramLevel(user.program);
         studentFinanceState.programType = programType;
         studentFinanceState.programLevel = programLevel;
+        studentFinanceState.student = user;
         
         console.log('👤 User:', user.full_name || user.name);
         console.log('📚 Program:', user.program);
@@ -1014,6 +1250,15 @@ async function loadStudentFinance() {
             studentFinanceState.isLoaded = true;
             studentFinanceState.lastUpdated = new Date();
             console.log('✅ Finance data loaded successfully');
+            
+            // Notify Super Admin that student viewed finance
+            notifySuperAdmin('student_finance_viewed', {
+                studentId: user.id,
+                studentName: user.full_name || user.name,
+                program: user.program,
+                balance: financeData.balance,
+                timestamp: new Date().toISOString()
+            });
         } else {
             console.log('📊 No data found, using mock data');
             const mockData = getMockFinanceData(user);
@@ -1067,6 +1312,12 @@ function updateProgramInfo(user, programType, programLevel) {
     const progressPeriodLabel = document.getElementById('progressPeriodLabel');
     if (progressPeriodLabel) {
         progressPeriodLabel.textContent = `Current ${periodLabel}`;
+    }
+    
+    // Update fee structure label
+    const feeStructureLabel = document.getElementById('feeStructureLabel');
+    if (feeStructureLabel) {
+        feeStructureLabel.textContent = periodLabel;
     }
     
     updatePeriodFilter(programType, programLevel);
@@ -1166,7 +1417,8 @@ async function fetchFinanceDataFromSupabase(user) {
                 method: p.payment_method || 'Cash',
                 reference: p.reference_number || p.transaction_id || '-',
                 status: p.status || 'pending',
-                transaction_id: p.transaction_id || null
+                transaction_id: p.transaction_id || null,
+                payment_method: p.payment_method || 'Cash'
             };
         });
 
@@ -1228,7 +1480,8 @@ function getMockFinanceData(user) {
         method: 'M-Pesa STK',
         reference: 'MPESA-STK-7845',
         status: 'completed',
-        transaction_id: 'MPESA-2026-7845'
+        transaction_id: 'MPESA-2026-7845',
+        payment_method: 'M-Pesa STK'
     });
     
     if (totalPeriods > 1) {
@@ -1240,7 +1493,8 @@ function getMockFinanceData(user) {
             method: 'Bank Transfer',
             reference: 'BT-5678',
             status: 'pending',
-            transaction_id: 'BT-2026-5678'
+            transaction_id: 'BT-2026-5678',
+            payment_method: 'Bank Transfer'
         });
     }
     
@@ -1491,7 +1745,7 @@ function renderPayments(payments) {
     if (!payments || payments.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align: center; padding: 30px; color: #94a3b8;">
+                <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
                     <i class="fas fa-info-circle" style="font-size: 20px; display: block; margin-bottom: 8px;"></i>
                     <p>No payment records found</p>
                 </td>
@@ -1509,7 +1763,7 @@ function renderPayments(payments) {
         };
         const statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
         const statusStyle = statusColors[p.status] || statusColors.completed;
-        const methodDisplay = p.method || 'N/A';
+        const methodDisplay = p.payment_method || p.method || 'N/A';
         
         return `
             <tr>
@@ -1533,6 +1787,9 @@ function renderPayments(payments) {
                     <button class="action-btn download" onclick="downloadFeeStructure('${p.period}')" title="Download Fee Structure for ${p.period}">
                         <i class="fas fa-download"></i> Download
                     </button>
+                    ${p.status === 'completed' ? `<button class="action-btn download" onclick="resendPaymentEmail()" title="Resend payment email" style="color: #4C1D95;">
+                        <i class="fas fa-envelope"></i>
+                    </button>` : ''}
                 </td>
             </tr>
         `;
@@ -1589,6 +1846,13 @@ function viewFeeStructure(periodName) {
     }, 300);
     
     showToast(`📋 Viewing fee structure for: ${periodName}`, 'info');
+    
+    // Notify Super Admin
+    notifySuperAdmin('fee_structure_period_viewed', {
+        studentId: studentFinanceState.student?.id,
+        period: periodName,
+        timestamp: new Date().toISOString()
+    });
 }
 
 // ============================================================
@@ -2172,6 +2436,13 @@ function generateFeeStructurePDF() {
     URL.revokeObjectURL(url);
     
     showToast('✅ Fee structure downloaded successfully!', 'success');
+    
+    // Notify Super Admin
+    notifySuperAdmin('fee_structure_downloaded', {
+        studentId: studentFinanceState.student?.id,
+        program: user?.program,
+        timestamp: new Date().toISOString()
+    });
 }
 
 // ============================================================
@@ -2253,6 +2524,12 @@ function downloadStudentStatement() {
             text: 'Your fee statement has been downloaded.',
             icon: 'success',
             confirmButtonColor: '#4C1D95'
+        });
+        
+        // Notify Super Admin
+        notifySuperAdmin('statement_downloaded', {
+            studentId: studentFinanceState.student?.id,
+            timestamp: new Date().toISOString()
         });
     }, 2000);
 }
@@ -2409,15 +2686,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('financeSearch');
     if (searchInput) searchInput.addEventListener('keyup', filterStudentPayments);
     
-    // Payment Modal close on outside click
-    const modal = document.getElementById('paymentModal');
-    if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePaymentModal();
-            }
-        });
-    }
+    // Listen for admin events
+    listenForAdminEvents();
+    
+    // Notify Super Admin that student module is ready
+    notifySuperAdmin('module_ready', {
+        version: '2.0.0',
+        timestamp: new Date().toISOString()
+    });
     
     if (!document.getElementById('financeSpinStyle')) {
         const style = document.createElement('style');
@@ -2473,6 +2749,18 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.appendChild(style);
     }
 });
+
+console.log('✅ Student Finance module loaded with STK Payment');
+console.log('📱 M-Pesa STK Push is ready');
+console.log('💳 Multiple payment methods: M-Pesa, PayPal, Card, Bank Transfer');
+console.log('📧 Email notifications enabled after successful payment');
+console.log('📊 Supports KRCHN (Semesters) and TVET (Terms with Years)');
+console.log('📚 TVET Certificate: 1 Year (3 Terms)');
+console.log('📚 TVET Diploma: 2 Years (6 Terms)');
+console.log('✅ View & Download actions added to payment history');
+console.log('✅ Fee balance updates when viewing specific periods');
+console.log('✅ NO TOTAL PROGRAM FEES displayed in UI');
+console.log('🔗 Communicates with Super Admin Finance Module');
 
 // ============================================================
 // 💳 PAYMENT MODAL FUNCTIONS
@@ -2554,6 +2842,13 @@ function openPaymentModal() {
     
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    
+    // Notify Super Admin
+    notifySuperAdmin('payment_modal_opened', {
+        studentId: studentFinanceState.student?.id,
+        balance: studentFinanceState.balance,
+        timestamp: new Date().toISOString()
+    });
 }
 
 /**
@@ -2864,6 +3159,15 @@ function handleBankPayment(amount, period, description) {
             // Save as pending
             saveSTKPaymentRecord(amount, period, result);
             showToast('⏳ Payment recorded as pending. Awaiting confirmation.', 'warning');
+            
+            // Notify Super Admin
+            notifySuperAdmin('bank_transfer_initiated', {
+                studentId: studentFinanceState.student?.id,
+                amount: amount,
+                period: period,
+                reference: `BANK-${Date.now()}`,
+                timestamp: new Date().toISOString()
+            });
         }
     });
 }
@@ -2906,6 +3210,17 @@ async function saveSTKPaymentRecord(amount, period, result) {
                     savePaymentLocally(paymentRecord);
                 } else {
                     console.log('✅ Payment record saved to database:', data);
+                    
+                    // Notify Super Admin
+                    notifySuperAdmin('payment_recorded', {
+                        studentId: user?.id,
+                        transactionId: transactionId,
+                        amount: amount,
+                        period: period,
+                        method: method,
+                        status: status,
+                        timestamp: new Date().toISOString()
+                    });
                 }
             } catch (e) {
                 console.error('❌ Supabase save error:', e);
@@ -2990,6 +3305,14 @@ function cancelSTKPayment() {
             });
             
             showToast('Payment cancelled', 'warning');
+            
+            // Notify Super Admin
+            notifySuperAdmin('payment_cancelled', {
+                studentId: studentFinanceState.student?.id,
+                amount: studentFinanceState.stkPayment.amount,
+                period: studentFinanceState.stkPayment.period,
+                timestamp: new Date().toISOString()
+            });
         }
     });
 }
@@ -3075,14 +3398,7 @@ window.retrySTKPayment = retrySTKPayment;
 window.checkSTKStatusManually = checkSTKStatusManually;
 window.viewEmailReceipt = viewEmailReceipt;
 window.resendPaymentEmail = resendPaymentEmail;
+window.notifySuperAdmin = notifySuperAdmin;
 
-console.log('✅ Student Finance module loaded with STK Payment');
-console.log('📱 M-Pesa STK Push is ready');
-console.log('💳 Multiple payment methods: M-Pesa, PayPal, Card, Bank Transfer');
-console.log('📧 Email notifications enabled after successful payment');
-console.log('📊 Supports KRCHN (Semesters) and TVET (Terms with Years)');
-console.log('📚 TVET Certificate: 1 Year (3 Terms)');
-console.log('📚 TVET Diploma: 2 Years (6 Terms)');
-console.log('✅ View & Download actions added to payment history');
-console.log('✅ Fee balance updates when viewing specific periods');
-console.log('✅ NO TOTAL PROGRAM FEES displayed in UI');
+console.log('✅ Student Finance module initialized successfully!');
+console.log('🔗 Communication with Super Admin Module active');
