@@ -1331,12 +1331,11 @@
                 return;
             }
             
-            // Max 3 supplementary units
-            if (selectedUnits.length > 3) {
-                this.showError('You can only register for a maximum of 3 supplementary units.', 'warning');
-                return;
-            }
-            
+           // NEW CODE - Change 3 to 8:
+if (selectedUnits.length > 8) {
+    this.showError('You can only register for a maximum of 8 supplementary units.', 'warning');
+    return;
+}
             // Payment reference (optional but recommended)
             const paymentRef = this.suppPaymentRef?.value.trim() || 'N/A';
             
