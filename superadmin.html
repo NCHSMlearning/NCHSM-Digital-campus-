@@ -2283,6 +2283,9 @@
         <button onclick="filterUnitRegistrations('pending')" id="viewPendingBtn" class="view-filter-btn" style="padding: 6px 16px; background: #fef3c7; color: #92400e; border: none; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 500;">
             <i class="fas fa-clock"></i> Pending Only
         </button>
+        <button onclick="filterUnitRegistrations('supplementary')" id="viewSuppBtn" class="view-filter-btn" style="padding: 6px 16px; background: #fef3c7; color: #92400e; border: none; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 500;">
+            <i class="fas fa-redo-alt"></i> Supplementary
+        </button>
         <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">
             <i class="fas fa-info-circle"></i> <span id="registrationsFilterCount">0</span> records
         </span>
@@ -2375,6 +2378,13 @@
                 <option value="pending">⏳ Pending</option>
                 <option value="rejected">❌ Rejected</option>
             </select>
+            <select id="groupedRegTypeFilter" onchange="filterGroupedRegistrations()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
+                <option value="all">All Types</option>
+                <option value="Normal">Normal</option>
+                <option value="Supplementary">🔄 Supplementary</option>
+                <option value="Resit">📝 Resit</option>
+                <option value="Retake">🔁 Retake</option>
+            </select>
         </div>
 
         <!-- ===== GROUPED REGISTRATIONS DISPLAY ===== -->
@@ -2414,6 +2424,7 @@
         <span><span style="display: inline-block; width: 12px; height: 12px; background: #ef4444; border-radius: 3px;"></span> Rejected</span>
         <span><span style="display: inline-block; width: 12px; height: 12px; background: #3b82f6; border-radius: 3px;"></span> Core Unit</span>
         <span><span style="display: inline-block; width: 12px; height: 12px; background: #8b5cf6; border-radius: 3px;"></span> Elective</span>
+        <span><span style="display: inline-block; width: 12px; height: 12px; background: #B45309; border-radius: 3px;"></span> Supplementary</span>
         <span style="margin-left: auto; color: #94a3b8;">
             <i class="fas fa-info-circle"></i> Click on a student group to expand/collapse
         </span>
