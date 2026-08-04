@@ -1307,14 +1307,6 @@ function loadAuditLog() {
 // FEE STRUCTURE - COMPLETE WITH WORKING CALCULATION
 // ============================================================
 
-// Fee structure state
-let feeStructureData = {
-    components: [],
-    total: 0,
-    hostel: 0,
-    terms: []
-};
-
 async function loadFeeStructure() {
     console.log('📋 Loading fee structure...');
     
@@ -1400,7 +1392,7 @@ function renderFeeStructureCards(fees) {
         const components = fee.components || [];
         const terms = fee.terms || [];
         const payment = fee.payment || {};
-        const total = fee.total || calculateTotalFromComponents(components);
+        const total = fee.total || 0;
         
         html += `
             <div class="fee-structure-pdf-card" style="background:white;border-radius:12px;border:1px solid #e5e7eb;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
@@ -1506,11 +1498,6 @@ function renderFeeStructureCards(fees) {
 // FEE STRUCTURE CALCULATION FUNCTIONS
 // ============================================================
 
-function calculateTotalFromComponents(components) {
-    if (!components || components.length === 0) return 0;
-    return components.reduce((sum, comp) => sum + (parseFloat(comp.amount) || 0), 0);
-}
-
 function updateFeeTotalPreview() {
     const compAmounts = document.querySelectorAll('.comp-amount');
     let total = 0;
@@ -1527,16 +1514,6 @@ function updateFeeTotalPreview() {
         previewEl.textContent = 'KES ' + total.toLocaleString();
     }
 }
-
-// Add event listeners for real-time calculation
-document.addEventListener('DOMContentLoaded', function() {
-    // Listen for changes on component amounts
-    document.addEventListener('input', function(e) {
-        if (e.target.classList.contains('comp-amount') || e.target.id === 'fee_hostel') {
-            updateFeeTotalPreview();
-        }
-    });
-});
 
 // ============================================================
 // FEE STRUCTURE FILTER FUNCTIONS
@@ -1611,7 +1588,7 @@ function openAddFeeModal() {
     setValue('fee_email', 'nchsmfinance@gmail.com');
     setValue('fee_whatsapp', '+254 103614355 | +254 703345771');
     
-    // Reset components with default values
+    // Reset components with default values and oninput
     const compContainer = document.getElementById('feeComponentsContainer');
     if (compContainer) {
         compContainer.innerHTML = `
@@ -1696,7 +1673,7 @@ function openEditFeeModal(feeId) {
     setValue('fee_email', payment.email || 'nchsmfinance@gmail.com');
     setValue('fee_whatsapp', payment.whatsapp || '+254 103614355 | +254 703345771');
     
-    // Populate components
+    // Populate components with oninput
     const compContainer = document.getElementById('feeComponentsContainer');
     if (compContainer) {
         compContainer.innerHTML = '';
@@ -1705,7 +1682,7 @@ function openEditFeeModal(feeId) {
             components.forEach(comp => {
                 compContainer.innerHTML += `
                     <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                        <input type="text" class="form-control comp-name" placeholder="Component name" value="${comp.label || comp.name || ''}" oninput="updateFeeTotalPreview()">
+                        <input type="text" class="form-control comp-name" placeholder="Component name" value="${(comp.label || comp.name || '').replace(/"/g, '&quot;')}" oninput="updateFeeTotalPreview()">
                         <input type="number" class="form-control comp-amount" placeholder="Amount" value="${comp.amount || 0}" oninput="updateFeeTotalPreview()">
                         <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
                             <i class="fas fa-times"></i>
@@ -1832,12 +1809,15 @@ function removeFeeTermRow(button) {
 }
 
 // ============================================================
-// SAVE FEE STRUCTURE (Full)
+// SAVE FEE STRUCTURE (Full) - FIXED VERSION
 // ============================================================
 
 async function saveFeeStructureFull() {
+    console.log('📝 Saving fee structure...');
+    
     const feeId = document.getElementById('feeStructureId').value || null;
     
+    // Get form values
     const program = document.getElementById('fee_program_name').value.trim();
     const programCode = document.getElementById('fee_program_code').value.trim();
     const level = document.getElementById('fee_level').value;
@@ -1848,6 +1828,7 @@ async function saveFeeStructureFull() {
     const hostel = parseFloat(document.getElementById('fee_hostel').value) || 0;
     const status = document.getElementById('fee_status').value;
     
+    // Validate
     if (!program) {
         showToast('Please enter the program name', 'warning');
         return;
@@ -1858,6 +1839,7 @@ async function saveFeeStructureFull() {
         return;
     }
     
+    // Get components
     const compNames = document.querySelectorAll('.comp-name');
     const compAmounts = document.querySelectorAll('.comp-amount');
     const components = [];
@@ -1880,6 +1862,7 @@ async function saveFeeStructureFull() {
     // Add hostel to total
     total += hostel;
     
+    // Get terms
     const termInputs = document.querySelectorAll('.term-text');
     const terms = [];
     termInputs.forEach(input => {
@@ -1889,6 +1872,7 @@ async function saveFeeStructureFull() {
         }
     });
     
+    // Get payment info
     const payment = {
         mpesa: document.getElementById('fee_mpesa').value.trim() || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo',
         bank: document.getElementById('fee_bank').value.trim() || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036',
@@ -1909,19 +1893,34 @@ async function saveFeeStructureFull() {
         components: components,
         terms: terms,
         payment: payment,
-        is_active: status === 'active'
+        is_active: status === 'active',
+        description: `${program} - ${level} Fees (${blockTerm})`
     };
     
+    console.log('📤 Sending fee data:', feeData);
+    console.log('🔑 Fee ID:', feeId || 'New');
+    
     try {
+        let result;
+        
         if (feeId) {
-            await window.financeAPI.updateFeeStructure(feeId, feeData);
+            // UPDATE existing
+            console.log('🔄 Updating fee structure...');
+            result = await window.financeAPI.updateFeeStructure(feeId, feeData);
+            console.log('✅ Update result:', result);
             showToast('Fee structure updated successfully!', 'success');
         } else {
-            await window.financeAPI.createFeeStructure(feeData);
+            // CREATE new
+            console.log('➕ Creating new fee structure...');
+            result = await window.financeAPI.createFeeStructure(feeData);
+            console.log('✅ Create result:', result);
             showToast('Fee structure added successfully!', 'success');
         }
         
+        // Close modal
         closeFeeStructureModal();
+        
+        // Reload fee structure data
         await loadFeeStructure();
         
     } catch (error) {
@@ -2264,6 +2263,19 @@ function updateLastUpdated() {
 }
 setInterval(updateLastUpdated, 30000);
 updateLastUpdated();
+
+// ============================================================
+// ADD INPUT EVENT LISTENERS FOR REAL-TIME CALCULATION
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Listen for changes on component amounts and hostel fee
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('comp-amount') || e.target.id === 'fee_hostel') {
+            updateFeeTotalPreview();
+        }
+    });
+});
 
 // ============================================================
 // INITIALIZATION COMPLETE
