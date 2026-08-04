@@ -29,7 +29,7 @@ class UIModule {
             'dashboard': 'Dashboard', 
             'profile': 'Profile', 
             'calendar': 'Academic Calendar',
-            'courses': 'My Courses', 
+            'courses': 'My Units',  // ← CHANGED from 'My Courses'
             'attendance': 'Attendance', 
             'cats': 'Exams & Grades',
             'resources': 'Resources', 
@@ -39,7 +39,7 @@ class UIModule {
             'unit-registration': 'Unit Registration',
             'learning-hub': 'My Learning Hub', 
             'exam-card': 'Exam Card',
-            'hub-courses': 'My Courses',
+            'hub-courses': 'My Units',  // ← CHANGED from 'My Courses'
             'hub-register': 'Register Units',
             'hub-online-learning': 'Online Learning',
             'hub-exam-card': 'Exam Card',
