@@ -9,11 +9,15 @@ class Database {
             exams: [],
             clinicalAreas: [],
             resources: [],
-            messages: []
+            messages: [],
+            // ✅ NEW: Supplementary data cache
+            supplementaryUnits: [],
+            supplementaryRegistrations: [],
+            failedUnits: []
         };
         this.isInitialized = false;
         this.profileModule = null;
-        // ✅ NEW: Track connection usage
+        // Track connection usage
         this.connectionCount = 0;
         this.lastConnectionTime = null;
     }
@@ -55,8 +59,8 @@ class Database {
                 this.supabase = window.supabase;
                 console.log('✅ Database: Using global window.supabase');
             } else {
-                // Only create NEW if absolutely necessary (should not happen on dashboard)
-                console.warn('⚠️ Database: No existing connection found, creating new one (should not happen)');
+                // Only create NEW if absolutely necessary
+                console.warn('⚠️ Database: No existing connection found, creating new one');
                 this.supabase = supabase.createClient(
                     window.APP_CONFIG.SUPABASE_URL,
                     window.APP_CONFIG.SUPABASE_ANON_KEY,
@@ -280,7 +284,7 @@ class Database {
             
             await this.loadUserProfile();
             
-            // ✅ Record login time after successful authentication
+            // Record login time after successful authentication
             await this.recordLoginTime();
             
             return true;
@@ -381,7 +385,7 @@ class Database {
         }
     }
     
-    // ✅ NEW: Record login time
+    // Record login time
     async recordLoginTime() {
         if (!this.currentUserId) {
             console.warn('No user ID to record login time');
@@ -422,7 +426,7 @@ class Database {
         }
     }
     
-    // ✅ NEW: Record logout time
+    // Record logout time
     async recordLogoutTime() {
         if (!this.currentUserId) {
             console.warn('No user ID to record logout time');
@@ -453,7 +457,7 @@ class Database {
         }
     }
     
-    // ✅ UPDATED: Logout with tracking
+    // Updated: Logout with tracking
     async logout() {
         try {
             // Record logout time before signing out
@@ -496,24 +500,200 @@ class Database {
         }
     }
     
-    // === DASHBOARD FUNCTIONS - ONE CALL OPTIMIZATION ===
+    // === SUPPLEMENTARY REGISTRATION FUNCTIONS ===
+    
+    // Get failed units for supplementary registration
+    async getFailedUnits() {
+        if (this.cachedData.failedUnits.length > 0) {
+            return this.cachedData.failedUnits;
+        }
+        
+        if (!this.currentUserId) {
+            console.warn('No user ID to get failed units');
+            return [];
+        }
+        
+        try {
+            // Get student's exam grades to find failed units (score < 50)
+            const { data: grades, error } = await this.supabase
+                .from('exam_grades')
+                .select('*, exams:exam_id(unit_code, course_name, block_term, exam_name, program_type)')
+                .eq('student_id', this.currentUserId);
+            
+            if (error) throw error;
+            
+            const failedUnits = [];
+            const processed = new Set();
+            
+            if (grades) {
+                for (const grade of grades) {
+                    const score = grade.total_score || grade.marks || 0;
+                    const unitCode = grade.exams?.unit_code || grade.subject_name || grade.exam_name;
+                    
+                    if (score < 50 && unitCode && !processed.has(unitCode)) {
+                        processed.add(unitCode);
+                        
+                        // Check if already registered for supplementary
+                        const { data: existingReg } = await this.supabase
+                            .from('student_unit_registrations')
+                            .select('id, status')
+                            .eq('student_id', this.currentUserId)
+                            .eq('unit_code', unitCode)
+                            .in('reg_type', ['Supplementary', 'Resit', 'Retake'])
+                            .maybeSingle();
+                        
+                        // Determine registration type based on score
+                        let regType = 'Supplementary';
+                        if (score < 30) regType = 'Retake';
+                        else if (score < 40) regType = 'Resit';
+                        
+                        failedUnits.push({
+                            unit_code: unitCode,
+                            unit_name: grade.exams?.course_name || grade.subject_name || unitCode,
+                            block: grade.exams?.block_term || 'N/A',
+                            score: score,
+                            reg_type: regType,
+                            status: existingReg ? existingReg.status : 'Eligible',
+                            existing_id: existingReg?.id || null
+                        });
+                    }
+                }
+            }
+            
+            this.cachedData.failedUnits = failedUnits;
+            return failedUnits;
+            
+        } catch (error) {
+            console.error('Error loading failed units:', error);
+            return [];
+        }
+    }
+    
+    // Get supplementary registrations
+    async getSupplementaryRegistrations() {
+        if (this.cachedData.supplementaryRegistrations.length > 0) {
+            return this.cachedData.supplementaryRegistrations;
+        }
+        
+        if (!this.currentUserId) {
+            console.warn('No user ID to get supplementary registrations');
+            return [];
+        }
+        
+        try {
+            const { data, error } = await this.supabase
+                .from('student_unit_registrations')
+                .select('*')
+                .eq('student_id', this.currentUserId)
+                .in('reg_type', ['Supplementary', 'Resit', 'Retake'])
+                .order('submitted_date', { ascending: false });
+            
+            if (error) throw error;
+            
+            this.cachedData.supplementaryRegistrations = data || [];
+            return this.cachedData.supplementaryRegistrations;
+            
+        } catch (error) {
+            console.error('Error loading supplementary registrations:', error);
+            return [];
+        }
+    }
+    
+    // Register for supplementary units
+    async registerSupplementaryUnits(units, paymentRef = null) {
+        if (!this.currentUserId) {
+            return { success: false, error: 'User not logged in' };
+        }
+        
+        try {
+            const registrations = units.map(unit => ({
+                student_id: this.currentUserId,
+                unit_code: unit.unit_code,
+                unit_name: unit.unit_name || 'Unknown Unit',
+                block: unit.block || null,
+                reg_type: unit.reg_type || 'Supplementary',
+                status: 'pending',
+                payment_reference: paymentRef || null,
+                submitted_date: new Date().toISOString().split('T')[0],
+                created_at: new Date().toISOString(),
+                program: this.currentUserProfile?.program || 'KRCHN',
+                intake_year: this.currentUserProfile?.intake_year || new Date().getFullYear()
+            }));
+            
+            const { data, error } = await this.supabase
+                .from('student_unit_registrations')
+                .insert(registrations)
+                .select();
+            
+            if (error) throw error;
+            
+            // Clear cache to refresh data
+            this.cachedData.supplementaryRegistrations = [];
+            this.cachedData.failedUnits = [];
+            
+            return { success: true, data: data };
+            
+        } catch (error) {
+            console.error('Error registering supplementary units:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    // Get supplementary exam card data
+    async getSupplementaryExamCard(registrationId) {
+        if (!this.currentUserId) {
+            return { success: false, error: 'User not logged in' };
+        }
+        
+        try {
+            const { data: registration, error } = await this.supabase
+                .from('student_unit_registrations')
+                .select('*')
+                .eq('id', registrationId)
+                .eq('student_id', this.currentUserId)
+                .eq('status', 'approved')
+                .single();
+            
+            if (error) throw error;
+            
+            // Get student profile
+            const profile = this.currentUserProfile || await this.loadUserProfile();
+            
+            return { 
+                success: true, 
+                registration: registration,
+                profile: profile
+            };
+            
+        } catch (error) {
+            console.error('Error getting exam card:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    // === DASHBOARD FUNCTIONS ===
+    
     async getDashboardMetrics() {
         const userId = this.currentUserId;
         
         try {
-            // 🔥 ONE CALL: Get all dashboard data at once
+            // Get all dashboard data at once using RPC
             const { data, error } = await this.supabase.rpc('get_student_dashboard', {
                 p_user_id: userId
             });
             
             if (error) throw error;
             
-            // Get last login info from profile (already included in the call)
+            // Get last login info from profile
             const profile = this.currentUserProfile || {};
             
-            // Also get courses and resources (from cache or separate calls)
+            // Get courses and resources
             const courses = await this.getCourses();
             const resources = await this.getResources();
+            
+            // Get supplementary data
+            const failedUnits = await this.getFailedUnits();
+            const suppRegistrations = await this.getSupplementaryRegistrations();
             
             return {
                 attendance: data.attendance || { rate: 0, verified: 0, total: 0, pending: 0 },
@@ -525,7 +705,11 @@ class Database {
                 courses: courses.length || 0,
                 lastLogin: profile?.last_login || null,
                 lastLogout: profile?.last_logout || null,
-                loginCount: profile?.login_count || 0
+                loginCount: profile?.login_count || 0,
+                // ✅ Supplementary data
+                failedUnits: failedUnits.length || 0,
+                supplementaryRegistrations: suppRegistrations.length || 0,
+                hasSupplementaryEligibility: failedUnits.length > 0
             };
             
         } catch (error) {
@@ -550,26 +734,30 @@ class Database {
             const verifiedCount = logs?.filter(l => l.is_verified === true).length || 0;
             const attendanceRate = totalLogs > 0 ? Math.round((verifiedCount / totalLogs) * 100) : 0;
             
-            // Get last login info
+            // Get profile
             const { data: profile } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('last_login, last_logout, last_activity, login_count')
                 .eq('user_id', userId)
                 .single();
             
-            // Courses count
+            // Courses
             const courses = await this.getCourses();
             const coursesCount = courses.length;
             
-            // Resources count
+            // Resources
             const resources = await this.getResources();
             const resourcesCount = resources.length;
             
-            // Upcoming exams
+            // Exams
             const exams = await this.getExams();
             const upcomingExam = exams
                 .filter(exam => new Date(exam.exam_date) > new Date())
                 .sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date))[0] || null;
+            
+            // Supplementary data
+            const failedUnits = await this.getFailedUnits();
+            const suppRegistrations = await this.getSupplementaryRegistrations();
             
             return {
                 attendance: {
@@ -586,7 +774,10 @@ class Database {
                 courses: coursesCount,
                 lastLogin: profile?.last_login || null,
                 lastLogout: profile?.last_logout || null,
-                loginCount: profile?.login_count || 0
+                loginCount: profile?.login_count || 0,
+                failedUnits: failedUnits.length || 0,
+                supplementaryRegistrations: suppRegistrations.length || 0,
+                hasSupplementaryEligibility: failedUnits.length > 0
             };
             
         } catch (error) {
@@ -1110,12 +1301,15 @@ class Database {
             exams: [],
             clinicalAreas: [],
             resources: [],
-            messages: []
+            messages: [],
+            supplementaryUnits: [],
+            supplementaryRegistrations: [],
+            failedUnits: []
         };
         console.log('🧹 Cache cleared');
     }
     
-    // ✅ NEW: Update last activity timestamp
+    // Update last activity timestamp
     async updateLastActivity() {
         if (!this.currentUserId) return;
         
@@ -1284,3 +1478,5 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('📄 database.js loaded - DOM ready');
     // The main app will call window.db.initialize() when needed
 });
+
+console.log('✅ database.js loaded with Supplementary Registration support!');
