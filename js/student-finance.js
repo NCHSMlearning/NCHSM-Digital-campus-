@@ -1,5 +1,5 @@
 // ============================================================
-// 📊 STUDENT FINANCE MODULE - COMPLETE WITH STK PAYMENT
+// 📊 STUDENT FINANCE MODULE - COMPLETE FIXED VERSION
 // Supports KRCHN (Semesters) and TVET (Terms with Years)
 // ✅ M-Pesa STK Push Integration
 // ✅ Real-time payment status updates
@@ -20,13 +20,13 @@ const studentFinanceState = {
     outstanding: 0,
     payments: [],
     feeStructure: [],
-    feeStructureRaw: [],
+    feeStructureRaw: null,
     voteHeads: [],
     paymentProgress: 0,
     lastUpdated: null,
     isLoaded: false,
-    programType: 'KRCHN',
-    programLevel: 'diploma',
+    programType: 'TVET',
+    programLevel: 'certificate',
     currentPeriod: null,
     semesterFee: 0,
     paidThisSemester: 0,
@@ -45,10 +45,6 @@ const studentFinanceState = {
         status: 'idle'
     }
 };
-
-// ============================================================
-// 🔗 COMMUNICATION WITH SUPER ADMIN MODULE
-// ============================================================
 
 // ============================================================
 // 🔗 COMMUNICATION WITH SUPER ADMIN MODULE - FIXED
@@ -73,7 +69,7 @@ function notifySuperAdmin(eventType, data) {
             window.handleStudentFinanceEvent(eventType, data);
         }
         
-        // Log to admin_events table - FIXED .catch issue
+        // Log to admin_events - FIXED: using then() instead of catch()
         if (typeof supabase !== 'undefined' && supabase) {
             supabase
                 .from('admin_events')
@@ -89,13 +85,12 @@ function notifySuperAdmin(eventType, data) {
                     }
                 })
                 .catch(e => {
-                    // This catch handles any unexpected errors
                     console.warn('⚠️ Admin event logging failed:', e);
                 });
         }
         return true;
     } catch (error) {
-        console.error('❌ Error notifying  Admin:', error);
+        console.error('❌ Error notifying Super Admin:', error);
         return false;
     }
 }
@@ -175,7 +170,7 @@ function updateFinanceBadge(data) {
 }
 
 // ============================================================
-// 🎯 TOGGLE FEE STRUCTURE
+// 🎯 TOGGLE FEE STRUCTURE - FIXED
 // ============================================================
 
 function toggleFeeStructure() {
@@ -183,11 +178,15 @@ function toggleFeeStructure() {
     const toggleBtn = document.getElementById('toggleFeeBtn');
     const toggleText = document.getElementById('toggleFeeText');
     
-    if (!container) return;
+    if (!container) {
+        console.warn('⚠️ studentFeeStructureDisplay not found');
+        return;
+    }
     
     if (container.style.display === 'none' || container.style.display === '') {
         container.style.display = 'block';
         container.style.animation = 'fadeIn 0.3s ease';
+        
         if (toggleBtn) {
             toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="toggleFeeText">Hide Fee Structure</span>';
         }
@@ -196,10 +195,12 @@ function toggleFeeStructure() {
         }
         studentFinanceState.feeStructureVisible = true;
         
-        if (studentFinanceState.feeStructure.length === 0) {
-            loadStudentFinance();
+        // Render the fee structure
+        if (studentFinanceState.feeStructureRaw) {
+            renderFeeStructureData();
         } else {
-            renderFeeStructureData(studentFinanceState.feeStructure);
+            // Try to load from database
+            loadStudentFinance();
         }
         
         setTimeout(() => {
@@ -380,7 +381,7 @@ async function sendPaymentConfirmationEmail(studentId, paymentData) {
 // ============================================================
 
 function getProgramType(program) {
-    if (!program) return 'KRCHN';
+    if (!program) return 'TVET';
     const krchnPrograms = ['KRCHN', 'KRCHN'];
     if (krchnPrograms.includes(program.toUpperCase())) {
         return 'KRCHN';
@@ -550,16 +551,15 @@ function processFeeStructureData(data, programType, programLevel) {
 }
 
 // ============================================================
-// 📄 RENDER FEE STRUCTURE WITH VOTE HEADS
+// 📄 RENDER FEE STRUCTURE WITH VOTE HEADS - FIXED
 // ============================================================
 
-// ============================================================
-// 📄 RENDER FEE STRUCTURE WITH VOTE HEADS - WITH VIEW BUTTONS
-// ============================================================
-
-function renderFeeStructureData(fees, selectedPeriod = null) {
+function renderFeeStructureData() {
     const container = document.getElementById('feeStructureContent');
-    if (!container) return;
+    if (!container) {
+        console.warn('⚠️ feeStructureContent not found');
+        return;
+    }
     
     const displayContainer = document.getElementById('studentFeeStructureDisplay');
     if (displayContainer && displayContainer.style.display === 'none') {
@@ -579,67 +579,21 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
         return;
     }
     
-    const programType = studentFinanceState.programType || 'KRCHN';
-    const programLevel = studentFinanceState.programLevel || 'diploma';
-    const periodLabel = getPeriodLabel(programType);
-    
-    // If feeStructureRaw is empty, fetch from database
-    if (!studentFinanceState.feeStructureRaw || studentFinanceState.feeStructureRaw.periods.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 30px; color: #94a3b8;">
-                <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
-                <p style="margin: 0; font-weight: 500;">Loading fee structure...</p>
-            </div>
-        `;
-        return;
-    }
+    const programType = studentFinanceState.programType || 'TVET';
+    const programLevel = studentFinanceState.programLevel || 'certificate';
+    const periodLabel = programType === 'KRCHN' ? 'Semester' : 'Term';
     
     const { periods, voteHeads, periodTotals } = data;
     
-    // Filter periods if selected
-    let filteredPeriods = periods;
-    let filterMessage = '';
-    
-    if (selectedPeriod) {
-        filteredPeriods = periods.filter(p => 
-            p.name === selectedPeriod || 
-            p.name.includes(selectedPeriod) || 
-            selectedPeriod.includes(p.name)
-        );
-        if (filteredPeriods.length === 0) {
-            filteredPeriods = periods;
-            filterMessage = `<div style="background: #fef3c7; padding: 8px 16px; border-radius: 8px; margin-bottom: 12px; color: #92400e; border: 1px solid #f59e0b;">
-                <i class="fas fa-info-circle"></i> Showing all periods. No exact match for "${selectedPeriod}".
-            </div>`;
-        } else {
-            filterMessage = `<div style="background: #dbeafe; padding: 8px 16px; border-radius: 8px; margin-bottom: 12px; color: #1e40af; border: 1px solid #93c5fd;">
-                <i class="fas fa-filter"></i> Showing fee structure for: <strong>${selectedPeriod}</strong>
-                <button onclick="clearPeriodFilter()" style="margin-left: 12px; background: transparent; border: 1px solid #93c5fd; padding: 2px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">Clear</button>
-            </div>`;
-        }
-    }
-    
-    // Build filtered vote heads
-    const filteredVoteHeads = voteHeads.map(vh => {
-        const amounts = filteredPeriods.map(period => {
-            const comp = period.components.find(c => c.label === vh.label);
-            return comp ? comp.amount : 0;
-        });
-        return { label: vh.label, amounts: amounts };
-    }).filter(vh => vh.amounts.some(a => a > 0));
-    
-    const filteredTotals = filteredPeriods.map(p => p.amount);
-    
     // Build the table HTML with View buttons
     let html = `
-        ${filterMessage}
         <div style="overflow-x: auto;">
             <table class="fee-structure-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
                         <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; width: 50px;">S/N</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">VOTE HEADS</th>
-                        ${filteredPeriods.map((p, index) => `
+                        ${periods.map((p, index) => `
                             <th style="padding: 12px 16px; text-align: right; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; min-width: 100px;">
                                 ${p.name.replace('Year ', 'Y').replace(' - ', ' ')}
                                 ${index === 0 ? ' <span style="background: #4C1D95; color: white; padding: 2px 6px; border-radius: 10px; font-size: 7px;">Current</span>' : ''}
@@ -653,7 +607,10 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     
     // Render each vote head with View button
     let sn = 0;
-    filteredVoteHeads.forEach((vh) => {
+    voteHeads.forEach((vh) => {
+        const hasAnyAmount = vh.amounts.some(a => a > 0);
+        if (!hasAnyAmount) return;
+        
         sn++;
         html += `
             <tr>
@@ -667,8 +624,8 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
                     </td>
                 `).join('')}
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; text-align: center;">
-                    <!-- ✅ VIEW VOTE HEAD BUTTON - This is where it appears -->
-                    <button onclick="viewVoteHeadDetails('${vh.label}')" class="action-btn view" title="View details for ${vh.label}">
+                    <!-- ✅ VIEW VOTE HEAD BUTTON -->
+                    <button onclick="viewVoteHeadDetails('${vh.label}')" class="action-btn view" style="background: #dbeafe; color: #1e40af; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
                         <i class="fas fa-eye"></i> View
                     </button>
                 </td>
@@ -684,7 +641,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
                 <i class="fas fa-calculator" style="color: #4C1D95; margin-right: 6px;"></i> TOTAL
                 <span style="background: #4C1D95; color: white; padding: 2px 8px; border-radius: 12px; font-size: 9px; margin-left: 8px;">GRAND TOTAL</span>
             </td>
-            ${filteredTotals.map(total => `
+            ${periodTotals.map(total => `
                 <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 700; color: #4C1D95; font-size: 14px;">
                     KES ${total.toLocaleString()}
                 </td>
@@ -698,7 +655,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     `;
     
     // Hostel row if applicable
-    const hasHostel = filteredPeriods.some(p => p.hostel > 0);
+    const hasHostel = periods.some(p => p.hostel > 0);
     if (hasHostel) {
         html += `
             <tr style="background: #fffbeb; border-bottom: 1px solid #fef3c7;">
@@ -706,7 +663,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 500; color: #92400e;">
                     🏠 HOSTEL (optional) NO MEALS
                 </td>
-                ${filteredPeriods.map(p => `
+                ${periods.map(p => `
                     <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 500; color: #92400e;">
                         ${p.hostel > 0 ? `KES ${p.hostel.toLocaleString()}` : '-----------'}
                     </td>
@@ -725,13 +682,13 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
         <div style="margin-top: 16px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div>
                 <span style="font-size: 12px; color: #64748b;">
-                    📚 Number of ${periodLabel}s: <strong>${filteredPeriods.length}</strong>
+                    📚 Number of ${periodLabel}s: <strong>${periods.length}</strong>
                 </span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 16px;">
                     ⏳ Duration: <strong>${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</strong>
                 </span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 16px;">
-                    📋 Vote Heads: <strong>${filteredVoteHeads.length}</strong>
+                    📋 Vote Heads: <strong>${voteHeads.filter(v => v.amounts.some(a => a > 0)).length}</strong>
                 </span>
             </div>
             <div>
@@ -758,12 +715,24 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     }
     
     container.innerHTML = html;
+    container.style.display = 'block';
+    
+    // Hide loading state
+    const loadingState = document.getElementById('feeLoadingState');
+    if (loadingState) {
+        loadingState.style.display = 'none';
+    }
+    
+    console.log('✅ Fee structure rendered with View buttons');
 }
+
 // ============================================================
-// 👁️ VIEW FUNCTIONS
+// 👁️ VIEW FUNCTIONS - FIXED
 // ============================================================
 
 function viewVoteHeadDetails(voteHeadName) {
+    console.log('👁️ Viewing vote head:', voteHeadName);
+    
     const data = studentFinanceState.feeStructureRaw;
     if (!data || !data.voteHeads) {
         showToast('❌ Fee data not loaded', 'error');
@@ -803,13 +772,17 @@ function viewVoteHeadDetails(voteHeadName) {
         </div>
     `;
     
-    Swal.fire({
-        title: 'Vote Head Details',
-        html: detailsHtml,
-        confirmButtonColor: '#4C1D95',
-        confirmButtonText: 'Close',
-        width: 500
-    });
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Vote Head Details',
+            html: detailsHtml,
+            confirmButtonColor: '#4C1D95',
+            confirmButtonText: 'Close',
+            width: 500
+        });
+    } else {
+        alert(detailsHtml.replace(/<[^>]*>/g, ''));
+    }
 }
 
 function viewFullFeeStructure() {
@@ -820,8 +793,7 @@ function viewFullFeeStructure() {
     }
     
     const { periods, voteHeads } = data;
-    const programType = studentFinanceState.programType || 'KRCHN';
-    const periodLabel = getPeriodLabel(programType);
+    const programType = studentFinanceState.programType || 'TVET';
     
     let tableHtml = `
         <div style="text-align: left; overflow-x: auto;">
@@ -880,14 +852,18 @@ function viewFullFeeStructure() {
         </div>
     `;
     
-    Swal.fire({
-        title: `📋 Full Fee Structure - ${programType}`,
-        html: tableHtml,
-        confirmButtonColor: '#4C1D95',
-        confirmButtonText: 'Close',
-        width: 800,
-        padding: '20px'
-    });
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: `📋 Full Fee Structure - ${programType}`,
+            html: tableHtml,
+            confirmButtonColor: '#4C1D95',
+            confirmButtonText: 'Close',
+            width: 800,
+            padding: '20px'
+        });
+    } else {
+        alert(tableHtml.replace(/<[^>]*>/g, ''));
+    }
 }
 
 // ============================================================
@@ -1031,7 +1007,7 @@ async function fetchFinanceDataFromSupabase(user) {
         }
 
         const studentId = user.id;
-        const program = user.program || 'KRCHN';
+        const program = user.program || 'CPOTT';
         const programType = getProgramType(program);
         const programLevel = getProgramLevel(program);
         const periods = getPeriods(programType, programLevel);
@@ -1207,7 +1183,7 @@ function getMockFinanceData(user) {
         student: {
             name: user?.full_name || user?.name || 'Student',
             id: user?.studentId || user?.id || 'N/A',
-            program: user?.program || 'KRCHN',
+            program: user?.program || 'CPOTT',
             intake: user?.intake || '2026'
         }
     };
@@ -1234,9 +1210,10 @@ function updateFinanceUI(data) {
     renderPayments(data.payments || []);
     renderPaymentTimeline(data.feeStructure || []);
     
+    // Render fee structure if visible
     const container = document.getElementById('studentFeeStructureDisplay');
     if (container && container.style.display !== 'none') {
-        renderFeeStructureData(data.feeStructure || []);
+        renderFeeStructureData();
     }
     
     const lastUpdated = document.getElementById('financeLastUpdated');
@@ -1332,8 +1309,8 @@ function renderPaymentTimeline(feeStructure) {
     const timeline = document.getElementById('paymentTimeline');
     if (!timeline) return;
     
-    const programType = studentFinanceState.programType || 'KRCHN';
-    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const programType = studentFinanceState.programType || 'TVET';
+    const programLevel = studentFinanceState.programLevel || 'certificate';
     const periodLabel = getPeriodLabel(programType);
     
     const timelineLabel = document.getElementById('timelineProgramLabel');
@@ -1503,7 +1480,7 @@ function viewFeeStructure(periodName) {
         studentFinanceState.feeStructureVisible = true;
     }
     
-    renderFeeStructureData(studentFinanceState.feeStructure, periodName);
+    renderFeeStructureData();
     
     setTimeout(() => {
         container.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1514,18 +1491,17 @@ function viewFeeStructure(periodName) {
 
 function clearPeriodFilter() {
     studentFinanceState.selectedPeriod = null;
-    renderFeeStructureData(studentFinanceState.feeStructure);
+    renderFeeStructureData();
     showToast('Fee filter cleared', 'info');
 }
 
 function applyFeeFilters() {
-    // This is handled by renderFeeStructureData with selectedPeriod
-    renderFeeStructureData(studentFinanceState.feeStructure, studentFinanceState.selectedPeriod);
+    renderFeeStructureData();
 }
 
 function resetFeeFilters() {
     studentFinanceState.selectedPeriod = null;
-    renderFeeStructureData(studentFinanceState.feeStructure);
+    renderFeeStructureData();
     showToast('Filters reset', 'info');
 }
 
@@ -1563,8 +1539,8 @@ function downloadStudentStatement() {
 }
 
 function viewStudentInvoice() {
-    const programType = studentFinanceState.programType || 'KRCHN';
-    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const programType = studentFinanceState.programType || 'TVET';
+    const programLevel = studentFinanceState.programLevel || 'certificate';
     const periods = getPeriods(programType, programLevel);
     
     let invoicesHtml = '';
@@ -1733,8 +1709,8 @@ function openPaymentModal() {
     // Populate periods
     const periodSelect = document.getElementById('paymentPeriodSelect');
     if (periodSelect) {
-        const programType = studentFinanceState.programType || 'KRCHN';
-        const programLevel = studentFinanceState.programLevel || 'diploma';
+        const programType = studentFinanceState.programType || 'TVET';
+        const programLevel = studentFinanceState.programLevel || 'certificate';
         const periods = getPeriods(programType, programLevel);
         const currentPeriod = studentFinanceState.currentPeriod || periods[0];
         
@@ -2272,10 +2248,10 @@ document.addEventListener('DOMContentLoaded', function() {
             @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
             .action-btn { background: transparent; border: none; padding: 4px 8px; margin: 0 2px; cursor: pointer; font-size: 12px; border-radius: 4px; transition: all 0.2s ease; }
-            .action-btn.view { color: #4C1D95; }
-            .action-btn.view:hover { background: #ede9fe; }
-            .action-btn.download { color: #059669; }
-            .action-btn.download:hover { background: #d1fae5; }
+            .action-btn.view { color: #1e40af; background: #dbeafe; padding: 5px 12px; border-radius: 6px; }
+            .action-btn.view:hover { background: #bfdbfe; }
+            .action-btn.download { color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 6px; }
+            .action-btn.download:hover { background: #a7f3d0; }
             .action-btn.details { background: #4C1D95; color: white; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; }
             .action-btn.details:hover { background: #6d28d9; }
             .payment-method-selected { border-color: #4C1D95 !important; background: #ede9fe !important; box-shadow: 0 0 0 3px rgba(76,29,149,0.1); }
@@ -2289,7 +2265,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.appendChild(style);
     }
     
-    // Also expose functions globally for HTML onclick
+    // Expose functions globally for HTML onclick
     window.toggleFeeStructure = toggleFeeStructure;
     window.loadStudentFinance = loadStudentFinance;
     window.openPaymentModal = openPaymentModal;
@@ -2310,9 +2286,12 @@ document.addEventListener('DOMContentLoaded', function() {
     window.clearPeriodFilter = clearPeriodFilter;
     window.viewVoteHeadDetails = viewVoteHeadDetails;
     window.viewFullFeeStructure = viewFullFeeStructure;
+    window.renderFeeStructureData = renderFeeStructureData;
+    window.notifySuperAdmin = notifySuperAdmin;
 });
 
 console.log('✅ Student Finance module loaded successfully!');
 console.log('📊 Supports KRCHN (Semesters) and TVET (Terms)');
 console.log('📋 Vote heads loaded from database');
 console.log('🔗 Communicates with Super Admin Module');
+console.log('👁️ View buttons available in the ACTIONS column');
