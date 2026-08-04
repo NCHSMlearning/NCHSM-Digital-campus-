@@ -12354,6 +12354,7 @@ function updateVisualization() {
 
 // =====================================================
 // UNIT REGISTRATIONS & APPROVALS - COMPLETE SCRIPT
+// WITH SUPPLEMENTARY REGISTRATION SUPPORT
 // MATCHES THE UPDATED HTML SECTION
 // =====================================================
 
@@ -12455,6 +12456,7 @@ async function loadUnitDashboard() {
     await loadUnitRegistrationStats();
     await loadUnitPendingRegistrations();
     await loadGroupedRegistrations();
+    await loadApprovedRegistrations();
 }
 
 // =====================================================
@@ -12470,6 +12472,11 @@ async function loadUnitRegistrationStats() {
         if (!error && data) {
             const pending = data.filter(r => r.status === 'pending').length;
             const approved = data.filter(r => r.status === 'approved').length;
+            const supplementary = data.filter(r => 
+                r.reg_type === 'Supplementary' || 
+                r.reg_type === 'Resit' || 
+                r.reg_type === 'Retake'
+            ).length;
             
             // Update summary cards
             const pendingEl = document.getElementById('pendingRegistrations');
@@ -12495,6 +12502,19 @@ async function loadUnitRegistrationStats() {
             // Update student group count
             const groupCount = document.getElementById('studentGroupCount');
             if (groupCount) groupCount.textContent = uniqueStudents.size;
+            
+            // Update supplementary badge in tab
+            const suppBadge = document.getElementById('suppTabBadge');
+            if (suppBadge) {
+                if (pending > 0) {
+                    suppBadge.textContent = pending;
+                    suppBadge.style.display = 'inline-block';
+                } else {
+                    suppBadge.style.display = 'none';
+                }
+            }
+            
+            console.log(`📊 Stats: ${pending} pending, ${approved} approved, ${supplementary} supplementary`);
         }
     } catch (error) {
         console.error('Error loading registration stats:', error);
@@ -12502,7 +12522,7 @@ async function loadUnitRegistrationStats() {
 }
 
 // =====================================================
-// PENDING REGISTRATIONS - WITH TVET/KRCHN FILTER
+// PENDING REGISTRATIONS - WITH SUPPLEMENTARY FILTER
 // =====================================================
 
 async function loadUnitPendingRegistrations() {
@@ -12650,13 +12670,14 @@ async function loadUnitPendingRegistrations() {
                 unit_code: reg.unit_code,
                 unit_name: reg.unit_name,
                 block: reg.block,
+                reg_type: reg.reg_type || 'Normal',
                 submitted_date: reg.submitted_date
             });
         }
         
         const sortedGroups = Object.values(groupedByStudent).sort((a, b) => a.name.localeCompare(b.name));
         
-        // Build HTML
+        // Build HTML with Supplementary support
         let html = `
             <!-- Filter Controls -->
             <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
@@ -12673,10 +12694,15 @@ async function loadUnitPendingRegistrations() {
                     <button onclick="filterPendingByProgram('TVET')" id="pendingFilterTVET" class="pending-filter-btn" style="padding: 6px 16px; border: 2px solid #e5e7eb; border-radius: 20px; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
                         <i class="fas fa-tools"></i> 🔧 TVET
                     </button>
+                    <button onclick="filterPendingByProgram('supplementary')" id="pendingFilterSupplementary" class="pending-filter-btn" style="padding: 6px 16px; border: 2px solid #B45309; border-radius: 20px; background: #fef3c7; color: #92400e; cursor: pointer; font-weight: 500; font-size: 12px;">
+                        <i class="fas fa-redo-alt"></i> 🔄 Supplementary
+                    </button>
                 </div>
                 <div style="font-size: 13px; color: #4b5563; background: #f8fafc; padding: 6px 14px; border-radius: 20px; border: 1px solid #e5e7eb;">
                     <i class="fas fa-users"></i> ${sortedGroups.length} students · 
                     <i class="fas fa-book"></i> ${window.pendingRegistrationsData.length} units
+                    ${window.pendingRegistrationsData.filter(r => r.reg_type === 'Supplementary' || r.reg_type === 'Resit' || r.reg_type === 'Retake').length > 0 ? 
+                        ` · <span style="color: #B45309; font-weight: 600;">🔄 ${window.pendingRegistrationsData.filter(r => r.reg_type === 'Supplementary' || r.reg_type === 'Resit' || r.reg_type === 'Retake').length} supplementary</span>` : ''}
                 </div>
             </div>
             
@@ -12693,9 +12719,20 @@ async function loadUnitPendingRegistrations() {
             const unitCount = student.units.length;
             const isMulti = unitCount > 1;
             const isUnknown = student.name.includes('Unknown') || student.name.includes('⚠️');
+            
+            // Check if any units are supplementary
+            const hasSupplementary = student.units.some(u => 
+                u.reg_type === 'Supplementary' || 
+                u.reg_type === 'Resit' || 
+                u.reg_type === 'Retake'
+            );
+            
             const programBadge = student.isTVET ? 
                 '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">TVET</span>' :
                 '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">KRCHN</span>';
+            
+            const suppBadge = hasSupplementary ? 
+                '<span style="background: #B45309; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 4px;">🔄 Supplementary</span>' : '';
             
             html += `
                 <div class="student-group-card" style="
@@ -12706,10 +12743,12 @@ async function loadUnitPendingRegistrations() {
                     padding: 16px; 
                     box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
                     transition: all 0.2s;
+                    ${hasSupplementary ? 'border-left: 4px solid #B45309;' : ''}
                     ${isUnknown ? 'border-left: 4px solid #f59e0b;' : ''}
                 "
                 data-program="${window.escapeHtml(student.program)}"
                 data-is-tvet="${student.isTVET}"
+                data-has-supp="${hasSupplementary}"
                 onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
                 onmouseout="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)'">
                     
@@ -12720,6 +12759,7 @@ async function loadUnitPendingRegistrations() {
                                 <i class="fas fa-user-circle" style="color: #4C1D95;"></i> 
                                 ${window.escapeHtml(student.name)}
                                 ${programBadge}
+                                ${suppBadge}
                             </strong>
                             <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px;">
                                 <span style="font-size: 12px; color: #6b7280;">
@@ -12791,6 +12831,11 @@ async function loadUnitPendingRegistrations() {
             `;
             
             for (const unit of student.units) {
+                const isSupplementary = unit.reg_type === 'Supplementary' || unit.reg_type === 'Resit' || unit.reg_type === 'Retake';
+                const borderColor = isSupplementary ? '#B45309' : '#f59e0b';
+                const regBadge = isSupplementary ? 
+                    `<span style="background: #B45309; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; margin-left: 4px;">${unit.reg_type}</span>` : '';
+                
                 html += `
                     <div class="unit-item" style="
                         display: flex; 
@@ -12799,7 +12844,7 @@ async function loadUnitPendingRegistrations() {
                         padding: 8px 12px; 
                         background: #f8fafc; 
                         border-radius: 8px; 
-                        border-left: 3px solid #f59e0b; 
+                        border-left: 3px solid ${borderColor}; 
                         transition: all 0.2s;
                     "
                     onmouseover="this.style.background='#f1f5f9'"
@@ -12808,6 +12853,7 @@ async function loadUnitPendingRegistrations() {
                         <div style="flex: 1; min-width: 0;">
                             <div>
                                 <strong style="font-size: 13px; color: #1e3a5f;">${window.escapeHtml(unit.unit_code)}</strong>
+                                ${regBadge}
                                 <span style="font-size: 12px; color: #374151; margin-left: 6px;">${window.escapeHtml(unit.unit_name)}</span>
                             </div>
                             <div style="font-size: 11px; color: #6b7280;">
@@ -12884,6 +12930,8 @@ async function loadUnitPendingRegistrations() {
             <div style="margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; font-size: 12px; color: #6b7280; text-align: center; border: 1px solid #e5e7eb;">
                 <i class="fas fa-info-circle"></i> 
                 Total: <strong>${window.pendingRegistrationsData.length}</strong> pending unit(s) from <strong>${sortedGroups.length}</strong> student(s)
+                ${window.pendingRegistrationsData.filter(r => r.reg_type === 'Supplementary' || r.reg_type === 'Resit' || r.reg_type === 'Retake').length > 0 ? 
+                    ` · <span style="color: #B45309; font-weight: 600;">🔄 ${window.pendingRegistrationsData.filter(r => r.reg_type === 'Supplementary' || r.reg_type === 'Resit' || r.reg_type === 'Retake').length} supplementary</span>` : ''}
             </div>
         `;
         
@@ -12900,7 +12948,7 @@ async function loadUnitPendingRegistrations() {
             pendingCountEl.textContent = window.pendingRegistrationsData.length;
         }
         
-        console.log('✅ Display complete - grouped by student with TVET/KRCHN filter!');
+        console.log('✅ Display complete - grouped by student with TVET/KRCHN/Supplementary filter!');
         
     } catch (error) {
         console.error('❌ Error loading pending registrations:', error);
@@ -12934,9 +12982,9 @@ function filterPendingByProgram(type) {
     const activeBtn = document.getElementById(`pendingFilter${type}`);
     if (activeBtn) {
         activeBtn.classList.add('active');
-        activeBtn.style.background = '#4C1D95';
+        activeBtn.style.background = type === 'supplementary' ? '#B45309' : '#4C1D95';
         activeBtn.style.color = 'white';
-        activeBtn.style.borderColor = '#4C1D95';
+        activeBtn.style.borderColor = type === 'supplementary' ? '#B45309' : '#4C1D95';
     }
     
     renderFilteredPendingRegistrations();
@@ -12951,12 +12999,15 @@ function renderFilteredPendingRegistrations() {
     cards.forEach(card => {
         const program = card.dataset.program || '';
         const isTVET = window.isTVETProgram(program);
+        const hasSupp = card.dataset.hasSupp === 'true';
         
         if (window.pendingProgramFilter === 'all') {
             card.style.display = 'block';
         } else if (window.pendingProgramFilter === 'TVET' && isTVET) {
             card.style.display = 'block';
         } else if (window.pendingProgramFilter === 'KRCHN' && !isTVET) {
+            card.style.display = 'block';
+        } else if (window.pendingProgramFilter === 'supplementary' && hasSupp) {
             card.style.display = 'block';
         } else {
             card.style.display = 'none';
@@ -13094,7 +13145,7 @@ async function bulkRejectSelectedUnits() {
 }
 
 // =====================================================
-// APPROVED REGISTRATIONS - COMPLETE FIX
+// APPROVED REGISTRATIONS - WITH SUPPLEMENTARY SUPPORT
 // =====================================================
 
 async function loadApprovedRegistrations() {
@@ -13149,6 +13200,9 @@ async function loadApprovedRegistrations() {
         for (const reg of registrations) {
             const studentName = studentMap[reg.student_id] || 'Unknown';
             const approvalDate = reg.approval_date ? new Date(reg.approval_date).toLocaleDateString() : 'N/A';
+            const isSupplementary = reg.reg_type === 'Supplementary' || reg.reg_type === 'Resit' || reg.reg_type === 'Retake';
+            const regTypeColor = isSupplementary ? '#B45309' : '#065f46';
+            const regTypeBg = isSupplementary ? '#fef3c7' : '#d1fae5';
             
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
@@ -13160,7 +13214,11 @@ async function loadApprovedRegistrations() {
                     <td><span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.unit_code)}</span></td>
                     <td>${window.escapeHtml(reg.unit_name)}</td>
                     <td style="text-align: center;"><span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.block)}</span></td>
-                    <td style="text-align: center;"><span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.reg_type || 'Normal')}</span></td>
+                    <td style="text-align: center;">
+                        <span style="background: ${regTypeBg}; color: ${regTypeColor}; padding: 2px 10px; border-radius: 12px; font-weight: 500;">
+                            ${window.escapeHtml(reg.reg_type || 'Normal')}
+                        </span>
+                    </td>
                     <td style="text-align: center; font-size: 12px;">${approvalDate}</td>
                     <td style="font-size: 12px; color: #6b7280; text-align: center;">System</td>
                     <td style="text-align: center;">
@@ -13292,7 +13350,7 @@ async function bulkDeapproveSelected() {
 }
 
 // =====================================================
-// GROUPED REGISTRATIONS - STUDENT GROUPING
+// GROUPED REGISTRATIONS - WITH SUPPLEMENTARY SUPPORT
 // =====================================================
 
 async function loadGroupedRegistrations() {
@@ -13388,6 +13446,11 @@ function renderGroupedRegistrations(data) {
         const allApproved = regs.every(r => r.status === 'approved');
         const hasPending = regs.some(r => r.status === 'pending');
         const hasRejected = regs.some(r => r.status === 'rejected');
+        const hasSupplementary = regs.some(r => 
+            r.reg_type === 'Supplementary' || 
+            r.reg_type === 'Resit' || 
+            r.reg_type === 'Retake'
+        );
         
         let statusColor = '#10b981';
         let statusLabel = 'All Approved';
@@ -13414,8 +13477,17 @@ function renderGroupedRegistrations(data) {
         };
         const progColor = progColors[group.program] || '#6b7280';
         
+        // Count supplementary units
+        const suppCount = regs.filter(r => 
+            r.reg_type === 'Supplementary' || 
+            r.reg_type === 'Resit' || 
+            r.reg_type === 'Retake'
+        ).length;
+        const suppBadge = suppCount > 0 ? 
+            `<span style="background: #B45309; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 5px;">🔄 ${suppCount} Supp</span>` : '';
+        
         html += `
-            <div class="student-group-card" data-student-id="${key}" data-program="${group.program}" data-block="${group.block}" style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: white; transition: all 0.2s;">
+            <div class="student-group-card" data-student-id="${key}" data-program="${group.program}" data-block="${group.block}" data-has-supp="${hasSupplementary}" style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: white; transition: all 0.2s; ${hasSupplementary ? 'border-left: 4px solid #B45309;' : ''}">
                 
                 <!-- GROUP HEADER -->
                 <div onclick="toggleGroup('${key}')" style="padding: 14px 18px; background: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
@@ -13431,6 +13503,7 @@ function renderGroupedRegistrations(data) {
                             <div style="font-weight: 600; color: #1e293b; font-size: 15px;">${window.escapeHtml(group.name)}</div>
                             <div style="font-size: 12px; color: #94a3b8;">
                                 ${key !== 'unknown_student' && key !== 'null_student' ? key.substring(0, 8) : 'N/A'} • ${window.escapeHtml(group.program)} • ${window.escapeHtml(group.block)}
+                                ${suppBadge}
                             </div>
                         </div>
                     </div>
@@ -13458,6 +13531,7 @@ function renderGroupedRegistrations(data) {
                                 <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569;">Unit Code</th>
                                 <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569;">Unit Name</th>
                                 <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Type</th>
+                                <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Reg Type</th>
                                 <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Status</th>
                                 <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Date</th>
                                 <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
@@ -13479,14 +13553,23 @@ function renderGroupedRegistrations(data) {
             };
             const statusBg = statusColors[reg.status] || '#6b7280';
             
+            const isSupplementary = reg.reg_type === 'Supplementary' || reg.reg_type === 'Resit' || reg.reg_type === 'Retake';
+            const regTypeColor = isSupplementary ? '#B45309' : '#4C1D95';
+            const regTypeBg = isSupplementary ? '#fef3c7' : '#e0e7ff';
+            
             html += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
                     <td style="padding: 8px 12px; font-weight: 500; color: #4C1D95;">${window.escapeHtml(reg.unit_code)}</td>
                     <td style="padding: 8px 12px;">${window.escapeHtml(reg.unit_name)}</td>
                     <td style="padding: 8px 12px; text-align: center;">
-                        <span style="background: ${reg.reg_type === 'Core' ? '#dbeafe' : '#f3e8ff'}; color: ${reg.reg_type === 'Core' ? '#1e40af' : '#6d28d9'}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
-                            ${reg.reg_type || 'Core'}
+                        <span style="background: ${reg.unit_type === 'Core' ? '#dbeafe' : '#f3e8ff'}; color: ${reg.unit_type === 'Core' ? '#1e40af' : '#6d28d9'}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
+                            ${reg.unit_type || 'Core'}
+                        </span>
+                    </td>
+                    <td style="padding: 8px 12px; text-align: center;">
+                        <span style="background: ${regTypeBg}; color: ${regTypeColor}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
+                            ${window.escapeHtml(reg.reg_type || 'Normal')}
                         </span>
                     </td>
                     <td style="padding: 8px 12px; text-align: center;">
@@ -13691,7 +13774,7 @@ function viewRegistrationDetails(regId) {
 }
 
 // =====================================================
-// QUICK FILTER FUNCTIONS
+// QUICK FILTER FUNCTIONS - WITH SUPPLEMENTARY SUPPORT
 // =====================================================
 
 function filterUnitRegistrations(type) {
@@ -13705,12 +13788,13 @@ function filterUnitRegistrations(type) {
         'all': 'viewAllBtn',
         'krchn': 'viewKrchnBtn',
         'tvet': 'viewTvetBtn',
-        'pending': 'viewPendingBtn'
+        'pending': 'viewPendingBtn',
+        'supplementary': 'viewSuppBtn'
     };
     const activeBtn = document.getElementById(btnMap[type]);
     if (activeBtn) {
         activeBtn.classList.add('active');
-        activeBtn.style.background = '#4C1D95';
+        activeBtn.style.background = type === 'supplementary' ? '#B45309' : '#4C1D95';
         activeBtn.style.color = 'white';
     }
     
@@ -13721,6 +13805,12 @@ function filterUnitRegistrations(type) {
         filtered = window.registrationsData.filter(r => r.program && window.isTVETProgram(r.program));
     } else if (type === 'pending') {
         filtered = window.registrationsData.filter(r => r.status === 'pending');
+    } else if (type === 'supplementary') {
+        filtered = window.registrationsData.filter(r => 
+            r.reg_type === 'Supplementary' || 
+            r.reg_type === 'Resit' || 
+            r.reg_type === 'Retake'
+        );
     }
     
     document.getElementById('registrationsFilterCount').textContent = filtered.length;
@@ -13732,6 +13822,7 @@ function filterGroupedRegistrations() {
     const program = document.getElementById('groupedProgramFilter')?.value || 'all';
     const block = document.getElementById('groupedBlockFilter')?.value || 'all';
     const status = document.getElementById('groupedStatusFilter')?.value || 'all';
+    const regType = document.getElementById('groupedRegTypeFilter')?.value || 'all';
     
     let filtered = window.registrationsData;
     
@@ -13756,6 +13847,10 @@ function filterGroupedRegistrations() {
         filtered = filtered.filter(r => r.status === status);
     }
     
+    if (regType !== 'all') {
+        filtered = filtered.filter(r => r.reg_type === regType);
+    }
+    
     document.getElementById('registrationsFilterCount').textContent = filtered.length;
     renderGroupedRegistrations(filtered);
 }
@@ -13765,9 +13860,9 @@ function filterGroupedRegistrations() {
 // =====================================================
 
 function exportGroupedRegistrations() {
-    let csv = 'Student ID,Student Name,Program,Block,Unit Code,Unit Name,Status,Registration Date\n';
+    let csv = 'Student ID,Student Name,Program,Block,Unit Code,Unit Name,Registration Type,Status,Registration Date\n';
     window.registrationsData.forEach(reg => {
-        csv += `${reg.student_id || 'N/A'},${reg.student_name || 'Unknown'},${reg.program || 'N/A'},${reg.block || 'N/A'},${reg.unit_code || 'N/A'},${reg.unit_name || 'N/A'},${reg.status || 'N/A'},${reg.submitted_date || 'N/A'}\n`;
+        csv += `${reg.student_id || 'N/A'},${reg.student_name || 'Unknown'},${reg.program || 'N/A'},${reg.block || 'N/A'},${reg.unit_code || 'N/A'},${reg.unit_name || 'N/A'},${reg.reg_type || 'Normal'},${reg.status || 'N/A'},${reg.submitted_date || 'N/A'}\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -13798,119 +13893,47 @@ function togglePendingList() {
 }
 
 // =====================================================
-// EXPOSE GLOBALLY - Only if not already defined
+// EXPOSE GLOBALLY
 // =====================================================
 
-if (typeof window.loadUnitDashboard === 'undefined') {
-    window.loadUnitDashboard = loadUnitDashboard;
-}
-if (typeof window.loadUnitRegistrationStats === 'undefined') {
-    window.loadUnitRegistrationStats = loadUnitRegistrationStats;
-}
-if (typeof window.loadUnitPendingRegistrations === 'undefined') {
-    window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
-}
-if (typeof window.loadApprovedRegistrations === 'undefined') {
-    window.loadApprovedRegistrations = loadApprovedRegistrations;
-}
-if (typeof window.loadGroupedRegistrations === 'undefined') {
-    window.loadGroupedRegistrations = loadGroupedRegistrations;
-}
-if (typeof window.filterApprovedRegistrations === 'undefined') {
-    window.filterApprovedRegistrations = filterApprovedRegistrations;
-}
-if (typeof window.exportApprovedRegistrations === 'undefined') {
-    window.exportApprovedRegistrations = exportApprovedRegistrations;
-}
-if (typeof window.exportGroupedRegistrations === 'undefined') {
-    window.exportGroupedRegistrations = exportGroupedRegistrations;
-}
-if (typeof window.deapproveSingleRegistration === 'undefined') {
-    window.deapproveSingleRegistration = deapproveSingleRegistration;
-}
-if (typeof window.bulkDeapproveSelected === 'undefined') {
-    window.bulkDeapproveSelected = bulkDeapproveSelected;
-}
-if (typeof window.toggleSelectAllApproved === 'undefined') {
-    window.toggleSelectAllApproved = toggleSelectAllApproved;
-}
-if (typeof window.updateApprovedSelectedCount === 'undefined') {
-    window.updateApprovedSelectedCount = updateApprovedSelectedCount;
-}
-if (typeof window.selectAllPendingUnits === 'undefined') {
-    window.selectAllPendingUnits = selectAllPendingUnits;
-}
-if (typeof window.clearAllUnitSelections === 'undefined') {
-    window.clearAllUnitSelections = clearAllUnitSelections;
-}
-if (typeof window.updateSelectedUnitsCount === 'undefined') {
-    window.updateSelectedUnitsCount = updateSelectedUnitsCount;
-}
-if (typeof window.approveSingleUnitRecord === 'undefined') {
-    window.approveSingleUnitRecord = approveSingleUnitRecord;
-}
-if (typeof window.rejectSingleUnitRecord === 'undefined') {
-    window.rejectSingleUnitRecord = rejectSingleUnitRecord;
-}
-if (typeof window.approveStudentAllUnits === 'undefined') {
-    window.approveStudentAllUnits = approveStudentAllUnits;
-}
-if (typeof window.rejectStudentAllUnits === 'undefined') {
-    window.rejectStudentAllUnits = rejectStudentAllUnits;
-}
-if (typeof window.bulkApproveSelectedUnits === 'undefined') {
-    window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
-}
-if (typeof window.bulkRejectSelectedUnits === 'undefined') {
-    window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
-}
-if (typeof window.filterPendingByProgram === 'undefined') {
-    window.filterPendingByProgram = filterPendingByProgram;
-}
-if (typeof window.renderFilteredPendingRegistrations === 'undefined') {
-    window.renderFilteredPendingRegistrations = renderFilteredPendingRegistrations;
-}
-if (typeof window.filterUnitRegistrations === 'undefined') {
-    window.filterUnitRegistrations = filterUnitRegistrations;
-}
-if (typeof window.filterGroupedRegistrations === 'undefined') {
-    window.filterGroupedRegistrations = filterGroupedRegistrations;
-}
-if (typeof window.toggleGroup === 'undefined') {
-    window.toggleGroup = toggleGroup;
-}
-if (typeof window.expandAllGroups === 'undefined') {
-    window.expandAllGroups = expandAllGroups;
-}
-if (typeof window.collapseAllGroups === 'undefined') {
-    window.collapseAllGroups = collapseAllGroups;
-}
-if (typeof window.updateGroupSelection === 'undefined') {
-    window.updateGroupSelection = updateGroupSelection;
-}
-if (typeof window.toggleSelectAllGroups === 'undefined') {
-    window.toggleSelectAllGroups = toggleSelectAllGroups;
-}
-if (typeof window.approveSelectedGroups === 'undefined') {
-    window.approveSelectedGroups = approveSelectedGroups;
-}
-if (typeof window.rejectSelectedGroups === 'undefined') {
-    window.rejectSelectedGroups = rejectSelectedGroups;
-}
-if (typeof window.approveRegistration === 'undefined') {
-    window.approveRegistration = approveRegistration;
-}
-if (typeof window.rejectRegistration === 'undefined') {
-    window.rejectRegistration = rejectRegistration;
-}
-if (typeof window.viewRegistrationDetails === 'undefined') {
-    window.viewRegistrationDetails = viewRegistrationDetails;
-}
-if (typeof window.togglePendingList === 'undefined') {
-    window.togglePendingList = togglePendingList;
-}
+window.loadUnitDashboard = loadUnitDashboard;
+window.loadUnitRegistrationStats = loadUnitRegistrationStats;
+window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
+window.loadApprovedRegistrations = loadApprovedRegistrations;
+window.loadGroupedRegistrations = loadGroupedRegistrations;
+window.filterApprovedRegistrations = filterApprovedRegistrations;
+window.exportApprovedRegistrations = exportApprovedRegistrations;
+window.exportGroupedRegistrations = exportGroupedRegistrations;
+window.deapproveSingleRegistration = deapproveSingleRegistration;
+window.bulkDeapproveSelected = bulkDeapproveSelected;
+window.toggleSelectAllApproved = toggleSelectAllApproved;
+window.updateApprovedSelectedCount = updateApprovedSelectedCount;
+window.selectAllPendingUnits = selectAllPendingUnits;
+window.clearAllUnitSelections = clearAllUnitSelections;
+window.updateSelectedUnitsCount = updateSelectedUnitsCount;
+window.approveSingleUnitRecord = approveSingleUnitRecord;
+window.rejectSingleUnitRecord = rejectSingleUnitRecord;
+window.approveStudentAllUnits = approveStudentAllUnits;
+window.rejectStudentAllUnits = rejectStudentAllUnits;
+window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
+window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
+window.filterPendingByProgram = filterPendingByProgram;
+window.renderFilteredPendingRegistrations = renderFilteredPendingRegistrations;
+window.filterUnitRegistrations = filterUnitRegistrations;
+window.filterGroupedRegistrations = filterGroupedRegistrations;
+window.toggleGroup = toggleGroup;
+window.expandAllGroups = expandAllGroups;
+window.collapseAllGroups = collapseAllGroups;
+window.updateGroupSelection = updateGroupSelection;
+window.toggleSelectAllGroups = toggleSelectAllGroups;
+window.approveSelectedGroups = approveSelectedGroups;
+window.rejectSelectedGroups = rejectSelectedGroups;
+window.approveRegistration = approveRegistration;
+window.rejectRegistration = rejectRegistration;
+window.viewRegistrationDetails = viewRegistrationDetails;
+window.togglePendingList = togglePendingList;
 
-console.log('✅ Unit Registration Management module loaded and ready!');
+console.log('✅ Unit Registration Management module loaded with Supplementary support!');
 // =====================================================
 // ADDITIONAL STYLING FOR TABLES
 // =====================================================
