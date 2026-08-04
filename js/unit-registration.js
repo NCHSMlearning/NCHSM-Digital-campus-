@@ -1296,109 +1296,116 @@
         // REGISTER SUPPLEMENTARY UNITS
         // ============================================================
         
-        async registerSupplementaryUnits() {
-            // Check if we have a registration type selected
-            const regType = this.suppRegType?.value;
-            if (!regType) {
-                this.showError('Please select a registration type (Resit/Retake).', 'warning');
-                return;
-            }
-            
-            // Get selected units from checkboxes
-            const selectedCheckboxes = document.querySelectorAll('.supp-unit-checkbox:checked:not([disabled])');
-            const selectedUnits = Array.from(selectedCheckboxes).map(cb => {
-                try {
-                    return JSON.parse(cb.dataset.unit);
-                } catch (e) {
-                    return {
-                        unit_code: cb.dataset.code || cb.value,
-                        unit_name: cb.dataset.name || cb.dataset.unit || 'Unknown'
-                    };
-                }
-            });
-            
-            // Also check dropdown selection
-            const dropDownUnit = this.suppUnitSelect?.value;
-            if (dropDownUnit && !selectedUnits.find(u => u.unit_code === dropDownUnit)) {
-                const unitData = this.failedUnits.find(u => u.unit_code === dropDownUnit);
-                if (unitData) {
-                    selectedUnits.push(unitData);
-                }
-            }
-            
-            if (selectedUnits.length === 0) {
-                this.showError('Please select at least one unit or choose from dropdown.', 'warning');
-                return;
-            }
-            
-           // NEW CODE - Change 3 to 8:
-if (selectedUnits.length > 8) {
-    this.showError('You can only register for a maximum of 8 supplementary units.', 'warning');
-    return;
-}
-            // Payment reference (optional but recommended)
-            const paymentRef = this.suppPaymentRef?.value.trim() || 'N/A';
-            
-            if (!confirm(`Register ${selectedUnits.length} unit(s) for ${regType}?`)) return;
-            
-            this.isSubmitting = true;
-            if (this.registerSuppBtn) {
-                this.registerSuppBtn.disabled = true;
-                this.registerSuppBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-            }
-            
-            try {
-                const supabase = this.getSupabase();
-                if (!supabase) throw new Error('Database connection not available');
-                
-                const user = window.currentUserProfile || this.userProfile;
-                
-                // Create registration records
-                const registrations = selectedUnits.map(unit => ({
-                    student_id: this.studentId,
-                    unit_code: unit.unit_code,
-                    unit_name: unit.unit_name || unit.exam_name || unit.unit_code,
-                    program: this.programCode || user?.program || 'KRCHN',
-                    block: unit.block || user?.block || 'N/A',
-                    intake_year: this.intakeYear || user?.intake_year || 2025,
-                    reg_type: regType,
-                    status: 'pending',
-                    payment_reference: paymentRef,
-                    submitted_date: new Date().toISOString(),
-                    created_at: new Date().toISOString(),
-                    credits: unit.credits || 3,
-                    admission_number: user?.admission_number || user?.student_id || 'N/A'
-                }));
-                
-                const { error } = await supabase
-                    .from('student_unit_registrations')
-                    .insert(registrations);
-                
-                if (error) throw error;
-                
-                this.showSuccess(`${registrations.length} supplementary unit(s) registered successfully!`);
-                
-                // Clear selections
-                document.querySelectorAll('.supp-unit-checkbox:checked').forEach(cb => cb.checked = false);
-                if (this.suppUnitSelect) this.suppUnitSelect.value = '';
-                if (this.suppPaymentRef) this.suppPaymentRef.value = '';
-                if (this.selectAllSupp) this.selectAllSupp.checked = false;
-                
-                // Reload data
-                await this.loadSupplementaryData();
-                await this.loadUnits();
-                
-            } catch (error) {
-                console.error('❌ Error registering supplementary units:', error);
-                this.showError(`Failed to register: ${error.message}`, 'error');
-            } finally {
-                this.isSubmitting = false;
-                if (this.registerSuppBtn) {
-                    this.registerSuppBtn.disabled = false;
-                    this.registerSuppBtn.innerHTML = '<i class="fas fa-check"></i> Register Supplementary Units';
-                }
-            }
+      async registerSupplementaryUnits() {
+    // Check if we have a registration type selected
+    const regType = this.suppRegType?.value;
+    if (!regType) {
+        this.showError('Please select a registration type (Resit/Retake).', 'warning');
+        return;
+    }
+    
+    // Get selected units from checkboxes
+    const selectedCheckboxes = document.querySelectorAll('.supp-unit-checkbox:checked:not([disabled])');
+    const selectedUnits = Array.from(selectedCheckboxes).map(cb => {
+        try {
+            return JSON.parse(cb.dataset.unit);
+        } catch (e) {
+            return {
+                unit_code: cb.dataset.code || cb.value,
+                unit_name: cb.dataset.name || cb.dataset.unit || 'Unknown'
+            };
         }
+    });
+    
+    // Also check dropdown selection
+    const dropDownUnit = this.suppUnitSelect?.value;
+    if (dropDownUnit && !selectedUnits.find(u => u.unit_code === dropDownUnit)) {
+        const unitData = this.failedUnits.find(u => u.unit_code === dropDownUnit);
+        if (unitData) {
+            selectedUnits.push(unitData);
+        }
+    }
+    
+    if (selectedUnits.length === 0) {
+        this.showError('Please select at least one unit or choose from dropdown.', 'warning');
+        return;
+    }
+    
+    // Max 8 supplementary units
+    if (selectedUnits.length > 8) {
+        this.showError('You can only register for a maximum of 8 supplementary units.', 'warning');
+        return;
+    }
+    
+    // Payment reference (optional but recommended)
+    const paymentRef = this.suppPaymentRef?.value.trim() || 'N/A';
+    
+    if (!confirm(`Register ${selectedUnits.length} unit(s) for ${regType}?`)) return;
+    
+    this.isSubmitting = true;
+    if (this.registerSuppBtn) {
+        this.registerSuppBtn.disabled = true;
+        this.registerSuppBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    }
+    
+    try {
+        const supabase = this.getSupabase();
+        if (!supabase) throw new Error('Database connection not available');
+        
+        const user = window.currentUserProfile || this.userProfile;
+        
+        // ============================================
+        // FIXED: Use ONLY columns that exist in the table
+        // REMOVED: admission_number (doesn't exist)
+        // ============================================
+        const registrations = selectedUnits.map(unit => ({
+            student_id: this.studentId,
+            unit_code: unit.unit_code,
+            unit_name: unit.unit_name || unit.exam_name || unit.unit_code,
+            program: this.programCode || user?.program || 'KRCHN',
+            block: unit.block || user?.block || 'N/A',
+            reg_type: regType,
+            status: 'pending',
+            payment_reference: paymentRef,  // This exists in your table
+            submitted_date: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            credits: unit.credits || 3,
+            intake_year: this.intakeYear || user?.intake_year || '2025',
+            intake_month: user?.intake_month || 'March'
+            // ❌ REMOVED: admission_number - NOT in this table
+            // ❌ REMOVED: approval_date - auto-set when approved
+            // ❌ REMOVED: approved_by - auto-set when approved
+        }));
+        
+        const { error } = await supabase
+            .from('student_unit_registrations')
+            .insert(registrations);
+        
+        if (error) throw error;
+        
+        this.showSuccess(`${registrations.length} supplementary unit(s) registered successfully!`);
+        
+        // Clear selections
+        document.querySelectorAll('.supp-unit-checkbox:checked').forEach(cb => cb.checked = false);
+        if (this.suppUnitSelect) this.suppUnitSelect.value = '';
+        if (this.suppPaymentRef) this.suppPaymentRef.value = '';
+        if (this.selectAllSupp) this.selectAllSupp.checked = false;
+        
+        // Reload data
+        await this.loadSupplementaryData();
+        await this.loadUnits();
+        
+    } catch (error) {
+        console.error('❌ Error registering supplementary units:', error);
+        this.showError(`Failed to register: ${error.message}`, 'error');
+    } finally {
+        this.isSubmitting = false;
+        if (this.registerSuppBtn) {
+            this.registerSuppBtn.disabled = false;
+            this.registerSuppBtn.innerHTML = '<i class="fas fa-check"></i> Register Supplementary Units';
+        }
+    }
+}
         
         // ============================================================
         // DROP UNIT
