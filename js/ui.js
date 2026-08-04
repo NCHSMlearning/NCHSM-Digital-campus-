@@ -21,7 +21,7 @@ class UIModule {
             'unit-registration', 'learning-hub', 'exam-card',
             'hub-courses', 'hub-register', 'hub-online-learning', 'hub-exam-card',
             'hub-lecture-card', 'academic-reports',
-            'reviews', 'newsletter'
+            'reviews', 'newsletter', 'supplementary'
         ];
         
         // ========== COMPLETE tabNames ==========
@@ -46,7 +46,8 @@ class UIModule {
             'hub-lecture-card': 'Lecture Card',
             'academic-reports': 'Academic Reports',
             'reviews': 'Reviews',
-            'newsletter': 'Newsletter'
+            'newsletter': 'Newsletter',
+            'supplementary': 'Supplementary Registration'
         };
         
         this.clearCacheBtn = document.getElementById('clearCacheBtn');
@@ -227,7 +228,6 @@ class UIModule {
         if (this.overlay) {
             this.overlay.classList.add('active');
             this.overlay.style.display = 'block';
-            // ✅ NO BLUR
             this.overlay.style.backdropFilter = 'none';
             this.overlay.style.webkitBackdropFilter = 'none';
             this.overlay.style.background = 'rgba(0, 0, 0, 0.4)';
@@ -316,7 +316,18 @@ class UIModule {
             }
         }
         
-        setTimeout(() => this.loadTabModule(tabId), 100);
+        // Load supplementary tab module if needed
+        setTimeout(() => {
+            if (tabId === 'supplementary') {
+                console.log('📋 Loading Supplementary tab...');
+                if (typeof loadSupplementaryTab === 'function') {
+                    loadSupplementaryTab();
+                } else if (window.unitRegistrationModule && typeof window.unitRegistrationModule.loadSupplementaryData === 'function') {
+                    window.unitRegistrationModule.loadSupplementaryData();
+                }
+            }
+            this.loadTabModule(tabId);
+        }, 100);
     }
     
     navigateToTab(tabId) {
@@ -364,179 +375,179 @@ class UIModule {
         setTimeout(handleRoute, 100);
     }
     
-  // ============================================
-// 🔧 SETUP EVENT LISTENERS - FIXED VERSION
-// ============================================
-
-setupEventListeners() {
-    console.log('🔧 Setting up event listeners...');
-
-    // ✅ Mobile menu toggle - FIXED
-    if (this.mobileMenuToggle) {
-        try {
-            const newToggle = this.mobileMenuToggle.cloneNode(true);
-            this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
-            this.mobileMenuToggle = newToggle;
-            this.mobileMenuToggle.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleMenu();
-            });
-            console.log('✅ Mobile toggle setup complete');
-        } catch (error) {
-            console.warn('⚠️ Could not setup mobile toggle:', error);
-        }
-    } else {
-        console.warn('⚠️ Mobile menu toggle not found - skipping');
-    }
-
-    // ✅ Overlay click - FIXED
-    if (this.overlay) {
-        try {
-            const newOverlay = this.overlay.cloneNode(true);
-            this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
-            this.overlay = newOverlay;
-            this.overlay.addEventListener('click', () => {
-                this.closeMenu();
-            });
-            console.log('✅ Overlay click setup complete');
-        } catch (error) {
-            console.warn('⚠️ Could not setup overlay:', error);
-        }
-    } else {
-        console.warn('⚠️ Overlay not found - skipping');
-    }
-
-    // ✅ Dropdown toggle setup
-    this.setupDropdownToggle();
-
-    // ✅ SIDEBAR NAVIGATION LINKS - FIXED
-    const allNavLinks = document.querySelectorAll(
-        '.nav a[data-tab], .dropdown-submenu a[data-tab], ' +
-        '.footer-links a[data-tab], .nav-premium a[data-tab], ' +
-        '.dropdown-submenu-premium a[data-tab], #sidebar a[data-tab]'
-    );
-    console.log(`🔗 Found ${allNavLinks.length} navigation links`);
-
-    allNavLinks.forEach(link => {
-        try {
-            // Skip dropdown toggles
-            if (link.classList.contains('dropdown-toggle') || 
-                link.classList.contains('dropdown-toggle-premium')) {
-                return;
-            }
-
-            const tabId = link.getAttribute('data-tab');
-            if (!tabId || !this.isValidTab(tabId)) return;
-
-            // Clone to remove old listeners
-            const newLink = link.cloneNode(true);
-            link.parentNode.replaceChild(newLink, link);
-
-            newLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                console.log(`🖱️ Link clicked: ${tabId}`);
-                
-                // Close mobile menu if open
-                if (this.isMenuOpen()) this.closeMenu();
-                
-                // Navigate to tab
-                this.navigateToTab(tabId);
-            });
-        } catch (error) {
-            console.warn('⚠️ Could not setup link:', error);
-        }
-    });
-
-    // ✅ Header logout - FIXED
-    if (this.headerLogout) {
-        try {
-            const newLogout = this.headerLogout.cloneNode(true);
-            this.headerLogout.parentNode.replaceChild(newLogout, this.headerLogout);
-            this.headerLogout = newLogout;
-            this.headerLogout.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.logout();
-            });
-            console.log('✅ Logout button setup complete');
-        } catch (error) {
-            console.warn('⚠️ Could not setup logout:', error);
-        }
-    }
-
-    // ✅ Header refresh - FIXED
-    if (this.headerRefresh) {
-        try {
-            const newRefresh = this.headerRefresh.cloneNode(true);
-            this.headerRefresh.parentNode.replaceChild(newRefresh, this.headerRefresh);
-            this.headerRefresh = newRefresh;
-            this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
-            console.log('✅ Refresh button setup complete');
-        } catch (error) {
-            console.warn('⚠️ Could not setup refresh:', error);
-        }
-    }
-
-    // ✅ Utility buttons
-    if (this.clearCacheBtn) {
-        this.clearCacheBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.clearCache();
-        });
-    }
-
-    if (this.exportDataBtn) {
-        this.exportDataBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.exportData();
-        });
-    }
-
-    if (this.systemInfoBtn) {
-        this.systemInfoBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.showSystemInfo();
-        });
-    }
-
-    // ✅ Dashboard stat cards
-    setTimeout(() => {
-        document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
+    // ============================================
+    // SETUP EVENT LISTENERS - FIXED VERSION
+    // ============================================
+    
+    setupEventListeners() {
+        console.log('🔧 Setting up event listeners...');
+    
+        // Mobile menu toggle - FIXED
+        if (this.mobileMenuToggle) {
             try {
-                const newCard = card.cloneNode(true);
-                card.parentNode.replaceChild(newCard, card);
-                newCard.addEventListener('click', (e) => {
+                const newToggle = this.mobileMenuToggle.cloneNode(true);
+                this.mobileMenuToggle.parentNode.replaceChild(newToggle, this.mobileMenuToggle);
+                this.mobileMenuToggle = newToggle;
+                this.mobileMenuToggle.addEventListener('click', (e) => {
                     e.preventDefault();
-                    const tabId = newCard.getAttribute('data-tab');
-                    if (tabId && this.isValidTab(tabId)) {
-                        if (this.isMenuOpen()) this.closeMenu();
-                        this.navigateToTab(tabId);
-                    }
+                    e.stopPropagation();
+                    this.toggleMenu();
+                });
+                console.log('✅ Mobile toggle setup complete');
+            } catch (error) {
+                console.warn('⚠️ Could not setup mobile toggle:', error);
+            }
+        } else {
+            console.warn('⚠️ Mobile menu toggle not found - skipping');
+        }
+    
+        // Overlay click - FIXED
+        if (this.overlay) {
+            try {
+                const newOverlay = this.overlay.cloneNode(true);
+                this.overlay.parentNode.replaceChild(newOverlay, this.overlay);
+                this.overlay = newOverlay;
+                this.overlay.addEventListener('click', () => {
+                    this.closeMenu();
+                });
+                console.log('✅ Overlay click setup complete');
+            } catch (error) {
+                console.warn('⚠️ Could not setup overlay:', error);
+            }
+        } else {
+            console.warn('⚠️ Overlay not found - skipping');
+        }
+    
+        // Dropdown toggle setup
+        this.setupDropdownToggle();
+    
+        // SIDEBAR NAVIGATION LINKS - FIXED
+        const allNavLinks = document.querySelectorAll(
+            '.nav a[data-tab], .dropdown-submenu a[data-tab], ' +
+            '.footer-links a[data-tab], .nav-premium a[data-tab], ' +
+            '.dropdown-submenu-premium a[data-tab], #sidebar a[data-tab]'
+        );
+        console.log(`🔗 Found ${allNavLinks.length} navigation links`);
+    
+        allNavLinks.forEach(link => {
+            try {
+                // Skip dropdown toggles
+                if (link.classList.contains('dropdown-toggle') || 
+                    link.classList.contains('dropdown-toggle-premium')) {
+                    return;
+                }
+    
+                const tabId = link.getAttribute('data-tab');
+                if (!tabId || !this.isValidTab(tabId)) return;
+    
+                // Clone to remove old listeners
+                const newLink = link.cloneNode(true);
+                link.parentNode.replaceChild(newLink, link);
+    
+                newLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`🖱️ Link clicked: ${tabId}`);
+                    
+                    // Close mobile menu if open
+                    if (this.isMenuOpen()) this.closeMenu();
+                    
+                    // Navigate to tab
+                    this.navigateToTab(tabId);
                 });
             } catch (error) {
-                // Silently skip
+                console.warn('⚠️ Could not setup link:', error);
             }
         });
-    }, 1000);
-
-    // ✅ Close menu on Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && this.isMenuOpen()) {
-            this.closeMenu();
+    
+        // Header logout - FIXED
+        if (this.headerLogout) {
+            try {
+                const newLogout = this.headerLogout.cloneNode(true);
+                this.headerLogout.parentNode.replaceChild(newLogout, this.headerLogout);
+                this.headerLogout = newLogout;
+                this.headerLogout.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.logout();
+                });
+                console.log('✅ Logout button setup complete');
+            } catch (error) {
+                console.warn('⚠️ Could not setup logout:', error);
+            }
         }
-    });
-
-    // ✅ Close menu on resize
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 768 && this.isMenuOpen()) {
-            this.closeMenu();
+    
+        // Header refresh - FIXED
+        if (this.headerRefresh) {
+            try {
+                const newRefresh = this.headerRefresh.cloneNode(true);
+                this.headerRefresh.parentNode.replaceChild(newRefresh, this.headerRefresh);
+                this.headerRefresh = newRefresh;
+                this.headerRefresh.addEventListener('click', () => this.refreshDashboard());
+                console.log('✅ Refresh button setup complete');
+            } catch (error) {
+                console.warn('⚠️ Could not setup refresh:', error);
+            }
         }
-    });
-
-    console.log('✅ Event listeners setup complete');
-}
+    
+        // Utility buttons
+        if (this.clearCacheBtn) {
+            this.clearCacheBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.clearCache();
+            });
+        }
+    
+        if (this.exportDataBtn) {
+            this.exportDataBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.exportData();
+            });
+        }
+    
+        if (this.systemInfoBtn) {
+            this.systemInfoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showSystemInfo();
+            });
+        }
+    
+        // Dashboard stat cards
+        setTimeout(() => {
+            document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
+                try {
+                    const newCard = card.cloneNode(true);
+                    card.parentNode.replaceChild(newCard, card);
+                    newCard.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const tabId = newCard.getAttribute('data-tab');
+                        if (tabId && this.isValidTab(tabId)) {
+                            if (this.isMenuOpen()) this.closeMenu();
+                            this.navigateToTab(tabId);
+                        }
+                    });
+                } catch (error) {
+                    // Silently skip
+                }
+            });
+        }, 1000);
+    
+        // Close menu on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isMenuOpen()) {
+                this.closeMenu();
+            }
+        });
+    
+        // Close menu on resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768 && this.isMenuOpen()) {
+                this.closeMenu();
+            }
+        });
+    
+        console.log('✅ Event listeners setup complete');
+    }
+    
     // ============================================
     // DROPDOWN TOGGLE SETUP
     // ============================================
@@ -656,12 +667,12 @@ setupEventListeners() {
     }
     
     // ============================================
-    // REVIEWS BADGE UPDATER
+    // REVIEWS BADGE UPDATER - FIXED
     // ============================================
     
     startReviewsBadgeUpdater() {
         // Initial update
-        this.updateReviewsBadge();
+        setTimeout(() => this.updateReviewsBadge(), 500);
         
         // Update every 30 seconds
         if (this.reviewsBadgeInterval) {
@@ -681,7 +692,7 @@ setupEventListeners() {
             const reviewsTab = document.getElementById('reviews');
             if (!reviewsTab) return;
             
-            // Get pending reviews count (for badge)
+            // Get pending reviews count
             const { count, error } = await supabase
                 .from('student_reviews')
                 .select('*', { count: 'exact', head: true })
@@ -700,42 +711,80 @@ setupEventListeners() {
                     badge.style.borderRadius = '20px';
                     badge.style.fontSize = '10px';
                     badge.style.fontWeight = '600';
+                    badge.style.marginLeft = '8px';
                 } else {
                     badge.style.display = 'none';
                 }
             }
             
-            // Also update newsletter badge
-            const { count: subCount, error: subError } = await supabase
-                .from('newsletter_subscribers')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', window.currentUserId);
-            
-            if (!subError) {
-                const nlBadge = document.getElementById('newsletterBadge');
-                if (nlBadge) {
-                    if (subCount > 0) {
-                        nlBadge.textContent = '✓';
-                        nlBadge.style.display = 'inline-block';
-                        nlBadge.style.background = '#10b981';
-                        nlBadge.style.color = 'white';
-                        nlBadge.style.padding = '0 8px';
-                        nlBadge.style.borderRadius = '20px';
-                        nlBadge.style.fontSize = '10px';
+            // Also update supplementary badge
+            try {
+                const { count: suppCount } = await supabase
+                    .from('student_unit_registrations')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'pending')
+                    .in('reg_type', ['Supplementary', 'Resit', 'Retake']);
+                
+                const suppBadge = document.getElementById('suppTabBadge');
+                if (suppBadge) {
+                    if (suppCount > 0) {
+                        suppBadge.textContent = suppCount > 99 ? '99+' : suppCount;
+                        suppBadge.style.display = 'inline-block';
+                        suppBadge.style.background = '#B45309';
+                        suppBadge.style.color = 'white';
+                        suppBadge.style.padding = '0 8px';
+                        suppBadge.style.borderRadius = '20px';
+                        suppBadge.style.fontSize = '10px';
+                        suppBadge.style.fontWeight = '600';
+                        suppBadge.style.marginLeft = '8px';
                     } else {
-                        nlBadge.textContent = '✕';
-                        nlBadge.style.display = 'inline-block';
-                        nlBadge.style.background = '#6b7280';
-                        nlBadge.style.color = 'white';
-                        nlBadge.style.padding = '0 8px';
-                        nlBadge.style.borderRadius = '20px';
-                        nlBadge.style.fontSize = '10px';
+                        suppBadge.style.display = 'none';
                     }
                 }
+            } catch (suppError) {
+                // Silently skip
+            }
+            
+            // Update newsletter badge
+            try {
+                const userId = window.currentUserId;
+                if (userId) {
+                    const { count: subCount, error: subError } = await supabase
+                        .from('newsletter_subscribers')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', userId);
+                    
+                    if (!subError) {
+                        const nlBadge = document.getElementById('newsletterBadge');
+                        if (nlBadge) {
+                            if (subCount > 0) {
+                                nlBadge.textContent = '✓';
+                                nlBadge.style.display = 'inline-block';
+                                nlBadge.style.background = '#10b981';
+                                nlBadge.style.color = 'white';
+                                nlBadge.style.padding = '0 8px';
+                                nlBadge.style.borderRadius = '20px';
+                                nlBadge.style.fontSize = '10px';
+                                nlBadge.style.marginLeft = '8px';
+                            } else {
+                                nlBadge.textContent = '✕';
+                                nlBadge.style.display = 'inline-block';
+                                nlBadge.style.background = '#6b7280';
+                                nlBadge.style.color = 'white';
+                                nlBadge.style.padding = '0 8px';
+                                nlBadge.style.borderRadius = '20px';
+                                nlBadge.style.fontSize = '10px';
+                                nlBadge.style.marginLeft = '8px';
+                            }
+                        }
+                    }
+                }
+            } catch (nlError) {
+                // Silently skip
             }
             
         } catch (error) {
-            console.warn('Could not update reviews badge:', error);
+            console.warn('Could not update badges:', error);
         }
     }
     
@@ -760,6 +809,14 @@ setupEventListeners() {
                 case 'hub-register':
                 case 'unit-registration':
                     if (window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
+                    break;
+                case 'supplementary':
+                    console.log('📋 Loading Supplementary Registration...');
+                    if (window.unitRegistrationModule?.loadSupplementaryData) {
+                        window.unitRegistrationModule.loadSupplementaryData();
+                    } else if (typeof loadSupplementaryTab === 'function') {
+                        loadSupplementaryTab();
+                    }
                     break;
                 case 'hub-online-learning':
                     const onlineContainer = document.getElementById('hub-online-learning');
@@ -1822,6 +1879,7 @@ document.addEventListener('appReady', () => {
 
 console.log('✅ UI Module loaded successfully with Reviews & Newsletter support!');
 console.log('✅ Sidebar auto-updater registered!');
+
 // ============================================
 // 🔧 FIX: ACCESS SIDEBAR FROM PARENT PAGE
 // ============================================
