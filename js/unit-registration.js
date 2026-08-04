@@ -754,155 +754,145 @@
         }
         
         displayRegisteredUnits() {
-            if (!this.registeredBody) return;
+    if (!this.registeredBody) return;
+    
+    // Update summary counts
+    const pendingCount = this.registeredUnits.filter(u => u.status === 'pending').length;
+    const approvedCount = this.registeredUnits.filter(u => u.status === 'approved' && u.completion_status !== 'completed' && !u.grade).length;
+    const completedCount = this.registeredUnits.filter(u => u.completion_status === 'completed' || u.status === 'completed' || (u.grade && u.grade !== '')).length;
+    const suppCount = this.registeredUnits.filter(u => u.reg_type === 'Supplementary' || u.reg_type === 'Resit' || u.reg_type === 'Retake').length;
+    
+    if (this.pendingCountDisplay) this.pendingCountDisplay.textContent = pendingCount;
+    if (this.approvedCountDisplay) this.approvedCountDisplay.textContent = approvedCount;
+    if (this.completedCountDisplay) this.completedCountDisplay.textContent = completedCount;
+    if (this.suppCountDisplay) this.suppCountDisplay.textContent = suppCount;
+    
+    // Update registered units count
+    const countEl = document.getElementById('registeredUnitsCount');
+    if (countEl) countEl.textContent = this.registeredUnits.length + ' units';
+    
+    if (this.registeredUnits.length === 0) {
+        this.registeredBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                    <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <p style="font-weight: 500; color: #1e293b; margin: 0;">No units registered yet</p>
+                    <p style="font-size: 13px; margin: 4px 0 0 0;">Select units above and submit for approval</p>
+                    <button onclick="document.querySelector('.reg-sub-tab[data-subtab=\\'regular\\']')?.click()" 
+                            style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;"
+                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'"
+                            onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-plus-circle"></i> Register Units
+                    </button>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    for (const unit of this.registeredUnits) {
+        // Determine status
+        let statusText = '';
+        let statusClass = '';
+        let statusColor = '';
+        let statusBadge = '';
+        let rowStyle = '';
+        
+        const hasGrade = unit.grade && unit.grade !== '' && unit.grade !== null;
+        const isPassing = hasGrade && !['FAIL', 'F', 'D', 'E', ''].includes(unit.grade);
+        const isCompleted = unit.completion_status === 'completed' || unit.status === 'completed' || hasGrade;
+        
+        if (isCompleted) {
+            statusText = 'Completed';
+            statusClass = 'status-completed';
+            statusColor = '#10b981';
+            rowStyle = 'border-left: 3px solid #10b981;';
             
-            // Update summary counts
-            const pendingCount = this.registeredUnits.filter(u => u.status === 'pending').length;
-            const approvedCount = this.registeredUnits.filter(u => u.status === 'approved' && u.completion_status !== 'completed' && !u.grade).length;
-            const completedCount = this.registeredUnits.filter(u => u.completion_status === 'completed' || u.status === 'completed' || (u.grade && u.grade !== '')).length;
-            const suppCount = this.registeredUnits.filter(u => u.reg_type === 'Supplementary' || u.reg_type === 'Resit' || u.reg_type === 'Retake').length;
-            
-            if (this.pendingCountDisplay) this.pendingCountDisplay.textContent = pendingCount;
-            if (this.approvedCountDisplay) this.approvedCountDisplay.textContent = approvedCount;
-            if (this.completedCountDisplay) this.completedCountDisplay.textContent = completedCount;
-            if (this.suppCountDisplay) this.suppCountDisplay.textContent = suppCount;
-            
-            // Update registered units count
-            const countEl = document.getElementById('registeredUnitsCount');
-            if (countEl) countEl.textContent = this.registeredUnits.length + ' units';
-            
-            if (this.registeredUnits.length === 0) {
-                this.registeredBody.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">
-                                <i class="fas fa-clipboard-list"></i>
-                            </div>
-                            <p style="font-weight: 500; color: #1e293b; margin: 0;">No units registered yet</p>
-                            <p style="font-size: 13px; margin: 4px 0 0 0;">Select units above and submit for approval</p>
-                            <button onclick="document.querySelector('.reg-sub-tab[data-subtab=\\'regular\\']')?.click()" 
-                                    style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;"
-                                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'"
-                                    onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                                <i class="fas fa-plus-circle"></i> Register Units
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                return;
+            if (isPassing) {
+                statusBadge = `<span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 6px;">🟢 Passed</span>`;
+            } else {
+                statusBadge = `<span style="background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 6px;">🔴 Failed</span>`;
             }
-            
-            let html = '';
-            for (const unit of this.registeredUnits) {
-                // Determine status
-                let statusText = '';
-                let statusClass = '';
-                let statusColor = '';
-                let statusBadge = '';
-                let rowStyle = '';
-                
-                const hasGrade = unit.grade && unit.grade !== '' && unit.grade !== null;
-                const isPassing = hasGrade && !['FAIL', 'F', 'D', 'E', ''].includes(unit.grade);
-                const isCompleted = unit.completion_status === 'completed' || unit.status === 'completed' || hasGrade;
-                
-                if (isCompleted) {
-                    statusText = 'Completed';
-                    statusClass = 'status-completed';
-                    statusColor = '#10b981';
-                    rowStyle = 'border-left: 3px solid #10b981;';
-                    
-                    if (isPassing) {
-                        statusBadge = '<span style="background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">🟢 Passed</span>';
-                    } else {
-                        statusBadge = '<span style="background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">🔴 Failed</span>';
-                    }
-                } else if (unit.status === 'approved') {
-                    statusText = 'Approved';
-                    statusClass = 'status-approved';
-                    statusColor = '#3b82f6';
-                    rowStyle = 'border-left: 3px solid #3b82f6;';
-                } else if (unit.status === 'pending') {
-                    statusText = 'Pending';
-                    statusClass = 'status-pending';
-                    statusColor = '#f59e0b';
-                    rowStyle = 'border-left: 3px solid #f59e0b;';
-                } else {
-                    statusText = unit.status || 'Unknown';
-                    statusClass = 'status-unknown';
-                    statusColor = '#6b7280';
-                }
-                
-                // Check if supplementary
-                const isSupplementary = unit.reg_type === 'Supplementary' || unit.reg_type === 'Resit' || unit.reg_type === 'Retake';
-                const regTypeColor = isSupplementary ? '#B45309' : '#4C1D95';
-                const regTypeBg = isSupplementary ? '#fef3c7' : '#e0e7ff';
-                
-                // Grade display
-                let gradeDisplay = '—';
-                if (unit.grade) {
-                    const gradeColor = isPassing ? '#059669' : '#dc2626';
-                    gradeDisplay = `<span style="font-weight: 700; color: ${gradeColor}; font-size: 15px;">${unit.grade}</span>`;
-                } else if (unit.total_score) {
-                    gradeDisplay = `${unit.total_score}%`;
-                }
-                
-                // Completion date
-                const dateDisplay = unit.completed_at ? 
-                    `<span style="font-size: 12px; color: #059669;"><i class="fas fa-check-circle"></i> ${new Date(unit.completed_at).toLocaleDateString()}</span>` : 
-                    (unit.approval_date || '—');
-                
-                // Action buttons
-                let actionButtons = '—';
-                if (unit.status === 'pending') {
-                    actionButtons = `<button class="btn-drop" onclick="window.dropUnit('${unit.unit_code}')" 
-                                            style="background: #fee2e2; color: #991b1b; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s;"
-                                            onmouseover="this.style.background='#fecaca'"
-                                            onmouseout="this.style.background='#fee2e2'">
-                                        <i class="fas fa-trash"></i> Drop
-                                    </button>`;
-                } else if (isCompleted && isSupplementary) {
-                    actionButtons = `<button onclick="window.downloadSupplementaryExamCard('${unit.id}', '${this.escapeHtml(unit.unit_code)}')" 
-                                            style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s;"
-                                            onmouseover="this.style.background='#059669'"
-                                            onmouseout="this.style.background='#10b981'">
-                                        <i class="fas fa-download"></i> Card
-                                    </button>`;
-                }
-                
-                // Registration type badge
-                const regBadge = `<span style="background: ${regTypeBg}; color: ${regTypeColor}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; white-space: nowrap;">
-                                    ${this.escapeHtml(unit.reg_type || 'Normal')}
-                                </span>`;
-                
-                html += `
-                    <tr style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s; ${rowStyle}" 
-                        onmouseover="this.style.background='#f8fafc'" 
-                        onmouseout="this.style.background='transparent'">
-                        <td style="padding: 12px 16px;">
-                            <strong style="color: #0A3D62; font-size: 14px;">${this.escapeHtml(unit.unit_code)}</strong>
-                        </td>
-                        <td style="padding: 12px 16px;">
-                            ${this.escapeHtml(unit.unit_name)}
-                            ${unit.reg_type === 'Supplementary' ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 600; margin-left: 4px;">Supp</span>' : ''}
-                            ${unit.reg_type === 'Retake' ? '<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 600; margin-left: 4px;">Retake</span>' : ''}
-                        </td>
-                        <td style="padding: 12px 16px; font-size: 13px; color: #475569;">${this.escapeHtml(unit.block)}</td>
-                        <td style="padding: 12px 16px; text-align: center;">${regBadge}</td>
-                        <td style="padding: 12px 16px; text-align: center; font-size: 14px;">${gradeDisplay}</td>
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <span style="background: ${statusColor}15; color: ${statusColor}; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid ${statusColor}30; display: inline-block;">
-                                ${statusText}
-                            </span>
-                            ${statusBadge}
-                        </td>
-                        <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">${dateDisplay}</td>
-                        <td style="padding: 12px 16px; text-align: center;">${actionButtons}</td>
-                    </tr>
-                `;
-            }
-            
-            this.registeredBody.innerHTML = html;
+        } else if (unit.status === 'approved') {
+            statusText = 'Approved';
+            statusClass = 'status-approved';
+            statusColor = '#3b82f6';
+            rowStyle = 'border-left: 3px solid #3b82f6;';
+        } else if (unit.status === 'pending') {
+            statusText = 'Pending';
+            statusClass = 'status-pending';
+            statusColor = '#f59e0b';
+            rowStyle = 'border-left: 3px solid #f59e0b;';
+        } else {
+            statusText = unit.status || 'Unknown';
+            statusClass = 'status-unknown';
+            statusColor = '#6b7280';
         }
+        
+        // Check if supplementary
+        const isSupplementary = unit.reg_type === 'Supplementary' || unit.reg_type === 'Resit' || unit.reg_type === 'Retake';
+        const regTypeColor = isSupplementary ? '#B45309' : '#4C1D95';
+        const regTypeBg = isSupplementary ? '#fef3c7' : '#e0e7ff';
+        
+        // Registration type badge
+        const regBadge = `<span style="background: ${regTypeBg}; color: ${regTypeColor}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; white-space: nowrap;">
+                            ${this.escapeHtml(unit.reg_type || 'Normal')}
+                        </span>`;
+        
+        // Completion date
+        const dateDisplay = unit.completed_at ? 
+            `<span style="font-size: 12px; color: #059669;"><i class="fas fa-check-circle"></i> ${new Date(unit.completed_at).toLocaleDateString()}</span>` : 
+            (unit.approval_date || '—');
+        
+        // Action buttons
+        let actionButtons = '—';
+        if (unit.status === 'pending') {
+            actionButtons = `<button class="btn-drop" onclick="window.dropUnit('${unit.unit_code}')" 
+                                    style="background: #fee2e2; color: #991b1b; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s;"
+                                    onmouseover="this.style.background='#fecaca'"
+                                    onmouseout="this.style.background='#fee2e2'">
+                                <i class="fas fa-trash"></i> Drop
+                            </button>`;
+        } else if (isCompleted && isSupplementary) {
+            actionButtons = `<button onclick="window.downloadSupplementaryExamCard('${unit.id}', '${this.escapeHtml(unit.unit_code)}')" 
+                                    style="background: #10b981; color: white; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s;"
+                                    onmouseover="this.style.background='#059669'"
+                                    onmouseout="this.style.background='#10b981'">
+                                <i class="fas fa-download"></i> Card
+                            </button>`;
+        }
+        
+        // Get unit code display with supplementary badge
+        let unitCodeDisplay = `<strong style="color: #0A3D62; font-size: 14px;">${this.escapeHtml(unit.unit_code)}</strong>`;
+        if (isSupplementary) {
+            unitCodeDisplay += ` <span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 9px; font-weight: 600;">${this.escapeHtml(unit.reg_type)}</span>`;
+        }
+        
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s; ${rowStyle}" 
+                onmouseover="this.style.background='#f8fafc'" 
+                onmouseout="this.style.background='transparent'">
+                <td style="padding: 12px 16px;">${unitCodeDisplay}</td>
+                <td style="padding: 12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
+                <td style="padding: 12px 16px; font-size: 13px; color: #475569;">${this.escapeHtml(unit.block)}</td>
+                <td style="padding: 12px 16px; text-align: center;">${regBadge}</td>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <span style="background: ${statusColor}15; color: ${statusColor}; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid ${statusColor}30; display: inline-block;">
+                        ${statusText}
+                    </span>
+                    ${statusBadge}
+                </td>
+                <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">${dateDisplay}</td>
+                <td style="padding: 12px 16px; text-align: center;">${actionButtons}</td>
+            </tr>
+        `;
+    }
+    
+    this.registeredBody.innerHTML = html;
+}
         
         updateRegistrationStatus() {
             const pendingCount = this.registeredUnits.filter(u => u.status === 'pending').length;
