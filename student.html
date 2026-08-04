@@ -4724,15 +4724,15 @@
                     </span>
                 </div>
                 
-                <!-- Semester details in a row -->
+                <!-- Period details in a row -->
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 14px; max-width: 420px;">
                     <div>
-                        <span style="font-size: 10px; color: #94a3b8; display: block; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">Semester Fee</span>
-                        <span style="font-size: 15px; font-weight: 700; display: block; margin-top: 2px; color: #0A3D62;" id="studentSemesterFee">KES 0</span>
+                        <span style="font-size: 10px; color: #94a3b8; display: block; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;" id="periodFeeLabel">Period Fee</span>
+                        <span style="font-size: 15px; font-weight: 700; display: block; margin-top: 2px; color: #0A3D62;" id="studentPeriodFee">KES 0</span>
                     </div>
                     <div>
                         <span style="font-size: 10px; color: #94a3b8; display: block; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">Paid</span>
-                        <span style="font-size: 15px; font-weight: 700; display: block; margin-top: 2px; color: #059669;" id="studentPaidThisSemester">KES 0</span>
+                        <span style="font-size: 15px; font-weight: 700; display: block; margin-top: 2px; color: #059669;" id="studentPaidThisPeriod">KES 0</span>
                     </div>
                     <div>
                         <span style="font-size: 10px; color: #94a3b8; display: block; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">Remaining</span>
@@ -4765,7 +4765,7 @@
         <!-- Progress bar at bottom -->
         <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
             <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; color: #94a3b8;">
-                <span>Payment Progress for <span id="progressPeriodLabel">Current Semester</span></span>
+                <span>Payment Progress for <span id="progressPeriodLabel">Current Period</span></span>
                 <span id="paymentProgressText2">0%</span>
             </div>
             <div style="height: 5px; background: #f1f5f9; border-radius: 3px; overflow: hidden;">
@@ -4823,28 +4823,17 @@
         </div>
     </div>
 
-    <!-- ========== PAYMENT STATUS TIMELINE ========== -->
+    <!-- ========== PAYMENT STATUS TIMELINE (DYNAMIC) ========== -->
     <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <h4 style="margin: 0 0 12px 0; color: #0A3D62; font-size: 14px; display: flex; align-items: center; gap: 8px;">
             <i class="fas fa-chart-simple" style="color: #4C1D95;"></i> Payment Status Timeline
-            <span style="font-size: 11px; color: #94a3b8; font-weight: 400;">— Academic Year</span>
+            <span style="font-size: 11px; color: #94a3b8; font-weight: 400;">— <span id="timelineProgramLabel">Loading...</span></span>
         </h4>
         <div style="display: flex; gap: 8px; overflow-x: auto; padding: 8px 0;" id="paymentTimeline">
-            <!-- Dynamic content -->
-            <div style="min-width: 120px; text-align: center; padding: 12px 8px; background: #d1fae5; border-radius: 8px; border: 1px solid #10b981;">
-                <div style="font-size: 10px; color: #065f46; font-weight: 600;">Semester 1</div>
-                <div style="font-weight: 700; color: #059669; font-size: 14px;">✅ Paid</div>
-                <div style="font-size: 9px; color: #94a3b8;">Due: KES 94,100</div>
-            </div>
-            <div style="min-width: 120px; text-align: center; padding: 12px 8px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b;">
-                <div style="font-size: 10px; color: #92400e; font-weight: 600;">Semester 2</div>
-                <div style="font-weight: 700; color: #d97706; font-size: 14px;">⏳ Partial</div>
-                <div style="font-size: 9px; color: #94a3b8;">Paid: KES 30,000</div>
-            </div>
-            <div style="min-width: 120px; text-align: center; padding: 12px 8px; background: #fee2e2; border-radius: 8px; border: 1px solid #dc2626;">
-                <div style="font-size: 10px; color: #991b1b; font-weight: 600;">Semester 3</div>
-                <div style="font-weight: 700; color: #dc2626; font-size: 14px;">❌ Unpaid</div>
-                <div style="font-size: 9px; color: #94a3b8;">Due: KES 64,100</div>
+            <!-- Dynamic content - loaded from student's actual fee structure -->
+            <div style="text-align: center; padding: 30px; color: #94a3b8; width: 100%;">
+                <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                <p style="margin: 0; font-weight: 500;">Loading payment timeline...</p>
             </div>
         </div>
     </div>
@@ -4885,13 +4874,14 @@
                         <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Period</th>
                         <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Description</th>
                         <th style="padding: 12px 16px; text-align: right; font-weight: 600; color: #475569;">Amount</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Payment Method</th>
                         <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
                         <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="studentPaymentHistory">
                     <tr>
-                        <td colspan="5" style="text-align: center; padding: 50px; color: #94a3b8;">
+                        <td colspan="6" style="text-align: center; padding: 50px; color: #94a3b8;">
                             <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
                             <p style="margin: 0; font-weight: 500;">Loading payment history...</p>
                         </td>
@@ -4909,7 +4899,7 @@
                     <i class="fas fa-file-invoice" style="color: #4C1D95;"></i> Fee Structure
                 </h4>
                 <span style="font-size: 11px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> Semester breakdown
+                    <i class="fas fa-info-circle"></i> <span id="feeStructureLabel">Semester</span> breakdown
                 </span>
             </div>
             <button onclick="toggleFeeStructure()" style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
@@ -4943,9 +4933,9 @@
         </div>
     </div>
 
-    <!-- ========== QUICK ACTIONS ========== -->
+    <!-- ========== QUICK ACTIONS WITH MULTIPLE PAYMENT METHODS ========== -->
     <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
-        <button onclick="initiateSTKPayment()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 14px 34px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(76,29,149,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 20px rgba(76,29,149,0.3)'">
+        <button onclick="openPaymentModal()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 14px 34px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(76,29,149,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 20px rgba(76,29,149,0.3)'">
             <i class="fas fa-credit-card"></i> Make Payment
         </button>
         <button onclick="downloadStudentStatement()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 14px 30px; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s ease;" onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#4C1D95'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.06)'" onmouseout="this.style.background='transparent'; this.style.borderColor='#e2e8f0'; this.style.transform='none'; this.style.boxShadow='none'">
@@ -4963,10 +4953,177 @@
         <span><i class="fas fa-shield-alt" style="color: #4C1D95;"></i> Encrypted</span>
     </div>
 
+    <!-- ========== PAYMENT MODAL (MULTIPLE PAYMENT METHODS) ========== -->
+    <div id="paymentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 560px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideInUp 0.3s ease;">
+            
+            <!-- Modal Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px;">
+                <h3 style="margin: 0; color: #0A3D62; font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-credit-card" style="color: #4C1D95;"></i> Make Payment
+                </h3>
+                <button onclick="closePaymentModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8; transition: all 0.3s ease;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#94a3b8'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Payment Form -->
+            <div style="margin-bottom: 20px;">
+                <!-- Period Selection -->
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-calendar"></i> Payment Period
+                    </label>
+                    <select id="paymentPeriodSelect" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #f8fafc;">
+                        <option value="">Select period...</option>
+                    </select>
+                </div>
+                
+                <!-- Amount -->
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-coins"></i> Amount (KES)
+                    </label>
+                    <input type="number" id="paymentAmountInput" placeholder="Enter amount" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #f8fafc;">
+                </div>
+                
+                <!-- Payment Method Selection -->
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-wallet"></i> Payment Method
+                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;" id="paymentMethodsContainer">
+                        <!-- M-Pesa -->
+                        <div onclick="selectPaymentMethod('mpesa')" id="method-mpesa" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
+                            <i class="fas fa-mobile-alt" style="font-size: 24px; color: #4C1D95; display: block; margin-bottom: 4px;"></i>
+                            <span style="font-size: 13px; font-weight: 600; color: #0A3D62;">M-Pesa</span>
+                            <div style="font-size: 10px; color: #94a3b8;">STK Push</div>
+                        </div>
+                        
+                        <!-- PayPal -->
+                        <div onclick="selectPaymentMethod('paypal')" id="method-paypal" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
+                            <i class="fab fa-paypal" style="font-size: 24px; color: #003087; display: block; margin-bottom: 4px;"></i>
+                            <span style="font-size: 13px; font-weight: 600; color: #0A3D62;">PayPal</span>
+                            <div style="font-size: 10px; color: #94a3b8;">International</div>
+                        </div>
+                        
+                        <!-- Card Payment -->
+                        <div onclick="selectPaymentMethod('card')" id="method-card" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
+                            <i class="fas fa-credit-card" style="font-size: 24px; color: #059669; display: block; margin-bottom: 4px;"></i>
+                            <span style="font-size: 13px; font-weight: 600; color: #0A3D62;">Card Payment</span>
+                            <div style="font-size: 10px; color: #94a3b8;">Visa/Mastercard</div>
+                        </div>
+                        
+                        <!-- Bank Transfer -->
+                        <div onclick="selectPaymentMethod('bank')" id="method-bank" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
+                            <i class="fas fa-university" style="font-size: 24px; color: #d97706; display: block; margin-bottom: 4px;"></i>
+                            <span style="font-size: 13px; font-weight: 600; color: #0A3D62;">Bank Transfer</span>
+                            <div style="font-size: 10px; color: #94a3b8;">Direct Deposit</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Selected Method Details -->
+                <div id="paymentMethodDetails" style="display: none; background: #f1f5f9; border-radius: 8px; padding: 14px; margin-bottom: 16px; border-left: 4px solid #4C1D95;">
+                    <div id="methodDetailsContent">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+                
+                <!-- Description -->
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-pencil-alt"></i> Description
+                    </label>
+                    <input type="text" id="paymentDescriptionInput" placeholder="e.g., Semester 1 Tuition Fees" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #f8fafc;">
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 12px;">
+                <button onclick="closePaymentModal()" style="flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-weight: 600; color: #475569; transition: all 0.3s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                    Cancel
+                </button>
+                <button onclick="processPayment()" id="processPaymentBtn" style="flex: 2; padding: 12px; border-radius: 10px; border: none; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; cursor: pointer; font-weight: 700; font-size: 15px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(76,29,149,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(76,29,149,0.3)'">
+                    <i class="fas fa-check"></i> Pay Now
+                </button>
+            </div>
+            
+            <!-- Payment Method Specific Fields (hidden initially) -->
+            <div id="mpesaFields" style="display: none; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-phone"></i> M-Pesa Phone Number
+                    </label>
+                    <input type="tel" id="mpesaPhoneInput" placeholder="e.g., 0712345678" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                    <p style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                        <i class="fas fa-info-circle"></i> You'll receive a prompt on your phone to confirm
+                    </p>
+                </div>
+            </div>
+            
+            <div id="cardFields" style="display: none; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-credit-card"></i> Card Number
+                    </label>
+                    <input type="text" id="cardNumberInput" placeholder="1234 5678 9012 3456" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Expiry Date</label>
+                        <input type="text" id="cardExpiryInput" placeholder="MM/YY" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">CVV</label>
+                        <input type="password" id="cardCvvInput" placeholder="123" maxlength="4" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                    </div>
+                </div>
+            </div>
+            
+            <div id="bankFields" style="display: none; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-university"></i> Bank Account Name
+                    </label>
+                    <input type="text" id="bankAccountNameInput" placeholder="Full name on account" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-hashtag"></i> Account Number
+                    </label>
+                    <input type="text" id="bankAccountNumberInput" placeholder="Account number" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-building"></i> Bank Name
+                    </label>
+                    <input type="text" id="bankNameInput" placeholder="e.g., Equity Bank" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                </div>
+            </div>
+            
+            <div id="paypalFields" style="display: none; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-envelope"></i> PayPal Email
+                    </label>
+                    <input type="email" id="paypalEmailInput" placeholder="your-email@example.com" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                    <p style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                        <i class="fas fa-info-circle"></i> You'll be redirected to PayPal to complete payment
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ========== STYLES ========== -->
     <style>
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+        @keyframes slideInUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
         ::-webkit-scrollbar {
             height: 6px;
@@ -5067,9 +5224,17 @@
             justify-content: center;
             margin-top: 16px;
         }
+
+        /* Payment method selected state */
+        .payment-method-selected {
+            border-color: #4C1D95 !important;
+            background: #ede9fe !important;
+            box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+        }
     </style>
 
 </section>
+<!-- END FINANCE TAB -->
 <!-- END FINANCE TAB -->
 <!-- ==================== NURSEIQ / TVETIQ TAB ==================== -->
 <section id="nurseiq" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
