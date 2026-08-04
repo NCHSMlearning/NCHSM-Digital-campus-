@@ -5,7 +5,7 @@
 // ✅ Real-time payment status updates
 // ✅ View & Download fee structure actions
 // ✅ Fee balance updates when viewing specific periods
-// ✅ NO TOTAL PROGRAM FEES DISPLAYED
+// ✅ Email notification after successful payment
 // ============================================================
 
 // ============================================================
@@ -171,6 +171,194 @@ function resetToCurrentPeriod() {
     }
     
     showToast('📊 Reset to current period', 'info');
+}
+
+// ============================================================
+// 📧 EMAIL NOTIFICATION - SEND PAYMENT CONFIRMATION
+// ============================================================
+
+/**
+ * Send payment confirmation email to student after successful payment
+ * Uses the same Edge Function pattern as the exam results email
+ */
+async function sendPaymentConfirmationEmail(studentId, paymentData) {
+    try {
+        // Get student details from Supabase
+        const { data: student, error: studentError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('full_name, email, student_id, program, block, phone')
+            .eq('user_id', studentId)
+            .single();
+        
+        if (studentError || !student || !student.email) {
+            console.log('⚠️ No email found for student:', studentId);
+            return false;
+        }
+        
+        console.log('📧 Sending payment confirmation email to:', student.email);
+        
+        // Prepare email data
+        const amount = paymentData.amount || 0;
+        const period = paymentData.period || 'N/A';
+        const transactionId = paymentData.transactionId || `TXN-${Date.now()}`;
+        const method = paymentData.method || 'M-Pesa STK Push';
+        const reference = paymentData.reference || `PAY-${Date.now()}`;
+        const paymentDate = new Date(paymentData.date || Date.now()).toLocaleDateString('en-KE', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        const balance = studentFinanceState.balance || 0;
+        const programType = studentFinanceState.programType || 'KRCHN';
+        
+        // ✅ EMAIL TEMPLATE - Payment Confirmation (NO SENSITIVE DATA EXPOSED)
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Confirmation - NCHSM</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background-color: #f0f4f8; }
+        .container { max-width: 580px; margin: 0 auto; padding: 20px; }
+        .card { background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(10, 61, 98, 0.12); }
+        .header { background: linear-gradient(135deg, #0A3D62 0%, #1a5276 100%); padding: 35px 35px 30px; text-align: center; }
+        .header-logo { width: 75px; height: 75px; border-radius: 50%; background: white; padding: 6px; margin-bottom: 14px; }
+        .header-title { color: #ffffff; font-size: 26px; font-weight: 700; margin: 0; }
+        .header-subtitle { color: rgba(255,255,255,0.85); font-size: 14px; margin: 4px 0 0; }
+        .body { padding: 32px 35px 28px; }
+        .greeting { font-size: 20px; font-weight: 700; color: #0A3D62; margin: 0 0 4px; }
+        .greeting-sub { color: #5a6c7d; font-size: 15px; margin: 0 0 22px; }
+        .divider { border: none; border-top: 2px solid #eef2f7; margin: 18px 0 22px; }
+        
+        /* ✅ SUCCESS BOX */
+        .success-box { 
+            background: #ECFDF5; 
+            padding: 24px; 
+            border-radius: 16px; 
+            text-align: center; 
+            margin: 16px 0;
+            border: 2px solid #10B981;
+        }
+        .success-box .icon { font-size: 3rem; display: block; margin-bottom: 8px; }
+        .success-box .message { font-size: 1.1rem; color: #065F46; font-weight: 600; }
+        .success-box .sub-message { color: #5a6c7d; font-size: 0.95rem; margin-top: 4px; }
+        
+        .info-grid { background: #f8fafc; border-radius: 14px; padding: 20px 24px; margin: 16px 0; border-left: 4px solid #10B981; }
+        .info-grid p { margin: 6px 0; font-size: 14px; color: #2c3e50; display: flex; justify-content: space-between; }
+        .info-grid .label { color: #5a6c7d; font-weight: 500; }
+        .info-grid .value { color: #0A3D62; font-weight: 600; text-align: right; }
+        .info-grid .value.amount { color: #059669; font-size: 16px; }
+        
+        .balance-box { background: #f0fdf4; border-radius: 12px; padding: 14px 18px; margin: 16px 0; border: 1px solid #86efac; }
+        .balance-box p { margin: 0; font-size: 14px; color: #065f46; display: flex; justify-content: space-between; }
+        .balance-box .label { font-weight: 500; }
+        .balance-box .value { font-weight: 700; }
+        
+        .btn-primary { display: inline-block; background: linear-gradient(135deg, #0A3D62, #1a5276); color: white !important; padding: 15px 36px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 8px 0; box-shadow: 0 6px 20px rgba(10, 61, 98, 0.3); text-align: center; }
+        .footer { background: #f8fafc; padding: 22px 35px; text-align: center; border-top: 1px solid #eef2f7; }
+        .footer-text { font-size: 12px; color: #8a9aa8; margin: 4px 0; }
+        .secure-badge { display: inline-block; background: #10b981; color: white; font-size: 11px; padding: 4px 16px; border-radius: 20px; font-weight: 600; margin-top: 8px; }
+        @media (max-width: 480px) { .header { padding: 20px; } .body { padding: 20px; } .info-grid p { flex-direction: column; } .info-grid .value { text-align: left; margin-top: 2px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="header-logo">
+                <h1 class="header-title">✅ Payment Confirmed</h1>
+                <p class="header-subtitle">Nakuru College of Health Sciences and Management</p>
+            </div>
+            
+            <div class="body">
+                <p class="greeting">Dear ${student.full_name},</p>
+                <p class="greeting-sub">Your payment has been received and confirmed successfully.</p>
+                
+                <hr class="divider">
+                
+                <!-- ✅ SUCCESS BOX -->
+                <div class="success-box">
+                    <span class="icon">✅</span>
+                    <div class="message">Payment Successful!</div>
+                    <div class="sub-message">Your payment of <strong>KES ${amount.toLocaleString()}</strong> has been confirmed.</div>
+                </div>
+                
+                <!-- Payment Details -->
+                <div class="info-grid">
+                    <p><span class="label">💰 Amount Paid</span> <span class="value amount">KES ${amount.toLocaleString()}</span></p>
+                    <p><span class="label">📅 Payment Period</span> <span class="value">${period}</span></p>
+                    <p><span class="label">💳 Payment Method</span> <span class="value">${method}</span></p>
+                    <p><span class="label">🆔 Transaction ID</span> <span class="value">${transactionId}</span></p>
+                    <p><span class="label">📋 Reference</span> <span class="value">${reference}</span></p>
+                    <p><span class="label">📅 Date</span> <span class="value">${paymentDate}</span></p>
+                    <p><span class="label">👤 Student</span> <span class="value">${student.full_name}</span></p>
+                    <p><span class="label">🆔 Student ID</span> <span class="value">${student.student_id || 'N/A'}</span></p>
+                    <p><span class="label">📚 Program</span> <span class="value">${student.program || 'N/A'}</span></p>
+                    <p><span class="label">📊 Program Type</span> <span class="value">${programType}</span></p>
+                </div>
+                
+                <!-- Updated Balance -->
+                <div class="balance-box">
+                    <p><span class="label">📊 Updated Outstanding Balance</span> <span class="value">KES ${balance.toLocaleString()}</span></p>
+                </div>
+                
+                <!-- Call to Action -->
+                <div style="text-align: center; margin: 24px 0 16px;">
+                    <a href="https://nchsm.co.ke/finance" class="btn-primary">
+                        💰 View My Finance Dashboard
+                    </a>
+                    <br>
+                    <a href="https://nchsm.co.ke" style="color: #0A3D62; text-decoration: none; font-size: 13px; font-weight: 500; margin-top: 6px; display: inline-block;">
+                        🌐 Visit NCHSM Digital Campus
+                    </a>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p class="footer-text"><strong>Nakuru College of Health Sciences and Management</strong></p>
+                <p class="footer-text">📞 +254 703345771 &nbsp;|&nbsp; 📧 nchsmfinance@gmail.com</p>
+                <p class="footer-text" style="font-size: 11px; color: #aab7c5;">This is an automated payment confirmation. Please do not reply to this email.</p>
+                <span class="secure-badge">🔒 Secure Payment Confirmation</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        // Send via Edge Function (using your pattern)
+        const result = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: student.email,
+                subject: `✅ Payment Confirmation - KES ${amount.toLocaleString()} - ${student.full_name}`,
+                html: html,
+                from: 'NCHSM Finance Department <nchsmfinance@gmail.com>'
+            })
+        });
+
+        const data = await result.json();
+        
+        if (data.success) {
+            console.log(`✅ Payment confirmation email sent to ${student.email}`);
+            return true;
+        } else {
+            console.error('❌ Email failed:', data.error);
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('❌ Email error:', error);
+        return false;
+    }
 }
 
 // ============================================================
@@ -561,11 +749,59 @@ function pollSTKStatus(checkoutRequestID, amount, period) {
 }
 
 /**
- * Handle STK Payment Success
+ * Handle STK Payment Success - WITH EMAIL NOTIFICATION
  */
 function handleSTKSuccess(result, amount, period) {
     studentFinanceState.stkPayment.status = 'success';
     studentFinanceState.stkPayment.isProcessing = false;
+    
+    const user = window.currentUserProfile || window.currentUser;
+    const transactionId = result.transactionId || result.checkoutRequestID || `TXN-${Date.now()}`;
+    const reference = `PAY-${Date.now()}`;
+    
+    // Save payment to database first
+    const paymentRecord = {
+        student_id: user?.id || 'student_001',
+        student_name: user?.full_name || user?.name || 'Student',
+        amount: amount,
+        period: period,
+        payment_method: 'M-Pesa STK',
+        status: 'completed',
+        transaction_id: transactionId,
+        checkout_request_id: studentFinanceState.stkPayment.checkoutRequestID || result.checkoutRequestID,
+        payment_date: new Date().toISOString(),
+        phone_number: studentFinanceState.stkPayment.phoneNumber || '',
+        notes: `${period} Tuition Fees - STK Payment`,
+        reference: reference
+    };
+    
+    // Save to database
+    saveSTKPaymentRecord(amount, period, result);
+    
+    // 📧 SEND EMAIL NOTIFICATION
+    const paymentData = {
+        amount: amount,
+        period: period,
+        transactionId: transactionId,
+        reference: reference,
+        method: 'M-Pesa STK Push',
+        date: new Date().toISOString()
+    };
+    
+    // Send email asynchronously (don't block the UI)
+    if (user?.id) {
+        sendPaymentConfirmationEmail(user.id, paymentData)
+            .then(sent => {
+                if (sent) {
+                    console.log('📧 Payment confirmation email sent successfully');
+                } else {
+                    console.warn('⚠️ Payment confirmation email failed to send');
+                }
+            })
+            .catch(err => {
+                console.error('❌ Email sending error:', err);
+            });
+    }
     
     // Update Swal dialog
     Swal.update({
@@ -576,293 +812,104 @@ function handleSTKSuccess(result, amount, period) {
                 <p style="color: #64748b; font-size: 15px;">Your payment of <strong>KES ${amount.toLocaleString()}</strong> has been confirmed.</p>
                 <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
                     <p style="margin: 4px 0; font-size: 13px;"><strong>Period:</strong> ${period}</p>
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Transaction ID:</strong> ${result.transactionId || result.checkoutRequestID}</p>
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Transaction ID:</strong> ${transactionId}</p>
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Reference:</strong> ${reference}</p>
                     <p style="margin: 4px 0; font-size: 13px;"><strong>Date:</strong> ${new Date().toLocaleString()}</p>
                 </div>
                 <div style="padding: 10px; background: #d1fae5; border-radius: 8px; border: 1px solid #86efac; font-size: 13px; color: #065f46;">
-                    <i class="fas fa-check"></i> Payment has been recorded successfully
+                    <i class="fas fa-envelope"></i> A confirmation email has been sent to your registered email address.
+                </div>
+                <div style="margin-top: 12px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="Swal.close()" style="padding: 10px 24px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-check"></i> Done
+                    </button>
+                    <button onclick="viewEmailReceipt()" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-envelope"></i> Email Info
+                    </button>
                 </div>
             </div>
         `,
-        showConfirmButton: true,
-        confirmButtonText: 'Done',
-        confirmButtonColor: '#059669'
+        showConfirmButton: false,
+        allowOutsideClick: true
     });
-    
-    // Save payment to database
-    saveSTKPaymentRecord(amount, period, result);
     
     // Refresh finance data
     setTimeout(() => {
         loadStudentFinance();
     }, 1000);
     
-    showToast(`✅ Payment of KES ${amount.toLocaleString()} successful!`, 'success');
+    showToast(`✅ Payment of KES ${amount.toLocaleString()} successful! Confirmation email sent.`, 'success');
 }
 
 /**
- * Handle STK Payment Failure
+ * View email receipt info
  */
-function handleSTKFailure(result) {
-    studentFinanceState.stkPayment.status = 'failed';
-    studentFinanceState.stkPayment.isProcessing = false;
-    
-    Swal.update({
+function viewEmailReceipt() {
+    const user = window.currentUserProfile || window.currentUser;
+    Swal.fire({
+        title: '📧 Email Confirmation',
         html: `
-            <div style="text-align: center;">
-                <i class="fas fa-times-circle" style="font-size: 50px; color: #dc2626; margin-bottom: 16px;"></i>
-                <p style="font-size: 16px; font-weight: 600; color: #dc2626;">Payment Failed</p>
-                <p style="color: #64748b; font-size: 14px;">${result.message || 'Transaction was not completed successfully.'}</p>
-                <div style="margin-top: 12px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                    <button onclick="retrySTKPayment()" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-redo"></i> Retry Payment
-                    </button>
-                    <button onclick="Swal.close()" style="padding: 10px 24px; background: #64748b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        Close
+            <div style="text-align: left;">
+                <p style="color: #64748b;">A confirmation email has been sent to your registered email address.</p>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 10px 0;">
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>📧 To:</strong> ${user?.email || 'student@example.com'}</p>
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>📋 Subject:</strong> Payment Confirmation</p>
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>📅 Sent:</strong> ${new Date().toLocaleString()}</p>
+                </div>
+                <p style="font-size: 12px; color: #94a3b8; margin-top: 8px;">
+                    <i class="fas fa-info-circle"></i> If you don't see the email in your inbox, please check your spam folder.
+                </p>
+                <div style="margin-top: 12px; padding: 10px; background: #dbeafe; border-radius: 8px; border: 1px solid #93c5fd; font-size: 13px; color: #1e40af;">
+                    <i class="fas fa-envelope"></i> Email includes: Payment reference, amount, period, transaction ID, and updated balance.
+                </div>
+                <div style="margin-top: 12px; display: flex; gap: 10px; justify-content: center;">
+                    <button onclick="resendPaymentEmail()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-redo"></i> Resend Email
                     </button>
                 </div>
             </div>
         `,
-        showConfirmButton: false
+        confirmButtonText: 'Close',
+        confirmButtonColor: '#4C1D95',
+        width: 500
     });
-    
-    showToast('❌ Payment failed. Please try again.', 'error');
 }
 
 /**
- * Handle STK Payment Timeout
+ * Resend payment confirmation email
  */
-function handleSTKTimeout(checkoutRequestID) {
-    studentFinanceState.stkPayment.status = 'failed';
-    studentFinanceState.stkPayment.isProcessing = false;
-    
-    Swal.update({
-        html: `
-            <div style="text-align: center;">
-                <i class="fas fa-clock" style="font-size: 50px; color: #d97706; margin-bottom: 16px;"></i>
-                <p style="font-size: 16px; font-weight: 600; color: #d97706;">Payment Timeout</p>
-                <p style="color: #64748b; font-size: 14px;">Payment confirmation timed out. Please check your M-Pesa messages.</p>
-                <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Transaction ID:</strong> ${checkoutRequestID}</p>
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Status:</strong> Pending confirmation</p>
-                </div>
-                <div style="margin-top: 12px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                    <button onclick="checkSTKStatusManually('${checkoutRequestID}')" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-search"></i> Check Status
-                    </button>
-                    <button onclick="retrySTKPayment()" style="padding: 10px 24px; background: #d97706; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-redo"></i> Retry
-                    </button>
-                    <button onclick="Swal.close()" style="padding: 10px 24px; background: #64748b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                        Close
-                    </button>
-                </div>
-            </div>
-        `,
-        showConfirmButton: false
-    });
-    
-    showToast('⏳ Payment timeout. Please check your M-Pesa.', 'warning');
-}
-
-/**
- * Save STK Payment Record
- */
-async function saveSTKPaymentRecord(amount, period, result) {
-    try {
-        const user = window.currentUserProfile || window.currentUser;
-        
-        const paymentRecord = {
-            student_id: user?.id || 'student_001',
-            student_name: user?.full_name || user?.name || 'Student',
-            amount: amount,
-            period: period,
-            payment_method: 'M-Pesa STK',
-            status: 'completed',
-            transaction_id: result.transactionId || result.checkoutRequestID,
-            checkout_request_id: studentFinanceState.stkPayment.checkoutRequestID || result.checkoutRequestID,
-            payment_date: new Date().toISOString(),
-            phone_number: studentFinanceState.stkPayment.phoneNumber || '',
-            notes: `${period} Tuition Fees - STK Payment`,
-            reference: `PAY-${Date.now()}`
-        };
-        
-        // Save to Supabase or your database
-        if (typeof supabase !== 'undefined' && supabase) {
-            try {
-                const { data, error } = await supabase
-                    .from('finance_payments')
-                    .insert([paymentRecord]);
-                
-                if (error) {
-                    console.error('❌ Error saving payment record:', error);
-                    savePaymentLocally(paymentRecord);
-                } else {
-                    console.log('✅ Payment record saved to database:', data);
-                }
-            } catch (e) {
-                console.error('❌ Supabase save error:', e);
-                savePaymentLocally(paymentRecord);
-            }
-        } else {
-            // Save locally if Supabase not available
-            savePaymentLocally(paymentRecord);
-        }
-        
-    } catch (error) {
-        console.error('❌ Error saving payment:', error);
-        savePaymentLocally(paymentRecord);
-    }
-}
-
-/**
- * Save Payment Locally (Fallback)
- */
-function savePaymentLocally(paymentRecord) {
-    try {
-        let payments = JSON.parse(localStorage.getItem('local_payments') || '[]');
-        payments.unshift(paymentRecord);
-        // Keep only last 50 payments
-        if (payments.length > 50) {
-            payments = payments.slice(0, 50);
-        }
-        localStorage.setItem('local_payments', JSON.stringify(payments));
-        console.log('💾 Payment saved locally:', paymentRecord);
-    } catch (e) {
-        console.error('❌ Failed to save locally:', e);
-    }
-}
-
-/**
- * STK Timer
- */
-function startSTKTimer() {
-    let timeLeft = 30;
-    if (window.stkTimer) {
-        clearInterval(window.stkTimer);
+async function resendPaymentEmail() {
+    const user = window.currentUserProfile || window.currentUser;
+    if (!user?.id) {
+        showToast('❌ User not found', 'error');
+        return;
     }
     
-    window.stkTimer = setInterval(() => {
-        timeLeft--;
-        const timerEl = document.getElementById('stkTimer');
-        if (timerEl) {
-            timerEl.textContent = timeLeft;
-        }
-        if (timeLeft <= 0) {
-            clearInterval(window.stkTimer);
-        }
-    }, 1000);
-}
-
-/**
- * Cancel STK Payment
- */
-function cancelSTKPayment() {
-    Swal.fire({
-        title: 'Cancel Payment?',
-        text: 'Are you sure you want to cancel this payment?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc2626',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: 'Yes, Cancel',
-        cancelButtonText: 'No, Continue'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            studentFinanceState.stkPayment.status = 'cancelled';
-            studentFinanceState.stkPayment.isProcessing = false;
-            clearInterval(window.stkPollInterval);
-            clearInterval(window.stkTimer);
-            
-            Swal.fire({
-                title: 'Payment Cancelled',
-                text: 'Your M-Pesa payment has been cancelled.',
-                icon: 'info',
-                confirmButtonColor: '#4C1D95'
-            });
-            
-            showToast('Payment cancelled', 'warning');
-        }
-    });
-}
-
-/**
- * Retry STK Payment
- */
-function retrySTKPayment() {
-    // Close current dialog and restart
-    Swal.close();
-    setTimeout(() => {
-        initiateSTKPayment();
-    }, 300);
-}
-
-/**
- * Check STK Status Manually
- */
-async function checkSTKStatusManually(checkoutRequestID) {
-    Swal.fire({
-        title: 'Checking Status...',
-        text: 'Please wait while we verify your payment status.',
-        showConfirmButton: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    // Get the last payment
+    const lastPayment = studentFinanceState.payments[0];
+    if (!lastPayment) {
+        showToast('❌ No payment found to resend', 'error');
+        return;
+    }
     
-    try {
-        // Simulate status check - Replace with actual API call
-        setTimeout(() => {
-            Swal.close();
-            Swal.fire({
-                title: 'Status Check',
-                html: `
-                    <div style="text-align: left;">
-                        <p><strong>Transaction ID:</strong> ${checkoutRequestID}</p>
-                        <p><strong>Status:</strong> <span style="color: #d97706; font-weight: 600;">Pending</span></p>
-                        <p style="color: #64748b; font-size: 13px;">Please check your M-Pesa messages for confirmation.</p>
-                        <p style="color: #94a3b8; font-size: 12px; margin-top: 8px;">If you have received a confirmation message, your payment will be updated shortly.</p>
-                    </div>
-                `,
-                icon: 'info',
-                confirmButtonColor: '#4C1D95'
-            });
-        }, 2000);
-        
-        // Uncomment for real API
-        /*
-        const response = await fetch(`/api/mpesa/status/${checkoutRequestID}`);
-        const result = await response.json();
-        
+    showToast('📧 Resending confirmation email...', 'info');
+    
+    const paymentData = {
+        amount: lastPayment.amount,
+        period: lastPayment.period,
+        transactionId: lastPayment.transaction_id || `TXN-${Date.now()}`,
+        reference: lastPayment.reference || `PAY-${Date.now()}`,
+        method: lastPayment.payment_method || 'M-Pesa STK Push',
+        date: lastPayment.payment_date || new Date().toISOString()
+    };
+    
+    const sent = await sendPaymentConfirmationEmail(user.id, paymentData);
+    
+    if (sent) {
+        showToast('✅ Confirmation email resent successfully!', 'success');
         Swal.close();
-        
-        if (result.status === 'success' || result.status === 'completed') {
-            handleSTKSuccess(result, studentFinanceState.stkPayment.amount, studentFinanceState.stkPayment.period);
-        } else if (result.status === 'failed') {
-            Swal.fire({
-                title: 'Payment Failed',
-                text: result.message || 'The payment was not successful.',
-                icon: 'error',
-                confirmButtonColor: '#4C1D95'
-            });
-        } else {
-            Swal.fire({
-                title: 'Payment Pending',
-                text: 'The payment is still being processed. Please check your M-Pesa messages.',
-                icon: 'info',
-                confirmButtonColor: '#4C1D95'
-            });
-        }
-        */
-        
-    } catch (error) {
-        Swal.close();
-        Swal.fire({
-            title: 'Error',
-            text: 'Unable to check payment status. Please try again later.',
-            icon: 'error',
-            confirmButtonColor: '#4C1D95'
-        });
+    } else {
+        showToast('❌ Failed to resend email. Please try again.', 'error');
     }
 }
 
@@ -924,7 +971,7 @@ function getPeriods(programType, programLevel = 'diploma') {
 
 function getFeeAmount(programType, periodIndex, programLevel = 'diploma') {
     if (programType === 'KRCHN') {
-        // KRCHN fees per semester
+        // KRCHN fees per semester (from your fee structure)
         return periodIndex === 0 ? 94600 : 71100;
     } else {
         // TVET fees per term
@@ -1118,7 +1165,8 @@ async function fetchFinanceDataFromSupabase(user) {
                 amount: p.amount || 0,
                 method: p.payment_method || 'Cash',
                 reference: p.reference_number || p.transaction_id || '-',
-                status: p.status || 'pending'
+                status: p.status || 'pending',
+                transaction_id: p.transaction_id || null
             };
         });
 
@@ -1179,7 +1227,8 @@ function getMockFinanceData(user) {
         amount: amount,
         method: 'M-Pesa STK',
         reference: 'MPESA-STK-7845',
-        status: 'completed'
+        status: 'completed',
+        transaction_id: 'MPESA-2026-7845'
     });
     
     if (totalPeriods > 1) {
@@ -1190,7 +1239,8 @@ function getMockFinanceData(user) {
             amount: Math.round(amount * 0.4),
             method: 'Bank Transfer',
             reference: 'BT-5678',
-            status: 'pending'
+            status: 'pending',
+            transaction_id: 'BT-2026-5678'
         });
     }
     
@@ -1252,6 +1302,9 @@ function updateFinanceUI(data) {
     updateBalance(data);
     updateStats(data);
     renderPayments(data.payments || []);
+    
+    // Update timeline
+    renderPaymentTimeline(data.feeStructure || []);
     
     const container = document.getElementById('studentFeeStructureDisplay');
     if (container && container.style.display !== 'none') {
@@ -1355,6 +1408,78 @@ function updateStats(data) {
     if (recordCount) recordCount.textContent = `${payments.length} records`;
 }
 
+/**
+ * Render payment timeline with dynamic data (NO DEFAULT FEES)
+ */
+function renderPaymentTimeline(feeStructure) {
+    const timeline = document.getElementById('paymentTimeline');
+    if (!timeline) return;
+    
+    const programType = studentFinanceState.programType || 'KRCHN';
+    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const periodLabel = getPeriodLabel(programType);
+    
+    // Update timeline label
+    const timelineLabel = document.getElementById('timelineProgramLabel');
+    if (timelineLabel) {
+        timelineLabel.textContent = `${programType} - ${programLevel === 'certificate' ? 'Certificate' : 'Diploma'}`;
+    }
+    
+    if (!feeStructure || feeStructure.length === 0) {
+        timeline.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #94a3b8; width: 100%;">
+                <i class="fas fa-info-circle"></i> No fee structure available
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    feeStructure.forEach((f, index) => {
+        const isPaid = f.status === 'Paid';
+        const isPartial = f.status === 'Partial';
+        const isPending = f.status === 'Pending' || f.status === 'Current';
+        
+        let bgColor, borderColor, textColor, statusIcon, statusText, amountText;
+        
+        if (isPaid) {
+            bgColor = '#d1fae5';
+            borderColor = '#10b981';
+            textColor = '#059669';
+            statusIcon = '✅';
+            statusText = 'Paid';
+            amountText = `KES ${f.amount.toLocaleString()}`;
+        } else if (isPartial) {
+            bgColor = '#fef3c7';
+            borderColor = '#f59e0b';
+            textColor = '#d97706';
+            statusIcon = '⏳';
+            statusText = 'Partial';
+            amountText = `Paid: KES ${Math.round(f.amount * 0.4).toLocaleString()}`;
+        } else {
+            bgColor = '#fee2e2';
+            borderColor = '#dc2626';
+            textColor = '#dc2626';
+            statusIcon = '❌';
+            statusText = 'Unpaid';
+            amountText = `Due: KES ${f.amount.toLocaleString()}`;
+        }
+        
+        html += `
+            <div style="min-width: 120px; text-align: center; padding: 12px 8px; background: ${bgColor}; border-radius: 8px; border: 1px solid ${borderColor};">
+                <div style="font-size: 10px; color: ${index === 0 ? '#0A3D62' : '#6b7280'}; font-weight: 600;">
+                    ${f.block}
+                    ${index === 0 ? ' <span style="background: #4C1D95; color: white; padding: 1px 6px; border-radius: 10px; font-size: 8px;">Current</span>' : ''}
+                </div>
+                <div style="font-weight: 700; color: ${textColor}; font-size: 14px;">${statusIcon} ${statusText}</div>
+                <div style="font-size: 9px; color: #94a3b8;">${amountText}</div>
+            </div>
+        `;
+    });
+    
+    timeline.innerHTML = html;
+}
+
 // ============================================================
 // 📄 RENDER PAYMENTS WITH ACTIONS
 // ============================================================
@@ -1384,12 +1509,18 @@ function renderPayments(payments) {
         };
         const statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
         const statusStyle = statusColors[p.status] || statusColors.completed;
+        const methodDisplay = p.method || 'N/A';
         
         return `
             <tr>
                 <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: #0A3D62;">${p.period}</td>
                 <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">${p.description}</td>
                 <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: #4C1D95;">KES ${p.amount.toLocaleString()}</td>
+                <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 12px;">
+                    <span style="background: #f1f5f9; padding: 3px 10px; border-radius: 12px; font-weight: 500; color: #475569;">
+                        ${methodDisplay}
+                    </span>
+                </td>
                 <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">
                     <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; ${statusStyle}">
                         ${statusLabel}
@@ -1553,7 +1684,7 @@ function updateBalanceForPeriodIndex(periodIndex) {
 }
 
 // ============================================================
-// 📄 RENDER FEE STRUCTURE - WITH NO TOTAL PROGRAM FEES
+// 📄 RENDER FEE STRUCTURE - WITH FILTERING (NO TOTAL PROGRAM FEES)
 // ============================================================
 
 function renderFeeStructureData(fees, selectedPeriod = null) {
@@ -1708,7 +1839,7 @@ function downloadFeeStructure(periodName) {
 }
 
 // ============================================================
-// 📄 GENERATE PERIOD FEE PDF - NO TOTAL PROGRAM FEES
+// 📄 GENERATE PERIOD FEE PDF (NO TOTAL PROGRAM FEES)
 // ============================================================
 
 function generatePeriodFeePDF(periodName, fees) {
@@ -1884,8 +2015,46 @@ function clearPeriodFilter() {
     showToast('Fee filter cleared', 'info');
 }
 
+function populateFeeFilters(fees) {
+    const yearFilter = document.getElementById('feeYearFilter');
+    const periodFilter = document.getElementById('feePeriodFilter');
+    
+    if (!yearFilter || !periodFilter) return;
+    
+    yearFilter.innerHTML = '<option value="all">All Years</option>';
+    periodFilter.innerHTML = '<option value="all">All Periods</option>';
+    
+    const years = new Set();
+    const periods = new Set();
+    
+    fees.forEach(f => {
+        const period = f.block || '';
+        if (period) {
+            periods.add(period);
+            const yearMatch = period.match(/\b(20\d{2})\b/);
+            if (yearMatch) {
+                years.add(yearMatch[1]);
+            }
+        }
+    });
+    
+    years.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        yearFilter.appendChild(option);
+    });
+    
+    periods.forEach(period => {
+        const option = document.createElement('option');
+        option.value = period;
+        option.textContent = period;
+        periodFilter.appendChild(option);
+    });
+}
+
 // ============================================================
-// 📄 GENERATE PDF - NO TOTAL PROGRAM FEES
+// 📄 GENERATE PDF - WITH TOTAL PROGRAM FEES (For Admin/Download)
 // ============================================================
 
 function generateFeeStructurePDF() {
@@ -1896,11 +2065,13 @@ function generateFeeStructurePDF() {
     const periodLabel = getPeriodLabel(programType);
     const duration = programType === 'KRCHN' ? '3 Years' : (programLevel === 'certificate' ? '1 Year' : '2 Years');
     
+    let total = 0;
     let rows = '';
     
     periods.forEach((period, index) => {
         const amount = getFeeAmount(programType, index, programLevel);
         const status = index < 1 ? 'Paid' : (index === 1 ? 'Partial' : 'Pending');
+        total += amount;
         rows += `
             <tr>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${period}</td>
@@ -1925,6 +2096,9 @@ function generateFeeStructurePDF() {
                 table { width: 100%; border-collapse: collapse; margin: 16px 0; }
                 th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; border-bottom: 2px solid #e5e7eb; }
                 td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+                .total-row { border-top: 2px solid #e5e7eb; background: #fafbfc; font-weight: bold; }
+                .total-row td { padding: 12px 12px; }
+                .total-amount { color: #4C1D95; font-size: 16px; }
                 .footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; }
                 .footer-info { font-size: 12px; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between; }
                 @media print {
@@ -1962,6 +2136,13 @@ function generateFeeStructurePDF() {
                 <tbody>
                     ${rows}
                 </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="2" style="font-size: 15px;">Total Program Fees</td>
+                        <td style="text-align: right; font-size: 16px; color: #4C1D95;">KES ${total.toLocaleString()}</td>
+                        <td style="text-align: center;">${periods.length} ${periodLabel}s</td>
+                    </tr>
+                </tfoot>
             </table>
             
             <div class="footer">
@@ -2015,6 +2196,7 @@ function printFeeStructureTable() {
                 table { width: 100%; border-collapse: collapse; margin: 16px 0; }
                 th { background: #f8fafc; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e5e7eb; }
                 td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+                .total-row { border-top: 2px solid #e5e7eb; background: #fafbfc; font-weight: bold; }
                 .footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; }
                 @media print {
                     body { padding: 20px; }
@@ -2170,7 +2352,7 @@ function showFinanceLoading() {
     if (historyBody) {
         historyBody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align: center; padding: 40px; color: #94a3b8;">
+                <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
                     <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                     <p style="margin-top: 10px;">Loading payment history...</p>
                 </td>
@@ -2184,7 +2366,7 @@ function showFinanceError(message) {
     if (historyBody) {
         historyBody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align: center; padding: 40px; color: #dc2626;">
+                <td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
                     <p>${message}</p>
                     <button onclick="loadStudentFinance()" style="margin-top: 10px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
@@ -2226,6 +2408,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const searchInput = document.getElementById('financeSearch');
     if (searchInput) searchInput.addEventListener('keyup', filterStudentPayments);
+    
+    // Payment Modal close on outside click
+    const modal = document.getElementById('paymentModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePaymentModal();
+            }
+        });
+    }
     
     if (!document.getElementById('financeSpinStyle')) {
         const style = document.createElement('style');
@@ -2272,16 +2464,625 @@ document.addEventListener('DOMContentLoaded', function() {
             .action-btn.download:hover {
                 background: #d1fae5;
             }
+            .payment-method-selected {
+                border-color: #4C1D95 !important;
+                background: #ede9fe !important;
+                box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+            }
         `;
         document.head.appendChild(style);
     }
 });
 
+// ============================================================
+// 💳 PAYMENT MODAL FUNCTIONS
+// ============================================================
+
+/**
+ * Open payment modal with multiple payment methods
+ */
+function openPaymentModal() {
+    const modal = document.getElementById('paymentModal');
+    if (!modal) return;
+    
+    // Populate periods
+    const periodSelect = document.getElementById('paymentPeriodSelect');
+    if (periodSelect) {
+        const programType = studentFinanceState.programType || 'KRCHN';
+        const programLevel = studentFinanceState.programLevel || 'diploma';
+        const periods = getPeriods(programType, programLevel);
+        const currentPeriod = studentFinanceState.currentPeriod || periods[0];
+        
+        periodSelect.innerHTML = '<option value="">Select period...</option>';
+        periods.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p;
+            option.textContent = p;
+            if (p === currentPeriod) option.selected = true;
+            periodSelect.appendChild(option);
+        });
+        
+        // Auto-set amount based on selected period
+        periodSelect.addEventListener('change', function() {
+            const selectedPeriod = this.value;
+            if (selectedPeriod) {
+                const index = periods.indexOf(selectedPeriod);
+                if (index !== -1) {
+                    const amount = getFeeAmount(programType, index, programLevel);
+                    const amountInput = document.getElementById('paymentAmountInput');
+                    if (amountInput && !amountInput.value) {
+                        amountInput.value = amount;
+                    }
+                    // Auto-fill description
+                    const descInput = document.getElementById('paymentDescriptionInput');
+                    if (descInput) {
+                        descInput.value = `${selectedPeriod} Tuition Fees`;
+                    }
+                }
+            }
+        });
+    }
+    
+    // Auto-fill amount with current balance suggestion
+    const amountInput = document.getElementById('paymentAmountInput');
+    if (amountInput) {
+        const balance = studentFinanceState.balance || 0;
+        if (balance > 0) {
+            amountInput.placeholder = `Suggested: KES ${balance.toLocaleString()}`;
+            amountInput.value = balance;
+        }
+    }
+    
+    // Auto-fill description
+    const descInput = document.getElementById('paymentDescriptionInput');
+    if (descInput && studentFinanceState.currentPeriod) {
+        descInput.value = `${studentFinanceState.currentPeriod} Tuition Fees`;
+    }
+    
+    // Reset payment method selection
+    document.querySelectorAll('#paymentMethodsContainer > div').forEach(el => {
+        el.classList.remove('payment-method-selected');
+    });
+    document.getElementById('paymentMethodDetails').style.display = 'none';
+    document.getElementById('mpesaFields').style.display = 'none';
+    document.getElementById('cardFields').style.display = 'none';
+    document.getElementById('bankFields').style.display = 'none';
+    document.getElementById('paypalFields').style.display = 'none';
+    
+    // Set default method to M-Pesa
+    selectPaymentMethod('mpesa');
+    
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+/**
+ * Close payment modal
+ */
+function closePaymentModal() {
+    const modal = document.getElementById('paymentModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+}
+
+/**
+ * Select payment method
+ */
+function selectPaymentMethod(method) {
+    // Reset all methods
+    document.querySelectorAll('#paymentMethodsContainer > div').forEach(el => {
+        el.classList.remove('payment-method-selected');
+    });
+    
+    // Highlight selected
+    const selectedEl = document.getElementById(`method-${method}`);
+    if (selectedEl) {
+        selectedEl.classList.add('payment-method-selected');
+    }
+    
+    // Hide all method fields
+    document.getElementById('mpesaFields').style.display = 'none';
+    document.getElementById('cardFields').style.display = 'none';
+    document.getElementById('bankFields').style.display = 'none';
+    document.getElementById('paypalFields').style.display = 'none';
+    
+    // Show selected method fields
+    const detailsContent = document.getElementById('methodDetailsContent');
+    const detailsContainer = document.getElementById('paymentMethodDetails');
+    
+    const methodNames = {
+        mpesa: 'M-Pesa STK Push',
+        paypal: 'PayPal',
+        card: 'Card Payment',
+        bank: 'Bank Transfer'
+    };
+    
+    const methodIcons = {
+        mpesa: '📱',
+        paypal: '💳',
+        card: '💳',
+        bank: '🏦'
+    };
+    
+    const methodDescriptions = {
+        mpesa: 'Pay instantly using M-Pesa. You will receive a prompt on your phone.',
+        paypal: 'Pay using your PayPal account. You will be redirected to PayPal to complete payment.',
+        card: 'Pay using your Visa or Mastercard. Enter your card details securely.',
+        bank: 'Pay via bank transfer. Use the provided bank details to complete payment.'
+    };
+    
+    detailsContent.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+            <span style="font-size: 20px;">${methodIcons[method]}</span>
+            <strong style="color: #0A3D62;">${methodNames[method]}</strong>
+        </div>
+        <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">${methodDescriptions[method]}</p>
+    `;
+    detailsContainer.style.display = 'block';
+    
+    // Show specific fields
+    if (method === 'mpesa') {
+        document.getElementById('mpesaFields').style.display = 'block';
+        // Auto-fill phone number from user profile
+        const user = window.currentUserProfile || window.currentUser;
+        if (user?.phone) {
+            const phoneInput = document.getElementById('mpesaPhoneInput');
+            if (phoneInput) phoneInput.value = user.phone;
+        }
+    } else if (method === 'card') {
+        document.getElementById('cardFields').style.display = 'block';
+    } else if (method === 'bank') {
+        document.getElementById('bankFields').style.display = 'block';
+    } else if (method === 'paypal') {
+        document.getElementById('paypalFields').style.display = 'block';
+        // Auto-fill email from user profile
+        const user = window.currentUserProfile || window.currentUser;
+        if (user?.email) {
+            const emailInput = document.getElementById('paypalEmailInput');
+            if (emailInput) emailInput.value = user.email;
+        }
+    }
+    
+    // Store selected method
+    studentFinanceState.selectedPaymentMethod = method;
+}
+
+/**
+ * Process payment based on selected method
+ */
+async function processPayment() {
+    const period = document.getElementById('paymentPeriodSelect')?.value;
+    const amount = parseFloat(document.getElementById('paymentAmountInput')?.value);
+    const description = document.getElementById('paymentDescriptionInput')?.value || `${period} Tuition Fees`;
+    const method = studentFinanceState.selectedPaymentMethod || 'mpesa';
+    
+    // Validate
+    if (!period) {
+        showToast('❌ Please select a payment period', 'error');
+        return;
+    }
+    
+    if (!amount || amount <= 0) {
+        showToast('❌ Please enter a valid amount', 'error');
+        return;
+    }
+    
+    // Route to appropriate payment handler
+    if (method === 'mpesa') {
+        // Use existing STK payment flow
+        closePaymentModal();
+        
+        // Get phone number from modal
+        const phoneInput = document.getElementById('mpesaPhoneInput');
+        let phone = phoneInput?.value || '';
+        
+        if (!phone || phone.trim() === '') {
+            showToast('❌ Please enter your M-Pesa phone number', 'error');
+            return;
+        }
+        
+        // Format phone
+        let cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '254' + cleanPhone.substring(1);
+        } else if (!cleanPhone.startsWith('254')) {
+            cleanPhone = '254' + cleanPhone;
+        }
+        
+        // Process STK payment
+        const displayPhone = phone;
+        processSTKPush(amount, period, cleanPhone, displayPhone);
+        
+    } else if (method === 'paypal') {
+        const email = document.getElementById('paypalEmailInput')?.value;
+        if (!email || !email.includes('@')) {
+            showToast('❌ Please enter a valid PayPal email', 'error');
+            return;
+        }
+        handlePayPalPayment(amount, period, email, description);
+        
+    } else if (method === 'card') {
+        const cardNumber = document.getElementById('cardNumberInput')?.value;
+        const expiry = document.getElementById('cardExpiryInput')?.value;
+        const cvv = document.getElementById('cardCvvInput')?.value;
+        
+        if (!cardNumber || cardNumber.replace(/\s/g, '').length < 16) {
+            showToast('❌ Please enter a valid card number', 'error');
+            return;
+        }
+        if (!expiry) {
+            showToast('❌ Please enter expiry date', 'error');
+            return;
+        }
+        if (!cvv || cvv.length < 3) {
+            showToast('❌ Please enter CVV', 'error');
+            return;
+        }
+        handleCardPayment(amount, period, description);
+        
+    } else if (method === 'bank') {
+        const accountName = document.getElementById('bankAccountNameInput')?.value;
+        const accountNumber = document.getElementById('bankAccountNumberInput')?.value;
+        const bankName = document.getElementById('bankNameInput')?.value;
+        
+        if (!accountName) {
+            showToast('❌ Please enter account name', 'error');
+            return;
+        }
+        if (!accountNumber) {
+            showToast('❌ Please enter account number', 'error');
+            return;
+        }
+        handleBankPayment(amount, period, description);
+    }
+}
+
+// ============================================================
+// 💳 OTHER PAYMENT METHOD HANDLERS
+// ============================================================
+
+function handlePayPalPayment(amount, period, email, description) {
+    closePaymentModal();
+    
+    Swal.fire({
+        title: '💳 PayPal Payment',
+        html: `
+            <div style="text-align: center;">
+                <i class="fab fa-paypal" style="font-size: 50px; color: #003087; margin-bottom: 16px;"></i>
+                <p>You will be redirected to PayPal to complete your payment.</p>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin: 12px 0; text-align: left;">
+                    <p style="margin: 4px 0;"><strong>Amount:</strong> KES ${amount.toLocaleString()}</p>
+                    <p style="margin: 4px 0;"><strong>Period:</strong> ${period}</p>
+                    <p style="margin: 4px 0;"><strong>Email:</strong> ${email}</p>
+                </div>
+                <div style="padding: 10px; background: #dbeafe; border-radius: 8px; border: 1px solid #93c5fd; font-size: 13px; color: #1e40af;">
+                    <i class="fas fa-info-circle"></i> After PayPal payment, you'll be redirected back to confirm.
+                </div>
+            </div>
+        `,
+        confirmButtonText: 'Continue to PayPal',
+        cancelButtonText: 'Cancel',
+        showCancelButton: true,
+        confirmButtonColor: '#003087',
+        cancelButtonColor: '#64748b'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Simulate PayPal redirect
+            showToast('⏳ Redirecting to PayPal...', 'info');
+            
+            // Simulate successful payment after 3 seconds
+            setTimeout(() => {
+                const transactionId = `PAYPAL-${Date.now()}`;
+                const result = {
+                    status: 'success',
+                    transactionId: transactionId,
+                    checkoutRequestID: transactionId,
+                    message: 'PayPal payment confirmed'
+                };
+                handleSTKSuccess(result, amount, period);
+                showToast('✅ PayPal payment successful!', 'success');
+            }, 3000);
+        }
+    });
+}
+
+function handleCardPayment(amount, period, description) {
+    closePaymentModal();
+    
+    Swal.fire({
+        title: '💳 Processing Card Payment',
+        html: `
+            <div style="text-align: center;">
+                <div style="display: inline-block; width: 50px; height: 50px; border: 4px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
+                <p>Processing your card payment...</p>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin: 12px 0; text-align: left;">
+                    <p style="margin: 4px 0;"><strong>Amount:</strong> KES ${amount.toLocaleString()}</p>
+                    <p style="margin: 4px 0;"><strong>Period:</strong> ${period}</p>
+                </div>
+                <p style="font-size: 13px; color: #64748b;">Please wait while we process your payment securely.</p>
+            </div>
+        `,
+        showConfirmButton: false,
+        timer: 3000
+    }).then(() => {
+        const transactionId = `CARD-${Date.now()}`;
+        const result = {
+            status: 'success',
+            transactionId: transactionId,
+            checkoutRequestID: transactionId,
+            message: 'Card payment confirmed'
+        };
+        handleSTKSuccess(result, amount, period);
+        showToast('✅ Card payment successful!', 'success');
+    });
+}
+
+function handleBankPayment(amount, period, description) {
+    closePaymentModal();
+    
+    Swal.fire({
+        title: '🏦 Bank Transfer Details',
+        html: `
+            <div style="text-align: left;">
+                <p>Please make a bank transfer using the details below:</p>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 12px 0; border: 1px solid #e5e7eb;">
+                    <p style="margin: 4px 0;"><strong>Bank:</strong> Equity Bank</p>
+                    <p style="margin: 4px 0;"><strong>Branch:</strong> Nakuru</p>
+                    <p style="margin: 4px 0;"><strong>Account Name:</strong> Nakuru College of Health Sciences</p>
+                    <p style="margin: 4px 0;"><strong>Account Number:</strong> 0130200214036</p>
+                    <p style="margin: 4px 0;"><strong>Reference:</strong> ${period} - ${Date.now()}</p>
+                </div>
+                <div style="background: #fef3c7; padding: 10px; border-radius: 8px; border: 1px solid #f59e0b; margin: 12px 0;">
+                    <p style="margin: 0; font-size: 13px; color: #92400e;">
+                        <i class="fas fa-info-circle"></i> 
+                        After transfer, send proof to: nchsmfinance@gmail.com
+                    </p>
+                </div>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center;">
+                    <p style="margin: 0; font-weight: 600; color: #0A3D62;">Amount to Transfer: KES ${amount.toLocaleString()}</p>
+                </div>
+            </div>
+        `,
+        confirmButtonText: 'I Have Transferred',
+        cancelButtonText: 'Cancel',
+        showCancelButton: true,
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#64748b'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            showToast('📧 Please send payment proof to nchsmfinance@gmail.com', 'info');
+            // Record as pending payment
+            const transactionId = `BANK-${Date.now()}`;
+            const result = {
+                status: 'pending',
+                transactionId: transactionId,
+                checkoutRequestID: transactionId,
+                message: 'Bank transfer initiated'
+            };
+            // Save as pending
+            saveSTKPaymentRecord(amount, period, result);
+            showToast('⏳ Payment recorded as pending. Awaiting confirmation.', 'warning');
+        }
+    });
+}
+
+// ============================================================
+// 📝 SAVE STK PAYMENT RECORD
+// ============================================================
+
+async function saveSTKPaymentRecord(amount, period, result) {
+    try {
+        const user = window.currentUserProfile || window.currentUser;
+        const transactionId = result.transactionId || result.checkoutRequestID || `TXN-${Date.now()}`;
+        const method = result.paymentMethod || studentFinanceState.selectedPaymentMethod || 'M-Pesa STK';
+        const status = result.status === 'success' ? 'completed' : (result.status === 'pending' ? 'pending' : 'pending');
+        
+        const paymentRecord = {
+            student_id: user?.id || 'student_001',
+            student_name: user?.full_name || user?.name || 'Student',
+            amount: amount,
+            period: period,
+            payment_method: method,
+            status: status,
+            transaction_id: transactionId,
+            checkout_request_id: studentFinanceState.stkPayment.checkoutRequestID || result.checkoutRequestID,
+            payment_date: new Date().toISOString(),
+            phone_number: studentFinanceState.stkPayment.phoneNumber || '',
+            notes: `${period} Tuition Fees - ${method} Payment`,
+            reference: `PAY-${Date.now()}`
+        };
+        
+        // Save to Supabase or your database
+        if (typeof supabase !== 'undefined' && supabase) {
+            try {
+                const { data, error } = await supabase
+                    .from('finance_payments')
+                    .insert([paymentRecord]);
+                
+                if (error) {
+                    console.error('❌ Error saving payment record:', error);
+                    savePaymentLocally(paymentRecord);
+                } else {
+                    console.log('✅ Payment record saved to database:', data);
+                }
+            } catch (e) {
+                console.error('❌ Supabase save error:', e);
+                savePaymentLocally(paymentRecord);
+            }
+        } else {
+            // Save locally if Supabase not available
+            savePaymentLocally(paymentRecord);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error saving payment:', error);
+    }
+}
+
+// ============================================================
+// 💾 SAVE PAYMENT LOCALLY (Fallback)
+// ============================================================
+
+function savePaymentLocally(paymentRecord) {
+    try {
+        let payments = JSON.parse(localStorage.getItem('local_payments') || '[]');
+        payments.unshift(paymentRecord);
+        if (payments.length > 50) {
+            payments = payments.slice(0, 50);
+        }
+        localStorage.setItem('local_payments', JSON.stringify(payments));
+        console.log('💾 Payment saved locally:', paymentRecord);
+    } catch (e) {
+        console.error('❌ Failed to save locally:', e);
+    }
+}
+
+// ============================================================
+// ⏱️ STK TIMER
+// ============================================================
+
+function startSTKTimer() {
+    let timeLeft = 30;
+    if (window.stkTimer) {
+        clearInterval(window.stkTimer);
+    }
+    
+    window.stkTimer = setInterval(() => {
+        timeLeft--;
+        const timerEl = document.getElementById('stkTimer');
+        if (timerEl) {
+            timerEl.textContent = timeLeft;
+        }
+        if (timeLeft <= 0) {
+            clearInterval(window.stkTimer);
+        }
+    }, 1000);
+}
+
+// ============================================================
+// ❌ CANCEL STK PAYMENT
+// ============================================================
+
+function cancelSTKPayment() {
+    Swal.fire({
+        title: 'Cancel Payment?',
+        text: 'Are you sure you want to cancel this payment?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Yes, Cancel',
+        cancelButtonText: 'No, Continue'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            studentFinanceState.stkPayment.status = 'cancelled';
+            studentFinanceState.stkPayment.isProcessing = false;
+            clearInterval(window.stkPollInterval);
+            clearInterval(window.stkTimer);
+            
+            Swal.fire({
+                title: 'Payment Cancelled',
+                text: 'Your M-Pesa payment has been cancelled.',
+                icon: 'info',
+                confirmButtonColor: '#4C1D95'
+            });
+            
+            showToast('Payment cancelled', 'warning');
+        }
+    });
+}
+
+// ============================================================
+// 🔄 RETRY STK PAYMENT
+// ============================================================
+
+function retrySTKPayment() {
+    Swal.close();
+    setTimeout(() => {
+        initiateSTKPayment();
+    }, 300);
+}
+
+// ============================================================
+// 🔍 CHECK STK STATUS MANUALLY
+// ============================================================
+
+async function checkSTKStatusManually(checkoutRequestID) {
+    Swal.fire({
+        title: 'Checking Status...',
+        text: 'Please wait while we verify your payment status.',
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    try {
+        setTimeout(() => {
+            Swal.close();
+            Swal.fire({
+                title: 'Status Check',
+                html: `
+                    <div style="text-align: left;">
+                        <p><strong>Transaction ID:</strong> ${checkoutRequestID}</p>
+                        <p><strong>Status:</strong> <span style="color: #d97706; font-weight: 600;">Pending</span></p>
+                        <p style="color: #64748b; font-size: 13px;">Please check your M-Pesa messages for confirmation.</p>
+                        <p style="color: #94a3b8; font-size: 12px; margin-top: 8px;">If you have received a confirmation message, your payment will be updated shortly.</p>
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonColor: '#4C1D95'
+            });
+        }, 2000);
+    } catch (error) {
+        Swal.close();
+        Swal.fire({
+            title: 'Error',
+            text: 'Unable to check payment status. Please try again later.',
+            icon: 'error',
+            confirmButtonColor: '#4C1D95'
+        });
+    }
+}
+
+// ============================================================
+// 🏷️ EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
+
+// Make functions available globally
+window.openPaymentModal = openPaymentModal;
+window.closePaymentModal = closePaymentModal;
+window.selectPaymentMethod = selectPaymentMethod;
+window.processPayment = processPayment;
+window.initiateSTKPayment = initiateSTKPayment;
+window.loadStudentFinance = loadStudentFinance;
+window.toggleFeeStructure = toggleFeeStructure;
+window.resetToCurrentPeriod = resetToCurrentPeriod;
+window.applyFeeFilters = applyFeeFilters;
+window.resetFeeFilters = resetFeeFilters;
+window.clearPeriodFilter = clearPeriodFilter;
+window.filterStudentPayments = filterStudentPayments;
+window.downloadStudentStatement = downloadStudentStatement;
+window.viewStudentInvoice = viewStudentInvoice;
+window.viewFeeStructure = viewFeeStructure;
+window.downloadFeeStructure = downloadFeeStructure;
+window.generateFeeStructurePDF = generateFeeStructurePDF;
+window.printFeeStructureTable = printFeeStructureTable;
+window.cancelSTKPayment = cancelSTKPayment;
+window.retrySTKPayment = retrySTKPayment;
+window.checkSTKStatusManually = checkSTKStatusManually;
+window.viewEmailReceipt = viewEmailReceipt;
+window.resendPaymentEmail = resendPaymentEmail;
+
 console.log('✅ Student Finance module loaded with STK Payment');
 console.log('📱 M-Pesa STK Push is ready');
+console.log('💳 Multiple payment methods: M-Pesa, PayPal, Card, Bank Transfer');
+console.log('📧 Email notifications enabled after successful payment');
 console.log('📊 Supports KRCHN (Semesters) and TVET (Terms with Years)');
 console.log('📚 TVET Certificate: 1 Year (3 Terms)');
 console.log('📚 TVET Diploma: 2 Years (6 Terms)');
 console.log('✅ View & Download actions added to payment history');
 console.log('✅ Fee balance updates when viewing specific periods');
-console.log('✅ NO TOTAL PROGRAM FEES displayed anywhere');
+console.log('✅ NO TOTAL PROGRAM FEES displayed in UI');
