@@ -687,6 +687,26 @@ async function loadSectionData(tabId) {
             }
             break;
             
+        // ============================================================
+        // 📝 SUPPLEMENTARY REGISTRATION - Student re-registration
+        // ============================================================
+        case 'supplementary':
+            console.log('📝 Loading Supplementary Registration...');
+            // Load eligible supplementary units
+            if (typeof loadEligibleSupplementaryUnits === 'function') {
+                loadEligibleSupplementaryUnits();
+            }
+            // Load student's supplementary registrations
+            if (typeof loadStudentSupplementaryRegistrations === 'function') {
+                loadStudentSupplementaryRegistrations();
+            }
+            // Initialize supplementary form dropdowns
+            const suppProgramSelect = document.getElementById('supp_unit_program');
+            if (suppProgramSelect && typeof updateProgramDropdown === 'function') {
+                updateProgramDropdown(suppProgramSelect);
+            }
+            break;
+            
         case 'programs': 
             loadAllPrograms(); 
             populateCourseSelector();
