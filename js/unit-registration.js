@@ -1,5 +1,6 @@
 // ============================================================
 // STUDENT DASHBOARD - UNIT REGISTRATION WITH SUPPLEMENTARY SUPPORT
+// CONNECTED TO ACADEMIC REPORTS DATA
 // ============================================================
 
 (function() {
@@ -415,7 +416,6 @@
                 const supabase = this.getSupabase();
                 if (!supabase) {
                     console.warn('⚠️ Supabase not available, retrying...');
-                    // Try again after a delay
                     setTimeout(() => {
                         if (this.getSupabase()) {
                             this.loadUnits();
@@ -881,7 +881,7 @@
         }
         
         // ============================================================
-        // SUPPLEMENTARY REGISTRATION
+        // SUPPLEMENTARY REGISTRATION - USING ACADEMIC REPORTS DATA
         // ============================================================
         
         async loadSupplementaryData() {
@@ -904,7 +904,7 @@
                 <tr>
                     <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
                         <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #B45309; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
-                        <p>Loading eligible units...</p>
+                        <p>Loading eligible units from academic records...</p>
                     </td>
                 </tr>
             `;
@@ -912,46 +912,120 @@
             try {
                 const supabase = this.getSupabase();
                 if (!this.studentId || !supabase) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                <i class="fas fa-info-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                                <p>Please log in to view eligible units.</p>
-                            </td>
-                        </tr>
-                    `;
+                    this.renderEmptyState(tbody, 'Please log in to view eligible units.');
                     return;
                 }
                 
-                // Get student's exam grades to find failed units
-                const { data: grades, error: gradeError } = await supabase
-                    .from('exam_grades')
-                    .select('*, exams:exam_id(unit_code, course_name, block_term, exam_name, program_type)')
-                    .eq('student_id', this.studentId);
-                
-                if (gradeError) {
-                    console.warn('Could not fetch grades:', gradeError);
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                <i class="fas fa-info-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                                <p>No exam records found. You may not have any failed units.</p>
-                            </td>
-                        </tr>
-                    `;
+                // Get user profile for admission number
+                const user = window.currentUserProfile || window.db?.currentUserProfile || this.userProfile;
+                if (!user) {
+                    this.renderEmptyState(tbody, 'User profile not found. Please refresh and try again.');
                     return;
                 }
                 
-                // Find failed units (score < 50)
+                const admissionNumber = user.student_id || user.admission_number || user.user_id;
+                const userProgram = user.program || '';
+                
+                console.log('🔍 Looking up grades for:', admissionNumber);
+                
+                // ============================================
+                // METHOD 1: Use student_marks table (same as Academic Reports)
+                // ============================================
+                let marks = [];
+                let dataFound = false;
+                
+                try {
+                    const { data, error } = await supabase
+                        .from('student_marks')
+                        .select('*')
+                        .eq('admission_number', admissionNumber)
+                        .eq('published', true)
+                        .order('published_at', { ascending: false });
+                    
+                    if (!error && data && data.length > 0) {
+                        marks = data;
+                        dataFound = true;
+                        console.log('📊 Found marks from student_marks:', marks.length);
+                    }
+                } catch (e) {
+                    console.warn('Error fetching from student_marks:', e);
+                }
+                
+                // ============================================
+                // METHOD 2: Use exam_grades as fallback
+                // ============================================
+                if (!dataFound) {
+                    try {
+                        const { data, error } = await supabase
+                            .from('exam_grades')
+                            .select('*')
+                            .eq('student_id', this.studentId);
+                        
+                        if (!error && data && data.length > 0) {
+                            marks = data.map(grade => ({
+                                subject_name: grade.subject_name || grade.exam_name,
+                                final_score: grade.total_score || grade.marks || 0,
+                                grade: grade.grade || this.calculateGrade(grade.total_score || grade.marks || 0, userProgram),
+                                block: grade.block || 'N/A',
+                                academic_year: grade.academic_year || '2024',
+                                admission_number: admissionNumber
+                            }));
+                            dataFound = true;
+                            console.log('📊 Found marks from exam_grades:', marks.length);
+                        }
+                    } catch (e) {
+                        console.warn('Error fetching from exam_grades:', e);
+                    }
+                }
+                
+                // ============================================
+                // METHOD 3: Use academic_reports as fallback
+                // ============================================
+                if (!dataFound) {
+                    try {
+                        const { data, error } = await supabase
+                            .from('academic_reports')
+                            .select('*')
+                            .eq('student_id', this.studentId)
+                            .eq('status', 'published');
+                        
+                        if (!error && data && data.length > 0) {
+                            marks = data.map(report => ({
+                                subject_name: report.unit_name || report.subject_name,
+                                final_score: report.total_score || report.marks || 0,
+                                grade: report.grade || this.calculateGrade(report.total_score || report.marks || 0, userProgram),
+                                block: report.block || report.term || 'N/A',
+                                academic_year: report.academic_year || '2024',
+                                admission_number: admissionNumber
+                            }));
+                            dataFound = true;
+                            console.log('📊 Found marks from academic_reports:', marks.length);
+                        }
+                    } catch (e) {
+                        console.warn('Error fetching from academic_reports:', e);
+                    }
+                }
+                
+                // ============================================
+                // PROCESS MARKS - Find failed units
+                // ============================================
                 const failedUnits = [];
                 const processed = new Set();
                 
-                if (grades) {
-                    for (const grade of grades) {
-                        const score = grade.total_score || grade.marks || 0;
-                        const unitCode = grade.exams?.unit_code || grade.subject_name || grade.exam_name;
+                // Determine pass threshold based on program
+                const isTVET = this.isTVETStudent || (window.PROGRAM && window.PROGRAM.isTVET(userProgram));
+                const passThreshold = isTVET ? 50 : 60;
+                
+                console.log(`📊 Pass threshold: ${passThreshold}% (${isTVET ? 'TVET' : 'Nursing'})`);
+                
+                if (marks && marks.length > 0) {
+                    for (const mark of marks) {
+                        const score = mark.final_score || mark.total_score || mark.marks || 0;
+                        const subjectName = mark.subject_name || mark.unit_name || mark.course_name || 'Unknown';
+                        const unitCode = mark.unit_code || mark.subject_code || this.getUnitCode(subjectName) || subjectName.substring(0, 6).toUpperCase();
                         
-                        if (score < 50 && unitCode && !processed.has(unitCode)) {
+                        // Check if failed (score < pass threshold)
+                        if (score < passThreshold && score > 0 && unitCode && !processed.has(unitCode)) {
                             processed.add(unitCode);
                             
                             // Check if already registered for supplementary
@@ -963,40 +1037,77 @@
                                 .in('reg_type', ['Supplementary', 'Resit', 'Retake'])
                                 .maybeSingle();
                             
-                            // Determine registration type
+                            // Determine registration type based on score
                             let regType = 'Supplementary';
                             if (score < 30) regType = 'Retake';
                             else if (score < 40) regType = 'Resit';
                             
                             failedUnits.push({
                                 unit_code: unitCode,
-                                unit_name: grade.exams?.course_name || grade.subject_name || unitCode,
-                                block: grade.exams?.block_term || 'N/A',
+                                unit_name: subjectName,
+                                block: mark.block || mark.term || 'N/A',
                                 score: score,
                                 reg_type: regType,
                                 status: existingReg ? existingReg.status : 'Eligible',
-                                existing_id: existingReg?.id || null
+                                existing_id: existingReg?.id || null,
+                                grade: mark.grade || this.calculateGrade(score, userProgram)
                             });
                         }
                     }
                 }
                 
+                // ============================================
+                // If no failed units found, check if all passed
+                // ============================================
+                if (failedUnits.length === 0 && marks.length > 0) {
+                    const allPassed = marks.every(m => (m.final_score || 0) >= passThreshold);
+                    if (allPassed) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: #10b981;">
+                                    <i class="fas fa-check-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
+                                    <p style="font-weight: 600; font-size: 16px;">All units passed!</p>
+                                    <p style="font-size: 13px; color: #6b7280;">You have no failed units requiring supplementary registration.</p>
+                                    <p style="font-size: 11px; color: #94a3b8; margin-top: 8px;">You passed all ${marks.length} units with a ${passThreshold}% pass mark.</p>
+                                </td>
+                            </tr>
+                        `;
+                        
+                        if (this.eligibleCount) this.eligibleCount.textContent = '0 units';
+                        if (this.suppTabBadge) this.suppTabBadge.textContent = '0';
+                        return;
+                    }
+                }
+                
+                // ============================================
+                // Store and render results
+                // ============================================
                 this.failedUnits = failedUnits;
                 this.hasSupplementaryEligibility = failedUnits.length > 0;
-                
-                // Render
                 this.renderEligibleUnitsTable(failedUnits);
                 
                 if (this.eligibleCount) {
                     this.eligibleCount.textContent = `${failedUnits.length} units`;
                 }
                 
-                // Update badge
                 if (this.suppTabBadge) {
                     this.suppTabBadge.textContent = failedUnits.length;
                 }
                 
                 console.log(`✅ Loaded ${failedUnits.length} eligible supplementary units`);
+                
+                // If no failed units found and no marks found, show appropriate message
+                if (failedUnits.length === 0 && marks.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                <i class="fas fa-info-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
+                                <p>No academic records found.</p>
+                                <p style="font-size: 12px; color: #6b7280;">Your marks will appear here once they are published.</p>
+                            </td>
+                        </tr>
+                    `;
+                }
                 
             } catch (error) {
                 console.error('❌ Error loading eligible units:', error);
@@ -1004,7 +1115,8 @@
                     <tr>
                         <td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">
                             <i class="fas fa-exclamation-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
-                            Error: ${error.message}
+                            <p>Error loading academic records.</p>
+                            <p style="font-size: 12px; color: #6b7280;">${error.message}</p>
                         </td>
                     </tr>
                 `;
@@ -1198,7 +1310,6 @@
                 try {
                     return JSON.parse(cb.dataset.unit);
                 } catch (e) {
-                    // If data-unit is not JSON, use the checkbox data
                     return {
                         unit_code: cb.dataset.code || cb.value,
                         unit_name: cb.dataset.name || cb.dataset.unit || 'Unknown'
@@ -1209,7 +1320,6 @@
             // Also check dropdown selection
             const dropDownUnit = this.suppUnitSelect?.value;
             if (dropDownUnit && !selectedUnits.find(u => u.unit_code === dropDownUnit)) {
-                // Add dropdown selection to list
                 const unitData = this.failedUnits.find(u => u.unit_code === dropDownUnit);
                 if (unitData) {
                     selectedUnits.push(unitData);
@@ -1242,20 +1352,23 @@
                 const supabase = this.getSupabase();
                 if (!supabase) throw new Error('Database connection not available');
                 
+                const user = window.currentUserProfile || this.userProfile;
+                
                 // Create registration records
                 const registrations = selectedUnits.map(unit => ({
                     student_id: this.studentId,
                     unit_code: unit.unit_code,
                     unit_name: unit.unit_name || unit.exam_name || unit.unit_code,
-                    program: this.programCode,
-                    block: unit.block || 'N/A',
-                    intake_year: this.intakeYear,
+                    program: this.programCode || user?.program || 'KRCHN',
+                    block: unit.block || user?.block || 'N/A',
+                    intake_year: this.intakeYear || user?.intake_year || 2025,
                     reg_type: regType,
                     status: 'pending',
                     payment_reference: paymentRef,
                     submitted_date: new Date().toISOString(),
                     created_at: new Date().toISOString(),
-                    credits: unit.credits || 3
+                    credits: unit.credits || 3,
+                    admission_number: user?.admission_number || user?.student_id || 'N/A'
                 }));
                 
                 const { error } = await supabase
@@ -1338,14 +1451,16 @@
                 console.log(`📄 Downloading exam card for ${unitCode} (ID: ${regId})`);
                 
                 // Show loading
-                Swal.fire({
-                    title: 'Generating Exam Card...',
-                    text: 'Please wait while we prepare your exam card.',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Generating Exam Card...',
+                        text: 'Please wait while we prepare your exam card.',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                }
                 
                 const supabase = this.getSupabase();
                 if (!supabase) throw new Error('Database connection not available');
@@ -1369,80 +1484,15 @@
                 
                 if (studentError) throw studentError;
                 
-                // Close loading
-                Swal.close();
+                if (typeof Swal !== 'undefined') Swal.close();
                 
-                // Generate PDF - Check if jsPDF is available
-                if (typeof window.jspdf === 'undefined' && typeof jspdf === 'undefined') {
-                    // Fallback: Show a printable version
-                    this.showExamCardHTML(reg, student);
-                    return;
-                }
-                
-                // Use jsPDF
-                const { jsPDF } = window.jspdf || jspdf;
-                const doc = new jsPDF('p', 'mm', 'a4');
-                
-                // Header
-                doc.setFillColor(76, 29, 149);
-                doc.rect(0, 0, 210, 40, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(16);
-                doc.text('NCHSM - SUPPLEMENTARY EXAM CARD', 105, 15, { align: 'center' });
-                doc.setFontSize(10);
-                doc.text('Nakuru College of Health Sciences and Management', 105, 25, { align: 'center' });
-                doc.setTextColor(0, 0, 0);
-                
-                // Student Info
-                doc.setFontSize(12);
-                let y = 55;
-                doc.text('STUDENT INFORMATION', 20, y);
-                doc.setDrawColor(76, 29, 149);
-                doc.line(20, y + 2, 190, y + 2);
-                y += 10;
-                
-                doc.setFontSize(10);
-                doc.text(`Name: ${student.full_name || 'N/A'}`, 20, y);
-                doc.text(`Admission: ${student.admission_number || 'N/A'}`, 120, y);
-                y += 8;
-                doc.text(`Program: ${student.program || 'N/A'}`, 20, y);
-                doc.text(`Date: ${new Date().toLocaleDateString()}`, 120, y);
-                y += 12;
-                
-                // Exam Details
-                doc.setFontSize(12);
-                doc.text('EXAM DETAILS', 20, y);
-                doc.line(20, y + 2, 190, y + 2);
-                y += 10;
-                
-                doc.setFontSize(10);
-                doc.text(`Unit Code: ${reg.unit_code}`, 20, y);
-                y += 8;
-                doc.text(`Unit Name: ${reg.unit_name}`, 20, y);
-                y += 8;
-                doc.text(`Registration Type: ${reg.reg_type}`, 20, y);
-                y += 8;
-                doc.text(`Status: ${reg.status.toUpperCase()}`, 20, y);
-                y += 8;
-                doc.text(`Registration Date: ${new Date(reg.submitted_date).toLocaleDateString()}`, 20, y);
-                y += 12;
-                
-                // Footer
-                doc.setFillColor(240, 240, 240);
-                doc.rect(20, 260, 170, 20, 'F');
-                doc.setFontSize(8);
-                doc.text('This exam card is valid for the current supplementary examination period.', 105, 268, { align: 'center' });
-                doc.text('Please present this card at the examination venue.', 105, 275, { align: 'center' });
-                
-                // Save
-                const fileName = `Supplementary_Exam_Card_${reg.unit_code}_${student.admission_number || 'student'}.pdf`;
-                doc.save(fileName);
-                
-                this.showSuccess('Exam card downloaded successfully!');
+                // Show a printable version
+                this.showExamCardHTML(reg, student);
+                this.showSuccess('Exam card generated successfully!');
                 
             } catch (error) {
                 console.error('Error downloading exam card:', error);
-                Swal.close();
+                if (typeof Swal !== 'undefined') Swal.close();
                 this.showError(`Failed to download exam card: ${error.message}`, 'error');
             }
         }
@@ -1526,13 +1576,79 @@
                     </div>
                     <button class="btn-print" onclick="window.print()">🖨️ Print Exam Card</button>
                     <script>
-                        // Auto-print after a short delay
                         setTimeout(() => window.print(), 1000);
                     <\/script>
                 </body>
                 </html>
             `);
             win.document.close();
+        }
+        
+        // ============================================================
+        // HELPER: Get Unit Code from Academic Reports
+        // ============================================================
+        
+        getUnitCode(subjectName) {
+            if (!subjectName) return 'N/A';
+            
+            // Try to get from cached unit codes (from academic-reports.js)
+            if (window.getUnitCode) {
+                return window.getUnitCode(subjectName);
+            }
+            
+            // Fallback: generate from subject name
+            const words = subjectName.split(' ');
+            if (words.length === 1) {
+                return subjectName.substring(0, 6).toUpperCase();
+            }
+            
+            const skipWords = ['and', 'of', 'for', 'the', 'to', 'with', 'on', 'at'];
+            let code = words
+                .filter(w => !skipWords.includes(w.toLowerCase()))
+                .map(w => w[0])
+                .join('')
+                .toUpperCase()
+                .substring(0, 6);
+            
+            return code || 'N/A';
+        }
+        
+        // ============================================================
+        // HELPER: Calculate Grade
+        // ============================================================
+        
+        calculateGrade(score, program) {
+            if (score === null || score === undefined || score === 0) return 'D';
+            
+            const isTVET = this.isTVETStudent || (window.PROGRAM && window.PROGRAM.isTVET(program));
+            
+            if (isTVET) {
+                if (score >= 75) return 'A';
+                if (score >= 65) return 'B';
+                if (score >= 50) return 'C';
+                return 'FAIL';
+            } else {
+                if (score >= 75) return 'A';
+                if (score >= 65) return 'B';
+                if (score >= 60) return 'C';
+                return 'D';
+            }
+        }
+        
+        // ============================================================
+        // HELPER: Render Empty State
+        // ============================================================
+        
+        renderEmptyState(tbody, message) {
+            if (!tbody) return;
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-info-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                        <p>${message}</p>
+                    </td>
+                </tr>
+            `;
         }
         
         // ============================================================
@@ -1579,7 +1695,6 @@
         showWaitingForLogin() {
             const container = document.querySelector('#hub-register');
             if (container) {
-                // Don't overwrite if already loaded
                 if (this.isInitialized) return;
                 
                 container.innerHTML = `
@@ -1629,17 +1744,14 @@
     // INSTANTIATE
     // ============================================================
     
-    // Wait for DOM to be ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             window.studentDashboard = new StudentDashboard();
-            // Create alias for compatibility
             window.unitRegistrationModule = window.studentDashboard;
             console.log('✅ unitRegistrationModule alias created');
         });
     } else {
         window.studentDashboard = new StudentDashboard();
-        // Create alias for compatibility
         window.unitRegistrationModule = window.studentDashboard;
         console.log('✅ unitRegistrationModule alias created');
     }
@@ -1684,7 +1796,6 @@
         const regularContent = document.getElementById('regular-registration');
         const suppContent = document.getElementById('supplementary-registration');
         
-        // Update tab styles
         subTabs.forEach(t => {
             t.classList.remove('active');
             t.style.color = '#6b7280';
@@ -1698,7 +1809,6 @@
             activeTab.style.borderBottom = '3px solid #4C1D95';
         }
         
-        // Show/hide content
         if (regularContent) {
             regularContent.style.display = tab === 'regular' ? 'block' : 'none';
         }
@@ -1706,7 +1816,6 @@
             suppContent.style.display = tab === 'supplementary' ? 'block' : 'none';
         }
         
-        // Load data
         if (tab === 'supplementary' && window.studentDashboard) {
             window.studentDashboard.loadSupplementaryData();
         } else if (tab === 'regular' && window.studentDashboard) {
@@ -1716,5 +1825,4 @@
     
     console.log('✅ Student Dashboard ready with Supplementary support!');
     console.log('📌 Use window.studentDashboard or window.unitRegistrationModule to access the API');
-    
 })();
