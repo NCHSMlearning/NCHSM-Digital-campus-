@@ -50,8 +50,13 @@ const studentFinanceState = {
 // 🔗 COMMUNICATION WITH SUPER ADMIN MODULE
 // ============================================================
 
+// ============================================================
+// 🔗 COMMUNICATION WITH SUPER ADMIN MODULE - FIXED
+// ============================================================
+
 function notifySuperAdmin(eventType, data) {
     try {
+        // Dispatch custom event for admin module
         const adminEvent = new CustomEvent('studentFinanceEvent', {
             detail: {
                 type: eventType,
@@ -63,10 +68,12 @@ function notifySuperAdmin(eventType, data) {
         window.dispatchEvent(adminEvent);
         console.log(`📤 Notified Super Admin: ${eventType}`, data);
         
+        // Call admin function if available
         if (typeof window.handleStudentFinanceEvent === 'function') {
             window.handleStudentFinanceEvent(eventType, data);
         }
         
+        // Log to admin_events table - FIXED .catch issue
         if (typeof supabase !== 'undefined' && supabase) {
             supabase
                 .from('admin_events')
@@ -76,11 +83,19 @@ function notifySuperAdmin(eventType, data) {
                     source: 'student-finance',
                     created_at: new Date().toISOString()
                 }])
-                .catch(e => console.warn('⚠️ Admin event logging error:', e));
+                .then(({ error }) => {
+                    if (error) {
+                        console.warn('⚠️ Admin event logging error:', error);
+                    }
+                })
+                .catch(e => {
+                    // This catch handles any unexpected errors
+                    console.warn('⚠️ Admin event logging failed:', e);
+                });
         }
         return true;
     } catch (error) {
-        console.error('❌ Error notifying Super Admin:', error);
+        console.error('❌ Error notifying  Admin:', error);
         return false;
     }
 }
@@ -538,6 +553,10 @@ function processFeeStructureData(data, programType, programLevel) {
 // 📄 RENDER FEE STRUCTURE WITH VOTE HEADS
 // ============================================================
 
+// ============================================================
+// 📄 RENDER FEE STRUCTURE WITH VOTE HEADS - WITH VIEW BUTTONS
+// ============================================================
+
 function renderFeeStructureData(fees, selectedPeriod = null) {
     const container = document.getElementById('feeStructureContent');
     if (!container) return;
@@ -547,6 +566,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
         return;
     }
     
+    // Get data from state
     const data = studentFinanceState.feeStructureRaw;
     if (!data || !data.periods || data.periods.length === 0) {
         container.innerHTML = `
@@ -564,7 +584,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     const periodLabel = getPeriodLabel(programType);
     
     // If feeStructureRaw is empty, fetch from database
-    if (studentFinanceState.feeStructureRaw.length === 0) {
+    if (!studentFinanceState.feeStructureRaw || studentFinanceState.feeStructureRaw.periods.length === 0) {
         container.innerHTML = `
             <div style="text-align: center; padding: 30px; color: #94a3b8;">
                 <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
@@ -576,6 +596,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     
     const { periods, voteHeads, periodTotals } = data;
     
+    // Filter periods if selected
     let filteredPeriods = periods;
     let filterMessage = '';
     
@@ -598,6 +619,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
         }
     }
     
+    // Build filtered vote heads
     const filteredVoteHeads = voteHeads.map(vh => {
         const amounts = filteredPeriods.map(period => {
             const comp = period.components.find(c => c.label === vh.label);
@@ -608,6 +630,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     
     const filteredTotals = filteredPeriods.map(p => p.amount);
     
+    // Build the table HTML with View buttons
     let html = `
         ${filterMessage}
         <div style="overflow-x: auto;">
@@ -622,12 +645,13 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
                                 ${index === 0 ? ' <span style="background: #4C1D95; color: white; padding: 2px 6px; border-radius: 10px; font-size: 7px;">Current</span>' : ''}
                             </th>
                         `).join('')}
-                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; min-width: 80px;">Actions</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; min-width: 80px;">ACTIONS</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
+    // Render each vote head with View button
     let sn = 0;
     filteredVoteHeads.forEach((vh) => {
         sn++;
@@ -643,6 +667,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
                     </td>
                 `).join('')}
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+                    <!-- ✅ VIEW VOTE HEAD BUTTON - This is where it appears -->
                     <button onclick="viewVoteHeadDetails('${vh.label}')" class="action-btn view" title="View details for ${vh.label}">
                         <i class="fas fa-eye"></i> View
                     </button>
@@ -651,6 +676,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
         `;
     });
     
+    // Total row with Full Details button
     html += `
         <tr class="total-row" style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
             <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: center; color: #0A3D62;">-</td>
@@ -671,6 +697,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
         </tr>
     `;
     
+    // Hostel row if applicable
     const hasHostel = filteredPeriods.some(p => p.hostel > 0);
     if (hasHostel) {
         html += `
@@ -718,6 +745,7 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
         </div>
     `;
     
+    // Add notes if available
     if (data.terms && data.terms.length > 0) {
         html += `
             <div style="margin-top: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
@@ -731,7 +759,6 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     
     container.innerHTML = html;
 }
-
 // ============================================================
 // 👁️ VIEW FUNCTIONS
 // ============================================================
