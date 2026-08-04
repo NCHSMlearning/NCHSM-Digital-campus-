@@ -42,6 +42,137 @@ const studentFinanceState = {
 };
 
 // ============================================================
+// 🔔 UPDATE FINANCE BADGE
+// ============================================================
+
+/**
+ * Update finance badge notification count
+ * Shows pending and overdue payments count
+ */
+function updateFinanceBadge(data) {
+    const badge = document.getElementById('financeBadge');
+    const badgeCount = document.getElementById('financeBadgeCount');
+    
+    if (!badge || !badgeCount) return;
+    
+    // Get payments from data
+    const payments = data?.payments || [];
+    
+    // Count pending and overdue payments
+    const pending = payments.filter(p => 
+        p.status === 'pending' || 
+        p.status === 'processing' ||
+        p.status === 'partial'
+    ).length;
+    
+    const overdue = payments.filter(p => 
+        p.status === 'failed' || 
+        p.status === 'overdue'
+    ).length;
+    
+    const total = pending + overdue;
+    
+    if (total > 0) {
+        badge.style.display = 'inline-block';
+        badgeCount.textContent = total;
+        
+        // Show red for overdue, orange for pending only
+        if (overdue > 0) {
+            badge.style.background = '#ef4444';
+        } else if (pending > 0) {
+            badge.style.background = '#f59e0b';
+        } else {
+            badge.style.background = '#3b82f6';
+        }
+        
+        // Add pulse animation
+        badge.style.animation = 'pulse-badge 2s infinite';
+    } else {
+        badge.style.display = 'none';
+        badge.style.animation = 'none';
+    }
+}
+
+// ============================================================
+// 🎯 TOGGLE FEE STRUCTURE
+// ============================================================
+
+/**
+ * Toggle fee structure visibility
+ * This is called from the HTML onclick
+ */
+function toggleFeeStructure() {
+    const container = document.getElementById('studentFeeStructureDisplay');
+    const toggleBtn = document.getElementById('toggleFeeBtn');
+    const toggleText = document.getElementById('toggleFeeText');
+    
+    if (!container) return;
+    
+    if (container.style.display === 'none' || container.style.display === '') {
+        // Show fee structure
+        container.style.display = 'block';
+        container.style.animation = 'fadeIn 0.3s ease';
+        
+        if (toggleBtn) {
+            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="toggleFeeText">Hide Fee Structure</span>';
+        }
+        if (toggleText) {
+            toggleText.textContent = 'Hide Fee Structure';
+        }
+        
+        studentFinanceState.feeStructureVisible = true;
+        
+        // Load fee structure if not loaded
+        if (studentFinanceState.feeStructure.length === 0) {
+            loadStudentFinance();
+        } else {
+            renderFeeStructureData(studentFinanceState.feeStructure);
+        }
+        
+        // Scroll to fee structure
+        setTimeout(() => {
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+        
+    } else {
+        // Hide fee structure
+        container.style.display = 'none';
+        container.style.animation = 'fadeOut 0.3s ease';
+        
+        if (toggleBtn) {
+            toggleBtn.innerHTML = '<i class="fas fa-eye"></i> <span id="toggleFeeText">View Fee Structure</span>';
+        }
+        if (toggleText) {
+            toggleText.textContent = 'View Fee Structure';
+        }
+        
+        studentFinanceState.feeStructureVisible = false;
+    }
+}
+
+// ============================================================
+// 🔄 RESET TO CURRENT PERIOD
+// ============================================================
+
+function resetToCurrentPeriod() {
+    const programType = studentFinanceState.programType || 'KRCHN';
+    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const periods = getPeriods(programType, programLevel);
+    const currentPeriod = periods[0] || 'Year 1 - Semester 1';
+    
+    studentFinanceState.selectedPeriod = null;
+    studentFinanceState.currentPeriod = currentPeriod;
+    
+    // Refresh the display
+    if (studentFinanceState.isLoaded) {
+        updateBalanceForPeriodIndex(0);
+        renderFeeStructureData(studentFinanceState.feeStructure);
+    }
+    
+    showToast('📊 Reset to current period', 'info');
+}
+
+// ============================================================
 // 📱 STK PAYMENT FUNCTIONS
 // ============================================================
 
@@ -2212,6 +2343,40 @@ document.addEventListener('DOMContentLoaded', function() {
             @keyframes slideInRight {
                 from { transform: translateX(100%); opacity: 0; }
                 to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes pulse-badge {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(-10px); }
+            }
+            .action-btn {
+                background: transparent;
+                border: none;
+                padding: 4px 8px;
+                margin: 0 2px;
+                cursor: pointer;
+                font-size: 12px;
+                border-radius: 4px;
+                transition: all 0.2s ease;
+            }
+            .action-btn.view {
+                color: #4C1D95;
+            }
+            .action-btn.view:hover {
+                background: #ede9fe;
+            }
+            .action-btn.download {
+                color: #059669;
+            }
+            .action-btn.download:hover {
+                background: #d1fae5;
             }
         `;
         document.head.appendChild(style);
