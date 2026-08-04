@@ -1242,13 +1242,11 @@ function handleBulkFileUpload(event) {
     const file = event.target.files[0];
     if (file) {
         showToast(`File selected: ${file.name}`, 'success');
-        // Implement file parsing logic
     }
 }
 
 function downloadTemplate() {
     showToast('Downloading template...', 'info');
-    // Generate and download CSV template
     const headers = 'student_id,amount,payment_method,reference,payment_date,period\n';
     const sample = 'STU001,5000,M-Pesa,TXN123,2026-01-01,Term 1\n';
     const blob = new Blob([headers + sample], { type: 'text/csv' });
@@ -1262,7 +1260,6 @@ function downloadTemplate() {
 
 function processBulkImport() {
     showToast('Processing bulk import...', 'info');
-    // Implement bulk import logic
 }
 
 // ============================================================
@@ -1271,7 +1268,6 @@ function processBulkImport() {
 
 function sendPaymentReminders() {
     showToast('Sending payment reminders...', 'info');
-    // Implement email/SMS reminder logic
 }
 
 // ============================================================
@@ -1284,7 +1280,6 @@ function loadAuditLog() {
     
     container.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading audit log...</div>`;
     
-    // Fetch recent payments as audit log
     const recentPayments = allPayments.slice(0, 10);
     
     if (recentPayments.length === 0) {
@@ -1309,8 +1304,16 @@ function loadAuditLog() {
 }
 
 // ============================================================
-// FEE STRUCTURE - COMPLETE WITH EDITABLE COMPONENTS
+// FEE STRUCTURE - COMPLETE WITH WORKING CALCULATION
 // ============================================================
+
+// Fee structure state
+let feeStructureData = {
+    components: [],
+    total: 0,
+    hostel: 0,
+    terms: []
+};
 
 async function loadFeeStructure() {
     console.log('📋 Loading fee structure...');
@@ -1397,94 +1400,100 @@ function renderFeeStructureCards(fees) {
         const components = fee.components || [];
         const terms = fee.terms || [];
         const payment = fee.payment || {};
+        const total = fee.total || calculateTotalFromComponents(components);
         
         html += `
-            <div class="fee-structure-pdf-card">
+            <div class="fee-structure-pdf-card" style="background:white;border-radius:12px;border:1px solid #e5e7eb;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
                 <!-- HEADER -->
-                <div class="fee-pdf-header">
+                <div style="background:linear-gradient(135deg, #0A3D62, #1a5a7a);padding:20px 24px;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;">
                     <div>
-                        <div class="program-title">
-                            ${fee.program || 'N/A'}
-                            <small>${fee.level || ''} ${fee.program_code ? '· ' + fee.program_code : ''}</small>
-                        </div>
-                        <div style="font-size:12px;color:#6b7280;margin-top:4px;">
-                            ${fee.block_term || fee.duration || ''}
+                        <div style="font-size:18px;font-weight:700;">${fee.program || 'N/A'}</div>
+                        <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:4px;">
+                            ${fee.level || ''} ${fee.program_code ? '· ' + fee.program_code : ''}
+                            ${fee.duration ? '· ' + fee.duration : ''}
+                            ${fee.mode ? '· ' + fee.mode : ''}
                         </div>
                     </div>
-                    <div class="program-meta">
-                        <span>📅 ${fee.duration || 'N/A'}</span>
-                        <span>💻 ${fee.mode || 'Physical/Online'}</span>
-                        <span>🏷️ Total: <strong>KES ${(fee.total || 0).toLocaleString()}</strong></span>
-                        <span class="badge ${fee.is_active !== false ? 'badge-success' : 'badge-danger'}">
-                            ${fee.is_active !== false ? 'Active' : 'Inactive'}
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                        <span style="background:rgba(255,255,255,0.15);padding:4px 14px;border-radius:20px;font-size:12px;">
+                            📅 ${fee.intake_year || '2026'}
+                        </span>
+                        <span style="background:rgba(255,255,255,0.15);padding:4px 14px;border-radius:20px;font-size:12px;">
+                            ${fee.block_term || 'Term 1'}
+                        </span>
+                        <span style="background:${fee.is_active !== false ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;">
+                            ${fee.is_active !== false ? '✅ Active' : '❌ Inactive'}
                         </span>
                     </div>
                 </div>
                 
                 <!-- BODY -->
-                <div class="fee-pdf-body">
-                    <div class="fee-section">
-                        <h5>📋 Fee Components</h5>
-                        ${components.length > 0 ? components.map(c => `
-                            <div class="fee-item">
-                                <span class="fee-label">${c.label || c.name || 'N/A'}</span>
-                                <span class="fee-amount">KES ${(c.amount || 0).toLocaleString()}</span>
+                <div style="padding:20px 24px;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                        <!-- Left Column: Components -->
+                        <div>
+                            <h5 style="color:#0A3D62;margin:0 0 12px 0;font-size:14px;">
+                                <i class="fas fa-list" style="color:#4C1D95;"></i> Fee Components
+                            </h5>
+                            ${components.length > 0 ? components.map(c => `
+                                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
+                                    <span style="color:#475569;">${c.label || c.name || 'N/A'}</span>
+                                    <span style="font-weight:600;color:#0A3D62;">KES ${(c.amount || 0).toLocaleString()}</span>
+                                </div>
+                            `).join('') : '<div style="color:#94a3b8;font-size:13px;">No components defined</div>'}
+                            
+                            ${fee.hostel ? `
+                                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;background:#fef3c7;margin-top:4px;border-radius:4px;padding:6px 10px;">
+                                    <span style="color:#92400e;">🏠 Hostel Fee (Optional)</span>
+                                    <span style="font-weight:600;color:#92400e;">KES ${(fee.hostel || 0).toLocaleString()}</span>
+                                </div>
+                            ` : ''}
+                            
+                            <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #4C1D95;margin-top:8px;font-size:15px;font-weight:700;">
+                                <span style="color:#0A3D62;">TOTAL</span>
+                                <span style="color:#4C1D95;">KES ${(total || 0).toLocaleString()}</span>
                             </div>
-                        `).join('') : '<div style="color:#94a3b8;font-size:13px;">No components defined</div>'}
-                    </div>
-                    
-                    <div class="fee-section">
-                        <h5>📌 Payment Information</h5>
-                        <div style="font-size:13px;color:#475569;margin-bottom:12px;">
-                            <div><strong>M-Pesa:</strong> ${payment.mpesa || 'N/A'}</div>
-                            <div><strong>Bank:</strong> ${payment.bank || 'N/A'}</div>
-                            <div><strong>Email:</strong> ${payment.email || 'N/A'}</div>
-                            <div><strong>WhatsApp:</strong> ${payment.whatsapp || 'N/A'}</div>
                         </div>
                         
-                        <h5 style="margin-top:12px;">📜 Terms</h5>
-                        <ul style="font-size:12px;color:#64748b;padding-left:16px;margin:8px 0 0 0;line-height:1.6;">
-                            ${terms.length > 0 ? terms.slice(0, 3).map(t => `<li>${t}</li>`).join('') : '<li>No terms defined</li>'}
-                            ${terms.length > 3 ? `<li>+${terms.length - 3} more</li>` : ''}
-                        </ul>
-                    </div>
-                    
-                    <div class="fee-total">
-                        <span>💰 TOTAL FEES</span>
-                        <span class="amount">KES ${(fee.total || 0).toLocaleString()}</span>
-                    </div>
-                    
-                    ${fee.hostel ? `
-                        <div style="grid-column:1/-1;background:#fef3c7;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;font-size:14px;border:1px solid #f59e0b;">
-                            <span>🏠 HOSTEL FEE (OPTIONAL)</span>
-                            <span><strong>KES ${(fee.hostel || 0).toLocaleString()}</strong> <span class="hostel-fee">Optional</span></span>
+                        <!-- Right Column: Payment Info & Terms -->
+                        <div>
+                            <h5 style="color:#0A3D62;margin:0 0 12px 0;font-size:14px;">
+                                <i class="fas fa-credit-card" style="color:#4C1D95;"></i> Payment Information
+                            </h5>
+                            <div style="font-size:13px;color:#475569;line-height:1.8;">
+                                <div><strong>📱 M-Pesa:</strong> ${payment.mpesa || 'N/A'}</div>
+                                <div><strong>🏦 Bank:</strong> ${payment.bank || 'N/A'}</div>
+                                <div><strong>📧 Email:</strong> ${payment.email || 'N/A'}</div>
+                                <div><strong>📱 WhatsApp:</strong> ${payment.whatsapp || 'N/A'}</div>
+                            </div>
+                            
+                            <h5 style="color:#0A3D62;margin:16px 0 8px 0;font-size:14px;">
+                                <i class="fas fa-file-contract" style="color:#4C1D95;"></i> Terms
+                            </h5>
+                            <ul style="font-size:12px;color:#64748b;padding-left:16px;margin:0;line-height:1.8;">
+                                ${terms.length > 0 ? terms.slice(0, 3).map(t => `<li>${t}</li>`).join('') : '<li>No terms defined</li>'}
+                                ${terms.length > 3 ? `<li>+${terms.length - 3} more</li>` : ''}
+                            </ul>
                         </div>
-                    ` : ''}
+                    </div>
                 </div>
                 
                 <!-- FOOTER -->
-                <div class="fee-pdf-footer">
-                    <div class="payment-info">
-                        <span><strong>📱 Paybill:</strong> 247247</span>
-                        <span><strong>📧 Email:</strong> nchsmfinance@gmail.com</span>
+                <div style="background:#f8fafc;padding:12px 24px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                    <span style="font-size:11px;color:#94a3b8;">
+                        <i class="fas fa-lock" style="color:#10b981;"></i> Secure Payment
+                    </span>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="openEditFeeModal('${fee.id}')" class="btn-action btn-primary btn-sm" style="background:#4C1D95;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button onclick="duplicateFeeStructure('${fee.id}')" class="btn-action btn-outline btn-sm" style="background:transparent;color:#475569;border:1px solid #e2e8f0;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;">
+                            <i class="fas fa-copy"></i> Duplicate
+                        </button>
+                        <button onclick="deleteFeeStructure('${fee.id}')" class="btn-action btn-danger btn-sm" style="background:#dc2626;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
                     </div>
-                    <div style="display:flex;gap:12px;">
-                        <span>🔒 Secure Payment</span>
-                        <span>📄 Fees Subject to Review</span>
-                    </div>
-                </div>
-                
-                <!-- ACTIONS -->
-                <div class="fee-pdf-actions">
-                    <button onclick="openEditFeeModal('${fee.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button onclick="duplicateFeeStructure('${fee.id}')" class="finance-btn finance-btn-outline finance-btn-sm">
-                        <i class="fas fa-copy"></i> Duplicate
-                    </button>
-                    <button onclick="deleteFeeStructure('${fee.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
                 </div>
             </div>
         `;
@@ -1492,6 +1501,42 @@ function renderFeeStructureCards(fees) {
     
     container.innerHTML = html;
 }
+
+// ============================================================
+// FEE STRUCTURE CALCULATION FUNCTIONS
+// ============================================================
+
+function calculateTotalFromComponents(components) {
+    if (!components || components.length === 0) return 0;
+    return components.reduce((sum, comp) => sum + (parseFloat(comp.amount) || 0), 0);
+}
+
+function updateFeeTotalPreview() {
+    const compAmounts = document.querySelectorAll('.comp-amount');
+    let total = 0;
+    compAmounts.forEach(input => {
+        const val = parseFloat(input.value) || 0;
+        total += val;
+    });
+    
+    const hostel = parseFloat(document.getElementById('fee_hostel')?.value) || 0;
+    total += hostel;
+    
+    const previewEl = document.getElementById('feeTotalPreview');
+    if (previewEl) {
+        previewEl.textContent = 'KES ' + total.toLocaleString();
+    }
+}
+
+// Add event listeners for real-time calculation
+document.addEventListener('DOMContentLoaded', function() {
+    // Listen for changes on component amounts
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('comp-amount') || e.target.id === 'fee_hostel') {
+            updateFeeTotalPreview();
+        }
+    });
+});
 
 // ============================================================
 // FEE STRUCTURE FILTER FUNCTIONS
@@ -1566,26 +1611,27 @@ function openAddFeeModal() {
     setValue('fee_email', 'nchsmfinance@gmail.com');
     setValue('fee_whatsapp', '+254 103614355 | +254 703345771');
     
+    // Reset components with default values
     const compContainer = document.getElementById('feeComponentsContainer');
     if (compContainer) {
         compContainer.innerHTML = `
             <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE">
-                <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000">
+                <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE" oninput="updateFeeTotalPreview()">
+                <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000" oninput="updateFeeTotalPreview()">
                 <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE">
-                <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
+                <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE" oninput="updateFeeTotalPreview()">
+                <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000" oninput="updateFeeTotalPreview()">
                 <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE">
-                <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000">
+                <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE" oninput="updateFeeTotalPreview()">
+                <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000" oninput="updateFeeTotalPreview()">
                 <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1593,6 +1639,7 @@ function openAddFeeModal() {
         `;
     }
     
+    // Reset terms
     const termContainer = document.getElementById('feeTermsContainer');
     if (termContainer) {
         termContainer.innerHTML = `
@@ -1649,29 +1696,57 @@ function openEditFeeModal(feeId) {
     setValue('fee_email', payment.email || 'nchsmfinance@gmail.com');
     setValue('fee_whatsapp', payment.whatsapp || '+254 103614355 | +254 703345771');
     
+    // Populate components
     const compContainer = document.getElementById('feeComponentsContainer');
     if (compContainer) {
         compContainer.innerHTML = '';
-        if (fee.components && fee.components.length > 0) {
-            fee.components.forEach(comp => {
+        const components = fee.components || [];
+        if (components.length > 0) {
+            components.forEach(comp => {
                 compContainer.innerHTML += `
                     <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                        <input type="text" class="form-control comp-name" placeholder="Component name" value="${comp.label || comp.name || ''}">
-                        <input type="number" class="form-control comp-amount" placeholder="Amount" value="${comp.amount || 0}">
+                        <input type="text" class="form-control comp-name" placeholder="Component name" value="${comp.label || comp.name || ''}" oninput="updateFeeTotalPreview()">
+                        <input type="number" class="form-control comp-amount" placeholder="Amount" value="${comp.amount || 0}" oninput="updateFeeTotalPreview()">
                         <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                 `;
             });
+        } else {
+            compContainer.innerHTML = `
+                <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE" oninput="updateFeeTotalPreview()">
+                    <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000" oninput="updateFeeTotalPreview()">
+                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE" oninput="updateFeeTotalPreview()">
+                    <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000" oninput="updateFeeTotalPreview()">
+                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE" oninput="updateFeeTotalPreview()">
+                    <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000" oninput="updateFeeTotalPreview()">
+                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
         }
     }
     
+    // Populate terms
     const termContainer = document.getElementById('feeTermsContainer');
     if (termContainer) {
         termContainer.innerHTML = '';
-        if (fee.terms && fee.terms.length > 0) {
-            fee.terms.forEach(term => {
+        const terms = fee.terms || [];
+        if (terms.length > 0) {
+            terms.forEach(term => {
                 termContainer.innerHTML += `
                     <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
                         <input type="text" class="form-control term-text" placeholder="Enter term" value="${term.replace(/"/g, '&quot;')}">
@@ -1681,6 +1756,21 @@ function openEditFeeModal(feeId) {
                     </div>
                 `;
             });
+        } else {
+            termContainer.innerHTML = `
+                <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-control term-text" placeholder="Enter term" value="All fees are non-refundable once a student has commenced training.">
+                    <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-control term-text" placeholder="Enter term" value="Payments must be made via M-Pesa Pay bill or bank deposit only. CASH NOT ACCEPTED.">
+                    <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
         }
     }
     
@@ -1702,8 +1792,8 @@ function addFeeComponentRow() {
     row.className = 'fee-component-row';
     row.style.cssText = 'display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;';
     row.innerHTML = `
-        <input type="text" class="form-control comp-name" placeholder="Component name">
-        <input type="number" class="form-control comp-amount" placeholder="Amount">
+        <input type="text" class="form-control comp-name" placeholder="Component name" oninput="updateFeeTotalPreview()">
+        <input type="number" class="form-control comp-amount" placeholder="Amount" oninput="updateFeeTotalPreview()">
         <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
             <i class="fas fa-times"></i>
         </button>
@@ -1739,16 +1829,6 @@ function removeFeeTermRow(button) {
     if (row) {
         row.remove();
     }
-}
-
-function updateFeeTotalPreview() {
-    const amounts = document.querySelectorAll('.comp-amount');
-    let total = 0;
-    amounts.forEach(input => {
-        const val = parseFloat(input.value) || 0;
-        total += val;
-    });
-    document.getElementById('feeTotalPreview').textContent = 'KES ' + total.toLocaleString();
 }
 
 // ============================================================
@@ -1796,6 +1876,9 @@ async function saveFeeStructureFull() {
         showToast('Please add at least one fee component', 'warning');
         return;
     }
+    
+    // Add hostel to total
+    total += hostel;
     
     const termInputs = document.querySelectorAll('.term-text');
     const terms = [];
@@ -1848,7 +1931,7 @@ async function saveFeeStructureFull() {
 }
 
 // ============================================================
-// DUPLICATE FEE STRUCTURE (Template)
+// DUPLICATE FEE STRUCTURE
 // ============================================================
 
 async function duplicateFeeStructure(feeId) {
