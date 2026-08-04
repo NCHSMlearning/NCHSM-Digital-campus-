@@ -5,6 +5,7 @@
 // ✅ Real-time payment status updates
 // ✅ View & Download fee structure actions
 // ✅ Fee balance updates when viewing specific periods
+// ✅ NO TOTAL PROGRAM FEES DISPLAYED
 // ============================================================
 
 // ============================================================
@@ -923,9 +924,11 @@ function getPeriods(programType, programLevel = 'diploma') {
 
 function getFeeAmount(programType, periodIndex, programLevel = 'diploma') {
     if (programType === 'KRCHN') {
-        return periodIndex === 0 ? 94100 : 64100;
+        // KRCHN fees per semester
+        return periodIndex === 0 ? 94600 : 71100;
     } else {
-        return periodIndex === 0 ? 57100 : 47000;
+        // TVET fees per term
+        return periodIndex === 0 ? 57500 : 47000;
     }
 }
 
@@ -1550,14 +1553,15 @@ function updateBalanceForPeriodIndex(periodIndex) {
 }
 
 // ============================================================
-// 📄 RENDER FEE STRUCTURE - WITH FILTERING
+// 📄 RENDER FEE STRUCTURE - WITH NO TOTAL PROGRAM FEES
 // ============================================================
 
 function renderFeeStructureData(fees, selectedPeriod = null) {
-    const container = document.getElementById('studentFeeStructureDisplay');
+    const container = document.getElementById('feeStructureContent');
     if (!container) return;
     
-    if (container.style.display === 'none') {
+    const displayContainer = document.getElementById('studentFeeStructureDisplay');
+    if (displayContainer && displayContainer.style.display === 'none') {
         return;
     }
     
@@ -1601,22 +1605,6 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     }
     
     let html = `
-        <div style="margin-bottom: 16px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-            <span style="font-weight: 600; color: #475569; font-size: 13px;">
-                <i class="fas fa-filter" style="color: #4C1D95;"></i> Filter:
-            </span>
-            <select id="feeYearFilter" onchange="applyFeeFilters()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white; min-width: 120px;">
-                <option value="all">All Years</option>
-            </select>
-            <select id="feePeriodFilter" onchange="applyFeeFilters()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white; min-width: 140px;">
-                <option value="all">All Periods</option>
-            </select>
-            <button onclick="resetFeeFilters()" style="background: transparent; color: #64748b; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;">
-                <i class="fas fa-times"></i> Reset
-            </button>
-            <span id="feeFilterCount" style="font-size: 12px; color: #94a3b8; margin-left: auto;"></span>
-        </div>
-        ${filterMessage}
         <div style="overflow-x: auto;">
             <table class="fee-structure-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
                 <thead>
@@ -1630,8 +1618,6 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
                 <tbody>
     `;
     
-    let totalAmount = 0;
-    
     filteredFees.forEach((f, index) => {
         const isCurrent = index === 0;
         const isPaid = f.status === 'Paid';
@@ -1641,7 +1627,6 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
         const statusIcon = isPaid ? '✅' : (isPartial ? '⏳' : (isCurrent ? '📌' : '⏳'));
         
         const amount = f.amount || 0;
-        totalAmount += amount;
         
         const isHighlighted = selectedPeriod && (f.block === selectedPeriod || f.block.includes(selectedPeriod) || selectedPeriod.includes(f.block));
         
@@ -1663,17 +1648,10 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     
     html += `
                 </tbody>
-                <tfoot>
-                    <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #e5e7eb;">
-                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-size: 14px;">TOTAL FEES:</td>
-                        <td style="padding: 12px 16px; text-align: right; font-size: 14px; color: #4C1D95;">KES ${totalAmount.toLocaleString()}</td>
-                        <td style="padding: 12px 16px; text-align: center; font-size: 11px; color: #94a3b8;">${filteredFees.length} periods</td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
         <div style="margin-top: 12px; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; padding: 8px 4px; border-top: 1px solid #f1f5f9;">
-            <span>📚 Number of ${periodLabel}s: <strong>${periods.length}</strong></span>
+            <span>📚 Number of ${periodLabel}s: <strong>${filteredFees.length}</strong></span>
             <span>⏳ Duration: <strong>${programType === 'KRCHN' ? '3 Years' : programLevel === 'certificate' ? '1 Year' : '2 Years'}</strong></span>
         </div>
         <div class="fee-structure-actions" style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
@@ -1692,30 +1670,9 @@ function renderFeeStructureData(fees, selectedPeriod = null) {
     
     container.innerHTML = html;
     
-    populateFeeFilters(fees);
-    
-    if (selectedPeriod) {
-        const periodFilter = document.getElementById('feePeriodFilter');
-        if (periodFilter) {
-            const options = periodFilter.options;
-            let found = false;
-            for (let opt of options) {
-                if (opt.text === selectedPeriod || opt.value === selectedPeriod) {
-                    periodFilter.value = opt.value;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                for (let opt of options) {
-                    if (opt.text.includes(selectedPeriod) || selectedPeriod.includes(opt.text)) {
-                        periodFilter.value = opt.value;
-                        found = true;
-                        break;
-                    }
-                }
-            }
-        }
+    // Update the fee structure display container
+    if (displayContainer) {
+        displayContainer.innerHTML = container.innerHTML;
     }
 }
 
@@ -1751,7 +1708,7 @@ function downloadFeeStructure(periodName) {
 }
 
 // ============================================================
-// 📄 GENERATE PERIOD FEE PDF
+// 📄 GENERATE PERIOD FEE PDF - NO TOTAL PROGRAM FEES
 // ============================================================
 
 function generatePeriodFeePDF(periodName, fees) {
@@ -1760,12 +1717,10 @@ function generatePeriodFeePDF(periodName, fees) {
     const programLevel = studentFinanceState.programLevel || 'diploma';
     const periodLabel = getPeriodLabel(programType);
     
-    let total = 0;
     let rows = '';
     
     fees.forEach(f => {
         const amount = f.amount || 0;
-        total += amount;
         rows += `
             <tr>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${f.block}</td>
@@ -1793,9 +1748,6 @@ function generatePeriodFeePDF(periodName, fees) {
                 table { width: 100%; border-collapse: collapse; margin: 16px 0; }
                 th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; border-bottom: 2px solid #e5e7eb; }
                 td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
-                .total-row { border-top: 2px solid #e5e7eb; background: #fafbfc; font-weight: bold; }
-                .total-row td { padding: 12px 12px; }
-                .total-amount { color: #4C1D95; font-size: 16px; }
                 .footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; }
                 .footer-info { font-size: 12px; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between; }
                 @media print {
@@ -1833,13 +1785,6 @@ function generatePeriodFeePDF(periodName, fees) {
                 <tbody>
                     ${rows}
                 </tbody>
-                <tfoot>
-                    <tr class="total-row">
-                        <td colspan="2" style="font-size: 15px;">Total ${periodLabel} Fees</td>
-                        <td style="text-align: right; font-size: 16px; color: #4C1D95;">KES ${total.toLocaleString()}</td>
-                        <td style="text-align: center;">${fees.length} periods</td>
-                    </tr>
-                </tfoot>
             </table>
             
             <div class="footer">
@@ -1939,46 +1884,8 @@ function clearPeriodFilter() {
     showToast('Fee filter cleared', 'info');
 }
 
-function populateFeeFilters(fees) {
-    const yearFilter = document.getElementById('feeYearFilter');
-    const periodFilter = document.getElementById('feePeriodFilter');
-    
-    if (!yearFilter || !periodFilter) return;
-    
-    yearFilter.innerHTML = '<option value="all">All Years</option>';
-    periodFilter.innerHTML = '<option value="all">All Periods</option>';
-    
-    const years = new Set();
-    const periods = new Set();
-    
-    fees.forEach(f => {
-        const period = f.block || '';
-        if (period) {
-            periods.add(period);
-            const yearMatch = period.match(/\b(20\d{2})\b/);
-            if (yearMatch) {
-                years.add(yearMatch[1]);
-            }
-        }
-    });
-    
-    years.forEach(year => {
-        const option = document.createElement('option');
-        option.value = year;
-        option.textContent = year;
-        yearFilter.appendChild(option);
-    });
-    
-    periods.forEach(period => {
-        const option = document.createElement('option');
-        option.value = period;
-        option.textContent = period;
-        periodFilter.appendChild(option);
-    });
-}
-
 // ============================================================
-// 📄 GENERATE PDF - WITH TOTAL PROGRAM FEES
+// 📄 GENERATE PDF - NO TOTAL PROGRAM FEES
 // ============================================================
 
 function generateFeeStructurePDF() {
@@ -1989,13 +1896,11 @@ function generateFeeStructurePDF() {
     const periodLabel = getPeriodLabel(programType);
     const duration = programType === 'KRCHN' ? '3 Years' : (programLevel === 'certificate' ? '1 Year' : '2 Years');
     
-    let total = 0;
     let rows = '';
     
     periods.forEach((period, index) => {
         const amount = getFeeAmount(programType, index, programLevel);
         const status = index < 1 ? 'Paid' : (index === 1 ? 'Partial' : 'Pending');
-        total += amount;
         rows += `
             <tr>
                 <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${period}</td>
@@ -2020,9 +1925,6 @@ function generateFeeStructurePDF() {
                 table { width: 100%; border-collapse: collapse; margin: 16px 0; }
                 th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; border-bottom: 2px solid #e5e7eb; }
                 td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
-                .total-row { border-top: 2px solid #e5e7eb; background: #fafbfc; font-weight: bold; }
-                .total-row td { padding: 12px 12px; }
-                .total-amount { color: #4C1D95; font-size: 16px; }
                 .footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; }
                 .footer-info { font-size: 12px; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between; }
                 @media print {
@@ -2060,13 +1962,6 @@ function generateFeeStructurePDF() {
                 <tbody>
                     ${rows}
                 </tbody>
-                <tfoot>
-                    <tr class="total-row">
-                        <td colspan="2" style="font-size: 15px;">Total Program Fees</td>
-                        <td style="text-align: right; font-size: 16px; color: #4C1D95;">KES ${total.toLocaleString()}</td>
-                        <td style="text-align: center;">${periods.length} ${periodLabel}s</td>
-                    </tr>
-                </tfoot>
             </table>
             
             <div class="footer">
@@ -2120,7 +2015,6 @@ function printFeeStructureTable() {
                 table { width: 100%; border-collapse: collapse; margin: 16px 0; }
                 th { background: #f8fafc; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e5e7eb; }
                 td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
-                .total-row { border-top: 2px solid #e5e7eb; background: #fafbfc; font-weight: bold; }
                 .footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 13px; color: #64748b; }
                 @media print {
                     body { padding: 20px; }
@@ -2390,3 +2284,4 @@ console.log('📚 TVET Certificate: 1 Year (3 Terms)');
 console.log('📚 TVET Diploma: 2 Years (6 Terms)');
 console.log('✅ View & Download actions added to payment history');
 console.log('✅ Fee balance updates when viewing specific periods');
+console.log('✅ NO TOTAL PROGRAM FEES displayed anywhere');
