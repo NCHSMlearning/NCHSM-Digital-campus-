@@ -336,7 +336,10 @@ class DashboardModule {
         const tabMap = {
             'attendance': 'attendance',
             'cats': 'cats',
-            'hub-courses': 'hub-courses',
+            'hub-courses': 'hub-courses',  // ← My Units
+            'my-units': 'hub-courses',      // ← Alias for My Units
+            'myunits': 'hub-courses',       // ← Alias for My Units
+            'courses': 'hub-courses',       // ← Legacy alias
             'profile': 'profile',
             'resources': 'resources',
             'nurseiq': 'nurseiq',
@@ -352,8 +355,7 @@ class DashboardModule {
             'support-tickets': 'support-tickets',
             'finance': 'finance',
             'hub-register': 'hub-register',
-            'hub-lecture-card': 'hub-lecture-card',
-            'hub-courses': 'hub-courses'
+            'hub-lecture-card': 'hub-lecture-card'
         };
         
         const tabName = tabMap[section] || section;
@@ -2014,4 +2016,4 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module ready with Streak System (lights up after 1 day) + Total Points + Login Points Display + Fixed Time Greeting + Working Navigation!');
+console.log('✅ Dashboard module ready with Streak System (lights up after 1 day) + Total Points + Login Points Display + Fixed Time Greeting + Working Navigation + My Units support!');
