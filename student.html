@@ -5975,7 +5975,62 @@ window.setTheme = setTheme;
         }
     }
 })();
-</script>                  
+</script> 
+                                <script>
+// Quick fix for supplementary tab
+document.addEventListener('DOMContentLoaded', function() {
+    // Make sure switchRegTab is available globally
+    window.switchRegTab = function(tab) {
+        const tabs = document.querySelectorAll('.reg-sub-tab');
+        const regular = document.getElementById('regular-registration');
+        const supp = document.getElementById('supplementary-registration');
+        
+        tabs.forEach(t => {
+            t.classList.remove('active');
+            t.style.color = '#6b7280';
+            t.style.borderBottom = '3px solid transparent';
+        });
+        
+        const active = document.querySelector(`.reg-sub-tab[data-subtab="${tab}"]`);
+        if (active) {
+            active.classList.add('active');
+            active.style.color = '#4C1D95';
+            active.style.borderBottom = '3px solid #4C1D95';
+        }
+        
+        if (regular) regular.style.display = tab === 'regular' ? 'block' : 'none';
+        if (supp) supp.style.display = tab === 'supplementary' ? 'block' : 'none';
+        
+        if (tab === 'supplementary' && window.studentDashboard) {
+            window.studentDashboard.loadSupplementaryData();
+        } else if (tab === 'regular' && window.studentDashboard) {
+            window.studentDashboard.loadUnits();
+        }
+    };
+    
+    // Add onclick to tabs if not already there
+    document.querySelectorAll('.reg-sub-tab').forEach(tab => {
+        if (!tab.onclick) {
+            tab.onclick = function() {
+                window.switchRegTab(this.dataset.subtab);
+            };
+        }
+    });
+    
+    // Fix form submission
+    const form = document.getElementById('supplementaryRegForm');
+    if (form) {
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            if (window.studentDashboard) {
+                window.studentDashboard.registerSupplementaryUnits();
+            }
+        };
+    }
+    
+    console.log('✅ Supplementary tab fix applied');
+});
+</script>
 <!-- PWA Service Worker Registration -->
 <script>
 if ('serviceWorker' in navigator) {
