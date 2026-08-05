@@ -1672,13 +1672,13 @@
 })();
 
 // ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD - SHOW PENDING, APPROVED, COMPLETED (FAILED)
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - SUPER FAST VERSION
 // ============================================================
 
 window.downloadSupplementaryExamCard = async function() {
     console.log('📄 Generating Supplementary Exam Card...');
     
-    // Show progress overlay
+    // Show progress overlay (instant)
     const overlay = document.createElement('div');
     overlay.id = 'examCardProgressOverlay';
     overlay.style.cssText = `
@@ -1699,32 +1699,32 @@ window.downloadSupplementaryExamCard = async function() {
         <div style="
             background: white;
             border-radius: 16px;
-            padding: 40px 50px;
-            max-width: 400px;
+            padding: 30px 40px;
+            max-width: 350px;
             width: 90%;
             text-align: center;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         ">
-            <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 15px;">
                 <div style="
-                    width: 60px;
-                    height: 60px;
+                    width: 50px;
+                    height: 50px;
                     border: 4px solid #e2e8f0;
                     border-top-color: #B45309;
                     border-radius: 50%;
-                    animation: spin 0.8s linear infinite;
+                    animation: spin 0.6s linear infinite;
                     margin: 0 auto;
                 "></div>
             </div>
-            <h3 style="color: #0A3D62; margin: 0 0 8px 0; font-size: 18px;">
-                <i class="fas fa-file-pdf" style="color: #dc2626;"></i> Generating Supplementary Exam Card
+            <h3 style="color: #0A3D62; margin: 0 0 5px 0; font-size: 16px;">
+                <i class="fas fa-file-pdf" style="color: #dc2626;"></i> Generating Exam Card
             </h3>
-            <p style="color: #64748b; margin: 0 0 16px 0; font-size: 14px;" id="progressStatus">
-                Loading your units...
+            <p style="color: #64748b; margin: 0 0 12px 0; font-size: 13px;" id="progressStatus">
+                Loading...
             </p>
             <div style="
                 width: 100%;
-                height: 6px;
+                height: 5px;
                 background: #e2e8f0;
                 border-radius: 4px;
                 overflow: hidden;
@@ -1734,12 +1734,12 @@ window.downloadSupplementaryExamCard = async function() {
                     height: 100%;
                     background: linear-gradient(90deg, #B45309, #D97706);
                     border-radius: 4px;
-                    transition: width 0.4s ease;
+                    transition: width 0.3s ease;
                 "></div>
             </div>
             <p id="progressPercent" style="
-                margin: 8px 0 0 0;
-                font-size: 12px;
+                margin: 6px 0 0 0;
+                font-size: 11px;
                 color: #94a3b8;
                 font-weight: 600;
             ">0%</p>
@@ -1767,40 +1767,38 @@ window.downloadSupplementaryExamCard = async function() {
     };
     
     try {
-        updateProgress(5, 'Verifying user...');
-        
+        // ✅ STEP 1: Get user (instant)
         const user = window.currentUserProfile || window.userProfile;
         const userId = user?.user_id || user?.id;
         
         if (!userId) {
             throw new Error('User not found. Please login again.');
         }
+        updateProgress(10, 'Verifying user...');
         
-        updateProgress(15, 'Connecting to database...');
-        
+        // ✅ STEP 2: Get supabase (instant)
         const supabase = window.sb || window.supabase;
         if (!supabase) {
             throw new Error('Database not available.');
         }
+        updateProgress(20, 'Connecting...');
         
-        updateProgress(25, 'Fetching your units...');
+        // ✅ STEP 3: Fetch data (fast query)
+        updateProgress(30, 'Fetching your units...');
         
-        // ✅ FIXED: Include pending, approved, AND completed
-        // Show: pending exam (no grade), failed units (D, F, FAIL)
         const { data: registrations, error } = await supabase
             .from('student_unit_registrations')
             .select('*')
             .eq('student_id', userId)
             .in('reg_type', ['Supplementary', 'Retake'])
-            .in('status', ['pending', 'approved', 'completed'])  // ← Include pending!
+            .in('status', ['pending', 'approved', 'completed'])
             .or(`grade.is.null,grade.in.('D','F','FAIL')`)
             .order('submitted_date', { ascending: false });
         
         if (error) throw error;
         
-        // Filter out PASSED units (A, B, C)
+        // Filter out passed units
         const filteredRegistrations = registrations.filter(unit => {
-            // Keep if: no grade (pending exam) OR grade is FAIL (D, F, FAIL)
             if (!unit.grade) return true;
             const failGrades = ['D', 'F', 'FAIL'];
             return failGrades.includes(unit.grade);
@@ -1808,53 +1806,46 @@ window.downloadSupplementaryExamCard = async function() {
         
         if (!filteredRegistrations || filteredRegistrations.length === 0) {
             updateProgress(100, 'No units available');
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 300));
             overlay.remove();
-            alert('No supplementary/retake units found.\n\nUnits with PASS grades (A, B, C) are excluded.\nOnly FAIL grades (D, F) and pending exams are shown.');
+            alert('No supplementary/retake units found.\n\nOnly FAIL grades (D, F) and pending exams are shown.');
             return;
         }
         
-        // Check if any are still pending
-        const hasPending = filteredRegistrations.some(u => u.status === 'pending');
-        if (hasPending) {
-            updateProgress(60, '⏳ Some units are still pending approval...');
-            await new Promise(r => setTimeout(r, 500));
-        }
+        updateProgress(50, `Found ${filteredRegistrations.length} unit(s)`);
         
-        updateProgress(40, `Found ${filteredRegistrations.length} unit(s). Building exam card...`);
-        
-        // Generate the exam card
+        // ✅ STEP 4: Generate HTML (fast)
+        updateProgress(60, 'Building exam card...');
         const html = generateSupplementaryExamCardHTML(filteredRegistrations, user);
         
-        updateProgress(80, 'Preparing print window...');
-        
+        // ✅ STEP 5: Open window (instant)
+        updateProgress(80, 'Opening window...');
         const win = window.open('', '_blank', 'width=794,height=1123');
         if (!win) {
             updateProgress(100, 'Popup blocked');
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 300));
             overlay.remove();
             alert('Please allow popups to view the exam card.');
             return;
         }
         
-        updateProgress(90, 'Rendering exam card...');
-        
+        // ✅ STEP 6: Write and print (instant)
+        updateProgress(90, 'Rendering...');
         win.document.write(html);
         win.document.close();
         
-        updateProgress(100, '✅ Done! Printing...');
-        await new Promise(r => setTimeout(r, 500));
-        
+        updateProgress(100, '✅ Done!');
+        await new Promise(r => setTimeout(r, 200));
         overlay.remove();
         
         setTimeout(() => {
             win.print();
-        }, 500);
+        }, 300);
         
     } catch (error) {
-        console.error('❌ Error generating exam card:', error);
-        updateProgress(100, '❌ Error: ' + error.message);
-        await new Promise(r => setTimeout(r, 1000));
+        console.error('❌ Error:', error);
+        updateProgress(100, '❌ Error');
+        await new Promise(r => setTimeout(r, 300));
         overlay.remove();
         alert('Failed to generate exam card: ' + error.message);
     }
