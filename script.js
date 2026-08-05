@@ -4828,6 +4828,7 @@ async function openEditUserModal(userId) {
 
 // ============================================
 // HANDLE EDIT USER - COMPLETE WITH ALL FIELDS
+// FIXED: Removed 'term' column (doesn't exist)
 // ============================================
 
 async function handleEditUser(e) {
@@ -4895,7 +4896,7 @@ async function handleEditUser(e) {
             return;
         }
 
-        // Build update data
+        // Build update data - NO 'term' column!
         const updatedData = {
             full_name: fullName,
             email: email,
@@ -4917,7 +4918,7 @@ async function handleEditUser(e) {
             program: program,
             block: blockValue,
             current_block: blockValue,
-            term: isTVET ? blockValue : null,
+            // ✅ REMOVED: term: isTVET ? blockValue : null,
             program_type: isTVET ? 'TVET' : 'KRCHN',
             doc_kcse: docKcse,
             doc_id: docId,
@@ -4935,8 +4936,6 @@ async function handleEditUser(e) {
 
         // Handle profile photo upload
         const photoInput = document.getElementById('edit_user_photo');
-        let profilePhotoUrl = null;
-        
         if (photoInput && photoInput.files && photoInput.files[0]) {
             const file = photoInput.files[0];
             const fileExt = file.name.split('.').pop();
@@ -4947,18 +4946,23 @@ async function handleEditUser(e) {
                 const { error: uploadError } = await supabase
                     .storage
                     .from('user-documents')
-                    .upload(filePath, file);
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: true
+                    });
                 
                 if (!uploadError) {
                     const { data: urlData } = supabase
                         .storage
                         .from('user-documents')
                         .getPublicUrl(filePath);
-                    profilePhotoUrl = urlData.publicUrl;
-                    updatedData.profile_photo_url = profilePhotoUrl;
+                    updatedData.profile_photo_url = urlData.publicUrl;
+                    console.log('✅ Profile photo uploaded');
+                } else {
+                    console.warn('Photo upload failed:', uploadError);
                 }
             } catch (err) {
-                console.warn('Photo upload failed:', err);
+                console.warn('Photo upload error:', err);
             }
         }
 
@@ -4993,7 +4997,6 @@ async function handleEditUser(e) {
             }
 
             try {
-                // Try using the edge function
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
                     const response = await fetch(
@@ -5014,7 +5017,9 @@ async function handleEditUser(e) {
                     if (response.ok) {
                         console.log('✅ Password updated via edge function');
                     } else {
-                        console.warn('⚠️ Edge function password update failed');
+                        const result = await response.json();
+                        console.warn('⚠️ Edge function password update failed:', result);
+                        showFeedback('⚠️ User profile saved, but password update failed.', 'warning');
                     }
                 }
             } catch (pwErr) {
