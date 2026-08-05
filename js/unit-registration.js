@@ -2438,56 +2438,6 @@ function downloadExamCardsHandler(button) {
 }
 
 // ============================================================
-// ALSO UPDATE THE BUTTON COUNT
-// ============================================================
-
-window.updateSupplementaryDownloadButton = async function() {
-    try {
-        const user = window.currentUserProfile || window.userProfile;
-        const userId = user?.user_id || user?.id;
-        
-        if (!userId) return;
-        
-        const supabase = window.sb || window.supabase;
-        if (!supabase) return;
-        
-        // ✅ Count approved units WITHOUT grades
-        const { data, error } = await supabase
-            .from('student_unit_registrations')
-            .select('id')
-            .eq('student_id', userId)
-            .in('reg_type', ['Supplementary', 'Retake'])
-            .eq('status', 'approved')
-            .is('grade', null);
-        
-        if (error) throw error;
-        
-        const count = data?.length || 0;
-        const badge = document.getElementById('downloadSuppCount');
-        
-        if (badge) {
-            badge.textContent = count;
-        }
-        
-        const button = document.getElementById('downloadAllSuppExamCardsBtn');
-        if (button) {
-            if (count > 0) {
-                button.style.opacity = '1';
-                button.disabled = false;
-                button.title = `📥 Download exam card (${count} approved units)`;
-                console.log(`✅ Download button enabled: ${count} units available`);
-            } else {
-                button.style.opacity = '0.5';
-                button.disabled = true;
-                button.title = '⛔ No approved units without grades available';
-                console.log('⛔ Download button disabled: 0 units available');
-            }
-        }
-    } catch (error) {
-        console.error('Error updating download button:', error);
-    }
-};
-// ============================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================
 
