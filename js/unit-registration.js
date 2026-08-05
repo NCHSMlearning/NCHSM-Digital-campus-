@@ -1861,3 +1861,145 @@
     console.log('📊 ONE exam card for ALL approved units');
     
 })();
+// ============================================================
+// SUPPLEMENTARY EXAM CARD DOWNLOAD - EXTERNAL FUNCTION
+// ============================================================
+
+window.downloadSupplementaryExamCard = async function() {
+    console.log('📄 Download Supplementary Exam Card clicked...');
+    
+    try {
+        // Get current user
+        const user = window.currentUserProfile || window.userProfile;
+        const userId = user?.user_id || user?.id;
+        
+        if (!userId) {
+            alert('User not found. Please login again.');
+            return;
+        }
+        
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            alert('Database not available.');
+            return;
+        }
+        
+        // Check if examCardModule exists
+        if (!window.examCardModule) {
+            console.warn('⚠️ Exam Card module not loaded, attempting to load...');
+            
+            // Try to load exam-card.js
+            const script = document.createElement('script');
+            script.src = '/js/exam-card.js';
+            document.head.appendChild(script);
+            
+            await new Promise((resolve) => {
+                script.onload = resolve;
+                setTimeout(resolve, 5000);
+            });
+            
+            // Check again after loading
+            if (!window.examCardModule) {
+                alert('Exam Card module failed to load. Please refresh the page and try again.');
+                return;
+            }
+        }
+        
+        // Get approved/completed supplementary/retake registrations
+        const { data: registrations, error } = await supabase
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', userId)
+            .in('reg_type', ['Supplementary', 'Retake'])
+            .in('status', ['approved', 'completed'])
+            .order('submitted_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!registrations || registrations.length === 0) {
+            alert('No approved supplementary units found. Please wait for admin approval.');
+            return;
+        }
+        
+        console.log(`✅ Found ${registrations.length} approved supplementary units`);
+        
+        // Use the exam card module to generate PDF
+        if (window.examCardModule) {
+            // Set the approved units in the exam card module
+            window.examCardModule.approvedUnits = registrations;
+            window.examCardModule.userProfile = user;
+            window.examCardModule.updateUserData();
+            
+            // Generate the exam card
+            await window.examCardModule.downloadExamCardDirect();
+        } else {
+            // Fallback: Use the built-in download method
+            if (window.studentDashboard) {
+                await window.studentDashboard.downloadAllSupplementaryExamCards();
+            } else {
+                alert('Exam Card module not available. Please refresh and try again.');
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error generating exam card:', error);
+        alert('Failed to generate exam card: ' + error.message);
+    }
+};
+
+// ============================================================
+// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON - EXTERNAL FUNCTION
+// ============================================================
+
+window.updateSupplementaryDownloadButton = async function() {
+    try {
+        const user = window.currentUserProfile || window.userProfile;
+        const userId = user?.user_id || user?.id;
+        
+        if (!userId) return;
+        
+        const supabase = window.sb || window.supabase;
+        if (!supabase) return;
+        
+        const { data, error } = await supabase
+            .from('student_unit_registrations')
+            .select('id')
+            .eq('student_id', userId)
+            .in('reg_type', ['Supplementary', 'Retake'])
+            .in('status', ['approved', 'completed']);
+        
+        if (error) throw error;
+        
+        const count = data?.length || 0;
+        const button = document.getElementById('downloadAllSuppExamCardsBtn');
+        const badge = document.getElementById('downloadSuppCount');
+        
+        if (button) {
+            button.style.display = 'flex';
+            if (badge) badge.textContent = count;
+            
+            if (count > 0) {
+                button.style.opacity = '1';
+                button.removeAttribute('disabled');
+                button.title = '📥 Download exam card with all approved units';
+                button.onclick = window.downloadSupplementaryExamCard;
+                console.log(`✅ Download button enabled: ${count} units available`);
+            } else {
+                button.style.opacity = '0.5';
+                button.setAttribute('disabled', 'disabled');
+                button.title = '⛔ No approved units available for exam card';
+                button.onclick = null;
+                console.log('⛔ Download button disabled: 0 units available');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating download button:', error);
+    }
+};
+
+// Call it once to initialize
+setTimeout(() => {
+    window.updateSupplementaryDownloadButton();
+}, 1000);
+
+console.log('✅ Supplementary Exam Card download functions ready!');
