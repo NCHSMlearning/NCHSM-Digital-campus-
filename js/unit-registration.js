@@ -1675,25 +1675,134 @@
 // STANDALONE SUPPLEMENTARY EXAM CARD - NO EXAM CARD JS REQUIRED
 // ============================================================
 
+// ============================================================
+// DOWNLOAD SUPPLEMENTARY EXAM CARD WITH PROGRESS INDICATOR
+// ============================================================
+
 window.downloadSupplementaryExamCard = async function() {
     console.log('📄 Generating Supplementary Exam Card...');
     
+    // Create progress overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'examCardProgressOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        backdrop-filter: blur(4px);
+        transition: opacity 0.3s ease;
+    `;
+    
+    overlay.innerHTML = `
+        <div style="
+            background: white;
+            border-radius: 16px;
+            padding: 40px 50px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: slideUp 0.3s ease;
+        ">
+            <div style="margin-bottom: 20px;">
+                <div style="
+                    width: 60px;
+                    height: 60px;
+                    border: 4px solid #e2e8f0;
+                    border-top-color: #4C1D95;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                    margin: 0 auto;
+                "></div>
+            </div>
+            <h3 style="color: #0A3D62; margin: 0 0 8px 0; font-size: 18px;">
+                <i class="fas fa-file-pdf" style="color: #dc2626;"></i> Generating Exam Card
+            </h3>
+            <p style="color: #64748b; margin: 0 0 16px 0; font-size: 14px;" id="progressStatus">
+                Loading your approved units...
+            </p>
+            <div style="
+                width: 100%;
+                height: 6px;
+                background: #e2e8f0;
+                border-radius: 4px;
+                overflow: hidden;
+            ">
+                <div id="progressBar" style="
+                    width: 0%;
+                    height: 100%;
+                    background: linear-gradient(90deg, #4C1D95, #7C3AED);
+                    border-radius: 4px;
+                    transition: width 0.4s ease;
+                "></div>
+            </div>
+            <p id="progressPercent" style="
+                margin: 8px 0 0 0;
+                font-size: 12px;
+                color: #94a3b8;
+                font-weight: 600;
+            ">0%</p>
+        </div>
+    `;
+    
+    // Add keyframe animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    `;
+    overlay.appendChild(style);
+    document.body.appendChild(overlay);
+    
+    // Update progress function
+    const updateProgress = (percent, status) => {
+        const bar = document.getElementById('progressBar');
+        const percentText = document.getElementById('progressPercent');
+        const statusText = document.getElementById('progressStatus');
+        
+        if (bar) bar.style.width = Math.min(percent, 100) + '%';
+        if (percentText) percentText.textContent = Math.min(percent, 100) + '%';
+        if (statusText && status) statusText.textContent = status;
+    };
+    
     try {
+        // Step 1: Get user
+        updateProgress(5, 'Verifying user...');
+        await new Promise(r => setTimeout(r, 200));
+        
         const user = window.currentUserProfile || window.userProfile;
         const userId = user?.user_id || user?.id;
         
         if (!userId) {
-            alert('User not found. Please login again.');
-            return;
+            throw new Error('User not found. Please login again.');
         }
+        
+        // Step 2: Connect to database
+        updateProgress(15, 'Connecting to database...');
+        await new Promise(r => setTimeout(r, 200));
         
         const supabase = window.sb || window.supabase;
         if (!supabase) {
-            alert('Database not available.');
-            return;
+            throw new Error('Database not available.');
         }
         
-        // ✅ ONLY get approved supplementary/retake units WITHOUT grades
+        // Step 3: Fetch registrations
+        updateProgress(25, 'Fetching your approved units...');
+        await new Promise(r => setTimeout(r, 300));
+        
         const { data: registrations, error } = await supabase
             .from('student_unit_registrations')
             .select('*')
@@ -1706,34 +1815,61 @@ window.downloadSupplementaryExamCard = async function() {
         if (error) throw error;
         
         if (!registrations || registrations.length === 0) {
+            updateProgress(100, 'No units found');
+            await new Promise(r => setTimeout(r, 500));
+            overlay.remove();
             alert('No approved supplementary units without grades found. Please wait for admin approval.');
             return;
         }
         
-        console.log(`✅ Found ${registrations.length} approved supplementary units without grades`);
+        // Step 4: Building exam card
+        updateProgress(40, `Found ${registrations.length} unit(s). Building exam card...`);
+        await new Promise(r => setTimeout(r, 300));
         
-        // Generate the exam card
+        // Step 5: Generate HTML
+        updateProgress(60, 'Generating PDF content...');
+        await new Promise(r => setTimeout(r, 300));
+        
         const html = generateSupplementaryExamCardHTML(registrations, user);
+        
+        // Step 6: Open window
+        updateProgress(80, 'Preparing print window...');
+        await new Promise(r => setTimeout(r, 300));
         
         const win = window.open('', '_blank', 'width=794,height=1123');
         if (!win) {
+            updateProgress(100, 'Popup blocked');
+            await new Promise(r => setTimeout(r, 500));
+            overlay.remove();
             alert('Please allow popups to view the exam card.');
             return;
         }
         
+        // Step 7: Write and print
+        updateProgress(90, 'Rendering exam card...');
+        await new Promise(r => setTimeout(r, 300));
+        
         win.document.write(html);
         win.document.close();
         
+        updateProgress(100, '✅ Done! Printing...');
+        await new Promise(r => setTimeout(r, 500));
+        
+        // Remove overlay before printing
+        overlay.remove();
+        
         setTimeout(() => {
             win.print();
-        }, 1500);
+        }, 500);
         
     } catch (error) {
         console.error('❌ Error generating exam card:', error);
+        updateProgress(100, '❌ Error: ' + error.message);
+        await new Promise(r => setTimeout(r, 1000));
+        overlay.remove();
         alert('Failed to generate exam card: ' + error.message);
     }
 };
-
 // ============================================================
 // GENERATE SUPPLEMENTARY EXAM CARD HTML - STANDALONE
 // ============================================================
@@ -2164,6 +2300,10 @@ function generateSupplementaryExamCardHTML(registrations, student) {
 // UPDATE SUPPLEMENTARY DOWNLOAD BUTTON
 // ============================================================
 
+// ============================================================
+// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON - WITH CLICK HANDLER
+// ============================================================
+
 window.updateSupplementaryDownloadButton = async function() {
     try {
         const user = window.currentUserProfile || window.userProfile;
@@ -2174,7 +2314,6 @@ window.updateSupplementaryDownloadButton = async function() {
         const supabase = window.sb || window.supabase;
         if (!supabase) return;
         
-        // ✅ ONLY count approved units WITHOUT grades
         const { data, error } = await supabase
             .from('student_unit_registrations')
             .select('id')
@@ -2197,7 +2336,23 @@ window.updateSupplementaryDownloadButton = async function() {
                 button.style.opacity = '1';
                 button.removeAttribute('disabled');
                 button.title = `📥 Download exam card (${count} approved units)`;
-                button.onclick = window.downloadSupplementaryExamCard;
+                // ✅ Remove any existing click listeners and add new one
+                button.onclick = function(e) {
+                    e.preventDefault();
+                    // Disable button during download
+                    const btn = this;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                    btn.disabled = true;
+                    btn.style.opacity = '0.6';
+                    
+                    // Call the download function
+                    window.downloadSupplementaryExamCard().finally(() => {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                    });
+                };
                 console.log(`✅ Download button enabled: ${count} units available`);
             } else {
                 button.style.opacity = '0.5';
