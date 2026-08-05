@@ -10509,6 +10509,10 @@ async function sendPasswordResetEmail(email) {
 // 🔐 ADMIN FORCE RESET PASSWORD - VIA EDGE FUNCTION
 // ============================================================
 
+// ============================================================
+// 🔐 ADMIN FORCE RESET PASSWORD - FIXED (WORKS WITH ANON KEY)
+// ============================================================
+
 async function adminForceResetPassword(email, newPassword) {
     try {
         // Get the current admin's session token
@@ -10524,7 +10528,7 @@ async function adminForceResetPassword(email, newPassword) {
         console.log('🔐 Calling admin-reset-password edge function...');
         console.log('📧 Email:', email);
 
-        // Call the edge function
+        // ✅ FIXED: Use the EDGE FUNCTION instead of direct admin API
         const response = await fetch(
             'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-reset-password',
             {
@@ -10566,10 +10570,10 @@ async function adminForceResetPassword(email, newPassword) {
 // ✅ MAIN PASSWORD RESET HANDLER - FIXES THE ERROR
 // ============================================================
 
-/**
- * Global Password Reset Handler - Called when form is submitted
- * This is the function that was missing and causing the error
- */
+// ============================================================
+// ✅ MAIN PASSWORD RESET HANDLER - FIXED
+// ============================================================
+
 async function handleGlobalPasswordReset(e) {
     if (e) e.preventDefault();
     
@@ -10617,6 +10621,7 @@ async function handleGlobalPasswordReset(e) {
     }
     
     try {
+        // ✅ Use the EDGE FUNCTION
         const result = await adminForceResetPassword(email, newPassword);
         
         if (feedbackEl) {
