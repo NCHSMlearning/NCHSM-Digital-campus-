@@ -134,7 +134,7 @@
         }
         
         cacheElements() {
-this.examCardContent = document.getElementById('exam-card-content');
+            this.examCardContent = document.getElementById('exam-card-content-standalone');
             this.dashboardExamStatus = document.getElementById('dashboard-exam-status');
             this.dashboardApprovedUnits = document.getElementById('dashboard-approved-units');
         }
