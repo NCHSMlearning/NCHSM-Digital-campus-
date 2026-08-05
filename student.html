@@ -1507,23 +1507,10 @@
 
 </section>
 <!-- END MY UNITS -->
-         
-            <!-- ==================== HUB ONLINE LEARNING TAB ==================== -->
-            <section id="hub-online-learning" class="tab-content" hidden>
-                <div class="online-learning-container" style="text-align: center; padding: 60px 20px;">
-                    <i class="fas fa-video" style="font-size: 64px; color: #4f46e5; margin-bottom: 20px;"></i>
-                    <h2>Online Learning</h2>
-                    <p>Video lessons, quizzes, and study materials coming soon...</p>
-                    <div style="width: 300px; height: 8px; background: #e5e7eb; border-radius: 4px; margin: 20px auto;"><div style="width: 45%; height: 100%; background: #4f46e5; border-radius: 4px;"></div></div>
-                    <p style="color: #6b7280;">Development in progress - 45% complete</p>
-                </div>
-            </section>
-            <!-- END HUB ONLINE LEARNING -->
-
-             <!-- ==================== HUB REGISTER TAB ==================== -->
+         <!-- ==================== HUB REGISTER TAB ==================== -->
 <section id="hub-register" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
-    <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== HEADER ========== -->
     <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
         <div>
             <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
@@ -1540,7 +1527,7 @@
         </div>
     </div>
 
-    <!-- ========== SUB TABS FOR REGULAR & SUPPLEMENTARY ========== -->
+    <!-- ========== SUB TABS ========== -->
     <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 20px; overflow: hidden;">
         <div style="display: flex; border-bottom: 2px solid #e5e7eb; background: #f8fafc;">
             <button class="reg-sub-tab active" data-subtab="regular" style="flex: 1; padding: 12px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #4C1D95; border-bottom: 3px solid #4C1D95; transition: all 0.3s;">
@@ -1554,7 +1541,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- 📖 LEGEND / KEY - DYNAMIC BASED ON USER PROGRAM              -->
+    <!-- 📖 LEGEND -->
     <!-- ============================================================ -->
     <div id="registration-legend" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -1563,12 +1550,10 @@
             <span id="program-badge-legend" style="background: #4C1D95; color: white; padding: 2px 12px; border-radius: 12px; font-size: 11px; margin-left: auto;">Loading...</span>
         </div>
         <div id="legend-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-            <!-- Will be dynamically populated by JavaScript -->
             <div style="text-align: center; padding: 20px; color: #94a3b8;">
                 <i class="fas fa-spinner fa-spin"></i> Loading legend...
             </div>
         </div>
-        <!-- Additional Info -->
         <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #94a3b8; display: flex; gap: 16px; flex-wrap: wrap;">
             <span><i class="fas fa-circle" style="color: #059669; font-size: 8px;"></i> Max 8 units per registration</span>
             <span><i class="fas fa-circle" style="color: #f59e0b; font-size: 8px;"></i> Supplementary: 1 extra exam attempt</span>
@@ -1576,9 +1561,8 @@
             <span id="pass-mark-legend" style="font-weight: 600;">🎯 Pass Mark: Loading...</span>
         </div>
     </div>
-    <!-- ==================== END LEGEND ==================== -->
 
-    <!-- ========== REGULAR REGISTRATION SUB-TAB ========== -->
+    <!-- ========== REGULAR REGISTRATION ========== -->
     <div id="regular-registration" class="reg-sub-content">
 
         <!-- FILTERS -->
@@ -1591,6 +1575,8 @@
                     <select id="RegType" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
                         <option value="">-- Select --</option>
                         <option value="Normal">Normal Registration</option>
+                        <option value="Supplementary">Supplementary</option>
+                        <option value="Retake">Retake</option>
                     </select>
                 </div>
                 <div>
@@ -1662,7 +1648,7 @@
             </div>
         </div>
 
-        <!-- ========== MY REGISTERED UNITS - GRADE COLUMN REMOVED ========== -->
+        <!-- MY REGISTERED UNITS -->
         <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden;">
             <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -1732,7 +1718,7 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
+   <!-- ============================================================ -->
 <!-- SUPPLEMENTARY / RETAKE SUB-TAB - COMPLETE                    -->
 <!-- ============================================================ -->
 <div id="supplementary-registration" class="reg-sub-content" style="display: none;">
@@ -1977,10 +1963,21 @@
     </style>
 
 </div>
-<!-- END SUPPLEMENTARY REGISTRATION -->
-            <!-- END HUB EXAM CARD -->
+</section>
+<!-- END HUB REGISTER -->
+            <!-- ==================== HUB ONLINE LEARNING TAB ==================== -->
+            <section id="hub-online-learning" class="tab-content" hidden>
+                <div class="online-learning-container" style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-video" style="font-size: 64px; color: #4f46e5; margin-bottom: 20px;"></i>
+                    <h2>Online Learning</h2>
+                    <p>Video lessons, quizzes, and study materials coming soon...</p>
+                    <div style="width: 300px; height: 8px; background: #e5e7eb; border-radius: 4px; margin: 20px auto;"><div style="width: 45%; height: 100%; background: #4f46e5; border-radius: 4px;"></div></div>
+                    <p style="color: #6b7280;">Development in progress - 45% complete</p>
+                </div>
+            </section>
+            <!-- END HUB ONLINE LEARNING -->
 
- <!-- ==================== HUB EXAM CARD TAB ==================== -->
+            <!-- ==================== HUB EXAM CARD TAB ==================== -->
 <section id="hub-exam-card" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
     <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
