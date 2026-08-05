@@ -1741,3 +1741,626 @@
     console.log('📊 NO hardcoded unit mappings - uses Academic Reports logic');
     
 })();
+
+// ============================================================
+// SUPPLEMENTARY EXAM CARD - STANDALONE WITH STYLES
+// ============================================================
+
+// Escape HTML helper
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// ============================================================
+// GENERATE SUPPLEMENTARY EXAM CARD HTML
+// ============================================================
+
+function generateSupplementaryExamCardHTML(registrations, student) {
+    const today = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    
+    // Detect TVET
+    const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+                          'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+                          'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'];
+    const program = student?.program || 'KRCHN';
+    const isTVET = tvetPrograms.includes(program);
+    const hodTitle = isTVET ? `HOD ${program}` : 'HOD Nursing';
+    const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
+    const blockValue = student?.block || student?.term || 'N/A';
+    const studentTypeBadge = isTVET ? 
+        `<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">TVET</span>` :
+        `<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">KRCHN</span>`;
+    
+    const totalCredits = registrations.reduce((sum, unit) => sum + (unit.credits || 3), 0);
+    
+    let tableRows = '';
+    registrations.forEach((unit, index) => {
+        const unitName = unit.unit_name || unit.name || 'N/A';
+        const unitCode = unit.unit_code || unit.code || 'N/A';
+        const regType = unit.reg_type || 'Supplementary';
+        const credits = unit.credits || 3;
+        const status = unit.status || 'Approved';
+        
+        const hasGrade = unit.grade && unit.grade !== '';
+        const isPassing = hasGrade && !['FAIL', 'F', 'D', 'E'].includes(unit.grade);
+        const gradeDisplay = hasGrade ? (isPassing ? `🟢 ${unit.grade}` : `🔴 ${unit.grade}`) : '⏳ Pending';
+        
+        tableRows += `
+            <tr>
+                <td class="text-center">${index + 1}</td>
+                <td><strong>${escapeHtml(unitCode)}</strong></td>
+                <td>${escapeHtml(unitName)}</td>
+                <td class="text-center">${credits}</td>
+                <td class="text-center">
+                    <span style="background: ${regType === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 2px 10px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
+                        ${regType}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <span style="background: ${status === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${status === 'pending' ? '#92400e' : '#065f46'}; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
+                        ${status === 'pending' ? '⏳ Pending' : '✅ Approved'}
+                    </span>
+                    <br>
+                    <span style="font-size: 10px; font-weight: 600; color: ${isPassing ? '#10b981' : '#dc2626'};">${gradeDisplay}</span>
+                </td>
+                <td class="signature-cell">
+                    <div class="signature-line"></div>
+                    <span style="font-size: 9px; color: #94a3b8;">Lecturer's Signature</span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supplementary Exam Card - ${escapeHtml(student?.full_name || 'Student')}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; 
+            padding: 40px; 
+            background: #f8fafc; 
+        }
+        .exam-card-wrapper { 
+            max-width: 850px; 
+            margin: 0 auto; 
+        }
+        .exam-card-compact { 
+            background: white; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+        }
+        
+        .card-header { 
+            background: linear-gradient(135deg, #1e3a5f, #2c5a8c); 
+            color: white; 
+            padding: 15px 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+        }
+        .card-logo { 
+            height: 55px; 
+            width: auto; 
+            background: white; 
+            padding: 5px; 
+            border-radius: 8px; 
+            object-fit: contain; 
+        }
+        .header-text { flex: 1; }
+        .institution { 
+            font-size: 12px; 
+            opacity: 0.9; 
+            letter-spacing: 0.5px; 
+        }
+        .card-title { 
+            font-size: 22px; 
+            font-weight: 800; 
+            letter-spacing: 1px; 
+            margin-top: 2px; 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .card-subtitle { 
+            font-size: 10px; 
+            opacity: 0.8; 
+            margin-top: 2px; 
+        }
+        .status-badge { 
+            padding: 5px 15px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            font-weight: 700; 
+            background: #10b981;
+            white-space: nowrap; 
+        }
+        
+        .info-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px 20px; 
+            padding: 15px 20px; 
+            background: #f8fafc; 
+            border-bottom: 1px solid #e2e8f0; 
+            font-size: 12px; 
+        }
+        .info-item { color: #334155; }
+        .info-label { 
+            font-weight: 600; 
+            color: #64748b; 
+            margin-right: 8px; 
+        }
+        
+        .units-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 11px; 
+        }
+        .units-table th { 
+            background: #f1f5f9; 
+            padding: 10px 8px; 
+            text-align: left; 
+            font-weight: 700; 
+            border-bottom: 2px solid #cbd5e1; 
+        }
+        .units-table td { 
+            padding: 10px 8px; 
+            border-bottom: 1px solid #e2e8f0; 
+            vertical-align: top; 
+        }
+        .text-center { text-align: center; }
+        
+        .signature-cell { 
+            padding: 5px 0; 
+            text-align: center;
+            vertical-align: middle;
+        }
+        .signature-line { 
+            width: 90%; 
+            margin: 8px auto; 
+            border-top: 2px solid #000; 
+            height: 2px;
+        }
+        .signature-cell span {
+            display: block;
+            margin-top: 2px;
+        }
+        
+        .total-row { 
+            background: #f8fafc; 
+            font-weight: 600; 
+            border-top: 2px solid #cbd5e1; 
+        }
+        
+        .signatures-row { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 15px 20px; 
+            gap: 20px; 
+            border-top: 1px solid #e2e8f0; 
+            background: white; 
+        }
+        .signature { 
+            flex: 1; 
+            text-align: center; 
+            font-size: 11px; 
+            color: #475569; 
+        }
+        .sign-line { 
+            width: 80%; 
+            margin: 8px auto; 
+            border-top: 2px solid #000; 
+            height: 2px;
+            padding-top: 12px; 
+        }
+        
+        .card-footer { 
+            padding: 15px 20px; 
+            background: #fefce8; 
+            border-top: 1px solid #e2e8f0; 
+        }
+        .rules-header { 
+            font-weight: 700; 
+            font-size: 12px; 
+            color: #854d0e; 
+            margin-bottom: 10px; 
+        }
+        .rules-list { margin-bottom: 15px; }
+        .rule-item { 
+            font-size: 10px; 
+            color: #713f12; 
+            margin-bottom: 4px; 
+        }
+        
+        .student-section { 
+            border-top: 1px dashed #e2e8f0; 
+            padding-top: 12px; 
+            margin-top: 5px; 
+        }
+        .student-declaration { 
+            font-size: 10px; 
+            color: #475569; 
+            margin: 10px 0; 
+            text-align: center; 
+        }
+        .student-sign-line { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            margin: 12px 0 8px 0; 
+        }
+        .student-label { 
+            font-weight: 600; 
+            font-size: 11px; 
+            color: #334155; 
+            min-width: 110px; 
+        }
+        .student-date {
+            font-size: 11px;
+            color: #64748b;
+            margin-left: auto;
+        }
+        .signature-line-inline { 
+            display: inline-block; 
+            flex: 1; 
+            border-top: 2px solid #000; 
+            max-width: 60%; 
+            height: 2px;
+        }
+        
+        @media print {
+            body * { visibility: hidden; }
+            .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
+            .exam-card-wrapper { 
+                position: absolute; 
+                top: 0; 
+                left: 0; 
+                width: 100%; 
+                margin: 0; 
+                padding: 10px; 
+            }
+            .card-header { 
+                background: #1e3a5f !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            .status-badge { 
+                background: #10b981 !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            .signature-line, .sign-line, .signature-line-inline { 
+                width: 80% !important;
+                margin: 8px auto !important;
+                border-top: 2px solid #000 !important;
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            .exam-card-compact {
+                border: 1px solid #000 !important;
+                border-radius: 0 !important;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .info-grid { 
+                grid-template-columns: repeat(2, 1fr); 
+                gap: 6px 10px; 
+                padding: 10px 15px; 
+            }
+            .card-header { 
+                padding: 10px 15px; 
+                gap: 10px; 
+            }
+            .card-logo { height: 40px; }
+            .card-title { font-size: 16px; }
+            .signatures-row { 
+                flex-direction: column; 
+                gap: 15px; 
+            }
+            .student-sign-line {
+                flex-wrap: wrap;
+            }
+            .student-date {
+                margin-left: 0;
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="exam-card-wrapper">
+        <div class="exam-card-compact">
+            <!-- Header -->
+            <div class="card-header">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
+                <div class="header-text">
+                    <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
+                    <div class="card-title">
+                        SUPPLEMENTARY / RETAKE EXAM CARD
+                        ${studentTypeBadge}
+                    </div>
+                    <div class="card-subtitle">(Exam Entry Permit)</div>
+                </div>
+                <div class="status-badge">✅ ELIGIBLE</div>
+            </div>
+            
+            <!-- Info Grid -->
+            <div class="info-grid">
+                <div class="info-item"><span class="info-label">Name:</span> ${escapeHtml(student?.full_name || 'Not Available')}</div>
+                <div class="info-item"><span class="info-label">REG NO.:</span> ${escapeHtml(student?.student_id || student?.admission_number || 'N/A')}</div>
+                <div class="info-item"><span class="info-label">Program:</span> ${escapeHtml(student?.program || 'N/A')}</div>
+                <div class="info-item"><span class="info-label">${blockLabel}</span> <strong>${escapeHtml(blockValue)}</strong></div>
+                <div class="info-item"><span class="info-label">Registered Units:</span> <strong>${registrations.length}</strong></div>
+                <div class="info-item"><span class="info-label">Total Credits:</span> <strong>${totalCredits}</strong></div>
+                <div class="info-item"><span class="info-label">Exam Period:</span> ${new Date().getMonth() >= 2 && new Date().getMonth() <= 5 ? 'March - June (Trimester 1)' : new Date().getMonth() >= 6 && new Date().getMonth() <= 9 ? 'July - October (Trimester 2)' : 'November - February (Trimester 3)'}</div>
+                <div class="info-item"><span class="info-label">Date Issued:</span> ${today}</div>
+                <div class="info-item"><span class="info-label">Valid Until:</span> End of Exam Period</div>
+            </div>
+            
+            <!-- Units Table -->
+            <table class="units-table">
+                <thead>
+                    <tr>
+                        <th width="5%">#</th>
+                        <th width="15%">Unit Code</th>
+                        <th width="30%">Unit Title</th>
+                        <th width="7%">Cr</th>
+                        <th width="10%">Type</th>
+                        <th width="15%">Status/Grade</th>
+                        <th width="18%">Lecturer's Signature</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                    <tr class="total-row">
+                        <td colspan="3"><strong>TOTAL REGISTERED UNITS: ${registrations.length}</strong></td>
+                        <td class="text-center"><strong>${totalCredits}</strong></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- Signatures -->
+            <div class="signatures-row">
+                <div class="signature">
+                    <div class="sign-line"></div>
+                    <div style="font-weight: 600; font-size: 12px;">${hodTitle}</div>
+                    <div style="font-size: 9px; color: #94a3b8;">Head of Department</div>
+                </div>
+                <div class="signature">
+                    <div class="sign-line"></div>
+                    <div style="font-weight: 600; font-size: 12px;">Principal</div>
+                    <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
+                </div>
+                <div class="signature">
+                    <div class="sign-line"></div>
+                    <div style="font-weight: 600; font-size: 12px;">Finance Officer</div>
+                    <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="card-footer">
+                <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
+                <div class="rules-list">
+                    <div class="rule-item">• Present your exam card at each examination hall</div>
+                    <div class="rule-item">• No electronic devices allowed in examination room</div>
+                    <div class="rule-item">• Arrive 30 minutes before examination start time</div>
+                    <div class="rule-item">• Mobile phones must be switched off and stored</div>
+                    <div class="rule-item">• No unauthorized materials allowed</div>
+                </div>
+                
+                <div class="student-section">
+                    <div class="student-declaration">
+                        I hereby confirm that I have read and understood the examination rules and regulations.
+                    </div>
+                    
+                    <div class="student-sign-line">
+                        <span class="student-label">Student Signature:</span>
+                        <span class="signature-line-inline"></span>
+                        <span class="student-date">Date: ${today}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        setTimeout(function() {
+            window.print();
+        }, 1500);
+    <\/script>
+</body>
+</html>
+    `;
+}
+
+// ============================================================
+// DOWNLOAD SUPPLEMENTARY EXAM CARD
+// ============================================================
+
+window.downloadSupplementaryExamCard = async function() {
+    console.log('📄 Generating Supplementary Exam Card...');
+    
+    try {
+        const user = window.currentUserProfile || window.userProfile;
+        const userId = user?.user_id || user?.id;
+        
+        if (!userId) {
+            alert('User not found. Please login again.');
+            return;
+        }
+        
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            alert('Database not available.');
+            return;
+        }
+        
+        // ✅ Get approved supplementary/retake registrations WITHOUT grades
+        const { data: registrations, error } = await supabase
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', userId)
+            .in('reg_type', ['Supplementary', 'Retake'])
+            .eq('status', 'approved')
+            .is('grade', null)
+            .order('submitted_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (!registrations || registrations.length === 0) {
+            alert('No approved supplementary units without grades found.\n\nUnits with grades (Pass or Fail) are considered completed.');
+            return;
+        }
+        
+        console.log(`✅ Found ${registrations.length} approved supplementary units without grades`);
+        
+        // Show progress overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'examCardProgressOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            backdrop-filter: blur(4px);
+        `;
+        overlay.innerHTML = `
+            <div style="background:white;border-radius:16px;padding:30px 40px;max-width:350px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+                <div style="margin-bottom:15px;">
+                    <div style="width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:#B45309;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto;"></div>
+                </div>
+                <h3 style="color:#0A3D62;font-size:16px;">📄 Generating Exam Card</h3>
+                <p style="color:#64748b;font-size:13px;">Found ${registrations.length} unit(s)</p>
+                <p style="color:#94a3b8;font-size:12px;">${registrations.map(u => u.unit_code).join(', ')}</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        // Generate HTML
+        const html = generateSupplementaryExamCardHTML(registrations, user);
+        
+        // Open window
+        const win = window.open('', '_blank', 'width=794,height=1123');
+        if (!win) {
+            overlay.remove();
+            alert('Please allow popups to view the exam card.');
+            return;
+        }
+        
+        win.document.write(html);
+        win.document.close();
+        
+        setTimeout(() => {
+            overlay.remove();
+            win.print();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        alert('Error: ' + error.message);
+    }
+};
+
+// ============================================================
+// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON
+// ============================================================
+
+window.updateSupplementaryDownloadButton = async function() {
+    try {
+        const user = window.currentUserProfile || window.userProfile;
+        const userId = user?.user_id || user?.id;
+        
+        if (!userId) return;
+        
+        const supabase = window.sb || window.supabase;
+        if (!supabase) return;
+        
+        // ✅ Count approved units WITHOUT grades
+        const { data, error } = await supabase
+            .from('student_unit_registrations')
+            .select('id')
+            .eq('student_id', userId)
+            .in('reg_type', ['Supplementary', 'Retake'])
+            .eq('status', 'approved')
+            .is('grade', null);
+        
+        if (error) throw error;
+        
+        const count = data?.length || 0;
+        const button = document.getElementById('downloadAllSuppExamCardsBtn');
+        const badge = document.getElementById('downloadSuppCount');
+        
+        if (button) {
+            button.style.display = 'flex';
+            if (badge) badge.textContent = count;
+            
+            if (count > 0) {
+                button.style.opacity = '1';
+                button.removeAttribute('disabled');
+                button.title = `📥 Download exam card (${count} approved units)`;
+                button.onclick = function(e) {
+                    e.preventDefault();
+                    const btn = this;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                    btn.disabled = true;
+                    btn.style.opacity = '0.6';
+                    
+                    window.downloadSupplementaryExamCard().finally(() => {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                    });
+                };
+                console.log(`✅ Download button enabled: ${count} units available`);
+            } else {
+                button.style.opacity = '0.5';
+                button.setAttribute('disabled', 'disabled');
+                button.title = '⛔ No approved units without grades available';
+                button.onclick = null;
+                console.log('⛔ Download button disabled: 0 units available');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating download button:', error);
+    }
+};
+
+// ============================================================
+// INITIALIZE ON PAGE LOAD
+// ============================================================
+
+setTimeout(() => {
+    window.updateSupplementaryDownloadButton();
+}, 1500);
+
+console.log('✅ Supplementary Exam Card standalone ready!');
+console.log('📌 Click "Download Exam Card" in Supplementary tab');
+console.log('📊 Shows ONLY approved units WITHOUT grades');
