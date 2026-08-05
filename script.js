@@ -16116,46 +16116,6 @@ function initializeModals() {
         console.log('✅ Edit course form handler attached');
     }
 }
-// =====================================================
-// INITIALIZE MODALS - ADD THIS FUNCTION
-// =====================================================
-function initializeModals() {
-    console.log('🔧 Initializing modals...');
-    
-    // Close modals when clicking X
-    document.querySelectorAll('.modal .close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', function() {
-            this.closest('.modal').style.display = 'none';
-        });
-    });
-    
-    // Close modals when clicking outside
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', function(e) {
-            if (e.target === this) {
-                this.style.display = 'none';
-            }
-        });
-    });
-
-    // Edit user form handler
-    const editUserForm = document.getElementById('edit-user-form');
-    if (editUserForm) {
-        editUserForm.removeEventListener('submit', handleEditUser);
-        editUserForm.addEventListener('submit', handleEditUser);
-        console.log('✅ Edit user form handler attached');
-    } else {
-        console.warn('⚠️ edit-user-form not found');
-    }
-
-    // Edit course form handler
-    const editCourseForm = document.getElementById('edit-course-form');
-    if (editCourseForm) {
-        editCourseForm.removeEventListener('submit', handleEditCourse);
-        editCourseForm.addEventListener('submit', handleEditCourse);
-        console.log('✅ Edit course form handler attached');
-    }
-}
 
 // =====================================================
 // ADD NEW UNIT RECORD - GLOBAL FUNCTION
