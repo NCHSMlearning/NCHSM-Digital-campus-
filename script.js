@@ -16091,6 +16091,176 @@ function initializeModals() {
         console.log('✅ Edit course form handler attached');
     }
 }
+// =====================================================
+// INITIALIZE MODALS - ADD THIS FUNCTION
+// =====================================================
+function initializeModals() {
+    console.log('🔧 Initializing modals...');
+    
+    // Close modals when clicking X
+    document.querySelectorAll('.modal .close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+    
+    // Close modals when clicking outside
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+    });
+
+    // Edit user form handler
+    const editUserForm = document.getElementById('edit-user-form');
+    if (editUserForm) {
+        editUserForm.removeEventListener('submit', handleEditUser);
+        editUserForm.addEventListener('submit', handleEditUser);
+        console.log('✅ Edit user form handler attached');
+    } else {
+        console.warn('⚠️ edit-user-form not found');
+    }
+
+    // Edit course form handler
+    const editCourseForm = document.getElementById('edit-course-form');
+    if (editCourseForm) {
+        editCourseForm.removeEventListener('submit', handleEditCourse);
+        editCourseForm.addEventListener('submit', handleEditCourse);
+        console.log('✅ Edit course form handler attached');
+    }
+}
+
+// =====================================================
+// ADD NEW UNIT RECORD - GLOBAL FUNCTION
+// =====================================================
+window.addNewUnitRecord = function() {
+    console.log('📚 addNewUnitRecord called');
+    
+    // Get form values
+    const unitCode = document.getElementById('new_unit_code')?.value?.trim();
+    const unitName = document.getElementById('new_unit_name')?.value?.trim();
+    const program = document.getElementById('new_unit_program')?.value || 'KRCHN';
+    const block = document.getElementById('new_unit_block')?.value || 'Introductory';
+    const year = parseInt(document.getElementById('new_unit_year')?.value) || new Date().getFullYear();
+    const credits = parseInt(document.getElementById('new_unit_credits')?.value) || 3;
+    const hours = parseInt(document.getElementById('new_unit_hours')?.value) || 0;
+    const unitType = document.getElementById('new_unit_type')?.value || 'Core';
+    const prerequisites = document.getElementById('new_unit_prerequisites')?.value?.trim() || null;
+    const description = document.getElementById('new_unit_description')?.value?.trim() || '';
+    
+    // Validate
+    if (!unitCode || !unitName) {
+        if (typeof showFeedback === 'function') {
+            showFeedback('⚠️ Unit Code and Unit Name are required!', 'error');
+        } else {
+            alert('Please enter Unit Code and Unit Name');
+        }
+        return;
+    }
+    
+    // Check for duplicate unit_code
+    sb.from('units_catalog')
+        .select('unit_code')
+        .eq('unit_code', unitCode)
+        .maybeSingle()
+        .then(({ data: existing, error: checkError }) => {
+            if (checkError) {
+                console.error('Error checking duplicate:', checkError);
+                if (typeof showFeedback === 'function') {
+                    showFeedback('❌ Error checking for duplicates: ' + checkError.message, 'error');
+                }
+                return;
+            }
+            
+            if (existing) {
+                if (typeof showFeedback === 'function') {
+                    showFeedback(`⚠️ Unit code "${unitCode}" already exists!`, 'error');
+                } else {
+                    alert(`Unit code "${unitCode}" already exists!`);
+                }
+                return;
+            }
+            
+            // Show loading
+            if (typeof showLoading === 'function') showLoading(true);
+            
+            // Insert new unit
+            sb.from('units_catalog')
+                .insert([{
+                    unit_code: unitCode,
+                    unit_name: unitName,
+                    program: program,
+                    block: block,
+                    year: year,
+                    credits: credits,
+                    hours: hours,
+                    unit_type: unitType,
+                    prerequisites: prerequisites,
+                    description: description,
+                    status: 'active',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .then(({ data, error }) => {
+                    if (typeof showLoading === 'function') showLoading(false);
+                    
+                    if (error) {
+                        console.error('Error adding unit:', error);
+                        if (typeof showFeedback === 'function') {
+                            showFeedback('❌ Failed to add unit: ' + error.message, 'error');
+                        } else {
+                            alert('Failed to add unit: ' + error.message);
+                        }
+                        return;
+                    }
+                    
+                    console.log('✅ Unit added:', data);
+                    if (typeof showFeedback === 'function') {
+                        showFeedback(`✅ Unit "${unitCode} - ${unitName}" added successfully!`, 'success');
+                    } else {
+                        alert(`✅ Unit "${unitCode} - ${unitName}" added successfully!`);
+                    }
+                    
+                    // Clear form
+                    const form = document.getElementById('add-unit-form');
+                    if (form) form.reset();
+                    const blockSelect = document.getElementById('new_unit_block');
+                    if (blockSelect) blockSelect.value = '';
+                    const descInput = document.getElementById('new_unit_description');
+                    if (descInput) descInput.value = '';
+                    
+                    // Close modal if exists
+                    const modal = document.getElementById('addUnitModal');
+                    if (modal) modal.style.display = 'none';
+                    
+                    // Refresh units list
+                    if (typeof loadAllUnits === 'function') {
+                        loadAllUnits();
+                    } else if (typeof loadUnits === 'function') {
+                        loadUnits();
+                    }
+                })
+                .catch(err => {
+                    if (typeof showLoading === 'function') showLoading(false);
+                    console.error('Error:', err);
+                    if (typeof showFeedback === 'function') {
+                        showFeedback('❌ Error: ' + err.message, 'error');
+                    } else {
+                        alert('Error: ' + err.message);
+                    }
+                });
+        })
+        .catch(err => {
+            console.error('Error checking duplicate:', err);
+            if (typeof showFeedback === 'function') {
+                showFeedback('❌ Error: ' + err.message, 'error');
+            }
+        });
+};
+
+console.log('✅ addNewUnitRecord function registered globally');
 
 // =====================================================
 // INIT SESSION FUNCTION
