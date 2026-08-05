@@ -1876,17 +1876,13 @@
                 <span id="suppRegisteredCount" style="background: #D97706; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0</span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                <!-- ✅ DOWNLOAD EXAM CARD BUTTON - ALWAYS VISIBLE -->
-                <button id="downloadAllSuppExamCardsBtn" 
-                        style="background: #10b981; color: white; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(16,185,129,0.3); opacity: 0.5;"
-                        onclick="window.downloadSupplementaryExamCard()"
-                        disabled
-                        title="No approved units available for exam card"
-                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'"
-                        onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'">
-                    <i class="fas fa-download"></i> Download Exam Card
-                    <span id="downloadSuppCount" style="background: rgba(255,255,255,0.3); padding: 0 8px; border-radius: 12px; font-size: 10px;">0</span>
-                </button>
+               <!-- DOWNLOAD EXAM CARD BUTTON - INLINE ONCLICK -->
+<button id="downloadAllSuppExamCardsBtn" 
+        style="background: #10b981; color: white; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(16,185,129,0.3); opacity: 1;"
+        onclick="(function(e){e.preventDefault();var btn=this;var orig=btn.innerHTML;btn.innerHTML='<i class=\"fas fa-spinner fa-spin\"></i> Generating...';btn.disabled=true;btn.style.opacity='0.6';if(typeof window.downloadSupplementaryExamCard==='function'){window.downloadSupplementaryExamCard().finally(function(){btn.innerHTML=orig;btn.disabled=false;btn.style.opacity='1';});}else{alert('Function not found!');btn.innerHTML=orig;btn.disabled=false;btn.style.opacity='1';}})(event)">
+    <i class="fas fa-download"></i> Download Exam Card
+    <span id="downloadSuppCount" style="background: rgba(255,255,255,0.3); padding: 0 8px; border-radius: 12px; font-size: 10px;">0</span>
+</button>
                 <span style="font-size: 11px; color: #94a3b8;">
                     <i class="fas fa-clock"></i> <span id="suppLastUpdated">Just now</span>
                 </span>
