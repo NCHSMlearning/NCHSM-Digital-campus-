@@ -1679,10 +1679,18 @@
 // DOWNLOAD SUPPLEMENTARY EXAM CARD WITH PROGRESS INDICATOR
 // ============================================================
 
+// ============================================================
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - FIXED
+// ============================================================
+
+// ============================================================
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - SHOW FAILED UNITS TOO!
+// ============================================================
+
 window.downloadSupplementaryExamCard = async function() {
     console.log('📄 Generating Supplementary Exam Card...');
     
-    // Create progress overlay
+    // Show progress overlay
     const overlay = document.createElement('div');
     overlay.id = 'examCardProgressOverlay';
     overlay.style.cssText = `
@@ -1697,7 +1705,6 @@ window.downloadSupplementaryExamCard = async function() {
         justify-content: center;
         z-index: 99999;
         backdrop-filter: blur(4px);
-        transition: opacity 0.3s ease;
     `;
     
     overlay.innerHTML = `
@@ -1709,24 +1716,23 @@ window.downloadSupplementaryExamCard = async function() {
             width: 90%;
             text-align: center;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            animation: slideUp 0.3s ease;
         ">
             <div style="margin-bottom: 20px;">
                 <div style="
                     width: 60px;
                     height: 60px;
                     border: 4px solid #e2e8f0;
-                    border-top-color: #4C1D95;
+                    border-top-color: #B45309;
                     border-radius: 50%;
                     animation: spin 0.8s linear infinite;
                     margin: 0 auto;
                 "></div>
             </div>
             <h3 style="color: #0A3D62; margin: 0 0 8px 0; font-size: 18px;">
-                <i class="fas fa-file-pdf" style="color: #dc2626;"></i> Generating Exam Card
+                <i class="fas fa-file-pdf" style="color: #dc2626;"></i> Generating Supplementary Exam Card
             </h3>
             <p style="color: #64748b; margin: 0 0 16px 0; font-size: 14px;" id="progressStatus">
-                Loading your approved units...
+                Loading your units...
             </p>
             <div style="
                 width: 100%;
@@ -1738,7 +1744,7 @@ window.downloadSupplementaryExamCard = async function() {
                 <div id="progressBar" style="
                     width: 0%;
                     height: 100%;
-                    background: linear-gradient(90deg, #4C1D95, #7C3AED);
+                    background: linear-gradient(90deg, #B45309, #D97706);
                     border-radius: 4px;
                     transition: width 0.4s ease;
                 "></div>
@@ -1752,22 +1758,16 @@ window.downloadSupplementaryExamCard = async function() {
         </div>
     `;
     
-    // Add keyframe animations
     const style = document.createElement('style');
     style.textContent = `
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        @keyframes slideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
     `;
     overlay.appendChild(style);
     document.body.appendChild(overlay);
     
-    // Update progress function
     const updateProgress = (percent, status) => {
         const bar = document.getElementById('progressBar');
         const percentText = document.getElementById('progressPercent');
@@ -1779,9 +1779,7 @@ window.downloadSupplementaryExamCard = async function() {
     };
     
     try {
-        // Step 1: Get user
         updateProgress(5, 'Verifying user...');
-        await new Promise(r => setTimeout(r, 200));
         
         const user = window.currentUserProfile || window.userProfile;
         const userId = user?.user_id || user?.id;
@@ -1790,51 +1788,49 @@ window.downloadSupplementaryExamCard = async function() {
             throw new Error('User not found. Please login again.');
         }
         
-        // Step 2: Connect to database
         updateProgress(15, 'Connecting to database...');
-        await new Promise(r => setTimeout(r, 200));
         
         const supabase = window.sb || window.supabase;
         if (!supabase) {
             throw new Error('Database not available.');
         }
         
-        // Step 3: Fetch registrations
-        updateProgress(25, 'Fetching your approved units...');
-        await new Promise(r => setTimeout(r, 300));
+        updateProgress(25, 'Fetching your units...');
         
+        // ✅ FIXED: Show pending exams (no grade) AND failed units (D, F, FAIL)
         const { data: registrations, error } = await supabase
             .from('student_unit_registrations')
             .select('*')
             .eq('student_id', userId)
             .in('reg_type', ['Supplementary', 'Retake'])
-            .eq('status', 'approved')
-            .is('grade', null)
+            .or(`status.eq.approved,status.eq.completed`)
+            .or(`grade.is.null,grade.in.('D','F','FAIL')`)
             .order('submitted_date', { ascending: false });
         
         if (error) throw error;
         
-        if (!registrations || registrations.length === 0) {
-            updateProgress(100, 'No units found');
+        // Filter out PASSED units (A, B, C) - just in case
+        const filteredRegistrations = registrations.filter(unit => {
+            // Keep if: no grade (pending) OR grade is FAIL (D, F, FAIL)
+            if (!unit.grade) return true;
+            const failGrades = ['D', 'F', 'FAIL'];
+            return failGrades.includes(unit.grade);
+        });
+        
+        if (!filteredRegistrations || filteredRegistrations.length === 0) {
+            updateProgress(100, 'No units available');
             await new Promise(r => setTimeout(r, 500));
             overlay.remove();
-            alert('No approved supplementary units without grades found. Please wait for admin approval.');
+            alert('No supplementary/retake units found.\n\nUnits with PASS grades (A, B, C) are excluded.\nOnly FAIL grades (D, F) and pending exams are shown.');
             return;
         }
         
-        // Step 4: Building exam card
-        updateProgress(40, `Found ${registrations.length} unit(s). Building exam card...`);
-        await new Promise(r => setTimeout(r, 300));
+        updateProgress(40, `Found ${filteredRegistrations.length} unit(s). Building exam card...`);
         
-        // Step 5: Generate HTML
-        updateProgress(60, 'Generating PDF content...');
-        await new Promise(r => setTimeout(r, 300));
+        // Generate the exam card
+        const html = generateSupplementaryExamCardHTML(filteredRegistrations, user);
         
-        const html = generateSupplementaryExamCardHTML(registrations, user);
-        
-        // Step 6: Open window
         updateProgress(80, 'Preparing print window...');
-        await new Promise(r => setTimeout(r, 300));
         
         const win = window.open('', '_blank', 'width=794,height=1123');
         if (!win) {
@@ -1845,9 +1841,7 @@ window.downloadSupplementaryExamCard = async function() {
             return;
         }
         
-        // Step 7: Write and print
         updateProgress(90, 'Rendering exam card...');
-        await new Promise(r => setTimeout(r, 300));
         
         win.document.write(html);
         win.document.close();
@@ -1855,7 +1849,6 @@ window.downloadSupplementaryExamCard = async function() {
         updateProgress(100, '✅ Done! Printing...');
         await new Promise(r => setTimeout(r, 500));
         
-        // Remove overlay before printing
         overlay.remove();
         
         setTimeout(() => {
@@ -2297,11 +2290,7 @@ function generateSupplementaryExamCardHTML(registrations, student) {
 }
 
 // ============================================================
-// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON
-// ============================================================
-
-// ============================================================
-// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON - WITH CLICK HANDLER
+// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON - SHOW FAILED UNITS TOO!
 // ============================================================
 
 window.updateSupplementaryDownloadButton = async function() {
@@ -2314,17 +2303,25 @@ window.updateSupplementaryDownloadButton = async function() {
         const supabase = window.sb || window.supabase;
         if (!supabase) return;
         
+        // ✅ FIXED: Count pending exams AND failed units
         const { data, error } = await supabase
             .from('student_unit_registrations')
-            .select('id')
+            .select('id, grade')
             .eq('student_id', userId)
             .in('reg_type', ['Supplementary', 'Retake'])
-            .eq('status', 'approved')
-            .is('grade', null);
+            .or(`status.eq.approved,status.eq.completed`)
+            .or(`grade.is.null,grade.in.('D','F','FAIL')`);
         
         if (error) throw error;
         
-        const count = data?.length || 0;
+        // Filter out passed units
+        const filtered = data?.filter(unit => {
+            if (!unit.grade) return true;
+            const failGrades = ['D', 'F', 'FAIL'];
+            return failGrades.includes(unit.grade);
+        }) || [];
+        
+        const count = filtered.length;
         const button = document.getElementById('downloadAllSuppExamCardsBtn');
         const badge = document.getElementById('downloadSuppCount');
         
@@ -2335,38 +2332,34 @@ window.updateSupplementaryDownloadButton = async function() {
             if (count > 0) {
                 button.style.opacity = '1';
                 button.removeAttribute('disabled');
-                button.title = `📥 Download exam card (${count} approved units)`;
-                // ✅ Remove any existing click listeners and add new one
+                button.title = `📥 Download exam card (${count} units need retake)`;
                 button.onclick = function(e) {
                     e.preventDefault();
-                    // Disable button during download
                     const btn = this;
                     const originalText = btn.innerHTML;
                     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
                     btn.disabled = true;
                     btn.style.opacity = '0.6';
                     
-                    // Call the download function
                     window.downloadSupplementaryExamCard().finally(() => {
                         btn.innerHTML = originalText;
                         btn.disabled = false;
                         btn.style.opacity = '1';
                     });
                 };
-                console.log(`✅ Download button enabled: ${count} units available`);
+                console.log(`✅ Download button enabled: ${count} units need retake`);
             } else {
                 button.style.opacity = '0.5';
                 button.setAttribute('disabled', 'disabled');
-                button.title = '⛔ No approved units available for exam card';
+                button.title = '⛔ No units need retake';
                 button.onclick = null;
-                console.log('⛔ Download button disabled: 0 units available');
+                console.log('⛔ Download button disabled: 0 units need retake');
             }
         }
     } catch (error) {
         console.error('Error updating download button:', error);
     }
 };
-
 // ============================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================
