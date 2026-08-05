@@ -2286,7 +2286,7 @@ function generateSupplementaryExamCardHTML(registrations, student) {
 }
 
 // ============================================================
-// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON - SHOW FAILED UNITS TOO!
+// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON - INCLUDE PENDING
 // ============================================================
 
 window.updateSupplementaryDownloadButton = async function() {
@@ -2299,13 +2299,13 @@ window.updateSupplementaryDownloadButton = async function() {
         const supabase = window.sb || window.supabase;
         if (!supabase) return;
         
-        // ✅ FIXED: Count pending exams AND failed units
+        // ✅ FIXED: Count pending, approved, AND completed (failed)
         const { data, error } = await supabase
             .from('student_unit_registrations')
-            .select('id, grade')
+            .select('id, grade, status')
             .eq('student_id', userId)
             .in('reg_type', ['Supplementary', 'Retake'])
-            .or(`status.eq.approved,status.eq.completed`)
+            .in('status', ['pending', 'approved', 'completed'])
             .or(`grade.is.null,grade.in.('D','F','FAIL')`);
         
         if (error) throw error;
@@ -2318,6 +2318,8 @@ window.updateSupplementaryDownloadButton = async function() {
         }) || [];
         
         const count = filtered.length;
+        const pendingCount = filtered.filter(u => u.status === 'pending').length;
+        
         const button = document.getElementById('downloadAllSuppExamCardsBtn');
         const badge = document.getElementById('downloadSuppCount');
         
@@ -2328,7 +2330,7 @@ window.updateSupplementaryDownloadButton = async function() {
             if (count > 0) {
                 button.style.opacity = '1';
                 button.removeAttribute('disabled');
-                button.title = `📥 Download exam card (${count} units need retake)`;
+                button.title = `📥 Download exam card (${count} units - ${pendingCount} pending approval)`;
                 button.onclick = function(e) {
                     e.preventDefault();
                     const btn = this;
@@ -2343,7 +2345,7 @@ window.updateSupplementaryDownloadButton = async function() {
                         btn.style.opacity = '1';
                     });
                 };
-                console.log(`✅ Download button enabled: ${count} units need retake`);
+                console.log(`✅ Download button enabled: ${count} units (${pendingCount} pending)`);
             } else {
                 button.style.opacity = '0.5';
                 button.setAttribute('disabled', 'disabled');
