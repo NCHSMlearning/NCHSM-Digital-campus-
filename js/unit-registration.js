@@ -884,174 +884,251 @@
             }
         }
         
-        async loadEligibleUnits() {
-            const regType = this.suppRegType?.value;
-            const tbody = this.eligibleBody;
-            const countEl = this.eligibleCount;
-            const availableCountEl = document.getElementById('suppAvailableCount');
-            const loadingIndicator = document.getElementById('suppLoadingIndicator');
-            const infoBox = document.getElementById('regTypeInfo');
-            const infoText = document.getElementById('regTypeInfoText');
-            const selectAll = this.selectAllSupp;
-            
-            if (!regType) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                            <i class="fas fa-hand-pointer" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                            <p>Select a Registration Type above</p>
-                        </td>
-                    </tr>
-                `;
-                if (countEl) countEl.textContent = '0 units';
-                if (availableCountEl) availableCountEl.textContent = '0';
-                if (infoBox) infoBox.style.display = 'none';
-                return;
-            }
-            
-            if (loadingIndicator) loadingIndicator.style.display = 'inline-block';
-            
-            if (infoBox) {
-                infoBox.style.display = 'block';
-                infoText.textContent = `Showing units eligible for ${regType}. Select units to register.`;
-                infoBox.style.background = regType === 'Supplementary' ? '#fffbeb' : '#fef2f2';
-                infoBox.style.borderLeft = `3px solid ${regType === 'Supplementary' ? '#f59e0b' : '#dc2626'}`;
-            }
-            
-            try {
-                const supabase = this.getSupabase();
-                if (!supabase) throw new Error('Database not available');
+       async loadEligibleUnits() {
+    const regType = this.suppRegType?.value;
+    const tbody = this.eligibleBody;
+    const countEl = this.eligibleCount;
+    const availableCountEl = document.getElementById('suppAvailableCount');
+    const loadingIndicator = document.getElementById('suppLoadingIndicator');
+    const infoBox = document.getElementById('regTypeInfo');
+    const infoText = document.getElementById('regTypeInfoText');
+    const selectAll = this.selectAllSupp;
+    
+    if (!regType) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-hand-pointer" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                    <p>Select a Registration Type above</p>
+                </td>
+            </tr>
+        `;
+        if (countEl) countEl.textContent = '0 units';
+        if (availableCountEl) availableCountEl.textContent = '0';
+        if (infoBox) infoBox.style.display = 'none';
+        return;
+    }
+    
+    if (loadingIndicator) loadingIndicator.style.display = 'inline-block';
+    
+    if (infoBox) {
+        infoBox.style.display = 'block';
+        infoText.textContent = `Showing units eligible for ${regType}. Select units to register.`;
+        infoBox.style.background = regType === 'Supplementary' ? '#fffbeb' : '#fef2f2';
+        infoBox.style.borderLeft = `3px solid ${regType === 'Supplementary' ? '#f59e0b' : '#dc2626'}`;
+    }
+    
+    try {
+        const supabase = this.getSupabase();
+        if (!supabase) throw new Error('Database not available');
+        
+        const user = this.userProfile || window.currentUserProfile;
+        const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
+        const userId = this.studentId;
+        
+        if (!admissionNumber || !userId) {
+            throw new Error('User not found');
+        }
+        
+        console.log(`🔍 Loading ${regType} units for:`, admissionNumber);
+        
+        // ✅ STEP 1: Get marks
+        const { data: marks, error } = await supabase
+            .from('student_marks')
+            .select('*')
+            .eq('admission_number', admissionNumber)
+            .eq('published', true);
+        
+        if (error) throw error;
+        
+        if (!marks || marks.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-info-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                        <p>No academic records found.</p>
+                    </td>
+                </tr>
+            `;
+            if (countEl) countEl.textContent = '0 units';
+            if (availableCountEl) availableCountEl.textContent = '0';
+            return;
+        }
+        
+        console.log('📊 Marks found:', marks);
+        
+        // ✅ STEP 2: Get units catalog for mapping
+        const { data: catalog, error: catalogError } = await supabase
+            .from('units_catalog')
+            .select('unit_code, unit_name')
+            .eq('program', this.programCode || 'KRCHN');
+        
+        if (catalogError) {
+            console.warn('Could not load catalog:', catalogError);
+        }
+        
+        // ✅ STEP 3: Build subject to unit code mapping (like academic-reports.js)
+        const subjectToUnitCode = {};
+        if (catalog) {
+            catalog.forEach(unit => {
+                const unitName = unit.unit_name || '';
+                const unitCode = unit.unit_code || '';
                 
-                const user = this.userProfile || window.currentUserProfile;
-                const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
-                const userId = this.studentId;
-                
-                if (!admissionNumber || !userId) {
-                    throw new Error('User not found');
-                }
-                
-                console.log(`🔍 Loading ${regType} units for:`, admissionNumber);
-                
-                // Get marks
-                const { data: marks, error } = await supabase
-                    .from('student_marks')
-                    .select('*')
-                    .eq('admission_number', admissionNumber)
-                    .eq('published', true);
-                
-                if (error) throw error;
-                
-                if (!marks || marks.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                <i class="fas fa-info-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                                <p>No academic records found.</p>
-                            </td>
-                        </tr>
-                    `;
-                    if (countEl) countEl.textContent = '0 units';
-                    if (availableCountEl) availableCountEl.textContent = '0';
-                    return;
-                }
-                
-                // Determine thresholds
-                const isTVET = this.isTVETStudent;
-                const passThreshold = isTVET ? 50 : 60;
-                const retakeThreshold = 30;
-                
-                // Filter marks
-                let eligibleUnits = [];
-                let processedUnits = new Set();
-                
-                for (const mark of marks) {
-                    const score = mark.final_score || 0;
-                    const subjectName = mark.subject_name || 'Unknown';
+                // Map full name
+                if (unitName) {
+                    subjectToUnitCode[unitName] = unitCode;
                     
-                    if (processedUnits.has(subjectName)) continue;
-                    
-                    let isEligible = false;
-                    let determinedType = '';
-                    
-                    if (regType === 'Supplementary') {
-                        if (score >= retakeThreshold && score < passThreshold) {
-                            isEligible = true;
-                            determinedType = 'Supplementary';
-                        }
-                    } else if (regType === 'Retake') {
-                        if (score < retakeThreshold && score > 0) {
-                            isEligible = true;
-                            determinedType = 'Retake';
-                        }
+                    // Map shortened versions (remove prefix)
+                    const shortName = unitName.replace(/^(NCHSGN|NCHSCH|NCHSM)\s+/, '');
+                    if (shortName !== unitName) {
+                        subjectToUnitCode[shortName] = unitCode;
                     }
                     
-                    if (isEligible) {
-                        processedUnits.add(subjectName);
-                        
-                        let unitCode = mark.unit_code || this.getUnitCode(subjectName);
-                        
-                        // Check if already registered
-                        const { data: existing } = await supabase
-                            .from('student_unit_registrations')
-                            .select('id, status')
-                            .eq('student_id', userId)
-                            .eq('unit_code', unitCode)
-                            .maybeSingle();
-                        
-                        let status = 'Eligible';
-                        let isRegistered = false;
-                        
-                        if (existing) {
-                            isRegistered = true;
-                            if (existing.status === 'pending') status = '⏳ Pending';
-                            else if (existing.status === 'approved') status = '✅ Approved';
-                            else if (existing.status === 'completed') status = '📋 Completed';
-                            else if (existing.status === 'rejected') status = '❌ Rejected';
+                    // Map first few words
+                    const words = unitName.split(' ');
+                    if (words.length >= 3) {
+                        const key = words.slice(0, 3).join(' ');
+                        subjectToUnitCode[key] = unitCode;
+                    }
+                }
+            });
+        }
+        
+        // ✅ STEP 4: Add manual mappings (like academic-reports.js)
+        const manualMappings = {
+            'Psychology': 'NCHSGN 109',
+            'Human Nutrition': 'NCHSGN 108',
+            'Anatomy and Physiology': 'NCHSGN 103',
+            'Fundamentals of Nursing Practice': 'NCHSGN 104'
+        };
+        Object.assign(subjectToUnitCode, manualMappings);
+        
+        console.log('📋 Subject to Unit Code mapping:', subjectToUnitCode);
+        
+        // Determine thresholds
+        const isTVET = this.isTVETStudent;
+        const passThreshold = isTVET ? 50 : 60;
+        const retakeThreshold = 30;
+        
+        // Filter marks
+        let eligibleUnits = [];
+        let processedUnits = new Set();
+        
+        for (const mark of marks) {
+            const score = mark.final_score || 0;
+            const subjectName = mark.subject_name || 'Unknown';
+            
+            if (processedUnits.has(subjectName)) continue;
+            
+            let isEligible = false;
+            let determinedType = '';
+            
+            if (regType === 'Supplementary') {
+                if (score >= retakeThreshold && score < passThreshold) {
+                    isEligible = true;
+                    determinedType = 'Supplementary';
+                }
+            } else if (regType === 'Retake') {
+                if (score < retakeThreshold && score > 0) {
+                    isEligible = true;
+                    determinedType = 'Retake';
+                }
+            }
+            
+            if (isEligible) {
+                processedUnits.add(subjectName);
+                
+                // ✅ STEP 5: Get unit code (FIXED - like academic-reports.js)
+                let unitCode = mark.unit_code || subjectToUnitCode[subjectName];
+                
+                // If still not found, try partial match
+                if (!unitCode) {
+                    for (const [key, code] of Object.entries(subjectToUnitCode)) {
+                        if (subjectName.includes(key) || key.includes(subjectName)) {
+                            unitCode = code;
+                            break;
                         }
-                        
-                        eligibleUnits.push({
-                            unit_code: unitCode,
-                            unit_name: subjectName,
-                            block: mark.block || 'N/A',
-                            score: score,
-                            reg_type: determinedType,
-                            grade: mark.grade || 'FAIL',
-                            status: status,
-                            is_registered: isRegistered,
-                            existing_id: existing?.id || null
-                        });
                     }
                 }
                 
-                this.failedUnits = eligibleUnits;
-                this.renderEligibleTable(eligibleUnits);
-                
-                const availableCount = eligibleUnits.filter(u => !u.is_registered).length;
-                if (countEl) countEl.textContent = `${eligibleUnits.length} units`;
-                if (availableCountEl) availableCountEl.textContent = eligibleUnits.length;
-                if (this.suppTabBadge) this.suppTabBadge.textContent = eligibleUnits.length;
-                
-                if (selectAll) {
-                    selectAll.checked = false;
-                    selectAll.disabled = eligibleUnits.length === 0;
+                // If still not found, try to find in catalog by name
+                if (!unitCode && catalog) {
+                    const found = catalog.find(u => {
+                        const unitName = u.unit_name || '';
+                        return unitName.includes(subjectName) || subjectName.includes(unitName);
+                    });
+                    if (found) unitCode = found.unit_code;
                 }
                 
-                console.log(`✅ Loaded ${eligibleUnits.length} units (${availableCount} available)`);
+                // Last resort: generate from subject name
+                if (!unitCode) {
+                    unitCode = this.getUnitCode(subjectName);
+                }
                 
-            } catch (error) {
-                console.error('❌ Error loading units:', error);
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">
-                            <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                            <p>Error: ${error.message}</p>
-                        </td>
-                    </tr>
-                `;
-            } finally {
-                if (loadingIndicator) loadingIndicator.style.display = 'none';
+                console.log(`📝 Mapping: "${subjectName}" → "${unitCode}" (score: ${score}%)`);
+                
+                // Check if already registered
+                const { data: existing } = await supabase
+                    .from('student_unit_registrations')
+                    .select('id, status')
+                    .eq('student_id', userId)
+                    .eq('unit_code', unitCode)
+                    .maybeSingle();
+                
+                let status = 'Eligible';
+                let isRegistered = false;
+                
+                if (existing) {
+                    isRegistered = true;
+                    if (existing.status === 'pending') status = '⏳ Pending';
+                    else if (existing.status === 'approved') status = '✅ Approved';
+                    else if (existing.status === 'completed') status = '📋 Completed';
+                    else if (existing.status === 'rejected') status = '❌ Rejected';
+                }
+                
+                eligibleUnits.push({
+                    unit_code: unitCode,
+                    unit_name: subjectName,
+                    block: mark.block || 'N/A',
+                    score: score,
+                    reg_type: determinedType,
+                    grade: mark.grade || 'FAIL',
+                    status: status,
+                    is_registered: isRegistered,
+                    existing_id: existing?.id || null
+                });
             }
         }
+        
+        this.failedUnits = eligibleUnits;
+        this.renderEligibleTable(eligibleUnits);
+        
+        const availableCount = eligibleUnits.filter(u => !u.is_registered).length;
+        if (countEl) countEl.textContent = `${eligibleUnits.length} units`;
+        if (availableCountEl) availableCountEl.textContent = eligibleUnits.length;
+        if (this.suppTabBadge) this.suppTabBadge.textContent = eligibleUnits.length;
+        
+        if (selectAll) {
+            selectAll.checked = false;
+            selectAll.disabled = eligibleUnits.length === 0;
+        }
+        
+        console.log(`✅ Loaded ${eligibleUnits.length} units (${availableCount} available)`);
+        
+    } catch (error) {
+        console.error('❌ Error loading units:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                    <p>Error: ${error.message}</p>
+                </td>
+            </tr>
+        `;
+    } finally {
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+    }
+}
         
         // ============================================================
         // RENDER ELIGIBLE TABLE
