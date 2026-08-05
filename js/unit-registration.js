@@ -34,7 +34,7 @@
             this.failedUnits = [];
             this.supplementaryRegistrations = [];
             
-            // Unit code cache (same as Academic Reports)
+            // Unit code cache
             this.unitCodeCache = {};
             
             // DOM cache
@@ -112,9 +112,7 @@
                 this.studentId = profile.user_id || profile.id;
                 this.updateUserData();
                 
-                // Load unit codes cache (same as Academic Reports)
                 this.fetchUnitCodes();
-                
                 this.loadUnits();
                 this.loadSupplementaryData();
                 this.updateRegistrationLegend();
@@ -185,7 +183,7 @@
         }
         
         // ============================================================
-        // FETCH UNIT CODES CACHE - SAME AS ACADEMIC REPORTS
+        // FETCH UNIT CODES CACHE
         // ============================================================
         
         async fetchUnitCodes() {
@@ -214,18 +212,16 @@
         }
         
         // ============================================================
-        // GET UNIT CODE - SAME AS ACADEMIC REPORTS (NO HARDCODING!)
+        // GET UNIT CODE - SAME AS ACADEMIC REPORTS
         // ============================================================
         
         getUnitCode(subjectName) {
             if (!subjectName) return 'N/A';
             
-            // Check cache first
             if (this.unitCodeCache && this.unitCodeCache[subjectName]) {
                 return this.unitCodeCache[subjectName];
             }
             
-            // Check partial match in cache
             if (this.unitCodeCache) {
                 for (const [name, code] of Object.entries(this.unitCodeCache)) {
                     if (subjectName.includes(name) || name.includes(subjectName)) {
@@ -234,7 +230,7 @@
                 }
             }
             
-            // ✅ Special handling (same as Academic Reports)
+            // Special handling (same as Academic Reports)
             if (subjectName.includes('Medical Surgical Nursing II')) {
                 const specialty = subjectName.split(':')[1]?.trim() || '';
                 if (specialty.includes('Gastrointestinal') || specialty.includes('Hepatobiliary')) return 'NCHSGN 201';
@@ -263,7 +259,6 @@
                 return 'NCHSCH 2XX';
             }
             
-            // Fallback: generate from subject name
             const words = subjectName.split(' ');
             if (words.length === 1) {
                 return subjectName.substring(0, 6).toUpperCase();
@@ -395,7 +390,6 @@
                 }
             });
             
-            // Refresh button
             if (this.refreshBtn) {
                 this.refreshBtn.addEventListener('click', () => {
                     if (!this.isInitialized) return;
@@ -404,7 +398,6 @@
                 });
             }
             
-            // Submit registration
             if (this.submitBtn) {
                 this.submitBtn.addEventListener('click', () => {
                     if (!this.isInitialized) return;
@@ -412,12 +405,10 @@
                 });
             }
             
-            // Select all
             if (this.selectAllCheckbox) {
                 this.selectAllCheckbox.addEventListener('change', () => this.selectAllUnits());
             }
             
-            // Registration type filter
             if (this.regType) {
                 this.regType.addEventListener('change', () => {
                     if (this.regType.value && this.isInitialized) {
@@ -426,7 +417,6 @@
                 });
             }
             
-            // Block filter
             if (this.blockFilter) {
                 this.blockFilter.addEventListener('change', () => {
                     if (this.regType?.value && this.isInitialized) {
@@ -435,7 +425,6 @@
                 });
             }
             
-            // Unit type filter
             if (this.unitTypeFilter) {
                 this.unitTypeFilter.addEventListener('change', () => {
                     if (this.regType?.value && this.isInitialized) {
@@ -444,10 +433,7 @@
                 });
             }
             
-            // Supplementary listeners
             this.setupSupplementaryListeners();
-            
-            // Sub-tab switching
             this.setupSubTabSwitching();
         }
         
@@ -503,14 +489,12 @@
         // ============================================================
         
         setupSupplementaryListeners() {
-            // Registration type change
             if (this.suppRegType) {
                 this.suppRegType.addEventListener('change', () => {
                     this.loadEligibleUnits();
                 });
             }
             
-            // Refresh button
             const refreshBtn = document.getElementById('refreshSuppUnitsBtn');
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', () => {
@@ -518,7 +502,6 @@
                 });
             }
             
-            // Clear selection
             const clearBtn = document.getElementById('clearSuppSelectionBtn');
             if (clearBtn) {
                 clearBtn.addEventListener('click', () => {
@@ -527,7 +510,6 @@
                 });
             }
             
-            // Select all
             if (this.selectAllSupp) {
                 this.selectAllSupp.addEventListener('change', () => {
                     document.querySelectorAll('.supp-unit-checkbox:not([disabled])').forEach(cb => {
@@ -537,7 +519,6 @@
                 });
             }
             
-            // Register button
             if (this.registerSuppBtn) {
                 this.registerSuppBtn.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -637,7 +618,6 @@
                 
                 this.allUnits = data || [];
                 
-                // Filter based on registration type
                 const registeredCodes = new Set(this.registeredUnits.map(u => u.unit_code));
                 this.allUnits = this.allUnits.filter(u => !registeredCodes.has(u.unit_code));
                 
@@ -972,7 +952,7 @@
         }
         
         // ============================================================
-        // SUPPLEMENTARY - LOAD ELIGIBLE UNITS (NO HARDCODING!)
+        // SUPPLEMENTARY - LOAD ELIGIBLE UNITS (NO HARDCODING)
         // ============================================================
         
         async loadSupplementaryData() {
@@ -1038,7 +1018,6 @@
                 
                 console.log(`🔍 Loading ${regType} units for:`, admissionNumber);
                 
-                // ✅ STEP 1: Get marks
                 const { data: marks, error } = await supabase
                     .from('student_marks')
                     .select('*')
@@ -1063,12 +1042,10 @@
                 
                 console.log('📊 Marks found:', marks);
                 
-                // ✅ STEP 2: Ensure unit codes are cached
                 if (!this.unitCodeCache || Object.keys(this.unitCodeCache).length === 0) {
                     await this.fetchUnitCodes();
                 }
                 
-                // ✅ STEP 3: Get units catalog for building index
                 const { data: catalog, error: catalogError } = await supabase
                     .from('units_catalog')
                     .select('unit_code, unit_name')
@@ -1078,7 +1055,6 @@
                     console.warn('Could not load catalog:', catalogError);
                 }
                 
-                // ✅ STEP 4: Build subject to unit code mapping from catalog (NO HARDCODING!)
                 const subjectToUnitCode = {};
                 if (catalog) {
                     catalog.forEach(unit => {
@@ -1104,12 +1080,10 @@
                 
                 console.log('📋 Subject to Unit Code mapping (from catalog):', subjectToUnitCode);
                 
-                // Determine thresholds
                 const isTVET = this.isTVETStudent;
                 const passThreshold = isTVET ? 50 : 60;
                 const retakeThreshold = 30;
                 
-                // Filter marks
                 let eligibleUnits = [];
                 let processedUnits = new Set();
                 
@@ -1137,7 +1111,6 @@
                     if (isEligible) {
                         processedUnits.add(subjectName);
                         
-                        // ✅ STEP 5: Get unit code (NO HARDCODING!)
                         let unitCode = mark.unit_code || subjectToUnitCode[subjectName];
                         
                         if (!unitCode) {
@@ -1155,7 +1128,6 @@
                         
                         console.log(`📝 Mapping: "${subjectName}" → "${unitCode}" (score: ${score}%)`);
                         
-                        // Check if already registered
                         const { data: existing } = await supabase
                             .from('student_unit_registrations')
                             .select('id, status')
@@ -1743,7 +1715,7 @@
 })();
 
 // ============================================================
-// SUPPLEMENTARY EXAM CARD - STANDALONE WITH STYLES
+// SUPPLEMENTARY EXAM CARD - MATCHES exam-card.js STYLES
 // ============================================================
 
 // Escape HTML helper
@@ -1755,7 +1727,50 @@ function escapeHtml(str) {
 }
 
 // ============================================================
-// GENERATE SUPPLEMENTARY EXAM CARD HTML
+// TVET Detection (same as exam-card.js)
+// ============================================================
+
+const TVET_PROGRAMS = [
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+    'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
+];
+
+function isTVETStudent(program) {
+    if (!program) return false;
+    return TVET_PROGRAMS.includes(program) || program === 'TVET';
+}
+
+function getHODTitle(program) {
+    if (!program) return 'HOD';
+    const programUpper = program.toUpperCase().trim();
+    
+    if (TVET_PROGRAMS.includes(programUpper)) {
+        return `HOD ${programUpper}`;
+    }
+    
+    if (programUpper === 'KRCHN' || programUpper.includes('NURSING')) {
+        return 'HOD Nursing';
+    }
+    
+    if (programUpper.includes('HEALTH') || programUpper.includes('MEDICAL') || 
+        programUpper.includes('CLINICAL') || programUpper.includes('PUBLIC')) {
+        if (programUpper.length <= 6) {
+            return `HOD ${programUpper}`;
+        }
+        const cleanName = program.replace(/DIPLOMA|CERTIFICATE|ARTISAN|IN\s+/gi, '').trim();
+        return cleanName ? `HOD ${cleanName}` : 'HOD';
+    }
+    
+    if (programUpper.length <= 6) {
+        return `HOD ${programUpper}`;
+    }
+    
+    return program ? `HOD ${program}` : 'HOD';
+}
+
+// ============================================================
+// GENERATE SUPPLEMENTARY EXAM CARD HTML - MATCHES exam-card.js
 // ============================================================
 
 function generateSupplementaryExamCardHTML(registrations, student) {
@@ -1765,13 +1780,9 @@ function generateSupplementaryExamCardHTML(registrations, student) {
         day: 'numeric'
     });
     
-    // Detect TVET
-    const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-                          'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-                          'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'];
     const program = student?.program || 'KRCHN';
-    const isTVET = tvetPrograms.includes(program);
-    const hodTitle = isTVET ? `HOD ${program}` : 'HOD Nursing';
+    const isTVET = isTVETStudent(program);
+    const hodTitle = getHODTitle(program);
     const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
     const blockValue = student?.block || student?.term || 'N/A';
     const studentTypeBadge = isTVET ? 
@@ -2195,28 +2206,76 @@ function generateSupplementaryExamCardHTML(registrations, student) {
 }
 
 // ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - WITH PROGRESS
 // ============================================================
 
 window.downloadSupplementaryExamCard = async function() {
     console.log('📄 Generating Supplementary Exam Card...');
     
+    // Show progress overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'examCardProgressOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        backdrop-filter: blur(4px);
+    `;
+    overlay.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:30px 40px;max-width:350px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <div style="margin-bottom:15px;">
+                <div style="width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:#B45309;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto;"></div>
+            </div>
+            <h3 style="color:#0A3D62;font-size:16px;">📄 Generating Supplementary Exam Card</h3>
+            <p style="color:#64748b;font-size:13px;" id="progressStatus">Loading your units...</p>
+            <div style="width:100%;height:5px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:10px;">
+                <div id="progressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#B45309,#D97706);border-radius:4px;transition:width 0.3s ease;"></div>
+            </div>
+            <p id="progressPercent" style="margin:6px 0 0 0;font-size:11px;color:#94a3b8;font-weight:600;">0%</p>
+        </div>
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+    overlay.appendChild(style);
+    document.body.appendChild(overlay);
+    
+    const updateProgress = (percent, status) => {
+        const bar = document.getElementById('progressBar');
+        const percentText = document.getElementById('progressPercent');
+        const statusText = document.getElementById('progressStatus');
+        if (bar) bar.style.width = Math.min(percent, 100) + '%';
+        if (percentText) percentText.textContent = Math.min(percent, 100) + '%';
+        if (statusText && status) statusText.textContent = status;
+    };
+    
     try {
+        updateProgress(10, 'Verifying user...');
+        
         const user = window.currentUserProfile || window.userProfile;
         const userId = user?.user_id || user?.id;
         
         if (!userId) {
-            alert('User not found. Please login again.');
-            return;
+            throw new Error('User not found');
         }
+        
+        updateProgress(20, 'Connecting to database...');
         
         const supabase = window.sb || window.supabase;
         if (!supabase) {
-            alert('Database not available.');
-            return;
+            throw new Error('Database not available');
         }
         
-        // ✅ Get approved supplementary/retake registrations WITHOUT grades
+        updateProgress(30, 'Fetching your units...');
+        
+        // ✅ Get approved supplementary/retake units WITHOUT grades
         const { data: registrations, error } = await supabase
             .from('student_unit_registrations')
             .select('*')
@@ -2229,62 +2288,48 @@ window.downloadSupplementaryExamCard = async function() {
         if (error) throw error;
         
         if (!registrations || registrations.length === 0) {
-            alert('No approved supplementary units without grades found.\n\nUnits with grades (Pass or Fail) are considered completed.');
+            updateProgress(100, 'No units found');
+            await new Promise(r => setTimeout(r, 300));
+            overlay.remove();
+            alert('No approved supplementary/retake units without grades found.\n\nUnits with grades (Pass or Fail) are considered completed.');
             return;
         }
         
-        console.log(`✅ Found ${registrations.length} approved supplementary units without grades`);
+        console.log(`✅ Found ${registrations.length} units`);
+        updateProgress(50, `Found ${registrations.length} unit(s)`);
         
-        // Show progress overlay
-        const overlay = document.createElement('div');
-        overlay.id = 'examCardProgressOverlay';
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            backdrop-filter: blur(4px);
-        `;
-        overlay.innerHTML = `
-            <div style="background:white;border-radius:16px;padding:30px 40px;max-width:350px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-                <div style="margin-bottom:15px;">
-                    <div style="width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:#B45309;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto;"></div>
-                </div>
-                <h3 style="color:#0A3D62;font-size:16px;">📄 Generating Exam Card</h3>
-                <p style="color:#64748b;font-size:13px;">Found ${registrations.length} unit(s)</p>
-                <p style="color:#94a3b8;font-size:12px;">${registrations.map(u => u.unit_code).join(', ')}</p>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-        
-        // Generate HTML
+        // Generate the exam card using the same template as exam-card.js
+        updateProgress(60, 'Generating exam card...');
         const html = generateSupplementaryExamCardHTML(registrations, user);
         
-        // Open window
+        updateProgress(80, 'Opening print window...');
         const win = window.open('', '_blank', 'width=794,height=1123');
         if (!win) {
+            updateProgress(100, 'Popup blocked');
+            await new Promise(r => setTimeout(r, 300));
             overlay.remove();
             alert('Please allow popups to view the exam card.');
             return;
         }
         
+        updateProgress(90, 'Rendering...');
         win.document.write(html);
         win.document.close();
         
+        updateProgress(100, '✅ Done!');
+        await new Promise(r => setTimeout(r, 300));
+        overlay.remove();
+        
         setTimeout(() => {
-            overlay.remove();
             win.print();
-        }, 1500);
+        }, 1000);
         
     } catch (error) {
         console.error('❌ Error:', error);
-        alert('Error: ' + error.message);
+        updateProgress(100, '❌ Error');
+        await new Promise(r => setTimeout(r, 300));
+        overlay.remove();
+        alert('Failed to generate exam card: ' + error.message);
     }
 };
 
@@ -2352,7 +2397,96 @@ window.updateSupplementaryDownloadButton = async function() {
         console.error('Error updating download button:', error);
     }
 };
+// ============================================================
+// DOWNLOAD EXAM CARD HANDLER - FOR THE BUTTON
+// ============================================================
 
+function downloadExamCardsHandler(button) {
+    console.log('🖱️ Download Exam Card button clicked!');
+    
+    // Save original content
+    const originalHTML = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    button.disabled = true;
+    button.style.opacity = '0.6';
+    
+    // Call the download function
+    if (typeof window.downloadSupplementaryExamCard === 'function') {
+        window.downloadSupplementaryExamCard()
+            .then(() => {
+                console.log('✅ Exam card generated successfully');
+            })
+            .catch((error) => {
+                console.error('❌ Error generating exam card:', error);
+                alert('Failed to generate exam card: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+                button.style.opacity = '1';
+            });
+    } else {
+        console.error('❌ downloadSupplementaryExamCard function not found!');
+        alert('Download function not available. Please refresh the page.');
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+        button.style.opacity = '1';
+    }
+}
+
+// ============================================================
+// ALSO UPDATE THE BUTTON COUNT
+// ============================================================
+
+window.updateSupplementaryDownloadButton = async function() {
+    try {
+        const user = window.currentUserProfile || window.userProfile;
+        const userId = user?.user_id || user?.id;
+        
+        if (!userId) return;
+        
+        const supabase = window.sb || window.supabase;
+        if (!supabase) return;
+        
+        // ✅ Count approved units WITHOUT grades
+        const { data, error } = await supabase
+            .from('student_unit_registrations')
+            .select('id')
+            .eq('student_id', userId)
+            .in('reg_type', ['Supplementary', 'Retake'])
+            .eq('status', 'approved')
+            .is('grade', null);
+        
+        if (error) throw error;
+        
+        const count = data?.length || 0;
+        const badge = document.getElementById('downloadSuppCount');
+        
+        if (badge) {
+            badge.textContent = count;
+        }
+        
+        const button = document.getElementById('downloadAllSuppExamCardsBtn');
+        if (button) {
+            if (count > 0) {
+                button.style.opacity = '1';
+                button.disabled = false;
+                button.title = `📥 Download exam card (${count} approved units)`;
+                console.log(`✅ Download button enabled: ${count} units available`);
+            } else {
+                button.style.opacity = '0.5';
+                button.disabled = true;
+                button.title = '⛔ No approved units without grades available';
+                console.log('⛔ Download button disabled: 0 units available');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating download button:', error);
+    }
+};
 // ============================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================
@@ -2364,3 +2498,4 @@ setTimeout(() => {
 console.log('✅ Supplementary Exam Card standalone ready!');
 console.log('📌 Click "Download Exam Card" in Supplementary tab');
 console.log('📊 Shows ONLY approved units WITHOUT grades');
+console.log('🎨 Matches exam-card.js styles (TVET/KRCHN support)');
