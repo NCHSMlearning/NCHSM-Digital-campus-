@@ -1,6 +1,6 @@
 // ============================================================
 // STUDENT DASHBOARD - UNIT REGISTRATION WITH SUPPLEMENTARY SUPPORT
-// FULLY FIXED VERSION - v2.2
+// FULLY FIXED VERSION - v2.3
 // ============================================================
 
 (function() {
@@ -558,6 +558,33 @@
             if (window.db?.supabase) return window.db.supabase;
             if (window.supabase) return window.supabase;
             return null;
+        }
+        
+        // ============================================================
+        // LOADING STATE METHODS
+        // ============================================================
+        
+        showLoading() {
+            if (this.availableBody) {
+                this.availableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                            <p style="margin: 0;">Loading available units...</p>
+                        </td>
+                    </tr>
+                `;
+            }
+            if (this.registeredBody) {
+                this.registeredBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                            <p style="margin: 0;">Loading registered units...</p>
+                        </td>
+                    </tr>
+                `;
+            }
         }
         
         // ============================================================
@@ -1479,6 +1506,10 @@
             }
         }
         
+        // ============================================================
+        // LOAD STUDENT SUPPLEMENTARY REGISTRATIONS - WITH DOWNLOAD BUTTON
+        // ============================================================
+        
         async loadStudentSupplementaryRegistrations() {
             const tbody = this.suppRegisteredBody;
             if (!tbody) return;
@@ -1494,7 +1525,11 @@
             
             try {
                 const supabase = this.getSupabase();
-                if (!this.studentId || !supabase) return;
+                if (!this.studentId || !supabase) {
+                    // Update button with 0 if no connection
+                    this.updateDownloadButton(0);
+                    return;
+                }
                 
                 const { data: registrations, error } = await supabase
                     .from('student_unit_registrations')
@@ -1517,14 +1552,14 @@
                         </tr>
                     `;
                     if (this.suppRegisteredCount) this.suppRegisteredCount.textContent = '0';
-                    // Hide download button
-                    if (this.downloadAllBtn) this.downloadAllBtn.style.display = 'none';
+                    
+                    // ✅ Update button - 0 units available
+                    this.updateDownloadButton(0);
                     return;
                 }
                 
                 let html = '';
                 let approvedCount = 0;
-                let completedCount = 0;
                 
                 for (const reg of this.supplementaryRegistrations) {
                     const statusColor = reg.status === 'approved' ? '#059669' : 
@@ -1540,14 +1575,11 @@
                     
                     if (reg.status === 'approved' || reg.status === 'completed') {
                         approvedCount++;
-                        if (reg.status === 'completed') completedCount++;
                     }
                     
-                    // Action - Only show Exam Card button HERE for approved/completed
                     let actionButton = '—';
                     if (reg.status === 'approved' || reg.status === 'completed') {
-                        // This will be handled by the main download button now
-                        actionButton = `<span style="color: #059669; font-size: 11px;">✅ Included</span>`;
+                        actionButton = `<span style="color: #059669; font-size: 11px; font-weight: 600;">✅ Included</span>`;
                     } else if (reg.status === 'pending') {
                         actionButton = `<span style="color: #f59e0b; font-size: 11px;">⏳ Awaiting Approval</span>`;
                     } else {
@@ -1580,17 +1612,10 @@
                     this.suppRegisteredCount.textContent = this.supplementaryRegistrations.length;
                 }
                 
-                // Show/hide download button
-                if (this.downloadAllBtn) {
-                    if (approvedCount > 0) {
-                        this.downloadAllBtn.style.display = 'flex';
-                        if (this.downloadSuppCount) {
-                            this.downloadSuppCount.textContent = approvedCount;
-                        }
-                    } else {
-                        this.downloadAllBtn.style.display = 'none';
-                    }
-                }
+                // ✅ Update download button with count (ALWAYS VISIBLE)
+                this.updateDownloadButton(approvedCount);
+                
+                console.log(`✅ Loaded ${this.supplementaryRegistrations.length} supplementary registrations (${approvedCount} approved/completed)`);
                 
             } catch (error) {
                 console.error('❌ Error loading supplementary registrations:', error);
@@ -1602,6 +1627,68 @@
                         </td>
                     </tr>
                 `;
+                // ✅ Update button - 0 units on error
+                this.updateDownloadButton(0);
+            }
+        }
+        
+        // ============================================================
+        // UPDATE DOWNLOAD BUTTON - ALWAYS VISIBLE
+        // ============================================================
+        
+        updateDownloadButton(approvedCount) {
+            const downloadBtn = document.getElementById('downloadAllSuppExamCardsBtn');
+            const countBadge = document.getElementById('downloadSuppCount');
+            
+            if (downloadBtn) {
+                // Always show the button
+                downloadBtn.style.display = 'flex';
+                
+                // Update count
+                if (countBadge) {
+                    countBadge.textContent = approvedCount || 0;
+                }
+                
+                // Change style based on count
+                if (approvedCount > 0) {
+                    downloadBtn.style.opacity = '1';
+                    downloadBtn.style.cursor = 'pointer';
+                    downloadBtn.title = '📥 Download exam card with all approved units';
+                    // Remove disabled attribute if it exists
+                    downloadBtn.removeAttribute('disabled');
+                    // Re-enable hover effects
+                    downloadBtn.onmouseover = function() {
+                        this.style.transform = 'translateY(-2px)';
+                        this.style.boxShadow = '0 4px 12px rgba(16,185,129,0.4)';
+                        this.style.opacity = '1';
+                    };
+                    downloadBtn.onmouseout = function() {
+                        this.style.transform = 'none';
+                        this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3)';
+                        this.style.opacity = '1';
+                    };
+                } else {
+                    downloadBtn.style.opacity = '0.5';
+                    downloadBtn.style.cursor = 'not-allowed';
+                    downloadBtn.title = '⛔ No approved units available for exam card';
+                    // Disable the button
+                    downloadBtn.setAttribute('disabled', 'disabled');
+                    // Remove hover effects
+                    downloadBtn.onmouseover = function() {
+                        this.style.transform = 'none';
+                        this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3)';
+                        this.style.opacity = '0.5';
+                    };
+                    downloadBtn.onmouseout = function() {
+                        this.style.transform = 'none';
+                        this.style.boxShadow = '0 2px 8px rgba(16,185,129,0.3)';
+                        this.style.opacity = '0.5';
+                    };
+                }
+                
+                console.log(`📥 Download button updated: ${approvedCount} units available`);
+            } else {
+                console.warn('⚠️ Download button not found in DOM');
             }
         }
         
@@ -1813,6 +1900,16 @@
             try {
                 console.log('📄 Generating combined exam card for ALL supplementary units...');
                 
+                // Check if there are approved units
+                const approvedCount = this.supplementaryRegistrations.filter(
+                    reg => reg.status === 'approved' || reg.status === 'completed'
+                ).length;
+                
+                if (approvedCount === 0) {
+                    this.showError('No approved supplementary registrations found. Please wait for admin approval.', 'warning');
+                    return;
+                }
+                
                 const supabase = this.getSupabase();
                 if (!supabase) throw new Error('Database connection not available');
                 
@@ -1852,12 +1949,12 @@
                 win.document.write(html);
                 win.document.close();
                 
-                // Auto-print after 1 second
+                // Auto-print after 1.5 seconds
                 setTimeout(() => {
                     win.print();
-                }, 1000);
+                }, 1500);
                 
-                this.showSuccess('Exam card generated successfully!');
+                this.showSuccess(`Exam card generated with ${registrations.length} unit(s)!`);
                 
             } catch (error) {
                 console.error('❌ Error downloading exam card:', error);
@@ -1919,6 +2016,8 @@
                 <html>
                 <head>
                     <title>Supplementary Exam Card - ${student.full_name}</title>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
                         * { margin: 0; padding: 0; box-sizing: border-box; }
                         body { font-family: Arial, sans-serif; padding: 40px; background: #f8fafc; }
@@ -2007,7 +2106,9 @@
                     <button class="btn-print" onclick="window.print()">🖨️ Print Exam Card</button>
                     
                     <script>
-                        setTimeout(() => window.print(), 1000);
+                        setTimeout(function() {
+                            window.print();
+                        }, 1500);
                     <\/script>
                 </body>
                 </html>
@@ -2211,6 +2312,11 @@
             window.studentDashboard.downloadAllSupplementaryExamCards();
         } else {
             console.error('❌ studentDashboard not available');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Error', 'Student dashboard not initialized. Please refresh the page.', 'error');
+            } else {
+                alert('Please refresh the page and try again.');
+            }
         }
     };
     
@@ -2273,5 +2379,6 @@
     console.log('📖 Dynamic legend shows correct pass marks based on program (KRCHN=60%, TVET=50%)');
     console.log('📌 Supplementary: Below pass mark, Retake: Below 30%');
     console.log('📊 ONE exam card for ALL approved units');
+    console.log('📥 Download Exam Card button: ALWAYS VISIBLE');
     
 })();
