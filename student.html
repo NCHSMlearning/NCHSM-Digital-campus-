@@ -1520,10 +1520,10 @@
             </section>
             <!-- END HUB ONLINE LEARNING -->
 
-            <!-- ==================== HUB REGISTER TAB ==================== -->
+             <!-- ==================== HUB REGISTER TAB ==================== -->
 <section id="hub-register" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
-    <!-- ========== HEADER ========== -->
+    <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
     <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
         <div>
             <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
@@ -1540,20 +1540,22 @@
         </div>
     </div>
 
-    <!-- ========== SUB TABS ========== -->
+    <!-- ========== SUB TABS FOR REGULAR & SUPPLEMENTARY ========== -->
     <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 20px; overflow: hidden;">
         <div style="display: flex; border-bottom: 2px solid #e5e7eb; background: #f8fafc;">
-            <button class="reg-sub-tab active" data-subtab="regular" onclick="window.switchRegTab('regular')" style="flex: 1; padding: 12px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #4C1D95; border-bottom: 3px solid #4C1D95; transition: all 0.3s;">
+            <button class="reg-sub-tab active" data-subtab="regular" style="flex: 1; padding: 12px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #4C1D95; border-bottom: 3px solid #4C1D95; transition: all 0.3s;">
                 <i class="fas fa-book"></i> Regular Registration
             </button>
-            <button class="reg-sub-tab" data-subtab="supplementary" onclick="window.switchRegTab('supplementary')" style="flex: 1; padding: 12px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #6b7280; border-bottom: 3px solid transparent; transition: all 0.3s;">
+            <button class="reg-sub-tab" data-subtab="supplementary" style="flex: 1; padding: 12px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #6b7280; border-bottom: 3px solid transparent; transition: all 0.3s;">
                 <i class="fas fa-redo-alt"></i> Supplementary / Retake
                 <span id="suppBadge" style="background: #B45309; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: 5px;">0</span>
             </button>
         </div>
     </div>
 
-    <!-- ========== LEGEND ========== -->
+    <!-- ============================================================ -->
+    <!-- 📖 LEGEND / KEY - DYNAMIC BASED ON USER PROGRAM              -->
+    <!-- ============================================================ -->
     <div id="registration-legend" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
             <i class="fas fa-info-circle" style="color: #4C1D95; font-size: 16px;"></i>
@@ -1561,10 +1563,12 @@
             <span id="program-badge-legend" style="background: #4C1D95; color: white; padding: 2px 12px; border-radius: 12px; font-size: 11px; margin-left: auto;">Loading...</span>
         </div>
         <div id="legend-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+            <!-- Will be dynamically populated by JavaScript -->
             <div style="text-align: center; padding: 20px; color: #94a3b8;">
                 <i class="fas fa-spinner fa-spin"></i> Loading legend...
             </div>
         </div>
+        <!-- Additional Info -->
         <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #94a3b8; display: flex; gap: 16px; flex-wrap: wrap;">
             <span><i class="fas fa-circle" style="color: #059669; font-size: 8px;"></i> Max 8 units per registration</span>
             <span><i class="fas fa-circle" style="color: #f59e0b; font-size: 8px;"></i> Supplementary: 1 extra exam attempt</span>
@@ -1572,10 +1576,9 @@
             <span id="pass-mark-legend" style="font-weight: 600;">🎯 Pass Mark: Loading...</span>
         </div>
     </div>
+    <!-- ==================== END LEGEND ==================== -->
 
-    <!-- ============================================================ -->
-    <!-- REGULAR REGISTRATION SUB-TAB                                 -->
-    <!-- ============================================================ -->
+    <!-- ========== REGULAR REGISTRATION SUB-TAB ========== -->
     <div id="regular-registration" class="reg-sub-content">
 
         <!-- FILTERS -->
@@ -1588,8 +1591,6 @@
                     <select id="RegType" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
                         <option value="">-- Select --</option>
                         <option value="Normal">Normal Registration</option>
-                        <option value="Supplementary">Supplementary</option>
-                        <option value="Retake">Retake</option>
                     </select>
                 </div>
                 <div>
@@ -1631,7 +1632,7 @@
                     <span id="availableUnitsCount" style="background: #4C1D95; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 units</span>
                 </div>
                 <span style="font-size: 11px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> Select units to register (max 8)
+                    <i class="fas fa-info-circle"></i> Select units to register
                 </span>
             </div>
             <div style="overflow-x: auto; padding: 0;">
@@ -1659,18 +1660,9 @@
                     </tbody>
                 </table>
             </div>
-            <div style="padding: 10px 20px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <span style="font-size: 13px; color: #6b7280;">
-                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
-                    Selected: <strong id="selected-units-count">0</strong> units
-                </span>
-                <span style="font-size: 12px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> Max <span id="maxUnitsAllowed">8</span> units allowed
-                </span>
-            </div>
         </div>
 
-        <!-- MY REGISTERED UNITS - NO EXAM CARD BUTTON HERE -->
+        <!-- ========== MY REGISTERED UNITS - GRADE COLUMN REMOVED ========== -->
         <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden;">
             <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -1988,49 +1980,104 @@
 <!-- END SUPPLEMENTARY REGISTRATION -->
             <!-- END HUB EXAM CARD -->
 
-    <!-- ==================== HUB EXAM CARD TAB ==================== -->
+ <!-- ==================== HUB EXAM CARD TAB ==================== -->
 <section id="hub-exam-card" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
-    <!-- ========== HEADER ========== -->
+    <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
     <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
         <div>
             <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
                 <i class="fas fa-id-card" style="color: #FDB913;"></i> Exam Card
             </h2>
             <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
-                <i class="fas fa-graduation-cap"></i> Your examination permit - Valid for the current trimester
+                <i class="fas fa-check-circle"></i> Your exam entry permit - Valid only with approved units and cleared fees
             </p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <span id="examCardStatusBadge" style="background: #d1fae5; color: #059669; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                <i class="fas fa-check-circle"></i> <span id="examCardStatusText">Active</span>
-            </span>
+            <button onclick="window.print()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                <i class="fas fa-print"></i> Print
+            </button>
+            <button onclick="window.downloadExamCard?.()" style="background: #FDB913; color: #0A3D62; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 700; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(253,185,19,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(253,185,19,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(253,185,19,0.3)'">
+                <i class="fas fa-download"></i> Download PDF
+            </button>
         </div>
     </div>
 
-    <!-- ✅ ADD THIS: The container your JS is looking for -->
+    <!-- ========== EXAM CARD STATUS BANNER ========== -->
+    <div id="examCardStatusBanner" style="display: none; background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <div id="statusIcon" style="width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fef3c7; flex-shrink: 0;">
+                <i class="fas fa-clock" style="color: #f59e0b; font-size: 20px;"></i>
+            </div>
+            <div style="flex: 1;">
+                <div id="statusTitle" style="font-weight: 700; color: #0A3D62; font-size: 15px;">Exam Card Status</div>
+                <div id="statusMessage" style="font-size: 13px; color: #64748b;">Loading your exam card status...</div>
+            </div>
+            <div id="statusBadge" style="padding: 4px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e;">
+                Pending
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== EXAM CARD CONTENT - MATCHING SUPER ADMIN ========== -->
     <div id="exam-card-content-standalone" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; min-height: 300px;">
-        <!-- Loading state -->
+
+        <!-- Loading State -->
         <div class="loading-state" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
             <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
             <p style="margin: 0;">Loading exam card...</p>
         </div>
+
+        <!-- Exam Card Content (will be populated by JS) -->
+        <div id="examCardContent" style="display: none; padding: 24px;">
+            <!-- Dynamically populated -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="examCardEmpty" style="display: none; text-align: center; padding: 60px 20px; color: #94a3b8;">
+            <i class="fas fa-id-card" style="font-size: 48px; color: #d1d5db; display: block; margin-bottom: 12px;"></i>
+            <h3 style="color: #1e293b; margin: 0;">No Exam Card Available</h3>
+            <p style="margin: 4px 0 16px 0;">You don't have an active exam card at the moment.</p>
+            <button onclick="window.location.href='#hub-register'" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-plus"></i> Register Units
+            </button>
+        </div>
     </div>
 
-    <!-- ========== EXAM CARD ACTIONS ========== -->
-    <div style="display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
-        <button id="refresh-exam-card-btn" style="padding: 12px 32px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f1f5f9'">
-            <i class="fas fa-sync-alt"></i> Refresh
-        </button>
+    <!-- ========== EXAM CARD PREVIEW (print-friendly) ========== -->
+    <div id="examCardPrintArea" style="display: none; background: white; padding: 30px; border: 2px solid #0A3D62; border-radius: 12px; max-width: 800px; margin: 20px auto;">
+        <!-- Print content populated by JS -->
     </div>
 
-    <!-- Print Area (hidden by default) -->
-    <div id="exam-card-print-area" style="display: none;">
-        <!-- Populated by JS when printing -->
-    </div>
+    <!-- ========== STYLES ========== -->
+    <style>
+        @media print {
+            #examCardPrintArea {
+                display: block !important;
+                margin: 0 auto;
+                border: 2px solid #0A3D62;
+                padding: 30px;
+                background: white;
+            }
+            #exam-card-content-standalone .loading-state,
+            #examCardEmpty {
+                display: none !important;
+            }
+            #examCardContent {
+                display: none !important;
+            }
+            #examCardStatusBanner {
+                display: none !important;
+            }
+            section#hub-exam-card > div:first-child {
+                display: none !important;
+            }
+        }
+    </style>
 
 </section>
 <!-- END HUB EXAM CARD -->
+            <!-- END HUB EXAM CARD -->
           <!-- ==================== HUB LECTURE CARD TAB (NEW - AFTER EXAM CARD) ==================== -->
 <section id="hub-lecture-card" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
