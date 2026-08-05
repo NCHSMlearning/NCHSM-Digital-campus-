@@ -10513,12 +10513,17 @@ async function sendPasswordResetEmail(email) {
 // 🔐 ADMIN FORCE RESET PASSWORD - FIXED (WORKS WITH ANON KEY)
 // ============================================================
 
+// ============================================================
+// 🔐 ADMIN FORCE RESET PASSWORD - UPDATED
+// ============================================================
+
 async function adminForceResetPassword(email, newPassword) {
     try {
         // Get the current admin's session token
         const { data: { session }, error: sessionError } = await sb.auth.getSession();
         
         if (sessionError || !session) {
+            console.error('❌ No session:', sessionError);
             return { 
                 success: false, 
                 message: 'You must be logged in as an admin' 
@@ -10527,8 +10532,9 @@ async function adminForceResetPassword(email, newPassword) {
 
         console.log('🔐 Calling admin-reset-password edge function...');
         console.log('📧 Email:', email);
+        console.log('👤 Token exists:', !!session.access_token);
 
-        // ✅ FIXED: Use the EDGE FUNCTION instead of direct admin API
+        // ✅ Call the EDGE FUNCTION
         const response = await fetch(
             'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-reset-password',
             {
@@ -10546,7 +10552,11 @@ async function adminForceResetPassword(email, newPassword) {
 
         const result = await response.json();
 
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response data:', result);
+
         if (!response.ok) {
+            console.error('❌ Response error:', response.status, result);
             throw new Error(result.error || 'Reset failed');
         }
 
@@ -10566,10 +10576,8 @@ async function adminForceResetPassword(email, newPassword) {
     }
 }
 
-// ============================================================
-// ✅ MAIN PASSWORD RESET HANDLER - FIXES THE ERROR
-// ============================================================
-
+// Make it globally accessible
+window.adminForceResetPassword = adminForceResetPassword;
 // ============================================================
 // ✅ MAIN PASSWORD RESET HANDLER - FIXED
 // ============================================================
@@ -10595,6 +10603,7 @@ async function handleGlobalPasswordReset(e) {
         if (feedbackEl) {
             feedbackEl.innerHTML = '❌ Please enter an email address.';
             feedbackEl.style.color = '#dc2626';
+            feedbackEl.style.display = 'block';
         }
         return;
     }
@@ -10603,6 +10612,7 @@ async function handleGlobalPasswordReset(e) {
         if (feedbackEl) {
             feedbackEl.innerHTML = '❌ Password must be at least 6 characters.';
             feedbackEl.style.color = '#dc2626';
+            feedbackEl.style.display = 'block';
         }
         return;
     }
@@ -10627,6 +10637,7 @@ async function handleGlobalPasswordReset(e) {
         if (feedbackEl) {
             feedbackEl.innerHTML = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
             feedbackEl.style.color = result.success ? '#059669' : '#dc2626';
+            feedbackEl.style.display = 'block';
         }
         
         if (result.success) {
@@ -10635,15 +10646,26 @@ async function handleGlobalPasswordReset(e) {
             if (newPasswordInput) newPasswordInput.value = '';
             
             // Clear lookup result
-            clearLookupResult();
+            if (typeof clearLookupResult === 'function') {
+                clearLookupResult();
+            }
             
-            showFeedback('Password reset successful!', 'success');
+            // Show success toast
+            if (typeof showFeedback === 'function') {
+                showFeedback('Password reset successful!', 'success');
+            }
+            
+            // Refresh user data if on users page
+            if (typeof loadAllUsers === 'function') {
+                setTimeout(loadAllUsers, 1000);
+            }
         }
         
     } catch (error) {
         if (feedbackEl) {
             feedbackEl.innerHTML = `❌ Error: ${error.message}`;
             feedbackEl.style.color = '#dc2626';
+            feedbackEl.style.display = 'block';
         }
         console.error('Password reset error:', error);
     } finally {
@@ -10654,13 +10676,13 @@ async function handleGlobalPasswordReset(e) {
     }
 }
 
+// Make it globally accessible
+window.handleGlobalPasswordReset = handleGlobalPasswordReset;
+
 // ============================================================
-// USER LOOKUP - FOR PASSWORD RESET (ADMIN VIEW)
+// USER LOOKUP - FOR PASSWORD RESET
 // ============================================================
 
-/**
- * Lookup user before resetting password (Admin only)
- */
 async function lookupUser() {
     const email = document.getElementById('userLookupEmail').value.trim();
     const resultDiv = document.getElementById('userLookupResult');
@@ -10690,7 +10712,7 @@ async function lookupUser() {
             .from('consolidated_user_profiles_table')
             .select('user_id, full_name, email, role, status, program, intake_year, block, created_at, phone')
             .eq('email', email)
-            .single();
+            .maybeSingle();
         
         if (error || !user) {
             if (resultDiv) {
@@ -10716,7 +10738,9 @@ async function lookupUser() {
         // ✅ User found! Show details
         const statusColor = user.status === 'approved' || user.status === 'active' ? '#059669' : '#f59e0b';
         const statusText = user.status || 'Pending';
-        const programDisplay = getProgramDisplayName(user.program) || user.program || 'N/A';
+        const programDisplay = typeof getProgramDisplayName === 'function' 
+            ? getProgramDisplayName(user.program) 
+            : (user.program || 'N/A');
         
         if (resultDiv) {
             resultDiv.style.display = 'block';
@@ -10767,12 +10791,10 @@ async function lookupUser() {
         if (resetEmailInput) {
             resetEmailInput.value = user.email;
         }
-        document.getElementById('new_password').focus();
         
-        // Show notification
-        if (typeof showNotification === 'function') {
-            showNotification(`✅ User found: ${user.full_name || user.email}`, 'success');
-        }
+        // Focus on password field
+        const passwordField = document.getElementById('new_password');
+        if (passwordField) passwordField.focus();
         
     } catch (error) {
         console.error('Lookup error:', error);
@@ -10793,6 +10815,9 @@ async function lookupUser() {
         }
     }
 }
+
+// Make it globally accessible
+window.lookupUser = lookupUser;
 
 /**
  * Auto-fill the reset form with found user
