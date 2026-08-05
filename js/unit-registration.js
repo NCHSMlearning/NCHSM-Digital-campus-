@@ -1394,97 +1394,88 @@
         // RENDER ELIGIBLE UNITS TABLE
         // ============================================================
         
-        renderEligibleUnitsTable(units, regType) {
-            const tbody = this.eligibleBody;
-            if (!tbody) return;
-            
-            if (units.length === 0) {
-                const message = regType === 'Supplementary' ? 
-                    'No units eligible for Supplementary registration. You need scores between 30-59%.' :
-                    'No units eligible for Retake registration. You need scores below 30%.';
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                            <i class="fas fa-check-circle" style="font-size: 40px; color: #10b981; display: block; margin-bottom: 10px;"></i>
-                            <p style="font-weight: 500;">${message}</p>
-                            <p style="font-size: 12px; margin-top: 4px;">All your units have been passed or already registered.</p>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            for (const unit of units) {
-                const canRegister = unit.status === 'Eligible' || unit.status === '❌ Rejected';
-                const isRegistered = unit.is_registered || unit.status === '✅ Approved' || unit.status === '📋 Completed' || unit.status === '⏳ Pending';
-                
-                let statusText = unit.status;
-                let statusColor = '#10b981';
-                let statusBg = '#d1fae5';
-                
-                if (unit.status === 'Eligible') {
-                    statusText = '✅ Eligible';
-                    statusColor = '#059669';
-                    statusBg = '#d1fae5';
-                } else if (unit.status === '❌ Rejected') {
-                    statusText = '❌ Rejected';
-                    statusColor = '#dc2626';
-                    statusBg = '#fee2e2';
-                } else if (unit.status === '✅ Approved') {
-                    statusText = '✅ Approved';
-                    statusColor = '#059669';
-                    statusBg = '#d1fae5';
-                } else if (unit.status === '⏳ Pending') {
-                    statusText = '⏳ Pending';
-                    statusColor = '#f59e0b';
-                    statusBg = '#fef3c7';
-                } else if (unit.status === '📋 Completed') {
-                    statusText = '📋 Completed';
-                    statusColor = '#3b82f6';
-                    statusBg = '#dbeafe';
-                }
-                
-                let scoreDisplay = unit.score || 'N/A';
-                if (unit.score > 0) {
-                    const scoreColor = unit.score < 30 ? '#dc2626' : unit.score < 60 ? '#f59e0b' : '#10b981';
-                    scoreDisplay = `<span style="font-weight: 700; color: ${scoreColor};">${unit.score}%</span>`;
-                }
-                
-                const regTypeDisplay = unit.reg_type === 'Retake' ? 
-                    '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Retake</span>' :
-                    '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Supplementary</span>';
-                
-                const rowStyle = isRegistered ? 'opacity: 0.6;' : '';
-                
-                html += `
-                    <tr class="supp-unit-row" style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s; ${rowStyle}">
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <input type="checkbox" class="supp-unit-checkbox" data-unit='${JSON.stringify(unit)}' 
-                                   ${!canRegister ? 'disabled' : ''} style="width: 16px; height: 16px; cursor: pointer;">
-                        </td>
-                        <td style="padding: 12px 16px; text-align: left; font-weight: 600; color: #0A3D62;">${this.escapeHtml(unit.unit_code)}</td>
-                        <td style="padding: 12px 16px; text-align: left;">${this.escapeHtml(unit.unit_name)}</td>
-                        <td style="padding: 12px 16px; text-align: left;">${this.escapeHtml(unit.block)}</td>
-                        <td style="padding: 12px 16px; text-align: center;">${scoreDisplay}</td>
-                        <td style="padding: 12px 16px; text-align: center;">${regTypeDisplay}</td>
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                                ${statusText}
-                            </span>
-                        </td>
-                    </tr>
-                `;
-            }
-            
-            tbody.innerHTML = html;
-            
-            document.querySelectorAll('.supp-unit-checkbox').forEach(cb => {
-                cb.addEventListener('change', () => this.updateSuppSelectedCount());
-            });
-            
-            this.updateSuppSelectedCount();
+      renderEligibleUnitsTable(units, regType) {
+    const tbody = this.eligibleBody;
+    if (!tbody) return;
+    
+    if (units.length === 0) {
+        const message = regType === 'Supplementary' ? 
+            'No units eligible for Supplementary registration. You need scores between 30-59%.' :
+            'No units eligible for Retake registration. You need scores below 30%.';
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-check-circle" style="font-size: 40px; color: #10b981; display: block; margin-bottom: 10px;"></i>
+                    <p style="font-weight: 500;">${message}</p>
+                    <p style="font-size: 12px; margin-top: 4px;">All your units have been passed or already registered.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    for (const unit of units) {
+        // ✅ FIX: Only check if actually registered in DB
+        const isRegistered = unit.is_registered === true;
+        const canRegister = !isRegistered;
+        
+        // Determine status display
+        let statusText = '✅ Eligible';
+        let statusColor = '#059669';
+        let statusBg = '#d1fae5';
+        
+        if (isRegistered) {
+            statusText = '📋 Already Registered';
+            statusColor = '#3b82f6';
+            statusBg = '#dbeafe';
+        } else if (unit.status === '❌ Rejected') {
+            statusText = '❌ Rejected - Re-register';
+            statusColor = '#dc2626';
+            statusBg = '#fee2e2';
         }
+        
+        // Score display
+        let scoreDisplay = unit.score || 'N/A';
+        if (unit.score > 0) {
+            const scoreColor = unit.score < 30 ? '#dc2626' : unit.score < 60 ? '#f59e0b' : '#10b981';
+            scoreDisplay = `<span style="font-weight: 700; color: ${scoreColor};">${unit.score}%</span>`;
+        }
+        
+        const regTypeDisplay = unit.reg_type === 'Retake' ? 
+            '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Retake</span>' :
+            '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Supplementary</span>';
+        
+        const rowStyle = isRegistered ? 'opacity: 0.6;' : '';
+        
+        html += `
+            <tr class="supp-unit-row" style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s; ${rowStyle}">
+                <td style="padding: 12px 16px; text-align: center;">
+                    <input type="checkbox" class="supp-unit-checkbox" data-unit='${JSON.stringify(unit)}' 
+                           ${!canRegister ? 'disabled' : ''} style="width: 16px; height: 16px; cursor: pointer;">
+                </td>
+                <td style="padding: 12px 16px; text-align: left; font-weight: 600; color: #0A3D62;">${this.escapeHtml(unit.unit_code)}</td>
+                <td style="padding: 12px 16px; text-align: left;">${this.escapeHtml(unit.unit_name)}</td>
+                <td style="padding: 12px 16px; text-align: left;">${this.escapeHtml(unit.block)}</td>
+                <td style="padding: 12px 16px; text-align: center;">${scoreDisplay}</td>
+                <td style="padding: 12px 16px; text-align: center;">${regTypeDisplay}</td>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                        ${statusText}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }
+    
+    tbody.innerHTML = html;
+    
+    document.querySelectorAll('.supp-unit-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => this.updateSuppSelectedCount());
+    });
+    
+    this.updateSuppSelectedCount();
+}
         
         // ============================================================
         // SUPPLEMENTARY DATA LOADING
