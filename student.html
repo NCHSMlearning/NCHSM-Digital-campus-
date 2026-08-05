@@ -2141,200 +2141,201 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- SUPPLEMENTARY / RETAKE SUB-TAB - WITH EXAM CARD BUTTON      -->
-    <!-- ============================================================ -->
-    <div id="supplementary-registration" class="reg-sub-content" style="display: none;">
+<!-- SUPPLEMENTARY / RETAKE SUB-TAB - COMPLETE                    -->
+<!-- ============================================================ -->
+<div id="supplementary-registration" class="reg-sub-content" style="display: none;">
 
-        <!-- SUPPLEMENTARY HEADER -->
-        <div style="background: linear-gradient(135deg, #B45309, #D97706); border-radius: 12px; padding: 20px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-            <div>
-                <h4 style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-redo-alt"></i> Supplementary / Retake Registration
-                </h4>
-                <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 13px;">
-                    <i class="fas fa-info-circle"></i> Re-register for units you need to retake or resit
-                </p>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <span style="background: #fef3c7; color: #92400e; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;">
-                    <i class="fas fa-clock"></i> <span id="suppRegStatus">Open</span>
-                </span>
-                <span style="background: #fee2e2; color: #991b1b; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;">
-                    <i class="fas fa-calendar-times"></i> Deadline: <span id="suppDeadline">2026-08-20</span>
-                </span>
-            </div>
+    <!-- SUPPLEMENTARY HEADER -->
+    <div style="background: linear-gradient(135deg, #B45309, #D97706); border-radius: 12px; padding: 20px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h4 style="color: white; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-redo-alt"></i> Supplementary / Retake Registration
+            </h4>
+            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 13px;">
+                <i class="fas fa-info-circle"></i> Re-register for units you need to retake or resit
+            </p>
         </div>
+        <div style="display: flex; gap: 10px;">
+            <span style="background: #fef3c7; color: #92400e; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                <i class="fas fa-clock"></i> <span id="suppRegStatus">Open</span>
+            </span>
+            <span style="background: #fee2e2; color: #991b1b; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                <i class="fas fa-calendar-times"></i> Deadline: <span id="suppDeadline">2026-08-20</span>
+            </span>
+        </div>
+    </div>
 
-        <!-- ============================================================ -->
-        <!-- STEP 1: SELECT REGISTRATION TYPE                             -->
-        <!-- ============================================================ -->
-        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
-            <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb;">
-                <h4 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px; font-size: 15px;">
-                    <i class="fas fa-edit" style="color: #D97706;"></i> Register for Supplementary / Retake
-                </h4>
-            </div>
-            <div style="padding: 20px;">
-                <form id="supplementaryRegForm">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <!-- Registration Type Dropdown -->
-                        <div>
-                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                                <i class="fas fa-tag"></i> Registration Type *
-                            </label>
-                            <select id="suppRegType" required style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s;">
-                                <option value="">-- Select Type --</option>
-                                <option value="Supplementary">📘 Supplementary (Below 60%)</option>
-                                <option value="Retake">📕 Retake (Below 30%)</option>
-                            </select>
-                            <div id="regTypeInfo" style="margin-top: 6px; font-size: 12px; color: #94a3b8; display: none; padding: 8px 12px; border-radius: 6px; background: #f8fafc;">
-                                <i class="fas fa-info-circle"></i> 
-                                <span id="regTypeInfoText">Select a registration type to see available units</span>
-                            </div>
-                        </div>
-                        <!-- Unit Count Display -->
-                        <div>
-                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                                <i class="fas fa-list"></i> Available Units
-                            </label>
-                            <div style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; min-height: 48px;">
-                                <span id="suppAvailableCount" style="font-size: 18px; font-weight: 700; color: #4C1D95;">0</span>
-                                <span style="font-size: 13px; color: #6b7280;">units available for registration</span>
-                                <span id="suppLoadingIndicator" style="display: none; margin-left: auto;">
-                                    <i class="fas fa-spinner fa-spin" style="color: #4C1D95;"></i>
-                                </span>
-                            </div>
+    <!-- ============================================================ -->
+    <!-- STEP 1: SELECT REGISTRATION TYPE                             -->
+    <!-- ============================================================ -->
+    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
+        <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb;">
+            <h4 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px; font-size: 15px;">
+                <i class="fas fa-edit" style="color: #D97706;"></i> Register for Supplementary / Retake
+            </h4>
+        </div>
+        <div style="padding: 20px;">
+            <form id="supplementaryRegForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <!-- Registration Type Dropdown -->
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                            <i class="fas fa-tag"></i> Registration Type *
+                        </label>
+                        <select id="suppRegType" required style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s;">
+                            <option value="">-- Select Type --</option>
+                            <option value="Supplementary">📘 Supplementary (Below 60%)</option>
+                            <option value="Retake">📕 Retake (Below 30%)</option>
+                        </select>
+                        <div id="regTypeInfo" style="margin-top: 6px; font-size: 12px; color: #94a3b8; display: none; padding: 8px 12px; border-radius: 6px; background: #f8fafc;">
+                            <i class="fas fa-info-circle"></i> 
+                            <span id="regTypeInfoText">Select a registration type to see available units</span>
                         </div>
                     </div>
-                </form>
+                    <!-- Unit Count Display -->
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                            <i class="fas fa-list"></i> Available Units
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; min-height: 48px;">
+                            <span id="suppAvailableCount" style="font-size: 18px; font-weight: 700; color: #4C1D95;">0</span>
+                            <span style="font-size: 13px; color: #6b7280;">units available for registration</span>
+                            <span id="suppLoadingIndicator" style="display: none; margin-left: auto;">
+                                <i class="fas fa-spinner fa-spin" style="color: #4C1D95;"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STEP 2: ELIGIBLE UNITS TABLE                                 -->
+    <!-- ============================================================ -->
+    <div id="suppUnitsContainer" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
+        <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <h4 style="margin: 0; color: #B45309; display: flex; align-items: center; gap: 10px; font-size: 15px;">
+                    <i class="fas fa-exclamation-triangle" style="color: #D97706;"></i> Eligible Units for Re-registration
+                </h4>
+                <span id="eligibleUnitsCount" style="background: #B45309; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 units</span>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="refreshSuppUnitsBtn" style="background: none; border: none; color: #4C1D95; cursor: pointer; font-size: 14px; padding: 6px 12px; border-radius: 6px; transition: all 0.3s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <span style="font-size: 12px; color: #6b7280;">
+                    <i class="fas fa-info-circle"></i> Select units to register (max 8)
+                </span>
             </div>
         </div>
-
-        <!-- ============================================================ -->
-        <!-- STEP 2: AVAILABLE UNITS TABLE                                -->
-        <!-- ============================================================ -->
-        <div id="suppUnitsContainer" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
-            <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <h4 style="margin: 0; color: #B45309; display: flex; align-items: center; gap: 10px; font-size: 15px;">
-                        <i class="fas fa-exclamation-triangle" style="color: #D97706;"></i> Eligible Units for Re-registration
-                    </h4>
-                    <span id="eligibleUnitsCount" style="background: #B45309; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 units</span>
-                </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button id="refreshSuppUnitsBtn" style="background: none; border: none; color: #4C1D95; cursor: pointer; font-size: 14px; padding: 6px 12px; border-radius: 6px; transition: all 0.3s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                    <span style="font-size: 12px; color: #6b7280;">
-                        <i class="fas fa-info-circle"></i> Select units to register (max 8)
-                    </span>
-                </div>
+        
+        <!-- Units Table -->
+        <div style="overflow-x: auto; padding: 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                    <tr>
+                        <th style="padding: 12px 16px; text-align: center; width: 40px;">
+                            <input type="checkbox" id="selectAllSupp" style="width: 16px; height: 16px; cursor: pointer;">
+                        </th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Code</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Name</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Score</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Registration Type</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="eligibleUnitsBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-hand-pointer" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                            <p>Please select a Registration Type to see available units</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Selected count and actions -->
+        <div style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <span style="font-size: 13px; color: #6b7280;">
+                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                    Selected: <strong id="selectedSuppCount">0</strong> units
+                </span>
+                <span style="font-size: 12px; color: #94a3b8;">
+                    <i class="fas fa-info-circle"></i> Max 8 units allowed
+                </span>
             </div>
-            
-            <!-- Units Table -->
-            <div style="overflow-x: auto; padding: 0;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                    <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <tr>
-                            <th style="padding: 12px 16px; text-align: center; width: 40px;">
-                                <input type="checkbox" id="selectAllSupp" style="width: 16px; height: 16px; cursor: pointer;">
-                            </th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Code</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Name</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Score</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Registration Type</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="eligibleUnitsBody">
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                <i class="fas fa-hand-pointer" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                                <p>Please select a Registration Type to see available units</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Selected count and actions -->
-            <div style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <span style="font-size: 13px; color: #6b7280;">
-                        <i class="fas fa-check-circle" style="color: #10b981;"></i>
-                        Selected: <strong id="selectedSuppCount">0</strong> units
-                    </span>
-                    <span style="font-size: 12px; color: #94a3b8;">
-                        <i class="fas fa-info-circle"></i> Max 8 units allowed
-                    </span>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button type="submit" id="registerSupplementaryBtn" 
-                            style="padding: 10px 30px; background: linear-gradient(135deg, #B45309, #D97706); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(180, 83, 9, 0.3);"
-                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(180, 83, 9, 0.4)'"
-                            onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(180, 83, 9, 0.3)'">
-                        <i class="fas fa-check-circle"></i> Register Selected Units
-                    </button>
-                    <button type="reset" id="clearSuppSelectionBtn" 
-                            style="padding: 10px 20px; background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
-                            onmouseover="this.style.background='#e5e7eb'"
-                            onmouseout="this.style.background='#f3f4f6'">
-                        Clear All
-                    </button>
-                </div>
+            <div style="display: flex; gap: 8px;">
+                <button type="reset" id="clearSuppSelectionBtn" 
+                        style="padding: 10px 20px; background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+                        onmouseover="this.style.background='#e5e7eb'"
+                        onmouseout="this.style.background='#f3f4f6'">
+                    Clear All
+                </button>
+                <button type="submit" id="registerSupplementaryBtn" 
+                        style="padding: 10px 30px; background: linear-gradient(135deg, #B45309, #D97706); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(180, 83, 9, 0.3);"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(180, 83, 9, 0.4)'"
+                        onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(180, 83, 9, 0.3)'">
+                    <i class="fas fa-check-circle"></i> Register Selected Units
+                </button>
             </div>
         </div>
+    </div>
 
-        <!-- ============================================================ -->
-        <!-- STEP 3: MY SUPPLEMENTARY REGISTRATIONS WITH EXAM CARD        -->
-        <!-- ============================================================ -->
-        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden;">
-            <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <h4 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px; font-size: 15px;">
-                        <i class="fas fa-clipboard-list" style="color: #D97706;"></i> My Supplementary Registrations
-                    </h4>
-                    <span id="suppRegisteredCount" style="background: #D97706; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0</span>
-                </div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                    <!-- ✅ ONE EXAM CARD BUTTON - Downloads ALL units -->
-                    <button id="downloadAllSuppExamCardsBtn" 
-                            style="display: none; background: #10b981; color: white; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(16,185,129,0.3);"
-                            onclick="window.downloadAllSupplementaryExamCards()"
-                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'"
-                            onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'">
-                        <i class="fas fa-download"></i> Download Exam Card
-                        <span id="downloadSuppCount" style="background: rgba(255,255,255,0.3); padding: 0 8px; border-radius: 12px; font-size: 10px;">0</span>
-                    </button>
-                    <span style="font-size: 11px; color: #94a3b8;">
-                        <i class="fas fa-clock"></i> <span id="suppLastUpdated">Just now</span>
-                    </span>
-                </div>
+    <!-- ============================================================ -->
+    <!-- STEP 3: MY SUPPLEMENTARY REGISTRATIONS WITH EXAM CARD        -->
+    <!-- ============================================================ -->
+    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden;">
+        <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <h4 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px; font-size: 15px;">
+                    <i class="fas fa-clipboard-list" style="color: #D97706;"></i> My Supplementary Registrations
+                </h4>
+                <span id="suppRegisteredCount" style="background: #D97706; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0</span>
             </div>
-            <div style="overflow-x: auto; padding: 0;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                    <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <tr>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Code</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Name</th>
-                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Reg Type</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Registration Date</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="suppRegisteredBody">
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #D97706; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
-                                <p style="margin: 0;">Loading supplementary registrations...</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <!-- ✅ DOWNLOAD EXAM CARD BUTTON - ALWAYS VISIBLE -->
+                <button id="downloadAllSuppExamCardsBtn" 
+                        style="background: #10b981; color: white; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(16,185,129,0.3); opacity: 0.5;"
+                        onclick="window.downloadSupplementaryExamCard()"
+                        disabled
+                        title="No approved units available for exam card"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'"
+                        onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'">
+                    <i class="fas fa-download"></i> Download Exam Card
+                    <span id="downloadSuppCount" style="background: rgba(255,255,255,0.3); padding: 0 8px; border-radius: 12px; font-size: 10px;">0</span>
+                </button>
+                <span style="font-size: 11px; color: #94a3b8;">
+                    <i class="fas fa-clock"></i> <span id="suppLastUpdated">Just now</span>
+                </span>
             </div>
+        </div>
+        <div style="overflow-x: auto; padding: 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                    <tr>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Code</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Unit Name</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Reg Type</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Registration Date</th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="suppRegisteredBody">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #D97706; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                            <p style="margin: 0;">Loading supplementary registrations...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -2345,18 +2346,8 @@
             100% { transform: rotate(360deg); }
         }
         
-        .reg-sub-tab.active {
-            color: #4C1D95;
-            border-bottom: 3px solid #4C1D95;
-            background: rgba(76, 29, 149, 0.05);
-        }
-        
-        .reg-sub-tab:hover:not(.active) {
-            background: #f1f5f9;
-        }
-        
         input[type="checkbox"] {
-            accent-color: #4C1D95;
+            accent-color: #B45309;
             width: 16px;
             height: 16px;
             cursor: pointer;
@@ -2372,6 +2363,17 @@
             background: #f8fafc;
         }
         
+        /* Download button styles when enabled */
+        #downloadAllSuppExamCardsBtn:not([disabled]) {
+            opacity: 1 !important;
+            cursor: pointer !important;
+        }
+        
+        #downloadAllSuppExamCardsBtn:not([disabled]):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+        
         @media (max-width: 768px) {
             table {
                 font-size: 11px;
@@ -2382,6 +2384,8 @@
         }
     </style>
 
+</div>
+<!-- END SUPPLEMENTARY REGISTRATION -->
 </section>
 <!-- END HUB REGISTER -->
             <!-- END HUB EXAM CARD -->
