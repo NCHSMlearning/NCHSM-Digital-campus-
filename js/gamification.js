@@ -1,6 +1,8 @@
 // gamification.js - Complete Badges, Streaks, Points & Leaderboard System
 // NOW INCLUDES NurseIQ attempts and scores
-// 🔧 FIXED: Gamification widget disabled to prevent duplicate streak display
+// 🔧 FIXED: Gamification widget DISABLED to prevent duplicate streak display
+// 🔧 FIXED: Points calculation includes ALL sources
+// 🔧 FIXED: Duplicate display issues resolved
 
 (function() {
     'use strict';
@@ -12,7 +14,7 @@
             this.userId = null;
             this.userProfile = null;
             this.streak = 0;
-            this.points = 0;
+            this.attendancePoints = 0;
             this.level = 1;
             this.xp = 0;
             this.xpToNextLevel = 100;
@@ -115,7 +117,7 @@
             this.updateAllUI();
             await this.loadLeaderboard();
             
-            console.log(`✅ Gamification ready: Level ${this.level}, ${this.points} points, ${this.streak} day streak`);
+            console.log(`✅ Gamification ready: Level ${this.level}, ${this.getTotalPoints()} points, ${this.streak} day streak`);
             console.log(`📚 NurseIQ: ${this.nurseiqPoints} points from ${this.nurseiqAttempts.length} attempts`);
         }
         
@@ -140,6 +142,18 @@
                 setTimeout(() => clearInterval(checkInterval), 10000);
             });
         }
+        
+        // ============================================================
+        // 📊 GET TOTAL POINTS - FIXED!
+        // ============================================================
+        
+        getTotalPoints() {
+            return (this.attendancePoints || 0) + (this.nurseiqPoints || 0);
+        }
+        
+        // ============================================================
+        // 📚 LOAD NURSEIQ DATA
+        // ============================================================
         
         async loadNurseIQData() {
             if (!this.userId || !window.db?.supabase) return;
@@ -191,9 +205,6 @@
                 
                 this.nurseiqPoints = totalNurseIQPoints;
                 
-                const attendancePoints = this.points;
-                this.totalPoints = attendancePoints + this.nurseiqPoints;
-                
                 console.log(`📊 NurseIQ: ${this.nurseiqPoints} points from ${this.nurseiqAttempts.length} attempts`);
                 
             } catch (error) {
@@ -202,6 +213,10 @@
                 this.nurseiqAttempts = [];
             }
         }
+        
+        // ============================================================
+        // 👤 LOAD USER GAMIFICATION DATA
+        // ============================================================
         
         async loadUserGamificationData() {
             if (!this.userId || !window.db?.supabase) return;
@@ -214,7 +229,7 @@
                     .single();
                 
                 if (data && !error) {
-                    this.points = data.gamification_points || 0;
+                    this.attendancePoints = data.gamification_points || 0;
                     this.streak = data.attendance_streak || 0;
                     this.level = data.gamification_level || 1;
                     this.xp = data.gamification_xp || 0;
@@ -294,11 +309,13 @@
         async saveToDatabase() {
             if (!this.userId || !window.db?.supabase) return;
             
+            const totalPoints = this.getTotalPoints();
+            
             try {
                 const { error } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
                     .update({
-                        gamification_points: this.points + this.nurseiqPoints,
+                        gamification_points: this.attendancePoints,
                         attendance_streak: this.streak,
                         gamification_level: this.level,
                         gamification_xp: this.xp,
@@ -306,6 +323,7 @@
                         last_check_in: this.lastCheckIn ? this.lastCheckIn.toISOString() : null,
                         nurseiq_points: this.nurseiqPoints,
                         total_nurseiq_attempts: this.nurseiqAttempts.length,
+                        total_points: totalPoints, // ← ADDED: Store total points
                         updated_at: new Date().toISOString()
                     })
                     .eq('user_id', this.userId);
@@ -318,25 +336,18 @@
         }
         
         // ============================================================
-        // 🔧 FIXED: Widget is DISABLED - prevents duplicate streak display
+        // 🔧 INJECT GAMIFICATION UI - WIDGET DISABLED
         // ============================================================
+        
         injectGamificationUI() {
             // ✅ Gamification widget DISABLED - streak shown in main dashboard
             // The dashboard already has a beautiful streak card with:
             // - Progress bar, milestones, lights, restore button
             // So we skip adding another widget here
             
-            // this.addGamificationWidgetToDashboard();  // ← DISABLED
-            
             this.addLevelProgressBar();
             this.addBadgesSection();
             this.addLeaderboardSection();
-        }
-        
-        addGamificationWidgetToDashboard() {
-            // 🔧 DISABLED - Creates duplicate streak display
-            // This is now handled by the main dashboard
-            return;
         }
         
         addLevelProgressBar() {
@@ -344,6 +355,7 @@
             if (!welcomeCard) return;
             if (document.querySelector('.level-progress-container')) return;
             
+            const totalPoints = this.getTotalPoints();
             const percent = (this.xp / this.xpToNextLevel) * 100;
             
             const progressContainer = document.createElement('div');
@@ -353,10 +365,13 @@
                 <div class="level-progress-bar">
                     <div class="level-progress-fill" id="level-progress-fill" style="width: ${percent}%"></div>
                 </div>
-                <div class="level-progress-text" id="level-progress-text">Level ${this.level} · ${this.xp}/${this.xpToNextLevel} XP to Level ${this.level + 1}</div>
+                <div class="level-progress-text" id="level-progress-text">
+                    Level ${this.level} · ${this.xp}/${this.xpToNextLevel} XP to Level ${this.level + 1}
+                </div>
                 <div class="level-progress-text" style="font-size: 10px; margin-top: 4px;">
                     <i class="fas fa-stethoscope"></i> NurseIQ: ${this.nurseiqPoints} pts | 
-                    <i class="fas fa-calendar-check"></i> Attendance: ${this.points} pts
+                    <i class="fas fa-calendar-check"></i> Attendance: ${this.attendancePoints} pts |
+                    <i class="fas fa-trophy"></i> Total: ${totalPoints} pts
                 </div>
             `;
             
@@ -430,6 +445,10 @@
             });
         }
         
+        // ============================================================
+        // 🎯 EVENT LISTENERS
+        // ============================================================
+        
         setupEventListeners() {
             document.addEventListener('attendanceRecorded', (e) => {
                 console.log('🎯 Attendance recorded, awarding points...');
@@ -457,6 +476,10 @@
                 this.showNotification('NurseIQ Update!', `You earned ${e.detail.points || 0} points from your practice!`, 'points');
             });
         }
+        
+        // ============================================================
+        // 🎯 HANDLE ATTENDANCE - FIXED POINTS
+        // ============================================================
         
         async handleAttendance(detail) {
             const now = new Date();
@@ -526,8 +549,12 @@
             await this.addPoints(detail.points || 10, `Quiz: ${detail.quizName}`);
         }
         
+        // ============================================================
+        // ➕ ADD POINTS - FIXED
+        // ============================================================
+        
         async addPoints(amount, reason) {
-            this.points += amount;
+            this.attendancePoints += amount;
             this.xp += amount;
             
             while (this.xp >= this.xpToNextLevel) {
@@ -564,14 +591,19 @@
             return this.badges.some(b => b.id === badgeId);
         }
         
+        // ============================================================
+        // 🎨 UPDATE UI
+        // ============================================================
+        
         updateAllUI() {
             this.updateUI();
             this.updateBadgesDisplay();
         }
         
         updateUI() {
-            const totalPoints = this.points + this.nurseiqPoints;
+            const totalPoints = this.getTotalPoints();
             
+            // Update dashboard elements if they exist
             const streakCount = document.getElementById('streak-count');
             if (streakCount) streakCount.textContent = this.streak;
             
@@ -581,12 +613,19 @@
             const levelNumber = document.getElementById('level-number');
             if (levelNumber) levelNumber.textContent = this.level;
             
+            // Update progress bar
             const progressFill = document.getElementById('level-progress-fill');
             const progressText = document.getElementById('level-progress-text');
             if (progressFill && progressText) {
                 const percent = (this.xp / this.xpToNextLevel) * 100;
-                progressFill.style.width = `${percent}%`;
+                progressFill.style.width = `${Math.min(percent, 100)}%`;
                 progressText.textContent = `Level ${this.level} · ${this.xp}/${this.xpToNextLevel} XP to Level ${this.level + 1}`;
+            }
+            
+            // Update dashboard points display
+            const dashboardPoints = document.querySelector('.dashboard-points-display');
+            if (dashboardPoints) {
+                dashboardPoints.textContent = totalPoints;
             }
         }
         
@@ -616,6 +655,10 @@
             }).join('');
         }
         
+        // ============================================================
+        // 🏆 LEADERBOARD - FIXED WITH TOTAL POINTS
+        // ============================================================
+        
         async loadLeaderboard() {
             const leaderboardList = document.getElementById('leaderboard-list');
             if (!leaderboardList) return;
@@ -640,15 +683,13 @@
                         gamification_level,
                         nurseiq_points,
                         total_nurseiq_attempts,
+                        total_points,
                         role,
                         program,
                         block
                     `)
                     .eq('role', 'student')
-                    .gt('gamification_points', 0)
-                    .not('full_name', 'is', null)
-                    .neq('full_name', '')
-                    .order('gamification_points', { ascending: false })
+                    .order('total_points', { ascending: false })
                     .limit(10);
                 
                 if (error) throw error;
@@ -658,19 +699,7 @@
                         <div class="gamification-empty">
                             <i class="fas fa-chart-line" style="font-size: 40px; color: #cbd5e1;"></i>
                             <p style="font-weight: 600; margin-top: 12px;">Leaderboard Coming Soon!</p>
-                            <p style="font-size: 13px;">No students have earned points yet.</p>
-                            <div style="margin-top: 15px; text-align: left; background: #f8fafc; padding: 12px; border-radius: 12px;">
-                                <p style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">📊 How to earn points:</p>
-                                <ul style="font-size: 11px; color: #475569; margin: 0; padding-left: 20px;">
-                                    <li>✅ Complete daily attendance check-in (+5-10 points)</li>
-                                    <li>✅ Take NurseIQ practice tests (+5-30 points per test)</li>
-                                    <li>✅ Maintain daily streaks (+50-500 bonus points)</li>
-                                    <li>✅ Unlock achievement badges (+10-200 points)</li>
-                                </ul>
-                            </div>
-                            <p style="font-size: 11px; margin-top: 12px; color: #f59e0b;">
-                                <i class="fas fa-info-circle"></i> Start using the system to see your name here!
-                            </p>
+                            <p style="font-size: 13px;">Start using the system to see your name here!</p>
                         </div>
                     `;
                     return;
@@ -701,19 +730,7 @@
                         avatar = name.substring(0, 2).toUpperCase();
                     }
                     
-                    const totalPoints = (item.gamification_points || 0) + (item.nurseiq_points || 0);
-                    
-                    let specialBadge = '';
-                    if (index === 0) {
-                        if ((item.nurseiq_points || 0) > (item.gamification_points || 0)) {
-                            specialBadge = '<span class="special-badge nurseiq-leader" title="NurseIQ Leader"><i class="fas fa-stethoscope"></i></span>';
-                        } else if ((item.attendance_streak || 0) > 5) {
-                            specialBadge = '<span class="special-badge streak-leader" title="Streak Leader"><i class="fas fa-fire"></i></span>';
-                        }
-                    }
-                    
-                    const programDisplay = item.program ? item.program.substring(0, 3) : '';
-                    const blockDisplay = item.block ? `Block ${item.block}` : '';
+                    const totalPoints = item.total_points || (item.gamification_points || 0) + (item.nurseiq_points || 0);
                     
                     return `
                         <div class="leaderboard-item">
@@ -721,14 +738,13 @@
                             <div class="leaderboard-avatar">${avatar}</div>
                             <div class="leaderboard-info">
                                 <div class="leaderboard-name">
-                                    ${this.escapeHtml(name)} ${specialBadge}
-                                    ${programDisplay ? `<span class="program-badge">${programDisplay}</span>` : ''}
+                                    ${this.escapeHtml(name)}
+                                    ${item.program ? `<span class="program-badge">${item.program.substring(0, 3)}</span>` : ''}
                                 </div>
                                 <div class="leaderboard-stats">
                                     <i class="fas fa-fire"></i> ${item.attendance_streak || 0} day streak
                                     <i class="fas fa-trophy" style="margin-left: 8px;"></i> Level ${item.gamification_level || 1}
                                     ${item.total_nurseiq_attempts > 0 ? `<i class="fas fa-stethoscope" style="margin-left: 8px;"></i> ${item.total_nurseiq_attempts} tests` : ''}
-                                    ${blockDisplay ? `<i class="fas fa-layer-group" style="margin-left: 8px;"></i> ${blockDisplay}` : ''}
                                 </div>
                             </div>
                             <div class="leaderboard-points">
@@ -761,7 +777,7 @@
         }
         
         updateDashboardStats() {
-            const totalPoints = this.points + this.nurseiqPoints;
+            const totalPoints = this.getTotalPoints();
             
             const dashboardPoints = document.getElementById('dashboard-points');
             if (dashboardPoints) dashboardPoints.textContent = totalPoints;
@@ -801,6 +817,10 @@
             }
         }
     }
+    
+    // ============================================================
+    // 🚀 INITIALIZE
+    // ============================================================
     
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
