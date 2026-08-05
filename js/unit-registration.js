@@ -1672,19 +1672,7 @@
 })();
 
 // ============================================================
-// STANDALONE SUPPLEMENTARY EXAM CARD - NO EXAM CARD JS REQUIRED
-// ============================================================
-
-// ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD WITH PROGRESS INDICATOR
-// ============================================================
-
-// ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD - FIXED
-// ============================================================
-
-// ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD - SHOW FAILED UNITS TOO!
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - SHOW PENDING, APPROVED, COMPLETED (FAILED)
 // ============================================================
 
 window.downloadSupplementaryExamCard = async function() {
@@ -1797,21 +1785,22 @@ window.downloadSupplementaryExamCard = async function() {
         
         updateProgress(25, 'Fetching your units...');
         
-        // ✅ FIXED: Show pending exams (no grade) AND failed units (D, F, FAIL)
+        // ✅ FIXED: Include pending, approved, AND completed
+        // Show: pending exam (no grade), failed units (D, F, FAIL)
         const { data: registrations, error } = await supabase
             .from('student_unit_registrations')
             .select('*')
             .eq('student_id', userId)
             .in('reg_type', ['Supplementary', 'Retake'])
-            .or(`status.eq.approved,status.eq.completed`)
+            .in('status', ['pending', 'approved', 'completed'])  // ← Include pending!
             .or(`grade.is.null,grade.in.('D','F','FAIL')`)
             .order('submitted_date', { ascending: false });
         
         if (error) throw error;
         
-        // Filter out PASSED units (A, B, C) - just in case
+        // Filter out PASSED units (A, B, C)
         const filteredRegistrations = registrations.filter(unit => {
-            // Keep if: no grade (pending) OR grade is FAIL (D, F, FAIL)
+            // Keep if: no grade (pending exam) OR grade is FAIL (D, F, FAIL)
             if (!unit.grade) return true;
             const failGrades = ['D', 'F', 'FAIL'];
             return failGrades.includes(unit.grade);
@@ -1823,6 +1812,13 @@ window.downloadSupplementaryExamCard = async function() {
             overlay.remove();
             alert('No supplementary/retake units found.\n\nUnits with PASS grades (A, B, C) are excluded.\nOnly FAIL grades (D, F) and pending exams are shown.');
             return;
+        }
+        
+        // Check if any are still pending
+        const hasPending = filteredRegistrations.some(u => u.status === 'pending');
+        if (hasPending) {
+            updateProgress(60, '⏳ Some units are still pending approval...');
+            await new Promise(r => setTimeout(r, 500));
         }
         
         updateProgress(40, `Found ${filteredRegistrations.length} unit(s). Building exam card...`);
