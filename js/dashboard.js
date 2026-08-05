@@ -1,13 +1,14 @@
 // dashboard.js - COMPLETE WORKING VERSION WITH ALL POINTS FIXED
 // ============================================================
 // FIXES APPLIED:
-// 1. ✅ TOTAL POINTS now includes Gamification Bonus
-// 2. ✅ Leaderboard shows correct points
-// 3. ✅ XP calculation includes all sources
+// 1. ✅ TOTAL POINTS now includes Gamification Bonus from RPC
+// 2. ✅ XP calculation uses RPC data
+// 3. ✅ Leaderboard shows correct points
 // 4. ✅ Streak system working
 // 5. ✅ Time greeting fixed for Kenya time
 // 6. ✅ Navigation working
 // 7. ✅ My Units support
+// 8. ✅ Uses total_points from RPC
 // ============================================================
 
 class DashboardModule {
@@ -18,7 +19,8 @@ class DashboardModule {
         this.userId = null;
         this.userProfile = null;
         this.autoRefreshInterval = null;
-        this.gamificationPoints = 0; // ← NEW: Store gamification points
+        this.gamificationPoints = 0;
+        this.totalPoints = 0;
          
         this.CACHE_DURATION = 120000;
         this.cacheKey = null;
@@ -30,12 +32,13 @@ class DashboardModule {
             nurseiq: { progress: 0, accuracy: 0, questions: 0 },
             courses: 0,
             exams: 'No upcoming exams',
-            xp: { current: 0, max: 100, level: 1, percent: 0 },
+            xp: { current: 0, max: 100, level: 1, percent: 0, total: 0 },
             nextExam: null,
             reviews: { total: 0, avg: 0, pending: 0 },
             newsletter: { subscribed: false, latest: null },
             login: { count: 0, points: 0, streak: 0, maxStreak: 0, streakRestores: 0 },
-            gamification: { points: 0, achievements: [] } // ← NEW
+            gamification: { points: 0, achievements: [] },
+            totalPoints: 0
         };
         
         this.cacheElements();
@@ -184,7 +187,6 @@ class DashboardModule {
             headerTime: document.getElementById('header-time'),
             dashboardLastUpdated: document.getElementById('dashboard-last-updated'),
             dashboardStudentId: document.getElementById('dashboard-student-id'),
-            // Streak elements
             dailyStreakDisplay: document.getElementById('daily-streak-display'),
             dailyStreakValue: document.getElementById('daily-streak-value'),
             streakStatusText: document.getElementById('streak-status-text'),
@@ -193,11 +195,9 @@ class DashboardModule {
             streakEmoji: document.getElementById('streak-emoji'),
             streakLights: document.querySelectorAll('.streak-light'),
             streakMilestones: document.querySelectorAll('.milestone'),
-            // Login points display
             loginPointsDisplay: document.getElementById('login-points-display'),
             loginCountDisplay: document.getElementById('login-count-display'),
             totalPointsDisplay: document.getElementById('total-points-display'),
-            // Gamification display
             gamificationPointsDisplay: document.getElementById('gamification-points-display')
         };
     }
@@ -220,7 +220,6 @@ class DashboardModule {
             }
         };
         
-        // Attendance card
         document.querySelectorAll('.attendance-card').forEach(el => {
             el.style.cursor = 'pointer';
             el.title = 'Click to view Attendance';
@@ -230,7 +229,6 @@ class DashboardModule {
             });
         });
         
-        // Mini cards with data-tab
         document.querySelectorAll('.mini-card[data-tab]').forEach(el => {
             const tabId = el.dataset.tab;
             el.style.cursor = 'pointer';
@@ -241,7 +239,6 @@ class DashboardModule {
             });
         });
         
-        // Action buttons
         document.querySelectorAll('.action-btn[data-tab]').forEach(el => {
             const tabId = el.dataset.tab;
             el.style.cursor = 'pointer';
@@ -252,7 +249,6 @@ class DashboardModule {
             });
         });
         
-        // Next exam widget
         const nextExamWidget = document.querySelector('.next-exam-widget');
         if (nextExamWidget) {
             nextExamWidget.style.cursor = 'pointer';
@@ -263,7 +259,6 @@ class DashboardModule {
             });
         }
         
-        // XP area
         document.querySelectorAll('.xp-area').forEach(el => {
             el.style.cursor = 'pointer';
             el.title = 'Click to view Profile';
@@ -273,7 +268,6 @@ class DashboardModule {
             });
         });
         
-        // Announcement
         const announcement = document.querySelector('.announcement');
         if (announcement) {
             announcement.style.cursor = 'pointer';
@@ -284,7 +278,6 @@ class DashboardModule {
             });
         }
         
-        // Streak restore button
         const restoreBtn = document.getElementById('streak-restore-btn');
         if (restoreBtn) {
             restoreBtn.addEventListener('click', (e) => {
@@ -390,7 +383,6 @@ class DashboardModule {
             this.loadNewsletterSnapshot();
         });
         
-        // Leaderboard tabs
         document.querySelectorAll('.leaderboard-tabs span').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 document.querySelectorAll('.leaderboard-tabs span').forEach(t => t.classList.remove('active'));
@@ -418,7 +410,6 @@ class DashboardModule {
             this.elements.welcomeStudentName.innerText = userProfile.full_name;
         }
         
-        // ✅ Fetch gamification points from profile
         await this.fetchGamificationPoints();
         
         this.updateTimeGreeting();
@@ -444,7 +435,7 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 🏆 FETCH GAMIFICATION POINTS - NEW!
+    // 🏆 FETCH GAMIFICATION POINTS
     // ============================================================
     
     async fetchGamificationPoints() {
@@ -453,17 +444,20 @@ class DashboardModule {
         try {
             const { data, error } = await this.sb
                 .from('consolidated_user_profiles_table')
-                .select('gamification_points, achievements')
+                .select('gamification_points, earned_badges, total_points')
                 .eq('user_id', this.userId)
                 .single();
             
             if (error) throw error;
             
             this.gamificationPoints = data?.gamification_points || 0;
+            this.totalPoints = data?.total_points || 0;
             this.metrics.gamification.points = this.gamificationPoints;
-            this.metrics.gamification.achievements = data?.achievements || [];
+            this.metrics.gamification.achievements = data?.earned_badges || [];
+            this.metrics.totalPoints = this.totalPoints;
             
             console.log(`🏆 Gamification points: ${this.gamificationPoints}`);
+            console.log(`💰 Total points: ${this.totalPoints}`);
             return this.gamificationPoints;
             
         } catch (error) {
@@ -477,22 +471,18 @@ class DashboardModule {
     // ============================================================
     
     calculateTotalPoints() {
+        // Use stored total points from RPC if available
+        if (this.metrics.totalPoints > 0) {
+            return this.metrics.totalPoints;
+        }
+        
+        // Fallback calculation
         const loginPoints = (this.metrics.login?.count || 0) * 10;
         const attendancePoints = (this.metrics.attendance?.verified || 0) * 10;
         const nurseIQPoints = this.metrics.nurseiq?.questions || 0;
         const gamificationPoints = this.gamificationPoints || 0;
         
-        const total = loginPoints + attendancePoints + nurseIQPoints + gamificationPoints;
-        
-        console.log(`📊 Total points breakdown:
-            Login: ${loginPoints} (${this.metrics.login?.count || 0} logins × 10)
-            Attendance: ${attendancePoints} (${this.metrics.attendance?.verified || 0} verified × 10)
-            NurseIQ: ${nurseIQPoints}
-            Gamification: ${gamificationPoints}
-            TOTAL: ${total}
-        `);
-        
-        return total;
+        return loginPoints + attendancePoints + nurseIQPoints + gamificationPoints;
     }
     
     // ============================================================
@@ -503,14 +493,6 @@ class DashboardModule {
         const element = this.elements.lastLoginTime;
         if (!element) return;
         
-        const userEmail = this.userProfile?.email;
-        if (!userEmail) {
-            element.textContent = 'Loading...';
-            return;
-        }
-        
-        console.log('🔍 Fetching last login from database for:', userEmail);
-        
         this.sb
             .from('user_sessions')
             .select('login_time, device_info')
@@ -518,15 +500,8 @@ class DashboardModule {
             .order('login_time', { ascending: false })
             .limit(1)
             .then(({ data, error }) => {
-                if (error) {
-                    console.error('❌ Error fetching last login:', error);
-                    element.textContent = 'Error loading';
-                    return;
-                }
-                
-                if (!data || data.length === 0) {
+                if (error || !data || data.length === 0) {
                     element.textContent = 'First login';
-                    element.title = 'Welcome! This is your first login.';
                     return;
                 }
                 
@@ -548,11 +523,8 @@ class DashboardModule {
                 });
                 
                 element.textContent = `${dateStr} at ${timeStr} from ${deviceInfo}`;
-                element.title = `Last login: ${dateStr} at ${timeStr} from ${deviceInfo}`;
-                console.log('✅ Last login displayed:', `${dateStr} at ${timeStr} from ${deviceInfo}`);
             })
-            .catch((err) => {
-                console.error('❌ Error:', err);
+            .catch(() => {
                 element.textContent = 'Could not load';
             });
     }
@@ -859,6 +831,10 @@ class DashboardModule {
         await this.loadFreshData();
     }
     
+    // ============================================================
+    // 📊 LOAD FRESH DATA - FIXED TO USE RPC DATA
+    // ============================================================
+    
     async loadFreshData() {
         console.log('📊 Loading fresh dashboard data...');
         
@@ -869,27 +845,55 @@ class DashboardModule {
             
             if (error) throw error;
             
+            // ✅ USE DATA FROM RPC (already includes gamification!)
+            
+            // Store total points from RPC
+            this.metrics.totalPoints = data?.total_points || 0;
+            this.totalPoints = this.metrics.totalPoints;
+            
+            // Store gamification data
+            this.gamificationPoints = data?.gamification?.points || 0;
+            this.metrics.gamification = {
+                points: this.gamificationPoints,
+                achievements: data?.gamification?.badges || []
+            };
+            
+            // Login data
             const loginCount = data?.login?.count || 0;
             const loginPoints = data?.login?.points || 0;
             
-            // ✅ Calculate Daily Streak
-            const streakData = await this.calculateDailyStreak();
-            
-            // ✅ Fetch gamification points
-            await this.fetchGamificationPoints();
-            
-            // Update metrics
-            this.metrics.attendance = data.attendance || { rate: 0, verified: 0, total: 0, pending: 0, points: 0 };
+            // Attendance data
+            this.metrics.attendance = data.attendance || { 
+                rate: 0, verified: 0, total: 0, pending: 0, points: 0 
+            };
             this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
             
+            // Exam card data
             this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
-            this.metrics.nurseiq = data.nurseiq || { questions: 0, accuracy: 0, progress: 0 };
-            this.metrics.nurseiq.progress = this.metrics.nurseiq.questions > 0 ? Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100) : 0;
-            this.metrics.exams = data.exam?.title || 'No upcoming exams';
-            this.metrics.resources = data.resources || 0;
-            this.metrics.courses = data.examCard?.approved || 0;
             
-            // ✅ STORE LOGIN METRICS WITH STREAK
+            // NurseIQ data
+            this.metrics.nurseiq = data.nurseiq || { questions: 0, accuracy: 0, progress: 0 };
+            this.metrics.nurseiq.progress = this.metrics.nurseiq.questions > 0 
+                ? Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100) 
+                : 0;
+            
+            // ✅ USE XP DATA FROM RPC (includes gamification!)
+            this.metrics.xp = data.xp || { 
+                current: 0, 
+                max: 100, 
+                level: 1, 
+                percent: 0, 
+                total: 0 
+            };
+            this.metrics.xp.percent = (this.metrics.xp.current / this.metrics.xp.max) * 100;
+            
+            // Exam data
+            this.metrics.exams = data?.exam?.title || 'No upcoming exams';
+            this.metrics.resources = data?.resources || 0;
+            this.metrics.courses = data?.examCard?.approved || 0;
+            
+            // Login with streak
+            const streakData = await this.calculateDailyStreak();
             this.metrics.login = { 
                 count: loginCount, 
                 points: loginPoints, 
@@ -898,49 +902,23 @@ class DashboardModule {
                 streakRestores: streakData.restores
             };
             
-            // ✅ Calculate XP with ALL sources
-            const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
-            const nurseIQPoints = this.metrics.nurseiq.questions || 0;
-            const gamificationPoints = this.gamificationPoints || 0;
-            const totalXP = loginPoints + attendancePoints + nurseIQPoints + gamificationPoints;
-            const maxXP = 100;
-            const currentXP = totalXP % maxXP;
-            const level = Math.floor(totalXP / maxXP) + 1;
-            const percent = (currentXP / maxXP) * 100;
-            this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
+            console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
+            console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
+            console.log(`📊 Level from RPC: ${this.metrics.xp.level}`);
             
-            console.log(`📊 Login Points: ${loginPoints} (${loginCount} logins × 10)`);
-            console.log(`🔥 Daily Streak: ${streakData.streak} days`);
-            console.log(`🏆 Gamification Points: ${gamificationPoints}`);
-            console.log(`💰 TOTAL XP: ${totalXP}`);
-            
+            // Load reviews and newsletter
             await this.loadReviewsSnapshot();
             await this.loadNewsletterSnapshot();
             
+            // Update UI
             this.saveToCache();
             this.updateUIFromMetrics();
+            this.updateStreakUI();
             
             // Update announcement
-            if (this.elements.announcementText && data.announcement) {
-                this.elements.announcementText.innerHTML = data.announcement;
-            } else if (this.elements.announcementText) {
-                this.elements.announcementText.innerHTML = 'Welcome to your dashboard! Stay tuned for updates.';
+            if (this.elements.announcementText) {
+                this.elements.announcementText.innerHTML = data?.announcement || 'Welcome to your dashboard!';
             }
-            
-            // Update XP elements
-            if (this.elements.userLevel) this.elements.userLevel.innerText = level;
-            if (this.elements.userXp) this.elements.userXp.innerText = currentXP;
-            if (this.elements.userXpMax) this.elements.userXpMax.innerText = maxXP;
-            if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = percent + '%';
-            
-            // Update exam status
-            const approved = this.metrics.examCard?.approved || 0;
-            if (this.elements.examStatus) {
-                this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-                this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
-            }
-            if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
-            if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
             
             // Update last updated time
             if (this.elements.dashboardLastUpdated) {
@@ -954,13 +932,12 @@ class DashboardModule {
                 });
             }
             
-            // ✅ Update Streak UI
-            this.updateStreakUI();
-            
+            // Update exams
             await this.updateExamsMetric();
             
             console.log('✅ Dashboard loaded from DATABASE');
             
+            // Load leaderboard and next class
             await Promise.all([
                 this.loadLeaderboardData('all'),
                 this.loadQuickNextClass()
@@ -993,12 +970,14 @@ class DashboardModule {
             try {
                 const { data: profileData } = await this.sb
                     .from('consolidated_user_profiles_table')
-                    .select('login_count, gamification_points')
+                    .select('login_count, gamification_points, total_points')
                     .eq('user_id', this.userId)
                     .single();
                 
                 const loginCount = profileData?.login_count || 0;
                 this.gamificationPoints = profileData?.gamification_points || 0;
+                this.metrics.totalPoints = profileData?.total_points || 0;
+                
                 const streakData = await this.calculateDailyStreak();
                 this.metrics.login = { 
                     count: loginCount, 
@@ -1007,12 +986,9 @@ class DashboardModule {
                     maxStreak: streakData.maxStreak,
                     streakRestores: streakData.restores
                 };
-                console.log(`📊 Login count (fallback): ${loginCount}, Streak: ${streakData.streak}`);
-                console.log(`🏆 Gamification points (fallback): ${this.gamificationPoints}`);
+                this.metrics.gamification.points = this.gamificationPoints;
             } catch (e) {
-                console.warn('Could not fetch login count:', e);
-                this.metrics.login = { count: 0, points: 0, streak: 0, maxStreak: 0, streakRestores: 0 };
-                this.gamificationPoints = 0;
+                console.warn('Could not fetch profile data:', e);
             }
         }
         
@@ -1187,8 +1163,6 @@ class DashboardModule {
             
             this.updateReviewsUI();
             
-            console.log(`✅ Reviews snapshot: ${totalReviews || 0} total, ${avgRating} avg, ${userPending || 0} pending`);
-            
         } catch (error) {
             console.error('Error loading reviews snapshot:', error);
         }
@@ -1256,8 +1230,6 @@ class DashboardModule {
             
             this.updateNewsletterUI();
             
-            console.log(`📧 Newsletter status: ${this.metrics.newsletter.subscribed ? 'Subscribed' : 'Not subscribed'}`);
-            
         } catch (error) {
             console.error('Error loading newsletter snapshot:', error);
         }
@@ -1313,11 +1285,7 @@ class DashboardModule {
             if (!this.userProfile) return;
             
             const kenyaNow = this.getKenyaNow();
-            const todayStr = kenyaNow.toISOString().split('T')[0];
-            
             const userBlock = this.userProfile.block || this.userProfile.current_block || 'Introductory';
-            
-            console.log('📅 Fetching exams for block:', userBlock);
             
             const { data: exams, error } = await this.sb
                 .from('exams')
@@ -1336,8 +1304,6 @@ class DashboardModule {
                 this.updateNextExamWidget(null);
                 return;
             }
-            
-            console.log(`📊 Found ${exams?.length || 0} exams for block: ${userBlock}`);
             
             if (!exams || exams.length === 0) {
                 upcomingText = 'No exams scheduled';
@@ -1418,15 +1384,6 @@ class DashboardModule {
                 this.elements.upcomingExam.innerText = upcomingText;
             }
             
-            document.dispatchEvent(new CustomEvent('examsUpdated', {
-                detail: { 
-                    upcoming: upcomingExams, 
-                    current: currentExams, 
-                    completed: completedExams,
-                    nextExam: this.metrics.nextExam
-                }
-            }));
-            
         } catch (error) {
             console.error('Exams error:', error);
             if (this.elements.upcomingExam) {
@@ -1473,7 +1430,6 @@ class DashboardModule {
         const examDate = new Date(exam.exam_date);
         const formattedDate = this.formatKenyaDate(examDate);
         
-        let badgeClass = 'exam-badge';
         let badgeText = 'EXAM';
         let badgeBg = '#DBEAFE';
         let badgeColor = '#1E40AF';
@@ -1580,7 +1536,7 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 🏆 LEADERBOARD - FIXED WITH GAMIFICATION POINTS
+    // 🏆 LEADERBOARD - FIXED
     // ============================================================
     
     async loadLeaderboardData(period = 'all') {
@@ -1590,10 +1546,9 @@ class DashboardModule {
         container.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
         
         try {
-            // Fetch users with all point components
             const { data: users, error } = await this.sb
                 .from('consolidated_user_profiles_table')
-                .select('id, full_name, login_count, gamification_points, total_points')
+                .select('id, full_name, login_count, gamification_points, total_points, earned_badges')
                 .eq('role', 'student')
                 .order('total_points', { ascending: false })
                 .limit(10);
@@ -1605,22 +1560,14 @@ class DashboardModule {
                 return;
             }
             
-            // Process users with CORRECT points calculation
             const processedUsers = users.map(user => {
-                // Calculate points properly
-                const loginPoints = (user.login_count || 0) * 10;
-                const gamificationPoints = user.gamification_points || 0;
-                // Note: attendance and nurseiq points would need to be fetched separately
-                // Using total_points from DB if available, otherwise calculate what we have
-                const points = user.total_points || (loginPoints + gamificationPoints);
+                const points = user.total_points || ((user.login_count || 0) * 10 + (user.gamification_points || 0));
                 const displayName = user.full_name || 'Student';
                 return { ...user, points, displayName };
             });
             
-            // Sort by points descending
             processedUsers.sort((a, b) => b.points - a.points);
             
-            // Build leaderboard HTML
             let html = `
                 <div style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-weight: 600; color: #0A3D62; font-size: 13px;">
@@ -1648,6 +1595,8 @@ class DashboardModule {
                 
                 const isCurrentUser = user.id === this.userId;
                 
+                const badgeCount = user.earned_badges?.length || 0;
+                
                 html += `
                     <div style="
                         display: flex; 
@@ -1657,7 +1606,6 @@ class DashboardModule {
                         border-bottom: 1px solid #f1f5f9;
                         background: ${isCurrentUser ? '#ede9fe' : bgColor};
                         ${isCurrentUser ? 'border-left: 3px solid #4C1D95;' : ''}
-                        transition: all 0.2s ease;
                     ">
                         <span style="font-weight: 700; min-width: 32px; text-align: center; font-size: 18px;">${rankDisplay}</span>
                         <div style="flex: 1;">
@@ -1666,7 +1614,7 @@ class DashboardModule {
                                 ${isCurrentUser ? ' <span style="font-size: 10px; background: #4C1D95; color: white; padding: 1px 8px; border-radius: 10px;">You</span>' : ''}
                             </span>
                             <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">
-                                ${user.login_count || 0} logins · ${user.gamification_points || 0} bonus pts
+                                ${user.login_count || 0} logins · ${user.gamification_points || 0} bonus pts · ${badgeCount} badges
                             </div>
                         </div>
                         <div style="text-align: right;">
@@ -1678,7 +1626,6 @@ class DashboardModule {
                 `;
             });
             
-            // Footer with point breakdown
             html += `
                 <div style="padding: 6px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; text-align: center; font-size: 10px; color: #94a3b8;">
                     💡 Points = (Logins × 10) + Attendance + NurseIQ + Gamification Bonus
@@ -1686,8 +1633,6 @@ class DashboardModule {
             `;
             
             container.innerHTML = html;
-            
-            console.log(`✅ Leaderboard loaded (${period}) with ${processedUsers.length} users`);
             
         } catch (error) {
             console.error('Leaderboard error:', error);
@@ -1754,8 +1699,6 @@ class DashboardModule {
             const endTime = nextClass.end_time?.substring(0,5) || 'TBA';
             const formattedDate = this.formatKenyaDate(classDate);
             
-            console.log(`✅ NEXT CLASS: ${nextClass.session_name} on ${formattedDate} at ${startTime}`);
-            
             const timeEl = document.getElementById('quick-next-class-time');
             const nameEl = document.getElementById('quick-next-class-name');
             const codeEl = document.getElementById('quick-next-class-code');
@@ -1801,7 +1744,7 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 📊 XP METRICS - FIXED WITH GAMIFICATION
+    // 📊 XP METRICS
     // ============================================================
     
     async loadXPMetrics() {
@@ -1812,11 +1755,12 @@ class DashboardModule {
             try {
                 const { data } = await this.sb
                     .from('consolidated_user_profiles_table')
-                    .select('login_count, gamification_points')
+                    .select('login_count, gamification_points, total_points')
                     .eq('user_id', this.userId)
                     .single();
                 loginCount = data?.login_count || 0;
                 gamificationPoints = data?.gamification_points || 0;
+                this.metrics.totalPoints = data?.total_points || 0;
                 this.gamificationPoints = gamificationPoints;
             } catch (e) {
                 console.warn('Could not fetch login count for XP:', e);
@@ -1843,7 +1787,7 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 🎨 UPDATE UI FROM METRICS - FIXED WITH GAMIFICATION!
+    // 🎨 UPDATE UI FROM METRICS - FIXED!
     // ============================================================
     
     updateUIFromMetrics() {
@@ -1864,9 +1808,9 @@ class DashboardModule {
             this.elements.loginCountDisplay.innerText = m.login?.count || 0;
         }
         
-        // ✅ TOTAL POINTS - FIXED! Now includes Gamification
+        // ✅ TOTAL POINTS - USE STORED VALUE FROM RPC
         if (this.elements.totalPointsDisplay) {
-            const total = this.calculateTotalPoints();
+            const total = this.metrics.totalPoints || this.calculateTotalPoints();
             this.elements.totalPointsDisplay.innerText = total;
         }
         
@@ -1911,11 +1855,20 @@ class DashboardModule {
         if (this.elements.resources) this.elements.resources.innerText = m.resources;
         if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
         
-        // XP
-        if (this.elements.userLevel) this.elements.userLevel.innerText = m.xp.level;
-        if (this.elements.userXp) this.elements.userXp.innerText = m.xp.current;
-        if (this.elements.userXpMax) this.elements.userXpMax.innerText = m.xp.max;
-        if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = m.xp.percent + '%';
+        // ✅ XP - USE DATA FROM RPC
+        if (this.elements.userLevel) {
+            this.elements.userLevel.innerText = m.xp.level || 1;
+        }
+        if (this.elements.userXp) {
+            this.elements.userXp.innerText = m.xp.current || 0;
+        }
+        if (this.elements.userXpMax) {
+            this.elements.userXpMax.innerText = m.xp.max || 100;
+        }
+        if (this.elements.xpProgressFill) {
+            const percent = m.xp.percent || 0;
+            this.elements.xpProgressFill.style.width = percent + '%';
+        }
         
         // Update last updated time
         if (this.elements.dashboardLastUpdated) {
@@ -2027,9 +1980,10 @@ window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
 console.log('✅ Dashboard module COMPLETE with all fixes!');
-console.log('   - ✅ Total Points includes Gamification Bonus');
+console.log('   - ✅ Total Points uses RPC data');
+console.log('   - ✅ Gamification included in totals');
+console.log('   - ✅ XP calculation uses all sources');
 console.log('   - ✅ Leaderboard shows correct points');
-console.log('   - ✅ XP includes all sources');
 console.log('   - ✅ Streak system working');
 console.log('   - ✅ Time greeting fixed for Kenya time');
 console.log('   - ✅ Navigation working');
