@@ -1672,186 +1672,19 @@
 })();
 
 // ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD - SUPER FAST VERSION
+// SUPPLEMENTARY EXAM CARD - COMPLETE WORKING VERSION
 // ============================================================
 
-window.downloadSupplementaryExamCard = async function() {
-    console.log('📄 Generating Supplementary Exam Card...');
-    
-    // Show progress overlay (instant)
-    const overlay = document.createElement('div');
-    overlay.id = 'examCardProgressOverlay';
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-        backdrop-filter: blur(4px);
-    `;
-    
-    overlay.innerHTML = `
-        <div style="
-            background: white;
-            border-radius: 16px;
-            padding: 30px 40px;
-            max-width: 350px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        ">
-            <div style="margin-bottom: 15px;">
-                <div style="
-                    width: 50px;
-                    height: 50px;
-                    border: 4px solid #e2e8f0;
-                    border-top-color: #B45309;
-                    border-radius: 50%;
-                    animation: spin 0.6s linear infinite;
-                    margin: 0 auto;
-                "></div>
-            </div>
-            <h3 style="color: #0A3D62; margin: 0 0 5px 0; font-size: 16px;">
-                <i class="fas fa-file-pdf" style="color: #dc2626;"></i> Generating Exam Card
-            </h3>
-            <p style="color: #64748b; margin: 0 0 12px 0; font-size: 13px;" id="progressStatus">
-                Loading...
-            </p>
-            <div style="
-                width: 100%;
-                height: 5px;
-                background: #e2e8f0;
-                border-radius: 4px;
-                overflow: hidden;
-            ">
-                <div id="progressBar" style="
-                    width: 0%;
-                    height: 100%;
-                    background: linear-gradient(90deg, #B45309, #D97706);
-                    border-radius: 4px;
-                    transition: width 0.3s ease;
-                "></div>
-            </div>
-            <p id="progressPercent" style="
-                margin: 6px 0 0 0;
-                font-size: 11px;
-                color: #94a3b8;
-                font-weight: 600;
-            ">0%</p>
-        </div>
-    `;
-    
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    `;
-    overlay.appendChild(style);
-    document.body.appendChild(overlay);
-    
-    const updateProgress = (percent, status) => {
-        const bar = document.getElementById('progressBar');
-        const percentText = document.getElementById('progressPercent');
-        const statusText = document.getElementById('progressStatus');
-        
-        if (bar) bar.style.width = Math.min(percent, 100) + '%';
-        if (percentText) percentText.textContent = Math.min(percent, 100) + '%';
-        if (statusText && status) statusText.textContent = status;
-    };
-    
-    try {
-        // ✅ STEP 1: Get user (instant)
-        const user = window.currentUserProfile || window.userProfile;
-        const userId = user?.user_id || user?.id;
-        
-        if (!userId) {
-            throw new Error('User not found. Please login again.');
-        }
-        updateProgress(10, 'Verifying user...');
-        
-        // ✅ STEP 2: Get supabase (instant)
-        const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Database not available.');
-        }
-        updateProgress(20, 'Connecting...');
-        
-        // ✅ STEP 3: Fetch data (fast query)
-        updateProgress(30, 'Fetching your units...');
-        
-        const { data: registrations, error } = await supabase
-            .from('student_unit_registrations')
-            .select('*')
-            .eq('student_id', userId)
-            .in('reg_type', ['Supplementary', 'Retake'])
-            .in('status', ['pending', 'approved', 'completed'])
-            .or(`grade.is.null,grade.in.('D','F','FAIL')`)
-            .order('submitted_date', { ascending: false });
-        
-        if (error) throw error;
-        
-        // Filter out passed units
-        const filteredRegistrations = registrations.filter(unit => {
-            if (!unit.grade) return true;
-            const failGrades = ['D', 'F', 'FAIL'];
-            return failGrades.includes(unit.grade);
-        });
-        
-        if (!filteredRegistrations || filteredRegistrations.length === 0) {
-            updateProgress(100, 'No units available');
-            await new Promise(r => setTimeout(r, 300));
-            overlay.remove();
-            alert('No supplementary/retake units found.\n\nOnly FAIL grades (D, F) and pending exams are shown.');
-            return;
-        }
-        
-        updateProgress(50, `Found ${filteredRegistrations.length} unit(s)`);
-        
-        // ✅ STEP 4: Generate HTML (fast)
-        updateProgress(60, 'Building exam card...');
-        const html = generateSupplementaryExamCardHTML(filteredRegistrations, user);
-        
-        // ✅ STEP 5: Open window (instant)
-        updateProgress(80, 'Opening window...');
-        const win = window.open('', '_blank', 'width=794,height=1123');
-        if (!win) {
-            updateProgress(100, 'Popup blocked');
-            await new Promise(r => setTimeout(r, 300));
-            overlay.remove();
-            alert('Please allow popups to view the exam card.');
-            return;
-        }
-        
-        // ✅ STEP 6: Write and print (instant)
-        updateProgress(90, 'Rendering...');
-        win.document.write(html);
-        win.document.close();
-        
-        updateProgress(100, '✅ Done!');
-        await new Promise(r => setTimeout(r, 200));
-        overlay.remove();
-        
-        setTimeout(() => {
-            win.print();
-        }, 300);
-        
-    } catch (error) {
-        console.error('❌ Error:', error);
-        updateProgress(100, '❌ Error');
-        await new Promise(r => setTimeout(r, 300));
-        overlay.remove();
-        alert('Failed to generate exam card: ' + error.message);
-    }
-};
+// Escape HTML helper
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 // ============================================================
-// GENERATE SUPPLEMENTARY EXAM CARD HTML - STANDALONE
+// GENERATE SUPPLEMENTARY EXAM CARD HTML
 // ============================================================
 
 function generateSupplementaryExamCardHTML(registrations, student) {
@@ -1861,7 +1694,6 @@ function generateSupplementaryExamCardHTML(registrations, student) {
         day: 'numeric'
     });
     
-    // Detect TVET
     const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
                           'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
                           'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'];
@@ -1882,6 +1714,11 @@ function generateSupplementaryExamCardHTML(registrations, student) {
         const unitCode = unit.unit_code || unit.code || 'N/A';
         const regType = unit.reg_type || 'Supplementary';
         const credits = unit.credits || 3;
+        const status = unit.status || 'Approved';
+        
+        const hasGrade = unit.grade && unit.grade !== '';
+        const isPassing = hasGrade && !['FAIL', 'F', 'D', 'E'].includes(unit.grade);
+        const gradeDisplay = hasGrade ? (isPassing ? `🟢 ${unit.grade}` : `🔴 ${unit.grade}`) : '⏳ Pending';
         
         tableRows += `
             <tr>
@@ -1893,6 +1730,13 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                     <span style="background: ${regType === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 2px 10px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
                         ${regType}
                     </span>
+                </td>
+                <td class="text-center">
+                    <span style="background: ${status === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${status === 'pending' ? '#92400e' : '#065f46'}; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
+                        ${status === 'pending' ? '⏳ Pending' : '✅ Approved'}
+                    </span>
+                    <br>
+                    <span style="font-size: 10px; font-weight: 600; color: ${isPassing ? '#10b981' : '#dc2626'};">${gradeDisplay}</span>
                 </td>
                 <td class="signature-cell">
                     <div class="signature-line"></div>
@@ -1911,281 +1755,73 @@ function generateSupplementaryExamCardHTML(registrations, student) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; 
-            padding: 40px; 
-            background: #f8fafc; 
-        }
-        .exam-card-wrapper { 
-            max-width: 850px; 
-            margin: 0 auto; 
-        }
-        .exam-card-compact { 
-            background: white; 
-            border: 1px solid #e2e8f0; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-        }
-        
-        .card-header { 
-            background: linear-gradient(135deg, #1e3a5f, #2c5a8c); 
-            color: white; 
-            padding: 15px 20px; 
-            display: flex; 
-            align-items: center; 
-            gap: 15px; 
-        }
-        .card-logo { 
-            height: 55px; 
-            width: auto; 
-            background: white; 
-            padding: 5px; 
-            border-radius: 8px; 
-            object-fit: contain; 
-        }
+        body { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; padding: 40px; background: #f8fafc; }
+        .exam-card-wrapper { max-width: 850px; margin: 0 auto; }
+        .exam-card-compact { background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .card-header { background: linear-gradient(135deg, #1e3a5f, #2c5a8c); color: white; padding: 15px 20px; display: flex; align-items: center; gap: 15px; }
+        .card-logo { height: 55px; width: auto; background: white; padding: 5px; border-radius: 8px; object-fit: contain; }
         .header-text { flex: 1; }
-        .institution { 
-            font-size: 12px; 
-            opacity: 0.9; 
-            letter-spacing: 0.5px; 
-        }
-        .card-title { 
-            font-size: 22px; 
-            font-weight: 800; 
-            letter-spacing: 1px; 
-            margin-top: 2px; 
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .card-subtitle { 
-            font-size: 10px; 
-            opacity: 0.8; 
-            margin-top: 2px; 
-        }
-        .status-badge { 
-            padding: 5px 15px; 
-            border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: 700; 
-            background: #10b981;
-            white-space: nowrap; 
-        }
-        
-        .info-grid { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 10px 20px; 
-            padding: 15px 20px; 
-            background: #f8fafc; 
-            border-bottom: 1px solid #e2e8f0; 
-            font-size: 12px; 
-        }
+        .institution { font-size: 12px; opacity: 0.9; letter-spacing: 0.5px; }
+        .card-title { font-size: 22px; font-weight: 800; letter-spacing: 1px; margin-top: 2px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .card-subtitle { font-size: 10px; opacity: 0.8; margin-top: 2px; }
+        .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 700; background: #10b981; white-space: nowrap; }
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px; padding: 15px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
         .info-item { color: #334155; }
-        .info-label { 
-            font-weight: 600; 
-            color: #64748b; 
-            margin-right: 8px; 
-        }
-        
-        .units-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 11px; 
-        }
-        .units-table th { 
-            background: #f1f5f9; 
-            padding: 10px 8px; 
-            text-align: left; 
-            font-weight: 700; 
-            border-bottom: 2px solid #cbd5e1; 
-        }
-        .units-table td { 
-            padding: 10px 8px; 
-            border-bottom: 1px solid #e2e8f0; 
-            vertical-align: top; 
-        }
+        .info-label { font-weight: 600; color: #64748b; margin-right: 8px; }
+        .units-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .units-table th { background: #f1f5f9; padding: 10px 8px; text-align: left; font-weight: 700; border-bottom: 2px solid #cbd5e1; }
+        .units-table td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
         .text-center { text-align: center; }
-        
-        .signature-cell { 
-            padding: 5px 0; 
-            text-align: center;
-            vertical-align: middle;
-        }
-        .signature-line { 
-            width: 90%; 
-            margin: 8px auto; 
-            border-top: 2px solid #000; 
-            height: 2px;
-        }
-        .signature-cell span {
-            display: block;
-            margin-top: 2px;
-        }
-        
-        .total-row { 
-            background: #f8fafc; 
-            font-weight: 600; 
-            border-top: 2px solid #cbd5e1; 
-        }
-        
-        .signatures-row { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 15px 20px; 
-            gap: 20px; 
-            border-top: 1px solid #e2e8f0; 
-            background: white; 
-        }
-        .signature { 
-            flex: 1; 
-            text-align: center; 
-            font-size: 11px; 
-            color: #475569; 
-        }
-        .sign-line { 
-            width: 80%; 
-            margin: 8px auto; 
-            border-top: 2px solid #000; 
-            height: 2px;
-            padding-top: 12px; 
-        }
-        
-        .card-footer { 
-            padding: 15px 20px; 
-            background: #fefce8; 
-            border-top: 1px solid #e2e8f0; 
-        }
-        .rules-header { 
-            font-weight: 700; 
-            font-size: 12px; 
-            color: #854d0e; 
-            margin-bottom: 10px; 
-        }
+        .signature-cell { padding: 5px 0; text-align: center; vertical-align: middle; }
+        .signature-line { width: 90%; margin: 8px auto; border-top: 2px solid #000; height: 2px; }
+        .signature-cell span { display: block; margin-top: 2px; }
+        .total-row { background: #f8fafc; font-weight: 600; border-top: 2px solid #cbd5e1; }
+        .signatures-row { display: flex; justify-content: space-between; padding: 15px 20px; gap: 20px; border-top: 1px solid #e2e8f0; background: white; }
+        .signature { flex: 1; text-align: center; font-size: 11px; color: #475569; }
+        .sign-line { width: 80%; margin: 8px auto; border-top: 2px solid #000; height: 2px; padding-top: 12px; }
+        .card-footer { padding: 15px 20px; background: #fefce8; border-top: 1px solid #e2e8f0; }
+        .rules-header { font-weight: 700; font-size: 12px; color: #854d0e; margin-bottom: 10px; }
         .rules-list { margin-bottom: 15px; }
-        .rule-item { 
-            font-size: 10px; 
-            color: #713f12; 
-            margin-bottom: 4px; 
-        }
-        
-        .student-section { 
-            border-top: 1px dashed #e2e8f0; 
-            padding-top: 12px; 
-            margin-top: 5px; 
-        }
-        .student-declaration { 
-            font-size: 10px; 
-            color: #475569; 
-            margin: 10px 0; 
-            text-align: center; 
-        }
-        .student-sign-line { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin: 12px 0 8px 0; 
-        }
-        .student-label { 
-            font-weight: 600; 
-            font-size: 11px; 
-            color: #334155; 
-            min-width: 110px; 
-        }
-        .student-date {
-            font-size: 11px;
-            color: #64748b;
-            margin-left: auto;
-        }
-        .signature-line-inline { 
-            display: inline-block; 
-            flex: 1; 
-            border-top: 2px solid #000; 
-            max-width: 60%; 
-            height: 2px;
-        }
-        
+        .rule-item { font-size: 10px; color: #713f12; margin-bottom: 4px; }
+        .student-section { border-top: 1px dashed #e2e8f0; padding-top: 12px; margin-top: 5px; }
+        .student-declaration { font-size: 10px; color: #475569; margin: 10px 0; text-align: center; }
+        .student-sign-line { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px 0; }
+        .student-label { font-weight: 600; font-size: 11px; color: #334155; min-width: 110px; }
+        .student-date { font-size: 11px; color: #64748b; margin-left: auto; }
+        .signature-line-inline { display: inline-block; flex: 1; border-top: 2px solid #000; max-width: 60%; height: 2px; }
         @media print {
             body * { visibility: hidden; }
             .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
-            .exam-card-wrapper { 
-                position: absolute; 
-                top: 0; 
-                left: 0; 
-                width: 100%; 
-                margin: 0; 
-                padding: 10px; 
-            }
-            .card-header { 
-                background: #1e3a5f !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
-            .status-badge { 
-                background: #10b981 !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
-            .signature-line, .sign-line, .signature-line-inline { 
-                width: 80% !important;
-                margin: 8px auto !important;
-                border-top: 2px solid #000 !important;
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
-            .exam-card-compact {
-                border: 1px solid #000 !important;
-                border-radius: 0 !important;
-            }
+            .exam-card-wrapper { position: absolute; top: 0; left: 0; width: 100%; margin: 0; padding: 10px; }
+            .card-header { background: #1e3a5f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .status-badge { background: #10b981 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .signature-line, .sign-line, .signature-line-inline { width: 80% !important; margin: 8px auto !important; border-top: 2px solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .exam-card-compact { border: 1px solid #000 !important; border-radius: 0 !important; }
         }
-        
         @media (max-width: 600px) {
-            .info-grid { 
-                grid-template-columns: repeat(2, 1fr); 
-                gap: 6px 10px; 
-                padding: 10px 15px; 
-            }
-            .card-header { 
-                padding: 10px 15px; 
-                gap: 10px; 
-            }
+            .info-grid { grid-template-columns: repeat(2, 1fr); gap: 6px 10px; padding: 10px 15px; }
+            .card-header { padding: 10px 15px; gap: 10px; }
             .card-logo { height: 40px; }
             .card-title { font-size: 16px; }
-            .signatures-row { 
-                flex-direction: column; 
-                gap: 15px; 
-            }
-            .student-sign-line {
-                flex-wrap: wrap;
-            }
-            .student-date {
-                margin-left: 0;
-                width: 100%;
-                text-align: center;
-            }
+            .signatures-row { flex-direction: column; gap: 15px; }
+            .student-sign-line { flex-wrap: wrap; }
+            .student-date { margin-left: 0; width: 100%; text-align: center; }
         }
     </style>
 </head>
 <body>
     <div class="exam-card-wrapper">
         <div class="exam-card-compact">
-            <!-- Header -->
             <div class="card-header">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
                 <div class="header-text">
                     <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                    <div class="card-title">
-                        SUPPLEMENTARY / RETAKE EXAM CARD
-                        ${studentTypeBadge}
-                    </div>
+                    <div class="card-title">SUPPLEMENTARY / RETAKE EXAM CARD ${studentTypeBadge}</div>
                     <div class="card-subtitle">(Exam Entry Permit)</div>
                 </div>
                 <div class="status-badge">✅ ELIGIBLE</div>
             </div>
             
-            <!-- Info Grid -->
             <div class="info-grid">
                 <div class="info-item"><span class="info-label">Name:</span> ${escapeHtml(student?.full_name || 'Not Available')}</div>
                 <div class="info-item"><span class="info-label">REG NO.:</span> ${escapeHtml(student?.student_id || student?.admission_number || 'N/A')}</div>
@@ -2198,16 +1834,16 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                 <div class="info-item"><span class="info-label">Valid Until:</span> End of Exam Period</div>
             </div>
             
-            <!-- Units Table -->
             <table class="units-table">
                 <thead>
                     <tr>
                         <th width="5%">#</th>
-                        <th width="18%">Unit Code</th>
-                        <th width="35%">Unit Title</th>
+                        <th width="15%">Unit Code</th>
+                        <th width="30%">Unit Title</th>
                         <th width="7%">Cr</th>
                         <th width="10%">Type</th>
-                        <th width="25%">Lecturer's Signature</th>
+                        <th width="15%">Status/Grade</th>
+                        <th width="18%">Lecturer's Signature</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2217,11 +1853,11 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                         <td class="text-center"><strong>${totalCredits}</strong></td>
                         <td></td>
                         <td></td>
+                        <td></td>
                     </tr>
                 </tbody>
             </table>
             
-            <!-- Signatures -->
             <div class="signatures-row">
                 <div class="signature">
                     <div class="sign-line"></div>
@@ -2240,7 +1876,6 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                 </div>
             </div>
             
-            <!-- Footer -->
             <div class="card-footer">
                 <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
                 <div class="rules-list">
@@ -2252,10 +1887,7 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                 </div>
                 
                 <div class="student-section">
-                    <div class="student-declaration">
-                        I hereby confirm that I have read and understood the examination rules and regulations.
-                    </div>
-                    
+                    <div class="student-declaration">I hereby confirm that I have read and understood the examination rules and regulations.</div>
                     <div class="student-sign-line">
                         <span class="student-label">Student Signature:</span>
                         <span class="signature-line-inline"></span>
@@ -2265,19 +1897,119 @@ function generateSupplementaryExamCardHTML(registrations, student) {
             </div>
         </div>
     </div>
-    
-    <script>
-        setTimeout(function() {
-            window.print();
-        }, 1500);
-    <\/script>
+    <script>setTimeout(function(){ window.print(); }, 1500);<\/script>
 </body>
 </html>
     `;
 }
 
 // ============================================================
-// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON - INCLUDE PENDING
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - WORKING VERSION
+// ============================================================
+
+window.downloadSupplementaryExamCard = async function() {
+    console.log('📄 Generating Supplementary Exam Card...');
+    
+    try {
+        const user = window.currentUserProfile || window.userProfile;
+        const userId = user?.user_id || user?.id;
+        
+        if (!userId) {
+            alert('User not found. Please login again.');
+            return;
+        }
+        
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            alert('Database not available.');
+            return;
+        }
+        
+        // ✅ Get ALL supplementary/retake registrations
+        const { data: registrations, error } = await supabase
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', userId)
+            .in('reg_type', ['Supplementary', 'Retake']);
+        
+        if (error) throw error;
+        
+        if (!registrations || registrations.length === 0) {
+            alert('No supplementary/retake registrations found.');
+            return;
+        }
+        
+        console.log('📊 All Supplementary/Retake units:', registrations);
+        
+        // ✅ FILTER: Keep FAILED units (D, F, FAIL) AND PENDING units (no grade)
+        const filtered = registrations.filter(unit => {
+            if (!unit.grade) return true;
+            const failGrades = ['D', 'F', 'FAIL', 'E'];
+            return failGrades.includes(unit.grade);
+        });
+        
+        console.log('📊 Filtered units (Failed + Pending):', filtered);
+        
+        if (!filtered || filtered.length === 0) {
+            alert('No failed or pending supplementary/retake units found.\n\nUnits with PASS grades (A, B, C) are excluded.');
+            return;
+        }
+        
+        // Show progress overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'examCardProgressOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            backdrop-filter: blur(4px);
+        `;
+        overlay.innerHTML = `
+            <div style="background:white;border-radius:16px;padding:30px 40px;max-width:350px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+                <div style="margin-bottom:15px;">
+                    <div style="width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:#B45309;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto;"></div>
+                </div>
+                <h3 style="color:#0A3D62;font-size:16px;">📄 Generating Exam Card</h3>
+                <p style="color:#64748b;font-size:13px;">Found ${filtered.length} unit(s)</p>
+                <p style="color:#94a3b8;font-size:12px;">${filtered.map(u => u.unit_code).join(', ')}</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        // Generate HTML
+        const html = generateSupplementaryExamCardHTML(filtered, user);
+        
+        // Open window
+        const win = window.open('', '_blank', 'width=794,height=1123');
+        if (!win) {
+            overlay.remove();
+            alert('Please allow popups to view the exam card.');
+            return;
+        }
+        
+        win.document.write(html);
+        win.document.close();
+        
+        setTimeout(() => {
+            overlay.remove();
+            win.print();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        alert('Error: ' + error.message);
+    }
+};
+
+// ============================================================
+// UPDATE SUPPLEMENTARY DOWNLOAD BUTTON
 // ============================================================
 
 window.updateSupplementaryDownloadButton = async function() {
@@ -2290,7 +2022,7 @@ window.updateSupplementaryDownloadButton = async function() {
         const supabase = window.sb || window.supabase;
         if (!supabase) return;
         
-        // ✅ FIXED: Count pending, approved, AND completed (failed)
+        // ✅ Count pending, approved, AND completed (failed)
         const { data, error } = await supabase
             .from('student_unit_registrations')
             .select('id, grade, status')
@@ -2349,6 +2081,7 @@ window.updateSupplementaryDownloadButton = async function() {
         console.error('Error updating download button:', error);
     }
 };
+
 // ============================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================
@@ -2359,4 +2092,4 @@ setTimeout(() => {
 
 console.log('✅ Supplementary Exam Card standalone ready!');
 console.log('📌 Click "Download Exam Card" in Supplementary tab');
-console.log('📊 Shows ONLY approved units WITHOUT grades');
+console.log('📊 Shows only FAILED (D, F) and PENDING units');
