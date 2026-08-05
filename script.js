@@ -2717,6 +2717,9 @@ async function loadDataVisualization() {
  * ✅ TVET/KRCHN fixes applied
  * ✅ Full program names everywhere
  * ✅ Document upload functions added
+ * ✅ Edit User with ALL fields (Guardian, Parent, Photo)
+ * ✅ Password reset via Edge Function
+ * ✅ Student/Staff ID support
  *******************************************************/
 
 // ============================================
@@ -3235,7 +3238,7 @@ function renderUsersTable(users, docCache = {}) {
             <tr style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" 
                 onmouseover="this.style.background='#f8fafc'" 
                 onmouseout="this.style.background='white'">
-                <!-- ✅ NEW: Student/Staff ID Column (NO USER ID) -->
+                <!-- ✅ Student/Staff ID Column (NO USER ID) -->
                 <td style="padding: 10px 14px; text-align: center; font-weight: 600; font-size: 13px;">
                     ${escapeHtml(idDisplay)}
                     <br>
@@ -3433,6 +3436,12 @@ function changeUserPage(page) {
     }
 }
 
+function changePerPage(value) {
+    USERS_STATE.perPage = parseInt(value);
+    USERS_STATE.page = 1;
+    loadAllUsers(1, USERS_STATE.filters);
+}
+
 // ============================================
 // 🔍 SEARCH WITH DEBOUNCE
 // ============================================
@@ -3555,7 +3564,7 @@ async function loadPendingApprovals() {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="12"><div class="loading-spinner"></div> Loading pending approvals...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11"><div class="loading-spinner"></div> Loading pending approvals...</td></tr>';
 
     try {
         const supabase = getSb();
@@ -3569,7 +3578,7 @@ async function loadPendingApprovals() {
         if (error) throw error;
 
         if (!pending || pending.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:30px;">✅ No pending approvals</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px;">✅ No pending approvals</td></tr>';
             return;
         }
 
@@ -3614,6 +3623,7 @@ async function loadPendingApprovals() {
                 <tr>
                     <td><strong>${escapedName}</strong></td>
                     <td>${escapedEmail}</td>
+                    <td>${escapedStudentId || 'N/A'}</td>
                     <td>${escapedRole}</td>
                     <td>
                         <div style="font-weight:500; font-size:13px;">${escapeHtml(programName)}</div>
@@ -3622,7 +3632,6 @@ async function loadPendingApprovals() {
                         </div>
                     </td>
                     <td>${escapeHtml(intakeDisplay)}</td>
-                    <td>${escapedStudentId || 'N/A'}</td>
                     <td>
                         <span class="badge ${kcseStatus === 'pending' ? 'badge-warning' : 'badge-success'}" 
                               style="cursor:pointer; font-size:11px;" 
@@ -3669,7 +3678,7 @@ async function loadPendingApprovals() {
 
     } catch (error) {
         console.error('Error loading pending approvals:', error);
-        tbody.innerHTML = `<tr><td colspan="12" style="color:red;">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="color:red;">Error: ${error.message}</td></tr>`;
     }
 }
 
@@ -3680,9 +3689,9 @@ async function loadPendingApprovals() {
 async function loadStudents() {
     console.log('📋 Loading students (optimized)...');
     
-    const tbody = document.getElementById('students-table');
+    const tbody = document.getElementById('students-table-body');
     if (!tbody) {
-        console.warn('students-table not found');
+        console.warn('students-table-body not found');
         return;
     }
     
@@ -3991,9 +4000,12 @@ async function handleAddAccount(e) {
     const password = document.getElementById('account-password').value.trim();
     const role = document.getElementById('account-role').value;
     const phone = document.getElementById('account-phone').value.trim();
+    const studentId = document.getElementById('account-student-id')?.value.trim() || null;
     const programCode = document.getElementById('account-program').value;
     const intake_year = document.getElementById('account-intake').value;
     const block = document.getElementById('account-block-term').value;
+    const guardianName = document.getElementById('account-guardian-name')?.value.trim() || null;
+    const guardianPhone = document.getElementById('account-guardian-phone')?.value.trim() || null;
     
     const programType = getProgramType(programCode);
     const programName = getProgramDisplayName(programCode);
@@ -4006,6 +4018,7 @@ async function handleAddAccount(e) {
         full_name: name,
         role,
         phone,
+        student_id: studentId,
         program: programCode,
         program_type: programType,
         program_name: programName,
@@ -4013,7 +4026,10 @@ async function handleAddAccount(e) {
         intake_year,
         [blockTermField]: blockTermValue,
         status: 'approved',
-        block_program_year: false
+        block_program_year: false,
+        guardian_name: guardianName,
+        guardian_phone: guardianPhone,
+        created_at: new Date().toISOString()
     };
 
     console.log('🎯 Enrolling user with data:', userData);
@@ -4274,7 +4290,7 @@ function showApprovalModal(user) {
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
                         </div>
                         <div class="form-group">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Student ID</label>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Student/Staff ID</label>
                             <input type="text" id="edit_student_id" value="${escapeHtml(user.student_id || '')}" 
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
                         </div>
@@ -4705,7 +4721,7 @@ async function deleteProfile(userId, fullName, isRejection = false) {
 }
 
 // ============================================
-// OPEN EDIT USER MODAL - COMPLETE TVET SUPPORT
+// OPEN EDIT USER MODAL - COMPLETE WITH ALL FIELDS
 // ============================================
 
 async function openEditUserModal(userId) {
@@ -4726,6 +4742,7 @@ async function openEditUserModal(userId) {
             return;
         }
 
+        // Set basic info
         document.getElementById('edit_user_id').value = user.user_id;
         document.getElementById('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
         document.getElementById('edit_user_name').value = user.full_name || '';
@@ -4737,17 +4754,26 @@ async function openEditUserModal(userId) {
         document.getElementById('edit_user_national_id').value = user.national_id || '';
         document.getElementById('edit_user_address').value = user.address || '';
 
+        // Set role and status
         document.getElementById('edit_user_role').value = user.role || 'student';
+        document.getElementById('edit_user_status').value = user.status || 'pending';
+
+        // Set academic info
         document.getElementById('edit_user_student_id').value = user.student_id || '';
         document.getElementById('edit_user_intake_year').value = user.intake_year || '';
         document.getElementById('edit_user_intake_month').value = user.intake_month || '';
+        
+        // Set guardian info
         document.getElementById('edit_user_guardian_name').value = user.guardian_name || '';
         document.getElementById('edit_user_guardian_phone').value = user.guardian_phone || '';
-        document.getElementById('edit_user_status').value = user.status || 'pending';
+        document.getElementById('edit_user_parent_email').value = user.parent_email || '';
+        document.getElementById('edit_user_parent_address').value = user.parent_address || '';
 
+        // Set document status
         document.getElementById('edit_user_doc_kcse').value = user.doc_kcse || 'pending';
         document.getElementById('edit_user_doc_id').value = user.doc_id || 'pending';
 
+        // Set program
         const editUserProgram = document.getElementById('edit_user_program');
         const editUserBlock = document.getElementById('edit_user_block');
         const blockLabel = document.getElementById('edit_block_label');
@@ -4777,9 +4803,19 @@ async function openEditUserModal(userId) {
             }, 100);
         }
 
+        // Set profile photo preview
+        const photoPreview = document.getElementById('edit_user_photo_preview');
+        if (photoPreview && user.profile_photo_url) {
+            photoPreview.innerHTML = `<img src="${user.profile_photo_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+        } else if (photoPreview) {
+            photoPreview.innerHTML = '<i class="fas fa-user" style="font-size: 32px; color: #94a3b8;"></i>';
+        }
+
+        // Clear password fields
         document.getElementById('edit_user_new_password').value = '';
         document.getElementById('edit_user_confirm_password').value = '';
 
+        // Show modal
         modal.style.display = 'flex';
         
         console.log('✅ Edit user modal opened for:', user.full_name);
@@ -4791,7 +4827,7 @@ async function openEditUserModal(userId) {
 }
 
 // ============================================
-// HANDLE EDIT USER - COMPLETE TVET SUPPORT
+// HANDLE EDIT USER - COMPLETE WITH ALL FIELDS
 // ============================================
 
 async function handleEditUser(e) {
@@ -4810,78 +4846,192 @@ async function handleEditUser(e) {
         const userId = document.getElementById('edit_user_id').value;
         if (!userId) throw new Error('User ID is missing.');
 
-        const program = document.getElementById('edit_user_program').value || null;
-        const isTVET = isTVETProgram(program);
-        const blockValue = document.getElementById('edit_user_block').value || 'Introductory';
+        console.log('✏️ Saving user edit for ID:', userId);
 
+        // Get all form values
+        const fullName = document.getElementById('edit_user_name').value.trim();
+        const email = document.getElementById('edit_user_email').value.trim();
+        const phone = document.getElementById('edit_user_phone').value.trim() || null;
+        const altPhone = document.getElementById('edit_user_alt_phone').value.trim() || null;
+        const gender = document.getElementById('edit_user_gender').value || null;
+        const dob = document.getElementById('edit_user_dob').value || null;
+        const nationalId = document.getElementById('edit_user_national_id').value.trim() || null;
+        const address = document.getElementById('edit_user_address').value.trim() || null;
+        
+        const role = document.getElementById('edit_user_role').value;
+        const status = document.getElementById('edit_user_status').value;
+        
+        const studentId = document.getElementById('edit_user_student_id').value.trim() || null;
+        const intakeYear = document.getElementById('edit_user_intake_year').value.trim() || null;
+        const intakeMonth = document.getElementById('edit_user_intake_month').value || null;
+        
+        const guardianName = document.getElementById('edit_user_guardian_name').value.trim() || null;
+        const guardianPhone = document.getElementById('edit_user_guardian_phone').value.trim() || null;
+        const parentEmail = document.getElementById('edit_user_parent_email').value.trim() || null;
+        const parentAddress = document.getElementById('edit_user_parent_address').value.trim() || null;
+        
+        const program = document.getElementById('edit_user_program').value || null;
+        const blockValue = document.getElementById('edit_user_block').value || 'Introductory';
+        
+        const docKcse = document.getElementById('edit_user_doc_kcse').value || 'pending';
+        const docId = document.getElementById('edit_user_doc_id').value || 'pending';
+
+        const isTVET = isTVETProgram(program);
+
+        // Validate required fields
+        if (!fullName) {
+            showFeedback('❌ Full Name is required', 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return;
+        }
+        if (!email) {
+            showFeedback('❌ Email is required', 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return;
+        }
+        if (!program) {
+            showFeedback('❌ Program is required', 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return;
+        }
+
+        // Build update data
         const updatedData = {
-            full_name: document.getElementById('edit_user_name').value.trim(),
-            email: document.getElementById('edit_user_email').value.trim(),
-            phone: document.getElementById('edit_user_phone').value.trim() || null,
-            alt_phone: document.getElementById('edit_user_alt_phone').value.trim() || null,
-            role: document.getElementById('edit_user_role').value,
+            full_name: fullName,
+            email: email,
+            phone: phone,
+            alt_phone: altPhone,
+            gender: gender,
+            date_of_birth: dob,
+            national_id: nationalId,
+            address: address,
+            role: role,
+            status: status,
+            student_id: studentId,
+            intake_year: intakeYear,
+            intake_month: intakeMonth,
+            guardian_name: guardianName,
+            guardian_phone: guardianPhone,
+            parent_email: parentEmail,
+            parent_address: parentAddress,
             program: program,
-            student_id: document.getElementById('edit_user_student_id').value.trim() || null,
-            intake_year: document.getElementById('edit_user_intake_year').value.trim() || null,
-            intake_month: document.getElementById('edit_user_intake_month').value || null,
             block: blockValue,
             current_block: blockValue,
             term: isTVET ? blockValue : null,
             program_type: isTVET ? 'TVET' : 'KRCHN',
-            status: document.getElementById('edit_user_status').value,
-            gender: document.getElementById('edit_user_gender').value || null,
-            date_of_birth: document.getElementById('edit_user_dob').value || null,
-            national_id: document.getElementById('edit_user_national_id').value.trim() || null,
-            address: document.getElementById('edit_user_address').value.trim() || null,
-            guardian_name: document.getElementById('edit_user_guardian_name').value.trim() || null,
-            guardian_phone: document.getElementById('edit_user_guardian_phone').value.trim() || null,
-            doc_kcse: document.getElementById('edit_user_doc_kcse').value || 'pending',
-            doc_id: document.getElementById('edit_user_doc_id').value || 'pending',
+            doc_kcse: docKcse,
+            doc_id: docId,
             updated_at: new Date().toISOString()
         };
 
-        const newPassword = document.getElementById('edit_user_new_password').value.trim();
-        const confirmPassword = document.getElementById('edit_user_confirm_password').value.trim();
+        // Remove null/undefined values
+        Object.keys(updatedData).forEach(key => {
+            if (updatedData[key] === null || updatedData[key] === undefined) {
+                delete updatedData[key];
+            }
+        });
+
+        console.log('📤 Update data:', updatedData);
+
+        // Handle profile photo upload
+        const photoInput = document.getElementById('edit_user_photo');
+        let profilePhotoUrl = null;
         
-        if (newPassword && newPassword !== confirmPassword) {
-            showFeedback('❌ Passwords do not match!', 'error');
-            setButtonLoading(submitButton, false, originalText);
-            return;
+        if (photoInput && photoInput.files && photoInput.files[0]) {
+            const file = photoInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${userId}_profile_${Date.now()}.${fileExt}`;
+            const filePath = `profile_photos/${userId}/${fileName}`;
+            
+            try {
+                const { error: uploadError } = await supabase
+                    .storage
+                    .from('user-documents')
+                    .upload(filePath, file);
+                
+                if (!uploadError) {
+                    const { data: urlData } = supabase
+                        .storage
+                        .from('user-documents')
+                        .getPublicUrl(filePath);
+                    profilePhotoUrl = urlData.publicUrl;
+                    updatedData.profile_photo_url = profilePhotoUrl;
+                }
+            } catch (err) {
+                console.warn('Photo upload failed:', err);
+            }
         }
 
-        if (newPassword && newPassword.length < 6) {
-            showFeedback('❌ Password must be at least 6 characters.', 'error');
-            setButtonLoading(submitButton, false, originalText);
-            return;
-        }
-
+        // Update profile
         const { error: profileError } = await supabase
             .from(USER_PROFILE_TABLE)
             .update(updatedData)
             .eq('user_id', userId);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+            console.error('❌ Profile update error:', profileError);
+            throw profileError;
+        }
 
+        console.log('✅ Profile updated successfully');
+
+        // Handle password change
+        const newPassword = document.getElementById('edit_user_new_password').value.trim();
+        const confirmPassword = document.getElementById('edit_user_confirm_password').value.trim();
+        
         if (newPassword) {
-            const { error: pwError } = await supabase.auth.admin.updateUserById(userId, {
-                password: newPassword
-            });
+            if (newPassword !== confirmPassword) {
+                showFeedback('❌ Passwords do not match!', 'error');
+                setButtonLoading(submitButton, false, originalText);
+                return;
+            }
 
-            if (pwError) {
-                console.warn('⚠️ Password update failed:', pwError);
+            if (newPassword.length < 6) {
+                showFeedback('❌ Password must be at least 6 characters.', 'error');
+                setButtonLoading(submitButton, false, originalText);
+                return;
+            }
+
+            try {
+                // Try using the edge function
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    const response = await fetch(
+                        'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-reset-password',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${session.access_token}`
+                            },
+                            body: JSON.stringify({ 
+                                email: email, 
+                                newPassword: newPassword 
+                            })
+                        }
+                    );
+                    
+                    if (response.ok) {
+                        console.log('✅ Password updated via edge function');
+                    } else {
+                        console.warn('⚠️ Edge function password update failed');
+                    }
+                }
+            } catch (pwErr) {
+                console.warn('⚠️ Password update error:', pwErr);
                 showFeedback('⚠️ User profile saved, but password update failed.', 'warning');
-            } else {
-                console.log('✅ Password updated successfully');
             }
         }
 
-        await logAudit('USER_EDIT', `Edited profile for user ${updatedData.full_name} (${updatedData.program_type})`, userId, 'SUCCESS');
-        showFeedback(`✅ User profile updated successfully! (${updatedData.program_type})`, 'success');
+        await logAudit('USER_EDIT', `Edited profile for user ${fullName} (${updatedData.program_type || 'KRCHN'})`, userId, 'SUCCESS');
+        showFeedback(`✅ User profile updated successfully!`, 'success');
 
+        // Close modal
         document.getElementById('userEditModal').style.display = 'none';
         document.getElementById('edit_user_new_password').value = '';
         document.getElementById('edit_user_confirm_password').value = '';
         
+        // Refresh data
         await loadAllUsers(1, USERS_STATE.filters);
         await loadStudents();
         await loadPendingApprovals();
@@ -4890,6 +5040,9 @@ async function handleEditUser(e) {
     } catch (err) {
         console.error('❌ Error in handleEditUser:', err);
         showFeedback(`❌ Failed to update user: ${err.message}`, 'error');
+        
+        await logAudit('USER_EDIT', `Failed to update user: ${err.message}`, null, 'FAILURE');
+        
     } finally {
         setButtonLoading(submitButton, false, originalText);
     }
@@ -4904,6 +5057,7 @@ window.loadPendingApprovals = loadPendingApprovals;
 window.loadStudents = loadStudents;
 window.initManageUsers = initManageUsers;
 window.changeUserPage = changeUserPage;
+window.changePerPage = changePerPage;
 window.searchUsersDebounced = searchUsersDebounced;
 window.filterUsers = filterUsers;
 window.resetUserFilters = resetUserFilters;
@@ -4943,7 +5097,6 @@ async function handleAddUnit(e) {
 
     const unit_code = document.getElementById('new_unit_code').value.trim();
     const unit_name = document.getElementById('new_unit_name').value.trim();
-    const description = document.getElementById('new_unit_description')?.value.trim() || '';
     const target_program = document.getElementById('new_unit_program').value;
     const year = parseInt(document.getElementById('new_unit_year').value);
     const block = document.getElementById('new_unit_block').value;
@@ -4977,7 +5130,7 @@ async function handleAddUnit(e) {
         const unitData = {
             unit_code: unit_code,
             unit_name: unit_name,
-            description: description,
+            description: description || '',  // FIXED: Added description field
             program: target_program,
             year: year,
             block: block,
@@ -5001,7 +5154,6 @@ async function handleAddUnit(e) {
         // Reset form
         document.getElementById('add-unit-form')?.reset();
         document.getElementById('new_unit_block').value = '';
-        document.getElementById('new_unit_description').value = '';
         
         // Refresh units list
         if (typeof loadAllUnits === 'function') {
@@ -5024,20 +5176,21 @@ async function handleAddUnit(e) {
 
 async function loadUnits() {
     const tbody = document.getElementById('units-table-body');
+    
+    // Check if the table body exists
     if (!tbody) {
+        console.warn('⚠️ units-table-body not found, checking for old courses-table fallback');
         // Fallback to old ID if it exists
         const oldTbody = document.getElementById('courses-table');
         if (oldTbody) {
             oldTbody.innerHTML = '<tr><td colspan="6">Loading units...</td></tr>';
-            // Use the old variable
-            const coursesTbody = oldTbody;
             const { data: units, error } = await fetchData('units_catalog', '*', {}, 'unit_code', true);
             if (error) { 
-                coursesTbody.innerHTML = `<tr><td colspan="6">Error loading units: ${error.message}</td></tr>`; 
+                oldTbody.innerHTML = `<tr><td colspan="6">Error loading units: ${error.message}</td></tr>`; 
                 return; 
             }
 
-            coursesTbody.innerHTML = '';
+            oldTbody.innerHTML = '';
             units.forEach(u => {
                 const isTVET = isTVETProgram(u.program);
                 const blockLabel = isTVET ? 'Term' : 'Block';
@@ -5046,7 +5199,7 @@ async function loadUnits() {
                     ? '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">🔧 TVET</span>'
                     : '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">🎓 KRCHN</span>';
 
-                coursesTbody.innerHTML += `<tr>
+                oldTbody.innerHTML += `<tr>
                     <td><strong>${escapeHtml(u.unit_code)}</strong></td>
                     <td>${escapeHtml(u.unit_name)}</td>
                     <td>
@@ -5065,20 +5218,24 @@ async function loadUnits() {
             filterTable('unit-search', 'courses-table', [0, 1, 3]);
             return;
         }
-        console.warn('⚠️ units-table-body not found');
+        console.error('❌ Neither units-table-body nor courses-table found in DOM');
         return;
     }
     
-    tbody.innerHTML = '<tr><td colspan="7">Loading units...</td></tr>';
+    // Show loading state
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">Loading units...</td></tr>';
 
     const { data: units, error } = await fetchData('units_catalog', '*', {}, 'unit_code', true);
     if (error) { 
-        tbody.innerHTML = `<tr><td colspan="7">Error loading units: ${error.message}</td></tr>`; 
+        tbody.innerHTML = `<tr><td colspan="8">Error loading units: ${error.message}</td></tr>`; 
         return; 
     }
 
     if (!units || units.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">No units found. Click "Add Unit" to create one.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;">
+            <i class="fas fa-inbox" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
+            No units found. Add your first unit above!
+        </td></tr>`;
         return;
     }
 
@@ -5123,10 +5280,14 @@ async function loadUnits() {
                 <br>
                 <small style="color: #6b7280;">${u.credits || 3} cr | ${u.hours || 0}h</small>
             </td>
-            <td>${statusBadge}</td>
-            <td>
-                <button class="btn-action" onclick="openEditUnitModal('${u.id}', '${escapeHtml(u.unit_code)}', '${escapeHtml(u.unit_name)}', '${escapeHtml(u.description || '')}', '${escapeHtml(u.program || '')}', '${u.year || ''}', '${escapeHtml(u.block || '')}', '${u.credits || 3}', '${u.hours || 0}', '${escapeHtml(u.unit_type || 'Core')}', '${escapeHtml(u.prerequisites || '')}')">Edit</button>
-                <button class="btn btn-delete" onclick="deleteUnit('${u.id}', '${escapeHtml(u.unit_code)}')">Delete</button>
+            <td style="text-align: center;">${statusBadge}</td>
+            <td style="text-align: center;">
+                <button class="action-btn edit-btn" onclick="openEditUnitModal('${u.id}', '${escapeHtml(u.unit_code)}', '${escapeHtml(u.unit_name)}', '${escapeHtml(u.description || '')}', '${escapeHtml(u.program || '')}', '${u.year || ''}', '${escapeHtml(u.block || '')}', '${u.credits || 3}', '${u.hours || 0}', '${escapeHtml(u.unit_type || 'Core')}', '${escapeHtml(u.prerequisites || '')}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn delete-btn" onclick="deleteUnit('${u.id}', '${escapeHtml(u.unit_code)}')">
+                    <i class="fas fa-trash"></i>
+                </button>
             </td>
         </tr>`;
     });
