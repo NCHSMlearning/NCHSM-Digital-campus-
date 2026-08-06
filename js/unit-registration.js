@@ -556,6 +556,9 @@
                 await this.loadMaxUnits(supabase);
                 await this.loadBlocks(supabase);
                 
+                // ✅ FIX: Await the async display function
+                await this.displayRegisteredUnits();
+                
                 console.log('✅ Units loaded successfully');
                 
             } catch (error) {
@@ -579,12 +582,14 @@
                 
                 this.registeredUnits = data || [];
                 console.log(`📊 Loaded ${this.registeredUnits.length} registered units`);
-                this.displayRegisteredUnits();
+                
+                // ✅ FIX: Await the async display function
+                await this.displayRegisteredUnits();
                 
             } catch (error) {
                 console.error('Error loading registered units:', error);
                 this.registeredUnits = [];
-                this.displayRegisteredUnits();
+                await this.displayRegisteredUnits();
             }
         }
         
@@ -615,6 +620,9 @@
                 
                 // Update cache with fresh data
                 this.registeredUnits = freshRegs || [];
+                
+                // ✅ FIX: Await the async display function
+                await this.displayRegisteredUnits();
                 
                 // Build query for catalog
                 let query = supabase
@@ -767,173 +775,161 @@
             this.attachCheckboxEvents();
         }
         
-      // ============================================================
-// DISPLAY REGISTERED UNITS - CHECKS PUBLISHED MARKS
-// ============================================================
-
-async displayRegisteredUnits() {
-    if (!this.registeredBody) return;
-    
-    const pendingCount = this.registeredUnits.filter(u => u.status === 'pending').length;
-    const approvedCount = this.registeredUnits.filter(u => u.status === 'approved' && !u.grade).length;
-    const completedCount = this.registeredUnits.filter(u => u.status === 'completed' || u.grade).length;
-    const suppCount = this.registeredUnits.filter(u => u.reg_type === 'Supplementary' || u.reg_type === 'Retake').length;
-    
-    if (this.pendingCountDisplay) this.pendingCountDisplay.textContent = pendingCount;
-    if (this.approvedCountDisplay) this.approvedCountDisplay.textContent = approvedCount;
-    if (this.completedCountDisplay) this.completedCountDisplay.textContent = completedCount;
-    if (this.suppCountDisplay) this.suppCountDisplay.textContent = suppCount;
-    
-    const countEl = document.getElementById('registeredUnitsCount');
-    if (countEl) countEl.textContent = this.registeredUnits.length + ' units';
-    
-    if (this.registeredUnits.length === 0) {
-        this.registeredBody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align:center; padding:60px 20px; color:#94a3b8;">
-                    <div style="font-size:48px; margin-bottom:12px; opacity:0.3;"><i class="fas fa-clipboard-list"></i></div>
-                    <p style="font-weight:500; color:#1e293b;">No units registered yet</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    // ✅ Get published marks for this student
-    const supabase = this.getSupabase();
-    const user = this.userProfile || window.currentUserProfile;
-    const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
-    
-    let publishedGrades = new Map(); // unit_code -> {grade, score}
-    
-    if (supabase && admissionNumber) {
-        try {
-            const { data: marks, error } = await supabase
-                .from('student_marks')
-                .select('subject_name, unit_code, final_score, grade, published')
-                .eq('admission_number', admissionNumber)
-                .eq('published', true);
+        // ============================================================
+        // DISPLAY REGISTERED UNITS - CHECKS PUBLISHED MARKS
+        // ============================================================
+        
+        async displayRegisteredUnits() {
+            if (!this.registeredBody) return;
             
-            if (!error && marks) {
-                // Build catalog mapping for subject name to unit code
-                const { data: catalog } = await supabase
-                    .from('units_catalog')
-                    .select('unit_code, unit_name')
-                    .eq('program', this.programCode || 'KRCHN');
+            const pendingCount = this.registeredUnits.filter(u => u.status === 'pending').length;
+            const approvedCount = this.registeredUnits.filter(u => u.status === 'approved' && !u.grade).length;
+            const completedCount = this.registeredUnits.filter(u => u.status === 'completed' || u.grade).length;
+            const suppCount = this.registeredUnits.filter(u => u.reg_type === 'Supplementary' || u.reg_type === 'Retake').length;
+            
+            if (this.pendingCountDisplay) this.pendingCountDisplay.textContent = pendingCount;
+            if (this.approvedCountDisplay) this.approvedCountDisplay.textContent = approvedCount;
+            if (this.completedCountDisplay) this.completedCountDisplay.textContent = completedCount;
+            if (this.suppCountDisplay) this.suppCountDisplay.textContent = suppCount;
+            
+            const countEl = document.getElementById('registeredUnitsCount');
+            if (countEl) countEl.textContent = this.registeredUnits.length + ' units';
+            
+            if (this.registeredUnits.length === 0) {
+                this.registeredBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:60px 20px; color:#94a3b8;">
+                            <div style="font-size:48px; margin-bottom:12px; opacity:0.3;"><i class="fas fa-clipboard-list"></i></div>
+                            <p style="font-weight:500; color:#1e293b;">No units registered yet</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // ✅ Get published marks for this student
+            const supabase = this.getSupabase();
+            const user = this.userProfile || window.currentUserProfile;
+            const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
+            
+            let publishedGrades = new Map(); // unit_code -> {grade, score}
+            
+            if (supabase && admissionNumber) {
+                try {
+                    const { data: marks, error } = await supabase
+                        .from('student_marks')
+                        .select('subject_name, final_score, grade, published')
+                        .eq('admission_number', admissionNumber)
+                        .eq('published', true);
+                    
+                    if (!error && marks) {
+                        // Build catalog mapping for subject name to unit code
+                        const { data: catalog } = await supabase
+                            .from('units_catalog')
+                            .select('unit_code, unit_name')
+                            .eq('program', this.programCode || 'KRCHN');
+                        
+                        const catalogMap = {};
+                        if (catalog) {
+                            catalog.forEach(u => {
+                                catalogMap[u.unit_name] = u.unit_code;
+                            });
+                        }
+                        
+                        marks.forEach(mark => {
+                            let unitCode = null;
+                            // Try to find by subject name
+                            for (const [name, code] of Object.entries(catalogMap)) {
+                                if (mark.subject_name.includes(name) || name.includes(mark.subject_name)) {
+                                    unitCode = code;
+                                    break;
+                                }
+                            }
+                            if (unitCode) {
+                                publishedGrades.set(unitCode, {
+                                    grade: mark.grade || '',
+                                    score: mark.final_score || 0
+                                });
+                            }
+                        });
+                        
+                        console.log(`📊 Found ${publishedGrades.size} published marks for display`);
+                    }
+                } catch (e) {
+                    console.warn('Could not fetch published marks:', e);
+                }
+            }
+            
+            let html = '';
+            for (const unit of this.registeredUnits) {
+                // ✅ Check if this unit has a published mark
+                const publishedMark = publishedGrades.get(unit.unit_code);
+                const hasPublishedGrade = !!publishedMark;
                 
-                const catalogMap = {};
-                if (catalog) {
-                    catalog.forEach(u => {
-                        catalogMap[u.unit_name] = u.unit_code;
-                    });
+                let statusText = unit.status || 'Pending';
+                let statusColor = '#f59e0b';
+                let statusBg = '#fef3c7';
+                let statusBadge = '';
+                
+                if (hasPublishedGrade) {
+                    // ✅ Unit has a published mark - show Pass/Fail
+                    const grade = publishedMark.grade || '';
+                    const isPassing = ['A', 'B', 'C', 'PASS'].includes(grade.toUpperCase());
+                    statusText = 'Completed';
+                    statusColor = '#10b981';
+                    statusBg = '#d1fae5';
+                    statusBadge = isPassing ? 
+                        '<span style="background:#d1fae5; color:#065f46; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:600; display:inline-block; margin-top:2px;">🟢 Passed</span>' :
+                        '<span style="background:#fee2e2; color:#991b1b; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:600; display:inline-block; margin-top:2px;">🔴 Failed</span>';
+                } else if (unit.status === 'approved') {
+                    statusText = 'Approved';
+                    statusColor = '#3b82f6';
+                    statusBg = '#dbeafe';
+                } else if (unit.status === 'rejected') {
+                    statusText = 'Rejected';
+                    statusColor = '#dc2626';
+                    statusBg = '#fee2e2';
+                } else if (unit.status === 'pending') {
+                    statusText = 'Pending';
+                    statusColor = '#f59e0b';
+                    statusBg = '#fef3c7';
                 }
                 
-                marks.forEach(mark => {
-                    let unitCode = mark.unit_code;
-                    if (!unitCode) {
-                        // Try to find by subject name
-                        for (const [name, code] of Object.entries(catalogMap)) {
-                            if (mark.subject_name.includes(name) || name.includes(mark.subject_name)) {
-                                unitCode = code;
-                                break;
-                            }
-                        }
-                    }
-                    if (unitCode) {
-                        publishedGrades.set(unitCode, {
-                            grade: mark.grade || '',
-                            score: mark.final_score || 0
-                        });
-                    }
-                });
+                const isSupplementary = unit.reg_type === 'Supplementary' || unit.reg_type === 'Retake';
+                const regBadge = `<span style="background:${isSupplementary ? '#fef3c7' : '#e0e7ff'}; color:${isSupplementary ? '#B45309' : '#4C1D95'}; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:600;">
+                    ${this.escapeHtml(unit.reg_type || 'Normal')}
+                </span>`;
                 
-                console.log(`📊 Found ${publishedGrades.size} published marks for display`);
+                const dateDisplay = unit.completed_at ? 
+                    new Date(unit.completed_at).toLocaleDateString() : 
+                    (unit.submitted_date ? new Date(unit.submitted_date).toLocaleDateString() : '—');
+                
+                let actionButtons = '—';
+                if (unit.status === 'pending') {
+                    actionButtons = `<button onclick="window.dropUnit('${unit.unit_code}')" 
+                        style="background:#fee2e2; color:#991b1b; border:none; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">
+                        <i class="fas fa-trash"></i> Drop
+                    </button>`;
+                }
+                
+                html += `<tr>
+                    <td style="padding:12px 16px;"><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
+                    <td style="padding:12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
+                    <td style="padding:12px 16px;">${this.escapeHtml(unit.block)}</td>
+                    <td style="padding:12px 16px; text-align:center;">${regBadge}</td>
+                    <td style="padding:12px 16px; text-align:center;">
+                        <span style="background:${statusBg}; color:${statusColor}; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block;">
+                            ${statusText}
+                        </span>
+                        ${statusBadge}
+                    </td>
+                    <td style="padding:12px 16px; text-align:center; font-size:12px;">${dateDisplay}</td>
+                    <td style="padding:12px 16px; text-align:center;">${actionButtons}</td>
+                </tr>`;
             }
-        } catch (e) {
-            console.warn('Could not fetch published marks:', e);
-        }
-    }
-    
-    let html = '';
-    for (const unit of this.registeredUnits) {
-        // ✅ Check if this unit has a published mark
-        const publishedMark = publishedGrades.get(unit.unit_code);
-        const hasPublishedGrade = !!publishedMark;
-        
-        let statusText = unit.status || 'Pending';
-        let statusColor = '#f59e0b';
-        let statusBg = '#fef3c7';
-        let statusBadge = '';
-        let gradeDisplay = '';
-        
-        if (hasPublishedGrade) {
-            // ✅ Unit has a published mark - show Pass/Fail
-            const grade = publishedMark.grade || '';
-            const isPassing = ['A', 'B', 'C', 'PASS'].includes(grade.toUpperCase());
-            statusText = 'Completed';
-            statusColor = '#10b981';
-            statusBg = '#d1fae5';
             
-            const gradeColor = isPassing ? '#10b981' : '#dc2626';
-            const gradeIcon = isPassing ? '🟢' : '🔴';
-            const gradeLabel = isPassing ? 'Passed' : 'Failed';
-            gradeDisplay = `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; color: ${gradeColor}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block; margin-top: 2px;">
-                ${gradeIcon} ${grade} - ${gradeLabel}
-            </span>`;
-            statusBadge = gradeDisplay;
-        } else if (unit.status === 'approved') {
-            statusText = 'Approved';
-            statusColor = '#3b82f6';
-            statusBg = '#dbeafe';
-        } else if (unit.status === 'rejected') {
-            statusText = 'Rejected';
-            statusColor = '#dc2626';
-            statusBg = '#fee2e2';
-        } else if (unit.status === 'pending') {
-            statusText = 'Pending';
-            statusColor = '#f59e0b';
-            statusBg = '#fef3c7';
-        } else if (unit.status === 'completed') {
-            statusText = 'Completed';
-            statusColor = '#10b981';
-            statusBg = '#d1fae5';
+            this.registeredBody.innerHTML = html;
         }
-        
-        const isSupplementary = unit.reg_type === 'Supplementary' || unit.reg_type === 'Retake';
-        const regBadge = `<span style="background:${isSupplementary ? '#fef3c7' : '#e0e7ff'}; color:${isSupplementary ? '#B45309' : '#4C1D95'}; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:600;">
-            ${this.escapeHtml(unit.reg_type || 'Normal')}
-        </span>`;
-        
-        const dateDisplay = unit.completed_at ? 
-            new Date(unit.completed_at).toLocaleDateString() : 
-            (unit.submitted_date ? new Date(unit.submitted_date).toLocaleDateString() : '—');
-        
-        let actionButtons = '—';
-        if (unit.status === 'pending') {
-            actionButtons = `<button onclick="window.dropUnit('${unit.unit_code}')" 
-                style="background:#fee2e2; color:#991b1b; border:none; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">
-                <i class="fas fa-trash"></i> Drop
-            </button>`;
-        }
-        
-        html += `<tr>
-            <td style="padding:12px 16px;"><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
-            <td style="padding:12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
-            <td style="padding:12px 16px;">${this.escapeHtml(unit.block)}</td>
-            <td style="padding:12px 16px; text-align:center;">${regBadge}</td>
-            <td style="padding:12px 16px; text-align:center;">
-                <span style="background:${statusBg}; color:${statusColor}; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block;">
-                    ${statusText}
-                </span>
-                ${statusBadge}
-            </td>
-            <td style="padding:12px 16px; text-align:center; font-size:12px;">${dateDisplay}</td>
-            <td style="padding:12px 16px; text-align:center;">${actionButtons}</td>
-        </tr>`;
-    }
-    
-    this.registeredBody.innerHTML = html;
-}
         
         // ============================================================
         // SUBMIT REGISTRATION - FIXED (Checks Database Directly)
@@ -1091,513 +1087,496 @@ async displayRegisteredUnits() {
         // SUPPLEMENTARY - LOAD ELIGIBLE UNITS (NO HARDCODING)
         // ============================================================
         
-      async loadSupplementaryData() {
-    console.log('📚 Loading supplementary data...');
-    
-    if (!this.userProfile || !this.studentId) {
-        console.warn('⚠️ No user profile');
-        return;
-    }
-    
-    // ✅ FIX: Ensure admission number is correct before loading
-    const user = this.userProfile;
-    let admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
-    
-    // If admission number is a UUID, try to get the actual admission number
-    if (admissionNumber && admissionNumber.includes('-')) {
-        const supabase = this.getSupabase();
-        if (supabase) {
-            const { data: profile } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('student_id, admission_number')
-                .eq('user_id', admissionNumber)
-                .maybeSingle();
+        async loadSupplementaryData() {
+            console.log('📚 Loading supplementary data...');
             
-            if (profile) {
-                const realAdmission = profile.student_id || profile.admission_number;
-                if (realAdmission && !realAdmission.includes('-')) {
-                    this.userProfile.student_id = realAdmission;
-                    this.userProfile.admission_number = realAdmission;
-                    console.log('✅ Updated admission number to:', realAdmission);
-                }
-            }
-        }
-    }
-    
-    await this.loadStudentSupplementaryRegistrations();
-    
-    if (this.suppRegType?.value) {
-        await this.loadEligibleUnits();
-    }
-}
-        
-       // ============================================================
-// SUPPLEMENTARY - LOAD ELIGIBLE UNITS (FIXED)
-// ============================================================
-
-// ============================================================
-// SUPPLEMENTARY - LOAD ELIGIBLE UNITS (BASED ON GRADE, NOT SCORE)
-// ============================================================
-
-async loadEligibleUnits() {
-    const regType = this.suppRegType?.value;
-    const tbody = this.eligibleBody;
-    const countEl = this.eligibleCount;
-    const availableCountEl = document.getElementById('suppAvailableCount');
-    const loadingIndicator = document.getElementById('suppLoadingIndicator');
-    const infoBox = document.getElementById('regTypeInfo');
-    const infoText = document.getElementById('regTypeInfoText');
-    const selectAll = this.selectAllSupp;
-    
-    if (!regType) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-hand-pointer" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                    <p>Select a Registration Type above</p>
-                </td>
-            </tr>
-        `;
-        if (countEl) countEl.textContent = '0 units';
-        if (availableCountEl) availableCountEl.textContent = '0';
-        if (infoBox) infoBox.style.display = 'none';
-        return;
-    }
-    
-    if (loadingIndicator) loadingIndicator.style.display = 'inline-block';
-    
-    if (infoBox) {
-        infoBox.style.display = 'block';
-        infoText.textContent = `Showing units eligible for ${regType}. Select units to register.`;
-        infoBox.style.background = regType === 'Supplementary' ? '#fffbeb' : '#fef2f2';
-        infoBox.style.borderLeft = `3px solid ${regType === 'Supplementary' ? '#f59e0b' : '#dc2626'}`;
-    }
-    
-    try {
-        const supabase = this.getSupabase();
-        if (!supabase) throw new Error('Database not available');
-        
-        const user = this.userProfile || window.currentUserProfile;
-        let admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
-        
-        if (admissionNumber && admissionNumber.includes('-')) {
-            const { data: profile, error: profileError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('student_id, admission_number')
-                .eq('user_id', admissionNumber)
-                .maybeSingle();
-            
-            if (!profileError && profile) {
-                admissionNumber = profile.student_id || profile.admission_number || admissionNumber;
-            }
-        }
-        
-        const userId = this.studentId;
-        
-        if (!admissionNumber || !userId) {
-            throw new Error('User not found');
-        }
-        
-        console.log(`🔍 Loading ${regType} units for:`, admissionNumber);
-        
-        // ✅ Get published marks
-        const { data: marks, error } = await supabase
-            .from('student_marks')
-            .select('*')
-            .eq('admission_number', admissionNumber)
-            .eq('published', true);
-        
-        if (error) throw error;
-        
-        console.log('📊 Marks found:', marks);
-        
-        // ✅ Get ALL units from catalog
-        const { data: allCatalogUnits, error: catalogError } = await supabase
-            .from('units_catalog')
-            .select('unit_code, unit_name, block, program')
-            .eq('program', this.programCode || 'KRCHN')
-            .eq('status', 'active');
-        
-        if (catalogError) {
-            console.warn('Could not load catalog:', catalogError);
-        }
-        
-        // ✅ Build subject to unit code mapping
-        const subjectToUnitCode = {};
-        if (allCatalogUnits) {
-            allCatalogUnits.forEach(unit => {
-                const unitName = unit.unit_name || '';
-                const unitCode = unit.unit_code || '';
-                if (unitName) {
-                    subjectToUnitCode[unitName] = unitCode;
-                    const shortName = unitName.replace(/^(NCHSGN|NCHSCH|NCHSM|NCHSMW)\s+/, '');
-                    if (shortName !== unitName) {
-                        subjectToUnitCode[shortName] = unitCode;
-                    }
-                }
-            });
-        }
-        
-        // ✅ Get registered units
-        const { data: existingRegs } = await supabase
-            .from('student_unit_registrations')
-            .select('unit_code, status')
-            .eq('student_id', userId);
-        
-        const registeredCodes = new Set(existingRegs?.map(r => r.unit_code) || []);
-        
-        const isTVET = this.isTVETStudent;
-        const passThreshold = isTVET ? 50 : 60;
-        const retakeThreshold = 30;
-        
-        // ✅ FAILING GRADES: D, E, F, FAIL
-        const failingGrades = ['D', 'E', 'F', 'FAIL'];
-        // ✅ PASSING GRADES: A, B, C
-        const passingGrades = ['A', 'B', 'C'];
-        
-        let eligibleUnits = [];
-        let processedUnits = new Set();
-        
-        for (const mark of marks || []) {
-            const score = mark.final_score || 0;
-            const grade = mark.grade || '';
-            const subjectName = mark.subject_name || 'Unknown';
-            
-            if (processedUnits.has(subjectName)) continue;
-            
-            let isEligible = false;
-            let determinedType = '';
-            
-            // ✅ CHECK BY GRADE FIRST, THEN SCORE
-            if (regType === 'Supplementary') {
-                // Eligible if: Grade is D, E, F OR score is between 30-59
-                if (failingGrades.includes(grade.toUpperCase()) || 
-                    (score >= retakeThreshold && score < passThreshold)) {
-                    isEligible = true;
-                    determinedType = 'Supplementary';
-                }
-            } else if (regType === 'Retake') {
-                // Eligible if: Grade is D, E, F OR score is below 30
-                if (failingGrades.includes(grade.toUpperCase()) || 
-                    (score < retakeThreshold && score > 0)) {
-                    isEligible = true;
-                    determinedType = 'Retake';
-                }
+            if (!this.userProfile || !this.studentId) {
+                console.warn('⚠️ No user profile');
+                return;
             }
             
-            // Also allow Supplementary for any D grade (even if score 0)
-            if (!isEligible && regType === 'Supplementary' && failingGrades.includes(grade.toUpperCase())) {
-                isEligible = true;
-                determinedType = 'Supplementary';
-            }
+            // ✅ FIX: Ensure admission number is correct before loading
+            const user = this.userProfile;
+            let admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
             
-            if (isEligible) {
-                processedUnits.add(subjectName);
-                let unitCode = mark.unit_code || subjectToUnitCode[subjectName];
-                
-                if (!unitCode) {
-                    for (const [key, code] of Object.entries(subjectToUnitCode)) {
-                        if (subjectName.includes(key) || key.includes(subjectName)) {
-                            unitCode = code;
-                            break;
+            // If admission number is a UUID, try to get the actual admission number
+            if (admissionNumber && admissionNumber.includes('-')) {
+                const supabase = this.getSupabase();
+                if (supabase) {
+                    const { data: profile } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('student_id, admission_number')
+                        .eq('user_id', admissionNumber)
+                        .maybeSingle();
+                    
+                    if (profile) {
+                        const realAdmission = profile.student_id || profile.admission_number;
+                        if (realAdmission && !realAdmission.includes('-')) {
+                            this.userProfile.student_id = realAdmission;
+                            this.userProfile.admission_number = realAdmission;
+                            console.log('✅ Updated admission number to:', realAdmission);
                         }
                     }
                 }
+            }
+            
+            await this.loadStudentSupplementaryRegistrations();
+            
+            if (this.suppRegType?.value) {
+                await this.loadEligibleUnits();
+            }
+        }
+        
+        // ============================================================
+        // SUPPLEMENTARY - LOAD ELIGIBLE UNITS (BASED ON GRADE, NOT SCORE)
+        // ============================================================
+        
+        async loadEligibleUnits() {
+            const regType = this.suppRegType?.value;
+            const tbody = this.eligibleBody;
+            const countEl = this.eligibleCount;
+            const availableCountEl = document.getElementById('suppAvailableCount');
+            const loadingIndicator = document.getElementById('suppLoadingIndicator');
+            const infoBox = document.getElementById('regTypeInfo');
+            const infoText = document.getElementById('regTypeInfoText');
+            const selectAll = this.selectAllSupp;
+            
+            if (!regType) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-hand-pointer" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                            <p>Select a Registration Type above</p>
+                        </td>
+                    </tr>
+                `;
+                if (countEl) countEl.textContent = '0 units';
+                if (availableCountEl) availableCountEl.textContent = '0';
+                if (infoBox) infoBox.style.display = 'none';
+                return;
+            }
+            
+            if (loadingIndicator) loadingIndicator.style.display = 'inline-block';
+            
+            if (infoBox) {
+                infoBox.style.display = 'block';
+                infoText.textContent = `Showing units eligible for ${regType}. Select units to register.`;
+                infoBox.style.background = regType === 'Supplementary' ? '#fffbeb' : '#fef2f2';
+                infoBox.style.borderLeft = `3px solid ${regType === 'Supplementary' ? '#f59e0b' : '#dc2626'}`;
+            }
+            
+            try {
+                const supabase = this.getSupabase();
+                if (!supabase) throw new Error('Database not available');
                 
-                if (!unitCode) {
-                    unitCode = this.getUnitCode(subjectName);
+                const user = this.userProfile || window.currentUserProfile;
+                let admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
+                
+                if (admissionNumber && admissionNumber.includes('-')) {
+                    const { data: profile, error: profileError } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('student_id, admission_number')
+                        .eq('user_id', admissionNumber)
+                        .maybeSingle();
+                    
+                    if (!profileError && profile) {
+                        admissionNumber = profile.student_id || profile.admission_number || admissionNumber;
+                    }
                 }
                 
-                const isRegistered = registeredCodes.has(unitCode);
+                const userId = this.studentId;
                 
-                eligibleUnits.push({
-                    unit_code: unitCode || 'N/A',
-                    unit_name: subjectName,
-                    block: mark.block || 'N/A',
-                    score: score,
-                    reg_type: determinedType,
-                    grade: grade || 'FAIL',
-                    status: isRegistered ? '⏳ Registered' : '✅ Eligible',
-                    is_registered: isRegistered,
-                    existing_id: null,
-                    has_mark: true
-                });
+                if (!admissionNumber || !userId) {
+                    throw new Error('User not found');
+                }
+                
+                console.log(`🔍 Loading ${regType} units for:`, admissionNumber);
+                
+                // ✅ Get published marks
+                const { data: marks, error } = await supabase
+                    .from('student_marks')
+                    .select('*')
+                    .eq('admission_number', admissionNumber)
+                    .eq('published', true);
+                
+                if (error) throw error;
+                
+                console.log('📊 Marks found:', marks);
+                
+                // ✅ Get ALL units from catalog
+                const { data: allCatalogUnits, error: catalogError } = await supabase
+                    .from('units_catalog')
+                    .select('unit_code, unit_name, block, program')
+                    .eq('program', this.programCode || 'KRCHN')
+                    .eq('status', 'active');
+                
+                if (catalogError) {
+                    console.warn('Could not load catalog:', catalogError);
+                }
+                
+                // ✅ Build subject to unit code mapping
+                const subjectToUnitCode = {};
+                if (allCatalogUnits) {
+                    allCatalogUnits.forEach(unit => {
+                        const unitName = unit.unit_name || '';
+                        const unitCode = unit.unit_code || '';
+                        if (unitName) {
+                            subjectToUnitCode[unitName] = unitCode;
+                            const shortName = unitName.replace(/^(NCHSGN|NCHSCH|NCHSM|NCHSMW)\s+/, '');
+                            if (shortName !== unitName) {
+                                subjectToUnitCode[shortName] = unitCode;
+                            }
+                        }
+                    });
+                }
+                
+                // ✅ Get registered units
+                const { data: existingRegs } = await supabase
+                    .from('student_unit_registrations')
+                    .select('unit_code, status')
+                    .eq('student_id', userId);
+                
+                const registeredCodes = new Set(existingRegs?.map(r => r.unit_code) || []);
+                
+                const isTVET = this.isTVETStudent;
+                const passThreshold = isTVET ? 50 : 60;
+                const retakeThreshold = 30;
+                
+                // ✅ FAILING GRADES
+                const failingGrades = ['D', 'E', 'F', 'FAIL'];
+                
+                let eligibleUnits = [];
+                let processedUnits = new Set();
+                
+                // ✅ Process marks by GRADE
+                for (const mark of marks || []) {
+                    const score = mark.final_score || 0;
+                    const grade = mark.grade || '';
+                    const subjectName = mark.subject_name || 'Unknown';
+                    
+                    if (processedUnits.has(subjectName)) continue;
+                    
+                    let isEligible = false;
+                    let determinedType = '';
+                    
+                    // ✅ Check by GRADE first
+                    if (failingGrades.includes(grade.toUpperCase())) {
+                        isEligible = true;
+                        determinedType = 'Supplementary';
+                    } else if (regType === 'Supplementary' && score >= retakeThreshold && score < passThreshold) {
+                        isEligible = true;
+                        determinedType = 'Supplementary';
+                    } else if (regType === 'Retake' && score < retakeThreshold && score > 0) {
+                        isEligible = true;
+                        determinedType = 'Retake';
+                    }
+                    
+                    if (isEligible) {
+                        processedUnits.add(subjectName);
+                        let unitCode = subjectToUnitCode[subjectName];
+                        
+                        if (!unitCode) {
+                            for (const [key, code] of Object.entries(subjectToUnitCode)) {
+                                if (subjectName.includes(key) || key.includes(subjectName)) {
+                                    unitCode = code;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (!unitCode) {
+                            unitCode = this.getUnitCode(subjectName);
+                        }
+                        
+                        const isRegistered = registeredCodes.has(unitCode);
+                        
+                        eligibleUnits.push({
+                            unit_code: unitCode || 'N/A',
+                            unit_name: subjectName,
+                            block: mark.block || 'N/A',
+                            score: score,
+                            reg_type: determinedType,
+                            grade: grade || 'FAIL',
+                            status: isRegistered ? '⏳ Registered' : '✅ Eligible',
+                            is_registered: isRegistered,
+                            existing_id: null,
+                            has_mark: true
+                        });
+                    }
+                }
+                
+                // ✅ ALSO add units with NO marks (if not registered)
+                if (allCatalogUnits) {
+                    const markedSubjects = new Set((marks || []).map(m => m.subject_name));
+                    
+                    for (const unit of allCatalogUnits) {
+                        const unitCode = unit.unit_code;
+                        const unitName = unit.unit_name;
+                        
+                        // Skip if already processed or registered
+                        if (processedUnits.has(unitName) || registeredCodes.has(unitCode)) continue;
+                        if (markedSubjects.has(unitName)) continue;
+                        
+                        eligibleUnits.push({
+                            unit_code: unitCode,
+                            unit_name: unitName,
+                            block: unit.block || 'N/A',
+                            score: null,
+                            reg_type: regType,
+                            grade: 'No Mark',
+                            status: '✅ Eligible',
+                            is_registered: false,
+                            existing_id: null,
+                            has_mark: false
+                        });
+                    }
+                }
+                
+                this.failedUnits = eligibleUnits;
+                this.renderEligibleTable(eligibleUnits);
+                
+                const availableCount = eligibleUnits.filter(u => !u.is_registered).length;
+                if (countEl) countEl.textContent = `${eligibleUnits.length} units`;
+                if (availableCountEl) availableCountEl.textContent = eligibleUnits.length;
+                if (this.suppTabBadge) this.suppTabBadge.textContent = eligibleUnits.length;
+                
+                if (selectAll) {
+                    selectAll.checked = false;
+                    selectAll.disabled = eligibleUnits.length === 0;
+                }
+                
+                console.log(`✅ Loaded ${eligibleUnits.length} units (${availableCount} available)`);
+                
+            } catch (error) {
+                console.error('❌ Error loading units:', error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                            <p>Error: ${error.message}</p>
+                        </td>
+                    </tr>
+                `;
+            } finally {
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
             }
         }
         
-        // ✅ ALSO add units with NO marks (if not registered)
-        if (allCatalogUnits) {
-            const markedSubjects = new Set((marks || []).map(m => m.subject_name));
-            
-            for (const unit of allCatalogUnits) {
-                const unitCode = unit.unit_code;
-                const unitName = unit.unit_name;
-                
-                // Skip if already processed or registered
-                if (processedUnits.has(unitName) || registeredCodes.has(unitCode)) continue;
-                if (markedSubjects.has(unitName)) continue;
-                
-                // For units with NO marks, check if they should be eligible
-                // Show all unregistered units as eligible (student can register for any)
-                eligibleUnits.push({
-                    unit_code: unitCode,
-                    unit_name: unitName,
-                    block: unit.block || 'N/A',
-                    score: null,
-                    reg_type: regType,
-                    grade: 'No Mark',
-                    status: '✅ Eligible',
-                    is_registered: false,
-                    existing_id: null,
-                    has_mark: false
-                });
-            }
-        }
-        
-        this.failedUnits = eligibleUnits;
-        this.renderEligibleTable(eligibleUnits);
-        
-        const availableCount = eligibleUnits.filter(u => !u.is_registered).length;
-        if (countEl) countEl.textContent = `${eligibleUnits.length} units`;
-        if (availableCountEl) availableCountEl.textContent = eligibleUnits.length;
-        if (this.suppTabBadge) this.suppTabBadge.textContent = eligibleUnits.length;
-        
-        if (selectAll) {
-            selectAll.checked = false;
-            selectAll.disabled = eligibleUnits.length === 0;
-        }
-        
-        console.log(`✅ Loaded ${eligibleUnits.length} units (${availableCount} available)`);
-        
-    } catch (error) {
-        console.error('❌ Error loading units:', error);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #dc2626;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                    <p>Error: ${error.message}</p>
-                </td>
-            </tr>
-        `;
-    } finally {
-        if (loadingIndicator) loadingIndicator.style.display = 'none';
-    }
-}
-      // ============================================================
-// RENDER ELIGIBLE TABLE - WITHOUT SCORE COLUMN
-// ============================================================
-
-renderEligibleTable(units) {
-    const tbody = this.eligibleBody;
-    if (!tbody) return;
-    
-    if (!units || units.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; display: block; margin-bottom: 10px;"></i>
-                    <p>No eligible units found.</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    let html = '';
-    for (const unit of units) {
-        const canRegister = !unit.is_registered;
-        const isRegistered = unit.is_registered;
-        
-        let statusText = unit.status;
-        let statusColor = '#059669';
-        let statusBg = '#d1fae5';
-        
-        if (unit.status === 'Eligible') {
-            statusText = '✅ Eligible';
-            statusColor = '#059669';
-            statusBg = '#d1fae5';
-        } else if (unit.status === '❌ Rejected') {
-            statusText = '❌ Rejected';
-            statusColor = '#dc2626';
-            statusBg = '#fee2e2';
-        } else if (unit.status === '✅ Approved') {
-            statusText = '✅ Approved';
-            statusColor = '#059669';
-            statusBg = '#d1fae5';
-        } else if (unit.status === '⏳ Pending') {
-            statusText = '⏳ Pending';
-            statusColor = '#f59e0b';
-            statusBg = '#fef3c7';
-        } else if (unit.status === '📋 Completed') {
-            statusText = '📋 Completed';
-            statusColor = '#3b82f6';
-            statusBg = '#dbeafe';
-        }
-        
-        // ✅ REMOVED: scoreDisplay and score column
-        const regTypeBadge = unit.reg_type === 'Retake' ? 
-            '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Retake</span>' :
-            '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Supplementary</span>';
-        
-        html += `
-            <tr style="border-bottom: 1px solid #f1f5f9; ${isRegistered ? 'opacity: 0.6;' : ''}">
-                <td style="padding: 12px 16px; text-align: center;">
-                    <input type="checkbox" class="supp-unit-checkbox" data-unit='${JSON.stringify(unit)}' 
-                           ${!canRegister ? 'disabled' : ''} style="width: 16px; height: 16px; cursor: pointer;">
-                </td>
-                <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(unit.unit_code)}</td>
-                <td style="padding: 12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
-                <td style="padding: 12px 16px;">${this.escapeHtml(unit.block)}</td>
-                <td style="padding: 12px 16px; text-align: center;">${regTypeBadge}</td>
-                <td style="padding: 12px 16px; text-align: center;">
-                    <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                        ${statusText}
-                    </span>
-                </td>
-            </tr>
-        `;
-    }
-    
-    tbody.innerHTML = html;
-    
-    document.querySelectorAll('.supp-unit-checkbox').forEach(cb => {
-        cb.addEventListener('change', () => this.updateSuppCount());
-    });
-    
-    this.updateSuppCount();
-}
-
         // ============================================================
-// UPDATE SUPPLEMENTARY COUNT
-// ============================================================
-
-updateSuppCount() {
-    const count = document.querySelectorAll('.supp-unit-checkbox:checked').length;
-    const selectedSuppCount = document.getElementById('selectedSuppCount');
-    if (selectedSuppCount) {
-        selectedSuppCount.textContent = count;
-    }
-}
+        // RENDER ELIGIBLE TABLE - WITHOUT SCORE COLUMN
+        // ============================================================
         
-      // ============================================================
-// LOAD STUDENT SUPPLEMENTARY REGISTRATIONS - FIXED
-// Only shows FAILED units (excludes A, B, C grades)
-// ============================================================
-
-async loadStudentSupplementaryRegistrations() {
-    const tbody = this.suppRegisteredBody;
-    if (!tbody) return;
-    
-    try {
-        const supabase = this.getSupabase();
-        if (!this.studentId || !supabase) {
-            this.updateDownloadButton(0);
-            return;
-        }
-        
-        // Get ALL supplementary/retake registrations
-        const { data: registrations, error } = await supabase
-            .from('student_unit_registrations')
-            .select('*')
-            .eq('student_id', this.studentId)
-            .in('reg_type', ['Supplementary', 'Retake'])
-            .order('submitted_date', { ascending: false });
-        
-        if (error) throw error;
-        
-        // ✅ FILTER: Only keep FAILED units OR units with NO grade
-        const passingGrades = ['A', 'B', 'C', 'PASS'];
-        const failedRegistrations = (registrations || []).filter(reg => {
-            // If no grade, keep it (pending approval)
-            if (!reg.grade) return true;
-            // If grade is passing, EXCLUDE
-            if (passingGrades.includes(reg.grade.toUpperCase())) return false;
-            // Any other grade (D, E, F, FAIL) - KEEP
-            return true;
-        });
-        
-        this.supplementaryRegistrations = failedRegistrations;
-        
-        if (this.supplementaryRegistrations.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
-                        <i class="fas fa-check-circle" style="font-size: 40px; color: #10b981; display: block; margin-bottom: 10px;"></i>
-                        <p>No failed supplementary/retake units.</p>
-                        <p style="font-size: 12px; margin-top: 4px;">Passed units (A, B, C) are automatically removed.</p>
-                    </td>
-                </tr>
-            `;
-            if (this.suppRegisteredCount) this.suppRegisteredCount.textContent = '0';
-            this.updateDownloadButton(0);
-            return;
-        }
-        
-        let html = '';
-        let approvedCount = 0;
-        
-        for (const reg of this.supplementaryRegistrations) {
-            const statusColor = reg.status === 'approved' ? '#059669' : 
-                               reg.status === 'pending' ? '#f59e0b' : 
-                               reg.status === 'completed' ? '#10b981' : '#dc2626';
-            const statusBg = reg.status === 'approved' ? '#d1fae5' : 
-                            reg.status === 'pending' ? '#fef3c7' : 
-                            reg.status === 'completed' ? '#d1fae5' : '#fee2e2';
-            const statusText = reg.status === 'approved' ? '✅ Approved' : 
-                              reg.status === 'pending' ? '⏳ Pending' : 
-                              reg.status === 'completed' ? '📋 Completed' : '❌ Rejected';
-            const regDate = reg.submitted_date ? new Date(reg.submitted_date).toLocaleDateString() : 'N/A';
+        renderEligibleTable(units) {
+            const tbody = this.eligibleBody;
+            if (!tbody) return;
             
-            // Show grade if exists
-            const gradeDisplay = reg.grade ? 
-                `<span style="font-size: 10px; color: #dc2626; display: block; margin-top: 2px;">Grade: ${reg.grade}</span>` : 
-                '';
-            
-            if (reg.status === 'approved' || reg.status === 'completed') {
-                approvedCount++;
+            if (!units || units.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; display: block; margin-bottom: 10px;"></i>
+                            <p>No eligible units found.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
             }
             
-            html += `
-                <tr>
-                    <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(reg.unit_code)}</td>
-                    <td style="padding: 12px 16px;">${this.escapeHtml(reg.unit_name)}</td>
-                    <td style="padding: 12px 16px;">${this.escapeHtml(reg.block || 'N/A')}</td>
-                    <td style="padding: 12px 16px; text-align: center;">
-                        <span style="background: ${reg.reg_type === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                            ${this.escapeHtml(reg.reg_type)}
-                        </span>
-                    </td>
-                    <td style="padding: 12px 16px; text-align: center;">
-                        <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                            ${statusText}
-                        </span>
-                        ${gradeDisplay}
-                    </td>
-                    <td style="padding: 12px 16px; text-align: center;">${regDate}</td>
-                </tr>
-            `;
+            let html = '';
+            for (const unit of units) {
+                const canRegister = !unit.is_registered;
+                const isRegistered = unit.is_registered;
+                
+                let statusText = unit.status;
+                let statusColor = '#059669';
+                let statusBg = '#d1fae5';
+                
+                if (unit.status === 'Eligible') {
+                    statusText = '✅ Eligible';
+                    statusColor = '#059669';
+                    statusBg = '#d1fae5';
+                } else if (unit.status === '❌ Rejected') {
+                    statusText = '❌ Rejected';
+                    statusColor = '#dc2626';
+                    statusBg = '#fee2e2';
+                } else if (unit.status === '✅ Approved') {
+                    statusText = '✅ Approved';
+                    statusColor = '#059669';
+                    statusBg = '#d1fae5';
+                } else if (unit.status === '⏳ Pending') {
+                    statusText = '⏳ Pending';
+                    statusColor = '#f59e0b';
+                    statusBg = '#fef3c7';
+                } else if (unit.status === '📋 Completed') {
+                    statusText = '📋 Completed';
+                    statusColor = '#3b82f6';
+                    statusBg = '#dbeafe';
+                }
+                
+                const regTypeBadge = unit.reg_type === 'Retake' ? 
+                    '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Retake</span>' :
+                    '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Supplementary</span>';
+                
+                html += `
+                    <tr style="border-bottom: 1px solid #f1f5f9; ${isRegistered ? 'opacity: 0.6;' : ''}">
+                        <td style="padding: 12px 16px; text-align: center;">
+                            <input type="checkbox" class="supp-unit-checkbox" data-unit='${JSON.stringify(unit)}' 
+                                   ${!canRegister ? 'disabled' : ''} style="width: 16px; height: 16px; cursor: pointer;">
+                        </td>
+                        <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(unit.unit_code)}</td>
+                        <td style="padding: 12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
+                        <td style="padding: 12px 16px;">${this.escapeHtml(unit.block)}</td>
+                        <td style="padding: 12px 16px; text-align: center;">${regTypeBadge}</td>
+                        <td style="padding: 12px 16px; text-align: center;">
+                            <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                ${statusText}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            tbody.innerHTML = html;
+            
+            document.querySelectorAll('.supp-unit-checkbox').forEach(cb => {
+                cb.addEventListener('change', () => this.updateSuppCount());
+            });
+            
+            this.updateSuppCount();
         }
         
-        tbody.innerHTML = html;
-        if (this.suppRegisteredCount) {
-            this.suppRegisteredCount.textContent = this.supplementaryRegistrations.length;
+        // ============================================================
+        // UPDATE SUPPLEMENTARY COUNT
+        // ============================================================
+        
+        updateSuppCount() {
+            const count = document.querySelectorAll('.supp-unit-checkbox:checked').length;
+            const selectedSuppCount = document.getElementById('selectedSuppCount');
+            if (selectedSuppCount) {
+                selectedSuppCount.textContent = count;
+            }
         }
         
-        this.updateDownloadButton(approvedCount);
+        // ============================================================
+        // LOAD STUDENT SUPPLEMENTARY REGISTRATIONS - FIXED
+        // Only shows FAILED units (excludes A, B, C grades)
+        // ============================================================
         
-    } catch (error) {
-        console.error('❌ Error loading supplementary registrations:', error);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
-                    Error: ${error.message}
-                </td>
-            </tr>
-        `;
-        this.updateDownloadButton(0);
-    }
-}
+        async loadStudentSupplementaryRegistrations() {
+            const tbody = this.suppRegisteredBody;
+            if (!tbody) return;
+            
+            try {
+                const supabase = this.getSupabase();
+                if (!this.studentId || !supabase) {
+                    this.updateDownloadButton(0);
+                    return;
+                }
+                
+                // Get ALL supplementary/retake registrations
+                const { data: registrations, error } = await supabase
+                    .from('student_unit_registrations')
+                    .select('*')
+                    .eq('student_id', this.studentId)
+                    .in('reg_type', ['Supplementary', 'Retake'])
+                    .order('submitted_date', { ascending: false });
+                
+                if (error) throw error;
+                
+                // ✅ FILTER: Only keep FAILED units OR units with NO grade
+                const passingGrades = ['A', 'B', 'C', 'PASS'];
+                const failedRegistrations = (registrations || []).filter(reg => {
+                    // If no grade, keep it (pending approval)
+                    if (!reg.grade) return true;
+                    // If grade is passing, EXCLUDE
+                    if (passingGrades.includes(reg.grade.toUpperCase())) return false;
+                    // Any other grade (D, E, F, FAIL) - KEEP
+                    return true;
+                });
+                
+                this.supplementaryRegistrations = failedRegistrations;
+                
+                if (this.supplementaryRegistrations.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                <i class="fas fa-check-circle" style="font-size: 40px; color: #10b981; display: block; margin-bottom: 10px;"></i>
+                                <p>No failed supplementary/retake units.</p>
+                                <p style="font-size: 12px; margin-top: 4px;">Passed units (A, B, C) are automatically removed.</p>
+                            </td>
+                        </tr>
+                    `;
+                    if (this.suppRegisteredCount) this.suppRegisteredCount.textContent = '0';
+                    this.updateDownloadButton(0);
+                    return;
+                }
+                
+                let html = '';
+                let approvedCount = 0;
+                
+                for (const reg of this.supplementaryRegistrations) {
+                    const statusColor = reg.status === 'approved' ? '#059669' : 
+                                       reg.status === 'pending' ? '#f59e0b' : 
+                                       reg.status === 'completed' ? '#10b981' : '#dc2626';
+                    const statusBg = reg.status === 'approved' ? '#d1fae5' : 
+                                    reg.status === 'pending' ? '#fef3c7' : 
+                                    reg.status === 'completed' ? '#d1fae5' : '#fee2e2';
+                    const statusText = reg.status === 'approved' ? '✅ Approved' : 
+                                      reg.status === 'pending' ? '⏳ Pending' : 
+                                      reg.status === 'completed' ? '📋 Completed' : '❌ Rejected';
+                    const regDate = reg.submitted_date ? new Date(reg.submitted_date).toLocaleDateString() : 'N/A';
+                    
+                    // Show grade if exists
+                    const gradeDisplay = reg.grade ? 
+                        `<span style="font-size: 10px; color: #dc2626; display: block; margin-top: 2px;">Grade: ${reg.grade}</span>` : 
+                        '';
+                    
+                    if (reg.status === 'approved' || reg.status === 'completed') {
+                        approvedCount++;
+                    }
+                    
+                    html += `
+                        <tr>
+                            <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(reg.unit_code)}</td>
+                            <td style="padding: 12px 16px;">${this.escapeHtml(reg.unit_name)}</td>
+                            <td style="padding: 12px 16px;">${this.escapeHtml(reg.block || 'N/A')}</td>
+                            <td style="padding: 12px 16px; text-align: center;">
+                                <span style="background: ${reg.reg_type === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                    ${this.escapeHtml(reg.reg_type)}
+                                </span>
+                            </td>
+                            <td style="padding: 12px 16px; text-align: center;">
+                                <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                    ${statusText}
+                                </span>
+                                ${gradeDisplay}
+                            </td>
+                            <td style="padding: 12px 16px; text-align: center;">${regDate}</td>
+                        </tr>
+                    `;
+                }
+                
+                tbody.innerHTML = html;
+                if (this.suppRegisteredCount) {
+                    this.suppRegisteredCount.textContent = this.supplementaryRegistrations.length;
+                }
+                
+                this.updateDownloadButton(approvedCount);
+                
+            } catch (error) {
+                console.error('❌ Error loading supplementary registrations:', error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
+                            Error: ${error.message}
+                        </td>
+                    </tr>
+                `;
+                this.updateDownloadButton(0);
+            }
+        }
+        
         // ============================================================
         // UPDATE DOWNLOAD BUTTON
         // ============================================================
@@ -1732,7 +1711,7 @@ async loadStudentSupplementaryRegistrations() {
                             updated_at: new Date().toISOString(),
                             credits: 3,
                             intake_year: this.intakeYear || '2025',
-                            academic_year: parseInt(academicYear),  // ✅ Integer
+                            academic_year: parseInt(academicYear),
                             term: term
                         };
                         
@@ -1932,721 +1911,785 @@ async loadStudentSupplementaryRegistrations() {
     console.log('✅ Student Dashboard v3.1 ready!');
     console.log('📌 Use window.studentDashboard to access');
     console.log('📊 Cache issues FIXED - queries database directly');
+    
     // ============================================================
-// SUPPLEMENTARY SECTION FUNCTIONS - FIX
-// ============================================================
-
-/**
- * Update the download button state based on approved units
- */
-window.updateSupplementaryDownloadButton = function() {
-    console.log('🔄 updateSupplementaryDownloadButton called');
+    // SUPPLEMENTARY SECTION FUNCTIONS - FIX
+    // ============================================================
     
-    const dashboard = window.studentDashboard;
-    if (!dashboard) {
-        console.warn('⚠️ Dashboard not available');
-        return;
-    }
-    
-    const approvedCount = (dashboard.supplementaryRegistrations || [])
-        .filter(r => r.status === 'approved' || r.status === 'completed')
-        .length;
-    
-    const downloadBtn = document.getElementById('downloadAllSuppExamCardsBtn');
-    const countBadge = document.getElementById('downloadSuppCount');
-    
-    if (downloadBtn) {
-        if (countBadge) countBadge.textContent = approvedCount || 0;
+    /**
+     * Update the download button state based on approved units
+     */
+    window.updateSupplementaryDownloadButton = function() {
+        console.log('🔄 updateSupplementaryDownloadButton called');
         
-        if (approvedCount > 0) {
-            downloadBtn.style.opacity = '1';
-            downloadBtn.style.cursor = 'pointer';
-            downloadBtn.removeAttribute('disabled');
-            downloadBtn.title = '📥 Download exam card with all approved units';
-        } else {
-            downloadBtn.style.opacity = '0.5';
-            downloadBtn.style.cursor = 'not-allowed';
-            downloadBtn.setAttribute('disabled', 'disabled');
-            downloadBtn.title = '⛔ No approved units available';
-        }
-    }
-};
-
-/**
- * Download Exam Card Handler - Called by the button
- */
-window.downloadExamCardsHandler = function(button) {
-    console.log('🖱️ Download Exam Card button clicked!');
-    
-    // Save original content
-    const originalHTML = button ? button.innerHTML : 'Download Exam Card';
-    
-    // Show loading state
-    if (button) {
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-        button.disabled = true;
-        button.style.opacity = '0.6';
-    }
-    
-    // Call the download function
-    if (typeof window.downloadSupplementaryExamCard === 'function') {
-        window.downloadSupplementaryExamCard()
-            .then(() => {
-                console.log('✅ Exam card generated successfully');
-            })
-            .catch((error) => {
-                console.error('❌ Error generating exam card:', error);
-                alert('Failed to generate exam card: ' + error.message);
-            })
-            .finally(() => {
-                // Restore button
-                if (button) {
-                    button.innerHTML = originalHTML;
-                    button.disabled = false;
-                    button.style.opacity = '1';
-                }
-            });
-    } else {
-        console.error('❌ downloadSupplementaryExamCard function not found!');
-        alert('Download function not available. Please refresh the page.');
-        if (button) {
-            button.innerHTML = originalHTML;
-            button.disabled = false;
-            button.style.opacity = '1';
-        }
-    }
-};
-
-/**
- * Reload supplementary units
- */
-window.reloadSupplementaryUnits = function() {
-    const dashboard = window.studentDashboard;
-    if (dashboard) {
-        console.log('🔄 Reloading supplementary units...');
-        dashboard.loadSupplementaryData();
-    } else {
-        console.error('❌ Dashboard not available');
-    }
-};
-
-// ============================================================
-// GENERATE SUPPLEMENTARY EXAM CARD HTML - WITH LECTURER SIGNATURE
-// ============================================================
-
-function generateSupplementaryExamCardHTML(registrations, student) {
-    const today = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-    
-    const program = student?.program || 'KRCHN';
-    const isTVET = typeof isTVETStudent === 'function' ? isTVETStudent(program) : false;
-    const hodTitle = typeof getHODTitle === 'function' ? getHODTitle(program) : 'HOD';
-    const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
-    const blockValue = student?.block || student?.term || 'N/A';
-    const studentTypeBadge = isTVET ? 
-        `<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">TVET</span>` :
-        `<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">KRCHN</span>`;
-    
-    const totalCredits = registrations.reduce((sum, unit) => sum + (unit.credits || 3), 0);
-    
-    let tableRows = '';
-    registrations.forEach((unit, index) => {
-        const unitName = unit.unit_name || unit.name || 'N/A';
-        const unitCode = unit.unit_code || unit.code || 'N/A';
-        const regType = unit.reg_type || 'Supplementary';
-        const credits = unit.credits || 3;
-        const status = unit.status || 'Approved';
-        
-        tableRows += `
-            <tr>
-                <td class="text-center">${index + 1}</td>
-                <td><strong>${escapeHtml(unitCode)}</strong></td>
-                <td>${escapeHtml(unitName)}</td>
-                <td class="text-center">${credits}</td>
-                <td class="text-center">
-                    <span style="background: ${regType === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 2px 10px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
-                        ${regType}
-                    </span>
-                </td>
-                <td class="text-center">
-                    <span style="background: ${status === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${status === 'pending' ? '#92400e' : '#065f46'}; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
-                        ${status === 'pending' ? '⏳ Pending' : '✅ Approved'}
-                    </span>
-                </td>
-                <td class="signature-cell">
-                    <div class="signature-line"></div>
-                    <span style="font-size: 9px; color: #94a3b8;">Lecturer's Signature</span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Supplementary Exam Card - ${escapeHtml(student?.full_name || 'Student')}</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; 
-            padding: 40px; 
-            background: #f8fafc; 
-        }
-        .exam-card-wrapper { 
-            max-width: 900px; 
-            margin: 0 auto; 
-        }
-        .exam-card-compact { 
-            background: white; 
-            border: 1px solid #e2e8f0; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-        }
-        .card-header { 
-            background: linear-gradient(135deg, #1e3a5f, #2c5a8c); 
-            color: white; 
-            padding: 15px 20px; 
-            display: flex; 
-            align-items: center; 
-            gap: 15px; 
-        }
-        .card-logo { 
-            height: 55px; 
-            width: auto; 
-            background: white; 
-            padding: 5px; 
-            border-radius: 8px; 
-            object-fit: contain; 
-        }
-        .header-text { flex: 1; }
-        .institution { 
-            font-size: 12px; 
-            opacity: 0.9; 
-            letter-spacing: 0.5px; 
-        }
-        .card-title { 
-            font-size: 22px; 
-            font-weight: 800; 
-            letter-spacing: 1px; 
-            margin-top: 2px; 
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .card-subtitle { 
-            font-size: 10px; 
-            opacity: 0.8; 
-            margin-top: 2px; 
-        }
-        .status-badge { 
-            padding: 5px 15px; 
-            border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: 700; 
-            background: #10b981;
-            white-space: nowrap; 
-        }
-        .info-grid { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 10px 20px; 
-            padding: 15px 20px; 
-            background: #f8fafc; 
-            border-bottom: 1px solid #e2e8f0; 
-            font-size: 12px; 
-        }
-        .info-item { color: #334155; }
-        .info-label { 
-            font-weight: 600; 
-            color: #64748b; 
-            margin-right: 8px; 
-        }
-        .units-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 11px; 
-        }
-        .units-table th { 
-            background: #f1f5f9; 
-            padding: 10px 8px; 
-            text-align: left; 
-            font-weight: 700; 
-            border-bottom: 2px solid #cbd5e1; 
-        }
-        .units-table td { 
-            padding: 10px 8px; 
-            border-bottom: 1px solid #e2e8f0; 
-            vertical-align: middle; 
-        }
-        .text-center { text-align: center; }
-        
-        .signature-cell { 
-            text-align: center;
-            vertical-align: middle;
-            padding: 5px 0;
-        }
-        .signature-line { 
-            width: 90%; 
-            margin: 8px auto; 
-            border-top: 2px solid #000; 
-            height: 2px;
-        }
-        .signature-cell span {
-            display: block;
-            margin-top: 2px;
+        const dashboard = window.studentDashboard;
+        if (!dashboard) {
+            console.warn('⚠️ Dashboard not available');
+            return;
         }
         
-        .total-row { 
-            background: #f8fafc; 
-            font-weight: 600; 
-            border-top: 2px solid #cbd5e1; 
-        }
-        .signatures-row { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 15px 20px; 
-            gap: 20px; 
-            border-top: 1px solid #e2e8f0; 
-            background: white; 
-        }
-        .signature { 
-            flex: 1; 
-            text-align: center; 
-            font-size: 11px; 
-            color: #475569; 
-        }
-        .sign-line { 
-            width: 80%; 
-            margin: 8px auto; 
-            border-top: 2px solid #000; 
-            height: 2px;
-            padding-top: 12px; 
-        }
-        .card-footer { 
-            padding: 15px 20px; 
-            background: #fefce8; 
-            border-top: 1px solid #e2e8f0; 
-        }
-        .rules-header { 
-            font-weight: 700; 
-            font-size: 12px; 
-            color: #854d0e; 
-            margin-bottom: 10px; 
-        }
-        .rules-list { margin-bottom: 15px; }
-        .rule-item { 
-            font-size: 10px; 
-            color: #713f12; 
-            margin-bottom: 4px; 
-        }
-        .student-section { 
-            border-top: 1px dashed #e2e8f0; 
-            padding-top: 12px; 
-            margin-top: 5px; 
-        }
-        .student-declaration { 
-            font-size: 10px; 
-            color: #475569; 
-            margin: 10px 0; 
-            text-align: center; 
-        }
-        .student-sign-line { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin: 12px 0 8px 0; 
-        }
-        .student-label { 
-            font-weight: 600; 
-            font-size: 11px; 
-            color: #334155; 
-            min-width: 110px; 
-        }
-        .student-date {
-            font-size: 11px;
-            color: #64748b;
-            margin-left: auto;
-        }
-        .signature-line-inline { 
-            display: inline-block; 
-            flex: 1; 
-            border-top: 2px solid #000; 
-            max-width: 60%; 
-            height: 2px;
-        }
-        @media print {
-            body * { visibility: hidden; }
-            .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
-            .exam-card-wrapper { 
-                position: absolute; 
-                top: 0; 
-                left: 0; 
-                width: 100%; 
-                margin: 0; 
-                padding: 10px; 
-            }
-            .card-header { 
-                background: #1e3a5f !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
-            .status-badge { 
-                background: #10b981 !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
-            .signature-line, .sign-line, .signature-line-inline { 
-                border-top: 2px solid #000 !important;
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
-            .exam-card-compact {
-                border: 1px solid #000 !important;
-                border-radius: 0 !important;
-            }
-        }
-        @media (max-width: 600px) {
-            .info-grid { 
-                grid-template-columns: repeat(2, 1fr); 
-                gap: 6px 10px; 
-                padding: 10px 15px; 
-            }
-            .card-header { 
-                padding: 10px 15px; 
-                gap: 10px; 
-            }
-            .card-logo { height: 40px; }
-            .card-title { font-size: 16px; }
-            .signatures-row { 
-                flex-direction: column; 
-                gap: 15px; 
-            }
-            .student-sign-line {
-                flex-wrap: wrap;
-            }
-            .student-date {
-                margin-left: 0;
-                width: 100%;
-                text-align: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="exam-card-wrapper">
-        <div class="exam-card-compact">
-            <!-- Header -->
-            <div class="card-header">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
-                <div class="header-text">
-                    <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                    <div class="card-title">
-                        SUPPLEMENTARY / RETAKE EXAM CARD
-                        ${studentTypeBadge}
-                    </div>
-                    <div class="card-subtitle">(Exam Entry Permit)</div>
-                </div>
-                <div class="status-badge">✅ ELIGIBLE</div>
-            </div>
+        const approvedCount = (dashboard.supplementaryRegistrations || [])
+            .filter(r => r.status === 'approved' || r.status === 'completed')
+            .length;
+        
+        const downloadBtn = document.getElementById('downloadAllSuppExamCardsBtn');
+        const countBadge = document.getElementById('downloadSuppCount');
+        
+        if (downloadBtn) {
+            if (countBadge) countBadge.textContent = approvedCount || 0;
             
-            <!-- Info Grid -->
-            <div class="info-grid">
-                <div class="info-item"><span class="info-label">Name:</span> ${escapeHtml(student?.full_name || 'Not Available')}</div>
-                <div class="info-item"><span class="info-label">REG NO.:</span> ${escapeHtml(student?.student_id || student?.admission_number || 'N/A')}</div>
-                <div class="info-item"><span class="info-label">Program:</span> ${escapeHtml(student?.program || 'N/A')}</div>
-                <div class="info-item"><span class="info-label">${blockLabel}</span> <strong>${escapeHtml(blockValue)}</strong></div>
-                <div class="info-item"><span class="info-label">Registered Units:</span> <strong>${registrations.length}</strong></div>
-                <div class="info-item"><span class="info-label">Total Credits:</span> <strong>${totalCredits}</strong></div>
-                <div class="info-item"><span class="info-label">Date Issued:</span> ${today}</div>
-                <div class="info-item"><span class="info-label">Valid Until:</span> End of Exam Period</div>
-            </div>
-            
-            <!-- Units Table -->
-            <table class="units-table">
-                <thead>
-                    <tr>
-                        <th width="5%">#</th>
-                        <th width="15%">Unit Code</th>
-                        <th width="30%">Unit Title</th>
-                        <th width="7%">Cr</th>
-                        <th width="10%">Type</th>
-                        <th width="15%">Status</th>
-                        <th width="18%">Lecturer's Signature</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRows}
-                    <tr class="total-row">
-                        <td colspan="3"><strong>TOTAL REGISTERED UNITS: ${registrations.length}</strong></td>
-                        <td class="text-center"><strong>${totalCredits}</strong></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <!-- Signatures -->
-            <div class="signatures-row">
-                <div class="signature">
-                    <div class="sign-line"></div>
-                    <div style="font-weight: 600; font-size: 12px;">${hodTitle}</div>
-                    <div style="font-size: 9px; color: #94a3b8;">Head of Department</div>
-                </div>
-                <div class="signature">
-                    <div class="sign-line"></div>
-                    <div style="font-weight: 600; font-size: 12px;">Principal</div>
-                    <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
-                </div>
-                <div class="signature">
-                    <div class="sign-line"></div>
-                    <div style="font-weight: 600; font-size: 12px;">Finance Officer</div>
-                    <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
-                </div>
-            </div>
-            
-            <!-- Footer -->
-            <div class="card-footer">
-                <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
-                <div class="rules-list">
-                    <div class="rule-item">• Present your exam card at each examination hall</div>
-                    <div class="rule-item">• No electronic devices allowed in examination room</div>
-                    <div class="rule-item">• Arrive 30 minutes before examination start time</div>
-                    <div class="rule-item">• Mobile phones must be switched off and stored</div>
-                    <div class="rule-item">• No unauthorized materials allowed</div>
-                </div>
-                
-                <div class="student-section">
-                    <div class="student-declaration">
-                        I hereby confirm that I have read and understood the examination rules and regulations.
-                    </div>
-                    
-                    <div class="student-sign-line">
-                        <span class="student-label">Student Signature:</span>
-                        <span class="signature-line-inline"></span>
-                        <span class="student-date">Date: ${today}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        setTimeout(function() {
-            window.print();
-        }, 1500);
-    <\/script>
-</body>
-</html>
-    `;
-}
-/**
- * Escape HTML helper
- */
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-/**
- * Check if student is TVET
- */
-function isTVETStudent(program) {
-    if (!program) return false;
-    const tvetPrograms = [
-        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-        'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
-    ];
-    return tvetPrograms.includes(program) || program === 'TVET';
-}
-
-/**
- * Get HOD Title based on program
- */
-function getHODTitle(program) {
-    if (!program) return 'HOD';
-    const programUpper = program.toUpperCase().trim();
-    const tvetPrograms = [
-        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-        'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
-    ];
-    
-    if (tvetPrograms.includes(programUpper)) {
-        return `HOD ${programUpper}`;
-    }
-    if (programUpper === 'KRCHN' || programUpper.includes('NURSING')) {
-        return 'HOD Nursing';
-    }
-    if (programUpper.length <= 6) {
-        return `HOD ${programUpper}`;
-    }
-    return program ? `HOD ${program}` : 'HOD';
-}
-
-// ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD - FIXED (Only Failed + Pending)
-// ============================================================
-
-window.downloadSupplementaryExamCard = async function() {
-    console.log('📄 Generating Supplementary Exam Card...');
-    
-    // Show progress overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'examCardProgressOverlay';
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-        backdrop-filter: blur(4px);
-    `;
-    overlay.innerHTML = `
-        <div style="background:white;border-radius:16px;padding:30px 40px;max-width:350px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-            <div style="margin-bottom:15px;">
-                <div style="width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:#B45309;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto;"></div>
-            </div>
-            <h3 style="color:#0A3D62;font-size:16px;">📄 Generating Supplementary Exam Card</h3>
-            <p style="color:#64748b;font-size:13px;" id="progressStatus">Loading your units...</p>
-            <div style="width:100%;height:5px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:10px;">
-                <div id="progressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#B45309,#D97706);border-radius:4px;transition:width 0.3s ease;"></div>
-            </div>
-            <p id="progressPercent" style="margin:6px 0 0 0;font-size:11px;color:#94a3b8;font-weight:600;">0%</p>
-        </div>
-    `;
-    
-    const style = document.createElement('style');
-    style.textContent = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-    overlay.appendChild(style);
-    document.body.appendChild(overlay);
-    
-    const updateProgress = (percent, status) => {
-        const bar = document.getElementById('progressBar');
-        const percentText = document.getElementById('progressPercent');
-        const statusText = document.getElementById('progressStatus');
-        if (bar) bar.style.width = Math.min(percent, 100) + '%';
-        if (percentText) percentText.textContent = Math.min(percent, 100) + '%';
-        if (statusText && status) statusText.textContent = status;
+            if (approvedCount > 0) {
+                downloadBtn.style.opacity = '1';
+                downloadBtn.style.cursor = 'pointer';
+                downloadBtn.removeAttribute('disabled');
+                downloadBtn.title = '📥 Download exam card with all approved units';
+            } else {
+                downloadBtn.style.opacity = '0.5';
+                downloadBtn.style.cursor = 'not-allowed';
+                downloadBtn.setAttribute('disabled', 'disabled');
+                downloadBtn.title = '⛔ No approved units available';
+            }
+        }
     };
     
-    try {
-        updateProgress(10, 'Verifying user...');
+    /**
+     * Download Exam Card Handler - Called by the button
+     */
+    window.downloadExamCardsHandler = function(button) {
+        console.log('🖱️ Download Exam Card button clicked!');
         
-        const user = window.currentUserProfile || window.userProfile;
-        const userId = user?.user_id || user?.id;
+        // Save original content
+        const originalHTML = button ? button.innerHTML : 'Download Exam Card';
         
-        if (!userId) {
-            throw new Error('User not found');
+        // Show loading state
+        if (button) {
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            button.disabled = true;
+            button.style.opacity = '0.6';
         }
         
-        updateProgress(20, 'Connecting to database...');
-        
-        const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Database not available');
+        // Call the download function
+        if (typeof window.downloadSupplementaryExamCard === 'function') {
+            window.downloadSupplementaryExamCard()
+                .then(() => {
+                    console.log('✅ Exam card generated successfully');
+                })
+                .catch((error) => {
+                    console.error('❌ Error generating exam card:', error);
+                    alert('Failed to generate exam card: ' + error.message);
+                })
+                .finally(() => {
+                    // Restore button
+                    if (button) {
+                        button.innerHTML = originalHTML;
+                        button.disabled = false;
+                        button.style.opacity = '1';
+                    }
+                });
+        } else {
+            console.error('❌ downloadSupplementaryExamCard function not found!');
+            alert('Download function not available. Please refresh the page.');
+            if (button) {
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+                button.style.opacity = '1';
+            }
         }
-        
-        updateProgress(30, 'Fetching your units...');
-        
-        // Get ALL approved supplementary/retake units
-        const { data: allRegs, error } = await supabase
-            .from('student_unit_registrations')
-            .select('*')
-            .eq('student_id', userId)
-            .in('reg_type', ['Supplementary', 'Retake'])
-            .eq('status', 'approved')
-            .order('submitted_date', { ascending: false });
-        
-        if (error) throw error;
-        
-        // ✅ FILTER: Only keep FAILED units OR units with NO grade
-        const passingGrades = ['A', 'B', 'C', 'PASS'];
-        const registrations = (allRegs || []).filter(unit => {
-            if (!unit.grade) {
-                console.log(`   ✅ ${unit.unit_code} - No grade (pending)`);
-                return true;
-            }
-            if (passingGrades.includes(unit.grade.toUpperCase())) {
-                console.log(`   ❌ ${unit.unit_code} - Grade ${unit.grade} (PASSED) - EXCLUDED`);
-                return false;
-            }
-            console.log(`   ✅ ${unit.unit_code} - Grade ${unit.grade} (FAILED) - INCLUDED`);
-            return true;
+    };
+    
+    /**
+     * Reload supplementary units
+     */
+    window.reloadSupplementaryUnits = function() {
+        const dashboard = window.studentDashboard;
+        if (dashboard) {
+            console.log('🔄 Reloading supplementary units...');
+            dashboard.loadSupplementaryData();
+        } else {
+            console.error('❌ Dashboard not available');
+        }
+    };
+    
+    // ============================================================
+    // GENERATE SUPPLEMENTARY EXAM CARD HTML - WITH LECTURER SIGNATURE
+    // ============================================================
+    
+    function generateSupplementaryExamCardHTML(registrations, student) {
+        const today = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
         
-        if (!registrations || registrations.length === 0) {
-            updateProgress(100, 'No units found');
+        const program = student?.program || 'KRCHN';
+        const isTVET = typeof isTVETStudent === 'function' ? isTVETStudent(program) : false;
+        const hodTitle = typeof getHODTitle === 'function' ? getHODTitle(program) : 'HOD';
+        const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
+        const blockValue = student?.block || student?.term || 'N/A';
+        const studentTypeBadge = isTVET ? 
+            `<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">TVET</span>` :
+            `<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">KRCHN</span>`;
+        
+        const totalCredits = registrations.reduce((sum, unit) => sum + (unit.credits || 3), 0);
+        
+        let tableRows = '';
+        registrations.forEach((unit, index) => {
+            const unitName = unit.unit_name || unit.name || 'N/A';
+            const unitCode = unit.unit_code || unit.code || 'N/A';
+            const regType = unit.reg_type || 'Supplementary';
+            const credits = unit.credits || 3;
+            const status = unit.status || 'Approved';
+            
+            tableRows += `
+                <tr>
+                    <td class="text-center">${index + 1}</td>
+                    <td><strong>${escapeHtml(unitCode)}</strong></td>
+                    <td>${escapeHtml(unitName)}</td>
+                    <td class="text-center">${credits}</td>
+                    <td class="text-center">
+                        <span style="background: ${regType === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 2px 10px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
+                            ${regType}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <span style="background: ${status === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${status === 'pending' ? '#92400e' : '#065f46'}; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
+                            ${status === 'pending' ? '⏳ Pending' : '✅ Approved'}
+                        </span>
+                    </td>
+                    <td class="signature-cell">
+                        <div class="signature-line"></div>
+                        <span style="font-size: 9px; color: #94a3b8;">Lecturer's Signature</span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Supplementary Exam Card - ${escapeHtml(student?.full_name || 'Student')}</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; 
+                padding: 40px; 
+                background: #f8fafc; 
+            }
+            .exam-card-wrapper { 
+                max-width: 900px; 
+                margin: 0 auto; 
+            }
+            .exam-card-compact { 
+                background: white; 
+                border: 1px solid #e2e8f0; 
+                border-radius: 12px; 
+                overflow: hidden; 
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            }
+            .card-header { 
+                background: linear-gradient(135deg, #1e3a5f, #2c5a8c); 
+                color: white; 
+                padding: 15px 20px; 
+                display: flex; 
+                align-items: center; 
+                gap: 15px; 
+            }
+            .card-logo { 
+                height: 55px; 
+                width: auto; 
+                background: white; 
+                padding: 5px; 
+                border-radius: 8px; 
+                object-fit: contain; 
+            }
+            .header-text { flex: 1; }
+            .institution { 
+                font-size: 12px; 
+                opacity: 0.9; 
+                letter-spacing: 0.5px; 
+            }
+            .card-title { 
+                font-size: 22px; 
+                font-weight: 800; 
+                letter-spacing: 1px; 
+                margin-top: 2px; 
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .card-subtitle { 
+                font-size: 10px; 
+                opacity: 0.8; 
+                margin-top: 2px; 
+            }
+            .status-badge { 
+                padding: 5px 15px; 
+                border-radius: 20px; 
+                font-size: 12px; 
+                font-weight: 700; 
+                background: #10b981;
+                white-space: nowrap; 
+            }
+            .info-grid { 
+                display: grid; 
+                grid-template-columns: repeat(3, 1fr); 
+                gap: 10px 20px; 
+                padding: 15px 20px; 
+                background: #f8fafc; 
+                border-bottom: 1px solid #e2e8f0; 
+                font-size: 12px; 
+            }
+            .info-item { color: #334155; }
+            .info-label { 
+                font-weight: 600; 
+                color: #64748b; 
+                margin-right: 8px; 
+            }
+            .units-table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                font-size: 11px; 
+            }
+            .units-table th { 
+                background: #f1f5f9; 
+                padding: 10px 8px; 
+                text-align: left; 
+                font-weight: 700; 
+                border-bottom: 2px solid #cbd5e1; 
+            }
+            .units-table td { 
+                padding: 10px 8px; 
+                border-bottom: 1px solid #e2e8f0; 
+                vertical-align: middle; 
+            }
+            .text-center { text-align: center; }
+            
+            .signature-cell { 
+                text-align: center;
+                vertical-align: middle;
+                padding: 5px 0;
+            }
+            .signature-line { 
+                width: 90%; 
+                margin: 8px auto; 
+                border-top: 2px solid #000; 
+                height: 2px;
+            }
+            .signature-cell span {
+                display: block;
+                margin-top: 2px;
+            }
+            
+            .total-row { 
+                background: #f8fafc; 
+                font-weight: 600; 
+                border-top: 2px solid #cbd5e1; 
+            }
+            .signatures-row { 
+                display: flex; 
+                justify-content: space-between; 
+                padding: 15px 20px; 
+                gap: 20px; 
+                border-top: 1px solid #e2e8f0; 
+                background: white; 
+            }
+            .signature { 
+                flex: 1; 
+                text-align: center; 
+                font-size: 11px; 
+                color: #475569; 
+            }
+            .sign-line { 
+                width: 80%; 
+                margin: 8px auto; 
+                border-top: 2px solid #000; 
+                height: 2px;
+                padding-top: 12px; 
+            }
+            .card-footer { 
+                padding: 15px 20px; 
+                background: #fefce8; 
+                border-top: 1px solid #e2e8f0; 
+            }
+            .rules-header { 
+                font-weight: 700; 
+                font-size: 12px; 
+                color: #854d0e; 
+                margin-bottom: 10px; 
+            }
+            .rules-list { margin-bottom: 15px; }
+            .rule-item { 
+                font-size: 10px; 
+                color: #713f12; 
+                margin-bottom: 4px; 
+            }
+            .student-section { 
+                border-top: 1px dashed #e2e8f0; 
+                padding-top: 12px; 
+                margin-top: 5px; 
+            }
+            .student-declaration { 
+                font-size: 10px; 
+                color: #475569; 
+                margin: 10px 0; 
+                text-align: center; 
+            }
+            .student-sign-line { 
+                display: flex; 
+                align-items: center; 
+                gap: 10px; 
+                margin: 12px 0 8px 0; 
+            }
+            .student-label { 
+                font-weight: 600; 
+                font-size: 11px; 
+                color: #334155; 
+                min-width: 110px; 
+            }
+            .student-date {
+                font-size: 11px;
+                color: #64748b;
+                margin-left: auto;
+            }
+            .signature-line-inline { 
+                display: inline-block; 
+                flex: 1; 
+                border-top: 2px solid #000; 
+                max-width: 60%; 
+                height: 2px;
+            }
+            @media print {
+                body * { visibility: hidden; }
+                .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
+                .exam-card-wrapper { 
+                    position: absolute; 
+                    top: 0; 
+                    left: 0; 
+                    width: 100%; 
+                    margin: 0; 
+                    padding: 10px; 
+                }
+                .card-header { 
+                    background: #1e3a5f !important; 
+                    -webkit-print-color-adjust: exact; 
+                    print-color-adjust: exact; 
+                }
+                .status-badge { 
+                    background: #10b981 !important; 
+                    -webkit-print-color-adjust: exact; 
+                    print-color-adjust: exact; 
+                }
+                .signature-line, .sign-line, .signature-line-inline { 
+                    border-top: 2px solid #000 !important;
+                    -webkit-print-color-adjust: exact; 
+                    print-color-adjust: exact; 
+                }
+                .exam-card-compact {
+                    border: 1px solid #000 !important;
+                    border-radius: 0 !important;
+                }
+            }
+            @media (max-width: 600px) {
+                .info-grid { 
+                    grid-template-columns: repeat(2, 1fr); 
+                    gap: 6px 10px; 
+                    padding: 10px 15px; 
+                }
+                .card-header { 
+                    padding: 10px 15px; 
+                    gap: 10px; 
+                }
+                .card-logo { height: 40px; }
+                .card-title { font-size: 16px; }
+                .signatures-row { 
+                    flex-direction: column; 
+                    gap: 15px; 
+                }
+                .student-sign-line {
+                    flex-wrap: wrap;
+                }
+                .student-date {
+                    margin-left: 0;
+                    width: 100%;
+                    text-align: center;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="exam-card-wrapper">
+            <div class="exam-card-compact">
+                <!-- Header -->
+                <div class="card-header">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
+                    <div class="header-text">
+                        <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
+                        <div class="card-title">
+                            SUPPLEMENTARY / RETAKE EXAM CARD
+                            ${studentTypeBadge}
+                        </div>
+                        <div class="card-subtitle">(Exam Entry Permit)</div>
+                    </div>
+                    <div class="status-badge">✅ ELIGIBLE</div>
+                </div>
+                
+                <!-- Info Grid -->
+                <div class="info-grid">
+                    <div class="info-item"><span class="info-label">Name:</span> ${escapeHtml(student?.full_name || 'Not Available')}</div>
+                    <div class="info-item"><span class="info-label">REG NO.:</span> ${escapeHtml(student?.student_id || student?.admission_number || 'N/A')}</div>
+                    <div class="info-item"><span class="info-label">Program:</span> ${escapeHtml(student?.program || 'N/A')}</div>
+                    <div class="info-item"><span class="info-label">${blockLabel}</span> <strong>${escapeHtml(blockValue)}</strong></div>
+                    <div class="info-item"><span class="info-label">Registered Units:</span> <strong>${registrations.length}</strong></div>
+                    <div class="info-item"><span class="info-label">Total Credits:</span> <strong>${totalCredits}</strong></div>
+                    <div class="info-item"><span class="info-label">Date Issued:</span> ${today}</div>
+                    <div class="info-item"><span class="info-label">Valid Until:</span> End of Exam Period</div>
+                </div>
+                
+                <!-- Units Table -->
+                <table class="units-table">
+                    <thead>
+                        <tr>
+                            <th width="5%">#</th>
+                            <th width="15%">Unit Code</th>
+                            <th width="30%">Unit Title</th>
+                            <th width="7%">Cr</th>
+                            <th width="10%">Type</th>
+                            <th width="15%">Status</th>
+                            <th width="18%">Lecturer's Signature</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                        <tr class="total-row">
+                            <td colspan="3"><strong>TOTAL REGISTERED UNITS: ${registrations.length}</strong></td>
+                            <td class="text-center"><strong>${totalCredits}</strong></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <!-- Signatures -->
+                <div class="signatures-row">
+                    <div class="signature">
+                        <div class="sign-line"></div>
+                        <div style="font-weight: 600; font-size: 12px;">${hodTitle}</div>
+                        <div style="font-size: 9px; color: #94a3b8;">Head of Department</div>
+                    </div>
+                    <div class="signature">
+                        <div class="sign-line"></div>
+                        <div style="font-weight: 600; font-size: 12px;">Principal</div>
+                        <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
+                    </div>
+                    <div class="signature">
+                        <div class="sign-line"></div>
+                        <div style="font-weight: 600; font-size: 12px;">Finance Officer</div>
+                        <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="card-footer">
+                    <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
+                    <div class="rules-list">
+                        <div class="rule-item">• Present your exam card at each examination hall</div>
+                        <div class="rule-item">• No electronic devices allowed in examination room</div>
+                        <div class="rule-item">• Arrive 30 minutes before examination start time</div>
+                        <div class="rule-item">• Mobile phones must be switched off and stored</div>
+                        <div class="rule-item">• No unauthorized materials allowed</div>
+                    </div>
+                    
+                    <div class="student-section">
+                        <div class="student-declaration">
+                            I hereby confirm that I have read and understood the examination rules and regulations.
+                        </div>
+                        
+                        <div class="student-sign-line">
+                            <span class="student-label">Student Signature:</span>
+                            <span class="signature-line-inline"></span>
+                            <span class="student-date">Date: ${today}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            setTimeout(function() {
+                window.print();
+            }, 1500);
+        <\/script>
+    </body>
+    </html>
+        `;
+    }
+    
+    /**
+     * Escape HTML helper
+     */
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    
+    /**
+     * Check if student is TVET
+     */
+    function isTVETStudent(program) {
+        if (!program) return false;
+        const tvetPrograms = [
+            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+            'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
+        ];
+        return tvetPrograms.includes(program) || program === 'TVET';
+    }
+    
+    /**
+     * Get HOD Title based on program
+     */
+    function getHODTitle(program) {
+        if (!program) return 'HOD';
+        const programUpper = program.toUpperCase().trim();
+        const tvetPrograms = [
+            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+            'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
+        ];
+        
+        if (tvetPrograms.includes(programUpper)) {
+            return `HOD ${programUpper}`;
+        }
+        if (programUpper === 'KRCHN' || programUpper.includes('NURSING')) {
+            return 'HOD Nursing';
+        }
+        if (programUpper.length <= 6) {
+            return `HOD ${programUpper}`;
+        }
+        return program ? `HOD ${program}` : 'HOD';
+    }
+    
+    // ============================================================
+    // DOWNLOAD SUPPLEMENTARY EXAM CARD - FIXED (Only Failed + Pending)
+    // ============================================================
+    
+    window.downloadSupplementaryExamCard = async function() {
+        console.log('📄 Generating Supplementary Exam Card...');
+        
+        // Show progress overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'examCardProgressOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            backdrop-filter: blur(4px);
+        `;
+        overlay.innerHTML = `
+            <div style="background:white;border-radius:16px;padding:30px 40px;max-width:350px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+                <div style="margin-bottom:15px;">
+                    <div style="width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:#B45309;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto;"></div>
+                </div>
+                <h3 style="color:#0A3D62;font-size:16px;">📄 Generating Supplementary Exam Card</h3>
+                <p style="color:#64748b;font-size:13px;" id="progressStatus">Loading your units...</p>
+                <div style="width:100%;height:5px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:10px;">
+                    <div id="progressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#B45309,#D97706);border-radius:4px;transition:width 0.3s ease;"></div>
+                </div>
+                <p id="progressPercent" style="margin:6px 0 0 0;font-size:11px;color:#94a3b8;font-weight:600;">0%</p>
+            </div>
+        `;
+        
+        const style = document.createElement('style');
+        style.textContent = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+        overlay.appendChild(style);
+        document.body.appendChild(overlay);
+        
+        const updateProgress = (percent, status) => {
+            const bar = document.getElementById('progressBar');
+            const percentText = document.getElementById('progressPercent');
+            const statusText = document.getElementById('progressStatus');
+            if (bar) bar.style.width = Math.min(percent, 100) + '%';
+            if (percentText) percentText.textContent = Math.min(percent, 100) + '%';
+            if (statusText && status) statusText.textContent = status;
+        };
+        
+        try {
+            updateProgress(10, 'Verifying user...');
+            
+            const user = window.currentUserProfile || window.userProfile;
+            const userId = user?.user_id || user?.id;
+            const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
+            
+            if (!userId) {
+                throw new Error('User not found');
+            }
+            
+            updateProgress(20, 'Connecting to database...');
+            
+            const supabase = window.sb || window.supabase;
+            if (!supabase) {
+                throw new Error('Database not available');
+            }
+            
+            updateProgress(30, 'Fetching your units...');
+            
+            // Get ALL approved supplementary/retake units
+            const { data: allRegs, error } = await supabase
+                .from('student_unit_registrations')
+                .select('*')
+                .eq('student_id', userId)
+                .in('reg_type', ['Supplementary', 'Retake'])
+                .eq('status', 'approved')
+                .order('submitted_date', { ascending: false });
+            
+            if (error) throw error;
+            
+            // ✅ Get published marks for this student
+            let publishedGrades = new Map();
+            let failedUnits = new Set();
+            
+            if (admissionNumber) {
+                const { data: marks, error: marksError } = await supabase
+                    .from('student_marks')
+                    .select('subject_name, final_score, grade, published')
+                    .eq('admission_number', admissionNumber)
+                    .eq('published', true);
+                
+                if (!marksError && marks) {
+                    // Build catalog mapping
+                    const { data: catalog } = await supabase
+                        .from('units_catalog')
+                        .select('unit_code, unit_name')
+                        .eq('program', user?.program || 'KRCHN');
+                    
+                    const catalogMap = {};
+                    if (catalog) {
+                        catalog.forEach(u => {
+                            catalogMap[u.unit_name] = u.unit_code;
+                        });
+                    }
+                    
+                    const failingGrades = ['D', 'E', 'F', 'FAIL'];
+                    
+                    marks.forEach(mark => {
+                        let unitCode = null;
+                        for (const [name, code] of Object.entries(catalogMap)) {
+                            if (mark.subject_name.includes(name) || name.includes(mark.subject_name)) {
+                                unitCode = code;
+                                break;
+                            }
+                        }
+                        if (unitCode) {
+                            const grade = mark.grade || '';
+                            if (failingGrades.includes(grade.toUpperCase())) {
+                                failedUnits.add(unitCode);
+                            }
+                            publishedGrades.set(unitCode, {
+                                grade: grade,
+                                score: mark.final_score || 0,
+                                subject_name: mark.subject_name
+                            });
+                        }
+                    });
+                }
+            }
+            
+            // ✅ FILTER: Only keep FAILED units OR units with NO grade
+            const passingGrades = ['A', 'B', 'C', 'PASS'];
+            const registrations = (allRegs || []).filter(unit => {
+                // Check if this unit has a published mark
+                const publishedMark = publishedGrades.get(unit.unit_code);
+                
+                if (!publishedMark) {
+                    console.log(`   ✅ ${unit.unit_code} - No published mark (pending)`);
+                    return true;
+                }
+                
+                const grade = publishedMark.grade || '';
+                if (failedUnits.has(unit.unit_code)) {
+                    console.log(`   ✅ ${unit.unit_code} - Grade ${grade} (FAILED) - INCLUDED`);
+                    return true;
+                }
+                if (passingGrades.includes(grade.toUpperCase())) {
+                    console.log(`   ❌ ${unit.unit_code} - Grade ${grade} (PASSED) - EXCLUDED`);
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            if (!registrations || registrations.length === 0) {
+                updateProgress(100, 'No units found');
+                await new Promise(r => setTimeout(r, 300));
+                overlay.remove();
+                alert('No failed supplementary/retake units found.');
+                return;
+            }
+            
+            console.log(`✅ Found ${registrations.length} failed/pending supplementary/retake units`);
+            updateProgress(50, `Found ${registrations.length} unit(s)`);
+            
+            updateProgress(60, 'Generating exam card...');
+            const html = generateSupplementaryExamCardHTML(registrations, user);
+            
+            updateProgress(80, 'Opening print window...');
+            const win = window.open('', '_blank', 'width=794,height=1123');
+            if (!win) {
+                updateProgress(100, 'Popup blocked');
+                await new Promise(r => setTimeout(r, 300));
+                overlay.remove();
+                alert('Please allow popups to view the exam card.');
+                return;
+            }
+            
+            updateProgress(90, 'Rendering...');
+            win.document.write(html);
+            win.document.close();
+            
+            updateProgress(100, '✅ Done!');
             await new Promise(r => setTimeout(r, 300));
             overlay.remove();
-            alert('No failed supplementary/retake units found.');
-            return;
-        }
-        
-        console.log(`✅ Found ${registrations.length} failed/pending supplementary/retake units`);
-        updateProgress(50, `Found ${registrations.length} unit(s)`);
-        
-        updateProgress(60, 'Generating exam card...');
-        const html = generateSupplementaryExamCardHTML(registrations, user);
-        
-        updateProgress(80, 'Opening print window...');
-        const win = window.open('', '_blank', 'width=794,height=1123');
-        if (!win) {
-            updateProgress(100, 'Popup blocked');
+            
+            setTimeout(() => {
+                win.print();
+            }, 1000);
+            
+        } catch (error) {
+            console.error('❌ Error:', error);
+            updateProgress(100, '❌ Error');
             await new Promise(r => setTimeout(r, 300));
             overlay.remove();
-            alert('Please allow popups to view the exam card.');
-            return;
+            alert('Failed to generate exam card: ' + error.message);
         }
-        
-        updateProgress(90, 'Rendering...');
-        win.document.write(html);
-        win.document.close();
-        
-        updateProgress(100, '✅ Done!');
-        await new Promise(r => setTimeout(r, 300));
-        overlay.remove();
-        
-        setTimeout(() => {
-            win.print();
-        }, 1000);
-        
-    } catch (error) {
-        console.error('❌ Error:', error);
-        updateProgress(100, '❌ Error');
-        await new Promise(r => setTimeout(r, 300));
-        overlay.remove();
-        alert('Failed to generate exam card: ' + error.message);
-    }
-};
-// ============================================================
-// INITIALIZE ON PAGE LOAD
-// ============================================================
-
-// Call updateSupplementaryDownloadButton when dashboard is ready
-setTimeout(() => {
-    if (typeof window.updateSupplementaryDownloadButton === 'function') {
-        window.updateSupplementaryDownloadButton();
-    }
-}, 1500);
-
-console.log('✅ Supplementary Exam Card functions loaded!');
-console.log('📌 Click "Download Exam Card" in Supplementary tab');
-console.log('📊 Shows ONLY approved units WITHOUT grades');
+    };
+    
+    // ============================================================
+    // INITIALIZE ON PAGE LOAD
+    // ============================================================
+    
+    // Call updateSupplementaryDownloadButton when dashboard is ready
+    setTimeout(() => {
+        if (typeof window.updateSupplementaryDownloadButton === 'function') {
+            window.updateSupplementaryDownloadButton();
+        }
+    }, 1500);
+    
+    console.log('✅ Supplementary Exam Card functions loaded!');
+    console.log('📌 Click "Download Exam Card" in Supplementary tab');
+    console.log('📊 Shows ONLY approved units WITHOUT grades');
+    
 })();
