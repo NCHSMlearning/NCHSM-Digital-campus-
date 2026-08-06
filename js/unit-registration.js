@@ -1,12 +1,12 @@
 // ============================================================
 // STUDENT DASHBOARD - UNIT REGISTRATION WITH SUPPLEMENTARY SUPPORT
-// COMPLETELY REBUILT - v3.0
+// COMPLETELY REBUILT - v3.1 (FIXED CACHE ISSUES)
 // ============================================================
 
 (function() {
     'use strict';
     
-    console.log('✅ Student Dashboard v3.0 loading...');
+    console.log('✅ Student Dashboard v3.1 loading...');
     
     // ============================================================
     // MAIN STUDENT CONTROLLER
@@ -14,7 +14,7 @@
     
     class StudentDashboard {
         constructor() {
-            console.log('🔧 Initializing Student Dashboard v3.0...');
+            console.log('🔧 Initializing Student Dashboard v3.1...');
             
             // User data
             this.userProfile = null;
@@ -532,7 +532,7 @@
         }
         
         // ============================================================
-        // LOAD UNITS - REGULAR REGISTRATION
+        // LOAD UNITS - REGULAR REGISTRATION (FIXED)
         // ============================================================
         
         async loadUnits() {
@@ -550,6 +550,7 @@
                     return;
                 }
                 
+                // ✅ FIX: Always refresh registered units first
                 await this.loadRegisteredUnits(supabase);
                 await this.loadAvailableUnits(supabase);
                 await this.loadMaxUnits(supabase);
@@ -562,6 +563,10 @@
             }
         }
         
+        // ============================================================
+        // LOAD REGISTERED UNITS (FIXED)
+        // ============================================================
+        
         async loadRegisteredUnits(supabase) {
             try {
                 const { data, error } = await supabase
@@ -573,6 +578,7 @@
                 if (error) throw error;
                 
                 this.registeredUnits = data || [];
+                console.log(`📊 Loaded ${this.registeredUnits.length} registered units`);
                 this.displayRegisteredUnits();
                 
             } catch (error) {
@@ -582,63 +588,79 @@
             }
         }
         
-       async loadAvailableUnits(supabase) {
-    const regType = this.regType?.value;
-    
-    if (!regType) {
-        if (this.availableBody) {
-            this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Select Registration Type first</td></tr>';
+        // ============================================================
+        // LOAD AVAILABLE UNITS - FIXED (Direct Database Query)
+        // ============================================================
+        
+        async loadAvailableUnits(supabase) {
+            const regType = this.regType?.value;
+            
+            if (!regType) {
+                if (this.availableBody) {
+                    this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Select Registration Type first</td></tr>';
+                }
+                return;
+            }
+            
+            try {
+                console.log('🔄 Loading fresh available units from database...');
+                
+                // ✅ FIX: Get fresh data from database directly
+                const { data: freshRegs, error: regError } = await supabase
+                    .from('student_unit_registrations')
+                    .select('unit_code, status')
+                    .eq('student_id', this.studentId);
+                
+                if (regError) throw regError;
+                
+                // Update cache with fresh data
+                this.registeredUnits = freshRegs || [];
+                
+                // Build query for catalog
+                let query = supabase
+                    .from('units_catalog')
+                    .select('*')
+                    .eq('status', 'active');
+                
+                if (this.programCode) {
+                    query = query.eq('program', this.isTVETStudent ? this.programCode : 'KRCHN');
+                }
+                
+                const block = this.blockFilter?.value;
+                if (block && block !== "") {
+                    query = query.eq('block', block);
+                }
+                
+                const unitType = this.unitTypeFilter?.value;
+                if (unitType && unitType !== "") {
+                    query = query.eq('unit_type', unitType);
+                }
+                
+                const { data, error } = await query.order('block').order('unit_code');
+                
+                if (error) throw error;
+                
+                this.allUnits = data || [];
+                
+                // ✅ Filter out registered units using fresh data
+                const registeredCodes = new Set(this.registeredUnits.map(u => u.unit_code));
+                this.allUnits = this.allUnits.filter(u => !registeredCodes.has(u.unit_code));
+                
+                console.log(`📊 Available units: ${this.allUnits.length}`);
+                this.displayAvailableUnits();
+                
+            } catch (error) {
+                console.error('Error loading available units:', error);
+                if (this.availableBody) {
+                    this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Error loading units</td></tr>';
+                }
+            }
         }
-        return;
-    }
-    
-    try {
-        // ✅ FIX: Ensure registeredUnits exists
-        if (!this.registeredUnits) {
-            this.registeredUnits = [];
-        }
         
-        // ✅ FIX: Reload registered units first
-        await this.loadRegisteredUnits(supabase);
+        // ============================================================
+        // LOAD MAX UNITS
+        // ============================================================
         
-        let query = supabase
-            .from('units_catalog')
-            .select('*')
-            .eq('status', 'active');
-        
-        if (this.programCode) {
-            query = query.eq('program', this.isTVETStudent ? this.programCode : 'KRCHN');
-        }
-        
-        const block = this.blockFilter?.value;
-        if (block && block !== "") {
-            query = query.eq('block', block);
-        }
-        
-        const unitType = this.unitTypeFilter?.value;
-        if (unitType && unitType !== "") {
-            query = query.eq('unit_type', unitType);
-        }
-        
-        const { data, error } = await query.order('block').order('unit_code');
-        
-        if (error) throw error;
-        
-        this.allUnits = data || [];
-        
-        // ✅ FIX: Use safe array
-        const registeredCodes = new Set((this.registeredUnits || []).map(u => u.unit_code));
-        this.allUnits = this.allUnits.filter(u => !registeredCodes.has(u.unit_code));
-        
-        this.displayAvailableUnits();
-        
-    } catch (error) {
-        console.error('Error loading available units:', error);
-        if (this.availableBody) {
-            this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Error loading units</td></tr>';
-        }
-    }
-}
         async loadMaxUnits(supabase) {
             try {
                 const { data, error } = await supabase
@@ -657,6 +679,10 @@
             const maxUnitsSpan = document.getElementById('maxUnitsAllowed');
             if (maxUnitsSpan) maxUnitsSpan.textContent = this.maxUnits;
         }
+        
+        // ============================================================
+        // LOAD BLOCKS
+        // ============================================================
         
         async loadBlocks(supabase) {
             try {
@@ -694,7 +720,7 @@
         }
         
         // ============================================================
-        // DISPLAY FUNCTIONS - REGULAR REGISTRATION
+        // DISPLAY FUNCTIONS - REGULAR REGISTRATION (FIXED)
         // ============================================================
         
         displayAvailableUnits() {
@@ -714,9 +740,13 @@
                 return;
             }
             
+            // ✅ FIX: Use fresh registeredUnits
+            const registeredCodes = new Set(this.registeredUnits.map(u => u.unit_code));
+            
             let html = '';
             for (const unit of displayUnits) {
-                const isRegistered = this.registeredUnits.some(u => u.unit_code === unit.unit_code);
+                // ✅ Check if registered using fresh data
+                const isRegistered = registeredCodes.has(unit.unit_code);
                 const isFailed = this.failedUnits.some(u => u.unit_code === unit.unit_code);
                 const suppBadge = isFailed && !isRegistered ? 
                     '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:12px; font-size:9px; font-weight:600; margin-left:4px;">Retake</span>' : '';
@@ -736,6 +766,10 @@
             this.updateSelectedCount();
             this.attachCheckboxEvents();
         }
+        
+        // ============================================================
+        // DISPLAY REGISTERED UNITS
+        // ============================================================
         
         displayRegisteredUnits() {
             if (!this.registeredBody) return;
@@ -849,146 +883,147 @@
             this.updateSelectedCount();
         }
         
-       // ============================================================
-// SUBMIT REGISTRATION - FIXED (Checks Database Directly)
-// ============================================================
-
-async submitRegistration() {
-    if (this.isSubmitting) {
-        this.showError('Please wait...', 'warning');
-        return;
-    }
-    
-    const regType = this.regType?.value;
-    if (!regType) {
-        this.showError('Select Registration Type', 'warning');
-        return;
-    }
-    
-    const selectedCheckboxes = document.querySelectorAll('.unit-checkbox:checked');
-    const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.dataset.code);
-    
-    if (selectedCodes.length === 0) {
-        this.showError('No units selected', 'warning');
-        return;
-    }
-    
-    if (!confirm(`Submit ${selectedCodes.length} unit(s) for ${regType}?`)) return;
-    
-    this.isSubmitting = true;
-    if (this.submitBtn) {
-        this.submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-        this.submitBtn.disabled = true;
-    }
-    
-    try {
-        const supabase = this.getSupabase();
-        if (!supabase) throw new Error('Database not available');
+        // ============================================================
+        // SUBMIT REGISTRATION - FIXED (Checks Database Directly)
+        // ============================================================
         
-        // ✅ FIX: Check database directly for each unit
-        const alreadyRegistered = [];
-        const newUnits = [];
-        
-        for (const code of selectedCodes) {
-            const { data: existing, error } = await supabase
-                .from('student_unit_registrations')
-                .select('id, status')
-                .eq('student_id', this.studentId)
-                .eq('unit_code', code)
-                .maybeSingle();
-            
-            if (existing && (existing.status === 'pending' || existing.status === 'approved')) {
-                alreadyRegistered.push(code);
-            } else {
-                newUnits.push(code);
-            }
-        }
-        
-        if (newUnits.length === 0) {
-            this.showError('All selected units are already registered.', 'warning');
-            document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
-            this.updateSelectedCount();
-            return;
-        }
-        
-        // ✅ Refresh registered units count
-        await this.loadRegisteredUnits(supabase);
-        const currentTotal = this.registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length;
-        
-        if (newUnits.length + currentTotal > this.maxUnits) {
-            this.showError(`You can only register up to ${this.maxUnits} units total.`, 'warning');
-            return;
-        }
-        
-        const { data: units, error: unitsError } = await supabase
-            .from('units_catalog')
-            .select('*')
-            .in('unit_code', newUnits);
-        
-        if (unitsError) throw unitsError;
-        
-        // ✅ TVET fix
-        const academicYear = new Date().getFullYear().toString();
-        const isTVET = this.isTVETStudent || TVET_PROGRAMS.includes(this.programCode);
-        
-        let term = this.getCurrentTerm();
-        if (isTVET) {
-            term = this.userProfile?.block || 
-                   this.userProfile?.current_block || 
-                   this.userProfile?.term || 
-                   'Year 1 Term 1';
-        }
-        
-        const registrations = units.map(unit => ({
-            student_id: this.studentId,
-            unit_code: unit.unit_code,
-            unit_name: unit.unit_name,
-            program: unit.program || this.programCode,
-            block: unit.block || this.userProfile?.block || (isTVET ? 'Year 1 Term 1' : 'Introductory'),
-            reg_type: regType,
-            status: 'pending',
-            submitted_date: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            credits: unit.credits || 3,
-            intake_year: this.intakeYear,
-            academic_year: parseInt(academicYear),
-            term: term
-        }));
-        
-        const { error } = await supabase
-            .from('student_unit_registrations')
-            .insert(registrations);
-        
-        if (error) {
-            if (error.code === '23505') {
-                // If duplicate, refresh and try to identify
-                await this.loadRegisteredUnits(supabase);
-                this.showError('This unit is already registered. Please refresh and check your registered units.', 'warning');
+        async submitRegistration() {
+            if (this.isSubmitting) {
+                this.showError('Please wait...', 'warning');
                 return;
             }
-            throw error;
+            
+            const regType = this.regType?.value;
+            if (!regType) {
+                this.showError('Select Registration Type', 'warning');
+                return;
+            }
+            
+            const selectedCheckboxes = document.querySelectorAll('.unit-checkbox:checked');
+            const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.dataset.code);
+            
+            if (selectedCodes.length === 0) {
+                this.showError('No units selected', 'warning');
+                return;
+            }
+            
+            if (!confirm(`Submit ${selectedCodes.length} unit(s) for ${regType}?`)) return;
+            
+            this.isSubmitting = true;
+            if (this.submitBtn) {
+                this.submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+                this.submitBtn.disabled = true;
+            }
+            
+            try {
+                const supabase = this.getSupabase();
+                if (!supabase) throw new Error('Database not available');
+                
+                // ✅ FIX: Check database directly for each unit
+                const alreadyRegistered = [];
+                const newUnits = [];
+                
+                for (const code of selectedCodes) {
+                    const { data: existing, error } = await supabase
+                        .from('student_unit_registrations')
+                        .select('id, status')
+                        .eq('student_id', this.studentId)
+                        .eq('unit_code', code)
+                        .maybeSingle();
+                    
+                    if (existing && (existing.status === 'pending' || existing.status === 'approved')) {
+                        alreadyRegistered.push(code);
+                    } else {
+                        newUnits.push(code);
+                    }
+                }
+                
+                if (newUnits.length === 0) {
+                    this.showError('All selected units are already registered.', 'warning');
+                    document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
+                    this.updateSelectedCount();
+                    return;
+                }
+                
+                // ✅ Refresh registered units count
+                await this.loadRegisteredUnits(supabase);
+                const currentTotal = this.registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length;
+                
+                if (newUnits.length + currentTotal > this.maxUnits) {
+                    this.showError(`You can only register up to ${this.maxUnits} units total.`, 'warning');
+                    return;
+                }
+                
+                const { data: units, error: unitsError } = await supabase
+                    .from('units_catalog')
+                    .select('*')
+                    .in('unit_code', newUnits);
+                
+                if (unitsError) throw unitsError;
+                
+                // ✅ TVET fix
+                const academicYear = new Date().getFullYear().toString();
+                const isTVET = this.isTVETStudent || TVET_PROGRAMS.includes(this.programCode);
+                
+                let term = this.getCurrentTerm();
+                if (isTVET) {
+                    term = this.userProfile?.block || 
+                           this.userProfile?.current_block || 
+                           this.userProfile?.term || 
+                           'Year 1 Term 1';
+                }
+                
+                const registrations = units.map(unit => ({
+                    student_id: this.studentId,
+                    unit_code: unit.unit_code,
+                    unit_name: unit.unit_name,
+                    program: unit.program || this.programCode,
+                    block: unit.block || this.userProfile?.block || (isTVET ? 'Year 1 Term 1' : 'Introductory'),
+                    reg_type: regType,
+                    status: 'pending',
+                    submitted_date: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    credits: unit.credits || 3,
+                    intake_year: this.intakeYear,
+                    academic_year: parseInt(academicYear),
+                    term: term
+                }));
+                
+                const { error } = await supabase
+                    .from('student_unit_registrations')
+                    .insert(registrations);
+                
+                if (error) {
+                    if (error.code === '23505') {
+                        // If duplicate, refresh and try to identify
+                        await this.loadRegisteredUnits(supabase);
+                        this.showError('This unit is already registered. Please refresh and check your registered units.', 'warning');
+                        return;
+                    }
+                    throw error;
+                }
+                
+                this.showSuccess(`${registrations.length} unit(s) submitted for ${regType} approval!`);
+                
+                document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
+                if (this.selectAllCheckbox) this.selectAllCheckbox.checked = false;
+                this.updateSelectedCount();
+                
+                await this.loadUnits();
+                
+            } catch (error) {
+                console.error('Error submitting registration:', error);
+                this.showError(`Failed to submit: ${error.message}`, 'error');
+            } finally {
+                this.isSubmitting = false;
+                if (this.submitBtn) {
+                    this.submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit';
+                    this.submitBtn.disabled = false;
+                }
+            }
         }
         
-        this.showSuccess(`${registrations.length} unit(s) submitted for ${regType} approval!`);
-        
-        document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
-        if (this.selectAllCheckbox) this.selectAllCheckbox.checked = false;
-        this.updateSelectedCount();
-        
-        await this.loadUnits();
-        
-    } catch (error) {
-        console.error('Error submitting registration:', error);
-        this.showError(`Failed to submit: ${error.message}`, 'error');
-    } finally {
-        this.isSubmitting = false;
-        if (this.submitBtn) {
-            this.submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit';
-            this.submitBtn.disabled = false;
-        }
-    }
-}
         // ============================================================
         // GET CURRENT TERM
         // ============================================================
@@ -1461,160 +1496,157 @@ async submitRegistration() {
         }
         
         // ============================================================
-        // REGISTER SUPPLEMENTARY UNITS
+        // REGISTER SUPPLEMENTARY UNITS - FIXED FOR TVET
         // ============================================================
         
-      // ============================================================
-// REGISTER SUPPLEMENTARY UNITS - FIXED FOR TVET
-// ============================================================
-
-async registerSupplementaryUnits() {
-    const regType = this.suppRegType?.value;
-    if (!regType) {
-        this.showError('Please select a registration type.', 'warning');
-        return;
-    }
-    
-    const selectedCheckboxes = document.querySelectorAll('.supp-unit-checkbox:checked');
-    if (selectedCheckboxes.length === 0) {
-        this.showError('Please select at least one unit.', 'warning');
-        return;
-    }
-    
-    if (selectedCheckboxes.length > 8) {
-        this.showError('Maximum 8 units allowed.', 'warning');
-        return;
-    }
-    
-    const selectedUnits = [];
-    selectedCheckboxes.forEach(cb => {
-        try {
-            const unit = JSON.parse(cb.dataset.unit);
-            selectedUnits.push(unit);
-        } catch (e) {
-            console.error('Error parsing unit:', e);
-        }
-    });
-    
-    if (!confirm(`Register ${selectedUnits.length} unit(s) for ${regType}?`)) return;
-    
-    this.isSubmitting = true;
-    if (this.registerSuppBtn) {
-        this.registerSuppBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-        this.registerSuppBtn.disabled = true;
-    }
-    
-    try {
-        const supabase = this.getSupabase();
-        if (!supabase) throw new Error('Database not available');
-        
-        const user = this.userProfile || window.currentUserProfile;
-        
-        // ✅ FIX: TVET students get academic_year and term
-        const academicYear = new Date().getFullYear().toString();
-        const isTVET = this.isTVETStudent || TVET_PROGRAMS.includes(this.programCode);
-        
-        let term = this.getCurrentTerm();
-        if (isTVET) {
-            term = this.userProfile?.block || 
-                   this.userProfile?.current_block || 
-                   this.userProfile?.term || 
-                   'Year 1 Term 1';
-        }
-        
-        let successCount = 0;
-        let skippedCount = 0;
-        let errorCount = 0;
-        
-        for (const unit of selectedUnits) {
-            const { data: existing } = await supabase
-                .from('student_unit_registrations')
-                .select('id, status')
-                .eq('student_id', this.studentId)
-                .eq('unit_code', unit.unit_code)
-                .maybeSingle();
+        async registerSupplementaryUnits() {
+            const regType = this.suppRegType?.value;
+            if (!regType) {
+                this.showError('Please select a registration type.', 'warning');
+                return;
+            }
             
-            if (existing) {
-                if (existing.status === 'pending' || existing.status === 'approved') {
-                    console.log(`⚠️ ${unit.unit_code} already ${existing.status}`);
-                    skippedCount++;
-                    continue;
+            const selectedCheckboxes = document.querySelectorAll('.supp-unit-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                this.showError('Please select at least one unit.', 'warning');
+                return;
+            }
+            
+            if (selectedCheckboxes.length > 8) {
+                this.showError('Maximum 8 units allowed.', 'warning');
+                return;
+            }
+            
+            const selectedUnits = [];
+            selectedCheckboxes.forEach(cb => {
+                try {
+                    const unit = JSON.parse(cb.dataset.unit);
+                    selectedUnits.push(unit);
+                } catch (e) {
+                    console.error('Error parsing unit:', e);
+                }
+            });
+            
+            if (!confirm(`Register ${selectedUnits.length} unit(s) for ${regType}?`)) return;
+            
+            this.isSubmitting = true;
+            if (this.registerSuppBtn) {
+                this.registerSuppBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+                this.registerSuppBtn.disabled = true;
+            }
+            
+            try {
+                const supabase = this.getSupabase();
+                if (!supabase) throw new Error('Database not available');
+                
+                const user = this.userProfile || window.currentUserProfile;
+                
+                // ✅ FIX: TVET students get academic_year and term
+                const academicYear = new Date().getFullYear().toString();
+                const isTVET = this.isTVETStudent || TVET_PROGRAMS.includes(this.programCode);
+                
+                let term = this.getCurrentTerm();
+                if (isTVET) {
+                    term = this.userProfile?.block || 
+                           this.userProfile?.current_block || 
+                           this.userProfile?.term || 
+                           'Year 1 Term 1';
                 }
                 
-                const { error: updateError } = await supabase
-                    .from('student_unit_registrations')
-                    .update({
-                        reg_type: regType,
-                        status: 'pending',
-                        rejection_reason: null,
-                        submitted_date: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', existing.id);
+                let successCount = 0;
+                let skippedCount = 0;
+                let errorCount = 0;
                 
-                if (updateError) {
-                    console.error(`Error updating ${unit.unit_code}:`, updateError);
-                    errorCount++;
-                } else {
-                    successCount++;
+                for (const unit of selectedUnits) {
+                    const { data: existing } = await supabase
+                        .from('student_unit_registrations')
+                        .select('id, status')
+                        .eq('student_id', this.studentId)
+                        .eq('unit_code', unit.unit_code)
+                        .maybeSingle();
+                    
+                    if (existing) {
+                        if (existing.status === 'pending' || existing.status === 'approved') {
+                            console.log(`⚠️ ${unit.unit_code} already ${existing.status}`);
+                            skippedCount++;
+                            continue;
+                        }
+                        
+                        const { error: updateError } = await supabase
+                            .from('student_unit_registrations')
+                            .update({
+                                reg_type: regType,
+                                status: 'pending',
+                                rejection_reason: null,
+                                submitted_date: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', existing.id);
+                        
+                        if (updateError) {
+                            console.error(`Error updating ${unit.unit_code}:`, updateError);
+                            errorCount++;
+                        } else {
+                            successCount++;
+                        }
+                    } else {
+                        const registration = {
+                            student_id: this.studentId,
+                            unit_code: unit.unit_code,
+                            unit_name: unit.unit_name || unit.unit_code,
+                            program: this.programCode || user?.program || 'KRCHN',
+                            block: unit.block || user?.block || (isTVET ? 'Year 1 Term 1' : 'Introductory'),
+                            reg_type: regType,
+                            status: 'pending',
+                            submitted_date: new Date().toISOString(),
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            credits: 3,
+                            intake_year: this.intakeYear || '2025',
+                            academic_year: parseInt(academicYear),  // ✅ Integer
+                            term: term
+                        };
+                        
+                        const { error: insertError } = await supabase
+                            .from('student_unit_registrations')
+                            .insert([registration]);
+                        
+                        if (insertError) {
+                            console.error(`Error inserting ${unit.unit_code}:`, insertError);
+                            errorCount++;
+                        } else {
+                            successCount++;
+                        }
+                    }
                 }
-            } else {
-                const registration = {
-                    student_id: this.studentId,
-                    unit_code: unit.unit_code,
-                    unit_name: unit.unit_name || unit.unit_code,
-                    program: this.programCode || user?.program || 'KRCHN',
-                    block: unit.block || user?.block || (isTVET ? 'Year 1 Term 1' : 'Introductory'),
-                    reg_type: regType,
-                    status: 'pending',
-                    submitted_date: new Date().toISOString(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    credits: 3,
-                    intake_year: this.intakeYear || '2025',
-                    academic_year: parseInt(academicYear),  // ✅ Integer
-                    term: term
-                };
                 
-                const { error: insertError } = await supabase
-                    .from('student_unit_registrations')
-                    .insert([registration]);
+                if (successCount > 0) {
+                    this.showSuccess(`${successCount} unit(s) registered successfully!`);
+                } else if (skippedCount > 0 && errorCount === 0) {
+                    this.showInfo(`${skippedCount} unit(s) already registered.`);
+                } else if (errorCount > 0) {
+                    this.showError(`${errorCount} unit(s) failed to register. Contact admin.`, 'error');
+                }
                 
-                if (insertError) {
-                    console.error(`Error inserting ${unit.unit_code}:`, insertError);
-                    errorCount++;
-                } else {
-                    successCount++;
+                document.querySelectorAll('.supp-unit-checkbox:checked').forEach(cb => cb.checked = false);
+                if (this.selectAllSupp) this.selectAllSupp.checked = false;
+                this.updateSuppCount();
+                
+                await this.loadSupplementaryData();
+                await this.loadUnits();
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                this.showError(error.message, 'error');
+            } finally {
+                this.isSubmitting = false;
+                if (this.registerSuppBtn) {
+                    this.registerSuppBtn.innerHTML = '<i class="fas fa-check-circle"></i> Register Selected';
+                    this.registerSuppBtn.disabled = false;
                 }
             }
         }
         
-        if (successCount > 0) {
-            this.showSuccess(`${successCount} unit(s) registered successfully!`);
-        } else if (skippedCount > 0 && errorCount === 0) {
-            this.showInfo(`${skippedCount} unit(s) already registered.`);
-        } else if (errorCount > 0) {
-            this.showError(`${errorCount} unit(s) failed to register. Contact admin.`, 'error');
-        }
-        
-        document.querySelectorAll('.supp-unit-checkbox:checked').forEach(cb => cb.checked = false);
-        if (this.selectAllSupp) this.selectAllSupp.checked = false;
-        this.updateSuppCount();
-        
-        await this.loadSupplementaryData();
-        await this.loadUnits();
-        
-    } catch (error) {
-        console.error('❌ Error:', error);
-        this.showError(error.message, 'error');
-    } finally {
-        this.isSubmitting = false;
-        if (this.registerSuppBtn) {
-            this.registerSuppBtn.innerHTML = '<i class="fas fa-check-circle"></i> Register Selected';
-            this.registerSuppBtn.disabled = false;
-        }
-    }
-}
         // ============================================================
         // DROP UNIT
         // ============================================================
@@ -1768,680 +1800,8 @@ async registerSupplementaryUnits() {
         }
     };
     
-    console.log('✅ Student Dashboard v3.0 ready!');
+    console.log('✅ Student Dashboard v3.1 ready!');
     console.log('📌 Use window.studentDashboard to access');
-    console.log('📊 NO hardcoded unit mappings - uses Academic Reports logic');
+    console.log('📊 Cache issues FIXED - queries database directly');
     
 })();
-
-// ============================================================
-// SUPPLEMENTARY EXAM CARD - MATCHES exam-card.js STYLES
-// ============================================================
-
-// Escape HTML helper
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-// ============================================================
-// TVET Detection (same as exam-card.js)
-// ============================================================
-
-const TVET_PROGRAMS = [
-    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-    'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
-];
-
-function isTVETStudent(program) {
-    if (!program) return false;
-    return TVET_PROGRAMS.includes(program) || program === 'TVET';
-}
-
-function getHODTitle(program) {
-    if (!program) return 'HOD';
-    const programUpper = program.toUpperCase().trim();
-    
-    if (TVET_PROGRAMS.includes(programUpper)) {
-        return `HOD ${programUpper}`;
-    }
-    
-    if (programUpper === 'KRCHN' || programUpper.includes('NURSING')) {
-        return 'HOD Nursing';
-    }
-    
-    if (programUpper.includes('HEALTH') || programUpper.includes('MEDICAL') || 
-        programUpper.includes('CLINICAL') || programUpper.includes('PUBLIC')) {
-        if (programUpper.length <= 6) {
-            return `HOD ${programUpper}`;
-        }
-        const cleanName = program.replace(/DIPLOMA|CERTIFICATE|ARTISAN|IN\s+/gi, '').trim();
-        return cleanName ? `HOD ${cleanName}` : 'HOD';
-    }
-    
-    if (programUpper.length <= 6) {
-        return `HOD ${programUpper}`;
-    }
-    
-    return program ? `HOD ${program}` : 'HOD';
-}
-
-// ============================================================
-// GENERATE SUPPLEMENTARY EXAM CARD HTML - MATCHES exam-card.js
-// ============================================================
-
-function generateSupplementaryExamCardHTML(registrations, student) {
-    const today = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-    
-    const program = student?.program || 'KRCHN';
-    const isTVET = isTVETStudent(program);
-    const hodTitle = getHODTitle(program);
-    const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
-    const blockValue = student?.block || student?.term || 'N/A';
-    const studentTypeBadge = isTVET ? 
-        `<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">TVET</span>` :
-        `<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">KRCHN</span>`;
-    
-    const totalCredits = registrations.reduce((sum, unit) => sum + (unit.credits || 3), 0);
-    
-    let tableRows = '';
-    registrations.forEach((unit, index) => {
-        const unitName = unit.unit_name || unit.name || 'N/A';
-        const unitCode = unit.unit_code || unit.code || 'N/A';
-        const regType = unit.reg_type || 'Supplementary';
-        const credits = unit.credits || 3;
-        const status = unit.status || 'Approved';
-        
-        const hasGrade = unit.grade && unit.grade !== '';
-        const isPassing = hasGrade && !['FAIL', 'F', 'D', 'E'].includes(unit.grade);
-        const gradeDisplay = hasGrade ? (isPassing ? `🟢 ${unit.grade}` : `🔴 ${unit.grade}`) : '⏳ Pending';
-        
-        tableRows += `
-            <tr>
-                <td class="text-center">${index + 1}</td>
-                <td><strong>${escapeHtml(unitCode)}</strong></td>
-                <td>${escapeHtml(unitName)}</td>
-                <td class="text-center">${credits}</td>
-                <td class="text-center">
-                    <span style="background: ${regType === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 2px 10px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
-                        ${regType}
-                    </span>
-                </td>
-                <td class="text-center">
-                    <span style="background: ${status === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${status === 'pending' ? '#92400e' : '#065f46'}; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
-                        ${status === 'pending' ? '⏳ Pending' : '✅ Approved'}
-                    </span>
-                    <br>
-                    <span style="font-size: 10px; font-weight: 600; color: ${isPassing ? '#10b981' : '#dc2626'};">${gradeDisplay}</span>
-                </td>
-                <td class="signature-cell">
-                    <div class="signature-line"></div>
-                    <span style="font-size: 9px; color: #94a3b8;">Lecturer's Signature</span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Supplementary Exam Card - ${escapeHtml(student?.full_name || 'Student')}</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; 
-            padding: 40px; 
-            background: #f8fafc; 
-        }
-        .exam-card-wrapper { 
-            max-width: 850px; 
-            margin: 0 auto; 
-        }
-        .exam-card-compact { 
-            background: white; 
-            border: 1px solid #e2e8f0; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-        }
-        
-        .card-header { 
-            background: linear-gradient(135deg, #1e3a5f, #2c5a8c); 
-            color: white; 
-            padding: 15px 20px; 
-            display: flex; 
-            align-items: center; 
-            gap: 15px; 
-        }
-        .card-logo { 
-            height: 55px; 
-            width: auto; 
-            background: white; 
-            padding: 5px; 
-            border-radius: 8px; 
-            object-fit: contain; 
-        }
-        .header-text { flex: 1; }
-        .institution { 
-            font-size: 12px; 
-            opacity: 0.9; 
-            letter-spacing: 0.5px; 
-        }
-        .card-title { 
-            font-size: 22px; 
-            font-weight: 800; 
-            letter-spacing: 1px; 
-            margin-top: 2px; 
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .card-subtitle { 
-            font-size: 10px; 
-            opacity: 0.8; 
-            margin-top: 2px; 
-        }
-        .status-badge { 
-            padding: 5px 15px; 
-            border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: 700; 
-            background: #10b981;
-            white-space: nowrap; 
-        }
-        
-        .info-grid { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 10px 20px; 
-            padding: 15px 20px; 
-            background: #f8fafc; 
-            border-bottom: 1px solid #e2e8f0; 
-            font-size: 12px; 
-        }
-        .info-item { color: #334155; }
-        .info-label { 
-            font-weight: 600; 
-            color: #64748b; 
-            margin-right: 8px; 
-        }
-        
-        .units-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 11px; 
-        }
-        .units-table th { 
-            background: #f1f5f9; 
-            padding: 10px 8px; 
-            text-align: left; 
-            font-weight: 700; 
-            border-bottom: 2px solid #cbd5e1; 
-        }
-        .units-table td { 
-            padding: 10px 8px; 
-            border-bottom: 1px solid #e2e8f0; 
-            vertical-align: top; 
-        }
-        .text-center { text-align: center; }
-        
-        .signature-cell { 
-            padding: 5px 0; 
-            text-align: center;
-            vertical-align: middle;
-        }
-        .signature-line { 
-            width: 90%; 
-            margin: 8px auto; 
-            border-top: 2px solid #000; 
-            height: 2px;
-        }
-        .signature-cell span {
-            display: block;
-            margin-top: 2px;
-        }
-        
-        .total-row { 
-            background: #f8fafc; 
-            font-weight: 600; 
-            border-top: 2px solid #cbd5e1; 
-        }
-        
-        .signatures-row { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 15px 20px; 
-            gap: 20px; 
-            border-top: 1px solid #e2e8f0; 
-            background: white; 
-        }
-        .signature { 
-            flex: 1; 
-            text-align: center; 
-            font-size: 11px; 
-            color: #475569; 
-        }
-        .sign-line { 
-            width: 80%; 
-            margin: 8px auto; 
-            border-top: 2px solid #000; 
-            height: 2px;
-            padding-top: 12px; 
-        }
-        
-        .card-footer { 
-            padding: 15px 20px; 
-            background: #fefce8; 
-            border-top: 1px solid #e2e8f0; 
-        }
-        .rules-header { 
-            font-weight: 700; 
-            font-size: 12px; 
-            color: #854d0e; 
-            margin-bottom: 10px; 
-        }
-        .rules-list { margin-bottom: 15px; }
-        .rule-item { 
-            font-size: 10px; 
-            color: #713f12; 
-            margin-bottom: 4px; 
-        }
-        
-        .student-section { 
-            border-top: 1px dashed #e2e8f0; 
-            padding-top: 12px; 
-            margin-top: 5px; 
-        }
-        .student-declaration { 
-            font-size: 10px; 
-            color: #475569; 
-            margin: 10px 0; 
-            text-align: center; 
-        }
-        .student-sign-line { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            margin: 12px 0 8px 0; 
-        }
-        .student-label { 
-            font-weight: 600; 
-            font-size: 11px; 
-            color: #334155; 
-            min-width: 110px; 
-        }
-        .student-date {
-            font-size: 11px;
-            color: #64748b;
-            margin-left: auto;
-        }
-        .signature-line-inline { 
-            display: inline-block; 
-            flex: 1; 
-            border-top: 2px solid #000; 
-            max-width: 60%; 
-            height: 2px;
-        }
-        
-        @media print {
-            body * { visibility: hidden; }
-            .exam-card-wrapper, .exam-card-wrapper * { visibility: visible; }
-            .exam-card-wrapper { 
-                position: absolute; 
-                top: 0; 
-                left: 0; 
-                width: 100%; 
-                margin: 0; 
-                padding: 10px; 
-            }
-            .card-header { 
-                background: #1e3a5f !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
-            .status-badge { 
-                background: #10b981 !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
-            .signature-line, .sign-line, .signature-line-inline { 
-                width: 80% !important;
-                margin: 8px auto !important;
-                border-top: 2px solid #000 !important;
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-            }
-            .exam-card-compact {
-                border: 1px solid #000 !important;
-                border-radius: 0 !important;
-            }
-        }
-        
-        @media (max-width: 600px) {
-            .info-grid { 
-                grid-template-columns: repeat(2, 1fr); 
-                gap: 6px 10px; 
-                padding: 10px 15px; 
-            }
-            .card-header { 
-                padding: 10px 15px; 
-                gap: 10px; 
-            }
-            .card-logo { height: 40px; }
-            .card-title { font-size: 16px; }
-            .signatures-row { 
-                flex-direction: column; 
-                gap: 15px; 
-            }
-            .student-sign-line {
-                flex-wrap: wrap;
-            }
-            .student-date {
-                margin-left: 0;
-                width: 100%;
-                text-align: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="exam-card-wrapper">
-        <div class="exam-card-compact">
-            <!-- Header -->
-            <div class="card-header">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
-                <div class="header-text">
-                    <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                    <div class="card-title">
-                        SUPPLEMENTARY / RETAKE EXAM CARD
-                        ${studentTypeBadge}
-                    </div>
-                    <div class="card-subtitle">(Exam Entry Permit)</div>
-                </div>
-                <div class="status-badge">✅ ELIGIBLE</div>
-            </div>
-            
-            <!-- Info Grid -->
-            <div class="info-grid">
-                <div class="info-item"><span class="info-label">Name:</span> ${escapeHtml(student?.full_name || 'Not Available')}</div>
-                <div class="info-item"><span class="info-label">REG NO.:</span> ${escapeHtml(student?.student_id || student?.admission_number || 'N/A')}</div>
-                <div class="info-item"><span class="info-label">Program:</span> ${escapeHtml(student?.program || 'N/A')}</div>
-                <div class="info-item"><span class="info-label">${blockLabel}</span> <strong>${escapeHtml(blockValue)}</strong></div>
-                <div class="info-item"><span class="info-label">Registered Units:</span> <strong>${registrations.length}</strong></div>
-                <div class="info-item"><span class="info-label">Total Credits:</span> <strong>${totalCredits}</strong></div>
-                <div class="info-item"><span class="info-label">Exam Period:</span> ${new Date().getMonth() >= 2 && new Date().getMonth() <= 5 ? 'March - June (Trimester 1)' : new Date().getMonth() >= 6 && new Date().getMonth() <= 9 ? 'July - October (Trimester 2)' : 'November - February (Trimester 3)'}</div>
-                <div class="info-item"><span class="info-label">Date Issued:</span> ${today}</div>
-                <div class="info-item"><span class="info-label">Valid Until:</span> End of Exam Period</div>
-            </div>
-            
-            <!-- Units Table -->
-            <table class="units-table">
-                <thead>
-                    <tr>
-                        <th width="5%">#</th>
-                        <th width="15%">Unit Code</th>
-                        <th width="30%">Unit Title</th>
-                        <th width="7%">Cr</th>
-                        <th width="10%">Type</th>
-                        <th width="15%">Status/Grade</th>
-                        <th width="18%">Lecturer's Signature</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRows}
-                    <tr class="total-row">
-                        <td colspan="3"><strong>TOTAL REGISTERED UNITS: ${registrations.length}</strong></td>
-                        <td class="text-center"><strong>${totalCredits}</strong></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <!-- Signatures -->
-            <div class="signatures-row">
-                <div class="signature">
-                    <div class="sign-line"></div>
-                    <div style="font-weight: 600; font-size: 12px;">${hodTitle}</div>
-                    <div style="font-size: 9px; color: #94a3b8;">Head of Department</div>
-                </div>
-                <div class="signature">
-                    <div class="sign-line"></div>
-                    <div style="font-weight: 600; font-size: 12px;">Principal</div>
-                    <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
-                </div>
-                <div class="signature">
-                    <div class="sign-line"></div>
-                    <div style="font-weight: 600; font-size: 12px;">Finance Officer</div>
-                    <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
-                </div>
-            </div>
-            
-            <!-- Footer -->
-            <div class="card-footer">
-                <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
-                <div class="rules-list">
-                    <div class="rule-item">• Present your exam card at each examination hall</div>
-                    <div class="rule-item">• No electronic devices allowed in examination room</div>
-                    <div class="rule-item">• Arrive 30 minutes before examination start time</div>
-                    <div class="rule-item">• Mobile phones must be switched off and stored</div>
-                    <div class="rule-item">• No unauthorized materials allowed</div>
-                </div>
-                
-                <div class="student-section">
-                    <div class="student-declaration">
-                        I hereby confirm that I have read and understood the examination rules and regulations.
-                    </div>
-                    
-                    <div class="student-sign-line">
-                        <span class="student-label">Student Signature:</span>
-                        <span class="signature-line-inline"></span>
-                        <span class="student-date">Date: ${today}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        setTimeout(function() {
-            window.print();
-        }, 1500);
-    <\/script>
-</body>
-</html>
-    `;
-}
-
-// ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD - WITH PROGRESS
-// ============================================================
-
-window.downloadSupplementaryExamCard = async function() {
-    console.log('📄 Generating Supplementary Exam Card...');
-    
-    // Show progress overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'examCardProgressOverlay';
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-        backdrop-filter: blur(4px);
-    `;
-    overlay.innerHTML = `
-        <div style="background:white;border-radius:16px;padding:30px 40px;max-width:350px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-            <div style="margin-bottom:15px;">
-                <div style="width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:#B45309;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto;"></div>
-            </div>
-            <h3 style="color:#0A3D62;font-size:16px;">📄 Generating Supplementary Exam Card</h3>
-            <p style="color:#64748b;font-size:13px;" id="progressStatus">Loading your units...</p>
-            <div style="width:100%;height:5px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:10px;">
-                <div id="progressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#B45309,#D97706);border-radius:4px;transition:width 0.3s ease;"></div>
-            </div>
-            <p id="progressPercent" style="margin:6px 0 0 0;font-size:11px;color:#94a3b8;font-weight:600;">0%</p>
-        </div>
-    `;
-    
-    const style = document.createElement('style');
-    style.textContent = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-    overlay.appendChild(style);
-    document.body.appendChild(overlay);
-    
-    const updateProgress = (percent, status) => {
-        const bar = document.getElementById('progressBar');
-        const percentText = document.getElementById('progressPercent');
-        const statusText = document.getElementById('progressStatus');
-        if (bar) bar.style.width = Math.min(percent, 100) + '%';
-        if (percentText) percentText.textContent = Math.min(percent, 100) + '%';
-        if (statusText && status) statusText.textContent = status;
-    };
-    
-    try {
-        updateProgress(10, 'Verifying user...');
-        
-        const user = window.currentUserProfile || window.userProfile;
-        const userId = user?.user_id || user?.id;
-        
-        if (!userId) {
-            throw new Error('User not found');
-        }
-        
-        updateProgress(20, 'Connecting to database...');
-        
-        const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            throw new Error('Database not available');
-        }
-        
-        updateProgress(30, 'Fetching your units...');
-        
-        // ✅ Get approved supplementary/retake units WITHOUT grades
-        const { data: registrations, error } = await supabase
-            .from('student_unit_registrations')
-            .select('*')
-            .eq('student_id', userId)
-            .in('reg_type', ['Supplementary', 'Retake'])
-            .eq('status', 'approved')
-            .is('grade', null)
-            .order('submitted_date', { ascending: false });
-        
-        if (error) throw error;
-        
-        if (!registrations || registrations.length === 0) {
-            updateProgress(100, 'No units found');
-            await new Promise(r => setTimeout(r, 300));
-            overlay.remove();
-            alert('No approved supplementary/retake units without grades found.\n\nUnits with grades (Pass or Fail) are considered completed.');
-            return;
-        }
-        
-        console.log(`✅ Found ${registrations.length} units`);
-        updateProgress(50, `Found ${registrations.length} unit(s)`);
-        
-        // Generate the exam card using the same template as exam-card.js
-        updateProgress(60, 'Generating exam card...');
-        const html = generateSupplementaryExamCardHTML(registrations, user);
-        
-        updateProgress(80, 'Opening print window...');
-        const win = window.open('', '_blank', 'width=794,height=1123');
-        if (!win) {
-            updateProgress(100, 'Popup blocked');
-            await new Promise(r => setTimeout(r, 300));
-            overlay.remove();
-            alert('Please allow popups to view the exam card.');
-            return;
-        }
-        
-        updateProgress(90, 'Rendering...');
-        win.document.write(html);
-        win.document.close();
-        
-        updateProgress(100, '✅ Done!');
-        await new Promise(r => setTimeout(r, 300));
-        overlay.remove();
-        
-        setTimeout(() => {
-            win.print();
-        }, 1000);
-        
-    } catch (error) {
-        console.error('❌ Error:', error);
-        updateProgress(100, '❌ Error');
-        await new Promise(r => setTimeout(r, 300));
-        overlay.remove();
-        alert('Failed to generate exam card: ' + error.message);
-    }
-};
-
-// ============================================================
-// DOWNLOAD EXAM CARD HANDLER - FOR THE BUTTON
-// ============================================================
-
-function downloadExamCardsHandler(button) {
-    console.log('🖱️ Download Exam Card button clicked!');
-    
-    // Save original content
-    const originalHTML = button.innerHTML;
-    
-    // Show loading state
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-    button.disabled = true;
-    button.style.opacity = '0.6';
-    
-    // Call the download function
-    if (typeof window.downloadSupplementaryExamCard === 'function') {
-        window.downloadSupplementaryExamCard()
-            .then(() => {
-                console.log('✅ Exam card generated successfully');
-            })
-            .catch((error) => {
-                console.error('❌ Error generating exam card:', error);
-                alert('Failed to generate exam card: ' + error.message);
-            })
-            .finally(() => {
-                // Restore button
-                button.innerHTML = originalHTML;
-                button.disabled = false;
-                button.style.opacity = '1';
-            });
-    } else {
-        console.error('❌ downloadSupplementaryExamCard function not found!');
-        alert('Download function not available. Please refresh the page.');
-        button.innerHTML = originalHTML;
-        button.disabled = false;
-        button.style.opacity = '1';
-    }
-}
-
-// ============================================================
-// INITIALIZE ON PAGE LOAD
-// ============================================================
-
-setTimeout(() => {
-    window.updateSupplementaryDownloadButton();
-}, 1500);
-
-console.log('✅ Supplementary Exam Card standalone ready!');
-console.log('📌 Click "Download Exam Card" in Supplementary tab');
-console.log('📊 Shows ONLY approved units WITHOUT grades');
-console.log('🎨 Matches exam-card.js styles (TVET/KRCHN support)');
