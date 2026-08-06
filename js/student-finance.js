@@ -491,6 +491,10 @@ async function fetchFeeStructureFromDatabase(program, programType, programLevel)
     }
 }
 
+// ============================================================
+// 📊 PROCESS FEE STRUCTURE DATA - UPDATED FOR KRCHN
+// ============================================================
+
 function processFeeStructureData(data, programType, programLevel) {
     const periods = [];
     const allVoteHeads = new Map();
@@ -516,6 +520,7 @@ function processFeeStructureData(data, programType, programLevel) {
             allTerms = record.terms;
         }
 
+        // Collect all unique vote heads across all periods
         components.forEach(comp => {
             if (!allVoteHeads.has(comp.label)) {
                 allVoteHeads.set(comp.label, {
@@ -526,6 +531,8 @@ function processFeeStructureData(data, programType, programLevel) {
         });
     });
 
+    // Build vote heads with amounts per period
+    // For each vote head, get the amount from each period's components
     const voteHeads = [];
     allVoteHeads.forEach((vh, label) => {
         const amounts = periods.map(period => {
@@ -538,7 +545,39 @@ function processFeeStructureData(data, programType, programLevel) {
         });
     });
 
-    voteHeads.sort((a, b) => a.label.localeCompare(b.label));
+    // Sort vote heads by display order (custom order for KRCHN)
+    const krchnOrder = [
+        'ADMISSION FEE',
+        'TUITION',
+        'REGISTRATION FEE',
+        'CAUTION FEE',
+        'UNIFORM',
+        'CLINICAL PLACEMENT FEE',
+        'COLLEGE I.D',
+        'LIBRARY & INTERNET',
+        'IMMUNIZATION',
+        'SKILLS LAB',
+        'INSURANCE',
+        'CONFIDENTIAL REPORT',
+        'FIRST AID TRAINING',
+        'NURSING COUNCIL INDEXING FEE & VERIFICATION',
+        'TRANSPORT @ 2000/-'
+    ];
+
+    // For TVET, sort alphabetically
+    if (programType === 'TVET') {
+        voteHeads.sort((a, b) => a.label.localeCompare(b.label));
+    } else {
+        // Sort by KRCHN order
+        voteHeads.sort((a, b) => {
+            const indexA = krchnOrder.indexOf(a.label);
+            const indexB = krchnOrder.indexOf(b.label);
+            if (indexA === -1 && indexB === -1) return a.label.localeCompare(b.label);
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+    }
 
     return {
         periods: periods,
