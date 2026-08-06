@@ -1978,12 +1978,9 @@ window.reloadSupplementaryUnits = function() {
 };
 
 // ============================================================
-// SUPPLEMENTARY EXAM CARD GENERATION - MATCHES exam-card.js
+// GENERATE SUPPLEMENTARY EXAM CARD HTML - WITH LECTURER SIGNATURE
 // ============================================================
 
-/**
- * Generate Supplementary Exam Card HTML
- */
 function generateSupplementaryExamCardHTML(registrations, student) {
     const today = new Date().toLocaleDateString('en-US', {
         year: 'numeric',
@@ -1992,8 +1989,8 @@ function generateSupplementaryExamCardHTML(registrations, student) {
     });
     
     const program = student?.program || 'KRCHN';
-    const isTVET = isTVETStudent ? isTVETStudent(program) : false;
-    const hodTitle = getHODTitle ? getHODTitle(program) : 'HOD';
+    const isTVET = typeof isTVETStudent === 'function' ? isTVETStudent(program) : false;
+    const hodTitle = typeof getHODTitle === 'function' ? getHODTitle(program) : 'HOD';
     const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
     const blockValue = student?.block || student?.term || 'N/A';
     const studentTypeBadge = isTVET ? 
@@ -2026,6 +2023,10 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                         ${status === 'pending' ? '⏳ Pending' : '✅ Approved'}
                     </span>
                 </td>
+                <td class="signature-cell">
+                    <div class="signature-line"></div>
+                    <span style="font-size: 9px; color: #94a3b8;">Lecturer's Signature</span>
+                </td>
             </tr>
         `;
     });
@@ -2045,7 +2046,7 @@ function generateSupplementaryExamCardHTML(registrations, student) {
             background: #f8fafc; 
         }
         .exam-card-wrapper { 
-            max-width: 850px; 
+            max-width: 900px; 
             margin: 0 auto; 
         }
         .exam-card-compact { 
@@ -2130,9 +2131,26 @@ function generateSupplementaryExamCardHTML(registrations, student) {
         .units-table td { 
             padding: 10px 8px; 
             border-bottom: 1px solid #e2e8f0; 
-            vertical-align: top; 
+            vertical-align: middle; 
         }
         .text-center { text-align: center; }
+        
+        .signature-cell { 
+            text-align: center;
+            vertical-align: middle;
+            padding: 5px 0;
+        }
+        .signature-line { 
+            width: 90%; 
+            margin: 8px auto; 
+            border-top: 2px solid #000; 
+            height: 2px;
+        }
+        .signature-cell span {
+            display: block;
+            margin-top: 2px;
+        }
+        
         .total-row { 
             background: #f8fafc; 
             font-weight: 600; 
@@ -2232,10 +2250,39 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                 -webkit-print-color-adjust: exact; 
                 print-color-adjust: exact; 
             }
-            .sign-line, .signature-line-inline { 
+            .signature-line, .sign-line, .signature-line-inline { 
                 border-top: 2px solid #000 !important;
                 -webkit-print-color-adjust: exact; 
                 print-color-adjust: exact; 
+            }
+            .exam-card-compact {
+                border: 1px solid #000 !important;
+                border-radius: 0 !important;
+            }
+        }
+        @media (max-width: 600px) {
+            .info-grid { 
+                grid-template-columns: repeat(2, 1fr); 
+                gap: 6px 10px; 
+                padding: 10px 15px; 
+            }
+            .card-header { 
+                padding: 10px 15px; 
+                gap: 10px; 
+            }
+            .card-logo { height: 40px; }
+            .card-title { font-size: 16px; }
+            .signatures-row { 
+                flex-direction: column; 
+                gap: 15px; 
+            }
+            .student-sign-line {
+                flex-wrap: wrap;
+            }
+            .student-date {
+                margin-left: 0;
+                width: 100%;
+                text-align: center;
             }
         }
     </style>
@@ -2243,6 +2290,7 @@ function generateSupplementaryExamCardHTML(registrations, student) {
 <body>
     <div class="exam-card-wrapper">
         <div class="exam-card-compact">
+            <!-- Header -->
             <div class="card-header">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
                 <div class="header-text">
@@ -2255,6 +2303,8 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                 </div>
                 <div class="status-badge">✅ ELIGIBLE</div>
             </div>
+            
+            <!-- Info Grid -->
             <div class="info-grid">
                 <div class="info-item"><span class="info-label">Name:</span> ${escapeHtml(student?.full_name || 'Not Available')}</div>
                 <div class="info-item"><span class="info-label">REG NO.:</span> ${escapeHtml(student?.student_id || student?.admission_number || 'N/A')}</div>
@@ -2265,15 +2315,18 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                 <div class="info-item"><span class="info-label">Date Issued:</span> ${today}</div>
                 <div class="info-item"><span class="info-label">Valid Until:</span> End of Exam Period</div>
             </div>
+            
+            <!-- Units Table -->
             <table class="units-table">
                 <thead>
                     <tr>
                         <th width="5%">#</th>
                         <th width="15%">Unit Code</th>
-                        <th width="35%">Unit Title</th>
+                        <th width="30%">Unit Title</th>
                         <th width="7%">Cr</th>
                         <th width="10%">Type</th>
-                        <th width="18%">Status</th>
+                        <th width="15%">Status</th>
+                        <th width="18%">Lecturer's Signature</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2283,9 +2336,12 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                         <td class="text-center"><strong>${totalCredits}</strong></td>
                         <td></td>
                         <td></td>
+                        <td></td>
                     </tr>
                 </tbody>
             </table>
+            
+            <!-- Signatures -->
             <div class="signatures-row">
                 <div class="signature">
                     <div class="sign-line"></div>
@@ -2303,6 +2359,8 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                     <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
                 </div>
             </div>
+            
+            <!-- Footer -->
             <div class="card-footer">
                 <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
                 <div class="rules-list">
@@ -2312,10 +2370,12 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                     <div class="rule-item">• Mobile phones must be switched off and stored</div>
                     <div class="rule-item">• No unauthorized materials allowed</div>
                 </div>
+                
                 <div class="student-section">
                     <div class="student-declaration">
                         I hereby confirm that I have read and understood the examination rules and regulations.
                     </div>
+                    
                     <div class="student-sign-line">
                         <span class="student-label">Student Signature:</span>
                         <span class="signature-line-inline"></span>
@@ -2325,14 +2385,16 @@ function generateSupplementaryExamCardHTML(registrations, student) {
             </div>
         </div>
     </div>
+    
     <script>
-        setTimeout(function() { window.print(); }, 1500);
+        setTimeout(function() {
+            window.print();
+        }, 1500);
     <\/script>
 </body>
 </html>
     `;
 }
-
 /**
  * Escape HTML helper
  */
@@ -2380,9 +2442,10 @@ function getHODTitle(program) {
     return program ? `HOD ${program}` : 'HOD';
 }
 
-/**
- * Download Supplementary Exam Card - With Progress Overlay
- */
+// ============================================================
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - FIXED (ALL APPROVED UNITS)
+// ============================================================
+
 window.downloadSupplementaryExamCard = async function() {
     console.log('📄 Generating Supplementary Exam Card...');
     
@@ -2449,14 +2512,13 @@ window.downloadSupplementaryExamCard = async function() {
         
         updateProgress(30, 'Fetching your units...');
         
-        // Get approved supplementary/retake units WITHOUT grades
+        // ✅ FIX: Get ALL approved supplementary/retake units (with OR without grades)
         const { data: registrations, error } = await supabase
             .from('student_unit_registrations')
             .select('*')
             .eq('student_id', userId)
             .in('reg_type', ['Supplementary', 'Retake'])
             .eq('status', 'approved')
-            .is('grade', null)
             .order('submitted_date', { ascending: false });
         
         if (error) throw error;
@@ -2465,11 +2527,11 @@ window.downloadSupplementaryExamCard = async function() {
             updateProgress(100, 'No units found');
             await new Promise(r => setTimeout(r, 300));
             overlay.remove();
-            alert('No approved supplementary/retake units without grades found.\n\nUnits with grades (Pass or Fail) are considered completed.');
+            alert('No approved supplementary/retake units found.');
             return;
         }
         
-        console.log(`✅ Found ${registrations.length} units`);
+        console.log(`✅ Found ${registrations.length} approved supplementary/retake units`);
         updateProgress(50, `Found ${registrations.length} unit(s)`);
         
         updateProgress(60, 'Generating exam card...');
@@ -2505,7 +2567,6 @@ window.downloadSupplementaryExamCard = async function() {
         alert('Failed to generate exam card: ' + error.message);
     }
 };
-
 // ============================================================
 // INITIALIZE ON PAGE LOAD
 // ============================================================
