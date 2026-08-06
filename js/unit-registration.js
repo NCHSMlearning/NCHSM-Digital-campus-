@@ -4,7 +4,7 @@
 // ============================================================
 
 (function() {
-    'use strict';
+    'use strict'; 
     
     console.log('✅ Student Dashboard v3.1 loading...');
     
