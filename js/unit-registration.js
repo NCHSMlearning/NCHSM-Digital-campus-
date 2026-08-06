@@ -2464,11 +2464,7 @@ async loadEligibleUnits() {
     }
     
     // ============================================================
-    // DOWNLOAD SUPPLEMENTARY EXAM CARD - FIXED (Only Failed + Pending)
-    // ============================================================
-    
-   // ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD - INCLUDES FAILED GRADES
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - INCLUDES COMPLETED UNITS
 // ============================================================
 
 window.downloadSupplementaryExamCard = async function() {
@@ -2537,20 +2533,20 @@ window.downloadSupplementaryExamCard = async function() {
         
         updateProgress(30, 'Fetching your units...');
         
-        // ✅ Get ALL approved supplementary/retake units
+        // ✅ FIX: Include BOTH 'approved' AND 'completed' statuses
         const { data: allRegs, error } = await supabase
             .from('student_unit_registrations')
             .select('*')
             .eq('student_id', userId)
             .in('reg_type', ['Supplementary', 'Retake'])
-            .eq('status', 'approved')
+            .in('status', ['approved', 'completed'])  // ✅ FIXED: Include both!
             .order('submitted_date', { ascending: false });
         
         if (error) throw error;
         
-        console.log(`📊 Found ${allRegs?.length || 0} approved supplementary/retake units`);
+        console.log(`📊 Found ${allRegs?.length || 0} approved/completed supplementary/retake units`);
         
-        // ✅ Get published marks for this student
+        // ✅ Get published marks to check grades
         const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
         let publishedGrades = new Map();
         
@@ -2562,7 +2558,6 @@ window.downloadSupplementaryExamCard = async function() {
                 .eq('published', true);
             
             if (!marksError && marks) {
-                // Build catalog mapping
                 const { data: catalog } = await supabase
                     .from('units_catalog')
                     .select('unit_code, unit_name')
@@ -2596,36 +2591,26 @@ window.downloadSupplementaryExamCard = async function() {
             }
         }
         
-        // ✅ FILTER: Include ALL units EXCEPT PASSED (A, B, C)
+        // ✅ FILTER: Exclude PASSED units (A, B, C), include everything else
         const passingGrades = ['A', 'B', 'C', 'PASS'];
         const failingGrades = ['D', 'E', 'F', 'FAIL'];
         
         const registrations = (allRegs || []).filter(unit => {
-            // Check if this unit has a published mark
             const publishedMark = publishedGrades.get(unit.unit_code);
             
             if (!publishedMark) {
-                // No published mark - include (pending)
                 console.log(`   ✅ ${unit.unit_code} - No published mark (pending)`);
                 return true;
             }
             
             const grade = publishedMark.grade || '';
             
-            // ✅ If PASSED (A, B, C) → EXCLUDE
             if (passingGrades.includes(grade.toUpperCase())) {
                 console.log(`   ❌ ${unit.unit_code} - Grade ${grade} (PASSED) - EXCLUDED`);
                 return false;
             }
             
-            // ✅ If FAILED (D, E, F) → INCLUDE
-            if (failingGrades.includes(grade.toUpperCase())) {
-                console.log(`   ✅ ${unit.unit_code} - Grade ${grade} (FAILED) - INCLUDED`);
-                return true;
-            }
-            
-            // Default: include
-            console.log(`   ✅ ${unit.unit_code} - Grade ${grade} - INCLUDED`);
+            console.log(`   ✅ ${unit.unit_code} - Grade ${grade} (FAILED/PENDING) - INCLUDED`);
             return true;
         });
         
