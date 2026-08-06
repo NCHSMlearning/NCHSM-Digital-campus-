@@ -5620,10 +5620,13 @@ if (typeof filterUnitsByBlock === 'undefined') {
         filterUnitsCatalog();
     };
 }
+// ✅ ADD THIS LINE - Creates the missing function alias
+window.filterUnitsByBlockSelect = window.filterUnitsByBlock;
 
 // ============================================================
 // 10.6 - LOAD ALL UNITS (Refresh)
 // ============================================================
+
 
 if (typeof loadAllUnits === 'undefined') {
     window.loadAllUnits = function() {
