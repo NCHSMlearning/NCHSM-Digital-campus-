@@ -1,7 +1,7 @@
 // ============================================================
 // STUDENT DASHBOARD - UNIT REGISTRATION WITH SUPPLEMENTARY SUPPORT
 // COMPLETELY REBUILT - v3.1 (FIXED CACHE ISSUES)
-// ============================================================
+// ============================================================ 
 
 (function() {  
     'use strict';  
