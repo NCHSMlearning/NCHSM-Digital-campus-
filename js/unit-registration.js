@@ -1444,126 +1444,213 @@ async loadEligibleUnits() {
             }
         }
         
-        // ============================================================
-        // LOAD STUDENT SUPPLEMENTARY REGISTRATIONS - FIXED
-        // Only shows FAILED units (excludes A, B, C grades)
-        // ============================================================
+     // ============================================================
+// LOAD STUDENT SUPPLEMENTARY REGISTRATIONS - FIXED
+// Checks PUBLISHED MARKS, not registrations table
+// ============================================================
+
+async loadStudentSupplementaryRegistrations() {
+    const tbody = this.suppRegisteredBody;
+    if (!tbody) return;
+    
+    try {
+        const supabase = this.getSupabase();
+        if (!this.studentId || !supabase) {
+            this.updateDownloadButton(0);
+            return;
+        }
         
-        async loadStudentSupplementaryRegistrations() {
-            const tbody = this.suppRegisteredBody;
-            if (!tbody) return;
+        // ✅ Get ALL supplementary/retake registrations
+        const { data: registrations, error } = await supabase
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', this.studentId)
+            .in('reg_type', ['Supplementary', 'Retake'])
+            .order('submitted_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        // ✅ Get published marks for this student
+        const user = this.userProfile || window.currentUserProfile;
+        const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
+        
+        let publishedGrades = new Map();
+        const passingGrades = ['A', 'B', 'C', 'PASS'];
+        
+        if (admissionNumber) {
+            const { data: marks, error: marksError } = await supabase
+                .from('student_marks')
+                .select('subject_name, final_score, grade, published')
+                .eq('admission_number', admissionNumber)
+                .eq('published', true);
             
-            try {
-                const supabase = this.getSupabase();
-                if (!this.studentId || !supabase) {
-                    this.updateDownloadButton(0);
-                    return;
+            if (!marksError && marks) {
+                // Build catalog mapping
+                const { data: catalog } = await supabase
+                    .from('units_catalog')
+                    .select('unit_code, unit_name')
+                    .eq('program', this.programCode || 'KRCHN');
+                
+                const catalogMap = {};
+                if (catalog) {
+                    catalog.forEach(u => {
+                        catalogMap[u.unit_name] = u.unit_code;
+                    });
                 }
                 
-                // Get ALL supplementary/retake registrations
-                const { data: registrations, error } = await supabase
-                    .from('student_unit_registrations')
-                    .select('*')
-                    .eq('student_id', this.studentId)
-                    .in('reg_type', ['Supplementary', 'Retake'])
-                    .order('submitted_date', { ascending: false });
-                
-                if (error) throw error;
-                
-                // ✅ FILTER: Only keep FAILED units OR units with NO grade
-                const passingGrades = ['A', 'B', 'C', 'PASS'];
-                const failedRegistrations = (registrations || []).filter(reg => {
-                    // If no grade, keep it (pending approval)
-                    if (!reg.grade) return true;
-                    // If grade is passing, EXCLUDE
-                    if (passingGrades.includes(reg.grade.toUpperCase())) return false;
-                    // Any other grade (D, E, F, FAIL) - KEEP
-                    return true;
-                });
-                
-                this.supplementaryRegistrations = failedRegistrations;
-                
-                if (this.supplementaryRegistrations.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                <i class="fas fa-check-circle" style="font-size: 40px; color: #10b981; display: block; margin-bottom: 10px;"></i>
-                                <p>No failed supplementary/retake units.</p>
-                                <p style="font-size: 12px; margin-top: 4px;">Passed units (A, B, C) are automatically removed.</p>
-                            </td>
-                        </tr>
-                    `;
-                    if (this.suppRegisteredCount) this.suppRegisteredCount.textContent = '0';
-                    this.updateDownloadButton(0);
-                    return;
-                }
-                
-                let html = '';
-                let approvedCount = 0;
-                
-                for (const reg of this.supplementaryRegistrations) {
-                    const statusColor = reg.status === 'approved' ? '#059669' : 
-                                       reg.status === 'pending' ? '#f59e0b' : 
-                                       reg.status === 'completed' ? '#10b981' : '#dc2626';
-                    const statusBg = reg.status === 'approved' ? '#d1fae5' : 
-                                    reg.status === 'pending' ? '#fef3c7' : 
-                                    reg.status === 'completed' ? '#d1fae5' : '#fee2e2';
-                    const statusText = reg.status === 'approved' ? '✅ Approved' : 
-                                      reg.status === 'pending' ? '⏳ Pending' : 
-                                      reg.status === 'completed' ? '📋 Completed' : '❌ Rejected';
-                    const regDate = reg.submitted_date ? new Date(reg.submitted_date).toLocaleDateString() : 'N/A';
-                    
-                    // Show grade if exists
-                    const gradeDisplay = reg.grade ? 
-                        `<span style="font-size: 10px; color: #dc2626; display: block; margin-top: 2px;">Grade: ${reg.grade}</span>` : 
-                        '';
-                    
-                    if (reg.status === 'approved' || reg.status === 'completed') {
-                        approvedCount++;
+                marks.forEach(mark => {
+                    let unitCode = null;
+                    for (const [name, code] of Object.entries(catalogMap)) {
+                        if (mark.subject_name.includes(name) || name.includes(mark.subject_name)) {
+                            unitCode = code;
+                            break;
+                        }
                     }
-                    
-                    html += `
-                        <tr>
-                            <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(reg.unit_code)}</td>
-                            <td style="padding: 12px 16px;">${this.escapeHtml(reg.unit_name)}</td>
-                            <td style="padding: 12px 16px;">${this.escapeHtml(reg.block || 'N/A')}</td>
-                            <td style="padding: 12px 16px; text-align: center;">
-                                <span style="background: ${reg.reg_type === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                                    ${this.escapeHtml(reg.reg_type)}
-                                </span>
-                            </td>
-                            <td style="padding: 12px 16px; text-align: center;">
-                                <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                                    ${statusText}
-                                </span>
-                                ${gradeDisplay}
-                            </td>
-                            <td style="padding: 12px 16px; text-align: center;">${regDate}</td>
-                        </tr>
-                    `;
-                }
-                
-                tbody.innerHTML = html;
-                if (this.suppRegisteredCount) {
-                    this.suppRegisteredCount.textContent = this.supplementaryRegistrations.length;
-                }
-                
-                this.updateDownloadButton(approvedCount);
-                
-            } catch (error) {
-                console.error('❌ Error loading supplementary registrations:', error);
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">
-                            <i class="fas fa-exclamation-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
-                            Error: ${error.message}
-                        </td>
-                    </tr>
-                `;
-                this.updateDownloadButton(0);
+                    if (unitCode) {
+                        publishedGrades.set(unitCode, {
+                            grade: mark.grade || '',
+                            score: mark.final_score || 0,
+                            subject_name: mark.subject_name
+                        });
+                    }
+                });
             }
         }
         
+        // ✅ FILTER: Only keep units that have published failing grades OR no published grade
+        const failingGrades = ['D', 'E', 'F', 'FAIL'];
+        
+        const eligibleRegistrations = (registrations || []).filter(reg => {
+            const publishedMark = publishedGrades.get(reg.unit_code);
+            
+            // ✅ If NO published mark → Keep (pending approval)
+            if (!publishedMark) {
+                console.log(`   ✅ ${reg.unit_code} - No published mark (pending)`);
+                return true;
+            }
+            
+            const grade = publishedMark.grade || '';
+            
+            // ✅ If PASSING grade (A, B, C) → EXCLUDE
+            if (passingGrades.includes(grade.toUpperCase())) {
+                console.log(`   ❌ ${reg.unit_code} - Grade ${grade} (PASSED) - EXCLUDED`);
+                return false;
+            }
+            
+            // ✅ If FAILING grade (D, E, F) → KEEP
+            if (failingGrades.includes(grade.toUpperCase())) {
+                console.log(`   ✅ ${reg.unit_code} - Grade ${grade} (FAILED) - KEPT`);
+                return true;
+            }
+            
+            // Default: keep
+            return true;
+        });
+        
+        this.supplementaryRegistrations = eligibleRegistrations;
+        
+        if (this.supplementaryRegistrations.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-check-circle" style="font-size: 40px; color: #10b981; display: block; margin-bottom: 10px;"></i>
+                        <p>No active supplementary/retake units.</p>
+                        <p style="font-size: 12px; margin-top: 4px;">Units with unpublished or passed marks are automatically removed.</p>
+                    </td>
+                </tr>
+            `;
+            if (this.suppRegisteredCount) this.suppRegisteredCount.textContent = '0';
+            this.updateDownloadButton(0);
+            return;
+        }
+        
+        let html = '';
+        let approvedCount = 0;
+        
+        for (const reg of this.supplementaryRegistrations) {
+            const publishedMark = publishedGrades.get(reg.unit_code);
+            const grade = publishedMark?.grade || '';
+            const hasPublishedGrade = !!publishedMark;
+            
+            // Determine status display
+            let statusText = reg.status || 'Pending';
+            let statusColor = '#059669';
+            let statusBg = '#d1fae5';
+            let gradeDisplay = '';
+            
+            if (hasPublishedGrade) {
+                const isPassing = passingGrades.includes(grade.toUpperCase());
+                if (isPassing) {
+                    statusText = '✅ Passed';
+                    statusColor = '#059669';
+                    statusBg = '#d1fae5';
+                } else {
+                    statusText = '🔴 Failed';
+                    statusColor = '#dc2626';
+                    statusBg = '#fee2e2';
+                }
+                gradeDisplay = `<span style="font-size: 10px; color: #dc2626; display: block; margin-top: 2px;">Grade: ${grade}</span>`;
+            } else if (reg.status === 'pending') {
+                statusText = '⏳ Pending';
+                statusColor = '#f59e0b';
+                statusBg = '#fef3c7';
+            } else if (reg.status === 'approved') {
+                statusText = '✅ Approved';
+                statusColor = '#059669';
+                statusBg = '#d1fae5';
+            } else if (reg.status === 'completed') {
+                statusText = '📋 Completed';
+                statusColor = '#3b82f6';
+                statusBg = '#dbeafe';
+            }
+            
+            if (reg.status === 'approved' || reg.status === 'completed') {
+                approvedCount++;
+            }
+            
+            const regDate = reg.submitted_date ? new Date(reg.submitted_date).toLocaleDateString() : 'N/A';
+            
+            html += `
+                <tr>
+                    <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(reg.unit_code)}</td>
+                    <td style="padding: 12px 16px;">${this.escapeHtml(reg.unit_name)}</td>
+                    <td style="padding: 12px 16px;">${this.escapeHtml(reg.block || 'N/A')}</td>
+                    <td style="padding: 12px 16px; text-align: center;">
+                        <span style="background: ${reg.reg_type === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                            ${this.escapeHtml(reg.reg_type)}
+                        </span>
+                    </td>
+                    <td style="padding: 12px 16px; text-align: center;">
+                        <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                            ${statusText}
+                        </span>
+                        ${gradeDisplay}
+                    </td>
+                    <td style="padding: 12px 16px; text-align: center;">${regDate}</td>
+                </tr>
+            `;
+        }
+        
+        tbody.innerHTML = html;
+        if (this.suppRegisteredCount) {
+            this.suppRegisteredCount.textContent = this.supplementaryRegistrations.length;
+        }
+        
+        this.updateDownloadButton(approvedCount);
+        
+    } catch (error) {
+        console.error('❌ Error loading supplementary registrations:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
+                    Error: ${error.message}
+                </td>
+            </tr>
+        `;
+        this.updateDownloadButton(0);
+    }
+}
         // ============================================================
         // UPDATE DOWNLOAD BUTTON
         // ============================================================
