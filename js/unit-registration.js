@@ -1350,100 +1350,89 @@ async loadEligibleUnits() {
         if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
 }
-        // ============================================================
-        // RENDER ELIGIBLE TABLE
-        // ============================================================
+      // ============================================================
+// RENDER ELIGIBLE TABLE - WITHOUT SCORE COLUMN
+// ============================================================
+
+renderEligibleTable(units) {
+    const tbody = this.eligibleBody;
+    if (!tbody) return;
+    
+    if (!units || units.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; display: block; margin-bottom: 10px;"></i>
+                    <p>No eligible units found.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    for (const unit of units) {
+        const canRegister = !unit.is_registered;
+        const isRegistered = unit.is_registered;
         
-        renderEligibleTable(units) {
-            const tbody = this.eligibleBody;
-            if (!tbody) return;
-            
-            if (!units || units.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
-                            <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; display: block; margin-bottom: 10px;"></i>
-                            <p>No eligible units found.</p>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            for (const unit of units) {
-                const canRegister = !unit.is_registered;
-                const isRegistered = unit.is_registered;
-                
-                let statusText = unit.status;
-                let statusColor = '#059669';
-                let statusBg = '#d1fae5';
-                
-                if (unit.status === 'Eligible') {
-                    statusText = '✅ Eligible';
-                    statusColor = '#059669';
-                    statusBg = '#d1fae5';
-                } else if (unit.status === '❌ Rejected') {
-                    statusText = '❌ Rejected';
-                    statusColor = '#dc2626';
-                    statusBg = '#fee2e2';
-                } else if (unit.status === '✅ Approved') {
-                    statusText = '✅ Approved';
-                    statusColor = '#059669';
-                    statusBg = '#d1fae5';
-                } else if (unit.status === '⏳ Pending') {
-                    statusText = '⏳ Pending';
-                    statusColor = '#f59e0b';
-                    statusBg = '#fef3c7';
-                } else if (unit.status === '📋 Completed') {
-                    statusText = '📋 Completed';
-                    statusColor = '#3b82f6';
-                    statusBg = '#dbeafe';
-                }
-                
-                let scoreDisplay = 'N/A';
-                if (unit.score > 0) {
-                    const scoreColor = unit.score < 30 ? '#dc2626' : unit.score < 60 ? '#f59e0b' : '#10b981';
-                    scoreDisplay = `<span style="font-weight: 700; color: ${scoreColor};">${unit.score}%</span>`;
-                }
-                
-                const regTypeBadge = unit.reg_type === 'Retake' ? 
-                    '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Retake</span>' :
-                    '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Supplementary</span>';
-                
-                html += `
-                    <tr style="border-bottom: 1px solid #f1f5f9; ${isRegistered ? 'opacity: 0.6;' : ''}">
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <input type="checkbox" class="supp-unit-checkbox" data-unit='${JSON.stringify(unit)}' 
-                                   ${!canRegister ? 'disabled' : ''} style="width: 16px; height: 16px; cursor: pointer;">
-                        </td>
-                        <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(unit.unit_code)}</td>
-                        <td style="padding: 12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
-                        <td style="padding: 12px 16px;">${this.escapeHtml(unit.block)}</td>
-                        <td style="padding: 12px 16px; text-align: center;">${scoreDisplay}</td>
-                        <td style="padding: 12px 16px; text-align: center;">${regTypeBadge}</td>
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                                ${statusText}
-                            </span>
-                        </td>
-                    </tr>
-                `;
-            }
-            
-            tbody.innerHTML = html;
-            
-            document.querySelectorAll('.supp-unit-checkbox').forEach(cb => {
-                cb.addEventListener('change', () => this.updateSuppCount());
-            });
-            
-            this.updateSuppCount();
+        let statusText = unit.status;
+        let statusColor = '#059669';
+        let statusBg = '#d1fae5';
+        
+        if (unit.status === 'Eligible') {
+            statusText = '✅ Eligible';
+            statusColor = '#059669';
+            statusBg = '#d1fae5';
+        } else if (unit.status === '❌ Rejected') {
+            statusText = '❌ Rejected';
+            statusColor = '#dc2626';
+            statusBg = '#fee2e2';
+        } else if (unit.status === '✅ Approved') {
+            statusText = '✅ Approved';
+            statusColor = '#059669';
+            statusBg = '#d1fae5';
+        } else if (unit.status === '⏳ Pending') {
+            statusText = '⏳ Pending';
+            statusColor = '#f59e0b';
+            statusBg = '#fef3c7';
+        } else if (unit.status === '📋 Completed') {
+            statusText = '📋 Completed';
+            statusColor = '#3b82f6';
+            statusBg = '#dbeafe';
         }
         
-        updateSuppCount() {
-            const count = document.querySelectorAll('.supp-unit-checkbox:checked').length;
-            if (this.selectedSuppCount) this.selectedSuppCount.textContent = count;
-        }
+        // ✅ REMOVED: scoreDisplay and score column
+        const regTypeBadge = unit.reg_type === 'Retake' ? 
+            '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Retake</span>' :
+            '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Supplementary</span>';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; ${isRegistered ? 'opacity: 0.6;' : ''}">
+                <td style="padding: 12px 16px; text-align: center;">
+                    <input type="checkbox" class="supp-unit-checkbox" data-unit='${JSON.stringify(unit)}' 
+                           ${!canRegister ? 'disabled' : ''} style="width: 16px; height: 16px; cursor: pointer;">
+                </td>
+                <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(unit.unit_code)}</td>
+                <td style="padding: 12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
+                <td style="padding: 12px 16px;">${this.escapeHtml(unit.block)}</td>
+                <td style="padding: 12px 16px; text-align: center;">${regTypeBadge}</td>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                        ${statusText}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }
+    
+    tbody.innerHTML = html;
+    
+    document.querySelectorAll('.supp-unit-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => this.updateSuppCount());
+    });
+    
+    this.updateSuppCount();
+}
         
       // ============================================================
 // LOAD STUDENT SUPPLEMENTARY REGISTRATIONS - FIXED
