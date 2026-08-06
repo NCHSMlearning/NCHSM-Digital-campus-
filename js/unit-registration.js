@@ -1466,6 +1466,18 @@ renderEligibleTable(units) {
     
     this.updateSuppCount();
 }
+
+        // ============================================================
+// UPDATE SUPPLEMENTARY COUNT
+// ============================================================
+
+updateSuppCount() {
+    const count = document.querySelectorAll('.supp-unit-checkbox:checked').length;
+    const selectedSuppCount = document.getElementById('selectedSuppCount');
+    if (selectedSuppCount) {
+        selectedSuppCount.textContent = count;
+    }
+}
         
       // ============================================================
 // LOAD STUDENT SUPPLEMENTARY REGISTRATIONS - FIXED
