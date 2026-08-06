@@ -13258,26 +13258,32 @@ async function loadUnitRegistrationStats() {
 // FIXED: Get Student Name from Multiple Sources
 // =====================================================
 
+// =====================================================
+// GET STUDENT NAME - OPTIMIZED VERSION
+// =====================================================
+
 async function getStudentName(studentId) {
-    if (!studentId) return {
-        full_name: 'Unknown Student',
-        admission_number: 'N/A',
-        program: 'N/A',
-        block: 'N/A',
-        email: null
-    };
+    if (!studentId) {
+        return {
+            full_name: 'Unknown Student',
+            admission_number: 'N/A',
+            program: 'N/A',
+            block: 'N/A',
+            email: null
+        };
+    }
     
     // Check cache first
-    if (studentNameCache[studentId]) {
-        return studentNameCache[studentId];
+    if (window.studentNameCache && window.studentNameCache[studentId]) {
+        return window.studentNameCache[studentId];
     }
     
     try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) {
+        const supabaseClient = window.sb || window.supabase;
+        if (!supabaseClient) {
             console.warn('⚠️ Supabase not available');
             return {
-                full_name: 'Unknown Student',
+                full_name: `Student (${studentId.substring(0, 8)})`,
                 admission_number: studentId.substring(0, 12),
                 program: 'N/A',
                 block: 'N/A',
@@ -13285,78 +13291,41 @@ async function getStudentName(studentId) {
             };
         }
         
-        // ✅ Method 1: Try by user_id (primary key)
-        const { data: profileById, error: err1 } = await supabase
+        // Try by user_id (most common)
+        const { data: profile, error } = await supabaseClient
             .from('consolidated_user_profiles_table')
-            .select('full_name, student_id as admission_number, program, block, email')
+            .select('full_name, student_id, program, block, email')
             .eq('user_id', studentId)
             .maybeSingle();
         
-        if (!err1 && profileById && profileById.full_name) {
-            studentNameCache[studentId] = {
-                full_name: profileById.full_name,
-                admission_number: profileById.admission_number || studentId.substring(0, 12),
-                program: profileById.program || 'N/A',
-                block: profileById.block || 'N/A',
-                email: profileById.email || null
+        if (!error && profile && profile.full_name) {
+            const result = {
+                full_name: profile.full_name,
+                admission_number: profile.student_id || studentId.substring(0, 12),
+                program: profile.program || 'N/A',
+                block: profile.block || 'N/A',
+                email: profile.email || null
             };
-            console.log(`✅ Found student: ${profileById.full_name}`);
-            return studentNameCache[studentId];
+            if (window.studentNameCache) window.studentNameCache[studentId] = result;
+            return result;
         }
         
-        // ✅ Method 2: Try by student_id
-        const { data: profileByStudentId, error: err2 } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('full_name, student_id as admission_number, program, block, email')
-            .eq('student_id', studentId)
-            .maybeSingle();
-        
-        if (!err2 && profileByStudentId && profileByStudentId.full_name) {
-            studentNameCache[studentId] = {
-                full_name: profileByStudentId.full_name,
-                admission_number: profileByStudentId.admission_number || studentId.substring(0, 12),
-                program: profileByStudentId.program || 'N/A',
-                block: profileByStudentId.block || 'N/A',
-                email: profileByStudentId.email || null
-            };
-            console.log(`✅ Found student by student_id: ${profileByStudentId.full_name}`);
-            return studentNameCache[studentId];
-        }
-        
-        // ✅ Method 3: Try by id (if it's a UUID that matches id column)
-        const { data: profileById2, error: err3 } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('full_name, student_id as admission_number, program, block, email')
-            .eq('id', studentId)
-            .maybeSingle();
-        
-        if (!err3 && profileById2 && profileById2.full_name) {
-            studentNameCache[studentId] = {
-                full_name: profileById2.full_name,
-                admission_number: profileById2.admission_number || studentId.substring(0, 12),
-                program: profileById2.program || 'N/A',
-                block: profileById2.block || 'N/A',
-                email: profileById2.email || null
-            };
-            console.log(`✅ Found student by id: ${profileById2.full_name}`);
-            return studentNameCache[studentId];
-        }
-        
-        // Not found - return unknown
+        // Not found
         console.warn(`⚠️ No student found for ID: ${studentId}`);
-        studentNameCache[studentId] = {
-            full_name: 'Unknown Student',
+        const result = {
+            full_name: `Student (${studentId.substring(0, 8)}...)`,
             admission_number: studentId.substring(0, 12),
             program: 'N/A',
             block: 'N/A',
             email: null
         };
-        return studentNameCache[studentId];
+        if (window.studentNameCache) window.studentNameCache[studentId] = result;
+        return result;
         
     } catch (error) {
         console.warn(`Error getting student name for ${studentId}:`, error);
         return {
-            full_name: 'Unknown Student',
+            full_name: `Student (${studentId.substring(0, 8)})`,
             admission_number: studentId.substring(0, 12),
             program: 'N/A',
             block: 'N/A',
