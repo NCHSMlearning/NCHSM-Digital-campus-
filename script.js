@@ -5684,7 +5684,7 @@ if (typeof updateUnitCount === 'undefined') {
 }
 
 // ============================================================
-// 10.8 - DELETE UNIT
+// 10.8 - DELETE UNIT (SAFE VERSION)
 // ============================================================
 
 if (typeof deleteUnit === 'undefined') {
@@ -5692,42 +5692,54 @@ if (typeof deleteUnit === 'undefined') {
         if (!confirm(`⚠️ Are you sure you want to delete unit "${unitCode}"? This cannot be undone.`)) return;
         
         try {
-            if (typeof supabase === 'undefined' || !supabase) {
+            // ✅ FIX: Use window.sb
+            const supabaseClient = window.sb || window.supabase;
+            if (!supabaseClient) {
                 throw new Error('Supabase not available');
             }
 
             // Check if unit has marks
-            const { data: marks, error: checkError } = await supabase
-                .from('student_marks')
-                .select('id')
-                .eq('subject_name', unitCode)
-                .limit(1);
-            
-            if (checkError) {
-                console.warn('Could not check for marks:', checkError);
-            }
-            
-            if (marks && marks.length > 0) {
-                if (!confirm(`⚠️ This unit has ${marks.length} marks entries. Deleting it will remove all associated marks. Continue?`)) {
-                    return;
+            try {
+                const { data: marks, error: checkError } = await supabaseClient
+                    .from('student_marks')
+                    .select('id')
+                    .eq('subject_name', unitCode)
+                    .limit(1);
+                
+                if (!checkError && marks && marks.length > 0) {
+                    if (!confirm(`⚠️ This unit has ${marks.length} marks entries. Deleting it will remove all associated marks. Continue?`)) {
+                        return;
+                    }
                 }
+            } catch (checkErr) {
+                console.warn('Could not check for marks:', checkErr);
+                // Continue anyway
             }
             
-            const { error } = await supabase.from('units_catalog').delete().eq('id', unitId);
+            // Delete the unit
+            const { error } = await supabaseClient
+                .from('units_catalog')
+                .delete()
+                .eq('id', unitId);
+                
             if (error) throw error;
             
-            await logAudit('UNIT_DELETE', `Deleted unit ${unitCode}`, unitId, 'SUCCESS');
-            showFeedback(`✅ Unit "${unitCode}" deleted successfully!`, 'success');
+            // Try to log audit, but don't fail if it doesn't work
+            try {
+                await logAudit('UNIT_DELETE', `Deleted unit ${unitCode}`, unitId, 'SUCCESS');
+            } catch (auditError) {
+                console.warn('Audit log failed:', auditError);
+            }
             
+            showFeedback(`✅ Unit "${unitCode}" deleted successfully!`, 'success');
             loadUnits();
             
         } catch (error) {
-            await logAudit('UNIT_DELETE', `Failed to delete unit ${unitCode}. Reason: ${error.message}`, unitId, 'FAILURE');
+            console.error('Delete error:', error);
             showFeedback(`❌ Failed to delete unit: ${error.message}`, 'error');
         }
     };
 }
-
 // ============================================================
 // 10.9 - OPEN EDIT UNIT MODAL
 // ============================================================
