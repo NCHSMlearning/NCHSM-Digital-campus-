@@ -1128,11 +1128,8 @@
         }
         
         // ============================================================
-        // SUPPLEMENTARY - LOAD ELIGIBLE UNITS (BASED ON GRADE, NOT SCORE)
-        // ============================================================
-        
-       // ============================================================
 // SUPPLEMENTARY - LOAD ELIGIBLE UNITS (FROM student_marks)
+// Shows ANY unit with failing grade, even if registered as Normal
 // ============================================================
 
 async loadEligibleUnits() {
@@ -1177,13 +1174,13 @@ async loadEligibleUnits() {
         let admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
         
         if (admissionNumber && admissionNumber.includes('-')) {
-            const { data: profile, error: profileError } = await supabase
+            const { data: profile } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('student_id, admission_number')
                 .eq('user_id', admissionNumber)
                 .maybeSingle();
             
-            if (!profileError && profile) {
+            if (profile) {
                 admissionNumber = profile.student_id || profile.admission_number || admissionNumber;
             }
         }
@@ -1196,7 +1193,7 @@ async loadEligibleUnits() {
         
         console.log(`🔍 Loading ${regType} units for:`, admissionNumber);
         
-        // ✅ STEP 1: Get published marks for this student
+        // ✅ Get published marks with failing grades
         const { data: marks, error } = await supabase
             .from('student_marks')
             .select('*')
@@ -1205,20 +1202,13 @@ async loadEligibleUnits() {
         
         if (error) throw error;
         
-        console.log('📊 Published marks found:', marks?.length || 0);
-        
-        // ✅ STEP 2: Get catalog to map subject names to unit codes
-        const { data: catalog, error: catalogError } = await supabase
+        // ✅ Get catalog for mapping
+        const { data: catalog } = await supabase
             .from('units_catalog')
             .select('unit_code, unit_name, block, program')
             .eq('program', this.programCode || 'KRCHN')
             .eq('status', 'active');
         
-        if (catalogError) {
-            console.warn('Could not load catalog:', catalogError);
-        }
-        
-        // Build subject to unit code mapping
         const subjectToUnitCode = {};
         if (catalog) {
             catalog.forEach(unit => {
@@ -1234,66 +1224,56 @@ async loadEligibleUnits() {
             });
         }
         
-        // ✅ STEP 3: Get registered units (to check if already registered)
-        const { data: existingRegs } = await supabase
+        // ✅ Get ALL registrations (to check if already registered)
+        const { data: allRegs } = await supabase
             .from('student_unit_registrations')
-            .select('unit_code, reg_type, status')
+            .select('unit_code, reg_type, status, id')
             .eq('student_id', userId);
         
         const registeredMap = {};
-        existingRegs?.forEach(r => {
-            registeredMap[r.unit_code] = { reg_type: r.reg_type, status: r.status };
+        allRegs?.forEach(r => {
+            registeredMap[r.unit_code] = { reg_type: r.reg_type, status: r.status, id: r.id };
         });
         
+        const failingGrades = ['D', 'E', 'F', 'FAIL'];
         const isTVET = this.isTVETStudent;
         const passThreshold = isTVET ? 50 : 60;
         const retakeThreshold = 30;
         
-        // ✅ FAILING GRADES
-        const failingGrades = ['D', 'E', 'F', 'FAIL'];
-        // ✅ PASSING GRADES
-        const passingGrades = ['A', 'B', 'C', 'PASS'];
-        
         let eligibleUnits = [];
         let processedUnits = new Set();
         
-        // ✅ STEP 4: Process marks to find failing units
+        // ✅ Process marks - show ANY failing grade (D, E, F)
         for (const mark of marks || []) {
             const score = mark.final_score || 0;
             const grade = mark.grade || '';
             const subjectName = mark.subject_name || 'Unknown';
             
-            // Skip if already processed
             if (processedUnits.has(subjectName)) continue;
             
-            // ✅ Check if this is a FAILING grade (D, E, F)
+            // ✅ Check if this is a failing grade
             const isFailing = failingGrades.includes(grade.toUpperCase());
             
-            // ✅ Check if this is a PASSING grade (A, B, C)
-            const isPassing = passingGrades.includes(grade.toUpperCase());
-            
-            // ✅ Determine if eligible for Supplementary/Retake
+            // ✅ Check if eligible based on score
             let isEligible = false;
             let determinedType = '';
             
             if (regType === 'Supplementary') {
-                // Eligible if: Grade is D, E, F OR score is between 30-59
                 if (isFailing || (score >= retakeThreshold && score < passThreshold)) {
                     isEligible = true;
                     determinedType = 'Supplementary';
                 }
             } else if (regType === 'Retake') {
-                // Eligible if: Grade is D, E, F OR score is below 30
                 if (isFailing || (score < retakeThreshold && score > 0)) {
                     isEligible = true;
                     determinedType = 'Retake';
                 }
             }
             
-            // ✅ If passing grade (A, B, C) → NOT eligible
-            if (isPassing) {
-                isEligible = false;
-                console.log(`   ❌ ${subjectName} - Grade ${grade} (PASSED) - NOT eligible`);
+            // ✅ ALWAYS show if grade is D, E, F (regardless of registration type)
+            if (isFailing && regType === 'Supplementary') {
+                isEligible = true;
+                determinedType = 'Supplementary';
             }
             
             if (isEligible) {
@@ -1315,13 +1295,13 @@ async loadEligibleUnits() {
                     unitCode = this.getUnitCode(subjectName);
                 }
                 
-                // Check if already registered
+                // ✅ Check registration status (ANY type)
                 const regInfo = registeredMap[unitCode];
                 const isRegistered = !!regInfo;
-                const regTypeExisting = regInfo?.reg_type || '';
+                const regTypeExisting = regInfo?.reg_type || 'Not Registered';
                 const regStatus = regInfo?.status || '';
                 
-                console.log(`   ✅ ${subjectName} → ${unitCode} (${grade}, ${score}%) - ${isRegistered ? 'Registered' : 'Not Registered'}`);
+                console.log(`   ${subjectName} → ${unitCode} (${grade}, ${score}%) - Registered: ${regTypeExisting}`);
                 
                 eligibleUnits.push({
                     unit_code: unitCode || 'N/A',
@@ -1330,51 +1310,11 @@ async loadEligibleUnits() {
                     score: score,
                     reg_type: determinedType,
                     grade: grade || 'FAIL',
-                    status: isRegistered ? `⏳ ${regStatus}` : '✅ Eligible',
+                    status: isRegistered ? `⏳ ${regStatus} (${regTypeExisting})` : '✅ Eligible',
                     is_registered: isRegistered,
-                    existing_id: null,
+                    existing_id: regInfo?.id || null,
                     has_mark: true,
-                    reg_type_existing: regTypeExisting,
-                    reg_status: regStatus
-                });
-            }
-        }
-        
-        // ✅ STEP 5: Also check for units with NO marks (but registered as Supplementary/Retake)
-        // This ensures pending units without grades still show
-        for (const reg of existingRegs || []) {
-            const unitCode = reg.unit_code;
-            const regType = reg.reg_type || '';
-            const regStatus = reg.status || '';
-            
-            // Only check Supplementary/Retake registrations
-            if (!['Supplementary', 'Retake'].includes(regType)) continue;
-            
-            // Skip if already processed (has mark)
-            if (processedUnits.has(unitCode)) continue;
-            
-            // Check if this unit has a mark in the marks list
-            const hasMark = marks?.some(m => {
-                const code = subjectToUnitCode[m.subject_name] || m.unit_code;
-                return code === unitCode;
-            });
-            
-            // If no mark, show as pending
-            if (!hasMark) {
-                console.log(`   ✅ ${unitCode} - No mark yet (pending)`);
-                eligibleUnits.push({
-                    unit_code: unitCode,
-                    unit_name: reg.unit_name || unitCode,
-                    block: reg.block || 'N/A',
-                    score: null,
-                    reg_type: regType,
-                    grade: 'Pending',
-                    status: '⏳ Pending',
-                    is_registered: true,
-                    existing_id: reg.id,
-                    has_mark: false,
-                    reg_type_existing: regType,
-                    reg_status: regStatus
+                    reg_type_existing: regTypeExisting
                 });
             }
         }
