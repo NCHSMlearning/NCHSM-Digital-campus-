@@ -5360,7 +5360,7 @@ if (typeof handleAddUnit === 'undefined') {
 }
 
 // ============================================================
-// 10.3 - LOAD UNITS
+// 10.3 - LOAD UNITS (FIXED)
 // ============================================================
 
 if (typeof loadUnits === 'undefined') {
@@ -5375,10 +5375,12 @@ if (typeof loadUnits === 'undefined') {
             if (oldTbody) {
                 oldTbody.innerHTML = '<tr><td colspan="6">Loading units...</td></tr>';
                 try {
-                    if (typeof supabase === 'undefined' || !supabase) {
+                    // ✅ FIX: Use window.sb
+                    const supabaseClient = window.sb || window.supabase;
+                    if (!supabaseClient) {
                         throw new Error('Supabase not available');
                     }
-                    const { data: units, error } = await supabase
+                    const { data: units, error } = await supabaseClient
                         .from('units_catalog')
                         .select('*')
                         .order('unit_code', { ascending: true });
@@ -5429,11 +5431,13 @@ if (typeof loadUnits === 'undefined') {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">Loading units...</td></tr>';
 
         try {
-            if (typeof supabase === 'undefined' || !supabase) {
+            // ✅ FIX: Use window.sb
+            const supabaseClient = window.sb || window.supabase;
+            if (!supabaseClient) {
                 throw new Error('Supabase not available');
             }
 
-            const { data: units, error } = await supabase
+            const { data: units, error } = await supabaseClient
                 .from('units_catalog')
                 .select('*')
                 .order('unit_code', { ascending: true });
