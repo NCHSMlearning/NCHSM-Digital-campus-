@@ -3,7 +3,7 @@
 // COMPLETELY REBUILT - v3.1 (FIXED CACHE ISSUES)
 // ============================================================
 
-(function() { 
+(function() {  
     'use strict';  
      
     console.log('✅ Student Dashboard v3.1 loading...');
