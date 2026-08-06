@@ -2467,203 +2467,212 @@ async loadEligibleUnits() {
     // DOWNLOAD SUPPLEMENTARY EXAM CARD - FIXED (Only Failed + Pending)
     // ============================================================
     
-    window.downloadSupplementaryExamCard = async function() {
-        console.log('📄 Generating Supplementary Exam Card...');
-        
-        // Show progress overlay
-        const overlay = document.createElement('div');
-        overlay.id = 'examCardProgressOverlay';
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            backdrop-filter: blur(4px);
-        `;
-        overlay.innerHTML = `
-            <div style="background:white;border-radius:16px;padding:30px 40px;max-width:350px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-                <div style="margin-bottom:15px;">
-                    <div style="width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:#B45309;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto;"></div>
-                </div>
-                <h3 style="color:#0A3D62;font-size:16px;">📄 Generating Supplementary Exam Card</h3>
-                <p style="color:#64748b;font-size:13px;" id="progressStatus">Loading your units...</p>
-                <div style="width:100%;height:5px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:10px;">
-                    <div id="progressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#B45309,#D97706);border-radius:4px;transition:width 0.3s ease;"></div>
-                </div>
-                <p id="progressPercent" style="margin:6px 0 0 0;font-size:11px;color:#94a3b8;font-weight:600;">0%</p>
+   // ============================================================
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - INCLUDES FAILED GRADES
+// ============================================================
+
+window.downloadSupplementaryExamCard = async function() {
+    console.log('📄 Generating Supplementary Exam Card...');
+    
+    // Show progress overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'examCardProgressOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        backdrop-filter: blur(4px);
+    `;
+    overlay.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:30px 40px;max-width:350px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <div style="margin-bottom:15px;">
+                <div style="width:50px;height:50px;border:4px solid #e2e8f0;border-top-color:#B45309;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto;"></div>
             </div>
-        `;
-        
-        const style = document.createElement('style');
-        style.textContent = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-        overlay.appendChild(style);
-        document.body.appendChild(overlay);
-        
-        const updateProgress = (percent, status) => {
-            const bar = document.getElementById('progressBar');
-            const percentText = document.getElementById('progressPercent');
-            const statusText = document.getElementById('progressStatus');
-            if (bar) bar.style.width = Math.min(percent, 100) + '%';
-            if (percentText) percentText.textContent = Math.min(percent, 100) + '%';
-            if (statusText && status) statusText.textContent = status;
-        };
-        
-        try {
-            updateProgress(10, 'Verifying user...');
-            
-            const user = window.currentUserProfile || window.userProfile;
-            const userId = user?.user_id || user?.id;
-            const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
-            
-            if (!userId) {
-                throw new Error('User not found');
-            }
-            
-            updateProgress(20, 'Connecting to database...');
-            
-            const supabase = window.sb || window.supabase;
-            if (!supabase) {
-                throw new Error('Database not available');
-            }
-            
-            updateProgress(30, 'Fetching your units...');
-            
-            // Get ALL approved supplementary/retake units
-            const { data: allRegs, error } = await supabase
-                .from('student_unit_registrations')
-                .select('*')
-                .eq('student_id', userId)
-                .in('reg_type', ['Supplementary', 'Retake'])
-                .eq('status', 'approved')
-                .order('submitted_date', { ascending: false });
-            
-            if (error) throw error;
-            
-            // ✅ Get published marks for this student
-            let publishedGrades = new Map();
-            let failedUnits = new Set();
-            
-            if (admissionNumber) {
-                const { data: marks, error: marksError } = await supabase
-                    .from('student_marks')
-                    .select('subject_name, final_score, grade, published')
-                    .eq('admission_number', admissionNumber)
-                    .eq('published', true);
-                
-                if (!marksError && marks) {
-                    // Build catalog mapping
-                    const { data: catalog } = await supabase
-                        .from('units_catalog')
-                        .select('unit_code, unit_name')
-                        .eq('program', user?.program || 'KRCHN');
-                    
-                    const catalogMap = {};
-                    if (catalog) {
-                        catalog.forEach(u => {
-                            catalogMap[u.unit_name] = u.unit_code;
-                        });
-                    }
-                    
-                    const failingGrades = ['D', 'E', 'F', 'FAIL'];
-                    
-                    marks.forEach(mark => {
-                        let unitCode = null;
-                        for (const [name, code] of Object.entries(catalogMap)) {
-                            if (mark.subject_name.includes(name) || name.includes(mark.subject_name)) {
-                                unitCode = code;
-                                break;
-                            }
-                        }
-                        if (unitCode) {
-                            const grade = mark.grade || '';
-                            if (failingGrades.includes(grade.toUpperCase())) {
-                                failedUnits.add(unitCode);
-                            }
-                            publishedGrades.set(unitCode, {
-                                grade: grade,
-                                score: mark.final_score || 0,
-                                subject_name: mark.subject_name
-                            });
-                        }
-                    });
-                }
-            }
-            
-            // ✅ FILTER: Only keep FAILED units OR units with NO grade
-            const passingGrades = ['A', 'B', 'C', 'PASS'];
-            const registrations = (allRegs || []).filter(unit => {
-                // Check if this unit has a published mark
-                const publishedMark = publishedGrades.get(unit.unit_code);
-                
-                if (!publishedMark) {
-                    console.log(`   ✅ ${unit.unit_code} - No published mark (pending)`);
-                    return true;
-                }
-                
-                const grade = publishedMark.grade || '';
-                if (failedUnits.has(unit.unit_code)) {
-                    console.log(`   ✅ ${unit.unit_code} - Grade ${grade} (FAILED) - INCLUDED`);
-                    return true;
-                }
-                if (passingGrades.includes(grade.toUpperCase())) {
-                    console.log(`   ❌ ${unit.unit_code} - Grade ${grade} (PASSED) - EXCLUDED`);
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            if (!registrations || registrations.length === 0) {
-                updateProgress(100, 'No units found');
-                await new Promise(r => setTimeout(r, 300));
-                overlay.remove();
-                alert('No failed supplementary/retake units found.');
-                return;
-            }
-            
-            console.log(`✅ Found ${registrations.length} failed/pending supplementary/retake units`);
-            updateProgress(50, `Found ${registrations.length} unit(s)`);
-            
-            updateProgress(60, 'Generating exam card...');
-            const html = generateSupplementaryExamCardHTML(registrations, user);
-            
-            updateProgress(80, 'Opening print window...');
-            const win = window.open('', '_blank', 'width=794,height=1123');
-            if (!win) {
-                updateProgress(100, 'Popup blocked');
-                await new Promise(r => setTimeout(r, 300));
-                overlay.remove();
-                alert('Please allow popups to view the exam card.');
-                return;
-            }
-            
-            updateProgress(90, 'Rendering...');
-            win.document.write(html);
-            win.document.close();
-            
-            updateProgress(100, '✅ Done!');
-            await new Promise(r => setTimeout(r, 300));
-            overlay.remove();
-            
-            setTimeout(() => {
-                win.print();
-            }, 1000);
-            
-        } catch (error) {
-            console.error('❌ Error:', error);
-            updateProgress(100, '❌ Error');
-            await new Promise(r => setTimeout(r, 300));
-            overlay.remove();
-            alert('Failed to generate exam card: ' + error.message);
-        }
+            <h3 style="color:#0A3D62;font-size:16px;">📄 Generating Supplementary Exam Card</h3>
+            <p style="color:#64748b;font-size:13px;" id="progressStatus">Loading your units...</p>
+            <div style="width:100%;height:5px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:10px;">
+                <div id="progressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#B45309,#D97706);border-radius:4px;transition:width 0.3s ease;"></div>
+            </div>
+            <p id="progressPercent" style="margin:6px 0 0 0;font-size:11px;color:#94a3b8;font-weight:600;">0%</p>
+        </div>
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+    overlay.appendChild(style);
+    document.body.appendChild(overlay);
+    
+    const updateProgress = (percent, status) => {
+        const bar = document.getElementById('progressBar');
+        const percentText = document.getElementById('progressPercent');
+        const statusText = document.getElementById('progressStatus');
+        if (bar) bar.style.width = Math.min(percent, 100) + '%';
+        if (percentText) percentText.textContent = Math.min(percent, 100) + '%';
+        if (statusText && status) statusText.textContent = status;
     };
     
+    try {
+        updateProgress(10, 'Verifying user...');
+        
+        const user = window.currentUserProfile || window.userProfile;
+        const userId = user?.user_id || user?.id;
+        
+        if (!userId) {
+            throw new Error('User not found');
+        }
+        
+        updateProgress(20, 'Connecting to database...');
+        
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Database not available');
+        }
+        
+        updateProgress(30, 'Fetching your units...');
+        
+        // ✅ Get ALL approved supplementary/retake units
+        const { data: allRegs, error } = await supabase
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', userId)
+            .in('reg_type', ['Supplementary', 'Retake'])
+            .eq('status', 'approved')
+            .order('submitted_date', { ascending: false });
+        
+        if (error) throw error;
+        
+        console.log(`📊 Found ${allRegs?.length || 0} approved supplementary/retake units`);
+        
+        // ✅ Get published marks for this student
+        const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
+        let publishedGrades = new Map();
+        
+        if (admissionNumber) {
+            const { data: marks, error: marksError } = await supabase
+                .from('student_marks')
+                .select('subject_name, final_score, grade, published')
+                .eq('admission_number', admissionNumber)
+                .eq('published', true);
+            
+            if (!marksError && marks) {
+                // Build catalog mapping
+                const { data: catalog } = await supabase
+                    .from('units_catalog')
+                    .select('unit_code, unit_name')
+                    .eq('program', user?.program || 'KRCHN');
+                
+                const catalogMap = {};
+                if (catalog) {
+                    catalog.forEach(u => {
+                        catalogMap[u.unit_name] = u.unit_code;
+                    });
+                }
+                
+                marks.forEach(mark => {
+                    let unitCode = null;
+                    for (const [name, code] of Object.entries(catalogMap)) {
+                        if (mark.subject_name.includes(name) || name.includes(mark.subject_name)) {
+                            unitCode = code;
+                            break;
+                        }
+                    }
+                    if (unitCode) {
+                        publishedGrades.set(unitCode, {
+                            grade: mark.grade || '',
+                            score: mark.final_score || 0,
+                            subject_name: mark.subject_name
+                        });
+                    }
+                });
+                
+                console.log(`📊 Found ${publishedGrades.size} published marks`);
+            }
+        }
+        
+        // ✅ FILTER: Include ALL units EXCEPT PASSED (A, B, C)
+        const passingGrades = ['A', 'B', 'C', 'PASS'];
+        const failingGrades = ['D', 'E', 'F', 'FAIL'];
+        
+        const registrations = (allRegs || []).filter(unit => {
+            // Check if this unit has a published mark
+            const publishedMark = publishedGrades.get(unit.unit_code);
+            
+            if (!publishedMark) {
+                // No published mark - include (pending)
+                console.log(`   ✅ ${unit.unit_code} - No published mark (pending)`);
+                return true;
+            }
+            
+            const grade = publishedMark.grade || '';
+            
+            // ✅ If PASSED (A, B, C) → EXCLUDE
+            if (passingGrades.includes(grade.toUpperCase())) {
+                console.log(`   ❌ ${unit.unit_code} - Grade ${grade} (PASSED) - EXCLUDED`);
+                return false;
+            }
+            
+            // ✅ If FAILED (D, E, F) → INCLUDE
+            if (failingGrades.includes(grade.toUpperCase())) {
+                console.log(`   ✅ ${unit.unit_code} - Grade ${grade} (FAILED) - INCLUDED`);
+                return true;
+            }
+            
+            // Default: include
+            console.log(`   ✅ ${unit.unit_code} - Grade ${grade} - INCLUDED`);
+            return true;
+        });
+        
+        if (!registrations || registrations.length === 0) {
+            updateProgress(100, 'No units found');
+            await new Promise(r => setTimeout(r, 300));
+            overlay.remove();
+            alert('No eligible supplementary/retake units found.');
+            return;
+        }
+        
+        console.log(`✅ Found ${registrations.length} eligible units for exam card`);
+        updateProgress(50, `Found ${registrations.length} unit(s)`);
+        
+        updateProgress(60, 'Generating exam card...');
+        const html = generateSupplementaryExamCardHTML(registrations, user);
+        
+        updateProgress(80, 'Opening print window...');
+        const win = window.open('', '_blank', 'width=794,height=1123');
+        if (!win) {
+            updateProgress(100, 'Popup blocked');
+            await new Promise(r => setTimeout(r, 300));
+            overlay.remove();
+            alert('Please allow popups to view the exam card.');
+            return;
+        }
+        
+        updateProgress(90, 'Rendering...');
+        win.document.write(html);
+        win.document.close();
+        
+        updateProgress(100, '✅ Done!');
+        await new Promise(r => setTimeout(r, 300));
+        overlay.remove();
+        
+        setTimeout(() => {
+            win.print();
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        updateProgress(100, '❌ Error');
+        await new Promise(r => setTimeout(r, 300));
+        overlay.remove();
+        alert('Failed to generate exam card: ' + error.message);
+    }
+};
     // ============================================================
     // INITIALIZE ON PAGE LOAD
     // ============================================================
