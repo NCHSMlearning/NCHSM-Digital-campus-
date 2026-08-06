@@ -16,6 +16,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.sb = sb;
 
+//  FIX: Create alias for loadUnits to use
+window.supabase = window.sb;
+
 // ============================================
 // 🔥🔥🔥 ADD CLEANUP MODULE HERE 🔥🔥🔥
 // ============================================
