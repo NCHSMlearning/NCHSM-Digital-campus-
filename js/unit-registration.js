@@ -582,55 +582,63 @@
             }
         }
         
-        async loadAvailableUnits(supabase) {
-            const regType = this.regType?.value;
-            
-            if (!regType) {
-                if (this.availableBody) {
-                    this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Select Registration Type first</td></tr>';
-                }
-                return;
-            }
-            
-            try {
-                let query = supabase
-                    .from('units_catalog')
-                    .select('*')
-                    .eq('status', 'active');
-                
-                if (this.programCode) {
-                    query = query.eq('program', this.isTVETStudent ? this.programCode : 'KRCHN');
-                }
-                
-                const block = this.blockFilter?.value;
-                if (block && block !== "") {
-                    query = query.eq('block', block);
-                }
-                
-                const unitType = this.unitTypeFilter?.value;
-                if (unitType && unitType !== "") {
-                    query = query.eq('unit_type', unitType);
-                }
-                
-                const { data, error } = await query.order('block').order('unit_code');
-                
-                if (error) throw error;
-                
-                this.allUnits = data || [];
-                
-                const registeredCodes = new Set(this.registeredUnits.map(u => u.unit_code));
-                this.allUnits = this.allUnits.filter(u => !registeredCodes.has(u.unit_code));
-                
-                this.displayAvailableUnits();
-                
-            } catch (error) {
-                console.error('Error loading available units:', error);
-                if (this.availableBody) {
-                    this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Error loading units</td></tr>';
-                }
-            }
+       async loadAvailableUnits(supabase) {
+    const regType = this.regType?.value;
+    
+    if (!regType) {
+        if (this.availableBody) {
+            this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Select Registration Type first</td></tr>';
+        }
+        return;
+    }
+    
+    try {
+        // ✅ FIX: Ensure registeredUnits exists
+        if (!this.registeredUnits) {
+            this.registeredUnits = [];
         }
         
+        // ✅ FIX: Reload registered units first
+        await this.loadRegisteredUnits(supabase);
+        
+        let query = supabase
+            .from('units_catalog')
+            .select('*')
+            .eq('status', 'active');
+        
+        if (this.programCode) {
+            query = query.eq('program', this.isTVETStudent ? this.programCode : 'KRCHN');
+        }
+        
+        const block = this.blockFilter?.value;
+        if (block && block !== "") {
+            query = query.eq('block', block);
+        }
+        
+        const unitType = this.unitTypeFilter?.value;
+        if (unitType && unitType !== "") {
+            query = query.eq('unit_type', unitType);
+        }
+        
+        const { data, error } = await query.order('block').order('unit_code');
+        
+        if (error) throw error;
+        
+        this.allUnits = data || [];
+        
+        // ✅ FIX: Use safe array
+        const registeredCodes = new Set((this.registeredUnits || []).map(u => u.unit_code));
+        this.allUnits = this.allUnits.filter(u => !registeredCodes.has(u.unit_code));
+        
+        this.displayAvailableUnits();
+        
+    } catch (error) {
+        console.error('Error loading available units:', error);
+        if (this.availableBody) {
+            this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Error loading units</td></tr>';
+        }
+    }
+}
         async loadMaxUnits(supabase) {
             try {
                 const { data, error } = await supabase
