@@ -6,7 +6,7 @@
 // ✅ View & Download fee structure actions
 // ✅ Fee balance updates when viewing specific periods
 // ✅ Email notification after successful payment 
-// ✅ Detailed fee structure with vote heads from database
+// ✅ Detailed fee structure with vote heads from  database
 // ✅ Communicates with Super Admin Finance Module
 // ============================================================
 
