@@ -13235,11 +13235,6 @@ async function loadUnitRegistrationStats() {
 // =====================================================
 // FIXED: Get Student Name from Multiple Sources
 // =====================================================
-// =====================================================
-// FIXED: Get Student Name from consolidated_user_profiles_table
-// =====================================================
-
-const studentNameCache = {};
 
 async function getStudentName(studentId) {
     if (!studentId) return {
