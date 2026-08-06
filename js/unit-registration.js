@@ -849,12 +849,8 @@
             this.updateSelectedCount();
         }
         
-        // ============================================================
-        // SUBMIT REGULAR REGISTRATION
-        // ============================================================
-        
        // ============================================================
-// SUBMIT REGISTRATION - COMPLETE FIXED VERSION
+// SUBMIT REGISTRATION - FIXED (Checks Database Directly)
 // ============================================================
 
 async submitRegistration() {
@@ -877,33 +873,7 @@ async submitRegistration() {
         return;
     }
     
-    // Check if any selected units are already registered
-    const alreadyRegistered = [];
-    const newUnits = [];
-    
-    for (const code of selectedCodes) {
-        const existing = this.registeredUnits.find(u => u.unit_code === code);
-        if (existing && (existing.status === 'pending' || existing.status === 'approved')) {
-            alreadyRegistered.push(code);
-        } else {
-            newUnits.push(code);
-        }
-    }
-    
-    if (newUnits.length === 0) {
-        this.showError(`All selected units are already registered.`, 'warning');
-        document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
-        this.updateSelectedCount();
-        return;
-    }
-    
-    const currentTotal = this.registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length;
-    if (newUnits.length + currentTotal > this.maxUnits) {
-        this.showError(`You can only register up to ${this.maxUnits} units total.`, 'warning');
-        return;
-    }
-    
-    if (!confirm(`Submit ${newUnits.length} unit(s) for ${regType} registration?`)) return;
+    if (!confirm(`Submit ${selectedCodes.length} unit(s) for ${regType}?`)) return;
     
     this.isSubmitting = true;
     if (this.submitBtn) {
@@ -915,6 +885,41 @@ async submitRegistration() {
         const supabase = this.getSupabase();
         if (!supabase) throw new Error('Database not available');
         
+        // ✅ FIX: Check database directly for each unit
+        const alreadyRegistered = [];
+        const newUnits = [];
+        
+        for (const code of selectedCodes) {
+            const { data: existing, error } = await supabase
+                .from('student_unit_registrations')
+                .select('id, status')
+                .eq('student_id', this.studentId)
+                .eq('unit_code', code)
+                .maybeSingle();
+            
+            if (existing && (existing.status === 'pending' || existing.status === 'approved')) {
+                alreadyRegistered.push(code);
+            } else {
+                newUnits.push(code);
+            }
+        }
+        
+        if (newUnits.length === 0) {
+            this.showError('All selected units are already registered.', 'warning');
+            document.querySelectorAll('.unit-checkbox:checked').forEach(cb => cb.checked = false);
+            this.updateSelectedCount();
+            return;
+        }
+        
+        // ✅ Refresh registered units count
+        await this.loadRegisteredUnits(supabase);
+        const currentTotal = this.registeredUnits.filter(u => u.status === 'pending' || u.status === 'approved').length;
+        
+        if (newUnits.length + currentTotal > this.maxUnits) {
+            this.showError(`You can only register up to ${this.maxUnits} units total.`, 'warning');
+            return;
+        }
+        
         const { data: units, error: unitsError } = await supabase
             .from('units_catalog')
             .select('*')
@@ -922,14 +927,12 @@ async submitRegistration() {
         
         if (unitsError) throw unitsError;
         
-        // ✅ FIX: TVET students get academic_year and term
+        // ✅ TVET fix
         const academicYear = new Date().getFullYear().toString();
         const isTVET = this.isTVETStudent || TVET_PROGRAMS.includes(this.programCode);
         
-        // Get the correct term/block for TVET
-        let term = this.getCurrentTerm(); // KRCHN: "Trimester 2"
+        let term = this.getCurrentTerm();
         if (isTVET) {
-            // Use the student's block as the term (e.g., "Year 1 Term 1")
             term = this.userProfile?.block || 
                    this.userProfile?.current_block || 
                    this.userProfile?.term || 
@@ -949,7 +952,7 @@ async submitRegistration() {
             updated_at: new Date().toISOString(),
             credits: unit.credits || 3,
             intake_year: this.intakeYear,
-            academic_year: parseInt(academicYear),  // ✅ Integer, not string
+            academic_year: parseInt(academicYear),
             term: term
         }));
         
@@ -958,8 +961,9 @@ async submitRegistration() {
             .insert(registrations);
         
         if (error) {
-            // Handle duplicate error gracefully
             if (error.code === '23505') {
+                // If duplicate, refresh and try to identify
+                await this.loadRegisteredUnits(supabase);
                 this.showError('This unit is already registered. Please refresh and check your registered units.', 'warning');
                 return;
             }
