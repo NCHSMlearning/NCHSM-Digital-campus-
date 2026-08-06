@@ -16485,10 +16485,17 @@ function setupEventListeners() {
         unitFilterYear.addEventListener('change', filterUnitsCatalog);
     }
     
-    const unitFilterBlock = document.getElementById('unit_filter_block');
-    if (unitFilterBlock) {
-        unitFilterBlock.addEventListener('change', filterUnitsByBlockSelect);
-    }
+   const unitFilterBlock = document.getElementById('unit_filter_block');
+if (unitFilterBlock) {
+    unitFilterBlock.addEventListener('change', function() {
+        // Use the alias function
+        if (typeof filterUnitsByBlockSelect === 'function') {
+            filterUnitsByBlockSelect(this.value);
+        } else if (typeof filterUnitsByBlock === 'function') {
+            filterUnitsByBlock(this.value);
+        }
+    });
+}
     
     // ---- BLOCK FILTER BUTTONS ----
     const blockBtns = document.querySelectorAll('.block-btn');
