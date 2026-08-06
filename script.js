@@ -14120,7 +14120,10 @@ async function bulkDeapproveSelected() {
 // GROUPED REGISTRATIONS - WITH SUPPLEMENTARY SUPPORT
 // =====================================================
 
+
 async function loadGroupedRegistrations() {
+    console.log('📋 Loading grouped registrations (FIXED)...');
+    
     const container = document.getElementById('grouped-registrations-container');
     if (!container) return;
     
@@ -14132,14 +14135,18 @@ async function loadGroupedRegistrations() {
     `;
     
     try {
-        const { data, error } = await sb
+        const supabaseClient = window.sb || window.supabase;
+        if (!supabaseClient) throw new Error('Supabase not available');
+        
+        // Get ALL registrations
+        const { data: registrations, error } = await supabaseClient
             .from('student_unit_registrations')
             .select('*')
             .order('submitted_date', { ascending: false });
         
         if (error) throw error;
         
-        window.registrationsData = data || [];
+        window.registrationsData = registrations || [];
         
         if (window.registrationsData.length === 0) {
             container.innerHTML = `
@@ -14151,7 +14158,79 @@ async function loadGroupedRegistrations() {
             return;
         }
         
-        renderGroupedRegistrations(window.registrationsData);
+        // Get ALL student profiles
+        const { data: allStudents } = await supabaseClient
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, program, block, email')
+            .limit(500);
+        
+        // Build a map of user_id -> student info
+        const studentMap = {};
+        if (allStudents) {
+            allStudents.forEach(s => {
+                studentMap[s.user_id] = s;
+                if (s.student_id) studentMap[s.student_id] = s;
+                if (s.id) studentMap[s.id] = s;
+            });
+        }
+        
+        // Group by student with correct names
+        const groups = {};
+        for (const reg of window.registrationsData) {
+            const studentId = reg.student_id;
+            let student = studentMap[studentId];
+            
+            // If not found, try partial match
+            if (!student && studentId) {
+                for (const key in studentMap) {
+                    if (key && key.startsWith(studentId.substring(0, 12))) {
+                        student = studentMap[key];
+                        break;
+                    }
+                }
+            }
+            
+            // If still not found, use the student_name from registration or create unknown
+            if (!student) {
+                student = {
+                    full_name: reg.student_name || `Student (${studentId?.substring(0, 8) || 'Unknown'})`,
+                    student_id: studentId,
+                    program: reg.program || 'N/A',
+                    block: reg.block || 'N/A',
+                    email: null
+                };
+            }
+            
+            const key = studentId || 'unknown_student';
+            if (!groups[key]) {
+                const programType = window.isTVETProgram ? 
+                    (window.isTVETProgram(student.program) ? 'TVET' : 'KRCHN') : 
+                    (student.program === 'KRCHN' ? 'KRCHN' : 'TVET');
+                
+                groups[key] = {
+                    id: studentId,
+                    name: student.full_name || 'Unknown Student',
+                    admission_number: student.student_id || studentId?.substring(0, 12) || 'N/A',
+                    program: student.program || reg.program || 'N/A',
+                    block: student.block || reg.block || 'N/A',
+                    email: student.email || null,
+                    programType: programType,
+                    isTVET: programType === 'TVET',
+                    registrations: []
+                };
+            }
+            groups[key].registrations.push(reg);
+        }
+        
+        // Update counts
+        const groupCount = document.getElementById('studentGroupCount');
+        if (groupCount) groupCount.textContent = Object.keys(groups).length;
+        
+        const filterCount = document.getElementById('registrationsFilterCount');
+        if (filterCount) filterCount.textContent = window.registrationsData.length;
+        
+        // Render with correct names
+        renderGroupedRegistrationsWithNames(groups);
         
     } catch (error) {
         console.error('Error loading grouped registrations:', error);
@@ -14164,11 +14243,17 @@ async function loadGroupedRegistrations() {
     }
 }
 
-function renderGroupedRegistrations(data) {
+// =====================================================
+// RENDER GROUPED REGISTRATIONS - WITH CORRECT STUDENT NAMES
+// =====================================================
+
+function renderGroupedRegistrationsWithNames(groups) {
     const container = document.getElementById('grouped-registrations-container');
     if (!container) return;
     
-    if (!data || data.length === 0) {
+    const sortedGroups = Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+    
+    if (sortedGroups.length === 0) {
         container.innerHTML = `
             <div style="text-align: center; padding: 40px; color: #94a3b8;">
                 <i class="fas fa-inbox" style="font-size: 36px; display: block; margin-bottom: 10px;"></i>
@@ -14178,42 +14263,16 @@ function renderGroupedRegistrations(data) {
         return;
     }
     
-    // Group by student - use student_id
-    const groups = {};
-    data.forEach(reg => {
-        const key = reg.student_id || 'unknown_student';
-        if (!groups[key]) {
-            groups[key] = {
-                id: reg.student_id || key,
-                name: reg.student_name || 'Unknown Student',
-                program: reg.program || 'N/A',
-                block: reg.block || 'N/A',
-                registrations: []
-            };
-        }
-        groups[key].registrations.push(reg);
-    });
-    
-    const groupCount = document.getElementById('studentGroupCount');
-    if (groupCount) groupCount.textContent = Object.keys(groups).length;
-    
-    const filterCount = document.getElementById('registrationsFilterCount');
-    if (filterCount) filterCount.textContent = data.length;
-    
     let html = '';
     
-    for (const key in groups) {
-        const group = groups[key];
-        const isExpanded = window.expandedGroups.has(key);
-        const regs = group.registrations;
-        
+    for (const student of sortedGroups) {
+        const regs = student.registrations;
+        const isExpanded = window.expandedGroups.has(student.id);
         const allApproved = regs.every(r => r.status === 'approved');
         const hasPending = regs.some(r => r.status === 'pending');
         const hasRejected = regs.some(r => r.status === 'rejected');
         const hasSupplementary = regs.some(r => 
-            r.reg_type === 'Supplementary' || 
-            r.reg_type === 'Resit' || 
-            r.reg_type === 'Retake'
+            r.reg_type === 'Supplementary' || r.reg_type === 'Resit' || r.reg_type === 'Retake'
         );
         
         let statusColor = '#10b981';
@@ -14238,34 +14297,41 @@ function renderGroupedRegistrations(data) {
             'DICT': '#6366f1',
             'DME': '#10b981'
         };
-        const progColor = progColors[group.program] || '#6b7280';
+        const progColor = progColors[student.program] || '#6b7280';
         
         const suppCount = regs.filter(r => 
-            r.reg_type === 'Supplementary' || 
-            r.reg_type === 'Resit' || 
-            r.reg_type === 'Retake'
+            r.reg_type === 'Supplementary' || r.reg_type === 'Resit' || r.reg_type === 'Retake'
         ).length;
         const suppBadge = suppCount > 0 ? 
             `<span style="background: #B45309; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 5px;">🔄 ${suppCount} Supp</span>` : '';
         
+        const programBadge = student.isTVET ? 
+            '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">TVET</span>' :
+            '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">KRCHN</span>';
+        
         html += `
-            <div class="student-group-card" data-student-id="${key}" data-program="${group.program}" data-block="${group.block}" data-has-supp="${hasSupplementary}" style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: white; transition: all 0.2s; ${hasSupplementary ? 'border-left: 4px solid #B45309;' : ''}">
+            <div class="student-group-card" data-student-id="${student.id}" data-program="${student.program}" data-block="${student.block}" data-has-supp="${hasSupplementary}" style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: white; transition: all 0.2s; ${hasSupplementary ? 'border-left: 4px solid #B45309;' : ''}">
                 
                 <!-- GROUP HEADER -->
-                <div onclick="toggleGroup('${key}')" style="padding: 14px 18px; background: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+                <div onclick="toggleGroup('${student.id}')" style="padding: 14px 18px; background: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
                     
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <span style="font-size: 14px; color: #94a3b8;">
                             <i class="fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
                         </span>
                         <div style="width: 36px; height: 36px; border-radius: 50%; background: ${progColor}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">
-                            ${group.name.charAt(0).toUpperCase()}
+                            ${student.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <div style="font-weight: 600; color: #1e293b; font-size: 15px;">${window.escapeHtml(group.name)}</div>
-                            <div style="font-size: 12px; color: #94a3b8;">
-                                ${key !== 'unknown_student' && key !== 'null_student' ? key.substring(0, 8) : 'N/A'} • ${window.escapeHtml(group.program)} • ${window.escapeHtml(group.block)}
+                            <div style="font-weight: 600; color: #1e293b; font-size: 15px;">
+                                ${escapeHtml(student.name)}
+                                ${programBadge}
                                 ${suppBadge}
+                            </div>
+                            <div style="font-size: 12px; color: #94a3b8;">
+                                ${student.id && student.id !== 'unknown_student' && student.id !== 'null_student' ? student.id.substring(0, 8) : 'N/A'} 
+                                ${student.admission_number ? '• ' + escapeHtml(student.admission_number) : ''}
+                                • ${escapeHtml(student.program)} • ${escapeHtml(student.block)}
                             </div>
                         </div>
                     </div>
@@ -14278,21 +14344,21 @@ function renderGroupedRegistrations(data) {
                             ${statusLabel}
                         </span>
                         <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: white; border: 1px solid #e5e7eb;" onclick="event.stopPropagation();">
-                            <input type="checkbox" class="group-select-checkbox" data-student-id="${key}" onchange="updateGroupSelection()">
+                            <input type="checkbox" class="group-select-checkbox" data-student-id="${student.id}" onchange="updateGroupSelection()">
                             <span style="font-size: 11px;">Select</span>
                         </label>
                     </div>
                 </div>
                 
                 <!-- GROUP BODY -->
-                <div id="group-body-${key}" style="padding: ${isExpanded ? '16px 18px' : '0 18px'}; max-height: ${isExpanded ? '2000px' : '0'}; overflow: hidden; transition: all 0.3s ease;">
+                <div id="group-body-${student.id}" style="padding: ${isExpanded ? '16px 18px' : '0 18px'}; max-height: ${isExpanded ? '2000px' : '0'}; overflow: hidden; transition: all 0.3s ease;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                         <thead>
                             <tr style="background: #f1f5f9; border-bottom: 1px solid #e5e7eb;">
                                 <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569;">#</th>
                                 <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569;">Unit Code</th>
                                 <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569;">Unit Name</th>
-                                <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Type</th>
+                                <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Block</th>
                                 <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Reg Type</th>
                                 <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Status</th>
                                 <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Date</th>
@@ -14322,16 +14388,14 @@ function renderGroupedRegistrations(data) {
             html += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
-                    <td style="padding: 8px 12px; font-weight: 500; color: #4C1D95;">${window.escapeHtml(reg.unit_code)}</td>
-                    <td style="padding: 8px 12px;">${window.escapeHtml(reg.unit_name)}</td>
+                    <td style="padding: 8px 12px; font-weight: 500; color: #4C1D95;">${escapeHtml(reg.unit_code)}</td>
+                    <td style="padding: 8px 12px;">${escapeHtml(reg.unit_name)}</td>
                     <td style="padding: 8px 12px; text-align: center;">
-                        <span style="background: ${reg.unit_type === 'Core' ? '#dbeafe' : '#f3e8ff'}; color: ${reg.unit_type === 'Core' ? '#1e40af' : '#6d28d9'}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
-                            ${reg.unit_type || 'Core'}
-                        </span>
+                        <span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${escapeHtml(reg.block || 'N/A')}</span>
                     </td>
                     <td style="padding: 8px 12px; text-align: center;">
                         <span style="background: ${regTypeBg}; color: ${regTypeColor}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
-                            ${window.escapeHtml(reg.reg_type || 'Normal')}
+                            ${escapeHtml(reg.reg_type || 'Normal')}
                         </span>
                     </td>
                     <td style="padding: 8px 12px; text-align: center;">
@@ -14368,7 +14432,6 @@ function renderGroupedRegistrations(data) {
     
     container.innerHTML = html;
 }
-
 // =====================================================
 // GROUP INTERACTIONS
 // =====================================================
