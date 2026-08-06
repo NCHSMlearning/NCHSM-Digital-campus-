@@ -13235,9 +13235,20 @@ async function loadUnitRegistrationStats() {
 // =====================================================
 // FIXED: Get Student Name from Multiple Sources
 // =====================================================
+// =====================================================
+// FIXED: Get Student Name from consolidated_user_profiles_table
+// =====================================================
+
+const studentNameCache = {};
 
 async function getStudentName(studentId) {
-    if (!studentId) return 'Unknown Student';
+    if (!studentId) return {
+        full_name: 'Unknown Student',
+        admission_number: 'N/A',
+        program: 'N/A',
+        block: 'N/A',
+        email: null
+    };
     
     // Check cache first
     if (studentNameCache[studentId]) {
@@ -13245,11 +13256,23 @@ async function getStudentName(studentId) {
     }
     
     try {
-        // Method 1: Try consolidated_user_profiles_table by ID
-        const { data: profileById, error: err1 } = await sb
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            console.warn('⚠️ Supabase not available');
+            return {
+                full_name: 'Unknown Student',
+                admission_number: studentId.substring(0, 12),
+                program: 'N/A',
+                block: 'N/A',
+                email: null
+            };
+        }
+        
+        // ✅ Method 1: Try by user_id (primary key)
+        const { data: profileById, error: err1 } = await supabase
             .from('consolidated_user_profiles_table')
-            .select('full_name, admission_number, program, block, email')
-            .eq('id', studentId)
+            .select('full_name, student_id as admission_number, program, block, email')
+            .eq('user_id', studentId)
             .maybeSingle();
         
         if (!err1 && profileById && profileById.full_name) {
@@ -13260,61 +13283,18 @@ async function getStudentName(studentId) {
                 block: profileById.block || 'N/A',
                 email: profileById.email || null
             };
+            console.log(`✅ Found student: ${profileById.full_name}`);
             return studentNameCache[studentId];
         }
         
-        // Method 2: Try auth.users to get email, then look up profile by email
-        const { data: authUser, error: err2 } = await sb
-            .from('auth.users')
-            .select('id, email, raw_user_meta_data')
-            .eq('id', studentId)
-            .maybeSingle();
-        
-        if (!err2 && authUser) {
-            const email = authUser.email;
-            const meta = authUser.raw_user_meta_data || {};
-            
-            // If we have email, try to find profile by email
-            if (email) {
-                const { data: profileByEmail, error: err3 } = await sb
-                    .from('consolidated_user_profiles_table')
-                    .select('full_name, admission_number, program, block, email')
-                    .eq('email', email)
-                    .maybeSingle();
-                
-                if (!err3 && profileByEmail && profileByEmail.full_name) {
-                    studentNameCache[studentId] = {
-                        full_name: profileByEmail.full_name,
-                        admission_number: profileByEmail.admission_number || studentId.substring(0, 12),
-                        program: profileByEmail.program || 'N/A',
-                        block: profileByEmail.block || 'N/A',
-                        email: profileByEmail.email || email
-                    };
-                    return studentNameCache[studentId];
-                }
-            }
-            
-            // Fallback: use auth metadata
-            if (meta.full_name) {
-                studentNameCache[studentId] = {
-                    full_name: meta.full_name,
-                    admission_number: meta.admission_number || meta.student_id || studentId.substring(0, 12),
-                    program: meta.program || meta.course || 'N/A',
-                    block: meta.current_block || meta.block || 'N/A',
-                    email: email || null
-                };
-                return studentNameCache[studentId];
-            }
-        }
-        
-        // Method 3: Try direct by student_id in consolidated_user_profiles_table
-        const { data: profileByStudentId, error: err4 } = await sb
+        // ✅ Method 2: Try by student_id
+        const { data: profileByStudentId, error: err2 } = await supabase
             .from('consolidated_user_profiles_table')
-            .select('full_name, admission_number, program, block, email')
+            .select('full_name, student_id as admission_number, program, block, email')
             .eq('student_id', studentId)
             .maybeSingle();
         
-        if (!err4 && profileByStudentId && profileByStudentId.full_name) {
+        if (!err2 && profileByStudentId && profileByStudentId.full_name) {
             studentNameCache[studentId] = {
                 full_name: profileByStudentId.full_name,
                 admission_number: profileByStudentId.admission_number || studentId.substring(0, 12),
@@ -13322,10 +13302,31 @@ async function getStudentName(studentId) {
                 block: profileByStudentId.block || 'N/A',
                 email: profileByStudentId.email || null
             };
+            console.log(`✅ Found student by student_id: ${profileByStudentId.full_name}`);
+            return studentNameCache[studentId];
+        }
+        
+        // ✅ Method 3: Try by id (if it's a UUID that matches id column)
+        const { data: profileById2, error: err3 } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('full_name, student_id as admission_number, program, block, email')
+            .eq('id', studentId)
+            .maybeSingle();
+        
+        if (!err3 && profileById2 && profileById2.full_name) {
+            studentNameCache[studentId] = {
+                full_name: profileById2.full_name,
+                admission_number: profileById2.admission_number || studentId.substring(0, 12),
+                program: profileById2.program || 'N/A',
+                block: profileById2.block || 'N/A',
+                email: profileById2.email || null
+            };
+            console.log(`✅ Found student by id: ${profileById2.full_name}`);
             return studentNameCache[studentId];
         }
         
         // Not found - return unknown
+        console.warn(`⚠️ No student found for ID: ${studentId}`);
         studentNameCache[studentId] = {
             full_name: 'Unknown Student',
             admission_number: studentId.substring(0, 12),
@@ -13346,7 +13347,6 @@ async function getStudentName(studentId) {
         };
     }
 }
-
 // =====================================================
 // FIXED: PENDING REGISTRATIONS WITH CORRECT STUDENT NAMES
 // =====================================================
