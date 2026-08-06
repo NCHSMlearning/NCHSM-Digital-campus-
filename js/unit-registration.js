@@ -2463,8 +2463,8 @@ async loadEligibleUnits() {
         return program ? `HOD ${program}` : 'HOD';
     }
     
-    // ============================================================
-// DOWNLOAD SUPPLEMENTARY EXAM CARD - INCLUDES COMPLETED UNITS
+  // ============================================================
+// DOWNLOAD SUPPLEMENTARY EXAM CARD - FIXED
 // ============================================================
 
 window.downloadSupplementaryExamCard = async function() {
@@ -2533,18 +2533,18 @@ window.downloadSupplementaryExamCard = async function() {
         
         updateProgress(30, 'Fetching your units...');
         
-        // ✅ FIX: Include BOTH 'approved' AND 'completed' statuses
+        // ✅ Get ALL approved AND completed supplementary/retake units
         const { data: allRegs, error } = await supabase
             .from('student_unit_registrations')
             .select('*')
             .eq('student_id', userId)
             .in('reg_type', ['Supplementary', 'Retake'])
-            .in('status', ['approved', 'completed'])  // ✅ FIXED: Include both!
+            .in('status', ['approved', 'completed'])
             .order('submitted_date', { ascending: false });
         
         if (error) throw error;
         
-        console.log(`📊 Found ${allRegs?.length || 0} approved/completed supplementary/retake units`);
+        console.log(`📊 Found ${allRegs?.length || 0} approved/completed units`);
         
         // ✅ Get published marks to check grades
         const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
@@ -2591,26 +2591,35 @@ window.downloadSupplementaryExamCard = async function() {
             }
         }
         
-        // ✅ FILTER: Exclude PASSED units (A, B, C), include everything else
+        // ✅ FILTER: Exclude PASSED units (A, B, C)
         const passingGrades = ['A', 'B', 'C', 'PASS'];
         const failingGrades = ['D', 'E', 'F', 'FAIL'];
         
         const registrations = (allRegs || []).filter(unit => {
-            const publishedMark = publishedGrades.get(unit.unit_code);
-            
-            if (!publishedMark) {
-                console.log(`   ✅ ${unit.unit_code} - No published mark (pending)`);
+            // First check if unit has a grade directly
+            if (unit.grade) {
+                if (passingGrades.includes(unit.grade.toUpperCase())) {
+                    console.log(`   ❌ ${unit.unit_code} - Grade ${unit.grade} (PASSED) - EXCLUDED`);
+                    return false;
+                }
+                console.log(`   ✅ ${unit.unit_code} - Grade ${unit.grade} (FAILED) - INCLUDED`);
                 return true;
             }
             
-            const grade = publishedMark.grade || '';
-            
-            if (passingGrades.includes(grade.toUpperCase())) {
-                console.log(`   ❌ ${unit.unit_code} - Grade ${grade} (PASSED) - EXCLUDED`);
-                return false;
+            // Then check published marks
+            const publishedMark = publishedGrades.get(unit.unit_code);
+            if (publishedMark) {
+                const grade = publishedMark.grade || '';
+                if (passingGrades.includes(grade.toUpperCase())) {
+                    console.log(`   ❌ ${unit.unit_code} - Grade ${grade} (PASSED) - EXCLUDED`);
+                    return false;
+                }
+                console.log(`   ✅ ${unit.unit_code} - Grade ${grade} (FAILED) - INCLUDED`);
+                return true;
             }
             
-            console.log(`   ✅ ${unit.unit_code} - Grade ${grade} (FAILED/PENDING) - INCLUDED`);
+            // No grade - include (pending)
+            console.log(`   ✅ ${unit.unit_code} - No grade (pending) - INCLUDED`);
             return true;
         });
         
