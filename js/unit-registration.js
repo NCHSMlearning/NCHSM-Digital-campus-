@@ -767,121 +767,173 @@
             this.attachCheckboxEvents();
         }
         
-        // ============================================================
-        // DISPLAY REGISTERED UNITS
-        // ============================================================
-        
-        displayRegisteredUnits() {
-            if (!this.registeredBody) return;
+      // ============================================================
+// DISPLAY REGISTERED UNITS - CHECKS PUBLISHED MARKS
+// ============================================================
+
+async displayRegisteredUnits() {
+    if (!this.registeredBody) return;
+    
+    const pendingCount = this.registeredUnits.filter(u => u.status === 'pending').length;
+    const approvedCount = this.registeredUnits.filter(u => u.status === 'approved' && !u.grade).length;
+    const completedCount = this.registeredUnits.filter(u => u.status === 'completed' || u.grade).length;
+    const suppCount = this.registeredUnits.filter(u => u.reg_type === 'Supplementary' || u.reg_type === 'Retake').length;
+    
+    if (this.pendingCountDisplay) this.pendingCountDisplay.textContent = pendingCount;
+    if (this.approvedCountDisplay) this.approvedCountDisplay.textContent = approvedCount;
+    if (this.completedCountDisplay) this.completedCountDisplay.textContent = completedCount;
+    if (this.suppCountDisplay) this.suppCountDisplay.textContent = suppCount;
+    
+    const countEl = document.getElementById('registeredUnitsCount');
+    if (countEl) countEl.textContent = this.registeredUnits.length + ' units';
+    
+    if (this.registeredUnits.length === 0) {
+        this.registeredBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; padding:60px 20px; color:#94a3b8;">
+                    <div style="font-size:48px; margin-bottom:12px; opacity:0.3;"><i class="fas fa-clipboard-list"></i></div>
+                    <p style="font-weight:500; color:#1e293b;">No units registered yet</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // ✅ Get published marks for this student
+    const supabase = this.getSupabase();
+    const user = this.userProfile || window.currentUserProfile;
+    const admissionNumber = user?.student_id || user?.admission_number || user?.user_id;
+    
+    let publishedGrades = new Map(); // unit_code -> {grade, score}
+    
+    if (supabase && admissionNumber) {
+        try {
+            const { data: marks, error } = await supabase
+                .from('student_marks')
+                .select('subject_name, unit_code, final_score, grade, published')
+                .eq('admission_number', admissionNumber)
+                .eq('published', true);
             
-            const pendingCount = this.registeredUnits.filter(u => u.status === 'pending').length;
-            const approvedCount = this.registeredUnits.filter(u => u.status === 'approved' && !u.grade).length;
-            const completedCount = this.registeredUnits.filter(u => u.status === 'completed' || u.grade).length;
-            const suppCount = this.registeredUnits.filter(u => u.reg_type === 'Supplementary' || u.reg_type === 'Retake').length;
-            
-            if (this.pendingCountDisplay) this.pendingCountDisplay.textContent = pendingCount;
-            if (this.approvedCountDisplay) this.approvedCountDisplay.textContent = approvedCount;
-            if (this.completedCountDisplay) this.completedCountDisplay.textContent = completedCount;
-            if (this.suppCountDisplay) this.suppCountDisplay.textContent = suppCount;
-            
-            const countEl = document.getElementById('registeredUnitsCount');
-            if (countEl) countEl.textContent = this.registeredUnits.length + ' units';
-            
-            if (this.registeredUnits.length === 0) {
-                this.registeredBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align:center; padding:60px 20px; color:#94a3b8;">
-                            <div style="font-size:48px; margin-bottom:12px; opacity:0.3;"><i class="fas fa-clipboard-list"></i></div>
-                            <p style="font-weight:500; color:#1e293b;">No units registered yet</p>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            for (const unit of this.registeredUnits) {
-                const hasGrade = unit.grade && unit.grade !== '';
-                const isPassing = hasGrade && !['FAIL', 'F', 'D', 'E'].includes(unit.grade);
-                const isCompleted = unit.status === 'completed' || hasGrade;
+            if (!error && marks) {
+                // Build catalog mapping for subject name to unit code
+                const { data: catalog } = await supabase
+                    .from('units_catalog')
+                    .select('unit_code, unit_name')
+                    .eq('program', this.programCode || 'KRCHN');
                 
-                let statusText = unit.status || 'Pending';
-                let statusColor = '#f59e0b';
-                let statusBg = '#fef3c7';
-                let statusBadge = '';
-                
-                if (isCompleted) {
-                    statusText = 'Completed';
-                    statusColor = '#10b981';
-                    statusBg = '#d1fae5';
-                    statusBadge = isPassing ? 
-                        '<span style="background:#d1fae5; color:#065f46; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:600;">🟢 Passed</span>' :
-                        '<span style="background:#fee2e2; color:#991b1b; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:600;">🔴 Failed</span>';
-                } else if (unit.status === 'approved') {
-                    statusText = 'Approved';
-                    statusColor = '#3b82f6';
-                    statusBg = '#dbeafe';
-                } else if (unit.status === 'rejected') {
-                    statusText = 'Rejected';
-                    statusColor = '#dc2626';
-                    statusBg = '#fee2e2';
+                const catalogMap = {};
+                if (catalog) {
+                    catalog.forEach(u => {
+                        catalogMap[u.unit_name] = u.unit_code;
+                    });
                 }
                 
-                const isSupplementary = unit.reg_type === 'Supplementary' || unit.reg_type === 'Retake';
-                const regBadge = `<span style="background:${isSupplementary ? '#fef3c7' : '#e0e7ff'}; color:${isSupplementary ? '#B45309' : '#4C1D95'}; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:600;">
-                    ${this.escapeHtml(unit.reg_type || 'Normal')}
-                </span>`;
+                marks.forEach(mark => {
+                    let unitCode = mark.unit_code;
+                    if (!unitCode) {
+                        // Try to find by subject name
+                        for (const [name, code] of Object.entries(catalogMap)) {
+                            if (mark.subject_name.includes(name) || name.includes(mark.subject_name)) {
+                                unitCode = code;
+                                break;
+                            }
+                        }
+                    }
+                    if (unitCode) {
+                        publishedGrades.set(unitCode, {
+                            grade: mark.grade || '',
+                            score: mark.final_score || 0
+                        });
+                    }
+                });
                 
-                const dateDisplay = unit.completed_at ? 
-                    new Date(unit.completed_at).toLocaleDateString() : 
-                    (unit.submitted_date ? new Date(unit.submitted_date).toLocaleDateString() : '—');
-                
-                let actionButtons = '—';
-                if (unit.status === 'pending') {
-                    actionButtons = `<button onclick="window.dropUnit('${unit.unit_code}')" 
-                        style="background:#fee2e2; color:#991b1b; border:none; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">
-                        <i class="fas fa-trash"></i> Drop
-                    </button>`;
-                }
-                
-                html += `<tr>
-                    <td style="padding:12px 16px;"><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
-                    <td style="padding:12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
-                    <td style="padding:12px 16px;">${this.escapeHtml(unit.block)}</td>
-                    <td style="padding:12px 16px; text-align:center;">${regBadge}</td>
-                    <td style="padding:12px 16px; text-align:center;">
-                        <span style="background:${statusBg}; color:${statusColor}; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600;">
-                            ${statusText}
-                        </span>
-                        ${statusBadge}
-                    </td>
-                    <td style="padding:12px 16px; text-align:center; font-size:12px;">${dateDisplay}</td>
-                    <td style="padding:12px 16px; text-align:center;">${actionButtons}</td>
-                </tr>`;
+                console.log(`📊 Found ${publishedGrades.size} published marks for display`);
             }
+        } catch (e) {
+            console.warn('Could not fetch published marks:', e);
+        }
+    }
+    
+    let html = '';
+    for (const unit of this.registeredUnits) {
+        // ✅ Check if this unit has a published mark
+        const publishedMark = publishedGrades.get(unit.unit_code);
+        const hasPublishedGrade = !!publishedMark;
+        
+        let statusText = unit.status || 'Pending';
+        let statusColor = '#f59e0b';
+        let statusBg = '#fef3c7';
+        let statusBadge = '';
+        let gradeDisplay = '';
+        
+        if (hasPublishedGrade) {
+            // ✅ Unit has a published mark - show Pass/Fail
+            const grade = publishedMark.grade || '';
+            const isPassing = ['A', 'B', 'C', 'PASS'].includes(grade.toUpperCase());
+            statusText = 'Completed';
+            statusColor = '#10b981';
+            statusBg = '#d1fae5';
             
-            this.registeredBody.innerHTML = html;
+            const gradeColor = isPassing ? '#10b981' : '#dc2626';
+            const gradeIcon = isPassing ? '🟢' : '🔴';
+            const gradeLabel = isPassing ? 'Passed' : 'Failed';
+            gradeDisplay = `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; color: ${gradeColor}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block; margin-top: 2px;">
+                ${gradeIcon} ${grade} - ${gradeLabel}
+            </span>`;
+            statusBadge = gradeDisplay;
+        } else if (unit.status === 'approved') {
+            statusText = 'Approved';
+            statusColor = '#3b82f6';
+            statusBg = '#dbeafe';
+        } else if (unit.status === 'rejected') {
+            statusText = 'Rejected';
+            statusColor = '#dc2626';
+            statusBg = '#fee2e2';
+        } else if (unit.status === 'pending') {
+            statusText = 'Pending';
+            statusColor = '#f59e0b';
+            statusBg = '#fef3c7';
+        } else if (unit.status === 'completed') {
+            statusText = 'Completed';
+            statusColor = '#10b981';
+            statusBg = '#d1fae5';
         }
         
-        updateSelectedCount() {
-            const count = document.querySelectorAll('.unit-checkbox:checked').length;
-            const selectedSpan = document.getElementById('selected-units-count');
-            if (selectedSpan) selectedSpan.textContent = count;
+        const isSupplementary = unit.reg_type === 'Supplementary' || unit.reg_type === 'Retake';
+        const regBadge = `<span style="background:${isSupplementary ? '#fef3c7' : '#e0e7ff'}; color:${isSupplementary ? '#B45309' : '#4C1D95'}; padding:2px 10px; border-radius:12px; font-size:10px; font-weight:600;">
+            ${this.escapeHtml(unit.reg_type || 'Normal')}
+        </span>`;
+        
+        const dateDisplay = unit.completed_at ? 
+            new Date(unit.completed_at).toLocaleDateString() : 
+            (unit.submitted_date ? new Date(unit.submitted_date).toLocaleDateString() : '—');
+        
+        let actionButtons = '—';
+        if (unit.status === 'pending') {
+            actionButtons = `<button onclick="window.dropUnit('${unit.unit_code}')" 
+                style="background:#fee2e2; color:#991b1b; border:none; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;">
+                <i class="fas fa-trash"></i> Drop
+            </button>`;
         }
         
-        attachCheckboxEvents() {
-            document.querySelectorAll('.unit-checkbox').forEach(cb => {
-                cb.addEventListener('change', () => this.updateSelectedCount());
-            });
-        }
-        
-        selectAllUnits() {
-            const isChecked = this.selectAllCheckbox?.checked || false;
-            document.querySelectorAll('.unit-checkbox').forEach(cb => {
-                cb.checked = isChecked;
-            });
-            this.updateSelectedCount();
-        }
+        html += `<tr>
+            <td style="padding:12px 16px;"><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
+            <td style="padding:12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
+            <td style="padding:12px 16px;">${this.escapeHtml(unit.block)}</td>
+            <td style="padding:12px 16px; text-align:center;">${regBadge}</td>
+            <td style="padding:12px 16px; text-align:center;">
+                <span style="background:${statusBg}; color:${statusColor}; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block;">
+                    ${statusText}
+                </span>
+                ${statusBadge}
+            </td>
+            <td style="padding:12px 16px; text-align:center; font-size:12px;">${dateDisplay}</td>
+            <td style="padding:12px 16px; text-align:center;">${actionButtons}</td>
+        </tr>`;
+    }
+    
+    this.registeredBody.innerHTML = html;
+}
         
         // ============================================================
         // SUBMIT REGISTRATION - FIXED (Checks Database Directly)
