@@ -890,19 +890,7 @@ updateSelectedCount() {
         }
     }
 }
-        // ============================================================
-// ATTACH CHECKBOX EVENTS
-// ============================================================
-
-attachCheckboxEvents() {
-    const checkboxes = document.querySelectorAll('.unit-checkbox');
     
-    checkboxes.forEach(cb => {
-        cb.removeEventListener('change', this._checkboxChangeHandler);
-        this._checkboxChangeHandler = () => this.updateSelectedCount();
-        cb.addEventListener('change', this._checkboxChangeHandler);
-    });
-}
         // ============================================================
 // ATTACH CHECKBOX EVENTS
 // ============================================================
@@ -1268,9 +1256,10 @@ attachCheckboxEvents() {
             }
         }
         
-        // ============================================================
+       // ============================================================
 // SUPPLEMENTARY - LOAD ELIGIBLE UNITS (FROM student_marks)
 // Shows ANY unit with failing grade, even if registered as Normal
+// ✅ FIXED: Allows re-registration by updating existing registrations
 // ============================================================
 
 async loadEligibleUnits() {
@@ -1442,7 +1431,55 @@ async loadEligibleUnits() {
                 const regTypeExisting = regInfo?.reg_type || 'Not Registered';
                 const regStatus = regInfo?.status || '';
                 
-                console.log(`   ${subjectName} → ${unitCode} (${grade}, ${score}%) - Registered: ${regTypeExisting}`);
+                // ✅ FIX: Determine if user can register this unit
+                let canRegister = true;
+                let statusDisplay = '';
+                let statusColor = '#059669';
+                let statusBg = '#d1fae5';
+                
+                if (isRegistered) {
+                    // If already approved/completed as the SAME reg_type, can't register again
+                    if ((regStatus === 'approved' || regStatus === 'completed') && regTypeExisting === regType) {
+                        canRegister = false;
+                        statusDisplay = `✅ ${regStatus} (${regTypeExisting})`;
+                        statusColor = '#059669';
+                        statusBg = '#d1fae5';
+                    } 
+                    // If pending, can't register
+                    else if (regStatus === 'pending') {
+                        canRegister = false;
+                        statusDisplay = `⏳ Pending (${regTypeExisting})`;
+                        statusColor = '#f59e0b';
+                        statusBg = '#fef3c7';
+                    }
+                    // If Normal registration exists, allow re-registration (will UPDATE)
+                    else if (regTypeExisting === 'Normal' || regTypeExisting === 'Not Registered') {
+                        canRegister = true;
+                        statusDisplay = `🔄 Will Update to ${regType}`;
+                        statusColor = '#f59e0b';
+                        statusBg = '#fef3c7';
+                    }
+                    // If different reg_type (e.g., already Supplementary, registering as Retake)
+                    else if (regTypeExisting !== regType) {
+                        canRegister = true;
+                        statusDisplay = `🔄 Change from ${regTypeExisting} to ${regType}`;
+                        statusColor = '#f59e0b';
+                        statusBg = '#fef3c7';
+                    } else {
+                        canRegister = true;
+                        statusDisplay = `✅ Eligible`;
+                        statusColor = '#059669';
+                        statusBg = '#d1fae5';
+                    }
+                } else {
+                    // Not registered at all - can register
+                    canRegister = true;
+                    statusDisplay = '✅ Eligible';
+                    statusColor = '#059669';
+                    statusBg = '#d1fae5';
+                }
+                
+                console.log(`   ${subjectName} → ${unitCode} (${grade}, ${score}%) - Registered: ${regTypeExisting} - Can Register: ${canRegister}`);
                 
                 eligibleUnits.push({
                     unit_code: unitCode || 'N/A',
@@ -1451,11 +1488,13 @@ async loadEligibleUnits() {
                     score: score,
                     reg_type: determinedType,
                     grade: grade || 'FAIL',
-                    status: isRegistered ? `⏳ ${regStatus} (${regTypeExisting})` : '✅ Eligible',
+                    status: statusDisplay,
                     is_registered: isRegistered,
                     existing_id: regInfo?.id || null,
                     has_mark: true,
-                    reg_type_existing: regTypeExisting
+                    reg_type_existing: regTypeExisting,
+                    reg_status: regStatus,
+                    can_register: canRegister
                 });
             }
         }
@@ -1463,7 +1502,7 @@ async loadEligibleUnits() {
         this.failedUnits = eligibleUnits;
         this.renderEligibleTable(eligibleUnits);
         
-        const availableCount = eligibleUnits.filter(u => !u.is_registered).length;
+        const availableCount = eligibleUnits.filter(u => u.can_register !== false).length;
         if (countEl) countEl.textContent = `${eligibleUnits.length} units`;
         if (availableCountEl) availableCountEl.textContent = eligibleUnits.length;
         if (this.suppTabBadge) this.suppTabBadge.textContent = eligibleUnits.length;
@@ -1490,88 +1529,90 @@ async loadEligibleUnits() {
     }
 }
         
-        // ============================================================
-        // RENDER ELIGIBLE TABLE - WITHOUT SCORE COLUMN
-        // ============================================================
+      renderEligibleTable(units) {
+    const tbody = this.eligibleBody;
+    if (!tbody) return;
+    
+    if (!units || units.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; display: block; margin-bottom: 10px;"></i>
+                    <p>No eligible units found.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    for (const unit of units) {
+        const canRegister = unit.can_register !== false;
         
-        renderEligibleTable(units) {
-            const tbody = this.eligibleBody;
-            if (!tbody) return;
-            
-            if (!units || units.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
-                            <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; display: block; margin-bottom: 10px;"></i>
-                            <p>No eligible units found.</p>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            for (const unit of units) {
-                const canRegister = !unit.is_registered;
-                const isRegistered = unit.is_registered;
-                
-                let statusText = unit.status;
-                let statusColor = '#059669';
-                let statusBg = '#d1fae5';
-                
-                if (unit.status === 'Eligible') {
-                    statusText = '✅ Eligible';
-                    statusColor = '#059669';
-                    statusBg = '#d1fae5';
-                } else if (unit.status === '❌ Rejected') {
-                    statusText = '❌ Rejected';
-                    statusColor = '#dc2626';
-                    statusBg = '#fee2e2';
-                } else if (unit.status === '✅ Approved') {
-                    statusText = '✅ Approved';
-                    statusColor = '#059669';
-                    statusBg = '#d1fae5';
-                } else if (unit.status === '⏳ Pending') {
-                    statusText = '⏳ Pending';
-                    statusColor = '#f59e0b';
-                    statusBg = '#fef3c7';
-                } else if (unit.status === '📋 Completed') {
-                    statusText = '📋 Completed';
-                    statusColor = '#3b82f6';
-                    statusBg = '#dbeafe';
-                }
-                
-                const regTypeBadge = unit.reg_type === 'Retake' ? 
-                    '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Retake</span>' :
-                    '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Supplementary</span>';
-                
-                html += `
-                    <tr style="border-bottom: 1px solid #f1f5f9; ${isRegistered ? 'opacity: 0.6;' : ''}">
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <input type="checkbox" class="supp-unit-checkbox" data-unit='${JSON.stringify(unit)}' 
-                                   ${!canRegister ? 'disabled' : ''} style="width: 16px; height: 16px; cursor: pointer;">
-                        </td>
-                        <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(unit.unit_code)}</td>
-                        <td style="padding: 12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
-                        <td style="padding: 12px 16px;">${this.escapeHtml(unit.block)}</td>
-                        <td style="padding: 12px 16px; text-align: center;">${regTypeBadge}</td>
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                                ${statusText}
-                            </span>
-                        </td>
-                    </tr>
-                `;
-            }
-            
-            tbody.innerHTML = html;
-            
-            document.querySelectorAll('.supp-unit-checkbox').forEach(cb => {
-                cb.addEventListener('change', () => this.updateSuppCount());
-            });
-            
-            this.updateSuppCount();
+        let statusText = unit.status;
+        let statusColor = '#059669';
+        let statusBg = '#d1fae5';
+        
+        if (unit.status === '✅ Eligible') {
+            statusText = '✅ Eligible';
+            statusColor = '#059669';
+            statusBg = '#d1fae5';
+        } else if (unit.status.includes('Will Update')) {
+            statusText = '🔄 Will Update';
+            statusColor = '#f59e0b';
+            statusBg = '#fef3c7';
+        } else if (unit.status.includes('Change from')) {
+            statusText = '🔄 Change Type';
+            statusColor = '#f59e0b';
+            statusBg = '#fef3c7';
+        } else if (unit.status.includes('Pending')) {
+            statusText = '⏳ Pending';
+            statusColor = '#f59e0b';
+            statusBg = '#fef3c7';
+        } else if (unit.status.includes('approved') || unit.status.includes('Approved')) {
+            statusText = '✅ Already Registered';
+            statusColor = '#10b981';
+            statusBg = '#d1fae5';
         }
+        
+        const regTypeBadge = unit.reg_type === 'Retake' ? 
+            '<span style="background: #dc2626; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Retake</span>' :
+            '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600;">Supplementary</span>';
+        
+        // ✅ Show existing registration info
+        let existingInfo = '';
+        if (unit.reg_type_existing && unit.reg_type_existing !== 'Not Registered') {
+            existingInfo = `<span style="font-size: 9px; color: #92400e; display: block; margin-top: 2px;">Current: ${unit.reg_type_existing} (${unit.reg_status || 'N/A'})</span>`;
+        }
+        
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; ${!canRegister ? 'opacity: 0.5;' : ''}">
+                <td style="padding: 12px 16px; text-align: center;">
+                    <input type="checkbox" class="supp-unit-checkbox" data-unit='${JSON.stringify(unit)}' 
+                           ${!canRegister ? 'disabled' : ''} style="width: 16px; height: 16px; cursor: pointer;">
+                </td>
+                <td style="padding: 12px 16px; font-weight: 600; color: #0A3D62;">${this.escapeHtml(unit.unit_code)}</td>
+                <td style="padding: 12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
+                <td style="padding: 12px 16px;">${this.escapeHtml(unit.block)}</td>
+                <td style="padding: 12px 16px; text-align: center;">${regTypeBadge}</td>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                        ${statusText}
+                    </span>
+                    ${existingInfo}
+                </td>
+            </tr>
+        `;
+    }
+    
+    tbody.innerHTML = html;
+    
+    document.querySelectorAll('.supp-unit-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => this.updateSuppCount());
+    });
+    
+    this.updateSuppCount();
+}
         
         // ============================================================
         // UPDATE SUPPLEMENTARY COUNT
@@ -1819,156 +1860,194 @@ async loadStudentSupplementaryRegistrations() {
         }
         
         // ============================================================
-        // REGISTER SUPPLEMENTARY UNITS - FIXED FOR TVET
-        // ============================================================
+// REGISTER SUPPLEMENTARY UNITS - UPDATED (Changes reg_type)
+// ============================================================
+
+async registerSupplementaryUnits() {
+    const regType = this.suppRegType?.value;
+    if (!regType) {
+        this.showError('Please select a registration type.', 'warning');
+        return;
+    }
+    
+    const selectedCheckboxes = document.querySelectorAll('.supp-unit-checkbox:checked');
+    if (selectedCheckboxes.length === 0) {
+        this.showError('Please select at least one unit.', 'warning');
+        return;
+    }
+    
+    if (selectedCheckboxes.length > 8) {
+        this.showError('Maximum 8 units allowed.', 'warning');
+        return;
+    }
+    
+    const selectedUnits = [];
+    selectedCheckboxes.forEach(cb => {
+        try {
+            const unit = JSON.parse(cb.dataset.unit);
+            selectedUnits.push(unit);
+        } catch (e) {
+            console.error('Error parsing unit:', e);
+        }
+    });
+    
+    if (!confirm(`Register ${selectedUnits.length} unit(s) for ${regType}?`)) return;
+    
+    this.isSubmitting = true;
+    if (this.registerSuppBtn) {
+        this.registerSuppBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        this.registerSuppBtn.disabled = true;
+    }
+    
+    try {
+        const supabase = this.getSupabase();
+        if (!supabase) throw new Error('Database not available');
         
-        async registerSupplementaryUnits() {
-            const regType = this.suppRegType?.value;
-            if (!regType) {
-                this.showError('Please select a registration type.', 'warning');
-                return;
+        const user = this.userProfile || window.currentUserProfile;
+        
+        // ✅ TVET students get academic_year and term
+        const academicYear = new Date().getFullYear().toString();
+        const isTVET = this.isTVETStudent || TVET_PROGRAMS.includes(this.programCode);
+        
+        let term = this.getCurrentTerm();
+        if (isTVET) {
+            term = this.userProfile?.block || 
+                   this.userProfile?.current_block || 
+                   this.userProfile?.term || 
+                   'Year 1 Term 1';
+        }
+        
+        let successCount = 0;
+        let skippedCount = 0;
+        let errorCount = 0;
+        let updatedCount = 0;
+        let insertedCount = 0;
+        
+        for (const unit of selectedUnits) {
+            // ✅ Check if unit already exists (ANY status)
+            const { data: existing, error: findError } = await supabase
+                .from('student_unit_registrations')
+                .select('id, status, reg_type')
+                .eq('student_id', this.studentId)
+                .eq('unit_code', unit.unit_code)
+                .maybeSingle();
+            
+            if (findError) {
+                console.error(`Error finding ${unit.unit_code}:`, findError);
+                errorCount++;
+                continue;
             }
             
-            const selectedCheckboxes = document.querySelectorAll('.supp-unit-checkbox:checked');
-            if (selectedCheckboxes.length === 0) {
-                this.showError('Please select at least one unit.', 'warning');
-                return;
-            }
-            
-            if (selectedCheckboxes.length > 8) {
-                this.showError('Maximum 8 units allowed.', 'warning');
-                return;
-            }
-            
-            const selectedUnits = [];
-            selectedCheckboxes.forEach(cb => {
-                try {
-                    const unit = JSON.parse(cb.dataset.unit);
-                    selectedUnits.push(unit);
-                } catch (e) {
-                    console.error('Error parsing unit:', e);
-                }
-            });
-            
-            if (!confirm(`Register ${selectedUnits.length} unit(s) for ${regType}?`)) return;
-            
-            this.isSubmitting = true;
-            if (this.registerSuppBtn) {
-                this.registerSuppBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-                this.registerSuppBtn.disabled = true;
-            }
-            
-            try {
-                const supabase = this.getSupabase();
-                if (!supabase) throw new Error('Database not available');
+            // ✅ If unit exists, UPDATE the reg_type (change from Normal to Supplementary/Retake)
+            if (existing) {
+                console.log(`🔄 Updating ${unit.unit_code} from ${existing.reg_type} to ${regType}`);
                 
-                const user = this.userProfile || window.currentUserProfile;
-                
-                // ✅ FIX: TVET students get academic_year and term
-                const academicYear = new Date().getFullYear().toString();
-                const isTVET = this.isTVETStudent || TVET_PROGRAMS.includes(this.programCode);
-                
-                let term = this.getCurrentTerm();
-                if (isTVET) {
-                    term = this.userProfile?.block || 
-                           this.userProfile?.current_block || 
-                           this.userProfile?.term || 
-                           'Year 1 Term 1';
+                // If already approved/completed as the same type, skip
+                if ((existing.status === 'approved' || existing.status === 'completed') && 
+                    existing.reg_type === regType) {
+                    console.log(`⚠️ ${unit.unit_code} already ${existing.status} as ${regType}`);
+                    skippedCount++;
+                    continue;
                 }
                 
-                let successCount = 0;
-                let skippedCount = 0;
-                let errorCount = 0;
+                // ✅ UPDATE the existing registration
+                const { error: updateError } = await supabase
+                    .from('student_unit_registrations')
+                    .update({
+                        reg_type: regType,              // ← CHANGE THIS
+                        status: 'pending',              // ← Reset to pending for approval
+                        rejection_reason: null,
+                        submitted_date: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existing.id);
                 
-                for (const unit of selectedUnits) {
-                    const { data: existing } = await supabase
-                        .from('student_unit_registrations')
-                        .select('id, status')
-                        .eq('student_id', this.studentId)
-                        .eq('unit_code', unit.unit_code)
-                        .maybeSingle();
-                    
-                    if (existing) {
-                        if (existing.status === 'pending' || existing.status === 'approved') {
-                            console.log(`⚠️ ${unit.unit_code} already ${existing.status}`);
-                            skippedCount++;
-                            continue;
-                        }
-                        
-                        const { error: updateError } = await supabase
-                            .from('student_unit_registrations')
-                            .update({
-                                reg_type: regType,
-                                status: 'pending',
-                                rejection_reason: null,
-                                submitted_date: new Date().toISOString(),
-                                updated_at: new Date().toISOString()
-                            })
-                            .eq('id', existing.id);
-                        
-                        if (updateError) {
-                            console.error(`Error updating ${unit.unit_code}:`, updateError);
-                            errorCount++;
-                        } else {
-                            successCount++;
-                        }
-                    } else {
-                        const registration = {
-                            student_id: this.studentId,
-                            unit_code: unit.unit_code,
-                            unit_name: unit.unit_name || unit.unit_code,
-                            program: this.programCode || user?.program || 'KRCHN',
-                            block: unit.block || user?.block || (isTVET ? 'Year 1 Term 1' : 'Introductory'),
-                            reg_type: regType,
-                            status: 'pending',
-                            submitted_date: new Date().toISOString(),
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString(),
-                            credits: 3,
-                            intake_year: this.intakeYear || '2025',
-                            academic_year: parseInt(academicYear),
-                            term: term
-                        };
-                        
-                        const { error: insertError } = await supabase
-                            .from('student_unit_registrations')
-                            .insert([registration]);
-                        
-                        if (insertError) {
-                            console.error(`Error inserting ${unit.unit_code}:`, insertError);
-                            errorCount++;
-                        } else {
-                            successCount++;
-                        }
-                    }
+                if (updateError) {
+                    console.error(`Error updating ${unit.unit_code}:`, updateError);
+                    errorCount++;
+                } else {
+                    console.log(`✅ ${unit.unit_code} updated from ${existing.reg_type} to ${regType}`);
+                    updatedCount++;
+                    successCount++;
                 }
+            } else {
+                // ✅ Insert new registration if it doesn't exist
+                console.log(`📝 Inserting new registration for ${unit.unit_code}`);
                 
-                if (successCount > 0) {
-                    this.showSuccess(`${successCount} unit(s) registered successfully!`);
-                } else if (skippedCount > 0 && errorCount === 0) {
-                    this.showInfo(`${skippedCount} unit(s) already registered.`);
-                } else if (errorCount > 0) {
-                    this.showError(`${errorCount} unit(s) failed to register. Contact admin.`, 'error');
-                }
+                const registration = {
+                    student_id: this.studentId,
+                    unit_code: unit.unit_code,
+                    unit_name: unit.unit_name || unit.unit_code,
+                    program: this.programCode || user?.program || 'KRCHN',
+                    block: unit.block || user?.block || (isTVET ? 'Year 1 Term 1' : 'Introductory'),
+                    reg_type: regType,
+                    status: 'pending',
+                    submitted_date: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    credits: 3,
+                    intake_year: this.intakeYear || '2025',
+                    academic_year: parseInt(academicYear),
+                    term: term
+                };
                 
-                document.querySelectorAll('.supp-unit-checkbox:checked').forEach(cb => cb.checked = false);
-                if (this.selectAllSupp) this.selectAllSupp.checked = false;
-                this.updateSuppCount();
+                const { error: insertError } = await supabase
+                    .from('student_unit_registrations')
+                    .insert([registration]);
                 
-                await this.loadSupplementaryData();
-                await this.loadUnits();
-                
-            } catch (error) {
-                console.error('❌ Error:', error);
-                this.showError(error.message, 'error');
-            } finally {
-                this.isSubmitting = false;
-                if (this.registerSuppBtn) {
-                    this.registerSuppBtn.innerHTML = '<i class="fas fa-check-circle"></i> Register Selected';
-                    this.registerSuppBtn.disabled = false;
+                if (insertError) {
+                    console.error(`Error inserting ${unit.unit_code}:`, insertError);
+                    errorCount++;
+                } else {
+                    insertedCount++;
+                    successCount++;
                 }
             }
         }
+        
+        // ✅ Show appropriate feedback
+        let message = '';
+        if (updatedCount > 0) {
+            message += `🔄 ${updatedCount} unit(s) updated to ${regType}!\n`;
+        }
+        if (insertedCount > 0) {
+            message += `📝 ${insertedCount} new unit(s) registered as ${regType}!\n`;
+        }
+        if (skippedCount > 0) {
+            message += `⏭️ ${skippedCount} unit(s) already ${regType}.\n`;
+        }
+        if (errorCount > 0) {
+            message += `❌ ${errorCount} unit(s) failed. Contact admin.`;
+        }
+        
+        if (successCount > 0) {
+            this.showSuccess(message || `${successCount} unit(s) registered successfully!`);
+        } else if (skippedCount > 0 && errorCount === 0) {
+            this.showInfo(`${skippedCount} unit(s) already registered as ${regType}.`);
+        } else if (errorCount > 0) {
+            this.showError(`${errorCount} unit(s) failed to register. Contact admin.`, 'error');
+        }
+        
+        // Clear selection
+        document.querySelectorAll('.supp-unit-checkbox:checked').forEach(cb => cb.checked = false);
+        if (this.selectAllSupp) this.selectAllSupp.checked = false;
+        this.updateSuppCount();
+        
+        // Reload data
+        await this.loadSupplementaryData();
+        await this.loadUnits();
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        this.showError(error.message, 'error');
+    } finally {
+        this.isSubmitting = false;
+        if (this.registerSuppBtn) {
+            this.registerSuppBtn.innerHTML = '<i class="fas fa-check-circle"></i> Register Selected Units';
+            this.registerSuppBtn.disabled = false;
+        }
+    }
+}
         
         // ============================================================
         // DROP UNIT
