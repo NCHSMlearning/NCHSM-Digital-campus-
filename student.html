@@ -2135,7 +2135,7 @@
             </section>
             <!-- END HUB ONLINE LEARNING -->
 
-           <!-- ==================== HUB EXAM CARD TAB ==================== -->
+          <!-- ==================== HUB EXAM CARD TAB ==================== -->
 <section id="hub-exam-card" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
     <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
@@ -2177,7 +2177,7 @@
         </div>
     </div>
 
-    <!-- ========== ✅ FIXED: Container with CORRECT ID ========== -->
+    <!-- ========== CURRENT EXAM CARD ========== -->
     <div id="exam-card-content-standalone" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; min-height: 300px;">
 
         <!-- Loading State -->
@@ -2186,9 +2186,83 @@
             <p style="margin: 0;">Loading exam card...</p>
         </div>
 
-        <!-- ✅ This is where your JavaScript will render the exam card -->
-        <!-- The JS will replace the content of this div -->
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 📚 COMPLETED / PAST EXAM CARDS TABLE                         -->
+    <!-- ============================================================ -->
+    <div id="past-exam-cards-container" style="margin-top: 30px;">
         
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px; padding: 14px 20px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-radius: 12px; border: 1px solid #86efac;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #059669; padding: 8px 12px; border-radius: 10px;">
+                    <i class="fas fa-history" style="color: white; font-size: 16px;"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; color: #065f46; font-size: 16px; font-weight: 700;">
+                        📚 Completed Exam Cards
+                    </h3>
+                    <p style="margin: 2px 0 0 0; font-size: 12px; color: #6b7280;">
+                        <i class="fas fa-info-circle"></i> View your previous exam cards from past periods
+                    </p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <span id="pastExamCount" style="background: #059669; color: white; padding: 4px 16px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+                    0 records
+                </span>
+                <button onclick="window.examCardModule?.loadPastExamRecords()" style="background: none; border: none; color: #059669; cursor: pointer; font-size: 14px; padding: 6px 10px; border-radius: 8px; transition: all 0.3s;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='transparent'">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+        
+        <!-- Past Exams Table -->
+        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden;">
+            <div style="overflow-x: auto; padding: 4px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; width: 50px;">#</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-calendar"></i> Exam Period
+                            </th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-book"></i> Units
+                            </th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-star"></i> Credits
+                            </th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-calendar-check"></i> Date
+                            </th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-circle"></i> Status
+                            </th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-eye"></i> Action
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="pastExamRecordsBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 50px 20px; color: #94a3b8;">
+                                <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #059669; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+                                <p style="margin: 0; font-size: 14px;">Loading past exam records...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="pastExamEmpty" style="display: none; text-align: center; padding: 30px 20px; color: #94a3b8; background: white; border-radius: 12px; border: 1px solid #e5e7eb; margin-top: 12px;">
+            <i class="fas fa-inbox" style="font-size: 40px; color: #d1d5db; display: block; margin-bottom: 10px;"></i>
+            <p style="margin: 0; font-size: 14px;">No past exam records found.</p>
+            <p style="margin: 4px 0 0 0; font-size: 12px;">Completed exam cards will appear here automatically.</p>
+        </div>
     </div>
 
     <!-- ========== EXAM CARD PREVIEW (print-friendly) ========== -->
@@ -2226,6 +2300,24 @@
             .action-buttons {
                 display: none !important;
             }
+            #past-exam-cards-container {
+                display: none !important;
+            }
+        }
+        
+        /* Table row hover */
+        #pastExamRecordsBody tr:hover {
+            background: #f8fafc;
+            transition: background 0.2s;
+        }
+        
+        #pastExamRecordsBody tr {
+            transition: background 0.2s;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        #pastExamRecordsBody tr:last-child {
+            border-bottom: none;
         }
     </style>
 
