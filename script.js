@@ -5365,78 +5365,21 @@ if (typeof handleAddUnit === 'undefined') {
 }
 
 // ============================================================
-// 10.3 - LOAD UNITS (FIXED)
+// 10.3 - LOAD UNITS (FIXED - CORRECT COLUMN ORDER)
 // ============================================================
 
 if (typeof loadUnits === 'undefined') {
     window.loadUnits = async function() {
         const tbody = document.getElementById('units-table-body');
         
-        // Check if the table body exists
         if (!tbody) {
-            console.warn('⚠️ units-table-body not found, checking for old courses-table fallback');
-            // Fallback to old ID if it exists
-            const oldTbody = document.getElementById('courses-table');
-            if (oldTbody) {
-                oldTbody.innerHTML = '<tr><td colspan="6">Loading units...</td></tr>';
-                try {
-                    // ✅ FIX: Use window.sb
-                    const supabaseClient = window.sb || window.supabase;
-                    if (!supabaseClient) {
-                        throw new Error('Supabase not available');
-                    }
-                    const { data: units, error } = await supabaseClient
-                        .from('units_catalog')
-                        .select('*')
-                        .order('unit_code', { ascending: true });
-                        
-                    if (error) { 
-                        oldTbody.innerHTML = `<tr><td colspan="6">Error loading units: ${error.message}</td></tr>`; 
-                        return; 
-                    }
-
-                    oldTbody.innerHTML = '';
-                    units.forEach(u => {
-                        const isTVET = isTVETProgram(u.program);
-                        const blockLabel = isTVET ? 'Term' : 'Block';
-                        const programType = getProgramType(u.program);
-                        const programBadge = programType === 'TVET' 
-                            ? '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">🔧 TVET</span>'
-                            : '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">🎓 KRCHN</span>';
-
-                        oldTbody.innerHTML += `<tr>
-                            <td><strong>${escapeHtml(u.unit_code)}</strong></td>
-                            <td>${escapeHtml(u.unit_name)}</td>
-                            <td>
-                                ${escapeHtml(u.program || 'N/A')}
-                                ${programBadge}
-                            </td>
-                            <td>${escapeHtml(u.year || 'N/A')}</td>
-                            <td>${escapeHtml(blockLabel)}: ${escapeHtml(u.block || 'N/A')}</td>
-                            <td>
-                                <button class="btn-action" onclick="openEditUnitModal('${u.id}', '${escapeHtml(u.unit_code)}', '${escapeHtml(u.unit_name)}', '${escapeHtml(u.description || '')}', '${escapeHtml(u.program || '')}', '${u.year || ''}', '${escapeHtml(u.block || '')}', '${u.credits || 3}', '${u.hours || 0}', '${escapeHtml(u.unit_type || 'Core')}', '${escapeHtml(u.prerequisites || '')}')">Edit</button>
-                                <button class="btn btn-delete" onclick="deleteUnit('${u.id}', '${escapeHtml(u.unit_code)}')">Delete</button>
-                            </td>
-                        </tr>`;
-                    });
-                    
-                    if (typeof filterTable === 'function') {
-                        filterTable('unit-search', 'courses-table', [0, 1, 3]);
-                    }
-                } catch (error) {
-                    oldTbody.innerHTML = `<tr><td colspan="6">Error loading units: ${error.message}</td></tr>`;
-                }
-                return;
-            }
-            console.error('❌ Neither units-table-body nor courses-table found in DOM');
+            console.warn('⚠️ units-table-body not found');
             return;
         }
         
-        // Show loading state
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">Loading units...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">Loading units...</td></tr>';
 
         try {
-            // ✅ FIX: Use window.sb
             const supabaseClient = window.sb || window.supabase;
             if (!supabaseClient) {
                 throw new Error('Supabase not available');
@@ -5448,12 +5391,12 @@ if (typeof loadUnits === 'undefined') {
                 .order('unit_code', { ascending: true });
                 
             if (error) { 
-                tbody.innerHTML = `<tr><td colspan="8">Error loading units: ${error.message}</td></tr>`; 
+                tbody.innerHTML = `<tr><td colspan="9">Error loading units: ${error.message}</td></tr>`; 
                 return; 
             }
 
             if (!units || units.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;">
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #6b7280;">
                     <i class="fas fa-inbox" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
                     No units found. Add your first unit above!
                 </td></tr>`;
@@ -5467,6 +5410,13 @@ if (typeof loadUnits === 'undefined') {
                 const blockLabel = isTVET ? 'Term' : 'Block';
                 const programType = getProgramType(u.program);
                 const programDisplay = getProgramDisplayName(u.program);
+                
+                // Format block display consistently
+                let blockDisplay = u.block || 'N/A';
+                if (!blockDisplay.startsWith('Term:') && !blockDisplay.startsWith('Block:')) {
+                    blockDisplay = `${blockLabel}: ${blockDisplay}`;
+                }
+                
                 const programBadge = programType === 'TVET' 
                     ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block;">🔧 TVET</span>'
                     : '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; display: inline-block;">🎓 KRCHN</span>';
@@ -5484,25 +5434,27 @@ if (typeof loadUnits === 'undefined') {
                     ? '<span style="background: #d1fae5; color: #059669; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">✅ Active</span>'
                     : '<span style="background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600;">❌ Inactive</span>';
 
+                const blockBg = isTVET ? '#fef3c7' : '#e0e7ff';
+                const blockColor = isTVET ? '#92400e' : '#1e40af';
+
+                // ✅ FIXED: CORRECT COLUMN ORDER - Block THEN Year
                 tbody.innerHTML += `<tr>
-                    <td><strong>${escapeHtml(u.unit_code)}</strong></td>
-                    <td>${escapeHtml(u.unit_name)}</td>
+                    <td><strong>${escapeHtml(u.unit_code)}</strong></td>                              <!-- 1. Code -->
+                    <td>${escapeHtml(u.unit_name)}</td>                                              <!-- 2. Unit Name -->
                     <td>
                         <div style="font-weight: 500; font-size: 13px;">${escapeHtml(programDisplay)}</div>
                         ${programBadge}
-                    </td>
-                    <td>${escapeHtml(u.year || 'N/A')}</td>
+                    </td>                                                                           <!-- 3. Program -->
                     <td>
-                        <span style="background: ${isTVET ? '#fef3c7' : '#e0e7ff'}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; color: ${isTVET ? '#92400e' : '#1e40af'};">
-                            ${blockLabel}: ${escapeHtml(u.block || 'N/A')}
+                        <span style="background: ${blockBg}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; color: ${blockColor};">
+                            ${escapeHtml(blockDisplay)}
                         </span>
-                    </td>
-                    <td style="text-align: center;">
-                        ${unitTypeBadge}
-                        <br>
-                        <small style="color: #6b7280;">${u.credits || 3} cr | ${u.hours || 0}h</small>
-                    </td>
-                    <td style="text-align: center;">${statusBadge}</td>
+                    </td>                                                                           <!-- 4. ✅ BLOCK -->
+                    <td>${escapeHtml(u.year || 'N/A')}</td>                                         <!-- 5. ✅ YEAR -->
+                    <td style="text-align: center;">${u.credits || 3}</td>                          <!-- 6. Credits -->
+                    <td style="text-align: center;">${u.hours || 0}</td>                            <!-- 7. Hours -->
+                    <td style="text-align: center;">${unitTypeBadge}</td>                           <!-- 8. Type -->
+                    <td style="text-align: center;">${statusBadge}</td>                             <!-- 9. Status -->
                     <td style="text-align: center;">
                         <button class="action-btn edit-btn" onclick="openEditUnitModal('${u.id}', '${escapeHtml(u.unit_code)}', '${escapeHtml(u.unit_name)}', '${escapeHtml(u.description || '')}', '${escapeHtml(u.program || '')}', '${u.year || ''}', '${escapeHtml(u.block || '')}', '${u.credits || 3}', '${u.hours || 0}', '${escapeHtml(u.unit_type || 'Core')}', '${escapeHtml(u.prerequisites || '')}')">
                             <i class="fas fa-edit"></i>
@@ -5510,19 +5462,17 @@ if (typeof loadUnits === 'undefined') {
                         <button class="action-btn delete-btn" onclick="deleteUnit('${u.id}', '${escapeHtml(u.unit_code)}')">
                             <i class="fas fa-trash"></i>
                         </button>
-                    </td>
+                    </td>                                                                           <!-- 10. Actions -->
                 </tr>`;
             });
             
-            // Update count
             updateUnitCount(units.length);
             
         } catch (error) {
-            tbody.innerHTML = `<tr><td colspan="8">Error loading units: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9">Error loading units: ${error.message}</td></tr>`;
         }
     };
 }
-
 // ============================================================
 // 10.4 - FILTER UNITS CATALOG (Main filter function)
 // ============================================================
