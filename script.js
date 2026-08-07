@@ -411,14 +411,28 @@ function escapeHtml(s, isAttribute = false){
     }
     return str;
 }
-
-function showFeedback(message, type = 'success') {
-    const prefix = type === 'success' ? '✅ Success: ' : 
-                   type === 'error' ? '❌ Error: ' :
-                   type === 'warning' ? '⚠️ Warning: ' : 'ℹ️ Info: ';
-    alert(prefix + message);
+function showFeedback(msg, type = 'info') {
+    const colors = { success: '#059669', error: '#dc2626', warning: '#f59e0b', info: '#3b82f6' };
+    const existing = document.querySelector('.feedback-toast');
+    if (existing) existing.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = 'feedback-toast';
+    toast.style.cssText = `
+        position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:12px;color:#fff;
+        font-weight:600;font-size:13px;z-index:99999;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.15);
+        background:${colors[type] || colors.info};animation:slideUp 0.25s ease;font-family:Inter,sans-serif;
+    `;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(16px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
 }
-
 function setButtonLoading(button, isLoading, originalText = 'Submit') {
     if (!button) return;
     button.disabled = isLoading;
@@ -8062,29 +8076,6 @@ function showExamTab(tab) {
         loadAvailableClassesForExam();
         loadCoursesForExamDropdown();
     }
-}
-
-function showFeedback(msg, type = 'info') {
-    const colors = { success: '#059669', error: '#dc2626', warning: '#f59e0b', info: '#3b82f6' };
-    const existing = document.querySelector('.feedback-toast');
-    if (existing) existing.remove();
-    
-    const toast = document.createElement('div');
-    toast.className = 'feedback-toast';
-    toast.style.cssText = `
-        position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:12px;color:#fff;
-        font-weight:600;font-size:13px;z-index:99999;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.15);
-        background:${colors[type] || colors.info};animation:slideUp 0.25s ease;font-family:Inter,sans-serif;
-    `;
-    toast.textContent = msg;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(16px)';
-        toast.style.transition = 'all 0.25s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
 }
 
 async function getCurrentUser() {
