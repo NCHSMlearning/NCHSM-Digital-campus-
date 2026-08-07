@@ -8217,7 +8217,239 @@ if (!document.querySelector('#examSpinStyle')) {
     `;
     document.head.appendChild(style);
 }
+// ============================================================
+// OPEN GRADE MODAL - GLOBAL ACCESS
+// ============================================================
 
+window.openGradeModal = async function(examId, examName = '') {
+    try {
+        console.log('🎯 Opening grade modal for exam:', examId);
+        
+        const currentUser = await getCurrentUser();
+        if (!currentUser || !currentUser.user_id) {
+            showFeedback('Error: You must be logged in to grade exams.', 'error');
+            return;
+        }
+
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('*')
+            .eq('id', examId)
+            .single();
+
+        if (examError || !exam) {
+            showFeedback('Error loading exam details.', 'error');
+            return;
+        }
+
+        const programField = exam.program_type || exam.target_program;
+        const blockField = exam.block || exam.block_term;
+        
+        let query = sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, email, program, intake_year, block')
+            .eq('role', 'student');
+        
+        if (programField) {
+            query = query.eq('program', programField);
+        }
+        if (exam.intake_year) {
+            const intakeYearStr = String(exam.intake_year);
+            query = query.eq('intake_year', intakeYearStr);
+        }
+        if (blockField) {
+            query = query.eq('block', blockField);
+        }
+        
+        const { data: students, error: studentError } = await query;
+
+        if (studentError || !students || students.length === 0) {
+            const suggestions = [];
+            if (exam.intake_year) suggestions.push(`• Intake Year: ${exam.intake_year}`);
+            if (programField) suggestions.push(`• Program: ${programField}`);
+            if (blockField) suggestions.push(`• Block: ${blockField}`);
+            
+            const helpMessage = `No students found for this exam criteria.\n\nExam Requirements:\n${suggestions.join('\n')}\n\nPlease check your student data.`;
+            showFeedback(helpMessage, 'warning');
+            return;
+        }
+
+        const { data: existingGrades } = await sb
+            .from('exam_grades')
+            .select('*')
+            .eq('exam_id', examId);
+
+        let examType = exam.exam_type || 'EXAM';
+        const modalHtml = buildGradeModalHTML(exam, students, existingGrades, currentUser, examType);
+        showGradeModal(modalHtml);
+
+        if (examType === 'EXAM') {
+            students.forEach(s => updateGradeTotal(s.user_id));
+        }
+        
+        showFeedback(`${getExamTypeLabel(examType)} grading modal loaded for ${students.length} students`, 'success');
+        
+    } catch (error) {
+        console.error('Error opening grade modal:', error);
+        showFeedback('Failed to load grading interface: ' + error.message, 'error');
+    }
+};
+
+// ============================================================
+// BUILD GRADE MODAL HTML
+// ============================================================
+
+function buildGradeModalHTML(exam, students, existingGrades, currentUser, examType) {
+    const examTypeLabel = getExamTypeLabel(examType);
+    const marksOutOf = exam.marks_out_of || exam.total_marks || 100;
+    const passMark = exam.pass_mark || 50;
+    
+    let tableHeaders = '';
+    let tableRows = '';
+    
+    switch(examType) {
+        case 'CAT_1':
+            tableHeaders = `<th>Student Name</th><th>Email</th><th>CAT 1 Score (max 30)</th><th>Status</th>`;
+            tableRows = students.map(s => {
+                const grade = existingGrades?.find(g => g.student_id === s.user_id) || {};
+                return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
+                    <td>${escapeHtml(s.full_name)}</td>
+                    <td>${escapeHtml(s.email ?? '')}</td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat1-${s.user_id}" value="${grade.cat_1_score ?? ''}" placeholder="0-30" class="grade-input"></td>
+                    <td><select id="status-${s.user_id}" class="status-select">
+                        <option value="Scheduled" ${grade.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
+                    </select></td>
+                </tr>`;
+            }).join('');
+            break;
+            
+        case 'CAT_2':
+            tableHeaders = `<th>Student Name</th><th>Email</th><th>CAT 2 Score (max 30)</th><th>Status</th>`;
+            tableRows = students.map(s => {
+                const grade = existingGrades?.find(g => g.student_id === s.user_id) || {};
+                return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
+                    <td>${escapeHtml(s.full_name)}</td>
+                    <td>${escapeHtml(s.email ?? '')}</td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat2-${s.user_id}" value="${grade.cat_2_score ?? ''}" placeholder="0-30" class="grade-input"></td>
+                    <td><select id="status-${s.user_id}" class="status-select">
+                        <option value="Scheduled" ${grade.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
+                    </select></td>
+                </tr>`;
+            }).join('');
+            break;
+            
+        case 'CAT':
+            tableHeaders = `<th>Student Name</th><th>Email</th><th>CAT Score (max 30)</th><th>Status</th>`;
+            tableRows = students.map(s => {
+                const grade = existingGrades?.find(g => g.student_id === s.user_id) || {};
+                return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
+                    <td>${escapeHtml(s.full_name)}</td>
+                    <td>${escapeHtml(s.email ?? '')}</td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat-${s.user_id}" value="${grade.cat_1_score ?? grade.cat_2_score ?? ''}" placeholder="0-30" class="grade-input"></td>
+                    <td><select id="status-${s.user_id}" class="status-select">
+                        <option value="Scheduled" ${grade.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
+                    </select></td>
+                </tr>`;
+            }).join('');
+            break;
+            
+        default:
+            tableHeaders = `<th>Student Name</th><th>Email</th><th>CAT 1 (max 30)</th><th>CAT 2 (max 30)</th><th>Final Exam (max ${marksOutOf})</th><th>Total (scaled 100)</th><th>Status</th>`;
+            tableRows = students.map(s => {
+                const grade = existingGrades?.find(g => g.student_id === s.user_id) || {};
+                return `<tr data-name="${s.full_name.toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-id="${s.user_id}">
+                    <td>${escapeHtml(s.full_name)}</td>
+                    <td>${escapeHtml(s.email ?? '')}</td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat1-${s.user_id}" value="${grade.cat_1_score ?? ''}" placeholder="0-30" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td>
+                    <td><input type="number" min="0" max="30" step="0.5" id="cat2-${s.user_id}" value="${grade.cat_2_score ?? ''}" placeholder="0-30" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td>
+                    <td><input type="number" min="0" max="${marksOutOf}" step="0.5" id="final-${s.user_id}" value="${grade.exam_score ?? ''}" placeholder="0-${marksOutOf}" class="grade-input" oninput="updateGradeTotal('${s.user_id}')"></td>
+                    <td><input type="number" min="0" max="100" step="0.1" id="total-${s.user_id}" value="" placeholder="Auto" readonly class="total-input"></td>
+                    <td><select id="status-${s.user_id}" class="status-select">
+                        <option value="Scheduled" ${grade.result_status === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                        <option value="InProgress" ${grade.result_status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                        <option value="Final" ${grade.result_status === 'Final' ? 'selected' : ''}>Final</option>
+                    </select></td>
+                </tr>`;
+            }).join('');
+    }
+    
+    return `
+    <div class="modal-content" style="width:95%; max-width:1000px;">
+        <div class="modal-header">
+            <h3>${examTypeLabel}: ${escapeHtml(exam.title)}</h3>
+            <span class="close" onclick="closeGradeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="exam-info" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <strong>Exam Details:</strong> ${escapeHtml(exam.course_name || 'General Assessment')} | ${escapeHtml(exam.program_type)} | Block ${escapeHtml(exam.block)} | ${escapeHtml(exam.intake_year)}
+                <br><strong>Marks Out Of:</strong> ${marksOutOf} | <strong>Pass Mark:</strong> ${passMark}%
+                <br><small>Grading as: ${escapeHtml(currentUser.full_name || currentUser.email)} | Type: ${examTypeLabel}</small>
+            </div>
+            <input type="text" id="gradeSearch" placeholder="Search by name, email or ID" class="search-input" oninput="filterGradeStudents()">
+            <div class="table-container">
+                <table class="data-table grade-table">
+                    <thead><tr>${tableHeaders}</thead>
+                    <tbody id="gradeTableBody">${tableRows}</tbody>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-action" onclick="saveGrades('${exam.id}', '${examType}')">Save ${examTypeLabel} Grades</button>
+                <button class="btn btn-delete" onclick="closeGradeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ============================================================
+// SHOW GRADE MODAL
+// ============================================================
+
+function showGradeModal(modalHtml) {
+    const existingModal = document.getElementById('gradeModal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'gradeModal';
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = modalHtml;
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeGradeModal();
+    });
+
+    const searchInput = document.getElementById('gradeSearch');
+    if (searchInput) setTimeout(() => searchInput.focus(), 100);
+}
+
+// ============================================================
+// GET EXAM TYPE LABEL
+// ============================================================
+
+function getExamTypeLabel(examType) {
+    const labels = {
+        'CAT_1': 'CAT 1 Assessment',
+        'CAT_2': 'CAT 2 Assessment', 
+        'CAT': 'Continuous Assessment Test',
+        'EXAM': 'Final Examination',
+        'ASSIGNMENT': 'Assignment',
+        'END_TERM': 'End of Term Exam',
+        'SUPPLEMENTARY': 'Supplementary Exam'
+    };
+    return labels[examType] || 'Assessment';
+}
+
+
+
+window.buildGradeModalHTML = buildGradeModalHTML;
+window.showGradeModal = showGradeModal;
+window.getExamTypeLabel = getExamTypeLabel;
 // ============================================
 // EXPOSE GLOBALS
 // ============================================
@@ -8244,6 +8476,8 @@ window.getCurrentUser = getCurrentUser;
 window.ExamCache = ExamCache;
 
 console.log('🚀 CATS/Exams loaded (optimized)');
+
+
 /*******************************************************
  * 14. MESSAGES & ANNOUNCEMENTS
  *******************************************************/
