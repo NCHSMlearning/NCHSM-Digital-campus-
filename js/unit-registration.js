@@ -593,77 +593,80 @@
             }
         }
         
-        // ============================================================
-        // LOAD AVAILABLE UNITS - FIXED (Direct Database Query)
-        // ============================================================
-        
-        async loadAvailableUnits(supabase) {
-            const regType = this.regType?.value;
-            
-            if (!regType) {
-                if (this.availableBody) {
-                    this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Select Registration Type first</td></tr>';
-                }
-                return;
-            }
-            
-            try {
-                console.log('🔄 Loading fresh available units from database...');
-                
-                // ✅ FIX: Get fresh data from database directly
-                const { data: freshRegs, error: regError } = await supabase
-                    .from('student_unit_registrations')
-                    .select('unit_code, status')
-                    .eq('student_id', this.studentId);
-                
-                if (regError) throw regError;
-                
-                // Update cache with fresh data
-                this.registeredUnits = freshRegs || [];
-                
-                // ✅ FIX: Await the async display function
-                await this.displayRegisteredUnits();
-                
-                // Build query for catalog
-                let query = supabase
-                    .from('units_catalog')
-                    .select('*')
-                    .eq('status', 'active');
-                
-                if (this.programCode) {
-                    query = query.eq('program', this.isTVETStudent ? this.programCode : 'KRCHN');
-                }
-                
-                const block = this.blockFilter?.value;
-                if (block && block !== "") {
-                    query = query.eq('block', block);
-                }
-                
-                const unitType = this.unitTypeFilter?.value;
-                if (unitType && unitType !== "") {
-                    query = query.eq('unit_type', unitType);
-                }
-                
-                const { data, error } = await query.order('block').order('unit_code');
-                
-                if (error) throw error;
-                
-                this.allUnits = data || [];
-                
-                // ✅ Filter out registered units using fresh data
-                const registeredCodes = new Set(this.registeredUnits.map(u => u.unit_code));
-                this.allUnits = this.allUnits.filter(u => !registeredCodes.has(u.unit_code));
-                
-                console.log(`📊 Available units: ${this.allUnits.length}`);
-                this.displayAvailableUnits();
-                
-            } catch (error) {
-                console.error('Error loading available units:', error);
-                if (this.availableBody) {
-                    this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">Error loading units</td></tr>';
-                }
-            }
+       // ============================================================
+// LOAD AVAILABLE UNITS - UPDATED (Only Normal)
+// ============================================================
+
+async loadAvailableUnits(supabase) {
+    const regType = this.regType?.value;
+    
+    if (!regType) {
+        if (this.availableBody) {
+            this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;"><i class="fas fa-hand-pointer" style="font-size:32px; display:block; margin-bottom:10px;"></i><p>Select Registration Type first</p></td></tr>';
         }
+        return;
+    }
+    
+    try {
+        console.log('🔄 Loading fresh available units from database...');
+        
+        const supabase = this.getSupabase();
+        if (!supabase) throw new Error('Database not available');
+        
+        // ✅ FIX: Get fresh data from database directly
+        const { data: freshRegs, error: regError } = await supabase
+            .from('student_unit_registrations')
+            .select('unit_code, status')
+            .eq('student_id', this.studentId);
+        
+        if (regError) throw regError;
+        
+        // Update cache with fresh data
+        this.registeredUnits = freshRegs || [];
+        
+        // ✅ FIX: Await the async display function
+        await this.displayRegisteredUnits();
+        
+        // Build query for catalog - ONLY NORMAL UNITS
+        let query = supabase
+            .from('units_catalog')
+            .select('*')
+            .eq('status', 'active');
+        
+        if (this.programCode) {
+            query = query.eq('program', this.isTVETStudent ? this.programCode : 'KRCHN');
+        }
+        
+        const block = this.blockFilter?.value;
+        if (block && block !== "") {
+            query = query.eq('block', block);
+        }
+        
+        const unitType = this.unitTypeFilter?.value;
+        if (unitType && unitType !== "") {
+            query = query.eq('unit_type', unitType);
+        }
+        
+        const { data, error } = await query.order('block').order('unit_code');
+        
+        if (error) throw error;
+        
+        this.allUnits = data || [];
+        
+        // ✅ Filter out registered units using fresh data
+        const registeredCodes = new Set(this.registeredUnits.map(u => u.unit_code));
+        this.allUnits = this.allUnits.filter(u => !registeredCodes.has(u.unit_code));
+        
+        console.log(`📊 Available units: ${this.allUnits.length}`);
+        this.displayAvailableUnits();
+        
+    } catch (error) {
+        console.error('Error loading available units:', error);
+        if (this.availableBody) {
+            this.availableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#dc2626;"><i class="fas fa-exclamation-circle" style="font-size:32px; display:block; margin-bottom:10px;"></i><p>Error loading units: ' + error.message + '</p></td></tr>';
+        }
+    }
+}
         
         // ============================================================
         // LOAD MAX UNITS
@@ -726,12 +729,11 @@
                 console.error('Error loading blocks:', error);
             }
         }
-        // ============================================================
-// UPDATE SELECTED COUNT - ADD THIS METHOD
+// ============================================================
+// UPDATE SELECTED COUNT - UPDATED
 // ============================================================
 
 updateSelectedCount() {
-    // Count checked checkboxes
     const checkboxes = document.querySelectorAll('.unit-checkbox:checked');
     const count = checkboxes.length;
     
@@ -741,14 +743,18 @@ updateSelectedCount() {
         countDisplay.textContent = count;
     }
     
-    // Update the register button
-    const registerBtn = document.getElementById('registerSelectedBtn');
+    // ✅ Update the register button
+    const registerBtn = document.getElementById('submitRegistrationBtn');
     if (registerBtn) {
         if (count > 0) {
-            registerBtn.style.display = 'inline-block';
-            registerBtn.innerHTML = `📝 Register ${count} Selected Unit${count > 1 ? 's' : ''}`;
+            registerBtn.style.display = 'flex';
+            registerBtn.innerHTML = `<i class="fas fa-paper-plane"></i> Register ${count} Selected Unit${count > 1 ? 's' : ''}`;
+            registerBtn.style.opacity = '1';
+            registerBtn.style.cursor = 'pointer';
         } else {
-            registerBtn.style.display = 'none';
+            registerBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit';
+            registerBtn.style.opacity = '0.6';
+            registerBtn.style.cursor = 'not-allowed';
         }
     }
     
@@ -762,54 +768,83 @@ updateSelectedCount() {
         }
     }
 }
-        // ============================================================
-        // DISPLAY FUNCTIONS - REGULAR REGISTRATION (FIXED)
-        // ============================================================
+      // ============================================================
+// DISPLAY AVAILABLE UNITS - UPDATED
+// ============================================================
+
+displayAvailableUnits() {
+    if (!this.availableBody) return;
+    
+    const regType = this.regType?.value;
+    
+    // ✅ Only show Normal units in regular tab
+    if (regType !== 'Normal') {
+        this.availableBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;">
+                    <i class="fas fa-info-circle" style="font-size:32px; display:block; margin-bottom:10px;"></i>
+                    <p>Please select "Normal Registration" to see available units.</p>
+                    <p style="font-size:12px; margin-top:4px;">For Supplementary/Retake, use the Supplementary tab above.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let displayUnits = this.allUnits;
+    
+    if (displayUnits.length === 0) {
+        this.availableBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;">
+                    <i class="fas fa-check-circle" style="font-size:32px; color:#10b981; display:block; margin-bottom:10px;"></i>
+                    <p>No units available for registration.</p>
+                    <p style="font-size:12px; margin-top:4px;">You may have already registered all available units.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // ✅ Use fresh registeredUnits
+    const registeredCodes = new Set(this.registeredUnits.map(u => u.unit_code));
+    
+    let html = '';
+    for (const unit of displayUnits) {
+        const isRegistered = registeredCodes.has(unit.unit_code);
         
-        displayAvailableUnits() {
-            if (!this.availableBody) return;
-            
-            const regType = this.regType?.value;
-            const isSupplementary = regType === 'Supplementary' || regType === 'Retake';
-            
-            let displayUnits = this.allUnits;
-            if (isSupplementary) {
-                const failedCodes = new Set(this.failedUnits.map(u => u.unit_code));
-                displayUnits = this.allUnits.filter(u => failedCodes.has(u.unit_code));
-            }
-            
-            if (displayUnits.length === 0) {
-                this.availableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;">No units available</td></tr>`;
-                return;
-            }
-            
-            // ✅ FIX: Use fresh registeredUnits
-            const registeredCodes = new Set(this.registeredUnits.map(u => u.unit_code));
-            
-            let html = '';
-            for (const unit of displayUnits) {
-                // ✅ Check if registered using fresh data
-                const isRegistered = registeredCodes.has(unit.unit_code);
-                const isFailed = this.failedUnits.some(u => u.unit_code === unit.unit_code);
-                const suppBadge = isFailed && !isRegistered ? 
-                    '<span style="background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:12px; font-size:9px; font-weight:600; margin-left:4px;">Retake</span>' : '';
-                
-                html += `<tr>
-                    <td style="text-align:center; padding:10px 12px;">${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${this.escapeHtml(unit.unit_code)}">` : '—'}</td>
-                    <td style="padding:10px 12px;"><strong>${this.escapeHtml(unit.unit_code)}</strong> ${suppBadge}</td>
-                    <td style="padding:10px 12px;">${this.escapeHtml(unit.unit_name)}</td>
-                    <td style="padding:10px 12px;">${this.escapeHtml(unit.block)}</td>
-                    <td style="padding:10px 12px; text-align:center;">${this.escapeHtml(unit.unit_type || 'Core')}</td>
-                    <td style="padding:10px 12px; text-align:center;">${unit.credits || 3}</td>
-                    <td style="padding:10px 12px; text-align:center;"><span class="status-badge status-available">Available</span></td>
-                </tr>`;
-            }
-            
-            this.availableBody.innerHTML = html;
-            this.updateSelectedCount();
-            this.attachCheckboxEvents();
+        // ✅ Determine unit type color
+        let typeColor = '#2563eb';
+        let typeBg = '#dbeafe';
+        if (unit.unit_type === 'Elective') {
+            typeColor = '#d97706';
+            typeBg = '#fef3c7';
+        } else if (unit.unit_type === 'Clinical') {
+            typeColor = '#059669';
+            typeBg = '#d1fae5';
         }
         
+        html += `<tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+            <td style="text-align:center; padding:12px 16px;">
+                ${!isRegistered ? `<input type="checkbox" class="unit-checkbox" data-code="${this.escapeHtml(unit.unit_code)}" style="width:16px; height:16px; cursor:pointer; accent-color:#4C1D95;">` : '<span style="color:#94a3b8;">—</span>'}
+            </td>
+            <td style="padding:12px 16px; font-weight:600; color:#0A3D62;">${this.escapeHtml(unit.unit_code)}</td>
+            <td style="padding:12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
+            <td style="padding:12px 16px;"><span style="background:#f3f4f6; padding:2px 12px; border-radius:12px; font-size:12px;">${this.escapeHtml(unit.block)}</span></td>
+            <td style="padding:12px 16px; text-align:center;">
+                <span style="background:${typeBg}; color:${typeColor}; padding:2px 12px; border-radius:12px; font-size:11px; font-weight:600;">${this.escapeHtml(unit.unit_type || 'Core')}</span>
+            </td>
+            <td style="padding:12px 16px; text-align:center; font-weight:600;">${unit.credits || 3}</td>
+            <td style="padding:12px 16px; text-align:center;">
+                <span class="status-available">${isRegistered ? 'Registered' : 'Available'}</span>
+            </td>
+        </tr>`;
+    }
+    
+    this.availableBody.innerHTML = html;
+    this.updateSelectedCount();
+    this.attachCheckboxEvents();
+}
         // ============================================================
         // DISPLAY REGISTERED UNITS - CHECKS PUBLISHED MARKS
         // ============================================================
