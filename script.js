@@ -5253,7 +5253,7 @@ if (typeof logAudit === 'undefined') {
 }
 
 // ============================================================
-// 10.2 - ADD UNIT
+// 10.2 - ADD UNIT - FIXED
 // ============================================================
 
 if (typeof handleAddUnit === 'undefined') {
@@ -5288,12 +5288,14 @@ if (typeof handleAddUnit === 'undefined') {
         }
 
         try {
-            if (typeof supabase === 'undefined' || !supabase) {
+            // ✅ FIX: Use window.sb consistently
+            const supabaseClient = window.sb || window.supabase;
+            if (!supabaseClient) {
                 throw new Error('Supabase not available');
             }
 
             // Check for duplicate unit_code
-            const { data: existing, error: checkError } = await supabase
+            const { data: existing, error: checkError } = await supabaseClient
                 .from('units_catalog')
                 .select('unit_code')
                 .eq('unit_code', unit_code)
@@ -5328,7 +5330,7 @@ if (typeof handleAddUnit === 'undefined') {
 
             console.log('📤 Adding unit with data:', unitData);
 
-            const { error } = await supabase.from('units_catalog').insert(unitData);
+            const { error } = await supabaseClient.from('units_catalog').insert(unitData);
             if (error) throw error;
             
             await logAudit('UNIT_ADD', `Successfully added unit: ${unit_code} - ${unit_name} (${target_program}, ${block})`, null, 'SUCCESS');
@@ -5345,9 +5347,12 @@ if (typeof handleAddUnit === 'undefined') {
             // Refresh units list
             if (typeof loadUnits === 'function') {
                 loadUnits();
+            } else if (typeof loadAllUnits === 'function') {
+                loadAllUnits();
             }
 
         } catch (error) {
+            console.error('❌ Add error:', error);
             await logAudit('UNIT_ADD', `Failed to add unit ${unit_code}. Reason: ${error.message}`, null, 'FAILURE');
             showFeedback(`❌ Failed to add unit: ${error.message}`, 'error');
         } finally {
@@ -5684,7 +5689,7 @@ if (typeof updateUnitCount === 'undefined') {
 }
 
 // ============================================================
-// 10.8 - DELETE UNIT (SAFE VERSION)
+// 10.8 - DELETE UNIT - SAFE VERSION - FIXED
 // ============================================================
 
 if (typeof deleteUnit === 'undefined') {
@@ -5781,7 +5786,7 @@ if (typeof openEditUnitModal === 'undefined') {
 }
 
 // ============================================================
-// 10.10 - HANDLE EDIT UNIT
+// 10.10 - HANDLE EDIT UNIT - FIXED
 // ============================================================
 
 if (typeof handleEditUnit === 'undefined') {
@@ -5817,7 +5822,9 @@ if (typeof handleEditUnit === 'undefined') {
         }
 
         try {
-            if (typeof supabase === 'undefined' || !supabase) {
+            // ✅ FIX: Use window.sb consistently
+            const supabaseClient = window.sb || window.supabase;
+            if (!supabaseClient) {
                 throw new Error('Supabase not available');
             }
 
@@ -5835,7 +5842,7 @@ if (typeof handleEditUnit === 'undefined') {
                 updated_at: new Date().toISOString()
             };
             
-            const { error } = await supabase.from('units_catalog').update(updateData).eq('id', id);
+            const { error } = await supabaseClient.from('units_catalog').update(updateData).eq('id', id);
             if (error) throw error;
 
             await logAudit('UNIT_EDIT', `Updated unit ${unit_code}`, id, 'SUCCESS');
