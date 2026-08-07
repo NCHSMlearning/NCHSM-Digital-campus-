@@ -1333,169 +1333,208 @@
             this.currentTable.innerHTML = html;
         }
         
-        // ============================================
-        // 📊 DISPLAY COMPLETED TABLE - FIXED MARKS
-        // ============================================
-        displayCompletedTable() {
-            if (!this.completedTable) return;
-            
-            const completedReleased = this.completedExams
-                .filter(exam => 
-                    exam.isCompleted || exam.isReleased || 
-                    exam.actionState === 'expired' || exam.actionState === 'pending_release'
-                )
-                .sort((a, b) => {
-                    const dateA = a.gradedAt || a.examDate || a.examStartDateTime || a.created_at || new Date(0);
-                    const dateB = b.gradedAt || b.examDate || b.examStartDateTime || b.created_at || new Date(0);
-                    return new Date(dateB) - new Date(dateA);
-                });
-            
-            if (completedReleased.length === 0) {
-                this.completedTable.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
-                            <i class="fas fa-inbox" style="font-size: 36px; display: block; margin-bottom: 10px;"></i>
-                            No completed assessments yet.
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            completedReleased.forEach(exam => {
-                const isCatExam = exam.isCatExam || false;
-                const isTVET = exam.isTVET || this.isTVETStudent;
-                
-                let examDisplayName = 'Assessment';
-                if (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name !== '') {
-                    examDisplayName = exam.exam_name;
-                } else if (typeof exam.title === 'string' && exam.title !== '[object Object]' && exam.title !== '') {
-                    examDisplayName = exam.title;
-                } else {
-                    examDisplayName = 'Assessment';
-                }
-                
-                // 🔧 FIX: Get marks correctly
-                const totalMarks = exam.marks_out_of || (isCatExam ? 30 : 100);
-                const marks = exam.marks || exam.displayScore || 0;
-                const percentage = exam.totalPercentage || Math.round((marks / totalMarks) * 100);
-                
-                // Determine grade
-                let displayGrade = exam.gradeText || 'Not Started';
-                let displayClass = exam.gradeClass || 'pending';
-                
-                if (exam.isReleased && marks > 0) {
-                    if (percentage >= 85) { 
-                        displayGrade = 'Distinction'; 
-                        displayClass = 'distinction'; 
-                    } else if (percentage >= 75) { 
-                        displayGrade = 'Credit'; 
-                        displayClass = 'credit'; 
-                    } else if (percentage >= 60) { 
-                        displayGrade = 'Pass'; 
-                        displayClass = 'pass'; 
-                    } else { 
-                        displayGrade = 'Fail'; 
-                        displayClass = 'fail'; 
-                    }
-                }
-                
-                if (exam.actionState === 'pending_release') {
-                    displayGrade = 'Pending Release';
-                    displayClass = 'pending';
-                }
-                if (exam.actionState === 'expired' && !marks) {
-                    displayGrade = 'Missed';
-                    displayClass = 'missed';
-                }
-                
-                // 🔧 FIX: Display marks as "9/30" not just "9"
-                const marksDisplay = marks > 0 ? `${marks}/${totalMarks}` : '--';
-                const percentageDisplay = marks > 0 ? `${percentage}%` : '--';
-                const totalDisplay = marks > 0 ? `${marks}/${totalMarks}` : '--';
-                
-                // CAT scores
-                const cat1Score = exam.cat1Score || exam.cat1Display || (marks > 0 && isCatExam ? marks : '--');
-                const cat2Score = exam.cat2Score || exam.cat2Display || '--';
-                const finalScore = exam.finalScore || exam.finalDisplay || '--';
-                
-                let cat1Display = '--';
-                let cat2Display = '--';
-                let finalDisplay = '--';
-                
-                if (marks > 0) {
-                    if (isCatExam) {
-                        cat1Display = typeof cat1Score === 'number' ? cat1Score : marks;
-                        cat2Display = '--';
-                    } else {
-                        cat1Display = typeof cat1Score === 'number' ? cat1Score : '--';
-                        cat2Display = '--';
-                        finalDisplay = typeof finalScore === 'number' ? finalScore : marks;
-                    }
-                }
-                
-                // Status badges
-                let statusBadges = '';
-                if (exam.isReleased) {
-                    statusBadges = '<span style="background: #D1FAE5; color: #065F46; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">✅ Released</span>';
-                } else if (exam.actionState === 'pending_release') {
-                    statusBadges = '<span style="background: #FEF3C7; color: #92400E; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">⏳ Pending</span>';
-                }
-                
-                // Action buttons
-                let actionHtml = '';
-                if (exam.isReleased && marks > 0) {
-                    actionHtml = `
-                        <button onclick="window.examsModule?.viewDetailedResults(${exam.id})" 
-                                style="padding: 6px 14px; border-radius: 20px; border: none; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #3B82F6, #2563EB); color: white; font-size: 11px;">
-                            <i class="fas fa-clipboard-list"></i> Details
-                        </button>
-                    `;
-                } else if (exam.actionState === 'pending_release') {
-                    actionHtml = '<span style="color: #D97706; font-weight: 600;">⏳ Pending</span>';
-                } else if (exam.actionState === 'expired') {
-                    actionHtml = '<span style="color: #DC2626; font-weight: 600;">❌ Missed</span>';
-                } else {
-                    actionHtml = '<span style="color: #94A3B8;">--</span>';
-                }
-                
-                html += `
-                    <tr style="border-bottom: 1px solid #F1F5F9;">
-                        <td style="padding: 12px 16px;">
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                    <strong style="color: #0A3D62; font-size: 13px;">${this.escapeHtml(examDisplayName)}</strong>
-                                    <span style="background: ${isCatExam ? '#EDE9FE' : '#DBEAFE'}; color: ${isCatExam ? '#5B21B6' : '#1E40AF'}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">${isCatExam ? 'CAT' : 'Exam'}</span>
-                                    ${isTVET ? '<span style="background: #FCE7F3; color: #9D174D; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">TVET</span>' : ''}
-                                    ${statusBadges}
-                                </div>
-                                <div style="font-size: 11px; color: #64748B;">
-                                    <i class="fas fa-calendar-check"></i> ${exam.formattedExamDateTime || exam.examDate || 'N/A'}
-                                </div>
-                                ${marks > 0 ? `<div style="font-size: 11px; color: ${percentage >= 60 ? '#059669' : '#DC2626'}; font-weight: 500;">📊 ${marksDisplay} (${percentageDisplay})</div>` : ''}
-                                ${exam.actionState === 'pending_release' ? `<div style="font-size: 11px; color: #D97706;">⏳ Results pending release</div>` : ''}
-                            </div>
-                        </td>
-                        <td style="padding: 12px 16px; text-align: center;">
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: ${displayClass === 'fail' ? '#FEE2E2' : displayClass === 'pass' ? '#D1FAE5' : displayClass === 'pending' ? '#FEF3C7' : '#F1F5F9'}; color: ${displayClass === 'fail' ? '#991B1B' : displayClass === 'pass' ? '#065F46' : displayClass === 'pending' ? '#92400E' : '#64748B'};">
-                                ${displayGrade}
-                            </span>
-                        </td>
-                        <td style="padding: 12px 16px; text-align: center; font-weight: 500;">${cat1Display}</td>
-                        <td style="padding: 12px 16px; text-align: center; font-weight: 500;">${cat2Display}</td>
-                        <td style="padding: 12px 16px; text-align: center; font-weight: 500;">${finalDisplay}</td>
-                        <td style="padding: 12px 16px; text-align: center; font-weight: 700; color: ${percentage >= 60 ? '#059669' : '#DC2626'};">
-                            ${totalDisplay}
-                        </td>
-                        <td style="padding: 12px 16px; text-align: center;">${actionHtml}</td>
-                    </tr>
-                `;
-            });
-            
-            this.completedTable.innerHTML = html;
+       // ============================================
+// 📊 DISPLAY COMPLETED TABLE - FIXED MARKS
+// ============================================
+displayCompletedTable() {
+    if (!this.completedTable) return;
+    
+    const completedReleased = this.completedExams
+        .filter(exam => 
+            exam.isCompleted || exam.isReleased || 
+            exam.actionState === 'expired' || exam.actionState === 'pending_release'
+        )
+        .sort((a, b) => {
+            const dateA = a.gradedAt || a.examDate || a.examStartDateTime || a.created_at || new Date(0);
+            const dateB = b.gradedAt || b.examDate || b.examStartDateTime || b.created_at || new Date(0);
+            return new Date(dateB) - new Date(dateA);
+        });
+    
+    if (completedReleased.length === 0) {
+        this.completedTable.innerHTML = `
+            <tr>
+                <td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
+                    <i class="fas fa-inbox" style="font-size: 36px; display: block; margin-bottom: 10px;"></i>
+                    No completed assessments yet.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    completedReleased.forEach(exam => {
+        const isCatExam = exam.isCatExam || false;
+        const isTVET = exam.isTVET || this.isTVETStudent;
+        
+        let examDisplayName = 'Assessment';
+        if (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name !== '') {
+            examDisplayName = exam.exam_name;
+        } else if (typeof exam.title === 'string' && exam.title !== '[object Object]' && exam.title !== '') {
+            examDisplayName = exam.title;
+        } else {
+            examDisplayName = 'Assessment';
         }
         
+        const totalMarks = exam.marks_out_of || (isCatExam ? 30 : 100);
+        
+        // 🔧 FIX: Check if this is PENDING_RELEASE - HIDE MARKS!
+        const isPendingRelease = exam.actionState === 'pending_release';
+        const isReleased = exam.isReleased === true;
+        
+        // ✅ Only show marks if RELEASED, not if PENDING_RELEASE
+        let marks = 0;
+        let percentage = 0;
+        let showMarks = false;
+        
+        if (isReleased) {
+            // Released exam - show marks
+            marks = exam.marks || exam.displayScore || 0;
+            percentage = exam.totalPercentage || Math.round((marks / totalMarks) * 100);
+            showMarks = true;
+        } else if (isPendingRelease) {
+            // 🔒 Pending Release - HIDE marks!
+            marks = 0;
+            percentage = 0;
+            showMarks = false;
+        } else {
+            // Other cases (expired, etc.)
+            marks = exam.marks || exam.displayScore || 0;
+            percentage = exam.totalPercentage || Math.round((marks / totalMarks) * 100);
+            showMarks = marks > 0;
+        }
+        
+        // Determine grade
+        let displayGrade = exam.gradeText || 'Not Started';
+        let displayClass = exam.gradeClass || 'pending';
+        
+        if (isPendingRelease) {
+            displayGrade = 'Pending Release';
+            displayClass = 'pending';
+            // 🔒 Hide marks for pending release
+            marks = 0;
+            percentage = 0;
+            showMarks = false;
+        } else if (isReleased && showMarks && marks > 0) {
+            if (percentage >= 85) { 
+                displayGrade = 'Distinction'; 
+                displayClass = 'distinction'; 
+            } else if (percentage >= 75) { 
+                displayGrade = 'Credit'; 
+                displayClass = 'credit'; 
+            } else if (percentage >= 60) { 
+                displayGrade = 'Pass'; 
+                displayClass = 'pass'; 
+            } else { 
+                displayGrade = 'Fail'; 
+                displayClass = 'fail'; 
+            }
+        }
+        
+        if (exam.actionState === 'expired' && !exam.hasGrade) {
+            displayGrade = 'Missed';
+            displayClass = 'missed';
+        }
+        
+        // ✅ Display values - HIDDEN for PENDING_RELEASE
+        const marksDisplay = (isReleased && showMarks && marks > 0) ? `${marks}/${totalMarks}` : '--';
+        const percentageDisplay = (isReleased && showMarks && marks > 0) ? `${percentage}%` : '--';
+        const totalDisplay = (isReleased && showMarks && marks > 0) ? `${marks}/${totalMarks}` : '--';
+        
+        // 🔒 CAT scores - HIDDEN for PENDING_RELEASE
+        let cat1Display = '--';
+        let cat2Display = '--';
+        let finalDisplay = '--';
+        
+        if (isPendingRelease) {
+            // 🔒 Everything locked
+            cat1Display = '🔒';
+            cat2Display = '🔒';
+            finalDisplay = '🔒';
+        } else if (isReleased && showMarks && marks > 0) {
+            // Show marks for released exams
+            const cat1Score = exam.cat1Score || exam.cat1Display || (isCatExam ? marks : '--');
+            const cat2Score = exam.cat2Score || exam.cat2Display || '--';
+            const finalScore = exam.finalScore || exam.finalDisplay || '--';
+            
+            if (isCatExam) {
+                cat1Display = typeof cat1Score === 'number' ? cat1Score : marks;
+                cat2Display = '--';
+            } else {
+                cat1Display = typeof cat1Score === 'number' ? cat1Score : '--';
+                cat2Display = '--';
+                finalDisplay = typeof finalScore === 'number' ? finalScore : marks;
+            }
+        }
+        
+        // Status badges
+        let statusBadges = '';
+        if (isReleased) {
+            statusBadges = '<span style="background: #D1FAE5; color: #065F46; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">✅ Released</span>';
+        } else if (isPendingRelease) {
+            statusBadges = '<span style="background: #FEF3C7; color: #92400E; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">⏳ Pending</span>';
+        }
+        
+        // Action buttons
+        let actionHtml = '';
+        if (isReleased && showMarks && marks > 0) {
+            actionHtml = `
+                <button onclick="window.examsModule?.viewDetailedResults(${exam.id})" 
+                        style="padding: 6px 14px; border-radius: 20px; border: none; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, #3B82F6, #2563EB); color: white; font-size: 11px;">
+                    <i class="fas fa-clipboard-list"></i> Details
+                </button>
+            `;
+        } else if (isPendingRelease) {
+            actionHtml = '<span style="color: #D97706; font-weight: 600;">⏳ Pending</span>';
+        } else if (exam.actionState === 'expired') {
+            actionHtml = '<span style="color: #DC2626; font-weight: 600;">❌ Missed</span>';
+        } else {
+            actionHtml = '<span style="color: #94A3B8;">--</span>';
+        }
+        
+        // 🔒 Show locked message for pending release
+        let marksMessage = '';
+        if (isPendingRelease) {
+            marksMessage = '<div style="font-size: 11px; color: #D97706;">⏳ Results pending release</div>';
+        } else if (isReleased && showMarks && marks > 0) {
+            marksMessage = `<div style="font-size: 11px; color: ${percentage >= 60 ? '#059669' : '#DC2626'}; font-weight: 500;">📊 ${marksDisplay} (${percentageDisplay})</div>`;
+        }
+        
+        html += `
+            <tr style="border-bottom: 1px solid #F1F5F9;">
+                <td style="padding: 12px 16px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <strong style="color: #0A3D62; font-size: 13px;">${this.escapeHtml(examDisplayName)}</strong>
+                            <span style="background: ${isCatExam ? '#EDE9FE' : '#DBEAFE'}; color: ${isCatExam ? '#5B21B6' : '#1E40AF'}; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">${isCatExam ? 'CAT' : 'Exam'}</span>
+                            ${isTVET ? '<span style="background: #FCE7F3; color: #9D174D; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">TVET</span>' : ''}
+                            ${statusBadges}
+                        </div>
+                        <div style="font-size: 11px; color: #64748B;">
+                            <i class="fas fa-calendar-check"></i> ${exam.formattedExamDateTime || exam.examDate || 'N/A'}
+                        </div>
+                        ${marksMessage}
+                        ${isPendingRelease ? '<div style="font-size: 11px; color: #D97706;">🔒 Marks hidden until release</div>' : ''}
+                    </div>
+                </td>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: ${displayClass === 'fail' ? '#FEE2E2' : displayClass === 'pass' ? '#D1FAE5' : displayClass === 'pending' ? '#FEF3C7' : '#F1F5F9'}; color: ${displayClass === 'fail' ? '#991B1B' : displayClass === 'pass' ? '#065F46' : displayClass === 'pending' ? '#92400E' : '#64748B'};">
+                        ${displayGrade}
+                    </span>
+                </td>
+                <td style="padding: 12px 16px; text-align: center; font-weight: 500;">${cat1Display}</td>
+                <td style="padding: 12px 16px; text-align: center; font-weight: 500;">${cat2Display}</td>
+                <td style="padding: 12px 16px; text-align: center; font-weight: 500;">${finalDisplay}</td>
+                <td style="padding: 12px 16px; text-align: center; font-weight: 700; color: ${percentage >= 60 ? '#059669' : '#DC2626'};">
+                    ${totalDisplay}
+                </td>
+                <td style="padding: 12px 16px; text-align: center;">${actionHtml}</td>
+            </tr>
+        `;
+    });
+    
+    this.completedTable.innerHTML = html;
+}
         // ============================================
         // 📊 PERFORMANCE CHART
         // ============================================
