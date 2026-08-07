@@ -334,7 +334,78 @@
                 this.showLoginMessage();
             }
         }
+        // ============================================================
+// DATA FETCHING - ADD THIS METHOD
+// ============================================================
+
+/**
+ * Load approved units from the database
+ * Fetches ALL approved units (Normal + Supplementary + Retake)
+ * @returns {Promise<boolean>} - Success status
+ */
+async loadApprovedUnitsFromDB() {
+    const supabase = window.db?.supabase || window.supabase;
+    if (!supabase) {
+        console.warn('⚠️ Supabase not available for exam card');
+        return false;
+    }
+    
+    try {
+        // Get the actual user ID
+        let actualUserId = this.userId;
         
+        if (!actualUserId) {
+            if (this.userProfile?.user_id) {
+                actualUserId = this.userProfile.user_id;
+            } else if (this.userProfile?.id) {
+                actualUserId = this.userProfile.id;
+            } else if (this.userProfile?.student_id) {
+                const { data: userData } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id')
+                    .eq('student_id', this.userProfile.student_id)
+                    .maybeSingle();
+                if (userData?.user_id) actualUserId = userData.user_id;
+            }
+        }
+        
+        if (!actualUserId) {
+            console.error('❌ No user ID found for exam card');
+            return false;
+        }
+        
+        console.log('🔍 Fetching approved units for user:', actualUserId);
+        
+        // ✅ Get ALL approved units (regardless of type)
+        const { data, error } = await supabase
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', actualUserId)
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        this.approvedUnits = data || [];
+        console.log(`✅ Found ${this.approvedUnits.length} approved units`);
+        
+        // Log breakdown by type
+        const normalCount = this.approvedUnits.filter(u => u.reg_type === 'Normal' || !u.reg_type).length;
+        const suppCount = this.approvedUnits.filter(u => u.reg_type === 'Supplementary').length;
+        const retakeCount = this.approvedUnits.filter(u => u.reg_type === 'Retake').length;
+        
+        if (suppCount > 0 || retakeCount > 0) {
+            console.log(`📋 Breakdown: ${normalCount} Normal, ${suppCount} Supplementary, ${retakeCount} Retake`);
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error loading approved units:', error);
+        this.showError(`Database error: ${error.message || 'Unknown error'}`);
+        return false;
+    }
+}
         // ============================================
         // DATA FETCHING
         // ============================================
