@@ -339,82 +339,109 @@
         // DATA FETCHING
         // ============================================
         
-        async loadExamCard() {
-            if (this.isLoading) return;
-            if (!this.userProfile) { 
-                this.tryLoadIfLoggedIn();
-                return; 
-            }
+       async loadExamCard() {
+    if (this.isLoading) return;
+    if (!this.userProfile) { 
+        this.tryLoadIfLoggedIn();
+        return; 
+    }
+    
+    this.isLoading = true;
+    this.showLoading();
+    
+    try {
+        const success = await this.loadApprovedUnitsFromDB();
+        if (success) {
+            await this.updateDashboard();
             
-            this.isLoading = true;
-            this.showLoading();
-            
-            try {
-                const success = await this.loadApprovedUnitsFromDB();
-                if (success) {
-                    await this.updateDashboard();
-                    this.displayExamCard();
-                    this.loaded = true;
-                } else {
-                    this.showNoUnitsMessage();
-                }
-            } catch (error) {
-                console.warn('Failed to load exam card:', error);
-                this.showErrorMessage();
-            } finally {
-                this.isLoading = false;
+            // ✅ Check if student has Supplementary/Retake units but no Normal units
+            const hasSuppUnits = await this.checkForSupplementaryUnits();
+            if (this.approvedUnits.length === 0 && hasSuppUnits) {
+                this.showSupplementaryOnlyMessage();
+            } else {
+                this.displayExamCard();
             }
+            this.loaded = true;
+        } else {
+            this.showNoUnitsMessage();
         }
+    } catch (error) {
+        console.warn('Failed to load exam card:', error);
+        this.showErrorMessage();
+    } finally {
+        this.isLoading = false;
+    }
+}
+
+// ✅ New method to check for Supplementary/Retake units
+async checkForSupplementaryUnits() {
+    const supabase = window.db?.supabase || window.supabase;
+    if (!supabase) return false;
+    
+    try {
+        const { data, error } = await supabase
+            .from('student_unit_registrations')
+            .select('id')
+            .eq('student_id', this.userId)
+            .in('reg_type', ['Supplementary', 'Retake'])
+            .eq('status', 'approved')
+            .limit(1);
         
-        async loadApprovedUnitsFromDB() {
-            const supabase = window.db?.supabase || window.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                return false;
-            }
-            
-            try {
-                let actualUserId = this.userId;
-                
-                if (this.userProfile?.user_id) {
-                    actualUserId = this.userProfile.user_id;
-                } else if (this.userProfile?.id) {
-                    actualUserId = this.userProfile.id;
-                } else if (this.userProfile?.student_id) {
-                    const { data: userData } = await supabase
-                        .from('consolidated_user_profiles_table')
-                        .select('user_id')
-                        .eq('student_id', this.userProfile.student_id)
-                        .maybeSingle();
-                    if (userData?.user_id) actualUserId = userData.user_id;
-                }
-                
-                console.log('🔍 Fetching approved units for user:', actualUserId);
-                
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Database timeout')), CONFIG.DB_TIMEOUT)
-                );
-                
-                const fetchPromise = supabase
-                    .from('student_unit_registrations')
-                    .select('*')
-                    .eq('student_id', actualUserId)
-                    .eq('status', 'approved');
-                
-                const result = await Promise.race([fetchPromise, timeoutPromise]);
-                const { data, error } = result;
-                
-                if (error) throw error;
-                
-                this.approvedUnits = data || [];
-                console.log(`✅ Found ${this.approvedUnits.length} approved units`);
-                return true;
-            } catch (error) {
-                console.error('DB error:', error);
-                this.showError(`Database error: ${error.message || 'Unknown error'}`);
-                return false;
-            }
-        }
+        return !error && data && data.length > 0;
+    } catch (e) {
+        return false;
+    }
+}
+
+// ✅ New method to show message about Supplementary units
+showSupplementaryOnlyMessage() {
+    if (this.examCardContent) {
+        this.examCardContent.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                <h3 style="color: #B45309;">Supplementary / Retake Units Only</h3>
+                <p style="color: #64748b; max-width: 500px; margin: 10px auto;">
+                    You have <strong>Supplementary or Retake</strong> units approved, but no <strong>Normal</strong> units.
+                </p>
+                <p style="color: #64748b; max-width: 500px; margin: 10px auto;">
+                    Please go to the <strong>Supplementary / Retake</strong> tab to view and download your Supplementary Exam Card.
+                </p>
+                <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="document.querySelector('.reg-sub-tab[data-subtab=\\'supplementary\\']')?.click()" style="
+                        padding: 10px 28px;
+                        background: #B45309;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        font-size: 14px;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                    ">
+                        <i class="fas fa-arrow-right"></i> Go to Supplementary Tab
+                    </button>
+                    <button onclick="window.examCardModule?.loadExamCard()" style="
+                        padding: 10px 28px;
+                        background: #f1f5f9;
+                        color: #475569;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 500;
+                        font-size: 14px;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                    ">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+}
         
         async loadPastExamRecords() {
             try {
