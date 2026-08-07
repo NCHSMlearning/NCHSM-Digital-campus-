@@ -7575,7 +7575,72 @@ async function loadCoursesForExamDropdown() {
         console.warn('Could not load courses:', e);
     }
 }
+// ============================================
+// POPULATE EXAM COURSE SELECTS - FIX
+// ============================================
 
+async function populateExamCourseSelects(courses = null) {
+    const programSelect = document.getElementById('exam_program');
+    const courseSelect = document.getElementById('exam_course_id');
+    
+    if (!courseSelect) return;
+    
+    const program = programSelect?.value || '';
+    
+    // Clear existing options
+    courseSelect.innerHTML = '<option value="">-- Optional: Select Course --</option>';
+    
+    if (!program) {
+        // If no program selected, load all courses
+        try {
+            const { data: allCourses, error } = await sb
+                .from('courses')
+                .select('id, course_name, target_program, unit_code')
+                .order('course_name', { ascending: true })
+                .limit(100);
+            
+            if (!error && allCourses) {
+                allCourses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    option.textContent = `${course.course_name} (${course.unit_code || 'N/A'}) - ${course.target_program || 'General'}`;
+                    courseSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading courses:', error);
+        }
+        return;
+    }
+    
+    // Load courses filtered by program
+    try {
+        const { data, error } = await sb
+            .from('courses')
+            .select('id, course_name, target_program, unit_code')
+            .eq('target_program', program)
+            .order('course_name', { ascending: true });
+        
+        if (error) throw error;
+        
+        const filteredCourses = data || [];
+        
+        filteredCourses.forEach(course => {
+            const option = document.createElement('option');
+            option.value = course.id;
+            option.textContent = `${course.course_name} (${course.unit_code || 'N/A'})`;
+            courseSelect.appendChild(option);
+        });
+        
+        console.log(`✅ Loaded ${filteredCourses.length} courses for program: ${program}`);
+        
+    } catch (error) {
+        console.error('Error loading courses:', error);
+    }
+}
+
+// Make it globally accessible
+window.populateExamCourseSelects = populateExamCourseSelects;
 // ============================================
 // FAST DELETE
 // ============================================
