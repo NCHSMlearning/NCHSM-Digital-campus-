@@ -2304,8 +2304,8 @@ async registerSupplementaryUnits() {
         }
     };
     
-   // ============================================================
-// GENERATE SUPPLEMENTARY EXAM CARD HTML - NO STATUS COLUMN
+ // ============================================================
+// GENERATE SUPPLEMENTARY EXAM CARD HTML - NO SCORE, NO GRADE
 // ============================================================
 
 function generateSupplementaryExamCardHTML(registrations, student) {
@@ -2333,22 +2333,12 @@ function generateSupplementaryExamCardHTML(registrations, student) {
         const regType = unit.reg_type || 'Supplementary';
         const credits = unit.credits || 3;
         
-        // ✅ Get grade
-        const grade = unit.grade || '';
-        const gradeBadge = grade ? 
-            `<span style="background: ${['A','B','C','PASS'].includes(grade.toUpperCase()) ? '#d1fae5' : '#fee2e2'}; color: ${['A','B','C','PASS'].includes(grade.toUpperCase()) ? '#065f46' : '#991b1b'}; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block; margin-left: 4px;">
-                ${grade}
-            </span>` : '';
-        
-        // ✅ Show score if available
-        const scoreDisplay = (unit.total_score || unit.final_score) ? 
-            `<span style="font-size: 9px; color: #94a3b8; display: block; margin-top: 2px;">Score: ${unit.total_score || unit.final_score}%</span>` : '';
-        
+        // ✅ NO GRADE, NO SCORE - Just the unit name and code
         tableRows += `
             <tr>
                 <td class="text-center">${index + 1}</td>
-                <td><strong>${escapeHtml(unitCode)}</strong> ${gradeBadge}</td>
-                <td>${escapeHtml(unitName)}${scoreDisplay}</td>
+                <td><strong>${escapeHtml(unitCode)}</strong></td>
+                <td>${escapeHtml(unitName)}</td>
                 <td class="text-center">${credits}</td>
                 <td class="text-center">
                     <span style="background: ${regType === 'Retake' ? '#dc2626' : '#f59e0b'}; color: white; padding: 2px 10px; border-radius: 4px; font-size: 9px; font-weight: 600; display: inline-block;">
@@ -2646,7 +2636,7 @@ function generateSupplementaryExamCardHTML(registrations, student) {
                 <div class="info-item"><span class="info-label">Valid Until:</span> End of Exam Period</div>
             </div>
             
-            <!-- Units Table - NO STATUS COLUMN -->
+            <!-- Units Table - NO SCORE, NO GRADE -->
             <table class="units-table">
                 <thead>
                     <tr>
