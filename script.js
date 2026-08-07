@@ -7371,20 +7371,27 @@ function renderStudentExams(exams) {
 // ============================================
 // FAST STATUS BADGE
 // ============================================
-function getStatusBadge(status) {
-    const map = {
-        'Upcoming': '<span style="background:#3b82f6;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📅 Upcoming</span>',
-        'InProgress': '<span style="background:#f59e0b;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">⏳ Progress</span>',
-        'Completed': '<span style="background:#059669;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">✅ Done</span>',
-        'Published': '<span style="background:#7c3aed;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📢 Published</span>',
-        'published': '<span style="background:#7c3aed;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📢 Published</span>',
-        'Draft': '<span style="background:#6b7280;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📝 Draft</span>',
-        'draft': '<span style="background:#6b7280;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📝 Draft</span>',
-        'Closed': '<span style="background:#dc2626;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">🔒 Closed</span>'
+if (typeof window.getStatusBadge === 'undefined') {
+    window.getStatusBadge = function(status) {
+        const map = {
+            'Upcoming': '<span style="background:#3b82f6;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📅 Upcoming</span>',
+            'InProgress': '<span style="background:#f59e0b;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">⏳ Progress</span>',
+            'Completed': '<span style="background:#059669;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">✅ Done</span>',
+            'Published': '<span style="background:#7c3aed;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📢 Published</span>',
+            'published': '<span style="background:#7c3aed;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📢 Published</span>',
+            'Draft': '<span style="background:#6b7280;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📝 Draft</span>',
+            'draft': '<span style="background:#6b7280;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">📝 Draft</span>',
+            'Closed': '<span style="background:#dc2626;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">🔒 Closed</span>',
+            'closed': '<span style="background:#dc2626;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">🔒 Closed</span>',
+            'approved': '<span style="background:#059669;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">✅ Approved</span>',
+            'pending': '<span style="background:#f59e0b;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">⏳ Pending</span>',
+            'rejected': '<span style="background:#dc2626;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">❌ Rejected</span>',
+            'active': '<span style="background:#059669;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">🟢 Active</span>',
+            'inactive': '<span style="background:#6b7280;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">⏸️ Inactive</span>'
+        };
+        return map[status] || `<span style="background:#6b7280;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">${status}</span>`;
     };
-    return map[status] || `<span style="background:#6b7280;color:#fff;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;">${status}</span>`;
 }
-
 // ============================================
 // FAST CREATE EXAM - Optimized
 // ============================================
