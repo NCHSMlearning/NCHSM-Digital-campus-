@@ -843,24 +843,6 @@ async function initializeAllProgramDropdowns() {
     console.log('✅ All program dropdowns initialized (hybrid)');
 }
 
-// ============================================================
-// HELPER: GET CORRESPONDING BLOCK FIELD
-// ============================================================
-
-function getCorrespondingBlockField(programFieldId) {
-    const fieldMap = {
-        'account-program': 'account-block-term',
-        'edit_user_program': 'edit_user_block',
-        'course-program': 'course-block',
-        'new_session_program': 'new_session_block_term',
-        'exam_program': 'exam_block_term',
-        'resource_program': 'resource_block',
-        'clinical_program': 'clinical_block_term',
-        'promote_program': 'promote_from_block'
-    };
-    
-    return fieldMap[programFieldId] || null;
-}
 /*******************************************************
  * 4. TAB NAVIGATION & MODAL MANAGEMENT
  *******************************************************/
