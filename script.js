@@ -7683,8 +7683,15 @@ async function closeExam(id) {
 // ============================================
 let editModal = null;
 
+// ============================================
+// OPEN EDIT EXAM MODAL - PERMANENT FIX
+// ============================================
+
 async function openEditExamModal(id) {
+    console.log('📝 Opening edit modal for exam:', id);
+    
     try {
+        // Fetch exam data
         const { data: exam, error } = await sb
             .from('exams')
             .select('*')
@@ -7693,52 +7700,134 @@ async function openEditExamModal(id) {
         
         if (error) throw error;
         
-        if (!editModal) {
-            editModal = createEditModal();
-            document.body.appendChild(editModal);
+        console.log('✅ Exam loaded:', exam.title);
+        console.log('📋 Exam data:', exam);
+        
+        // Get the modal
+        const modal = document.getElementById('examEditModal');
+        if (!modal) {
+            console.error('❌ examEditModal not found');
+            showFeedback('Edit modal not found', 'error');
+            return;
         }
         
-        // Populate fields quickly
-        const fields = ['id','title','type','status','basis','date','start_time','duration','deadline',
-                       'program','block','intake','intake_month','course','out_of','pass_mark','min_fee','link'];
-        const map = {
-            id: exam.id,
-            title: exam.title || exam.exam_name || '',
-            type: exam.exam_type || 'CAT',
-            status: exam.status || 'Upcoming',
-            basis: exam.exam_basis || 'ordinary',
-            date: exam.exam_date || '',
-            start_time: exam.exam_start_time || '09:00',
-            duration: exam.duration_minutes || 60,
-            deadline: exam.marks_entry_deadline || '',
-            program: exam.target_program || exam.program_type || '',
-            block: exam.block || exam.block_term || '',
-            intake: exam.intake_year || '',
-            intake_month: exam.intake_month || '',
-            course: exam.course_id || '',
-            out_of: exam.marks_out_of || exam.total_marks || 100,
-            pass_mark: exam.pass_mark || 50,
-            min_fee: exam.min_fee_balance || 0,
-            link: exam.online_link || exam.exam_link || ''
-        };
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // POPULATE ALL FIELDS
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         
-        Object.keys(map).forEach(k => {
-            const el = document.getElementById(`edit_exam_${k}`);
-            if (el) el.value = map[k];
-        });
+        // 1. ID
+        const idEl = document.getElementById('edit_exam_id');
+        if (idEl) idEl.value = exam.id;
         
-        // Load courses for program
-        populateEditCourses(map.program, map.course);
+        // 2. Title
+        const titleEl = document.getElementById('edit_exam_title');
+        if (titleEl) titleEl.value = exam.title || exam.exam_name || '';
         
-        // Render classes
-        renderAssignedClasses(id, exam.assigned_classes || []);
+        // 3. Type
+        const typeEl = document.getElementById('edit_exam_type');
+        if (typeEl) typeEl.value = exam.exam_type || 'CAT';
         
-        editModal.style.display = 'flex';
+        // 4. Status
+        const statusEl = document.getElementById('edit_exam_status');
+        if (statusEl) statusEl.value = exam.status || 'Upcoming';
         
-    } catch (e) {
-        showFeedback(`Error: ${e.message}`, 'error');
+        // 5. Basis
+        const basisEl = document.getElementById('edit_exam_basis');
+        if (basisEl) basisEl.value = exam.exam_basis || 'ordinary';
+        
+        // 6. Date
+        const dateEl = document.getElementById('edit_exam_date');
+        if (dateEl) dateEl.value = exam.exam_date || '';
+        
+        // 7. Start Time
+        const startTimeEl = document.getElementById('edit_exam_start_time');
+        if (startTimeEl) {
+            let time = exam.exam_start_time || '09:00';
+            if (time && time.includes(':')) {
+                const parts = time.split(':');
+                time = parts[0] + ':' + parts[1];
+            }
+            startTimeEl.value = time;
+        }
+        
+        // 8. Duration
+        const durationEl = document.getElementById('edit_exam_duration');
+        if (durationEl) durationEl.value = exam.duration_minutes || 60;
+        
+        // 9. Deadline
+        const deadlineEl = document.getElementById('edit_exam_deadline');
+        if (deadlineEl) deadlineEl.value = exam.marks_entry_deadline || '';
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 10. PROGRAM - FIXED (uses target_program OR program_type)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const programEl = document.getElementById('edit_exam_program');
+        if (programEl) {
+            const program = exam.target_program || exam.program_type || '';
+            programEl.value = program;
+            console.log('✅ Program set to:', program);
+            
+            // Load courses for this program
+            if (program && typeof populateEditCourses === 'function') {
+                await populateEditCourses(program, exam.course_id);
+            }
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 11. BLOCK - FIXED (uses block OR block_term)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const blockEl = document.getElementById('edit_exam_block');
+        if (blockEl) {
+            const block = exam.block || exam.block_term || '';
+            blockEl.value = block;
+            console.log('✅ Block set to:', block);
+        }
+        
+        // 12. Intake Year
+        const intakeEl = document.getElementById('edit_exam_intake');
+        if (intakeEl) intakeEl.value = exam.intake_year || '';
+        
+        // 13. Intake Month
+        const intakeMonthEl = document.getElementById('edit_exam_intake_month');
+        if (intakeMonthEl) intakeMonthEl.value = exam.intake_month || '';
+        
+        // 14. Course
+        const courseEl = document.getElementById('edit_exam_course');
+        if (courseEl) {
+            // Will be populated by populateEditCourses
+        }
+        
+        // 15. Out Of
+        const outOfEl = document.getElementById('edit_exam_out_of');
+        if (outOfEl) outOfEl.value = exam.marks_out_of || exam.total_marks || 100;
+        
+        // 16. Pass Mark
+        const passMarkEl = document.getElementById('edit_exam_pass_mark');
+        if (passMarkEl) passMarkEl.value = exam.pass_mark || 50;
+        
+        // 17. Min Fee
+        const minFeeEl = document.getElementById('edit_exam_min_fee');
+        if (minFeeEl) minFeeEl.value = exam.min_fee_balance || 0;
+        
+        // 18. Link
+        const linkEl = document.getElementById('edit_exam_link');
+        if (linkEl) linkEl.value = exam.online_link || exam.exam_link || '';
+        
+        // 19. Assigned Classes
+        if (typeof renderAssignedClasses === 'function') {
+            renderAssignedClasses(exam.id, exam.assigned_classes || []);
+        }
+        
+        // Show the modal
+        modal.style.display = 'flex';
+        console.log('✅ Edit modal opened with all data!');
+        
+    } catch (error) {
+        console.error('❌ Error in openEditExamModal:', error);
+        showFeedback('❌ Failed to load exam: ' + error.message, 'error');
     }
 }
+
 
 // ============================================
 // CREATE EDIT MODAL - Lazy
