@@ -768,6 +768,9 @@ updateSelectedCount() {
         }
     }
 }
+
+
+        
       // ============================================================
 // DISPLAY AVAILABLE UNITS - UPDATED
 // ============================================================
@@ -844,6 +847,74 @@ displayAvailableUnits() {
     this.availableBody.innerHTML = html;
     this.updateSelectedCount();
     this.attachCheckboxEvents();
+}
+
+
+
+        // ============================================================
+// UPDATE SELECTED COUNT - UPDATED
+// ============================================================
+
+updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.unit-checkbox:checked');
+    const count = checkboxes.length;
+    
+    // Update the selected count display
+    const countDisplay = document.getElementById('selectedUnitsCount');
+    if (countDisplay) {
+        countDisplay.textContent = count;
+    }
+    
+    // ✅ Update the register button
+    const registerBtn = document.getElementById('submitRegistrationBtn');
+    if (registerBtn) {
+        if (count > 0) {
+            registerBtn.style.display = 'flex';
+            registerBtn.innerHTML = `<i class="fas fa-paper-plane"></i> Register ${count} Selected Unit${count > 1 ? 's' : ''}`;
+            registerBtn.style.opacity = '1';
+            registerBtn.style.cursor = 'pointer';
+        } else {
+            registerBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit';
+            registerBtn.style.opacity = '0.6';
+            registerBtn.style.cursor = 'not-allowed';
+        }
+    }
+    
+    // Update "Select All" checkbox state
+    const selectAll = document.getElementById('selectAllUnits');
+    if (selectAll) {
+        const allCheckboxes = document.querySelectorAll('.unit-checkbox');
+        const checkedCheckboxes = document.querySelectorAll('.unit-checkbox:checked');
+        if (allCheckboxes.length > 0) {
+            selectAll.checked = checkedCheckboxes.length === allCheckboxes.length;
+        }
+    }
+}
+        // ============================================================
+// ATTACH CHECKBOX EVENTS
+// ============================================================
+
+attachCheckboxEvents() {
+    const checkboxes = document.querySelectorAll('.unit-checkbox');
+    
+    checkboxes.forEach(cb => {
+        cb.removeEventListener('change', this._checkboxChangeHandler);
+        this._checkboxChangeHandler = () => this.updateSelectedCount();
+        cb.addEventListener('change', this._checkboxChangeHandler);
+    });
+}
+        // ============================================================
+// ATTACH CHECKBOX EVENTS
+// ============================================================
+
+attachCheckboxEvents() {
+    const checkboxes = document.querySelectorAll('.unit-checkbox');
+    
+    checkboxes.forEach(cb => {
+        cb.removeEventListener('change', this._checkboxChangeHandler);
+        this._checkboxChangeHandler = () => this.updateSelectedCount();
+        cb.addEventListener('change', this._checkboxChangeHandler);
+    });
 }
         // ============================================================
         // DISPLAY REGISTERED UNITS - CHECKS PUBLISHED MARKS
