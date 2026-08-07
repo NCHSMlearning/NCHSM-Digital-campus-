@@ -726,7 +726,42 @@
                 console.error('Error loading blocks:', error);
             }
         }
-        
+        // ============================================================
+// UPDATE SELECTED COUNT - ADD THIS METHOD
+// ============================================================
+
+updateSelectedCount() {
+    // Count checked checkboxes
+    const checkboxes = document.querySelectorAll('.unit-checkbox:checked');
+    const count = checkboxes.length;
+    
+    // Update the selected count display
+    const countDisplay = document.getElementById('selectedUnitsCount');
+    if (countDisplay) {
+        countDisplay.textContent = count;
+    }
+    
+    // Update the register button
+    const registerBtn = document.getElementById('registerSelectedBtn');
+    if (registerBtn) {
+        if (count > 0) {
+            registerBtn.style.display = 'inline-block';
+            registerBtn.innerHTML = `📝 Register ${count} Selected Unit${count > 1 ? 's' : ''}`;
+        } else {
+            registerBtn.style.display = 'none';
+        }
+    }
+    
+    // Update "Select All" checkbox state
+    const selectAll = document.getElementById('selectAllUnits');
+    if (selectAll) {
+        const allCheckboxes = document.querySelectorAll('.unit-checkbox');
+        const checkedCheckboxes = document.querySelectorAll('.unit-checkbox:checked');
+        if (allCheckboxes.length > 0) {
+            selectAll.checked = checkedCheckboxes.length === allCheckboxes.length;
+        }
+    }
+}
         // ============================================================
         // DISPLAY FUNCTIONS - REGULAR REGISTRATION (FIXED)
         // ============================================================
