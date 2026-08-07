@@ -8064,14 +8064,6 @@ function showExamTab(tab) {
     }
 }
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-}
-
 function showFeedback(msg, type = 'info') {
     const colors = { success: '#059669', error: '#dc2626', warning: '#f59e0b', info: '#3b82f6' };
     const existing = document.querySelector('.feedback-toast');
