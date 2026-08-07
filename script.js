@@ -5253,7 +5253,7 @@ if (typeof logAudit === 'undefined') {
 }
 
 // ============================================================
-// 10.2 - ADD UNIT - FIXED
+// 10.2 - ADD UNIT - FIXED (Checks for duplicates)
 // ============================================================
 
 if (typeof handleAddUnit === 'undefined') {
@@ -5288,23 +5288,31 @@ if (typeof handleAddUnit === 'undefined') {
         }
 
         try {
-            // ✅ FIX: Use window.sb consistently
             const supabaseClient = window.sb || window.supabase;
             if (!supabaseClient) {
                 throw new Error('Supabase not available');
             }
 
-            // Check for duplicate unit_code
+            // ✅ FIX: Check for duplicate unit_code, program, block, year combination
             const { data: existing, error: checkError } = await supabaseClient
                 .from('units_catalog')
-                .select('unit_code')
+                .select('id, unit_code, program, block, year')
                 .eq('unit_code', unit_code)
+                .eq('program', target_program)
+                .eq('block', block)
+                .eq('year', year)
                 .maybeSingle();
             
-            if (checkError) throw checkError;
+            if (checkError) {
+                console.error('❌ Error checking for duplicates:', checkError);
+                throw checkError;
+            }
             
             if (existing) {
-                showFeedback(`⚠️ Unit code "${unit_code}" already exists!`, 'error');
+                showFeedback(
+                    `⚠️ Unit "${unit_code}" already exists for ${target_program} - ${block} (${year})!`, 
+                    'error'
+                );
                 if (submitButton) {
                     submitButton.disabled = false;
                     submitButton.innerHTML = originalText;
@@ -5331,7 +5339,17 @@ if (typeof handleAddUnit === 'undefined') {
             console.log('📤 Adding unit with data:', unitData);
 
             const { error } = await supabaseClient.from('units_catalog').insert(unitData);
-            if (error) throw error;
+            if (error) {
+                // If duplicate error still occurs (race condition)
+                if (error.code === '23505') {
+                    showFeedback(
+                        `⚠️ Unit "${unit_code}" already exists for ${target_program} - ${block} (${year})!`, 
+                        'error'
+                    );
+                    return;
+                }
+                throw error;
+            }
             
             await logAudit('UNIT_ADD', `Successfully added unit: ${unit_code} - ${unit_name} (${target_program}, ${block})`, null, 'SUCCESS');
             showFeedback(`✅ Unit "${unit_code} - ${unit_name}" added successfully!`, 'success');
