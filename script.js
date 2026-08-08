@@ -5056,110 +5056,226 @@ async function deleteProfile(userId, fullName, isRejection = false) {
 
 // ============================================
 // OPEN EDIT USER MODAL - COMPLETE WITH ALL FIELDS
+// FIXED: Better error handling and data loading
 // ============================================
 
 async function openEditUserModal(userId) {
+    console.log('📝 Opening edit modal for user ID:', userId);
+    
+    if (!userId) {
+        showFeedback('❌ User ID is missing', 'error');
+        return;
+    }
+    
     try {
         const supabase = getSb();
-        const { data: user, error } = await supabase
+        
+        // ✅ FETCH USER DATA - Try both user_id and id
+        let user = null;
+        let fetchError = null;
+        
+        // First try with user_id
+        const { data: userData, error: error1 } = await supabase
             .from(USER_PROFILE_TABLE)
             .select('*')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
         
-        if (error || !user) throw new Error('User fetch failed.');
+        if (error1) {
+            console.warn('⚠️ Fetch with user_id failed:', error1);
+            
+            // Try with id as fallback
+            const { data: userData2, error: error2 } = await supabase
+                .from(USER_PROFILE_TABLE)
+                .select('*')
+                .eq('id', userId)
+                .maybeSingle();
+            
+            if (error2) {
+                console.error('❌ Fetch with id also failed:', error2);
+                throw new Error('User not found: ' + error2.message);
+            }
+            
+            user = userData2;
+        } else {
+            user = userData;
+        }
+        
+        if (!user) {
+            throw new Error('User not found');
+        }
+        
+        console.log('✅ User data loaded successfully:', user);
+        console.log('📧 Email:', user.email);
+        console.log('📚 Program:', user.program);
+        console.log('📖 Block:', user.block);
 
         const modal = document.getElementById('userEditModal');
         if (!modal) {
-            console.error('userEditModal not found in HTML');
+            console.error('❌ userEditModal not found in HTML');
             showFeedback('Edit user modal not found. Please check the HTML.', 'error');
             return;
         }
 
-        // Set basic info
-        document.getElementById('edit_user_id').value = user.user_id;
-        document.getElementById('edit_user_id_display').textContent = user.user_id.substring(0, 8) + '...';
-        document.getElementById('edit_user_name').value = user.full_name || '';
-        document.getElementById('edit_user_email').value = user.email || '';
-        document.getElementById('edit_user_phone').value = user.phone || '';
-        document.getElementById('edit_user_alt_phone').value = user.alt_phone || '';
-        document.getElementById('edit_user_gender').value = user.gender || '';
-        document.getElementById('edit_user_dob').value = user.date_of_birth || '';
-        document.getElementById('edit_user_national_id').value = user.national_id || '';
-        document.getElementById('edit_user_address').value = user.address || '';
-
-        // Set role and status
-        document.getElementById('edit_user_role').value = user.role || 'student';
-        document.getElementById('edit_user_status').value = user.status || 'pending';
-
-        // Set academic info
-        document.getElementById('edit_user_student_id').value = user.student_id || '';
-        document.getElementById('edit_user_intake_year').value = user.intake_year || '';
-        document.getElementById('edit_user_intake_month').value = user.intake_month || '';
+        // ====== SET BASIC INFO ======
+        const userIdField = document.getElementById('edit_user_id');
+        if (userIdField) userIdField.value = user.user_id || user.id || '';
         
-        // Set guardian info
-        document.getElementById('edit_user_guardian_name').value = user.guardian_name || '';
-        document.getElementById('edit_user_guardian_phone').value = user.guardian_phone || '';
-        document.getElementById('edit_user_parent_email').value = user.parent_email || '';
-        document.getElementById('edit_user_parent_address').value = user.parent_address || '';
+        const userIdDisplay = document.getElementById('edit_user_id_display');
+        if (userIdDisplay) {
+            const id = user.user_id || user.id || '';
+            userIdDisplay.textContent = id.substring(0, 8) + '...';
+        }
+        
+        const nameField = document.getElementById('edit_user_name');
+        if (nameField) nameField.value = user.full_name || '';
+        
+        const emailField = document.getElementById('edit_user_email');
+        if (emailField) emailField.value = user.email || '';
+        
+        const phoneField = document.getElementById('edit_user_phone');
+        if (phoneField) phoneField.value = user.phone || '';
+        
+        const altPhoneField = document.getElementById('edit_user_alt_phone');
+        if (altPhoneField) altPhoneField.value = user.alt_phone || '';
+        
+        const genderField = document.getElementById('edit_user_gender');
+        if (genderField) genderField.value = user.gender || '';
+        
+        const dobField = document.getElementById('edit_user_dob');
+        if (dobField) dobField.value = user.date_of_birth || '';
+        
+        const nationalIdField = document.getElementById('edit_user_national_id');
+        if (nationalIdField) nationalIdField.value = user.national_id || '';
+        
+        const addressField = document.getElementById('edit_user_address');
+        if (addressField) addressField.value = user.address || '';
 
-        // Set document status
-        document.getElementById('edit_user_doc_kcse').value = user.doc_kcse || 'pending';
-        document.getElementById('edit_user_doc_id').value = user.doc_id || 'pending';
+        // ====== SET ROLE AND STATUS ======
+        const roleField = document.getElementById('edit_user_role');
+        if (roleField) roleField.value = user.role || 'student';
+        
+        const statusField = document.getElementById('edit_user_status');
+        if (statusField) statusField.value = user.status || 'pending';
 
-        // Set program
+        // ====== SET ACADEMIC INFO ======
+        const studentIdField = document.getElementById('edit_user_student_id');
+        if (studentIdField) studentIdField.value = user.student_id || '';
+        
+        const intakeYearField = document.getElementById('edit_user_intake_year');
+        if (intakeYearField) intakeYearField.value = user.intake_year || '';
+        
+        const intakeMonthField = document.getElementById('edit_user_intake_month');
+        if (intakeMonthField) intakeMonthField.value = user.intake_month || '';
+        
+        // ====== SET GUARDIAN INFO ======
+        const guardianNameField = document.getElementById('edit_user_guardian_name');
+        if (guardianNameField) guardianNameField.value = user.guardian_name || '';
+        
+        const guardianPhoneField = document.getElementById('edit_user_guardian_phone');
+        if (guardianPhoneField) guardianPhoneField.value = user.guardian_phone || '';
+        
+        const parentEmailField = document.getElementById('edit_user_parent_email');
+        if (parentEmailField) parentEmailField.value = user.parent_email || '';
+        
+        const parentAddressField = document.getElementById('edit_user_parent_address');
+        if (parentAddressField) parentAddressField.value = user.parent_address || '';
+
+        // ====== SET DOCUMENT STATUS ======
+        const docKcseField = document.getElementById('edit_user_doc_kcse');
+        if (docKcseField) docKcseField.value = user.doc_kcse || 'pending';
+        
+        const docIdField = document.getElementById('edit_user_doc_id');
+        if (docIdField) docIdField.value = user.doc_id || 'pending';
+
+        // ====== SET PROGRAM AND BLOCK ======
         const editUserProgram = document.getElementById('edit_user_program');
         const editUserBlock = document.getElementById('edit_user_block');
         const blockLabel = document.getElementById('edit_block_label');
 
         if (editUserProgram) {
-            updateProgramDropdown(editUserProgram);
-            editUserProgram.value = user.program || 'KRCHN';
+            // Set program value
+            const programValue = user.program || 'KRCHN';
+            editUserProgram.value = programValue;
+            console.log('📚 Program set to:', programValue);
             
-            const isTVET = isTVETProgram(user.program);
+            // Determine if TVET
+            const isTVET = programValue && programValue !== 'KRCHN';
+            
+            // Update block label
             if (blockLabel) {
                 blockLabel.textContent = isTVET ? '📚 Term *' : '📖 Block *';
                 blockLabel.style.color = isTVET ? '#f59e0b' : '#4C1D95';
             }
             
-            const changeEvent = new Event('change', { bubbles: true });
-            editUserProgram.dispatchEvent(changeEvent);
-            
-            setTimeout(() => {
-                if (editUserBlock) {
-                    updateBlockTermOptions('edit_user_program', 'edit_user_block');
-                    setTimeout(() => {
-                        const blockValue = user.block || user.current_block || user.term || 'Introductory';
-                        editUserBlock.value = blockValue;
-                        console.log('✅ Block/Term set to:', blockValue);
-                    }, 50);
+            // Populate block options
+            if (editUserBlock) {
+                // Clear existing options
+                editUserBlock.innerHTML = '<option value="">-- Select --</option>';
+                
+                // Build options based on program type
+                let options = [];
+                if (isTVET) {
+                    options = ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
+                } else {
+                    options = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
                 }
-            }, 100);
+                
+                // Add options
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt;
+                    editUserBlock.appendChild(option);
+                });
+                
+                // Set block value
+                const blockValue = user.block || user.current_block || user.term || 'Introductory';
+                editUserBlock.value = blockValue;
+                console.log('📖 Block/Term set to:', blockValue);
+            }
         }
 
-        // Set profile photo preview
+        // ====== SET PROFILE PHOTO PREVIEW ======
         const photoPreview = document.getElementById('edit_user_photo_preview');
-        if (photoPreview && user.profile_photo_url) {
-            photoPreview.innerHTML = `<img src="${user.profile_photo_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
-        } else if (photoPreview) {
-            photoPreview.innerHTML = '<i class="fas fa-user" style="font-size: 32px; color: #94a3b8;"></i>';
+        if (photoPreview) {
+            if (user.profile_photo_url) {
+                photoPreview.innerHTML = `<img src="${user.profile_photo_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+            } else {
+                // Show letter avatar
+                const initial = (user.full_name || 'U').charAt(0).toUpperCase();
+                photoPreview.innerHTML = `
+                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; font-size: 32px; font-weight: 700; border-radius: 50%;">
+                        ${initial}
+                    </div>
+                `;
+            }
         }
 
-        // Clear password fields
-        document.getElementById('edit_user_new_password').value = '';
-        document.getElementById('edit_user_confirm_password').value = '';
+        // ====== CLEAR PASSWORD FIELDS ======
+        const newPasswordField = document.getElementById('edit_user_new_password');
+        if (newPasswordField) newPasswordField.value = '';
+        
+        const confirmPasswordField = document.getElementById('edit_user_confirm_password');
+        if (confirmPasswordField) confirmPasswordField.value = '';
+        
+        // ====== CLEAR EMAIL STATUS ======
+        const emailStatus = document.getElementById('emailUpdateStatus');
+        if (emailStatus) emailStatus.innerHTML = '';
 
-        // Show modal
+        // ====== SHOW MODAL ======
         modal.style.display = 'flex';
         
         console.log('✅ Edit user modal opened for:', user.full_name);
         
+        // ====== LOAD ACADEMIC HISTORY ======
+        await loadAcademicHistory(user.user_id || user.id);
+        
     } catch (e) {
-        console.error('Error in openEditUserModal:', e);
+        console.error('❌ Error in openEditUserModal:', e);
         showFeedback(`Failed to load user: ${e.message}`, 'error');
     }
 }
-
 // ============================================
 // HANDLE EDIT USER - COMPLETE WITH ALL FIELDS
 // FIXED: Removed 'term' column (doesn't exist)
@@ -5386,112 +5502,83 @@ async function handleEditUser(e) {
         setButtonLoading(submitButton, false, originalText);
     }
 }
-// ============================================
-// 📧 UPDATE USER EMAIL - AUTH + PROFILE
-// FIXED: Uses Supabase session for admin check
-// ============================================
 
-async function updateUserEmailFromModal() {
-    const userId = document.getElementById('edit_user_id')?.value;
-    const emailInput = document.getElementById('edit_user_email');
-    const statusDiv = document.getElementById('emailUpdateStatus');
+// ============================================================
+// 🔧 MISSING FUNCTIONS
+// ============================================================
+
+/**
+ * Open email change dialog - Called from table action buttons
+ */
+function openEmailChangeDialog(userId, currentEmail) {
+    console.log('📧 Opening email change dialog for:', userId, currentEmail);
     
-    if (!userId) {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ No user selected. Please load a user first.</span>';
+    // Get current user to check permissions
+    const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
+    if (!['superadmin', 'admin'].includes(currentUser?.role)) {
+        showNotification('❌ Permission denied. Admin privileges required.', 'error');
         return;
     }
     
-    const newEmail = emailInput?.value?.trim();
-    if (!newEmail) {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Please enter an email address</span>';
+    const newEmail = prompt(
+        `Change email for:\n${currentEmail}\n\nEnter new email address:`,
+        currentEmail
+    );
+    
+    if (!newEmail) return; // User cancelled
+    
+    if (newEmail === currentEmail) {
+        showNotification('ℹ️ No change made', 'info');
         return;
     }
     
     // Validate email format
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Please enter a valid email address</span>';
+        showNotification('❌ Please enter a valid email address', 'error');
         return;
     }
     
-    statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Checking permissions...</span>';
+    // Confirm with admin
+    if (!confirm(`⚠️ Are you sure you want to change the email from:\n\n${currentEmail}\n\nto:\n\n${newEmail}`)) {
+        return;
+    }
     
+    // Call the update function
+    showLoading('Changing email...');
+    
+    updateUserEmailFromModalDirect(userId, newEmail)
+        .then(result => {
+            hideLoading();
+            if (result.success) {
+                showNotification(`✅ Email changed to ${newEmail}`, 'success');
+                // Refresh the user list
+                if (typeof loadAllUsers === 'function') {
+                    loadAllUsers(1, USERS_STATE?.filters || {});
+                }
+            } else {
+                showNotification(`❌ ${result.message}`, 'error');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            showNotification(`❌ ${error.message}`, 'error');
+        });
+}
+
+/**
+ * Direct email update function for the dialog
+ */
+async function updateUserEmailFromModalDirect(userId, newEmail) {
     try {
         const supabase = getSb();
         
-        // ✅ GET CURRENT SESSION (like password reset)
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session) {
-            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ No active session. Please login again.</span>';
-            return;
+        // Get session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            return { success: false, message: 'No active session' };
         }
         
-        const currentUser = session.user;
-        console.log('👤 Current user:', currentUser.email);
-        
-        // ✅ CHECK ADMIN ROLE FROM DATABASE (like password reset)
-        const { data: adminProfile, error: adminError } = await supabase
-            .from(USER_PROFILE_TABLE)
-            .select('role, email')
-            .eq('user_id', currentUser.id)
-            .single();
-        
-        if (adminError || !adminProfile) {
-            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Admin profile not found.</span>';
-            return;
-        }
-        
-        // ✅ CHECK IF USER IS ADMIN OR SUPERADMIN
-        if (!['admin', 'superadmin', 'super_admin'].includes(adminProfile.role)) {
-            statusDiv.innerHTML = `<span style="color: #dc2626;">❌ Permission denied. Admin privileges required. Your role: ${adminProfile.role}</span>`;
-            return;
-        }
-        
-        console.log('✅ Admin verified:', adminProfile.email);
-        console.log('🎭 Role:', adminProfile.role);
-        
-        statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Checking email availability...</span>';
-        
-        // 1. Get current user data
-        const { data: userData, error: userError } = await supabase
-            .from(USER_PROFILE_TABLE)
-            .select('user_id, email, full_name')
-            .eq('user_id', userId)
-            .single();
-        
-        if (userError || !userData) {
-            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ User not found</span>';
-            return;
-        }
-        
-        const oldEmail = userData.email;
-        if (oldEmail === newEmail) {
-            statusDiv.innerHTML = '<span style="color: #f59e0b;">ℹ️ No change needed</span>';
-            return;
-        }
-        
-        // 2. Check if email already in use by another user
-        const { data: existingUser } = await supabase
-            .from(USER_PROFILE_TABLE)
-            .select('user_id')
-            .eq('email', newEmail.toLowerCase())
-            .neq('user_id', userId)
-            .single();
-        
-        if (existingUser) {
-            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ This email is already in use by another account</span>';
-            return;
-        }
-        
-        // 3. Confirm with admin
-        if (!confirm(`⚠️ Are you sure you want to change the email from:\n\n${oldEmail}\n\nto:\n\n${newEmail}\n\nThis will update the user's login credentials.`)) {
-            statusDiv.innerHTML = '<span style="color: #6b7280;">ℹ️ Email update cancelled</span>';
-            return;
-        }
-        
-        statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Updating email in Auth and Profile...</span>';
-        
-        // 4. ✅ UPDATE AUTH TABLE (using admin API with session token)
+        // Call the Edge Function
         const response = await fetch(
             'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-update-email',
             {
@@ -5510,12 +5597,11 @@ async function updateUserEmailFromModal() {
         const result = await response.json();
         
         if (!response.ok) {
-            throw new Error(result.error || 'Auth update failed');
+            return { success: false, message: result.error || 'Update failed' };
         }
-        console.log('✅ Auth email updated successfully');
         
-        // 5. ✅ UPDATE PROFILE TABLE
-        const { error: profileError } = await supabase
+        // Update profile table
+        await supabase
             .from(USER_PROFILE_TABLE)
             .update({ 
                 email: newEmail.toLowerCase(),
@@ -5523,26 +5609,210 @@ async function updateUserEmailFromModal() {
             })
             .eq('user_id', userId);
         
-        if (profileError) {
-            throw new Error('Profile update failed: ' + profileError.message);
-        }
-        console.log('✅ Profile email updated successfully');
+        return { success: true, message: result.message };
         
-        // 6. Log the change in audit logs
-        try {
-            await logAudit('EMAIL_CHANGE', `Changed email for ${userData.full_name} from ${oldEmail} to ${newEmail}`, userId, 'SUCCESS');
-        } catch (auditError) {
-            console.warn('Audit log failed:', auditError);
+    } catch (error) {
+        console.error('Email update error:', error);
+        return { success: false, message: error.message };
+    }
+}
+// ============================================================
+// 🔧 BLOCK/TERM OPTIONS FUNCTION
+// ============================================================
+
+/**
+ * Update block/term dropdown options based on selected program
+ */
+function updateBlockTermOptions(programSelectId, blockSelectId) {
+    console.log('🔄 Updating block/term options for:', programSelectId, blockSelectId);
+    
+    const programSelect = document.getElementById(programSelectId);
+    const blockSelect = document.getElementById(blockSelectId);
+    
+    if (!programSelect || !blockSelect) {
+        console.warn('⚠️ Program or block select not found');
+        return;
+    }
+    
+    const program = programSelect.value;
+    console.log('📚 Selected program:', program);
+    
+    // Determine if TVET or KRCHN
+    const isTVET = program && program !== 'KRCHN' && program !== '';
+    
+    let options = [];
+    if (isTVET) {
+        options = ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
+        console.log('🔧 TVET terms loaded:', options.length);
+    } else if (program === 'KRCHN') {
+        options = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        console.log('📖 KRCHN blocks loaded:', options.length);
+    } else {
+        options = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        console.log('📚 Default blocks loaded:', options.length);
+    }
+    
+    // Clear and populate
+    blockSelect.innerHTML = '<option value="">-- Select --</option>';
+    options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        blockSelect.appendChild(option);
+    });
+    
+    console.log('✅ Block/term options updated');
+}
+
+// Also add the alias function for backward compatibility
+function updateBlockOptions(programSelectId, blockSelectId) {
+    updateBlockTermOptions(programSelectId, blockSelectId);
+}
+// ============================================
+// 📧 UPDATE USER EMAIL - AUTH + PROFILE
+// FIXED: Uses Supabase session for admin check
+// ============================================
+
+// ============================================================
+// 📧 UPDATE USER EMAIL - FIXED QUERY
+// ============================================================
+
+async function updateUserEmailFromModal() {
+    const userId = document.getElementById('edit_user_id')?.value;
+    const emailInput = document.getElementById('edit_user_email');
+    const statusDiv = document.getElementById('emailUpdateStatus');
+    
+    if (!userId) {
+        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ No user selected.</span>';
+        return;
+    }
+    
+    const newEmail = emailInput?.value?.trim();
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Please enter a valid email</span>';
+        return;
+    }
+    
+    statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Checking permissions...</span>';
+    
+    try {
+        const supabase = getSb();
+        
+        // ✅ FIX: Get session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ No active session</span>';
+            return;
         }
         
-        // 7. Update the displayed email
+        const currentUser = session.user;
+        console.log('👤 Current user:', currentUser.email);
+        console.log('🆔 Current user ID:', currentUser.id);
+        
+        // ✅ FIX: Use user_id column (not email) for admin check
+        const { data: adminProfile, error: adminError } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .select('role, email')
+            .eq('user_id', currentUser.id)  // ← Use user_id
+            .single();
+        
+        if (adminError) {
+            console.error('Admin check error:', adminError);
+            // Try fallback - check by email
+            const { data: adminByEmail } = await supabase
+                .from(USER_PROFILE_TABLE)
+                .select('role, email')
+                .eq('email', currentUser.email)
+                .single();
+            
+            if (!adminByEmail || !['admin', 'superadmin', 'super_admin'].includes(adminByEmail.role)) {
+                statusDiv.innerHTML = `<span style="color: #dc2626;">❌ Admin privileges required. Your role: ${adminByEmail?.role || 'none'}</span>`;
+                return;
+            }
+        } else if (!adminProfile || !['admin', 'superadmin', 'super_admin'].includes(adminProfile.role)) {
+            statusDiv.innerHTML = `<span style="color: #dc2626;">❌ Admin privileges required. Your role: ${adminProfile?.role || 'none'}</span>`;
+            return;
+        }
+        
+        console.log('✅ Admin verified');
+        
+        // Check if email already in use
+        const { data: existingUser } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .select('user_id')
+            .eq('email', newEmail.toLowerCase())
+            .neq('user_id', userId)
+            .single();
+        
+        if (existingUser) {
+            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Email already in use</span>';
+            return;
+        }
+        
+        // Get current email
+        const { data: userData } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .select('email, full_name')
+            .eq('user_id', userId)
+            .single();
+        
+        if (!userData) {
+            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ User not found</span>';
+            return;
+        }
+        
+        if (userData.email === newEmail) {
+            statusDiv.innerHTML = '<span style="color: #f59e0b;">ℹ️ No change needed</span>';
+            return;
+        }
+        
+        // Confirm
+        if (!confirm(`⚠️ Change email from:\n\n${userData.email}\n\nto:\n\n${newEmail}`)) {
+            statusDiv.innerHTML = '<span style="color: #6b7280;">ℹ️ Cancelled</span>';
+            return;
+        }
+        
+        statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Updating email...</span>';
+        
+        // ✅ Call Edge Function
+        const response = await fetch(
+            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-update-email',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ 
+                    userId: userId,
+                    newEmail: newEmail.toLowerCase()
+                })
+            }
+        );
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Update failed');
+        }
+        
+        // Update profile
+        await supabase
+            .from(USER_PROFILE_TABLE)
+            .update({ 
+                email: newEmail.toLowerCase(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+        
+        // Update input
         emailInput.value = newEmail;
         
-        // 8. Show success
-        statusDiv.innerHTML = `<span style="color: #059669;">✅ Email updated successfully from ${oldEmail} to ${newEmail}</span>`;
+        statusDiv.innerHTML = `<span style="color: #059669;">✅ Email updated to ${newEmail}</span>`;
         showNotification(`✅ Email changed to ${newEmail}`, 'success');
         
-        // 9. Refresh the user list
+        // Refresh
         setTimeout(() => {
             if (typeof loadAllUsers === 'function') {
                 loadAllUsers(1, USERS_STATE?.filters || {});
@@ -5555,14 +5825,6 @@ async function updateUserEmailFromModal() {
         showNotification('❌ Failed to update email', 'error');
     }
 }
-// Clear status when modal closes
-function clearEmailStatus() {
-    const statusDiv = document.getElementById('emailUpdateStatus');
-    if (statusDiv) {
-        statusDiv.innerHTML = '';
-    }
-}
-
 // ============================================
 // OVERRIDE closeModal to clear email status
 // ============================================
