@@ -835,129 +835,117 @@ class DashboardModule {
     // 📊 LOAD FRESH DATA - FIXED TO USE RPC DATA
     // ============================================================
     
-    async loadFreshData() {
-        console.log('📊 Loading fresh dashboard data...');
-        
-        try {
-            const { data, error } = await this.sb.rpc('get_student_dashboard', {
-                p_user_id: this.userId
-            });
-            
-            if (error) throw error;
-            
-            // ✅ USE DATA FROM RPC (already includes gamification!)
-            
-            // Store total points from RPC
-            this.metrics.totalPoints = data?.total_points || 0;
-            this.totalPoints = this.metrics.totalPoints;
-            
-            // Store gamification data
-            this.gamificationPoints = data?.gamification?.points || 0;
-            this.metrics.gamification = {
-                points: this.gamificationPoints,
-                achievements: data?.gamification?.badges || []
-            };
-            
-            // Login data
-            const loginCount = data?.login?.count || 0;
-            const loginPoints = data?.login?.points || 0;
-            
-            // Attendance data
-            this.metrics.attendance = data.attendance || { 
-                rate: 0, verified: 0, total: 0, pending: 0, points: 0 
-            };
-            this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
-            
-            // Exam card data
-            this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
-            
-            // NurseIQ data
-            this.metrics.nurseiq = data.nurseiq || { questions: 0, accuracy: 0, progress: 0 };
-            this.metrics.nurseiq.progress = this.metrics.nurseiq.questions > 0 
-                ? Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100) 
-                : 0;
-            
-            // ✅ USE XP DATA FROM RPC (includes gamification!)
-            this.metrics.xp = data.xp || { 
-                current: 0, 
-                max: 100, 
-                level: 1, 
-                percent: 0, 
-                total: 0 
-            };
-            this.metrics.xp.percent = (this.metrics.xp.current / this.metrics.xp.max) * 100;
-            
-            // Exam data
-            this.metrics.exams = data?.exam?.title || 'No upcoming exams';
-            this.metrics.resources = data?.resources || 0;
-            this.metrics.courses = data?.examCard?.approved || 0;
-            
-            // Login with streak
-            const streakData = await this.calculateDailyStreak();
-            this.metrics.login = { 
-                count: loginCount, 
-                points: loginPoints, 
-                streak: streakData.streak,
-                maxStreak: streakData.maxStreak,
-                streakRestores: streakData.restores
-            };
-            
-            console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
-            console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
-            console.log(`📊 Level from RPC: ${this.metrics.xp.level}`);
-            
-            // Load reviews and newsletter
-            await this.loadReviewsSnapshot();
-            await this.loadNewsletterSnapshot();
-            
-            // Update UI
-            this.saveToCache();
-            this.updateUIFromMetrics();
-            this.updateStreakUI();
-            
-            // Update announcement
-            if (this.elements.announcementText) {
-                this.elements.announcementText.innerHTML = data?.announcement || 'Welcome to your dashboard!';
-            }
-            
-            // Update last updated time
-            if (this.elements.dashboardLastUpdated) {
-                const now = this.getKenyaNow();
-                this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true,
-                    timeZone: 'Africa/Nairobi'
-                });
-            }
-            
-            // Update exams
-            await this.updateExamsMetric();
-            
-            console.log('✅ Dashboard loaded from DATABASE');
-            
-            // Load leaderboard and next class
-            await Promise.all([
-                this.loadLeaderboardData('all'),
-                this.loadQuickNextClass()
-            ]);
-            
-        } catch (error) {
-            console.error('Dashboard error:', error);
-            await this.loadIndividualMetrics();
-        }
-    }
+   async loadFreshData() {
+    console.log('📊 Loading fresh dashboard data...');
     
-    saveToCache() {
-        if (!this.cacheKey) return;
-        try {
-            localStorage.setItem(this.cacheKey, JSON.stringify({
-                data: this.metrics,
-                timestamp: Date.now()
-            }));
-        } catch (e) { /* ignore */ }
+    try {
+        const { data, error } = await this.sb.rpc('get_student_dashboard', {
+            p_user_id: this.userId
+        });
+        
+        if (error) throw error;
+        
+        // ✅ Store total points from RPC
+        this.metrics.totalPoints = data?.total_points || 0;
+        this.totalPoints = this.metrics.totalPoints;
+        
+        // ✅ Store gamification data
+        this.gamificationPoints = data?.gamification?.points || 0;
+        this.metrics.gamification = {
+            points: this.gamificationPoints,
+            achievements: data?.gamification?.badges || []
+        };
+        
+        // ✅ Login data - FIXED STREAK
+        const loginCount = data?.login?.count || 0;
+        const loginPoints = data?.login?.points || 0;
+        
+        // ✅ CRITICAL FIX: Use streak from RPC data
+        this.metrics.login = { 
+            count: loginCount, 
+            points: loginPoints, 
+            streak: data?.login?.streak || 0,      // ← FIXED
+            maxStreak: data?.login?.maxStreak || 0, // ← FIXED
+            streakRestores: data?.login?.restores || 0 // ← FIXED
+        };
+        
+        // Attendance data
+        this.metrics.attendance = data.attendance || { 
+            rate: 0, verified: 0, total: 0, pending: 0, points: 0 
+        };
+        this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
+        
+        // Exam card data
+        this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
+        
+        // NurseIQ data
+        this.metrics.nurseiq = data.nurseiq || { questions: 0, accuracy: 0, progress: 0 };
+        this.metrics.nurseiq.progress = this.metrics.nurseiq.questions > 0 
+            ? Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100) 
+            : 0;
+        
+        // XP data
+        this.metrics.xp = data.xp || { 
+            current: 0, 
+            max: 100, 
+            level: 1, 
+            percent: 0, 
+            total: 0 
+        };
+        this.metrics.xp.percent = (this.metrics.xp.current / this.metrics.xp.max) * 100;
+        
+        // Exam data
+        this.metrics.exams = data?.exam?.title || 'No upcoming exams';
+        this.metrics.resources = data?.resources || 0;
+        this.metrics.courses = data?.examCard?.approved || 0;
+        
+        console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
+        console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
+        console.log(`📊 Level from RPC: ${this.metrics.xp.level}`);
+        console.log(`🔥 Streak from RPC: ${this.metrics.login.streak}`); // ← Should show 13
+        
+        // Load reviews and newsletter
+        await this.loadReviewsSnapshot();
+        await this.loadNewsletterSnapshot();
+        
+        // ✅ Update UI - THIS WILL NOW SHOW THE CORRECT STREAK
+        this.saveToCache();
+        this.updateUIFromMetrics();
+        this.updateStreakUI();  // ← Make sure this is called
+        
+        // Update announcement
+        if (this.elements.announcementText) {
+            this.elements.announcementText.innerHTML = data?.announcement || 'Welcome to your dashboard!';
+        }
+        
+        // Update last updated time
+        if (this.elements.dashboardLastUpdated) {
+            const now = this.getKenyaNow();
+            this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                timeZone: 'Africa/Nairobi'
+            });
+        }
+        
+        // Update exams
+        await this.updateExamsMetric();
+        
+        console.log('✅ Dashboard loaded from DATABASE');
+        
+        // Load leaderboard and next class
+        await Promise.all([
+            this.loadLeaderboardData('all'),
+            this.loadQuickNextClass()
+        ]);
+        
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        await this.loadIndividualMetrics();
     }
+}
     
     // ============================================================
     // 🔄 INDIVIDUAL METRICS (FALLBACK)
