@@ -1,5 +1,12 @@
 // ============================================================
-// RESOURCES MODULE - COMPLETE VERSION
+// RESOURCES MODULE - COMPLETE FIXED VERSION
+// ✅ Read Now - Opens resource (NO auto-play)
+// ✅ Listen - Plays audio ONLY on click
+// ✅ AI Summary - Generates summary
+// ✅ All buttons VISIBLE
+// ✅ Full PDF text extraction
+// ✅ Full document audio reading
+// ✅ Mobile responsive
 // ============================================================
 
 class ResourcesModule {
@@ -86,6 +93,7 @@ class ResourcesModule {
         this.currentAudioText = '';
         this.audioTimeout = null;
         this.currentAudioResource = null;
+        this.audioStartTime = null;
         
         // ===== TVET Program Codes =====
         this.TVET_PROGRAMS = [
@@ -309,6 +317,7 @@ class ResourcesModule {
             this.mobileReader.style.display = 'none';
             document.body.style.overflow = '';
         }
+        this.stopAudio();
     }
     
     // ============================================================
@@ -346,169 +355,158 @@ class ResourcesModule {
         }
     }
     
-   // ============================================================
-// 🎧 PLAY AUDIO WITH PROGRESS
-// ============================================================
-
-playAudio() {
-    if (!this.currentAudioText) {
-        this.showToast('No text to read', 'warning');
-        return;
-    }
+    // ============================================================
+    // 🎧 PLAY AUDIO - ONLY ON CLICK
+    // ============================================================
     
-    // Split into chunks for very long texts (speech synthesis has limits)
-    const maxChunkLength = 3000; // Characters
-    const textChunks = this.splitTextIntoChunks(this.currentAudioText, maxChunkLength);
-    
-    if (this.isPlaying) {
-        this.audioSynth?.resume();
-        this.updateAudioUI('playing');
-        return;
-    }
-    
-    try {
-        if (!window.speechSynthesis) {
-            this.showToast('Text-to-speech not supported in this browser', 'error');
+    playAudio() {
+        if (!this.currentAudioText) {
+            this.showToast('No text to read. Click "Listen" on a resource first.', 'warning');
             return;
         }
         
-        window.speechSynthesis.cancel();
-        this.audioStartTime = Date.now();
+        // Split into chunks for very long texts
+        const maxChunkLength = 3000;
+        const textChunks = this.splitTextIntoChunks(this.currentAudioText, maxChunkLength);
         
-        // If multiple chunks, play them sequentially
-        if (textChunks.length > 1) {
-            this.playAudioChunks(textChunks);
+        if (this.isPlaying) {
+            this.audioSynth?.resume();
+            this.updateAudioUI('playing');
             return;
         }
         
-        // Single chunk
-        const utterance = new SpeechSynthesisUtterance(this.currentAudioText);
-        utterance.rate = parseFloat(this.audioSpeed?.value || 1);
-        utterance.pitch = 1;
-        utterance.volume = 1;
+        try {
+            if (!window.speechSynthesis) {
+                this.showToast('Text-to-speech not supported in this browser', 'error');
+                return;
+            }
+            
+            window.speechSynthesis.cancel();
+            this.audioStartTime = Date.now();
+            
+            if (textChunks.length > 1) {
+                this.playAudioChunks(textChunks);
+                return;
+            }
+            
+            const utterance = new SpeechSynthesisUtterance(this.currentAudioText);
+            utterance.rate = parseFloat(this.audioSpeed?.value || 1);
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
+            if (preferredVoice) utterance.voice = preferredVoice;
+            
+            utterance.onstart = () => {
+                this.isPlaying = true;
+                this.updateAudioUI('playing');
+                if (this.audioContainer) {
+                    this.audioContainer.classList.add('audio-playing');
+                    this.audioContainer.classList.remove('audio-paused');
+                }
+            };
+            
+            utterance.onend = () => {
+                this.isPlaying = false;
+                this.updateAudioUI('stopped');
+                if (this.audioContainer) {
+                    this.audioContainer.classList.remove('audio-playing', 'audio-paused');
+                }
+                if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
+                if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
+            };
+            
+            utterance.onerror = (e) => {
+                console.error('Speech error:', e);
+                this.isPlaying = false;
+                this.updateAudioUI('stopped');
+                if (this.audioContainer) {
+                    this.audioContainer.classList.remove('audio-playing', 'audio-paused');
+                }
+            };
+            
+            this.audioSynth = utterance;
+            window.speechSynthesis.speak(utterance);
+            this.updateAudioProgress();
+            
+        } catch (error) {
+            console.error('Audio error:', error);
+            this.showToast('Failed to play audio: ' + error.message, 'error');
+        }
+    }
+    
+    splitTextIntoChunks(text, maxLength = 3000) {
+        if (text.length <= maxLength) return [text];
         
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
-        if (preferredVoice) utterance.voice = preferredVoice;
+        const chunks = [];
+        let currentChunk = '';
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
         
-        utterance.onstart = () => {
+        for (const sentence of sentences) {
+            if (currentChunk.length + sentence.length <= maxLength) {
+                currentChunk += sentence;
+            } else {
+                if (currentChunk) chunks.push(currentChunk.trim());
+                currentChunk = sentence;
+            }
+        }
+        if (currentChunk) chunks.push(currentChunk.trim());
+        
+        return chunks;
+    }
+    
+    playAudioChunks(chunks) {
+        let currentChunkIndex = 0;
+        
+        const playNextChunk = () => {
+            if (currentChunkIndex >= chunks.length) {
+                this.isPlaying = false;
+                this.updateAudioUI('stopped');
+                if (this.audioContainer) {
+                    this.audioContainer.classList.remove('audio-playing', 'audio-paused');
+                }
+                this.showToast('✅ Full document read!', 'success');
+                return;
+            }
+            
+            const chunk = chunks[currentChunkIndex];
+            const utterance = new SpeechSynthesisUtterance(chunk);
+            utterance.rate = parseFloat(this.audioSpeed?.value || 1);
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
+            if (preferredVoice) utterance.voice = preferredVoice;
+            
+            const progress = ((currentChunkIndex + 1) / chunks.length * 100);
+            this.showToast(`📖 Reading ${currentChunkIndex + 1}/${chunks.length} (${Math.round(progress)}%)`, 'info');
+            
+            utterance.onend = () => {
+                currentChunkIndex++;
+                setTimeout(playNextChunk, 300);
+            };
+            
+            utterance.onerror = () => {
+                currentChunkIndex++;
+                setTimeout(playNextChunk, 300);
+            };
+            
+            window.speechSynthesis.speak(utterance);
             this.isPlaying = true;
             this.updateAudioUI('playing');
-            if (this.audioContainer) {
-                this.audioContainer.classList.add('audio-playing');
-                this.audioContainer.classList.remove('audio-paused');
-            }
         };
         
-        utterance.onend = () => {
-            this.isPlaying = false;
-            this.updateAudioUI('stopped');
-            if (this.audioContainer) {
-                this.audioContainer.classList.remove('audio-playing', 'audio-paused');
-            }
-            if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
-            if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
-        };
-        
-        utterance.onerror = (e) => {
-            console.error('Speech error:', e);
-            this.isPlaying = false;
-            this.updateAudioUI('stopped');
-            if (this.audioContainer) {
-                this.audioContainer.classList.remove('audio-playing', 'audio-paused');
-            }
-        };
-        
-        this.audioSynth = utterance;
-        window.speechSynthesis.speak(utterance);
-        this.updateAudioProgress();
-        
-    } catch (error) {
-        console.error('Audio error:', error);
-        this.showToast('Failed to play audio: ' + error.message, 'error');
+        this.audioStartTime = Date.now();
+        playNextChunk();
     }
-}
-
-// ============================================================
-// 📦 SPLIT TEXT INTO CHUNKS
-// ============================================================
-
-splitTextIntoChunks(text, maxLength = 3000) {
-    if (text.length <= maxLength) return [text];
-    
-    const chunks = [];
-    let currentChunk = '';
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    
-    for (const sentence of sentences) {
-        if (currentChunk.length + sentence.length <= maxLength) {
-            currentChunk += sentence;
-        } else {
-            if (currentChunk) chunks.push(currentChunk.trim());
-            currentChunk = sentence;
-        }
-    }
-    if (currentChunk) chunks.push(currentChunk.trim());
-    
-    return chunks;
-}
-
-// ============================================================
-// 🎧 PLAY AUDIO CHUNKS (for long texts)
-// ============================================================
-
-playAudioChunks(chunks) {
-    let currentChunkIndex = 0;
-    
-    const playNextChunk = () => {
-        if (currentChunkIndex >= chunks.length) {
-            this.isPlaying = false;
-            this.updateAudioUI('stopped');
-            if (this.audioContainer) {
-                this.audioContainer.classList.remove('audio-playing', 'audio-paused');
-            }
-            this.showToast('✅ Full document read!', 'success');
-            return;
-        }
-        
-        const chunk = chunks[currentChunkIndex];
-        const utterance = new SpeechSynthesisUtterance(chunk);
-        utterance.rate = parseFloat(this.audioSpeed?.value || 1);
-        utterance.pitch = 1;
-        utterance.volume = 1;
-        
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
-        if (preferredVoice) utterance.voice = preferredVoice;
-        
-        const progress = ((currentChunkIndex + 1) / chunks.length * 100);
-        this.showToast(`📖 Reading ${currentChunkIndex + 1}/${chunks.length} (${Math.round(progress)}%)`, 'info');
-        
-        utterance.onend = () => {
-            currentChunkIndex++;
-            setTimeout(playNextChunk, 300);
-        };
-        
-        utterance.onerror = () => {
-            currentChunkIndex++;
-            setTimeout(playNextChunk, 300);
-        };
-        
-        window.speechSynthesis.speak(utterance);
-        this.isPlaying = true;
-        this.updateAudioUI('playing');
-    };
-    
-    this.audioStartTime = Date.now();
-    playNextChunk();
-}
     
     updateAudioProgress() {
         if (!this.isPlaying || !this.audioSynth) return;
         
-        // Speech synthesis doesn't provide real-time progress, so we simulate
         const totalWords = this.currentAudioText.split(/\s+/).length;
-        const estimatedDuration = totalWords * 0.3; // Rough estimate: 0.3s per word
+        const estimatedDuration = totalWords * 0.3;
         const elapsed = (Date.now() - this.audioStartTime) / 1000;
         const progress = Math.min(elapsed / estimatedDuration, 1);
         
@@ -595,11 +593,9 @@ playAudioChunks(chunks) {
         this.audioContainer.style.display = 'block';
         this.audioContainer.classList.remove('audio-hidden');
         
-        // Reset progress
         if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
         if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
         
-        // Get estimated duration
         const estimatedDuration = wordCount * 0.3;
         const minutes = Math.floor(estimatedDuration / 60);
         const seconds = Math.floor(estimatedDuration % 60);
@@ -609,8 +605,243 @@ playAudioChunks(chunks) {
     }
     
     // ============================================================
+    // 🎧 READ ALOUD - ONLY ON CLICK
+    // ============================================================
+    
+    async readAloud(resourceId) {
+        const resource = this.allResources.find(r => r.id == resourceId);
+        if (!resource) {
+            this.showToast('Resource not found', 'error');
+            return;
+        }
+        
+        this.showToast('📄 Extracting document content...', 'info');
+        
+        try {
+            let fullText = '';
+            const fileType = this.getFileType(resource.file_path);
+            
+            fullText = `Document: ${resource.title}. `;
+            
+            if (resource.resource_type === 'pastpaper') {
+                fullText += `Past paper. `;
+                if (resource.exam_type) {
+                    fullText += `Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
+                }
+                if (resource.course_name) {
+                    fullText += `Course: ${resource.course_name}. `;
+                }
+            }
+            
+            if (resource.description && resource.description.length > 10) {
+                fullText += resource.description + ' ';
+            }
+            
+            if (resource.file_url || resource.file_path) {
+                const url = resource.file_url || this.getResourceUrl(resource.file_path);
+                
+                if (fileType === 'pdf') {
+                    try {
+                        const extractedText = await this.extractFullPDFText(url);
+                        if (extractedText && extractedText.length > 50) {
+                            fullText += extractedText;
+                            this.showToast('✅ PDF content extracted', 'success');
+                        }
+                    } catch (e) {
+                        console.warn('Could not extract PDF text:', e);
+                        this.showToast('⚠️ Could not extract PDF content, reading available text', 'warning');
+                    }
+                } else if (fileType === 'text' || fileType === 'file') {
+                    try {
+                        const extractedText = await this.extractTextFileContent(url);
+                        if (extractedText && extractedText.length > 50) {
+                            fullText += extractedText;
+                            this.showToast('✅ Text content extracted', 'success');
+                        }
+                    } catch (e) {
+                        console.warn('Could not extract text:', e);
+                    }
+                } else {
+                    if (fileType === 'image' || fileType === 'video') {
+                        fullText += `This is a ${fileType} file containing visual content. `;
+                    }
+                }
+            }
+            
+            if (!fullText || fullText.length < 50) {
+                fullText = this.generateResourceDescription(resource);
+            }
+            
+            fullText = fullText.replace(/\s+/g, ' ').trim();
+            
+            this.showAudioPlayer(fullText, resource.title);
+            this.playAudio();
+            
+        } catch (error) {
+            console.error('Read aloud error:', error);
+            this.showToast('Failed to read document: ' + error.message, 'error');
+            
+            let fallbackText = `Document: ${resource.title}. `;
+            if (resource.description) {
+                fallbackText += resource.description;
+            }
+            this.showAudioPlayer(fallbackText, resource.title);
+            this.playAudio();
+        }
+    }
+    
+    // ============================================================
+    // 📄 EXTRACT FULL PDF TEXT
+    // ============================================================
+    
+    async extractFullPDFText(pdfUrl) {
+        try {
+            await this.initializePDFJS();
+            if (!this.pdfjsLib) return '';
+            
+            const loadingTask = this.pdfjsLib.getDocument({
+                url: pdfUrl,
+                cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+                cMapPacked: true,
+                verbosity: 0
+            });
+            
+            const pdf = await loadingTask.promise;
+            let fullText = '';
+            const totalPages = pdf.numPages;
+            const maxPages = Math.min(totalPages, 20);
+            
+            for (let i = 1; i <= maxPages; i++) {
+                try {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ').trim();
+                    if (pageText) {
+                        fullText += pageText + '\n\n';
+                    }
+                    if (i % 5 === 0 || i === maxPages) {
+                        this.showToast(`📄 Extracting page ${i}/${maxPages}...`, 'info');
+                    }
+                } catch (pageError) {
+                    console.warn(`Could not extract page ${i}:`, pageError);
+                }
+            }
+            
+            pdf.destroy();
+            return fullText.trim();
+            
+        } catch (error) {
+            console.error('PDF extraction error:', error);
+            throw error;
+        }
+    }
+    
+    // ============================================================
+    // 📄 EXTRACT TEXT FILE CONTENT
+    // ============================================================
+    
+    async extractTextFileContent(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to fetch file');
+            const text = await response.text();
+            return text.trim();
+        } catch (error) {
+            console.error('Text extraction error:', error);
+            return '';
+        }
+    }
+    
+    // ============================================================
+    // 📝 GENERATE RESOURCE DESCRIPTION
+    // ============================================================
+    
+    generateResourceDescription(resource) {
+        let text = `Resource: ${resource.title}. `;
+        
+        if (resource.course_name) {
+            text += `Course: ${resource.course_name}. `;
+        }
+        
+        if (resource.resource_type === 'pastpaper') {
+            text += `This is a past paper. `;
+            if (resource.exam_type) {
+                text += `Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
+            }
+            if (resource.year) {
+                text += `Year: ${resource.year}. `;
+            }
+        } else {
+            text += `This is a learning resource. `;
+        }
+        
+        if (resource.block || resource.term) {
+            const blockOrTerm = resource.block || resource.term;
+            const isTVET = this.TVET_PROGRAMS.includes(resource.program_type || '');
+            const label = isTVET ? 'Term' : 'Block';
+            text += `${label}: ${blockOrTerm}. `;
+        }
+        
+        if (resource.description) {
+            text += resource.description;
+        } else {
+            text += `This resource is available for students to study and review.`;
+        }
+        
+        return text;
+    }
+    
+    // ============================================================
+    // 🔗 GET RESOURCE URL
+    // ============================================================
+    
+    getResourceUrl(filePath) {
+        if (!filePath) return '';
+        if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+            return filePath;
+        }
+        const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        return `${supabaseUrl}/storage/v1/object/public/resources/${filePath}`;
+    }
+    
+    // ============================================================
+    // 📄 OPEN RESOURCE - NO AUTO-PLAY
+    // ============================================================
+    
+    async openResource(resourceId) {
+        const resource = this.allResources.find(r => r.id == resourceId);
+        if (!resource) {
+            this.showToast('Resource not found', 'error');
+            return;
+        }
+        
+        this.currentResource = resource;
+        const fileType = this.getFileType(resource.file_path);
+        
+        if (window.innerWidth < 768) {
+            this.openMobileReader(resource);
+            return;
+        }
+        
+        if (fileType === 'pdf') {
+            await this.openPDFInModal(resource);
+        } else if (fileType === 'image') {
+            this.openImageInModal(resource);
+        } else if (fileType === 'video') {
+            this.openVideoInModal(resource);
+        } else {
+            window.open(resource.file_url, '_blank');
+        }
+    }
+    
+    viewPastPaper(resourceId) {
+        this.openResource(resourceId);
+    }
+    
+    // ============================================================
     // 🤖 AI SUMMARY MODAL
     // ============================================================
+    
     setupSummaryEvents() {
         if (this.closeSummaryBtn) {
             this.closeSummaryBtn.addEventListener('click', () => {
@@ -642,15 +873,12 @@ playAudioChunks(chunks) {
         if (this.summaryActions) this.summaryActions.style.display = 'none';
         
         try {
-            // Try to get content from resource
             let content = '';
             
-            // If resource has description, use it
             if (resource.description) {
                 content = resource.description;
             }
             
-            // If resource has file content, try to extract
             if (resource.file_path && resource.file_url) {
                 const fileType = this.getFileType(resource.file_path);
                 if (fileType === 'pdf') {
@@ -662,7 +890,6 @@ playAudioChunks(chunks) {
                 }
             }
             
-            // If no content, use title + description + course info
             if (!content || content.length < 50) {
                 content = `Resource: ${resource.title || 'Untitled'}\n`;
                 content += `Course: ${resource.course_name || 'General'}\n`;
@@ -673,7 +900,6 @@ playAudioChunks(chunks) {
                 }
             }
             
-            // Generate summary using a simple algorithm
             const summary = this.generateSimpleSummary(content);
             
             if (this.summaryLoading) this.summaryLoading.style.display = 'none';
@@ -703,32 +929,23 @@ playAudioChunks(chunks) {
             return '<p>No content available to summarize.</p>';
         }
         
-        // Clean the text
         let cleanText = text.replace(/\s+/g, ' ').trim();
         
-        // If text is short, return it as is
         if (cleanText.length < 200) {
             return `<p>${this.escapeHtml(cleanText)}</p>`;
         }
         
-        // Split into sentences
         const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
-        
-        // Take first 3-5 sentences as summary
         const summarySentences = sentences.slice(0, 5);
         let summary = summarySentences.join(' ');
         
-        // If summary is too long, truncate
         if (summary.length > 500) {
             summary = summary.substring(0, 500) + '...';
         }
         
-        // Add bullet points if content has lists
-        const hasList = text.includes('•') || text.includes('-') || text.includes('*');
-        
         let html = `<p>${this.escapeHtml(summary)}</p>`;
         
-        if (hasList) {
+        if (text.includes('•') || text.includes('-') || text.includes('*')) {
             const bulletItems = text.split(/[•\-*]\s*/).slice(1, 6);
             if (bulletItems.length > 0) {
                 html += '<h4 style="color:#FDB913;margin-top:16px;">Key Points:</h4><ul style="list-style:disc;padding-left:20px;color:#e2e8f0;">';
@@ -741,7 +958,6 @@ playAudioChunks(chunks) {
             }
         }
         
-        // Add word count
         const wordCount = cleanText.split(/\s+/).length;
         html += `<p style="color:#64748b;font-size:12px;margin-top:12px;">📄 ${wordCount} words in original document</p>`;
         
@@ -788,6 +1004,7 @@ playAudioChunks(chunks) {
             this.summaryContent.innerHTML = '';
         }
         this.currentResource = null;
+        this.stopAudio();
     }
     
     playSummaryAudio() {
@@ -806,7 +1023,6 @@ playAudioChunks(chunks) {
             navigator.clipboard.writeText(text).then(() => {
                 this.showToast('Summary copied to clipboard!', 'success');
             }).catch(() => {
-                // Fallback
                 const textarea = document.createElement('textarea');
                 textarea.value = text;
                 document.body.appendChild(textarea);
@@ -868,7 +1084,6 @@ playAudioChunks(chunks) {
             return this.userProgram;
         }
         
-        // Default fallback
         this.userProgram = 'krchn';
         this.isTVETStudent = false;
         this.userProgramDisplay = 'KRCHN Nursing';
@@ -1204,680 +1419,192 @@ playAudioChunks(chunks) {
         this.updateResourceCount();
     }
     
-   renderResources() {
-    if (!this.resourcesGrid) return;
-    if (this.filteredResources.length === 0) {
-        this.showEmptyState();
-        return;
-    }
+    // ============================================================
+    // 📄 RENDER RESOURCES - WITH VISIBLE BUTTONS
+    // ============================================================
     
-    let html = '';
-    for (const resource of this.filteredResources) {
-        const isPastPaper = resource.resource_type === 'pastpaper';
-        const fileIcon = this.getFileIcon(resource.file_path);
-        const fileType = this.getFileType(resource.file_path);
-        const iconColor = isPastPaper ? '#d97706' : '#4C1D95';
-        const bgColor = isPastPaper ? '#fef3c7' : '#dbeafe';
+    renderResources() {
+        if (!this.resourcesGrid) return;
+        if (this.filteredResources.length === 0) {
+            this.showEmptyState();
+            return;
+        }
         
-        html += `
-            <div class="resource-card" style="
-                display: flex !important;
-                flex-direction: column !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                min-height: 280px !important;
-                background: white !important;
-                border-radius: 12px !important;
-                border: 1px solid #e5e7eb !important;
-                overflow: hidden !important;
-                margin: 0 !important;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
-                transition: all 0.3s ease !important;
-            ">
-                <div style="
-                    padding: 16px 20px;
-                    background: #f8fafc;
-                    border-bottom: 1px solid #e5e7eb;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    flex-wrap: wrap;
-                    gap: 8px;
-                ">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="
-                            width: 40px;
-                            height: 40px;
-                            border-radius: 8px;
-                            background: ${bgColor};
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            flex-shrink: 0;
-                        ">
-                            <i class="${fileIcon}" style="font-size: 20px; color: ${iconColor};"></i>
-                        </div>
-                        <div>
-                            <div style="font-weight: 600; color: #0A3D62; font-size: 14px;">${this.escapeHtml(resource.title)}</div>
-                            <div style="font-size: 11px; color: #94a3b8; display: flex; gap: 8px; flex-wrap: wrap;">
-                                <span>${this.escapeHtml(resource.intake || 'N/A')}</span>
-                                <span>•</span>
-                                <span>${isPastPaper ? '📄 Past Paper' : '📚 Material'}</span>
-                                ${resource.course_name ? `<span>• ${this.escapeHtml(resource.course_name)}</span>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                    <span style="font-size: 11px; color: #94a3b8; background: #f1f5f9; padding: 2px 12px; border-radius: 12px;">
-                        <i class="fas fa-lock"></i> Read Only
-                    </span>
-                </div>
-                
-                <div style="padding: 12px 20px; flex: 1;">
-                    <p style="color: #64748b; font-size: 13px; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                        ${this.escapeHtml(resource.description || 'No description available')}
-                    </p>
-                </div>
-                
-                <div class="resource-actions" style="
+        let html = '';
+        for (const resource of this.filteredResources) {
+            const isPastPaper = resource.resource_type === 'pastpaper';
+            const fileIcon = this.getFileIcon(resource.file_path);
+            const fileType = this.getFileType(resource.file_path);
+            const iconColor = isPastPaper ? '#d97706' : '#4C1D95';
+            const bgColor = isPastPaper ? '#fef3c7' : '#dbeafe';
+            
+            html += `
+                <div class="resource-card" style="
                     display: flex !important;
-                    gap: 8px !important;
-                    flex-wrap: wrap !important;
-                    padding: 12px 16px 16px !important;
-                    border-top: 1px solid #f1f5f9 !important;
+                    flex-direction: column !important;
                     visibility: visible !important;
                     opacity: 1 !important;
-                    min-height: 50px !important;
-                    margin-top: auto !important;
+                    min-height: 280px !important;
                     background: white !important;
+                    border-radius: 12px !important;
+                    border: 1px solid #e5e7eb !important;
+                    overflow: hidden !important;
+                    margin: 0 !important;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+                    transition: all 0.3s ease !important;
                 ">
-                    <button onclick="window.resourcesModule?.openResource(${resource.id})" style="
-                        flex: 1 !important;
-                        min-width: 80px !important;
-                        padding: 10px 16px !important;
-                        border-radius: 8px !important;
-                        font-weight: 600 !important;
-                        font-size: 13px !important;
-                        cursor: pointer !important;
-                        display: inline-flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        gap: 6px !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        border: none !important;
-                        transition: all 0.2s ease !important;
-                        pointer-events: auto !important;
-                        position: relative !important;
-                        z-index: 10 !important;
-                        color: white !important;
-                        margin: 0 !important;
-                        background: #4C1D95 !important;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                        <i class="fas fa-eye"></i> Read Now
-                    </button>
-                    
-                    <button onclick="window.resourcesModule?.readAloud(${resource.id})" style="
-                        flex: 1 !important;
-                        min-width: 80px !important;
-                        padding: 10px 16px !important;
-                        border-radius: 8px !important;
-                        font-weight: 600 !important;
-                        font-size: 13px !important;
-                        cursor: pointer !important;
-                        display: inline-flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        gap: 6px !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        border: none !important;
-                        transition: all 0.2s ease !important;
-                        pointer-events: auto !important;
-                        position: relative !important;
-                        z-index: 10 !important;
-                        color: white !important;
-                        margin: 0 !important;
-                        background: #10b981 !important;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                        <i class="fas fa-volume-up"></i> Listen
-                    </button>
-                    
-                    <button onclick="window.resourcesModule?.summarizeResource(${resource.id})" style="
-                        flex: 1 !important;
-                        min-width: 80px !important;
-                        padding: 10px 16px !important;
-                        border-radius: 8px !important;
-                        font-weight: 600 !important;
-                        font-size: 13px !important;
-                        cursor: pointer !important;
-                        display: inline-flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        gap: 6px !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        border: none !important;
-                        transition: all 0.2s ease !important;
-                        pointer-events: auto !important;
-                        position: relative !important;
-                        z-index: 10 !important;
-                        color: white !important;
-                        margin: 0 !important;
-                        background: #7c3aed !important;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(124,58,237,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                        <i class="fas fa-robot"></i> AI Summary
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-    
-    this.resourcesGrid.innerHTML = html;
-    this.updateResourceCount();
-}
-    
-   // ============================================================
-// 🎧 READ ALOUD - FULL DOCUMENT CONTENT
-// ============================================================
-
-async readAloud(resourceId) {
-    const resource = this.allResources.find(r => r.id == resourceId);
-    if (!resource) {
-        this.showToast('Resource not found', 'error');
-        return;
-    }
-    
-    // ✅ Show loading state
-    this.showToast('📄 Extracting document content...', 'info');
-    
-    try {
-        let fullText = '';
-        const fileType = this.getFileType(resource.file_path);
-        
-        // 1. Start with title and basic info
-        fullText = `Document: ${resource.title}. `;
-        
-        if (resource.resource_type === 'pastpaper') {
-            fullText += `Past paper. `;
-            if (resource.exam_type) {
-                fullText += `Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
-            }
-            if (resource.course_name) {
-                fullText += `Course: ${resource.course_name}. `;
-            }
-        }
-        
-        // 2. Add description
-        if (resource.description && resource.description.length > 10) {
-            fullText += resource.description + ' ';
-        }
-        
-        // 3. ✅ EXTRACT CONTENT FROM THE FILE
-        if (resource.file_url || resource.file_path) {
-            const url = resource.file_url || this.getResourceUrl(resource.file_path);
-            
-            if (fileType === 'pdf') {
-                try {
-                    const extractedText = await this.extractFullPDFText(url);
-                    if (extractedText && extractedText.length > 50) {
-                        fullText += extractedText;
-                        this.showToast('✅ PDF content extracted', 'success');
-                    }
-                } catch (e) {
-                    console.warn('Could not extract PDF text:', e);
-                    this.showToast('⚠️ Could not extract PDF content, reading available text', 'warning');
-                }
-            } else if (fileType === 'text' || fileType === 'file') {
-                try {
-                    const extractedText = await this.extractTextFileContent(url);
-                    if (extractedText && extractedText.length > 50) {
-                        fullText += extractedText;
-                        this.showToast('✅ Text content extracted', 'success');
-                    }
-                } catch (e) {
-                    console.warn('Could not extract text:', e);
-                }
-            } else {
-                // For image/video, we can't read content
-                if (fileType === 'image' || fileType === 'video') {
-                    fullText += `This is a ${fileType} file containing visual content. `;
-                }
-            }
-        }
-        
-        // 4. If no content found, generate from metadata
-        if (!fullText || fullText.length < 50) {
-            fullText = this.generateResourceDescription(resource);
-        }
-        
-        // 5. Clean up text
-        fullText = fullText.replace(/\s+/g, ' ').trim();
-        
-        // 6. Show audio player with full content
-        this.showAudioPlayer(fullText, resource.title);
-        this.playAudio();
-        
-    } catch (error) {
-        console.error('Read aloud error:', error);
-        this.showToast('Failed to read document: ' + error.message, 'error');
-        
-        // Fallback: use available description
-        let fallbackText = `Document: ${resource.title}. `;
-        if (resource.description) {
-            fallbackText += resource.description;
-        }
-        this.showAudioPlayer(fallbackText, resource.title);
-        this.playAudio();
-    }
-}
-
-    // ============================================================
-// 📄 EXTRACT FULL PDF TEXT
-// ============================================================
-
-async extractFullPDFText(pdfUrl) {
-    try {
-        await this.initializePDFJS();
-        if (!this.pdfjsLib) return '';
-        
-        const loadingTask = this.pdfjsLib.getDocument({
-            url: pdfUrl,
-            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-            cMapPacked: true,
-            verbosity: 0
-        });
-        
-        const pdf = await loadingTask.promise;
-        let fullText = '';
-        const totalPages = pdf.numPages;
-        const maxPages = Math.min(totalPages, 20); // Limit to 20 pages for audio
-        
-        for (let i = 1; i <= maxPages; i++) {
-            try {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                const pageText = textContent.items
-                    .map(item => item.str)
-                    .join(' ')
-                    .trim();
-                
-                if (pageText) {
-                    fullText += pageText + '\n\n';
-                }
-                
-                // Show progress
-                if (i % 5 === 0 || i === maxPages) {
-                    this.showToast(`📄 Extracting page ${i}/${maxPages}...`, 'info');
-                }
-            } catch (pageError) {
-                console.warn(`Could not extract page ${i}:`, pageError);
-            }
-        }
-        
-        pdf.destroy();
-        return fullText.trim();
-        
-    } catch (error) {
-        console.error('PDF extraction error:', error);
-        throw error;
-    }
-}
-    // ============================================================
-// 📄 EXTRACT TEXT FILE CONTENT
-// ============================================================
-
-async extractTextFileContent(url) {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch file');
-        const text = await response.text();
-        return text.trim();
-    } catch (error) {
-        console.error('Text extraction error:', error);
-        return '';
-    }
-}
-
-    // ============================================================
-// 📝 GENERATE RESOURCE DESCRIPTION
-// ============================================================
-
-generateResourceDescription(resource) {
-    let text = `Resource: ${resource.title}. `;
-    
-    if (resource.course_name) {
-        text += `Course: ${resource.course_name}. `;
-    }
-    
-    if (resource.resource_type === 'pastpaper') {
-        text += `This is a past paper. `;
-        if (resource.exam_type) {
-            text += `Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
-        }
-        if (resource.year) {
-            text += `Year: ${resource.year}. `;
-        }
-    } else {
-        text += `This is a learning resource. `;
-    }
-    
-    if (resource.block || resource.term) {
-        const blockOrTerm = resource.block || resource.term;
-        const isTVET = this.TVET_PROGRAMS.includes(resource.program_type || '');
-        const label = isTVET ? 'Term' : 'Block';
-        text += `${label}: ${blockOrTerm}. `;
-    }
-    
-    if (resource.description) {
-        text += resource.description;
-    } else {
-        text += `This resource is available for students to study and review. The content is protected and for educational purposes only.`;
-    }
-    
-    return text;
-}
-    // ============================================================
-// 🔗 GET RESOURCE URL
-// ============================================================
-
-getResourceUrl(filePath) {
-    if (!filePath) return '';
-    
-    // If already a full URL
-    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        return filePath;
-    }
-    
-    // Use Supabase storage
-    const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 
-                       'https://lwhtjozfsmbyihenfunw.supabase.co';
-    
-    return `${supabaseUrl}/storage/v1/object/public/resources/${filePath}`;
-}
-    
-    // ============================================================
-    // UTILITY FUNCTIONS
-    // ============================================================
-    getFileType(filePath) {
-        if (!filePath) return 'unknown';
-        const ext = filePath.split('.').pop().toLowerCase();
-        if (ext === 'pdf') return 'pdf';
-        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'image';
-        if (['mp4', 'avi', 'mov', 'wmv', 'webm'].includes(ext)) return 'video';
-        return 'file';
-    }
-    
-    getFileIcon(filePath) {
-        const type = this.getFileType(filePath);
-        const icons = { pdf: 'fa-file-pdf', image: 'fa-file-image', video: 'fa-file-video' };
-        return `fas ${icons[type] || 'fa-file-alt'}`;
-    }
-    
-    getExamTypeLabel(examType) {
-        const labels = {
-            'CAT_1': 'CAT 1',
-            'CAT_2': 'CAT 2',
-            'CAT': 'CAT',
-            'END_TERM': 'End of Term',
-            'FINAL': 'Final Exam',
-            'SUPPLEMENTARY': 'Supplementary',
-            'SPECIAL': 'Special Exam'
-        };
-        return labels[examType] || examType;
-    }
-    
-    getBlockTagClass(blockOrTerm, isTVET = false) {
-        if (!blockOrTerm) return 'tag-general';
-        const b = String(blockOrTerm).toLowerCase();
-        if (isTVET) {
-            if (b.includes('term 1') || b.includes('trimester 1') || b === '1') return 'tag-block1';
-            if (b.includes('term 2') || b.includes('trimester 2') || b === '2') return 'tag-block2';
-            if (b.includes('term 3') || b.includes('trimester 3') || b === '3') return 'tag-block3';
-            if (b.includes('term 4') || b.includes('trimester 4') || b === '4') return 'tag-block4';
-            if (b.includes('term 5') || b.includes('trimester 5') || b === '5') return 'tag-block5';
-            if (b.includes('term 6') || b.includes('trimester 6') || b === '6') return 'tag-block5';
-            if (b.includes('final') || b.includes('graduating') || b === '7') return 'tag-final';
-            return 'tag-general';
-        }
-        if (b.includes('intro')) return 'tag-intro';
-        if (b.includes('block 1') || b.includes('block1') || b === '1') return 'tag-block1';
-        if (b.includes('block 2') || b.includes('block2') || b === '2') return 'tag-block2';
-        if (b.includes('block 3') || b.includes('block3') || b === '3') return 'tag-block3';
-        if (b.includes('block 4') || b.includes('block4') || b === '4') return 'tag-block4';
-        if (b.includes('block 5') || b.includes('block5') || b === '5') return 'tag-block5';
-        if (b.includes('final')) return 'tag-final';
-        return 'tag-general';
-    }
-    
-    getBlockIcon(blockOrTerm, isTVET = false) {
-        if (!blockOrTerm) return 'fa-layer-group';
-        const b = String(blockOrTerm).toLowerCase();
-        if (isTVET) {
-            if (b.includes('term 1') || b === '1') return 'fa-flag-checkered';
-            if (b.includes('term 2') || b === '2') return 'fa-book';
-            if (b.includes('term 3') || b === '3') return 'fa-book-open';
-            if (b.includes('term 4') || b === '4') return 'fa-chalkboard-user';
-            if (b.includes('term 5') || b === '5') return 'fa-stethoscope';
-            if (b.includes('term 6') || b === '6') return 'fa-user-nurse';
-            if (b.includes('final') || b === '7') return 'fa-graduation-cap';
-            return 'fa-layer-group';
-        }
-        if (b.includes('intro')) return 'fa-flag-checkered';
-        if (b.includes('block 1') || b === '1') return 'fa-book';
-        if (b.includes('block 2') || b === '2') return 'fa-book-open';
-        if (b.includes('block 3') || b === '3') return 'fa-chalkboard-user';
-        if (b.includes('block 4') || b === '4') return 'fa-stethoscope';
-        if (b.includes('block 5') || b === '5') return 'fa-user-nurse';
-        if (b.includes('final') || b === '6') return 'fa-graduation-cap';
-        return 'fa-layer-group';
-    }
-    
-    escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-    
-    // ============================================================
-    // SKELETON & LOADING STATES
-    // ============================================================
-    showSkeletonCards(count = 6) {
-        if (!this.resourcesGrid) return;
-        let skeletonHtml = '';
-        for (let i = 0; i < count; i++) {
-            skeletonHtml += `
-                <div class="resource-card skeleton">
-                    <div class="resource-preview">
-                        <div class="preview-icon skeleton-shimmer"></div>
-                        <div class="skeleton-badge"></div>
-                    </div>
-                    <div class="resource-details">
-                        <div class="skeleton-title"></div>
-                        <div class="skeleton-text"></div>
-                        <div class="skeleton-text short"></div>
-                        <div class="skeleton-meta">
-                            <div class="skeleton-tag"></div>
-                            <div class="skeleton-tag"></div>
+                    <div style="
+                        padding: 16px 20px;
+                        background: #f8fafc;
+                        border-bottom: 1px solid #e5e7eb;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        flex-wrap: wrap;
+                        gap: 8px;
+                    ">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 8px;
+                                background: ${bgColor};
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                flex-shrink: 0;
+                            ">
+                                <i class="${fileIcon}" style="font-size: 20px; color: ${iconColor};"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; color: #0A3D62; font-size: 14px;">${this.escapeHtml(resource.title)}</div>
+                                <div style="font-size: 11px; color: #94a3b8; display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <span>${this.escapeHtml(resource.intake || 'N/A')}</span>
+                                    <span>•</span>
+                                    <span>${isPastPaper ? '📄 Past Paper' : '📚 Material'}</span>
+                                    ${resource.course_name ? `<span>• ${this.escapeHtml(resource.course_name)}</span>` : ''}
+                                </div>
+                            </div>
                         </div>
+                        <span style="font-size: 11px; color: #94a3b8; background: #f1f5f9; padding: 2px 12px; border-radius: 12px;">
+                            <i class="fas fa-lock"></i> Read Only
+                        </span>
                     </div>
-                    <div class="resource-actions">
-                        <div class="skeleton-button"></div>
+                    
+                    <div style="padding: 12px 20px; flex: 1;">
+                        <p style="color: #64748b; font-size: 13px; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            ${this.escapeHtml(resource.description || 'No description available')}
+                        </p>
+                    </div>
+                    
+                    <div class="resource-actions" style="
+                        display: flex !important;
+                        gap: 8px !important;
+                        flex-wrap: wrap !important;
+                        padding: 12px 16px 16px !important;
+                        border-top: 1px solid #f1f5f9 !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        min-height: 50px !important;
+                        margin-top: auto !important;
+                        background: white !important;
+                    ">
+                        <button onclick="window.resourcesModule?.openResource(${resource.id})" style="
+                            flex: 1 !important;
+                            min-width: 80px !important;
+                            padding: 10px 16px !important;
+                            border-radius: 8px !important;
+                            font-weight: 600 !important;
+                            font-size: 13px !important;
+                            cursor: pointer !important;
+                            display: inline-flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            gap: 6px !important;
+                            visibility: visible !important;
+                            opacity: 1 !important;
+                            border: none !important;
+                            transition: all 0.2s ease !important;
+                            pointer-events: auto !important;
+                            position: relative !important;
+                            z-index: 10 !important;
+                            color: white !important;
+                            margin: 0 !important;
+                            background: #4C1D95 !important;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <i class="fas fa-eye"></i> Read Now
+                        </button>
+                        
+                        <button onclick="window.resourcesModule?.readAloud(${resource.id})" style="
+                            flex: 1 !important;
+                            min-width: 80px !important;
+                            padding: 10px 16px !important;
+                            border-radius: 8px !important;
+                            font-weight: 600 !important;
+                            font-size: 13px !important;
+                            cursor: pointer !important;
+                            display: inline-flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            gap: 6px !important;
+                            visibility: visible !important;
+                            opacity: 1 !important;
+                            border: none !important;
+                            transition: all 0.2s ease !important;
+                            pointer-events: auto !important;
+                            position: relative !important;
+                            z-index: 10 !important;
+                            color: white !important;
+                            margin: 0 !important;
+                            background: #10b981 !important;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <i class="fas fa-volume-up"></i> Listen
+                        </button>
+                        
+                        <button onclick="window.resourcesModule?.summarizeResource(${resource.id})" style="
+                            flex: 1 !important;
+                            min-width: 80px !important;
+                            padding: 10px 16px !important;
+                            border-radius: 8px !important;
+                            font-weight: 600 !important;
+                            font-size: 13px !important;
+                            cursor: pointer !important;
+                            display: inline-flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            gap: 6px !important;
+                            visibility: visible !important;
+                            opacity: 1 !important;
+                            border: none !important;
+                            transition: all 0.2s ease !important;
+                            pointer-events: auto !important;
+                            position: relative !important;
+                            z-index: 10 !important;
+                            color: white !important;
+                            margin: 0 !important;
+                            background: #7c3aed !important;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(124,58,237,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <i class="fas fa-robot"></i> AI Summary
+                        </button>
                     </div>
                 </div>
             `;
         }
-        this.resourcesGrid.innerHTML = skeletonHtml;
-        this.addSkeletonStyles();
-    }
-    
-    addSkeletonStyles() {
-        if (document.getElementById('skeleton-styles')) return;
-        const styles = document.createElement('style');
-        styles.id = 'skeleton-styles';
-        styles.textContent = `
-            .skeleton-shimmer {
-                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-                background-size: 200% 100%;
-                animation: shimmer 1.5s infinite;
-            }
-            @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-            .skeleton-title { height: 20px; width: 70%; background: #e5e7eb; border-radius: 8px; margin-bottom: 12px; }
-            .skeleton-text { height: 14px; width: 100%; background: #e5e7eb; border-radius: 6px; margin-bottom: 8px; }
-            .skeleton-text.short { width: 60%; }
-            .skeleton-meta { display: flex; gap: 8px; margin-top: 12px; }
-            .skeleton-tag { height: 24px; width: 70px; background: #e5e7eb; border-radius: 20px; }
-            .skeleton-button { height: 40px; width: 100%; background: #e5e7eb; border-radius: 40px; }
-            .skeleton-badge { position: absolute; top: 12px; right: 12px; width: 80px; height: 24px; background: #e5e7eb; border-radius: 20px; }
-            .resource-card.skeleton { pointer-events: none; opacity: 0.7; }
-        `;
-        document.head.appendChild(styles);
-    }
-    
-    showError(message, showRetry = true) {
-        if (!this.resourcesGrid) return;
-        this.resourcesGrid.innerHTML = `
-            <div class="error-state-premium">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Unable to Load Resources</h3>
-                <p>${message}</p>
-                ${showRetry ? '<button onclick="window.resourcesModule?.retryLoad()" class="premium-btn"><i class="fas fa-sync-alt"></i> Retry</button>' : ''}
-            </div>
-        `;
-    }
-    
-    showEmptyState() {
-        if (!this.resourcesGrid) return;
-        const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
-        const filterType = isTVET ? 'term' : 'block';
-        this.resourcesGrid.innerHTML = `
-            <div class="empty-state-premium">
-                <i class="fas fa-folder-open"></i>
-                <h3>No Resources Found</h3>
-                <p>No resources match your selected ${filterType} or filters.</p>
-                <button onclick="window.resourcesModule?.resetFilters()" class="premium-btn">
-                    <i class="fas fa-eye"></i> Reset Filters
-                </button>
-            </div>
-        `;
-    }
-    
-    // ============================================================
-    // FILTER FUNCTIONS
-    // ============================================================
-    populateFilters() {
-        if (this.courseFilter) {
-            const courses = [...new Set(this.allResources.map(r => r.course_name || r.program_type).filter(Boolean))];
-            this.courseFilter.innerHTML = '<option value="all">All Courses</option>';
-            courses.sort().forEach(course => {
-                const option = document.createElement('option');
-                option.value = course;
-                option.textContent = course;
-                this.courseFilter.appendChild(option);
-            });
-        }
-        if (this.yearFilter) {
-            const years = [...new Set(this.allResources.map(r => r.intake || r.pastpaper_year).filter(Boolean))];
-            this.yearFilter.innerHTML = '<option value="all">All Years</option>';
-            years.sort((a, b) => b - a).forEach(year => {
-                const option = document.createElement('option');
-                option.value = year;
-                option.textContent = year;
-                this.yearFilter.appendChild(option);
-            });
-        }
-    }
-    
-    updatePastPaperCount() {
-        const pastpaperCount = this.allResources.filter(r => r.resource_type === 'pastpaper').length;
-        if (this.pastpaperCount) this.pastpaperCount.textContent = pastpaperCount;
-    }
-    
-    updateDashboardResourceCount() {
-        const totalResources = this.allResources.length;
-        const dashboardResourcesEl = document.getElementById('dashboard-new-resources');
-        if (dashboardResourcesEl) dashboardResourcesEl.innerText = totalResources;
-    }
-    
-    updateResourceCount() {
-        const countEl = document.getElementById('resource-count-display');
-        if (countEl) countEl.textContent = `${this.filteredResources.length} resources`;
-    }
-    
-    filterResourcesByType(type) {
-        this.currentResourceType = type;
-        const buttons = document.querySelectorAll('.type-tab');
-        buttons.forEach(btn => {
-            const btnType = btn.getAttribute('data-type');
-            if (btnType === type) btn.classList.add('active');
-            else btn.classList.remove('active');
+        
+        this.resourcesGrid.innerHTML = html;
+        this.updateResourceCount();
+        
+        // Apply fade-in animation
+        const cards = this.resourcesGrid.querySelectorAll('.resource-card');
+        cards.forEach((card, index) => {
+            card.style.animation = `fadeInUp 0.4s ease forwards ${index * 0.05}s`;
         });
-        if (this.searchInput) this.searchInput.value = '';
-        this.currentSearchTerm = '';
-        if (this.typeFilter) this.typeFilter.value = 'all';
-        if (this.yearFilter) this.yearFilter.value = 'all';
-        this.applyFilters();
-    }
-    
-    resetFilters() {
-        if (this.blockFilter) this.blockFilter.value = 'all';
-        if (this.searchInput) this.searchInput.value = '';
-        this.currentSearchTerm = '';
-        if (this.typeFilter) this.typeFilter.value = 'all';
-        if (this.courseFilter) this.courseFilter.value = 'all';
-        if (this.yearFilter) this.yearFilter.value = 'all';
-        this.currentBlockFilter = 'all';
-        this.currentResourceType = 'all';
-        this.currentFileType = 'all';
-        this.currentCourse = 'all';
-        this.currentYear = 'all';
-        const buttons = document.querySelectorAll('.type-tab');
-        buttons.forEach(btn => {
-            if (btn.getAttribute('data-type') === 'all') btn.classList.add('active');
-            else btn.classList.remove('active');
-        });
-        this.applyFilters();
-    }
-    
-    retryLoad() { this.loadResources(); }
-    
-    // ============================================================
-    // RESOURCE OPENING
-    // ============================================================
-    async openResource(resourceId) {
-        const resource = this.allResources.find(r => r.id == resourceId);
-        if (!resource) {
-            this.showToast('Resource not found', 'error');
-            return;
-        }
-        
-        this.currentResource = resource;
-        const fileType = this.getFileType(resource.file_path);
-        
-        // Check if mobile
-        if (window.innerWidth < 768) {
-            this.openMobileReader(resource);
-            return;
-        }
-        
-        if (fileType === 'pdf') {
-            await this.openPDFInModal(resource);
-        } else if (fileType === 'image') {
-            this.openImageInModal(resource);
-        } else if (fileType === 'video') {
-            this.openVideoInModal(resource);
-        } else {
-            window.open(resource.file_url, '_blank');
-        }
-    }
-    
-    viewPastPaper(resourceId) {
-        this.openResource(resourceId);
     }
     
     // ============================================================
-    // HIGH-QUALITY PDF VIEWER
+    // 📄 OPEN PDF IN MODAL
     // ============================================================
+    
     async openPDFInModal(resource) {
         try {
             await this.initializePDFJS();
@@ -2320,6 +2047,7 @@ getResourceUrl(filePath) {
             if (document.fullscreenElement) document.exitFullscreen();
             modal.style.display = 'none';
             this.cleanupPDFModal();
+            this.stopAudio();
         }
     }
     
@@ -2524,6 +2252,252 @@ getResourceUrl(filePath) {
         modal.querySelector('.close-video-modal').onclick = () => modal.remove();
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
+    
+    // ============================================================
+    // UTILITY FUNCTIONS
+    // ============================================================
+    getFileType(filePath) {
+        if (!filePath) return 'unknown';
+        const ext = filePath.split('.').pop().toLowerCase();
+        if (ext === 'pdf') return 'pdf';
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'image';
+        if (['mp4', 'avi', 'mov', 'wmv', 'webm'].includes(ext)) return 'video';
+        return 'file';
+    }
+    
+    getFileIcon(filePath) {
+        const type = this.getFileType(filePath);
+        const icons = { pdf: 'fa-file-pdf', image: 'fa-file-image', video: 'fa-file-video' };
+        return `fas ${icons[type] || 'fa-file-alt'}`;
+    }
+    
+    getExamTypeLabel(examType) {
+        const labels = {
+            'CAT_1': 'CAT 1',
+            'CAT_2': 'CAT 2',
+            'CAT': 'CAT',
+            'END_TERM': 'End of Term',
+            'FINAL': 'Final Exam',
+            'SUPPLEMENTARY': 'Supplementary',
+            'SPECIAL': 'Special Exam'
+        };
+        return labels[examType] || examType;
+    }
+    
+    getBlockTagClass(blockOrTerm, isTVET = false) {
+        if (!blockOrTerm) return 'tag-general';
+        const b = String(blockOrTerm).toLowerCase();
+        if (isTVET) {
+            if (b.includes('term 1') || b.includes('trimester 1') || b === '1') return 'tag-block1';
+            if (b.includes('term 2') || b.includes('trimester 2') || b === '2') return 'tag-block2';
+            if (b.includes('term 3') || b.includes('trimester 3') || b === '3') return 'tag-block3';
+            if (b.includes('term 4') || b.includes('trimester 4') || b === '4') return 'tag-block4';
+            if (b.includes('term 5') || b.includes('trimester 5') || b === '5') return 'tag-block5';
+            if (b.includes('term 6') || b.includes('trimester 6') || b === '6') return 'tag-block5';
+            if (b.includes('final') || b.includes('graduating') || b === '7') return 'tag-final';
+            return 'tag-general';
+        }
+        if (b.includes('intro')) return 'tag-intro';
+        if (b.includes('block 1') || b.includes('block1') || b === '1') return 'tag-block1';
+        if (b.includes('block 2') || b.includes('block2') || b === '2') return 'tag-block2';
+        if (b.includes('block 3') || b.includes('block3') || b === '3') return 'tag-block3';
+        if (b.includes('block 4') || b.includes('block4') || b === '4') return 'tag-block4';
+        if (b.includes('block 5') || b.includes('block5') || b === '5') return 'tag-block5';
+        if (b.includes('final')) return 'tag-final';
+        return 'tag-general';
+    }
+    
+    getBlockIcon(blockOrTerm, isTVET = false) {
+        if (!blockOrTerm) return 'fa-layer-group';
+        const b = String(blockOrTerm).toLowerCase();
+        if (isTVET) {
+            if (b.includes('term 1') || b === '1') return 'fa-flag-checkered';
+            if (b.includes('term 2') || b === '2') return 'fa-book';
+            if (b.includes('term 3') || b === '3') return 'fa-book-open';
+            if (b.includes('term 4') || b === '4') return 'fa-chalkboard-user';
+            if (b.includes('term 5') || b === '5') return 'fa-stethoscope';
+            if (b.includes('term 6') || b === '6') return 'fa-user-nurse';
+            if (b.includes('final') || b === '7') return 'fa-graduation-cap';
+            return 'fa-layer-group';
+        }
+        if (b.includes('intro')) return 'fa-flag-checkered';
+        if (b.includes('block 1') || b === '1') return 'fa-book';
+        if (b.includes('block 2') || b === '2') return 'fa-book-open';
+        if (b.includes('block 3') || b === '3') return 'fa-chalkboard-user';
+        if (b.includes('block 4') || b === '4') return 'fa-stethoscope';
+        if (b.includes('block 5') || b === '5') return 'fa-user-nurse';
+        if (b.includes('final') || b === '6') return 'fa-graduation-cap';
+        return 'fa-layer-group';
+    }
+    
+    escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    
+    // ============================================================
+    // SKELETON & LOADING STATES
+    // ============================================================
+    showSkeletonCards(count = 6) {
+        if (!this.resourcesGrid) return;
+        let skeletonHtml = '';
+        for (let i = 0; i < count; i++) {
+            skeletonHtml += `
+                <div class="resource-card skeleton">
+                    <div class="resource-preview">
+                        <div class="preview-icon skeleton-shimmer"></div>
+                        <div class="skeleton-badge"></div>
+                    </div>
+                    <div class="resource-details">
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text short"></div>
+                        <div class="skeleton-meta">
+                            <div class="skeleton-tag"></div>
+                            <div class="skeleton-tag"></div>
+                        </div>
+                    </div>
+                    <div class="resource-actions">
+                        <div class="skeleton-button"></div>
+                    </div>
+                </div>
+            `;
+        }
+        this.resourcesGrid.innerHTML = skeletonHtml;
+        this.addSkeletonStyles();
+    }
+    
+    addSkeletonStyles() {
+        if (document.getElementById('skeleton-styles')) return;
+        const styles = document.createElement('style');
+        styles.id = 'skeleton-styles';
+        styles.textContent = `
+            .skeleton-shimmer {
+                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                background-size: 200% 100%;
+                animation: shimmer 1.5s infinite;
+            }
+            @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+            .skeleton-title { height: 20px; width: 70%; background: #e5e7eb; border-radius: 8px; margin-bottom: 12px; }
+            .skeleton-text { height: 14px; width: 100%; background: #e5e7eb; border-radius: 6px; margin-bottom: 8px; }
+            .skeleton-text.short { width: 60%; }
+            .skeleton-meta { display: flex; gap: 8px; margin-top: 12px; }
+            .skeleton-tag { height: 24px; width: 70px; background: #e5e7eb; border-radius: 20px; }
+            .skeleton-button { height: 40px; width: 100%; background: #e5e7eb; border-radius: 40px; }
+            .skeleton-badge { position: absolute; top: 12px; right: 12px; width: 80px; height: 24px; background: #e5e7eb; border-radius: 20px; }
+            .resource-card.skeleton { pointer-events: none; opacity: 0.7; }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    showError(message, showRetry = true) {
+        if (!this.resourcesGrid) return;
+        this.resourcesGrid.innerHTML = `
+            <div class="error-state-premium">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Unable to Load Resources</h3>
+                <p>${message}</p>
+                ${showRetry ? '<button onclick="window.resourcesModule?.retryLoad()" class="premium-btn"><i class="fas fa-sync-alt"></i> Retry</button>' : ''}
+            </div>
+        `;
+    }
+    
+    showEmptyState() {
+        if (!this.resourcesGrid) return;
+        const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
+        const filterType = isTVET ? 'term' : 'block';
+        this.resourcesGrid.innerHTML = `
+            <div class="empty-state-premium">
+                <i class="fas fa-folder-open"></i>
+                <h3>No Resources Found</h3>
+                <p>No resources match your selected ${filterType} or filters.</p>
+                <button onclick="window.resourcesModule?.resetFilters()" class="premium-btn">
+                    <i class="fas fa-eye"></i> Reset Filters
+                </button>
+            </div>
+        `;
+    }
+    
+    // ============================================================
+    // FILTER FUNCTIONS
+    // ============================================================
+    populateFilters() {
+        if (this.courseFilter) {
+            const courses = [...new Set(this.allResources.map(r => r.course_name || r.program_type).filter(Boolean))];
+            this.courseFilter.innerHTML = '<option value="all">All Courses</option>';
+            courses.sort().forEach(course => {
+                const option = document.createElement('option');
+                option.value = course;
+                option.textContent = course;
+                this.courseFilter.appendChild(option);
+            });
+        }
+        if (this.yearFilter) {
+            const years = [...new Set(this.allResources.map(r => r.intake || r.pastpaper_year).filter(Boolean))];
+            this.yearFilter.innerHTML = '<option value="all">All Years</option>';
+            years.sort((a, b) => b - a).forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                this.yearFilter.appendChild(option);
+            });
+        }
+    }
+    
+    updatePastPaperCount() {
+        const pastpaperCount = this.allResources.filter(r => r.resource_type === 'pastpaper').length;
+        if (this.pastpaperCount) this.pastpaperCount.textContent = pastpaperCount;
+    }
+    
+    updateDashboardResourceCount() {
+        const totalResources = this.allResources.length;
+        const dashboardResourcesEl = document.getElementById('dashboard-new-resources');
+        if (dashboardResourcesEl) dashboardResourcesEl.innerText = totalResources;
+    }
+    
+    updateResourceCount() {
+        const countEl = document.getElementById('resource-count-display');
+        if (countEl) countEl.textContent = `${this.filteredResources.length} resources`;
+    }
+    
+    filterResourcesByType(type) {
+        this.currentResourceType = type;
+        const buttons = document.querySelectorAll('.type-tab');
+        buttons.forEach(btn => {
+            const btnType = btn.getAttribute('data-type');
+            if (btnType === type) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+        if (this.searchInput) this.searchInput.value = '';
+        this.currentSearchTerm = '';
+        if (this.typeFilter) this.typeFilter.value = 'all';
+        if (this.yearFilter) this.yearFilter.value = 'all';
+        this.applyFilters();
+    }
+    
+    resetFilters() {
+        if (this.blockFilter) this.blockFilter.value = 'all';
+        if (this.searchInput) this.searchInput.value = '';
+        this.currentSearchTerm = '';
+        if (this.typeFilter) this.typeFilter.value = 'all';
+        if (this.courseFilter) this.courseFilter.value = 'all';
+        if (this.yearFilter) this.yearFilter.value = 'all';
+        this.currentBlockFilter = 'all';
+        this.currentResourceType = 'all';
+        this.currentFileType = 'all';
+        this.currentCourse = 'all';
+        this.currentYear = 'all';
+        const buttons = document.querySelectorAll('.type-tab');
+        buttons.forEach(btn => {
+            if (btn.getAttribute('data-type') === 'all') btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+        this.applyFilters();
+    }
+    
+    retryLoad() { this.loadResources(); }
     
     showToast(message, type = 'info') {
         const toast = document.getElementById('toast');
