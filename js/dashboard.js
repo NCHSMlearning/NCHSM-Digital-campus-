@@ -9,6 +9,7 @@
 // 6. ✅ Navigation working
 // 7. ✅ My Units support
 // 8. ✅ Uses total_points from RPC
+// 9. ✅ NURSEIQ POINTS DISPLAY FIXED - Shows 34 instead of 0
 // ============================================================
 
 class DashboardModule {
@@ -21,6 +22,7 @@ class DashboardModule {
         this.autoRefreshInterval = null;
         this.gamificationPoints = 0;
         this.totalPoints = 0;
+        this.nurseIQPoints = 0;
          
         this.CACHE_DURATION = 120000;
         this.cacheKey = null;
@@ -29,7 +31,7 @@ class DashboardModule {
             attendance: { rate: 0, verified: 0, total: 0, pending: 0, points: 0 },
             resources: 0,
             examCard: { approved: 0, eligible: false },
-            nurseiq: { progress: 0, accuracy: 0, questions: 0 },
+            nurseiq: { progress: 0, accuracy: 0, questions: 0, points: 0, score: 0 },
             courses: 0,
             exams: 'No upcoming exams',
             xp: { current: 0, max: 100, level: 1, percent: 0, total: 0 },
@@ -38,7 +40,8 @@ class DashboardModule {
             newsletter: { subscribed: false, latest: null },
             login: { count: 0, points: 0, streak: 0, maxStreak: 0, streakRestores: 0 },
             gamification: { points: 0, achievements: [] },
-            totalPoints: 0
+            totalPoints: 0,
+            nurseiqPoints: 0
         };
         
         this.cacheElements();
@@ -198,7 +201,8 @@ class DashboardModule {
             loginPointsDisplay: document.getElementById('login-points-display'),
             loginCountDisplay: document.getElementById('login-count-display'),
             totalPointsDisplay: document.getElementById('total-points-display'),
-            gamificationPointsDisplay: document.getElementById('gamification-points-display')
+            gamificationPointsDisplay: document.getElementById('gamification-points-display'),
+            nurseiqStatsDisplay: document.querySelector('.nurseiq-stats') || document.getElementById('nurseiq-stats')
         };
     }
     
@@ -364,7 +368,8 @@ class DashboardModule {
                 this.metrics.nurseiq = {
                     progress: e.detail.progress || 0,
                     accuracy: e.detail.accuracy || 0,
-                    questions: e.detail.totalQuestions || 0
+                    questions: e.detail.totalQuestions || 0,
+                    points: e.detail.points || 0
                 };
                 this.updateUIFromMetrics();
                 this.saveToCache();
@@ -431,7 +436,115 @@ class DashboardModule {
         await this.loadAllMetrics();
         this.startAutoRefresh();
         
+        // ✅ FIX: Ensure NurseIQ is displayed after loading
+        setTimeout(() => {
+            this.fixNurseIQDisplay();
+        }, 1500);
+        
         return true;
+    }
+    
+    // ============================================================
+    // 🔧 FIX NURSEIQ POINTS DISPLAY - ADD THIS METHOD
+    // ============================================================
+    
+    async fixNurseIQDisplay() {
+        console.log('🔧 Fixing NurseIQ display...');
+        
+        try {
+            if (!this.userId || !this.sb) {
+                console.warn('⚠️ Cannot fix NurseIQ: No userId or Supabase client');
+                return;
+            }
+            
+            // Get NurseIQ points from database directly
+            const { data, error } = await this.sb
+                .from('consolidated_user_profiles_table')
+                .select('nurseiq_points, total_points')
+                .eq('user_id', this.userId)
+                .single();
+            
+            if (error) {
+                console.error('Error fetching NurseIQ:', error);
+                return;
+            }
+            
+            const nurseiqPoints = data?.nurseiq_points || 0;
+            const totalPoints = data?.total_points || 0;
+            
+            console.log(`📊 Database NurseIQ: ${nurseiqPoints}`);
+            console.log(`📊 Database Total: ${totalPoints}`);
+            
+            // Store in metrics
+            this.nurseIQPoints = nurseiqPoints;
+            this.metrics.nurseiqPoints = nurseiqPoints;
+            this.metrics.totalPoints = totalPoints;
+            
+            if (this.metrics.nurseiq) {
+                this.metrics.nurseiq.points = nurseiqPoints;
+            }
+            
+            // ✅ Update the UI elements directly
+            if (this.elements.nurseiqPoints) {
+                this.elements.nurseiqPoints.innerText = nurseiqPoints;
+                console.log(`✅ NurseIQ points set to: ${nurseiqPoints}`);
+            } else {
+                console.warn('⚠️ NurseIQ points element not found');
+            }
+            
+            if (this.elements.totalPointsDisplay) {
+                this.elements.totalPointsDisplay.innerText = totalPoints;
+                console.log(`✅ Total points set to: ${totalPoints}`);
+            }
+            
+            // ✅ Update the XP stats
+            this.updateNurseIQStats(nurseiqPoints);
+            
+            // ✅ Update gamification display too
+            if (this.elements.gamificationPointsDisplay) {
+                this.elements.gamificationPointsDisplay.innerText = this.gamificationPoints || 0;
+            }
+            
+        } catch (error) {
+            console.error('Error fixing NurseIQ display:', error);
+        }
+    }
+    
+    // ============================================================
+    // 📊 UPDATE NURSEIQ STATS IN THE UI
+    // ============================================================
+    
+    updateNurseIQStats(points) {
+        console.log('📊 Updating NurseIQ stats...');
+        
+        // Update the NurseIQ card if it exists
+        const nurseiqCard = document.querySelector('.mini-card[data-tab="nurseiq"]') || 
+                           document.querySelector('.nurseiq-card');
+        if (nurseiqCard) {
+            const valueElement = nurseiqCard.querySelector('.stat-value') || 
+                               nurseiqCard.querySelector('.value') || 
+                               nurseiqCard.querySelector('.points');
+            if (valueElement) {
+                valueElement.textContent = `${points} pts`;
+                console.log(`✅ Updated NurseIQ card to: ${points} pts`);
+            }
+        }
+        
+        // Update XP stats area
+        const xpStats = document.querySelector('.xp-stats') || document.querySelector('.stats-grid');
+        if (xpStats) {
+            const items = xpStats.querySelectorAll('.stat-item');
+            items.forEach(item => {
+                const label = item.querySelector('.stat-label') || item.querySelector('.label');
+                if (label && label.textContent.toLowerCase().includes('nurseiq')) {
+                    const value = item.querySelector('.stat-value') || item.querySelector('.value');
+                    if (value) {
+                        value.textContent = `${points} pts`;
+                        console.log(`✅ Updated XP stat to: ${points} pts`);
+                    }
+                }
+            });
+        }
     }
     
     // ============================================================
@@ -444,7 +557,7 @@ class DashboardModule {
         try {
             const { data, error } = await this.sb
                 .from('consolidated_user_profiles_table')
-                .select('gamification_points, earned_badges, total_points')
+                .select('gamification_points, earned_badges, total_points, nurseiq_points')
                 .eq('user_id', this.userId)
                 .single();
             
@@ -452,12 +565,21 @@ class DashboardModule {
             
             this.gamificationPoints = data?.gamification_points || 0;
             this.totalPoints = data?.total_points || 0;
+            this.nurseIQPoints = data?.nurseiq_points || 0;
+            
             this.metrics.gamification.points = this.gamificationPoints;
             this.metrics.gamification.achievements = data?.earned_badges || [];
             this.metrics.totalPoints = this.totalPoints;
+            this.metrics.nurseiqPoints = this.nurseIQPoints;
+            
+            if (this.metrics.nurseiq) {
+                this.metrics.nurseiq.points = this.nurseIQPoints;
+            }
             
             console.log(`🏆 Gamification points: ${this.gamificationPoints}`);
             console.log(`💰 Total points: ${this.totalPoints}`);
+            console.log(`🧠 NurseIQ points: ${this.nurseIQPoints}`);
+            
             return this.gamificationPoints;
             
         } catch (error) {
@@ -479,7 +601,7 @@ class DashboardModule {
         // Fallback calculation
         const loginPoints = (this.metrics.login?.count || 0) * 10;
         const attendancePoints = (this.metrics.attendance?.verified || 0) * 10;
-        const nurseIQPoints = this.metrics.nurseiq?.questions || 0;
+        const nurseIQPoints = this.metrics.nurseiq?.points || this.nurseIQPoints || 0;
         const gamificationPoints = this.gamificationPoints || 0;
         
         return loginPoints + attendancePoints + nurseIQPoints + gamificationPoints;
@@ -835,126 +957,135 @@ class DashboardModule {
     // 📊 LOAD FRESH DATA - FIXED TO USE RPC DATA
     // ============================================================
     
-   async loadFreshData() {
-    console.log('📊 Loading fresh dashboard data...');
-    
-    try {
-        const { data, error } = await this.sb.rpc('get_student_dashboard', {
-            p_user_id: this.userId
-        });
+    async loadFreshData() {
+        console.log('📊 Loading fresh dashboard data...');
         
-        if (error) throw error;
-        
-        // ✅ Store total points from RPC
-        this.metrics.totalPoints = data?.total_points || 0;
-        this.totalPoints = this.metrics.totalPoints;
-        
-        // ✅ Store gamification data
-        this.gamificationPoints = data?.gamification?.points || 0;
-        this.metrics.gamification = {
-            points: this.gamificationPoints,
-            achievements: data?.gamification?.badges || []
-        };
-        
-        // ✅ Login data
-        const loginCount = data?.login?.count || 0;
-        const loginPoints = data?.login?.points || 0;
-        
-        this.metrics.login = { 
-            count: loginCount, 
-            points: loginPoints, 
-            streak: data?.login?.streak || 0,
-            maxStreak: data?.login?.maxStreak || 0,
-            streakRestores: data?.login?.restores || 0
-        };
-        
-        // Attendance data
-        this.metrics.attendance = data.attendance || { 
-            rate: 0, verified: 0, total: 0, pending: 0, points: 0 
-        };
-        this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
-        
-        // Exam card data
-        this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
-        
-        // ✅ FIXED: NurseIQ data - PRESERVE ALL FIELDS
-        this.metrics.nurseiq = {
-            questions: data?.nurseiq?.questions || 0,
-            score: data?.nurseiq?.score || 0,
-            accuracy: data?.nurseiq?.accuracy || 0,
-            progress: data?.nurseiq?.progress || 0,
-            points: data?.nurseiq?.points || 0  // ✅ ADDED
-        };
-        
-        // If progress is 0 but questions > 0, calculate it
-        if (this.metrics.nurseiq.questions > 0 && this.metrics.nurseiq.progress === 0) {
-            this.metrics.nurseiq.progress = Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100);
-        }
-        
-        console.log('📊 NurseIQ loaded:', this.metrics.nurseiq);
-        
-        // XP data
-        this.metrics.xp = data.xp || { 
-            current: 0, 
-            max: 100, 
-            level: 1, 
-            percent: 0, 
-            total: 0 
-        };
-        this.metrics.xp.percent = (this.metrics.xp.current / this.metrics.xp.max) * 100;
-        
-        // Exam data
-        this.metrics.exams = data?.exam?.title || 'No upcoming exams';
-        this.metrics.resources = data?.resources || 0;
-        this.metrics.courses = data?.examCard?.approved || 0;
-        
-        console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
-        console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
-        console.log(`📊 Level from RPC: ${this.metrics.xp.level}`);
-        console.log(`🔥 Streak from RPC: ${this.metrics.login.streak}`);
-        
-        // Load reviews and newsletter
-        await this.loadReviewsSnapshot();
-        await this.loadNewsletterSnapshot();
-        
-        // ✅ Update UI
-        this.saveToCache();
-        this.updateUIFromMetrics();
-        this.updateStreakUI();
-        
-        // Update announcement
-        if (this.elements.announcementText) {
-            this.elements.announcementText.innerHTML = data?.announcement || 'Welcome to your dashboard!';
-        }
-        
-        // Update last updated time
-        if (this.elements.dashboardLastUpdated) {
-            const now = this.getKenyaNow();
-            this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true,
-                timeZone: 'Africa/Nairobi'
+        try {
+            const { data, error } = await this.sb.rpc('get_student_dashboard', {
+                p_user_id: this.userId
             });
+            
+            if (error) throw error;
+            
+            // ✅ Store total points from RPC
+            this.metrics.totalPoints = data?.total_points || 0;
+            this.totalPoints = this.metrics.totalPoints;
+            
+            // ✅ Store gamification data
+            this.gamificationPoints = data?.gamification?.points || 0;
+            this.metrics.gamification = {
+                points: this.gamificationPoints,
+                achievements: data?.gamification?.badges || []
+            };
+            
+            // ✅ Login data
+            const loginCount = data?.login?.count || 0;
+            const loginPoints = data?.login?.points || 0;
+            
+            this.metrics.login = { 
+                count: loginCount, 
+                points: loginPoints, 
+                streak: data?.login?.streak || 0,
+                maxStreak: data?.login?.maxStreak || 0,
+                streakRestores: data?.login?.restores || 0
+            };
+            
+            // Attendance data
+            this.metrics.attendance = data.attendance || { 
+                rate: 0, verified: 0, total: 0, pending: 0, points: 0 
+            };
+            this.metrics.attendance.points = (this.metrics.attendance.verified || 0) * 10;
+            
+            // Exam card data
+            this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
+            
+            // ✅ FIXED: NurseIQ data - PRESERVE ALL FIELDS
+            this.metrics.nurseiq = {
+                questions: data?.nurseiq?.questions || 0,
+                score: data?.nurseiq?.score || 0,
+                accuracy: data?.nurseiq?.accuracy || 0,
+                progress: data?.nurseiq?.progress || 0,
+                points: data?.nurseiq?.points || 0
+            };
+            
+            // Store NurseIQ points separately for easy access
+            this.nurseIQPoints = this.metrics.nurseiq.points;
+            this.metrics.nurseiqPoints = this.nurseIQPoints;
+            
+            // If progress is 0 but questions > 0, calculate it
+            if (this.metrics.nurseiq.questions > 0 && this.metrics.nurseiq.progress === 0) {
+                this.metrics.nurseiq.progress = Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100);
+            }
+            
+            console.log('📊 NurseIQ loaded:', this.metrics.nurseiq);
+            console.log('🧠 NurseIQ Points:', this.nurseIQPoints);
+            
+            // XP data
+            this.metrics.xp = data.xp || { 
+                current: 0, 
+                max: 100, 
+                level: 1, 
+                percent: 0, 
+                total: 0 
+            };
+            this.metrics.xp.percent = (this.metrics.xp.current / this.metrics.xp.max) * 100;
+            
+            // Exam data
+            this.metrics.exams = data?.exam?.title || 'No upcoming exams';
+            this.metrics.resources = data?.resources || 0;
+            this.metrics.courses = data?.examCard?.approved || 0;
+            
+            console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
+            console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
+            console.log(`📊 Level from RPC: ${this.metrics.xp.level}`);
+            console.log(`🔥 Streak from RPC: ${this.metrics.login.streak}`);
+            console.log(`🧠 NurseIQ Points from RPC: ${this.nurseIQPoints}`);
+            
+            // Load reviews and newsletter
+            await this.loadReviewsSnapshot();
+            await this.loadNewsletterSnapshot();
+            
+            // ✅ Update UI
+            this.saveToCache();
+            this.updateUIFromMetrics();
+            this.updateStreakUI();
+            
+            // ✅ FIX: Force NurseIQ display
+            await this.fixNurseIQDisplay();
+            
+            // Update announcement
+            if (this.elements.announcementText) {
+                this.elements.announcementText.innerHTML = data?.announcement || 'Welcome to your dashboard!';
+            }
+            
+            // Update last updated time
+            if (this.elements.dashboardLastUpdated) {
+                const now = this.getKenyaNow();
+                this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true,
+                    timeZone: 'Africa/Nairobi'
+                });
+            }
+            
+            // Update exams
+            await this.updateExamsMetric();
+            
+            console.log('✅ Dashboard loaded from DATABASE');
+            
+            // Load leaderboard and next class
+            await Promise.all([
+                this.loadLeaderboardData('all'),
+                this.loadQuickNextClass()
+            ]);
+            
+        } catch (error) {
+            console.error('Dashboard error:', error);
+            await this.loadIndividualMetrics();
         }
-        
-        // Update exams
-        await this.updateExamsMetric();
-        
-        console.log('✅ Dashboard loaded from DATABASE');
-        
-        // Load leaderboard and next class
-        await Promise.all([
-            this.loadLeaderboardData('all'),
-            this.loadQuickNextClass()
-        ]);
-        
-    } catch (error) {
-        console.error('Dashboard error:', error);
-        await this.loadIndividualMetrics();
     }
-}
     
     // ============================================================
     // 🔄 INDIVIDUAL METRICS (FALLBACK)
@@ -967,13 +1098,14 @@ class DashboardModule {
             try {
                 const { data: profileData } = await this.sb
                     .from('consolidated_user_profiles_table')
-                    .select('login_count, gamification_points, total_points')
+                    .select('login_count, gamification_points, total_points, nurseiq_points')
                     .eq('user_id', this.userId)
                     .single();
                 
                 const loginCount = profileData?.login_count || 0;
                 this.gamificationPoints = profileData?.gamification_points || 0;
                 this.metrics.totalPoints = profileData?.total_points || 0;
+                this.nurseIQPoints = profileData?.nurseiq_points || 0;
                 
                 const streakData = await this.calculateDailyStreak();
                 this.metrics.login = { 
@@ -984,6 +1116,9 @@ class DashboardModule {
                     streakRestores: streakData.restores
                 };
                 this.metrics.gamification.points = this.gamificationPoints;
+                this.metrics.nurseiqPoints = this.nurseIQPoints;
+                
+                console.log(`🧠 Fallback NurseIQ: ${this.nurseIQPoints}`);
             } catch (e) {
                 console.warn('Could not fetch profile data:', e);
             }
@@ -1003,6 +1138,9 @@ class DashboardModule {
         this.updateUIFromMetrics();
         this.updateStreakUI();
         this.saveToCache();
+        
+        // ✅ FIX: Force NurseIQ display after fallback
+        await this.fixNurseIQDisplay();
     }
     
     async loadAttendanceMetrics() {
@@ -1070,22 +1208,7 @@ class DashboardModule {
             let totalQuestions = 0;
             let correctAnswers = 0;
             
-            const { data: progress, error: progError } = await this.sb
-                .from('user_progress')
-                .select('progress_data')
-                .eq('user_id', this.userId)
-                .maybeSingle();
-            
-            if (!progError && progress && progress.progress_data) {
-                const answers = progress.progress_data.answers || {};
-                Object.values(answers).forEach(answer => {
-                    if (answer.answered) {
-                        totalQuestions++;
-                        if (answer.correct) correctAnswers++;
-                    }
-                });
-            }
-            
+            // Get from attempts table
             const { data: attempts, error: attError } = await this.sb
                 .from('nurseiq_attempts')
                 .select('score, total_questions')
@@ -1099,20 +1222,53 @@ class DashboardModule {
                     attemptScore += a.score || 0;
                 });
                 
-                if (attemptQuestions > totalQuestions) {
-                    totalQuestions = attemptQuestions;
-                    correctAnswers = attemptScore;
+                totalQuestions = attemptQuestions;
+                correctAnswers = attemptScore;
+            }
+            
+            // Also check user_progress
+            const { data: progress, error: progError } = await this.sb
+                .from('user_progress')
+                .select('progress_data')
+                .eq('user_id', this.userId)
+                .maybeSingle();
+            
+            if (!progError && progress && progress.progress_data) {
+                const answers = progress.progress_data.answers || {};
+                let progQuestions = 0;
+                let progCorrect = 0;
+                Object.values(answers).forEach(answer => {
+                    if (answer.answered) {
+                        progQuestions++;
+                        if (answer.correct) progCorrect++;
+                    }
+                });
+                
+                if (progQuestions > totalQuestions) {
+                    totalQuestions = progQuestions;
+                    correctAnswers = progCorrect;
                 }
             }
             
             const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
             const progressPercent = totalQuestions > 0 ? Math.min(Math.round((totalQuestions / 105) * 100), 100) : 0;
+            const points = correctAnswers * 2;
             
-            this.metrics.nurseiq = { progress: progressPercent, accuracy: accuracy, questions: totalQuestions };
+            this.metrics.nurseiq = { 
+                progress: progressPercent, 
+                accuracy: accuracy, 
+                questions: totalQuestions,
+                score: correctAnswers,
+                points: points
+            };
+            this.nurseIQPoints = points;
+            this.metrics.nurseiqPoints = points;
+            
+            console.log(`🧠 NurseIQ calculated: ${points} pts (${correctAnswers} correct × 2)`);
             
         } catch (error) {
             console.error('NurseIQ error:', error);
-            this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0 };
+            this.metrics.nurseiq = { progress: 0, accuracy: 0, questions: 0, score: 0, points: 0 };
         }
     }
     
@@ -1747,18 +1903,21 @@ class DashboardModule {
     async loadXPMetrics() {
         let loginCount = 0;
         let gamificationPoints = 0;
+        let nurseIQPoints = 0;
         
         if (this.userId && this.sb) {
             try {
                 const { data } = await this.sb
                     .from('consolidated_user_profiles_table')
-                    .select('login_count, gamification_points, total_points')
+                    .select('login_count, gamification_points, total_points, nurseiq_points')
                     .eq('user_id', this.userId)
                     .single();
                 loginCount = data?.login_count || 0;
                 gamificationPoints = data?.gamification_points || 0;
                 this.metrics.totalPoints = data?.total_points || 0;
                 this.gamificationPoints = gamificationPoints;
+                nurseIQPoints = data?.nurseiq_points || 0;
+                this.nurseIQPoints = nurseIQPoints;
             } catch (e) {
                 console.warn('Could not fetch login count for XP:', e);
             }
@@ -1766,7 +1925,6 @@ class DashboardModule {
         
         const loginPoints = loginCount * 10;
         const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
-        const nurseIQPoints = this.metrics.nurseiq.questions || 0;
         const totalXP = loginPoints + attendancePoints + nurseIQPoints + gamificationPoints;
         
         const maxXP = 100;
@@ -1776,6 +1934,7 @@ class DashboardModule {
         
         this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
         this.metrics.login = { count: loginCount, points: loginPoints };
+        this.metrics.totalPoints = totalXP;
         
         if (this.elements.userLevel) this.elements.userLevel.innerText = level;
         if (this.elements.userXp) this.elements.userXp.innerText = currentXP;
@@ -1787,135 +1946,161 @@ class DashboardModule {
     // 🎨 UPDATE UI FROM METRICS - FIXED!
     // ============================================================
     
-   updateUIFromMetrics() {
-    const m = this.metrics;
-    
-    // Attendance
-    if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
-    if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
-    if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
-    if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
-    if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
-    
-    // Login points
-    if (this.elements.loginPointsDisplay) {
-        this.elements.loginPointsDisplay.innerText = m.login?.points || 0;
-    }
-    if (this.elements.loginCountDisplay) {
-        this.elements.loginCountDisplay.innerText = m.login?.count || 0;
-    }
-    
-    // ✅ TOTAL POINTS
-    if (this.elements.totalPointsDisplay) {
-        const total = this.metrics.totalPoints || this.calculateTotalPoints();
-        this.elements.totalPointsDisplay.innerText = total;
-    }
-    
-    // ✅ Gamification points display
-    if (this.elements.gamificationPointsDisplay) {
-        // Use m.gamification.points if available, fallback to this.gamificationPoints
-        const points = m.gamification?.points || this.gamificationPoints || 0;
-        this.elements.gamificationPointsDisplay.innerText = points;
-    }
-    
-    // Attendance color coding
-    const rate = m.attendance.rate || 0;
-    const percentEl = document.querySelector('.attendance-percent');
-    if (percentEl) {
-        percentEl.classList.remove('attendance-critical', 'attendance-warning', 'attendance-good');
-        if (rate < 50) percentEl.classList.add('attendance-critical');
-        else if (rate < 75) percentEl.classList.add('attendance-warning');
-        else percentEl.classList.add('attendance-good');
-    }
-    
-    const warningText = document.getElementById('warning-text');
-    if (warningText) {
-        if (rate < 50) warningText.innerText = 'CRITICAL';
-        else if (rate < 75) warningText.innerText = 'BELOW 75%';
-        else warningText.innerText = 'GOOD';
-    }
-    
-    // Exam Card
-    const approved = m.examCard.approved || 0;
-    if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
-    if (this.elements.examStatus) {
-        this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-        this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
-    }
-    if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
-    
-    // ✅ FIXED: NurseIQ - Show ALL fields correctly
-    if (this.elements.nurseiqProgress) {
-        this.elements.nurseiqProgress.innerText = (m.nurseiq.progress || 0) + '%';
-    }
-    if (this.elements.nurseiqAccuracy) {
-        this.elements.nurseiqAccuracy.innerText = (m.nurseiq.accuracy || 0) + '%';
-    }
-    if (this.elements.nurseiqQuestions) {
-        this.elements.nurseiqQuestions.innerText = m.nurseiq.questions || 0;
-    }
-    if (this.elements.nurseiqPoints) {
-        // ✅ SHOW POINTS, NOT QUESTIONS
-        const points = m.nurseiq.points || (m.nurseiq.questions * 2) || 0;
-        this.elements.nurseiqPoints.innerText = points;
-    }
-    
-    // Resources & Exams
-    if (this.elements.resources) this.elements.resources.innerText = m.resources;
-    if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
-    
-    // XP
-    if (this.elements.userLevel) {
-        this.elements.userLevel.innerText = m.xp.level || 1;
-    }
-    if (this.elements.userXp) {
-        this.elements.userXp.innerText = m.xp.current || 0;
-    }
-    if (this.elements.userXpMax) {
-        this.elements.userXpMax.innerText = m.xp.max || 100;
-    }
-    if (this.elements.xpProgressFill) {
-        const percent = m.xp.percent || 0;
-        this.elements.xpProgressFill.style.width = percent + '%';
-    }
-    
-    // Update last updated time
-    if (this.elements.dashboardLastUpdated) {
-        const now = this.getKenyaNow();
-        this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true,
-            timeZone: 'Africa/Nairobi'
+    updateUIFromMetrics() {
+        const m = this.metrics;
+        
+        // Attendance
+        if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
+        if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
+        if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
+        if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
+        if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
+        
+        // Login points
+        if (this.elements.loginPointsDisplay) {
+            this.elements.loginPointsDisplay.innerText = m.login?.points || 0;
+        }
+        if (this.elements.loginCountDisplay) {
+            this.elements.loginCountDisplay.innerText = m.login?.count || 0;
+        }
+        
+        // ✅ TOTAL POINTS
+        if (this.elements.totalPointsDisplay) {
+            const total = this.metrics.totalPoints || this.calculateTotalPoints();
+            this.elements.totalPointsDisplay.innerText = total;
+        }
+        
+        // ✅ Gamification points display
+        if (this.elements.gamificationPointsDisplay) {
+            const points = m.gamification?.points || this.gamificationPoints || 0;
+            this.elements.gamificationPointsDisplay.innerText = points;
+        }
+        
+        // ✅ FIXED: NurseIQ - Show ALL fields correctly
+        if (this.elements.nurseiqProgress) {
+            this.elements.nurseiqProgress.innerText = (m.nurseiq?.progress || 0) + '%';
+        }
+        if (this.elements.nurseiqAccuracy) {
+            this.elements.nurseiqAccuracy.innerText = (m.nurseiq?.accuracy || 0) + '%';
+        }
+        if (this.elements.nurseiqQuestions) {
+            this.elements.nurseiqQuestions.innerText = m.nurseiq?.questions || 0;
+        }
+        if (this.elements.nurseiqPoints) {
+            // ✅ Get points from multiple sources
+            let points = 0;
+            
+            // 1. Try from m.nurseiq.points
+            if (m.nurseiq?.points) {
+                points = m.nurseiq.points;
+            }
+            // 2. Try from m.nurseiqPoints
+            else if (m.nurseiqPoints) {
+                points = m.nurseiqPoints;
+            }
+            // 3. Try from this.nurseIQPoints
+            else if (this.nurseIQPoints) {
+                points = this.nurseIQPoints;
+            }
+            // 4. Calculate from score × 2
+            else if (m.nurseiq?.score) {
+                points = m.nurseiq.score * 2;
+            }
+            // 5. Calculate from questions (fallback)
+            else if (m.nurseiq?.questions) {
+                points = m.nurseiq.questions * 2;
+            }
+            
+            this.elements.nurseiqPoints.innerText = points;
+            console.log(`📊 NurseIQ Points set to: ${points}`);
+        }
+        
+        // Attendance color coding
+        const rate = m.attendance.rate || 0;
+        const percentEl = document.querySelector('.attendance-percent');
+        if (percentEl) {
+            percentEl.classList.remove('attendance-critical', 'attendance-warning', 'attendance-good');
+            if (rate < 50) percentEl.classList.add('attendance-critical');
+            else if (rate < 75) percentEl.classList.add('attendance-warning');
+            else percentEl.classList.add('attendance-good');
+        }
+        
+        const warningText = document.getElementById('warning-text');
+        if (warningText) {
+            if (rate < 50) warningText.innerText = 'CRITICAL';
+            else if (rate < 75) warningText.innerText = 'BELOW 75%';
+            else warningText.innerText = 'GOOD';
+        }
+        
+        // Exam Card
+        const approved = m.examCard.approved || 0;
+        if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
+        if (this.elements.examStatus) {
+            this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+            this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
+        }
+        if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
+        
+        // Resources & Exams
+        if (this.elements.resources) this.elements.resources.innerText = m.resources;
+        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
+        
+        // XP
+        if (this.elements.userLevel) {
+            this.elements.userLevel.innerText = m.xp.level || 1;
+        }
+        if (this.elements.userXp) {
+            this.elements.userXp.innerText = m.xp.current || 0;
+        }
+        if (this.elements.userXpMax) {
+            this.elements.userXpMax.innerText = m.xp.max || 100;
+        }
+        if (this.elements.xpProgressFill) {
+            const percent = m.xp.percent || 0;
+            this.elements.xpProgressFill.style.width = percent + '%';
+        }
+        
+        // Update last updated time
+        if (this.elements.dashboardLastUpdated) {
+            const now = this.getKenyaNow();
+            this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+                timeZone: 'Africa/Nairobi'
+            });
+        }
+        
+        // ✅ Log NurseIQ display values
+        console.log('📊 NurseIQ displayed:', {
+            progress: m.nurseiq?.progress || 0,
+            accuracy: m.nurseiq?.accuracy || 0,
+            questions: m.nurseiq?.questions || 0,
+            points: this.elements.nurseiqPoints?.innerText || 0
         });
+        
+        // ✅ Also update any NurseIQ stats in the XP area
+        this.updateNurseIQStats(this.elements.nurseiqPoints?.innerText || 0);
     }
     
-    // ✅ Log NurseIQ display values
-    console.log('📊 NurseIQ displayed:', {
-        progress: m.nurseiq.progress,
-        accuracy: m.nurseiq.accuracy,
-        questions: m.nurseiq.questions,
-        points: m.nurseiq.points
-    });
-}
     // ============================================================
-// 💾 SAVE TO CACHE
-// ============================================================
-
-saveToCache() {
-    if (!this.cacheKey) return;
-    try {
-        localStorage.setItem(this.cacheKey, JSON.stringify({
-            data: this.metrics,
-            timestamp: Date.now()
-        }));
-        console.log('💾 Dashboard data cached successfully');
-    } catch (e) {
-        // Cache save failed - not critical, just log silently
-        console.debug('Cache save skipped:', e.message);
+    // 💾 SAVE TO CACHE
+    // ============================================================
+    
+    saveToCache() {
+        if (!this.cacheKey) return;
+        try {
+            localStorage.setItem(this.cacheKey, JSON.stringify({
+                data: this.metrics,
+                timestamp: Date.now()
+            }));
+            console.log('💾 Dashboard data cached successfully');
+        } catch (e) {
+            console.debug('Cache save skipped:', e.message);
+        }
     }
-}
+    
     // ============================================================
     // ⏰ LIVE CLOCK
     // ============================================================
@@ -2021,3 +2206,4 @@ console.log('   - ✅ Streak system working');
 console.log('   - ✅ Time greeting fixed for Kenya time');
 console.log('   - ✅ Navigation working');
 console.log('   - ✅ My Units support');
+console.log('   - ✅ NURSEIQ POINTS DISPLAY FIXED!');
