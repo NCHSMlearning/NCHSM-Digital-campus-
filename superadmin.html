@@ -6383,10 +6383,12 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- ✏️ EDIT USER MODAL - COMPLETE WITH ALL FIELDS                -->
+<!-- ✏️ EDIT USER MODAL - COMPLETE WITH EMAIL UPDATE             -->
 <!-- ============================================================ -->
 <div id="userEditModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 10000; padding: 20px; align-items: center; justify-content: center;">
-    <div class="modal-content" style="max-width: 850px; width: 95%; background: white; border-radius: 16px; padding: 30px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-content" style="max-width: 900px; width: 95%; background: white; border-radius: 16px; padding: 30px; max-height: 90vh; overflow-y: auto;">
+        
+        <!-- HEADER -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
             <h3 style="margin: 0; color: #4C1D95;">
                 <i class="fas fa-user-edit"></i> Edit User Profile
@@ -6398,7 +6400,7 @@
         <form id="edit-user-form" onsubmit="event.preventDefault(); handleEditUser(event);">
             <input type="hidden" id="edit_user_id">
             
-            <!-- Personal Information -->
+            <!-- ====== PERSONAL INFORMATION ====== -->
             <h4 style="color: #4C1D95; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px;">
                 <i class="fas fa-user"></i> Personal Information
             </h4>
@@ -6408,11 +6410,27 @@
                     <input type="text" id="edit_user_name" required 
                            style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
                 </div>
+                
+                <!-- ====== EMAIL FIELD WITH UPDATE BUTTON ====== -->
                 <div>
-                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Email *</label>
-                    <input type="email" id="edit_user_email" required 
-                           style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                        Email *
+                        <span style="font-weight: 400; color: #f59e0b; font-size: 10px; margin-left: 8px;">
+                            <i class="fas fa-info-circle"></i> Updates login
+                        </span>
+                    </label>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <input type="email" id="edit_user_email" required 
+                               style="flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                        <button type="button" onclick="updateUserEmailFromModal()" 
+                                style="background: #4C1D95; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; white-space: nowrap; display: flex; align-items: center; gap: 4px;"
+                                title="Update email in Auth and Profile">
+                            <i class="fas fa-sync-alt"></i> Update
+                        </button>
+                    </div>
+                    <div id="emailUpdateStatus" style="font-size: 11px; margin-top: 4px; min-height: 18px;"></div>
                 </div>
+                
                 <div>
                     <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Phone</label>
                     <input type="text" id="edit_user_phone" 
@@ -6453,7 +6471,7 @@
                 </div>
             </div>
             
-            <!-- Guardian & Parent Information -->
+            <!-- ====== GUARDIAN & PARENT INFORMATION ====== -->
             <h4 style="color: #4C1D95; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px; margin-top: 20px;">
                 <i class="fas fa-users"></i> Guardian / Parent Information
             </h4>
@@ -6480,7 +6498,7 @@
                 </div>
             </div>
             
-            <!-- Academic Information -->
+            <!-- ====== ACADEMIC INFORMATION ====== -->
             <h4 style="color: #4C1D95; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px; margin-top: 20px;">
                 <i class="fas fa-graduation-cap"></i> Academic Information
             </h4>
@@ -6501,8 +6519,41 @@
                 </div>
                 <div>
                     <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Program</label>
-                    <select id="edit_user_program" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                    <select id="edit_user_program" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;" onchange="updateBlockOptions('edit_user_program', 'edit_user_block')">
                         <option value="">-- Select Program --</option>
+                        <option value="KRCHN">🎓 KRCHN Nursing</option>
+                        <optgroup label="🎯 TVET Diploma Programs">
+                            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                            <option value="DCH">Diploma in Community Health</option>
+                            <option value="DHRIT">Diploma in Health Records and IT</option>
+                            <option value="DSL">Diploma in Science Lab</option>
+                            <option value="DSW">Diploma in Social Work</option>
+                            <option value="DCJS">Diploma in Criminal Justice</option>
+                            <option value="DHSS">Diploma in Health Support Services</option>
+                            <option value="DICT">Diploma in ICT</option>
+                            <option value="DME">Diploma in Medical Engineering</option>
+                        </optgroup>
+                        <optgroup label="📜 TVET Certificate Programs">
+                            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                            <option value="CCH">Certificate in Community Health</option>
+                            <option value="CHRIT">Certificate in Health Records and IT</option>
+                            <option value="CPC">Certificate in Patient Care</option>
+                            <option value="CSL">Certificate in Science Lab</option>
+                            <option value="CSW">Certificate in Social Work</option>
+                            <option value="CCJS">Certificate in Criminal Justice</option>
+                            <option value="CAG">Certificate in Agriculture</option>
+                            <option value="CHSS">Certificate in Health Support Services</option>
+                            <option value="CICT">Certificate in ICT</option>
+                        </optgroup>
+                        <optgroup label="🔧 TVET Artisan Programs">
+                            <option value="ACH">Artisan in Community Health</option>
+                            <option value="AAG">Artisan in Agriculture</option>
+                            <option value="ASW">Artisan in Social Work</option>
+                        </optgroup>
+                        <optgroup label="📊 Other TVET Programs">
+                            <option value="CCA">Certificate in Computer Applications</option>
+                            <option value="PTE">TVET/CDACC (PTE)</option>
+                        </optgroup>
                     </select>
                 </div>
                 <div>
@@ -6532,7 +6583,7 @@
                 </div>
             </div>
             
-            <!-- Profile Photo -->
+            <!-- ====== PROFILE PHOTO ====== -->
             <h4 style="color: #4C1D95; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px; margin-top: 20px;">
                 <i class="fas fa-camera"></i> Profile Photo
             </h4>
@@ -6548,7 +6599,7 @@
                 </div>
             </div>
             
-            <!-- Document Status -->
+            <!-- ====== DOCUMENT STATUS ====== -->
             <h4 style="color: #4C1D95; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px; margin-top: 20px;">
                 <i class="fas fa-file-alt"></i> Document Status
             </h4>
@@ -6573,7 +6624,7 @@
                 </div>
             </div>
             
-            <!-- Password Change -->
+            <!-- ====== PASSWORD CHANGE ====== -->
             <h4 style="color: #4C1D95; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px; margin-top: 20px;">
                 <i class="fas fa-lock"></i> Change Password
             </h4>
@@ -6592,7 +6643,7 @@
                 </div>
             </div>
             
-            <!-- Account Status -->
+            <!-- ====== ACCOUNT STATUS ====== -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px;">
                 <div>
                     <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Account Status</label>
@@ -6604,7 +6655,7 @@
                 </div>
             </div>
             
-            <!-- Buttons -->
+            <!-- ====== BUTTONS ====== -->
             <div style="display: flex; gap: 12px; margin-top: 25px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
                 <button type="submit" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px;">
                     <i class="fas fa-save"></i> Save Changes
