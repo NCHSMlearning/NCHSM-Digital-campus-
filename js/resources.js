@@ -1204,85 +1204,177 @@ playAudioChunks(chunks) {
         this.updateResourceCount();
     }
     
-    renderResources() {
-        if (!this.resourcesGrid) return;
-        if (this.filteredResources.length === 0) {
-            this.showEmptyState();
-            return;
-        }
-        
-        let html = '';
-        for (const resource of this.filteredResources) {
-            const isPastPaper = resource.resource_type === 'pastpaper';
-            const isResourceTVET = this.TVET_PROGRAMS.includes(resource.program_type || '');
-            
-            const typeBadge = isPastPaper ? 
-                '<span class="resource-badge pastpaper"><i class="fas fa-history"></i> Past Paper</span>' : 
-                '<span class="resource-badge material"><i class="fas fa-book"></i> Material</span>';
-            
-            const programTag = isResourceTVET ?
-                `<span class="program-tag tvet"><i class="fas fa-tools"></i> TVET</span>` :
-                `<span class="program-tag krchn"><i class="fas fa-graduation-cap"></i> KRCHN</span>`;
-            
-            const yearDisplay = isPastPaper ? resource.pastpaper_year : resource.intake;
-            const examTypeDisplay = isPastPaper && resource.exam_type ? this.getExamTypeLabel(resource.exam_type) : '';
-            const courseDisplay = resource.course_name ? `<small class="course-name">📚 ${this.escapeHtml(resource.course_name)}</small>` : '';
-            
-            const blockOrTerm = resource.block || resource.term || resource.block_term || 'General';
-            const blockOrTermLabel = isResourceTVET ? 'Term' : 'Block';
-            
-            html += `
-                <div class="resource-card" data-id="${resource.id}">
-                    <div class="resource-preview">
-                        <div class="preview-icon ${this.getFileType(resource.file_path)}">
-                            <i class="${this.getFileIcon(resource.file_path)}"></i>
-                        </div>
-                        ${typeBadge}
-                        ${programTag}
-                    </div>
-                    <div class="resource-details">
-                        <h3 class="resource-title">${this.escapeHtml(resource.title)}${courseDisplay ? '<br>' + courseDisplay : ''}</h3>
-                        <p class="resource-description">${this.escapeHtml(resource.description || 'No description available')}</p>
-                        <div class="resource-meta">
-                            <span class="meta-tag year-tag">
-                                <i class="fas fa-calendar"></i> ${this.escapeHtml(yearDisplay || 'N/A')}
-                            </span>
-                            ${examTypeDisplay ? `<span class="meta-tag exam-type-tag">
-                                <i class="fas fa-file-alt"></i> ${examTypeDisplay}
-                            </span>` : ''}
-                            <span class="meta-tag ${this.getBlockTagClass(blockOrTerm, isResourceTVET)}">
-                                <i class="fas ${this.getBlockIcon(blockOrTerm, isResourceTVET)}"></i> 
-                                ${blockOrTermLabel}: ${this.escapeHtml(blockOrTerm)}
-                            </span>
-                            <span class="meta-tag read-only-badge">
-                                <i class="fas fa-eye"></i> Read Only
-                            </span>
-                        </div>
-                    </div>
-                    <div class="resource-actions">
-                        <button class="action-btn primary" onclick="window.resourcesModule?.openResource(${resource.id})">
-                            <i class="fas fa-eye"></i> Read Now
-                        </button>
-                        ${isPastPaper ? `<button class="action-btn secondary" onclick="window.resourcesModule?.viewPastPaper(${resource.id})">
-                            <i class="fas fa-history"></i> View Paper
-                        </button>` : ''}
-                        <button class="action-btn audio-btn" onclick="window.resourcesModule?.readAloud(${resource.id})" title="Listen to this resource">
-                            <i class="fas fa-volume-up"></i> Listen
-                        </button>
-                        <button class="action-btn ai-btn" onclick="window.resourcesModule?.summarizeResource(${resource.id})" title="AI Summary">
-                            <i class="fas fa-robot"></i> AI Summary
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-        
-        this.resourcesGrid.innerHTML = html;
-        const cards = this.resourcesGrid.querySelectorAll('.resource-card');
-        cards.forEach((card, index) => {
-            card.style.animation = `fadeInUp 0.4s ease forwards ${index * 0.05}s`;
-        });
+   renderResources() {
+    if (!this.resourcesGrid) return;
+    if (this.filteredResources.length === 0) {
+        this.showEmptyState();
+        return;
     }
+    
+    let html = '';
+    for (const resource of this.filteredResources) {
+        const isPastPaper = resource.resource_type === 'pastpaper';
+        const fileIcon = this.getFileIcon(resource.file_path);
+        const fileType = this.getFileType(resource.file_path);
+        const iconColor = isPastPaper ? '#d97706' : '#4C1D95';
+        const bgColor = isPastPaper ? '#fef3c7' : '#dbeafe';
+        
+        html += `
+            <div class="resource-card" style="
+                display: flex !important;
+                flex-direction: column !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                min-height: 280px !important;
+                background: white !important;
+                border-radius: 12px !important;
+                border: 1px solid #e5e7eb !important;
+                overflow: hidden !important;
+                margin: 0 !important;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+                transition: all 0.3s ease !important;
+            ">
+                <div style="
+                    padding: 16px 20px;
+                    background: #f8fafc;
+                    border-bottom: 1px solid #e5e7eb;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                ">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 8px;
+                            background: ${bgColor};
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            flex-shrink: 0;
+                        ">
+                            <i class="${fileIcon}" style="font-size: 20px; color: ${iconColor};"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; color: #0A3D62; font-size: 14px;">${this.escapeHtml(resource.title)}</div>
+                            <div style="font-size: 11px; color: #94a3b8; display: flex; gap: 8px; flex-wrap: wrap;">
+                                <span>${this.escapeHtml(resource.intake || 'N/A')}</span>
+                                <span>•</span>
+                                <span>${isPastPaper ? '📄 Past Paper' : '📚 Material'}</span>
+                                ${resource.course_name ? `<span>• ${this.escapeHtml(resource.course_name)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <span style="font-size: 11px; color: #94a3b8; background: #f1f5f9; padding: 2px 12px; border-radius: 12px;">
+                        <i class="fas fa-lock"></i> Read Only
+                    </span>
+                </div>
+                
+                <div style="padding: 12px 20px; flex: 1;">
+                    <p style="color: #64748b; font-size: 13px; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                        ${this.escapeHtml(resource.description || 'No description available')}
+                    </p>
+                </div>
+                
+                <div class="resource-actions" style="
+                    display: flex !important;
+                    gap: 8px !important;
+                    flex-wrap: wrap !important;
+                    padding: 12px 16px 16px !important;
+                    border-top: 1px solid #f1f5f9 !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    min-height: 50px !important;
+                    margin-top: auto !important;
+                    background: white !important;
+                ">
+                    <button onclick="window.resourcesModule?.openResource(${resource.id})" style="
+                        flex: 1 !important;
+                        min-width: 80px !important;
+                        padding: 10px 16px !important;
+                        border-radius: 8px !important;
+                        font-weight: 600 !important;
+                        font-size: 13px !important;
+                        cursor: pointer !important;
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        gap: 6px !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        border: none !important;
+                        transition: all 0.2s ease !important;
+                        pointer-events: auto !important;
+                        position: relative !important;
+                        z-index: 10 !important;
+                        color: white !important;
+                        margin: 0 !important;
+                        background: #4C1D95 !important;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-eye"></i> Read Now
+                    </button>
+                    
+                    <button onclick="window.resourcesModule?.readAloud(${resource.id})" style="
+                        flex: 1 !important;
+                        min-width: 80px !important;
+                        padding: 10px 16px !important;
+                        border-radius: 8px !important;
+                        font-weight: 600 !important;
+                        font-size: 13px !important;
+                        cursor: pointer !important;
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        gap: 6px !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        border: none !important;
+                        transition: all 0.2s ease !important;
+                        pointer-events: auto !important;
+                        position: relative !important;
+                        z-index: 10 !important;
+                        color: white !important;
+                        margin: 0 !important;
+                        background: #10b981 !important;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-volume-up"></i> Listen
+                    </button>
+                    
+                    <button onclick="window.resourcesModule?.summarizeResource(${resource.id})" style="
+                        flex: 1 !important;
+                        min-width: 80px !important;
+                        padding: 10px 16px !important;
+                        border-radius: 8px !important;
+                        font-weight: 600 !important;
+                        font-size: 13px !important;
+                        cursor: pointer !important;
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        gap: 6px !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        border: none !important;
+                        transition: all 0.2s ease !important;
+                        pointer-events: auto !important;
+                        position: relative !important;
+                        z-index: 10 !important;
+                        color: white !important;
+                        margin: 0 !important;
+                        background: #7c3aed !important;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(124,58,237,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-robot"></i> AI Summary
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    this.resourcesGrid.innerHTML = html;
+    this.updateResourceCount();
+}
     
    // ============================================================
 // 🎧 READ ALOUD - FULL DOCUMENT CONTENT
