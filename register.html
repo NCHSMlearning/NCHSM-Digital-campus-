@@ -603,6 +603,22 @@
         }
 
         /* ============================================
+                   STUDENT ID VALIDATION STYLES
+                   ============================================ */
+        #student-id-status.valid {
+            color: #10b981;
+        }
+        #student-id-status.invalid {
+            color: #dc2626;
+        }
+        #student-id-status.checking {
+            color: #f59e0b;
+        }
+        #student-id-status.warning {
+            color: #f59e0b;
+        }
+
+        /* ============================================
                    TERMS MODAL
                    ============================================ */
         .terms-modal-overlay {
@@ -851,17 +867,6 @@
         .upload-progress.active {
             display: block;
         }
-        
-        /* Student ID validation styles */
-        #student-id-status.valid {
-            color: #10b981;
-        }
-        #student-id-status.invalid {
-            color: #dc2626;
-        }
-        #student-id-status.checking {
-            color: #f59e0b;
-        }
     </style>
 </head>
 <body>
@@ -995,7 +1000,13 @@
             <!-- STUDENT FIELDS -->
             <div id="student-fields" class="role-fields">
                 <div class="form-group">
-                    <label><i data-feather="id"></i> Admission / Student ID <span style="color:red;">*</span></label>
+                    <label>
+                        <i data-feather="id"></i> Admission / Student ID 
+                        <span style="color:red;">*</span>
+                        <span style="font-weight:400;color:#64748B;font-size:0.7rem;">
+                            (Will be checked for duplicates)
+                        </span>
+                    </label>
                     <input type="text" id="student_id_number" name="student_id_number" 
                            placeholder="KRCHN/0032/MAR/2024 or DPOTT/10726/05/26" required>
                     <div id="student-id-status" class="help-text" style="font-weight: 600; margin-top: 4px; min-height: 20px;"></div>
@@ -1402,19 +1413,53 @@
 
 <script>
     // ============================================
-    // INITIALIZATION
+    // SUPABASE CONFIGURATION
     // ============================================
-    document.addEventListener('DOMContentLoaded', () => {
-        if (typeof feather !== 'undefined') feather.replace();
-        updateIntakePreview();
-        updateProgress();
-        document.getElementById('role').dispatchEvent(new Event('change'));
-    });
+    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ============================================
-    // STUDENT ID VALIDATION - Full Formats
+    // STORED DOCUMENTS DATA
     // ============================================
-    function validateStudentId(studentId) {
+    const uploadedDocs = {
+        kcse: null,
+        id: null,
+        lecturer_id: null,
+        kra_pin: null,
+        university_cert: null,
+        cv: null,
+        profile_photo: null
+    };
+
+    // ============================================
+    // STUDENT ID DUPLICATE CHECK - NEW
+    // ============================================
+    let studentIdCheckTimeout = null;
+    let studentIdCheckInProgress = false;
+
+    async function checkStudentIdExists(studentId) {
+        if (!studentId || studentId.trim() === '') return false;
+        
+        try {
+            const { data, error } = await sb.rpc('check_student_id_exists', {
+                p_student_id: studentId.trim()
+            });
+            
+            if (error) {
+                console.error('Error checking student ID:', error);
+                return false;
+            }
+            
+            return data || false;
+        } catch (error) {
+            console.error('Error checking student ID:', error);
+            return false;
+        }
+    }
+
+    // Enhanced Student ID validation with duplicate check
+    function validateStudentIdWithDuplicate(studentId) {
         if (!studentId || studentId.trim() === '') {
             return { valid: false, message: 'Student ID is required' };
         }
@@ -1509,9 +1554,15 @@
     }
 
     // ============================================
-    // STUDENT ID REAL-TIME VALIDATION
+    // INITIALIZATION
     // ============================================
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof feather !== 'undefined') feather.replace();
+        updateIntakePreview();
+        updateProgress();
+        document.getElementById('role').dispatchEvent(new Event('change'));
+        
+        // Student ID real-time validation with duplicate check
         const studentIdInput = document.getElementById('student_id_number');
         const studentIdStatus = document.getElementById('student-id-status');
         
@@ -1526,63 +1577,70 @@
                     return;
                 }
                 
-                const result = validateStudentId(value);
+                // First validate format
+                const validation = validateStudentIdWithDuplicate(value);
                 
-                if (result.valid) {
-                    let formatText = '';
-                    if (result.format === 'krchn') {
-                        formatText = `✅ Valid KRCHN format: ${result.program} | #${result.number} | ${result.month} ${result.year}`;
-                    } else if (result.format === 'tvet') {
-                        formatText = `✅ Valid TVET format: ${result.program} | #${result.number} | ${result.monthName} ${result.fullYear}`;
-                    }
-                    
-                    studentIdStatus.textContent = formatText;
-                    studentIdStatus.className = 'help-text valid';
-                    this.style.borderColor = '#10b981';
-                    
-                    // Auto-select program if it matches
-                    const programSelect = document.getElementById('program_type');
-                    if (programSelect && result.program) {
-                        const options = programSelect.options;
-                        for (let option of options) {
-                            if (option.value === result.program) {
-                                option.selected = true;
-                                programSelect.dispatchEvent(new Event('change'));
-                                break;
-                            }
-                        }
-                    }
-                    
-                } else {
-                    studentIdStatus.textContent = '❌ ' + result.message;
+                if (!validation.valid) {
+                    studentIdStatus.textContent = '❌ ' + validation.message;
                     studentIdStatus.className = 'help-text invalid';
                     this.style.borderColor = '#DC2626';
+                    return;
                 }
+                
+                // Format is valid, now check for duplicates
+                studentIdStatus.textContent = '⏳ Checking if ID is available...';
+                studentIdStatus.className = 'help-text checking';
+                this.style.borderColor = '#f59e0b';
+                
+                // Clear previous timeout
+                if (studentIdCheckTimeout) clearTimeout(studentIdCheckTimeout);
+                
+                studentIdCheckTimeout = setTimeout(async () => {
+                    if (studentIdCheckInProgress) return;
+                    studentIdCheckInProgress = true;
+                    
+                    try {
+                        const exists = await checkStudentIdExists(value);
+                        
+                        if (exists) {
+                            studentIdStatus.textContent = '❌ This Student ID is already registered. Please check and try again.';
+                            studentIdStatus.className = 'help-text invalid';
+                            this.style.borderColor = '#DC2626';
+                        } else {
+                            let formatText = '';
+                            if (validation.format === 'krchn') {
+                                formatText = `✅ Valid KRCHN format: ${validation.program} | #${validation.number} | ${validation.month} ${validation.year}`;
+                            } else if (validation.format === 'tvet') {
+                                formatText = `✅ Valid TVET format: ${validation.program} | #${validation.number} | ${validation.monthName} ${validation.fullYear}`;
+                            }
+                            studentIdStatus.textContent = formatText + ' ✅ Available';
+                            studentIdStatus.className = 'help-text valid';
+                            this.style.borderColor = '#10b981';
+                            
+                            // Auto-select program if it matches
+                            const programSelect = document.getElementById('program_type');
+                            if (programSelect && validation.program) {
+                                const options = programSelect.options;
+                                for (let option of options) {
+                                    if (option.value === validation.program) {
+                                        option.selected = true;
+                                        programSelect.dispatchEvent(new Event('change'));
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error checking student ID:', error);
+                        studentIdStatus.textContent = '⚠️ Could not verify ID availability';
+                        studentIdStatus.className = 'help-text warning';
+                    } finally {
+                        studentIdCheckInProgress = false;
+                    }
+                }, 800);
             });
         }
     });
-
-    // ============================================
-    // SUPABASE CONFIGURATION
-    // ============================================
-    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // ============================================
-    // STORED DOCUMENTS DATA
-    // ============================================
-    const uploadedDocs = {
-        // Student docs
-        kcse: null,
-        id: null,
-        // Lecturer docs
-        lecturer_id: null,
-        kra_pin: null,
-        university_cert: null,
-        cv: null,
-        profile_photo: null
-    };
 
     // ============================================
     // EMAIL VALIDATION
@@ -1710,7 +1768,7 @@
     });
 
     // ============================================
-    // PROGRESS INDICATOR - FIXED FOR LECTURER
+    // PROGRESS INDICATOR
     // ============================================
     let currentStep = 1;
 
@@ -1718,34 +1776,16 @@
         if (step > currentStep) {
             const currentSection = document.querySelector(`.form-section[data-section="${currentStep}"]`);
             if (currentSection) {
-                // Get role
                 const role = document.getElementById('role').value;
-                
-                // Get all required inputs in the current section
                 const inputs = currentSection.querySelectorAll('input[required], select[required]');
                 let valid = true;
                 
                 for (const input of inputs) {
-                    // SKIP validation for hidden fields (student fields when lecturer is selected)
                     const isHidden = input.closest('.role-fields') && !input.closest('.role-fields').classList.contains('active');
-                    if (isHidden) {
-                        continue; // Skip hidden fields
-                    }
-                    
-                    // Skip if it's a lecturer field but role is student
-                    if (input.closest('#lecturer-fields') && role !== 'lecturer') {
-                        continue;
-                    }
-                    
-                    // Skip if it's a student field but role is lecturer
-                    if (input.closest('#student-fields') && role !== 'student') {
-                        continue;
-                    }
-                    
-                    // Skip file inputs (documents are optional)
-                    if (input.type === 'file') {
-                        continue;
-                    }
+                    if (isHidden) continue;
+                    if (input.closest('#lecturer-fields') && role !== 'lecturer') continue;
+                    if (input.closest('#student-fields') && role !== 'student') continue;
+                    if (input.type === 'file') continue;
                     
                     if (!input.value.trim()) {
                         input.style.borderColor = '#DC2626';
@@ -1816,7 +1856,7 @@
     document.getElementById('tvet_intake_year').addEventListener('change', updateIntakePreview);
 
     // ============================================
-    // ROLE TOGGLE - FIXED
+    // ROLE TOGGLE
     // ============================================
     document.getElementById('role').addEventListener('change', function() {
         const isStudent = this.value === 'student';
@@ -1828,8 +1868,6 @@
         if (isStudent) {
             studentFields.style.display = 'block';
             studentFields.classList.add('active');
-            
-            // Set required on student fields
             studentFields.querySelectorAll('input, select').forEach(input => {
                 if (input.id !== 'student_id_number' && 
                     input.id !== 'guardian_name' && 
@@ -1837,14 +1875,10 @@
                     input.setAttribute('required', '');
                 }
             });
-            
             if (studentDocs) studentDocs.style.display = 'grid';
-            
-            // Remove required from lecturer fields
             lecturerFields.querySelectorAll('input, select').forEach(input => {
                 input.removeAttribute('required');
             });
-            
         } else {
             studentFields.style.display = 'none';
             studentFields.classList.remove('active');
@@ -1857,27 +1891,21 @@
         if (isLecturer) {
             lecturerFields.style.display = 'block';
             lecturerFields.classList.add('active');
-            
-            // Set required on lecturer fields - ONLY department, NOT documents!
             lecturerFields.querySelectorAll('input, select').forEach(input => {
-                // Skip file inputs (documents are optional)
                 if (input.type === 'file') {
                     input.removeAttribute('required');
                     return;
                 }
-                // Skip employment date (optional)
                 if (input.id === 'employment_date') {
                     input.removeAttribute('required');
                     return;
                 }
-                // Only department is required
                 if (input.id === 'department') {
                     input.setAttribute('required', '');
                 } else {
                     input.removeAttribute('required');
                 }
             });
-            
         } else {
             lecturerFields.style.display = 'none';
             lecturerFields.classList.remove('active');
@@ -2010,18 +2038,13 @@
         const statusEl = document.getElementById(`doc_${docType}_status`);
         const filenameEl = document.getElementById(`doc_${docType}_filename`);
         
-        if (card) {
-            card.classList.remove('uploaded');
-        }
+        if (card) card.classList.remove('uploaded');
         if (statusEl) {
             statusEl.textContent = 'Not uploaded';
             statusEl.className = 'doc-status';
         }
-        if (filenameEl) {
-            filenameEl.textContent = '';
-        }
+        if (filenameEl) filenameEl.textContent = '';
         
-        // Clear the file input
         const input = document.getElementById(`doc_${docType}_input`);
         if (input) input.value = '';
         
@@ -2415,10 +2438,28 @@
                 return;
             }
             
-            const idValidation = validateStudentId(studentId);
-            if (!idValidation.valid) {
-                showFeedback('❌ ' + idValidation.message, 'error');
+            const validation = validateStudentIdWithDuplicate(studentId);
+            if (!validation.valid) {
+                showFeedback('❌ ' + validation.message, 'error');
                 document.getElementById('student_id_number').style.borderColor = '#DC2626';
+                btn.disabled = false;
+                document.getElementById('button-text').textContent = '✅ Create Account';
+                return;
+            }
+            
+            // Check for duplicate Student ID
+            try {
+                const exists = await checkStudentIdExists(studentId);
+                if (exists) {
+                    showFeedback('❌ This Student ID is already registered. Please contact administration.', 'error');
+                    document.getElementById('student_id_number').style.borderColor = '#DC2626';
+                    btn.disabled = false;
+                    document.getElementById('button-text').textContent = '✅ Create Account';
+                    return;
+                }
+            } catch (error) {
+                console.error('Error checking student ID:', error);
+                showFeedback('⚠️ Could not verify Student ID. Please try again.', 'warning');
                 btn.disabled = false;
                 document.getElementById('button-text').textContent = '✅ Create Account';
                 return;
@@ -2479,7 +2520,6 @@
                     department: department,
                     employment_date: employment_date,
                     staff_id: 'AUTO_GENERATED',
-                    // Lecturer docs - optional
                     doc_lecturer_id: uploadedDocs.lecturer_id ? 'uploaded' : 'pending',
                     doc_kra_pin: uploadedDocs.kra_pin ? 'uploaded' : 'pending',
                     doc_university_cert: uploadedDocs.university_cert ? 'uploaded' : 'pending',
@@ -2642,6 +2682,7 @@
     console.log('  📁 Student: KCSE + ID documents');
     console.log('  📁 Lecturer: ID + KRA PIN + University Certificate + CV (Optional)');
     console.log('  🆔 Student ID validation (KRCHN and TVET formats)');
+    console.log('  ✅ Student ID duplicate checking (real-time)');
     console.log('  👔 Lecturer Staff ID auto-generated');
     console.log('  ✅ Lecturer documents are OPTIONAL');
 </script>
