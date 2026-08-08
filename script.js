@@ -5616,10 +5616,7 @@ async function updateUserEmailFromModalDirect(userId, newEmail) {
         return { success: false, message: error.message };
     }
 }
-// ============================================
-// 📧 UPDATE USER EMAIL - AUTH + PROFILE
-// FIXED: Uses Supabase session for admin check
-// ============================================
+
 
 // ============================================================
 // 📧 UPDATE USER EMAIL - FIXED QUERY
@@ -5773,6 +5770,18 @@ async function updateUserEmailFromModal() {
         showNotification('❌ Failed to update email', 'error');
     }
 }
+// ============================================
+// CLEAR EMAIL STATUS
+// ============================================
+
+function clearEmailStatus() {
+    const statusDiv = document.getElementById('emailUpdateStatus');
+    if (statusDiv) {
+        statusDiv.innerHTML = '';
+        statusDiv.style.display = 'none';
+    }
+}
+
 // ============================================
 // OVERRIDE closeModal to clear email status
 // ============================================
