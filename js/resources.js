@@ -346,75 +346,162 @@ class ResourcesModule {
         }
     }
     
-    playAudio() {
-        if (!this.currentAudioText) {
-            this.showToast('No text to read', 'warning');
+   // ============================================================
+// 🎧 PLAY AUDIO WITH PROGRESS
+// ============================================================
+
+playAudio() {
+    if (!this.currentAudioText) {
+        this.showToast('No text to read', 'warning');
+        return;
+    }
+    
+    // Split into chunks for very long texts (speech synthesis has limits)
+    const maxChunkLength = 3000; // Characters
+    const textChunks = this.splitTextIntoChunks(this.currentAudioText, maxChunkLength);
+    
+    if (this.isPlaying) {
+        this.audioSynth?.resume();
+        this.updateAudioUI('playing');
+        return;
+    }
+    
+    try {
+        if (!window.speechSynthesis) {
+            this.showToast('Text-to-speech not supported in this browser', 'error');
             return;
         }
         
-        if (this.isPlaying) {
-            this.audioSynth?.resume();
+        window.speechSynthesis.cancel();
+        this.audioStartTime = Date.now();
+        
+        // If multiple chunks, play them sequentially
+        if (textChunks.length > 1) {
+            this.playAudioChunks(textChunks);
+            return;
+        }
+        
+        // Single chunk
+        const utterance = new SpeechSynthesisUtterance(this.currentAudioText);
+        utterance.rate = parseFloat(this.audioSpeed?.value || 1);
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
+        if (preferredVoice) utterance.voice = preferredVoice;
+        
+        utterance.onstart = () => {
+            this.isPlaying = true;
             this.updateAudioUI('playing');
-            return;
-        }
-        
-        try {
-            if (!window.speechSynthesis) {
-                this.showToast('Text-to-speech not supported in this browser', 'error');
-                return;
+            if (this.audioContainer) {
+                this.audioContainer.classList.add('audio-playing');
+                this.audioContainer.classList.remove('audio-paused');
             }
-            
-            window.speechSynthesis.cancel();
-            
-            const utterance = new SpeechSynthesisUtterance(this.currentAudioText);
-            utterance.rate = parseFloat(this.audioSpeed?.value || 1);
-            utterance.pitch = 1;
-            utterance.volume = 1;
-            
-            // Try to find a good voice
-            const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
-            if (preferredVoice) utterance.voice = preferredVoice;
-            
-            utterance.onstart = () => {
-                this.isPlaying = true;
-                this.updateAudioUI('playing');
-                if (this.audioContainer) {
-                    this.audioContainer.classList.add('audio-playing');
-                    this.audioContainer.classList.remove('audio-paused');
-                }
-            };
-            
-            utterance.onend = () => {
-                this.isPlaying = false;
-                this.updateAudioUI('stopped');
-                if (this.audioContainer) {
-                    this.audioContainer.classList.remove('audio-playing', 'audio-paused');
-                }
-                if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
-                if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
-            };
-            
-            utterance.onerror = (e) => {
-                console.error('Speech error:', e);
-                this.isPlaying = false;
-                this.updateAudioUI('stopped');
-                if (this.audioContainer) {
-                    this.audioContainer.classList.remove('audio-playing', 'audio-paused');
-                }
-            };
-            
-            this.audioSynth = utterance;
-            window.speechSynthesis.speak(utterance);
-            
-            // Update progress
-            this.updateAudioProgress();
-            
-        } catch (error) {
-            console.error('Audio error:', error);
-            this.showToast('Failed to play audio: ' + error.message, 'error');
+        };
+        
+        utterance.onend = () => {
+            this.isPlaying = false;
+            this.updateAudioUI('stopped');
+            if (this.audioContainer) {
+                this.audioContainer.classList.remove('audio-playing', 'audio-paused');
+            }
+            if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
+            if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
+        };
+        
+        utterance.onerror = (e) => {
+            console.error('Speech error:', e);
+            this.isPlaying = false;
+            this.updateAudioUI('stopped');
+            if (this.audioContainer) {
+                this.audioContainer.classList.remove('audio-playing', 'audio-paused');
+            }
+        };
+        
+        this.audioSynth = utterance;
+        window.speechSynthesis.speak(utterance);
+        this.updateAudioProgress();
+        
+    } catch (error) {
+        console.error('Audio error:', error);
+        this.showToast('Failed to play audio: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// 📦 SPLIT TEXT INTO CHUNKS
+// ============================================================
+
+splitTextIntoChunks(text, maxLength = 3000) {
+    if (text.length <= maxLength) return [text];
+    
+    const chunks = [];
+    let currentChunk = '';
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    
+    for (const sentence of sentences) {
+        if (currentChunk.length + sentence.length <= maxLength) {
+            currentChunk += sentence;
+        } else {
+            if (currentChunk) chunks.push(currentChunk.trim());
+            currentChunk = sentence;
         }
     }
+    if (currentChunk) chunks.push(currentChunk.trim());
+    
+    return chunks;
+}
+
+// ============================================================
+// 🎧 PLAY AUDIO CHUNKS (for long texts)
+// ============================================================
+
+playAudioChunks(chunks) {
+    let currentChunkIndex = 0;
+    
+    const playNextChunk = () => {
+        if (currentChunkIndex >= chunks.length) {
+            this.isPlaying = false;
+            this.updateAudioUI('stopped');
+            if (this.audioContainer) {
+                this.audioContainer.classList.remove('audio-playing', 'audio-paused');
+            }
+            this.showToast('✅ Full document read!', 'success');
+            return;
+        }
+        
+        const chunk = chunks[currentChunkIndex];
+        const utterance = new SpeechSynthesisUtterance(chunk);
+        utterance.rate = parseFloat(this.audioSpeed?.value || 1);
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
+        if (preferredVoice) utterance.voice = preferredVoice;
+        
+        const progress = ((currentChunkIndex + 1) / chunks.length * 100);
+        this.showToast(`📖 Reading ${currentChunkIndex + 1}/${chunks.length} (${Math.round(progress)}%)`, 'info');
+        
+        utterance.onend = () => {
+            currentChunkIndex++;
+            setTimeout(playNextChunk, 300);
+        };
+        
+        utterance.onerror = () => {
+            currentChunkIndex++;
+            setTimeout(playNextChunk, 300);
+        };
+        
+        window.speechSynthesis.speak(utterance);
+        this.isPlaying = true;
+        this.updateAudioUI('playing');
+    };
+    
+    this.audioStartTime = Date.now();
+    playNextChunk();
+}
     
     updateAudioProgress() {
         if (!this.isPlaying || !this.audioSynth) return;
@@ -1197,45 +1284,224 @@ class ResourcesModule {
         });
     }
     
-    // ============================================================
-    // RESOURCE ACTIONS
-    // ============================================================
-    async readAloud(resourceId) {
-        const resource = this.allResources.find(r => r.id == resourceId);
-        if (!resource) {
-            this.showToast('Resource not found', 'error');
-            return;
-        }
-        
-        let text = resource.description || resource.title || '';
-        
-        // If it's a past paper, add exam info
-        if (resource.resource_type === 'pastpaper') {
-            text = `Past Paper: ${resource.title}. ` + (resource.description || '');
-            if (resource.exam_type) {
-                text += ` Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
-            }
-            if (resource.course_name) {
-                text += ` Course: ${resource.course_name}. `;
-            }
-        }
-        
-        if (!text || text.length < 10) {
-            text = `Resource: ${resource.title}. ${resource.description || 'No additional content available.'}`;
-        }
-        
-        this.showAudioPlayer(text, resource.title);
-        this.playAudio();
+   // ============================================================
+// 🎧 READ ALOUD - FULL DOCUMENT CONTENT
+// ============================================================
+
+async readAloud(resourceId) {
+    const resource = this.allResources.find(r => r.id == resourceId);
+    if (!resource) {
+        this.showToast('Resource not found', 'error');
+        return;
     }
     
-    async summarizeResource(resourceId) {
-        const resource = this.allResources.find(r => r.id == resourceId);
-        if (!resource) {
-            this.showToast('Resource not found', 'error');
-            return;
+    // ✅ Show loading state
+    this.showToast('📄 Extracting document content...', 'info');
+    
+    try {
+        let fullText = '';
+        const fileType = this.getFileType(resource.file_path);
+        
+        // 1. Start with title and basic info
+        fullText = `Document: ${resource.title}. `;
+        
+        if (resource.resource_type === 'pastpaper') {
+            fullText += `Past paper. `;
+            if (resource.exam_type) {
+                fullText += `Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
+            }
+            if (resource.course_name) {
+                fullText += `Course: ${resource.course_name}. `;
+            }
         }
-        await this.generateSummary(resource);
+        
+        // 2. Add description
+        if (resource.description && resource.description.length > 10) {
+            fullText += resource.description + ' ';
+        }
+        
+        // 3. ✅ EXTRACT CONTENT FROM THE FILE
+        if (resource.file_url || resource.file_path) {
+            const url = resource.file_url || this.getResourceUrl(resource.file_path);
+            
+            if (fileType === 'pdf') {
+                try {
+                    const extractedText = await this.extractFullPDFText(url);
+                    if (extractedText && extractedText.length > 50) {
+                        fullText += extractedText;
+                        this.showToast('✅ PDF content extracted', 'success');
+                    }
+                } catch (e) {
+                    console.warn('Could not extract PDF text:', e);
+                    this.showToast('⚠️ Could not extract PDF content, reading available text', 'warning');
+                }
+            } else if (fileType === 'text' || fileType === 'file') {
+                try {
+                    const extractedText = await this.extractTextFileContent(url);
+                    if (extractedText && extractedText.length > 50) {
+                        fullText += extractedText;
+                        this.showToast('✅ Text content extracted', 'success');
+                    }
+                } catch (e) {
+                    console.warn('Could not extract text:', e);
+                }
+            } else {
+                // For image/video, we can't read content
+                if (fileType === 'image' || fileType === 'video') {
+                    fullText += `This is a ${fileType} file containing visual content. `;
+                }
+            }
+        }
+        
+        // 4. If no content found, generate from metadata
+        if (!fullText || fullText.length < 50) {
+            fullText = this.generateResourceDescription(resource);
+        }
+        
+        // 5. Clean up text
+        fullText = fullText.replace(/\s+/g, ' ').trim();
+        
+        // 6. Show audio player with full content
+        this.showAudioPlayer(fullText, resource.title);
+        this.playAudio();
+        
+    } catch (error) {
+        console.error('Read aloud error:', error);
+        this.showToast('Failed to read document: ' + error.message, 'error');
+        
+        // Fallback: use available description
+        let fallbackText = `Document: ${resource.title}. `;
+        if (resource.description) {
+            fallbackText += resource.description;
+        }
+        this.showAudioPlayer(fallbackText, resource.title);
+        this.playAudio();
     }
+}
+
+    // ============================================================
+// 📄 EXTRACT FULL PDF TEXT
+// ============================================================
+
+async extractFullPDFText(pdfUrl) {
+    try {
+        await this.initializePDFJS();
+        if (!this.pdfjsLib) return '';
+        
+        const loadingTask = this.pdfjsLib.getDocument({
+            url: pdfUrl,
+            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+            cMapPacked: true,
+            verbosity: 0
+        });
+        
+        const pdf = await loadingTask.promise;
+        let fullText = '';
+        const totalPages = pdf.numPages;
+        const maxPages = Math.min(totalPages, 20); // Limit to 20 pages for audio
+        
+        for (let i = 1; i <= maxPages; i++) {
+            try {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items
+                    .map(item => item.str)
+                    .join(' ')
+                    .trim();
+                
+                if (pageText) {
+                    fullText += pageText + '\n\n';
+                }
+                
+                // Show progress
+                if (i % 5 === 0 || i === maxPages) {
+                    this.showToast(`📄 Extracting page ${i}/${maxPages}...`, 'info');
+                }
+            } catch (pageError) {
+                console.warn(`Could not extract page ${i}:`, pageError);
+            }
+        }
+        
+        pdf.destroy();
+        return fullText.trim();
+        
+    } catch (error) {
+        console.error('PDF extraction error:', error);
+        throw error;
+    }
+}
+    // ============================================================
+// 📄 EXTRACT TEXT FILE CONTENT
+// ============================================================
+
+async extractTextFileContent(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch file');
+        const text = await response.text();
+        return text.trim();
+    } catch (error) {
+        console.error('Text extraction error:', error);
+        return '';
+    }
+}
+
+    // ============================================================
+// 📝 GENERATE RESOURCE DESCRIPTION
+// ============================================================
+
+generateResourceDescription(resource) {
+    let text = `Resource: ${resource.title}. `;
+    
+    if (resource.course_name) {
+        text += `Course: ${resource.course_name}. `;
+    }
+    
+    if (resource.resource_type === 'pastpaper') {
+        text += `This is a past paper. `;
+        if (resource.exam_type) {
+            text += `Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
+        }
+        if (resource.year) {
+            text += `Year: ${resource.year}. `;
+        }
+    } else {
+        text += `This is a learning resource. `;
+    }
+    
+    if (resource.block || resource.term) {
+        const blockOrTerm = resource.block || resource.term;
+        const isTVET = this.TVET_PROGRAMS.includes(resource.program_type || '');
+        const label = isTVET ? 'Term' : 'Block';
+        text += `${label}: ${blockOrTerm}. `;
+    }
+    
+    if (resource.description) {
+        text += resource.description;
+    } else {
+        text += `This resource is available for students to study and review. The content is protected and for educational purposes only.`;
+    }
+    
+    return text;
+}
+    // ============================================================
+// 🔗 GET RESOURCE URL
+// ============================================================
+
+getResourceUrl(filePath) {
+    if (!filePath) return '';
+    
+    // If already a full URL
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        return filePath;
+    }
+    
+    // Use Supabase storage
+    const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 
+                       'https://lwhtjozfsmbyihenfunw.supabase.co';
+    
+    return `${supabaseUrl}/storage/v1/object/public/resources/${filePath}`;
+}
     
     // ============================================================
     // UTILITY FUNCTIONS
