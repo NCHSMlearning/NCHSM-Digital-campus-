@@ -1,6 +1,6 @@
 // ============================================================
-// MARKS ENTRY SYSTEM - SUPER ADMIN (FULLY FIXED)
-// WITH AUTO-APPROVE ON SAVE - USING CORRECT NURSING FORMULA
+// MARKS ENTRY SYSTEM - COMPLETE (NURSING + TVET SUPPORT)
+// WITH AUTO-APPROVE ON SAVE
 // ============================================================
 
 // ============================================================
@@ -21,6 +21,36 @@ let me_studentManagerData = {
     availableStudents: [],
     enrolledMap: {}
 };
+
+// ============================================================
+// PROGRAM TYPE DETECTION
+// ============================================================
+
+function isTVETProgram() {
+    const program = me_currentProgram || document.getElementById('me_program_select')?.value || '';
+    return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing';
+}
+
+function isNursingProgram() {
+    const program = me_currentProgram || document.getElementById('me_program_select')?.value || '';
+    return program === 'KRCHN' || program === 'nursing' || program === 'Nursing';
+}
+
+function getExamMax() {
+    return isNursingProgram() ? 70 : 100;
+}
+
+function getTotalMax() {
+    return isNursingProgram() ? 130 : 160;
+}
+
+function getPassingThreshold() {
+    return isNursingProgram() ? 60 : 50;
+}
+
+function getProgramTypeLabel() {
+    return isNursingProgram() ? '📕 NURSING' : '📘 TVET';
+}
 
 // ============================================================
 // CHECK IF USER IS ADMIN
@@ -175,12 +205,14 @@ function getAutoAssessmentType() {
 // ============================================================
 
 function getAssessmentTypeLabel(type) {
+    const isTVET = isTVETProgram();
+    
     const labels = {
-        'full': 'Full (CAT1+CAT2+Exam)',
-        'single_cat': 'Single CAT (CAT+Exam)',
-        'exam_only': 'Exam Only',
-        'cats_only': 'CAT1+CAT2 Only',
-        'cat_only': 'CAT Only'
+        'full': isTVET ? 'Full (CAT1+CAT2+Exam) - 160 total' : 'Full (CAT1+CAT2+Exam) - 130 total',
+        'single_cat': isTVET ? 'Single CAT (CAT+Exam) - 130 total' : 'Single CAT (CAT+Exam) - out of 100',
+        'exam_only': isTVET ? 'Exam Only - out of 100' : 'Exam Only - out of 70',
+        'cats_only': 'CAT1+CAT2 Only - out of 60',
+        'cat_only': 'CAT Only - out of 30'
     };
     return labels[type] || type;
 }
@@ -207,10 +239,10 @@ function updateAssessmentTypeDisplay() {
 }
 
 // ============================================================
-// ✅ CORRECT CALCULATION - USING OLD WORKING FORMULA
+// ✅ NURSING CALCULATION - ORIGINAL WORKING FORMULA
 // ============================================================
 
-function calculateMarksEntryTotal(cat1, cat2, exam, type) {
+function calculateNursingTotal(cat1, cat2, exam, type) {
     let total = 0;
     
     // Clamp values
@@ -220,8 +252,7 @@ function calculateMarksEntryTotal(cat1, cat2, exam, type) {
     
     switch(type) {
         case 'full':
-            // ✅ CORRECT: CAT1+CAT2 = 60% of total, Exam = 40% of total
-            // (c1 + c2) / 60 * 30 gives the first 30 marks out of 60
+            // CAT1+CAT2 = 60% of total, Exam = 40% of total
             total = Math.round(((c1 + c2) / 60 * 30 + e) * 10) / 10;
             break;
             
@@ -248,18 +279,167 @@ function calculateMarksEntryTotal(cat1, cat2, exam, type) {
             total = Math.round(((c1 + c2) / 60 * 30 + e) * 10) / 10;
     }
     
-    return Math.min(total, 100); // Cap at 100%
+    return Math.min(total, 100);
 }
 
 // ============================================================
-// GET GRADE INFO
+// ✅ TVET CALCULATION
+// ============================================================
+
+function calculateTVETTotal(cat1, cat2, exam, type) {
+    let total = 0;
+    
+    // Clamp values
+    const c1 = Math.min(Math.max(cat1 || 0, 0), 30);
+    const c2 = Math.min(Math.max(cat2 || 0, 0), 30);
+    const e = Math.min(Math.max(exam || 0, 0), 100);
+    
+    switch(type) {
+        case 'full':
+            // TVET: CAT1+CAT2+Exam = 160 total
+            total = Math.round(((c1 + c2 + e) / 160) * 100 * 10) / 10;
+            break;
+            
+        case 'single_cat':
+            // TVET: CAT+Exam = 130 total
+            total = Math.round(((c1 + e) / 130) * 100 * 10) / 10;
+            break;
+            
+        case 'exam_only':
+            // TVET: Exam is out of 100
+            total = Math.round(e * 10) / 10;
+            break;
+            
+        case 'cats_only':
+            // TVET: CAT1+CAT2 = 60 total
+            total = Math.round(((c1 + c2) / 60) * 100 * 10) / 10;
+            break;
+            
+        case 'cat_only':
+            // TVET: CAT only = 30 total
+            total = Math.round((c1 / 30) * 100 * 10) / 10;
+            break;
+            
+        default:
+            total = Math.round(((c1 + c2 + e) / 160) * 100 * 10) / 10;
+    }
+    
+    return Math.min(total, 100);
+}
+
+// ============================================================
+// ✅ UNIFIED CALCULATION - Nursing + TVET
+// ============================================================
+
+function calculateMarksEntryTotal(cat1, cat2, exam, type) {
+    if (isTVETProgram()) {
+        return calculateTVETTotal(cat1, cat2, exam, type);
+    } else {
+        return calculateNursingTotal(cat1, cat2, exam, type);
+    }
+}
+
+// ============================================================
+// ✅ NURSING GRADING - ORIGINAL WORKING FORMULA
+// ============================================================
+
+function getNursingGrade(score) {
+    if (score >= 75) {
+        return { 
+            grade: 'A', 
+            rating: 'Distinction', 
+            points: 4.0, 
+            color: '#065f46', 
+            bgColor: '#d1fae5' 
+        };
+    } else if (score >= 65) {
+        return { 
+            grade: 'B', 
+            rating: 'Credit', 
+            points: 3.0, 
+            color: '#1e40af', 
+            bgColor: '#dbeafe' 
+        };
+    } else if (score >= 60) {
+        return { 
+            grade: 'C', 
+            rating: 'Pass', 
+            points: 2.0, 
+            color: '#92400e', 
+            bgColor: '#fef3c7' 
+        };
+    } else {
+        return { 
+            grade: 'D', 
+            rating: 'Fail', 
+            points: 0.0, 
+            color: '#991b1b', 
+            bgColor: '#fee2e2' 
+        };
+    }
+}
+
+// ============================================================
+// ✅ TVET COMPETENCY-BASED GRADING
+// ============================================================
+
+// ============================================================
+// ✅ TVET COMPETENCY-BASED GRADING WITH POINTS
+// ============================================================
+
+function getTVETGrade(score) {
+    if (score >= 80 && score <= 100) {
+        return { 
+            grade: 'A', 
+            rating: 'MASTERY', 
+            points: 4.0,          // ✅ TVET now has points!
+            color: '#065f46', 
+            bgColor: '#d1fae5' 
+        };
+    } else if (score >= 65 && score <= 79) {
+        return { 
+            grade: 'B', 
+            rating: 'PROFICIENT', 
+            points: 3.0,          // ✅ TVET now has points!
+            color: '#1e40af', 
+            bgColor: '#dbeafe' 
+        };
+    } else if (score >= 50 && score <= 64) {
+        return { 
+            grade: 'C', 
+            rating: 'COMPETENT', 
+            points: 2.0,          // ✅ TVET now has points!
+            color: '#92400e', 
+            bgColor: '#fef3c7' 
+        };
+    } else if (score >= 0 && score <= 49) {
+        return { 
+            grade: 'E', 
+            rating: 'NOT YET COMPETENT', 
+            points: 0.0,          // ✅ TVET now has points!
+            color: '#991b1b', 
+            bgColor: '#fee2e2' 
+        };
+    }
+    return { 
+        grade: 'N/A', 
+        rating: 'PENDING', 
+        points: 0.0,
+        color: '#94a3b8', 
+        bgColor: '#f1f5f9' 
+    };
+}
+
+// ============================================================
+// ✅ UNIFIED GRADING - Nursing + TVET
 // ============================================================
 
 function getMarksEntryGrade(score) {
-    if (score >= 75) return { grade: 'A', rating: 'Distinction', points: 4.0, color: '#065f46', bgColor: '#d1fae5' };
-    else if (score >= 65) return { grade: 'B', rating: 'Credit', points: 3.0, color: '#1e40af', bgColor: '#dbeafe' };
-    else if (score >= 60) return { grade: 'C', rating: 'Pass', points: 2.0, color: '#92400e', bgColor: '#fef3c7' };
-    else return { grade: 'D', rating: 'Fail', points: 0.0, color: '#991b1b', bgColor: '#fee2e2' };
+    if (isTVETProgram()) {
+        return getTVETGrade(score);
+    } else {
+        return getNursingGrade(score);
+    }
 }
 
 // ============================================================
@@ -281,11 +461,13 @@ function recalculateAllTotals() {
         
         const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
         const gradeInfo = getMarksEntryGrade(total);
+        const passingThreshold = getPassingThreshold();
+        const isPassing = total >= passingThreshold;
         
         const totalEl = document.getElementById(`me_total_${index}`);
         if (totalEl) {
             totalEl.textContent = total > 0 ? total : '--';
-            totalEl.style.color = total >= 60 ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
+            totalEl.style.color = isPassing ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
         }
         
         const gradeEl = document.getElementById(`me_grade_${index}`);
@@ -303,7 +485,7 @@ function recalculateAllTotals() {
         const ratingEl = document.getElementById(`me_rating_${index}`);
         if (ratingEl) {
             if (total > 0) {
-                ratingEl.innerHTML = `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
+                ratingEl.innerHTML = `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
             } else {
                 ratingEl.innerHTML = '<span style="color: #94a3b8;">PENDING</span>';
             }
@@ -584,34 +766,37 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
     const container = document.getElementById('me_marks_container');
     if (!container) return;
     
+    const isTVET = isTVETProgram();
+    const examMax = getExamMax();
+    const totalMax = getTotalMax();
+    const passingThreshold = getPassingThreshold();
+    const programLabel = getProgramTypeLabel();
+    
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     const passing = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total >= 60;
+        return total >= passingThreshold;
     });
     
     const showCat1 = assessmentType !== 'exam_only';
     const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
     const showExam = assessmentType !== 'cats_only' && assessmentType !== 'cat_only';
-    const examMax = assessmentType === 'exam_only' ? 100 : 70;
-    const maxTotal = assessmentType === 'full' ? 100 : 
-                     assessmentType === 'single_cat' ? 100 :
-                     assessmentType === 'exam_only' ? 70 :
-                     assessmentType === 'cats_only' ? 60 : 30;
+    const examMaxDisplay = isTVET ? 100 : 70;
     
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
             <div>
                 <h3 style="margin: 0; color: #0f172a;">${unitCode || me_currentUnit}</h3>
                 <span style="font-size: 12px; color: #64748b;">${me_currentProgram} | ${me_currentBlock.replace('_', ' ')} | ${me_currentYear}</span>
+                <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">${programLabel}</span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
                 <span style="font-size: 12px; color: #059669; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
-                <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} passing</span>
+                <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} ${isTVET ? 'Competent' : 'Passing'}</span>
                 <span style="font-size: 12px; color: #6b7280; margin-left: 12px; background: #f3f4f6; padding: 2px 12px; border-radius: 40px;">
-                    📋 Auto: ${getAssessmentTypeLabel(assessmentType)}
+                    📋 ${getAssessmentTypeLabel(assessmentType)}
                 </span>
                 <span style="font-size: 11px; color: #475569; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">
-                    Max: ${maxTotal}
+                    ${isTVET ? 'Exam: 100' : 'Exam: 70'}
                 </span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -644,8 +829,8 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                         <th style="padding: 10px 8px; text-align: left;">Name</th>
                         ${showCat1 ? `<th style="padding: 10px 8px; text-align: center;">CAT1 (0-30)</th>` : ''}
                         ${showCat2 ? `<th style="padding: 10px 8px; text-align: center;">CAT2 (0-30)</th>` : ''}
-                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${examMax})</th>` : ''}
-                        <th style="padding: 10px 8px; text-align: center;">Total (${maxTotal})</th>
+                        ${showExam ? `<th style="padding: 10px 8px; text-align: center;">Exam (0-${examMaxDisplay})</th>` : ''}
+                        <th style="padding: 10px 8px; text-align: center;">Total (%)</th>
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
                         <th style="padding: 10px 8px; text-align: center;">Points</th>
                         <th style="padding: 10px 8px; text-align: center;">Rating</th>
@@ -660,6 +845,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         const exam = parseFloat(m.exam) || 0;
         const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
         const gradeInfo = getMarksEntryGrade(total);
+        const isPassing = total >= passingThreshold;
         const displayTotal = total > 0 ? total : '--';
         const displayGrade = total > 0 ? gradeInfo.grade : '--';
         const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
@@ -682,13 +868,14 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 <input type="number" id="me_cat2_${i}" value="${cat2}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
             ${showExam ? `<td style="padding: 8px; text-align: center;">
-                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${examMax}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+                <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${examMaxDisplay}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
+                <span style="font-size: 9px; color: #94a3b8; display: block;">Max: ${examMaxDisplay}</span>
             </td>` : ''}
-            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${total >= 60 ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
+            <td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>
             <td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color};">${displayGrade}</td>
             <td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color};">${displayPoints}</td>
             <td id="me_rating_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">
-                ${total > 0 ? `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
+                ${total > 0 ? `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
             </td>
             ${isUserAdmin() ? `<td style="padding: 8px 6px; text-align: center; font-size: 11px;">${approvalBadge}</td>` : ''}
         </tr>`;
@@ -717,14 +904,16 @@ function updateMarksEntryRow(index) {
     const cat2 = parseFloat(document.getElementById(`me_cat2_${index}`)?.value) || 0;
     const exam = parseFloat(document.getElementById(`me_exam_${index}`)?.value) || 0;
     const assessmentType = me_currentAssessmentType;
+    const passingThreshold = getPassingThreshold();
     
     const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
     const gradeInfo = getMarksEntryGrade(total);
+    const isPassing = total >= passingThreshold;
     
     const totalEl = document.getElementById(`me_total_${index}`);
     if (totalEl) {
         totalEl.textContent = total > 0 ? total : '--';
-        totalEl.style.color = total >= 60 ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
+        totalEl.style.color = isPassing ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
     }
     
     const gradeEl = document.getElementById(`me_grade_${index}`);
@@ -742,7 +931,7 @@ function updateMarksEntryRow(index) {
     const ratingEl = document.getElementById(`me_rating_${index}`);
     if (ratingEl) {
         if (total > 0) {
-            ratingEl.innerHTML = `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
+            ratingEl.innerHTML = `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>`;
         } else {
             ratingEl.innerHTML = '<span style="color: #94a3b8;">PENDING</span>';
         }
@@ -760,11 +949,15 @@ function updateMarksEntryRow(index) {
 // ============================================================
 
 function updateMarksEntryStats(marks, assessmentType) {
+    const isTVET = isTVETProgram();
+    const passingThreshold = getPassingThreshold();
+    const programLabel = getProgramTypeLabel();
+    
     const totalEnrolled = marks.length;
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     const passing = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total >= 60;
+        return total >= passingThreshold;
     });
     
     const avg = withScores.length > 0 ? 
@@ -776,21 +969,55 @@ function updateMarksEntryStats(marks, assessmentType) {
     const avgEl = document.getElementById('me_class_avg');
     const atRiskEl = document.getElementById('me_at_risk');
     const publishedEl = document.getElementById('me_published_count');
+    const programTypeEl = document.getElementById('me_program_type');
+    const thresholdEl = document.getElementById('me_passing_threshold');
     
     if (totalEl) totalEl.textContent = totalEnrolled;
     if (subjectsEl) subjectsEl.textContent = marks.length > 0 ? 1 : 0;
     if (passEl) passEl.textContent = totalEnrolled > 0 ? Math.round((passing.length / totalEnrolled) * 100) + '%' : '0%';
     if (avgEl) avgEl.textContent = Math.round(avg) + '%';
+    if (programTypeEl) programTypeEl.textContent = programLabel;
+    if (thresholdEl) thresholdEl.textContent = isTVET ? 'Competent (50%)' : 'Pass (60%)';
     
     const atRisk = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total > 0 && total < 60;
+        return total > 0 && total < passingThreshold;
     });
     if (atRiskEl) atRiskEl.textContent = atRisk.length;
     
     if (publishedEl && marks) {
         const publishedCount = marks.filter(m => m.published === true).length;
         publishedEl.textContent = publishedCount;
+    }
+    
+    // TVET-specific stats
+    if (isTVET) {
+        const mastery = marks.filter(m => {
+            const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
+            return total >= 80;
+        });
+        const proficient = marks.filter(m => {
+            const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
+            return total >= 65 && total < 80;
+        });
+        const competent = marks.filter(m => {
+            const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
+            return total >= 50 && total < 65;
+        });
+        const notYet = marks.filter(m => {
+            const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
+            return total > 0 && total < 50;
+        });
+        
+        const masteryEl = document.getElementById('me_mastery_count');
+        const proficientEl = document.getElementById('me_proficient_count');
+        const competentEl = document.getElementById('me_competent_count');
+        const notYetEl = document.getElementById('me_not_yet_count');
+        
+        if (masteryEl) masteryEl.textContent = mastery.length;
+        if (proficientEl) proficientEl.textContent = proficient.length;
+        if (competentEl) competentEl.textContent = competent.length;
+        if (notYetEl) notYetEl.textContent = notYet.length;
     }
 }
 
@@ -2164,7 +2391,7 @@ function renderMarksStudentManager() {
             const total = s.final_score || 0;
             const grade = s.grade || '-';
             const hasMarks = cat1 > 0 || cat2 > 0 || exam > 0;
-            const isPassing = total >= 60;
+            const isPassing = total >= getPassingThreshold();
             
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #f8fafc;' : ''}">
@@ -2771,9 +2998,10 @@ function renderStudentPublishList(marks) {
         const total = mark.final || mark.final_score || 0;
         const grade = mark.grade || '-';
         const isPublished = mark.published === true;
-        const isPassing = total >= 60;
+        const isPassing = total >= getPassingThreshold();
         const isSelected = sp_selected.has(admission);
-        const gradeColor = getMarksEntryGrade(total).color;
+        const gradeInfo = getMarksEntryGrade(total);
+        const gradeColor = gradeInfo.color;
         
         html += `
             <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
@@ -2848,7 +3076,7 @@ function selectPassingStudents() {
     marks.forEach(m => {
         const total = m.final || m.final_score || 0;
         const admission = m.admission || m.admission_number || '';
-        if (total >= 60 && !m.published) {
+        if (total >= getPassingThreshold() && !m.published) {
             sp_selected.add(admission);
         }
     });
@@ -2863,7 +3091,7 @@ function selectFailingStudents() {
     marks.forEach(m => {
         const total = m.final || m.final_score || 0;
         const admission = m.admission || m.admission_number || '';
-        if (total > 0 && total < 60 && !m.published) {
+        if (total > 0 && total < getPassingThreshold() && !m.published) {
             sp_selected.add(admission);
         }
     });
@@ -3017,6 +3245,24 @@ window.publishSelectedStudents = publishSelectedStudents;
 // GLOBAL REGISTRATION
 // ============================================================
 
+// Program detection
+window.isTVETProgram = isTVETProgram;
+window.isNursingProgram = isNursingProgram;
+window.getExamMax = getExamMax;
+window.getTotalMax = getTotalMax;
+window.getPassingThreshold = getPassingThreshold;
+window.getProgramTypeLabel = getProgramTypeLabel;
+
+// Calculations
+window.calculateNursingTotal = calculateNursingTotal;
+window.calculateTVETTotal = calculateTVETTotal;
+window.calculateMarksEntryTotal = calculateMarksEntryTotal;
+
+// Grading
+window.getNursingGrade = getNursingGrade;
+window.getTVETGrade = getTVETGrade;
+window.getMarksEntryGrade = getMarksEntryGrade;
+
 // Main functions
 window.loadMEBlocks = loadMEBlocks;
 window.loadMEUnits = loadMEUnits;
@@ -3026,8 +3272,6 @@ window.updateMarksEntryRow = updateMarksEntryRow;
 window.saveMarksEntry = saveMarksEntry;
 window.exportMarksEntry = exportMarksEntry;
 window.refreshMarksData = refreshMarksData;
-window.calculateMarksEntryTotal = calculateMarksEntryTotal;
-window.getMarksEntryGrade = getMarksEntryGrade;
 window.updateMarksEntryStats = updateMarksEntryStats;
 window.downloadCSV = downloadCSV;
 window.recalculateAllTotals = recalculateAllTotals;
@@ -3093,7 +3337,10 @@ window.escapeHtml = escapeHtml;
 
 console.log('✅ Marks Entry System Fully Loaded!');
 console.log('📋 Features:');
-console.log('   - ✅ CORRECT Nursing calculation (CAT1+CAT2=60%, Exam=40%)');
+console.log('   - ✅ Nursing calculation (CAT1+CAT2=60%, Exam=40%)');
+console.log('   - ✅ TVET calculation (CAT1+CAT2+Exam=160 total)');
+console.log('   - ✅ Nursing grading (A,B,C,D with points)');
+console.log('   - ✅ TVET competency grading (A,B,C,E with 0 points)');
 console.log('   - ✅ Auto-assessment type detection');
 console.log('   - ✅ Column management (Admin only)');
 console.log('   - ✅ Lecturer assignment management');
