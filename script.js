@@ -5616,11 +5616,6 @@ async function updateUserEmailFromModalDirect(userId, newEmail) {
         return { success: false, message: error.message };
     }
 }
-
-// Also add the alias function for backward compatibility
-function updateBlockOptions(programSelectId, blockSelectId) {
-    updateBlockTermOptions(programSelectId, blockSelectId);
-}
 // ============================================
 // 📧 UPDATE USER EMAIL - AUTH + PROFILE
 // FIXED: Uses Supabase session for admin check
