@@ -3460,8 +3460,8 @@ async function loadAllUsers(page = 1, filters = {}) {
 }
 
 // ============================================
-// 📊 RENDER USERS TABLE - COMPLETE TVET SUPPORT
-// WITH STUDENT/STAFF ID COLUMN (NO USER ID)
+// 📊 RENDER USERS TABLE - 7 COLUMNS
+// WITH STUDENT/STAFF ID, NAME, EMAIL, ROLE COMBINED
 // ============================================
 
 function renderUsersTable(users, docCache = {}) {
@@ -3474,7 +3474,7 @@ function renderUsersTable(users, docCache = {}) {
     if (!users || users.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="13" style="text-align:center; padding: 60px 20px; color: #94a3b8;">
+                <td colspan="7" style="text-align:center; padding: 60px 20px; color: #94a3b8;">
                     <i class="fas fa-users" style="font-size: 40px; display: block; margin-bottom: 12px; opacity: 0.3;"></i>
                     No users found
                     <br>
@@ -3488,18 +3488,21 @@ function renderUsersTable(users, docCache = {}) {
     let html = '';
     
     for (const u of users) {
-        const userDocs = docCache[u.user_id] || {};
-        const kcseStatus = userDocs['kcse'] || 'pending';
-        const idStatus = userDocs['id'] || 'pending';
+        // ✅ Student/Staff ID based on role
+        let idDisplay = 'N/A';
+        let idLabel = 'ID';
+        if (u.role === 'student') {
+            idDisplay = u.student_id || 'N/A';
+            idLabel = 'Student ID';
+        } else if (u.role === 'lecturer' || u.role === 'admin' || u.role === 'superadmin') {
+            idDisplay = u.staff_id || u.student_id || 'N/A';
+            idLabel = 'Staff ID';
+        } else {
+            idDisplay = u.student_id || u.staff_id || 'N/A';
+            idLabel = 'ID';
+        }
         
-        const roleOptions = ['student', 'lecturer', 'admin', 'superadmin']
-            .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('');
-
-        const isBlocked = u.block_program_year === true;
-        const isApproved = u.status === 'approved' || u.status === 'active';
-        const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
-        const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
-        
+        // Program info
         const programName = getProgramDisplayName(u.program);
         const programType = getProgramType(u.program);
         const isTVET = programType === 'TVET';
@@ -3507,116 +3510,152 @@ function renderUsersTable(users, docCache = {}) {
         const programBadgeColor = isTVET ? '#92400e' : '#1e40af';
         const programIcon = isTVET ? 'fa-tools' : 'fa-graduation-cap';
         
-        const blockLabel = isTVET ? 'Term' : 'Block';
-        const blockValue = u.block || u.current_block || 'Not assigned';
-        const blockDisplay = blockValue !== 'Not assigned' ? `${blockLabel}: ${blockValue}` : 'Not assigned';
+        // Intake display
+        const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
         
+        // Block/Term display
+        const blockLabel = isTVET ? 'Term' : 'Block';
+        const blockValue = u.block || u.current_block || u.term || 'Not assigned';
+        const blockDisplay = blockValue !== 'Not assigned' ? `${blockLabel}: ${blockValue}` : 'Not assigned';
         const blockBadgeColor = isTVET ? '#f59e0b' : '#4C1D95';
         const blockBadgeBg = isTVET ? '#fef3c7' : '#e0e7ff';
-        const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
-
-        // ✅ Student ID / Staff ID based on role (NO USER ID)
-        let idDisplay = 'N/A';
-        let idLabel = 'ID';
-        if (u.role === 'student') {
-            idDisplay = u.student_id || 'N/A';
-            idLabel = 'Student ID';
-        } else if (u.role === 'lecturer' || u.role === 'admin' || u.role === 'superadmin') {
-            idDisplay = u.staff_id || 'N/A';
-            idLabel = 'Staff ID';
-        } else {
-            idDisplay = 'N/A';
-            idLabel = 'ID';
-        }
-
+        
+        // Status
+        const isApproved = u.status === 'approved' || u.status === 'active';
+        const isBlocked = u.block_program_year === true;
+        const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
+        const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
+        const statusBg = isBlocked ? '#fee2e2' : (isApproved ? '#d1fae5' : '#fef3c7');
+        const statusColor = isBlocked ? '#991b1b' : (isApproved ? '#065f46' : '#92400e');
+        
+        // Role badge
+        const roleLabels = {
+            'student': '👨‍🎓 Student',
+            'lecturer': '👨‍🏫 Lecturer',
+            'admin': '🛡️ Admin',
+            'superadmin': '⭐ Super Admin'
+        };
+        const roleLabel = roleLabels[u.role] || u.role || 'User';
+        
+        // Avatar
+        const initial = u.full_name?.charAt(0)?.toUpperCase() || 'U';
+        const avatarColors = ['#4C1D95', '#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
+        const colorIndex = (u.full_name?.length || 0) % avatarColors.length;
+        const avatarColor = avatarColors[colorIndex];
+        const hasPhoto = u.profile_photo_url && u.profile_photo_url.startsWith('http');
+        
         html += `
-            <tr style="border-bottom: 1px solid #e5e7eb; transition: background 0.2s;" 
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" 
                 onmouseover="this.style.background='#f8fafc'" 
-                onmouseout="this.style.background='white'">
-                <!-- ✅ Student/Staff ID Column (NO USER ID) -->
-                <td style="padding: 10px 14px; text-align: center; font-weight: 600; font-size: 13px;">
-                    ${escapeHtml(idDisplay)}
-                    <br>
-                    <small style="font-size: 9px; color: #94a3b8; font-weight: 400;">
-                        ${idLabel}
-                    </small>
+                onmouseout="this.style.background='transparent'">
+                
+                <!-- 1. Checkbox -->
+                <td style="padding: 10px 12px; text-align: center;">
+                    <input type="checkbox" class="user-checkbox" data-user-id="${escapeHtml(u.user_id)}" 
+                           onchange="updateBulkSelectedCount()" style="cursor: pointer;">
                 </td>
-                <td style="padding: 10px 14px; font-weight: 500;">${escapeHtml(u.full_name)}</td>
-                <td style="padding: 10px 14px; font-size: 13px; color: #475569;">${escapeHtml(u.email)}</td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    <select style="padding: 4px 8px; font-size: 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; cursor: pointer;" 
-                            onchange="updateUserRole('${escapeHtml(u.user_id)}', this.value, '${escapeHtml(u.full_name)}')" 
-                            ${u.role === 'superadmin' ? 'disabled' : ''}>
-                        ${roleOptions}
-                    </select>
-                </td>
+                
+                <!-- 2. Student/Staff ID, Name, Email, Role (COMBINED) -->
                 <td style="padding: 10px 14px;">
-                    <div style="font-weight: 500; font-size: 13px;">${escapeHtml(programName)}</div>
-                    <div style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${programBadgeBg}; color: ${programBadgeColor}; margin-top: 2px;">
-                        <i class="fas ${programIcon}"></i> ${programType}
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <!-- Avatar -->
+                        <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px solid #e5e7eb; background: ${hasPhoto ? 'transparent' : avatarColor};">
+                            ${hasPhoto 
+                                ? `<img src="${u.profile_photo_url}" alt="${escapeHtml(u.full_name)}" style="width: 100%; height: 100%; object-fit: cover;">`
+                                : `<span style="font-size: 16px; font-weight: 700; color: white;">${initial}</span>`
+                            }
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; color: #1e293b; font-size: 14px;">${escapeHtml(u.full_name || 'Unknown')}</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: #94a3b8; margin-top: 1px;">
+                                <span style="background: #f1f5f9; padding: 0 6px; border-radius: 4px;">${escapeHtml(idDisplay)}</span>
+                                <span>${escapeHtml(u.email || 'N/A')}</span>
+                                <span style="background: ${u.role === 'student' ? '#dbeafe' : u.role === 'lecturer' ? '#ede9fe' : u.role === 'admin' ? '#fee2e2' : '#fef3c7'}; color: ${u.role === 'student' ? '#2563eb' : u.role === 'lecturer' ? '#7c3aed' : u.role === 'admin' ? '#dc2626' : '#d97706'}; padding: 0 8px; border-radius: 4px; font-weight: 500; font-size: 10px;">
+                                    ${roleLabel}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </td>
-                <td style="padding: 10px 14px; text-align: center; font-size: 13px;">${escapeHtml(intakeDisplay)}</td>
+                
+                <!-- 3. Program -->
+                <td style="padding: 10px 14px;">
+                    <div style="font-weight: 500; color: #1e293b; font-size: 13px;">${escapeHtml(programName)}</div>
+                    <span style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${programBadgeBg}; color: ${programBadgeColor}; margin-top: 2px;">
+                        <i class="fas ${programIcon}"></i> ${programType}
+                    </span>
+                </td>
+                
+                <!-- 4. Intake -->
+                <td style="padding: 10px 14px;">
+                    <div style="font-size: 13px; color: #1e293b; font-weight: 500;">${escapeHtml(intakeDisplay)}</div>
+                </td>
+                
+                <!-- 5. Block/Term -->
                 <td style="padding: 10px 14px; text-align: center;">
-                    <span style="display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${blockBadgeBg}; color: ${blockBadgeColor}; border: 1px solid ${blockBadgeColor}33;">
+                    <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: ${blockBadgeBg}; color: ${blockBadgeColor}; border: 1px solid ${blockBadgeColor}33;">
                         <i class="fas ${isTVET ? 'fa-calendar-alt' : 'fa-layer-group'}"></i> 
                         ${escapeHtml(blockDisplay)}
                     </span>
                 </td>
+                
+                <!-- 6. Status -->
                 <td style="padding: 10px 14px; text-align: center;">
-                    <span style="cursor:pointer; font-size: 11px; padding: 2px 10px; border-radius: 12px; background: ${kcseStatus === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${kcseStatus === 'pending' ? '#92400e' : '#065f46'};" 
-                          onclick="viewDocument('${escapeHtml(u.user_id)}','kcse')">
-                        ${kcseStatus.toUpperCase()}
-                        <i class="fas fa-eye" style="font-size: 9px; margin-left: 3px;"></i>
+                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor}33;">
+                        ${isBlocked ? '🚫' : (isApproved ? '✅' : '⏳')} ${statusText}
                     </span>
                 </td>
+                
+                <!-- 7. Actions -->
                 <td style="padding: 10px 14px; text-align: center;">
-                    <span style="cursor:pointer; font-size: 11px; padding: 2px 10px; border-radius: 12px; background: ${idStatus === 'pending' ? '#fef3c7' : '#d1fae5'}; color: ${idStatus === 'pending' ? '#92400e' : '#065f46'};" 
-                          onclick="viewDocument('${escapeHtml(u.user_id)}','id')">
-                        ${idStatus.toUpperCase()}
-                        <i class="fas fa-eye" style="font-size: 9px; margin-left: 3px;"></i>
-                    </span>
-                </td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    ${u.profile_photo_url ? 
-                        `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
-                              alt="Photo" 
-                              style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; cursor: pointer; border: 2px solid #e5e7eb;" 
-                              onclick="viewDocument('${escapeHtml(u.user_id)}','photo')"
-                              onerror="this.style.display='none';">` :
-                        `<span style="font-size: 11px; cursor: pointer; color: #94a3b8;" onclick="viewDocument('${escapeHtml(u.user_id)}','photo')">No photo</span>`
-                    }
-                </td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    <button onclick="openDocumentUploadModal('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" 
-                            style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;"
-                            onmouseover="this.style.background='#7c3aed'" 
-                            onmouseout="this.style.background='#8b5cf6'"
-                            title="Upload Documents">
-                        <i class="fas fa-upload"></i>
-                    </button>
-                </td>
-                <td style="padding: 10px 14px; text-align: center;">
-                    <span style="padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; background: ${statusClass === 'status-approved' ? '#d1fae5' : statusClass === 'status-danger' ? '#fee2e2' : '#fef3c7'}; color: ${statusClass === 'status-approved' ? '#065f46' : statusClass === 'status-danger' ? '#991b1b' : '#92400e'};">
-                        ${statusText}
-                    </span>
-                </td>
-                <td style="padding: 10px 14px; text-align: center; white-space: nowrap;">
-                    <button onclick="openEditUserModal('${escapeHtml(u.user_id)}')" style="background: #3b82f6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    ${!isApproved ? `<button onclick="approveUser('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" style="background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-left: 4px; transition: all 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-                        <i class="fas fa-check"></i>
-                    </button>` : ''}
-                    <button onclick="deleteProfile('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-left: 4px; transition: all 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="openEmailChangeDialog('${escapeHtml(u.user_id)}', '${escapeHtml(u.email)}')" 
+                                class="action-btn" style="background: #f59e0b; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;" 
+                                title="Change Email">
+                            <i class="fas fa-envelope"></i>
+                        </button>
+                        <button onclick="openEditUserModal('${escapeHtml(u.user_id)}')" 
+                                class="action-btn edit-btn" style="background: #e0e7ff; color: #4C1D95; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${!isApproved ? `<button onclick="approveUser('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" style="background: #10b981; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-check"></i>
+                        </button>` : ''}
+                        <button onclick="deleteProfile('${escapeHtml(u.user_id)}', '${escapeHtml(u.full_name)}')" 
+                                class="action-btn delete-btn" style="background: #fee2e2; color: #dc2626; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
     }
     
     tbody.innerHTML = html;
+}
+
+// ============================================
+// 📊 UPDATE BULK SELECTED COUNT
+// ============================================
+
+function updateBulkSelectedCount() {
+    const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+    const countEl = document.getElementById('bulkSelectedCount');
+    if (countEl) {
+        countEl.textContent = checkboxes.length;
+    }
+}
+
+// ============================================
+// 🔄 TOGGLE ALL USER CHECKBOXES
+// ============================================
+
+function toggleAllUserCheckboxes() {
+    const checked = document.getElementById('selectAllUsers')?.checked || false;
+    document.querySelectorAll('.user-checkbox').forEach(cb => {
+        cb.checked = checked;
+    });
+    updateBulkSelectedCount();
 }
 
 // ============================================
@@ -5349,6 +5388,7 @@ async function handleEditUser(e) {
 }
 // ============================================
 // 📧 UPDATE USER EMAIL - AUTH + PROFILE
+// FIXED: Uses Supabase session for admin check
 // ============================================
 
 async function updateUserEmailFromModal() {
@@ -5357,7 +5397,7 @@ async function updateUserEmailFromModal() {
     const statusDiv = document.getElementById('emailUpdateStatus');
     
     if (!userId) {
-        showNotification('❌ No user selected. Please load a user first.', 'error');
+        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ No user selected. Please load a user first.</span>';
         return;
     }
     
@@ -5373,17 +5413,44 @@ async function updateUserEmailFromModal() {
         return;
     }
     
-    // Check admin permissions
-    const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
-    if (!['superadmin', 'admin'].includes(currentUser?.role)) {
-        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Permission denied. Admin privileges required.</span>';
-        return;
-    }
-    
-    statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Checking email availability...</span>';
+    statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Checking permissions...</span>';
     
     try {
         const supabase = getSb();
+        
+        // ✅ GET CURRENT SESSION (like password reset)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ No active session. Please login again.</span>';
+            return;
+        }
+        
+        const currentUser = session.user;
+        console.log('👤 Current user:', currentUser.email);
+        
+        // ✅ CHECK ADMIN ROLE FROM DATABASE (like password reset)
+        const { data: adminProfile, error: adminError } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .select('role, email')
+            .eq('user_id', currentUser.id)
+            .single();
+        
+        if (adminError || !adminProfile) {
+            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Admin profile not found.</span>';
+            return;
+        }
+        
+        // ✅ CHECK IF USER IS ADMIN OR SUPERADMIN
+        if (!['admin', 'superadmin', 'super_admin'].includes(adminProfile.role)) {
+            statusDiv.innerHTML = `<span style="color: #dc2626;">❌ Permission denied. Admin privileges required. Your role: ${adminProfile.role}</span>`;
+            return;
+        }
+        
+        console.log('✅ Admin verified:', adminProfile.email);
+        console.log('🎭 Role:', adminProfile.role);
+        
+        statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Checking email availability...</span>';
         
         // 1. Get current user data
         const { data: userData, error: userError } = await supabase
@@ -5424,14 +5491,26 @@ async function updateUserEmailFromModal() {
         
         statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Updating email in Auth and Profile...</span>';
         
-        // 4. ✅ UPDATE AUTH TABLE
-        const { error: authError } = await supabase.auth.admin.updateUserById(
-            userId,
-            { email: newEmail.toLowerCase() }
+        // 4. ✅ UPDATE AUTH TABLE (using admin API with session token)
+        const response = await fetch(
+            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-update-email',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ 
+                    userId: userId,
+                    newEmail: newEmail.toLowerCase()
+                })
+            }
         );
         
-        if (authError) {
-            throw new Error('Auth update failed: ' + authError.message);
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Auth update failed');
         }
         console.log('✅ Auth email updated successfully');
         
@@ -5445,9 +5524,6 @@ async function updateUserEmailFromModal() {
             .eq('user_id', userId);
         
         if (profileError) {
-            // Try to revert auth if profile fails
-            console.error('Profile update failed, reverting auth...');
-            await supabase.auth.admin.updateUserById(userId, { email: oldEmail });
             throw new Error('Profile update failed: ' + profileError.message);
         }
         console.log('✅ Profile email updated successfully');
@@ -5461,7 +5537,6 @@ async function updateUserEmailFromModal() {
         
         // 7. Update the displayed email
         emailInput.value = newEmail;
-        document.getElementById('edit_user_email').value = newEmail;
         
         // 8. Show success
         statusDiv.innerHTML = `<span style="color: #059669;">✅ Email updated successfully from ${oldEmail} to ${newEmail}</span>`;
@@ -5480,7 +5555,6 @@ async function updateUserEmailFromModal() {
         showNotification('❌ Failed to update email', 'error');
     }
 }
-
 // Clear status when modal closes
 function clearEmailStatus() {
     const statusDiv = document.getElementById('emailUpdateStatus');
