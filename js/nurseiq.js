@@ -1311,34 +1311,98 @@ class NurseIQModule {
     // ============================================================
     // 📥 LOAD CURRENT QUESTION
     // ============================================================
-    loadCurrentQuestion() {
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        if (!question) return;
-        
-        const questionText = document.getElementById('questionText');
-        if (questionText) {
-            questionText.textContent = question.question_text || 'Question text not available';
+  loadCurrentQuestion() {
+    const question = this.currentCourseQuestions[this.currentQuestionIndex];
+    if (!question) return;
+    
+    // Update question text
+    const questionText = document.getElementById('questionText');
+    if (questionText) {
+        questionText.textContent = question.question_text || 'Question text not available';
+    }
+    
+    // Update difficulty badge
+    const difficultyBadge = document.getElementById('difficultyBadge');
+    if (difficultyBadge) {
+        difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
+        difficultyBadge.style.cssText = `padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;`;
+        if (question.difficulty === 'easy') {
+            difficultyBadge.style.background = '#d1fae5';
+            difficultyBadge.style.color = '#065f46';
+        } else if (question.difficulty === 'hard') {
+            difficultyBadge.style.background = '#fee2e2';
+            difficultyBadge.style.color = '#991b1b';
+        } else {
+            difficultyBadge.style.background = '#fef3c7';
+            difficultyBadge.style.color = '#92400e';
         }
-        
-        const difficultyBadge = document.getElementById('difficultyBadge');
-        if (difficultyBadge) {
-            difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
-            difficultyBadge.style.cssText = `padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;`;
-            if (question.difficulty === 'easy') {
-                difficultyBadge.style.background = '#d1fae5';
-                difficultyBadge.style.color = '#065f46';
-            } else if (question.difficulty === 'hard') {
-                difficultyBadge.style.background = '#fee2e2';
-                difficultyBadge.style.color = '#991b1b';
+    }
+    
+    // ✅ FIX: Clear explanation when navigating to new question
+    const explanationContainer = document.getElementById('explanationContainer');
+    if (explanationContainer) {
+        explanationContainer.style.display = 'none';
+    }
+    
+    // ✅ FIX: Reset all option styles
+    document.querySelectorAll('#optionsContainer > div').forEach(el => {
+        el.classList.remove('selected', 'correct', 'incorrect');
+        el.style.borderColor = '#e2e8f0';
+        el.style.background = 'white';
+    });
+    
+    // Load options
+    this.loadAnswerOptions(question);
+    this.updateQuestionButtons();
+    
+    // ✅ FIX: If question was already answered, show the answer state
+    const savedAnswer = this.userTestAnswers[question.id];
+    if (savedAnswer?.answered && savedAnswer.selectedOptionIndex !== undefined) {
+        const index = savedAnswer.selectedOptionIndex;
+        const selectedElement = document.getElementById(`option-container-${index}`);
+        if (selectedElement) {
+            const isCorrect = savedAnswer.correct;
+            if (isCorrect) {
+                selectedElement.classList.add('correct');
+                selectedElement.style.borderColor = '#10b981';
+                selectedElement.style.background = '#d1fae5';
             } else {
-                difficultyBadge.style.background = '#fef3c7';
-                difficultyBadge.style.color = '#92400e';
+                selectedElement.classList.add('incorrect');
+                selectedElement.style.borderColor = '#dc2626';
+                selectedElement.style.background = '#fee2e2';
+                
+                // Show correct answer if available
+                const correctAnswer = savedAnswer.correctAnswer;
+                if (correctAnswer) {
+                    const options = [];
+                    if (question.option_a) options.push(question.option_a);
+                    if (question.option_b) options.push(question.option_b);
+                    if (question.option_c) options.push(question.option_c);
+                    if (question.option_d) options.push(question.option_d);
+                    const correctIndex = options.indexOf(correctAnswer);
+                    if (correctIndex >= 0) {
+                        const correctElement = document.getElementById(`option-container-${correctIndex}`);
+                        if (correctElement) {
+                            correctElement.style.borderColor = '#10b981';
+                            correctElement.style.background = '#d1fae5';
+                            correctElement.classList.add('correct');
+                        }
+                    }
+                }
+            }
+            
+            // Show explanation if available
+            if (savedAnswer.answered && question.explanation) {
+                const explanationContainer = document.getElementById('explanationContainer');
+                const explanationText = document.getElementById('explanationText');
+                if (explanationContainer && explanationText) {
+                    explanationContainer.style.display = 'block';
+                    explanationText.textContent = question.explanation;
+                }
             }
         }
-        
-        this.loadAnswerOptions(question);
-        this.updateQuestionButtons();
     }
+}
     
     // ============================================================
     // 📄 LOAD ANSWER OPTIONS
@@ -1388,45 +1452,40 @@ class NurseIQModule {
         }
     }
     
-    // ============================================================
-    // 🎯 SELECT OPTION
-    // ============================================================
-    selectOption(index) {
-        document.querySelectorAll('#optionsContainer > div').forEach(el => {
-            el.classList.remove('selected', 'correct', 'incorrect');
-            el.style.borderColor = '#e2e8f0';
-            el.style.background = 'white';
-        });
-        
-        const selectedElement = document.getElementById(`option-container-${index}`);
-        if (selectedElement) {
-            selectedElement.classList.add('selected');
-            selectedElement.style.borderColor = '#4C1D95';
-            selectedElement.style.background = '#ede9fe';
-        }
-        
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        if (question) {
-            const optionText = this.getOptionText(index);
-            this.userTestAnswers[this.currentQuestionIndex] = {
-                selectedOption: optionText,
-                selectedOptionIndex: index,
-                answered: false
-            };
-        }
+   // ============================================================
+// 🎯 SELECT OPTION - FIXED
+// ============================================================
+selectOption(index) {
+    document.querySelectorAll('#optionsContainer > div').forEach(el => {
+        el.classList.remove('selected', 'correct', 'incorrect');
+        el.style.borderColor = '#e2e8f0';
+        el.style.background = 'white';
+    });
+    
+    const selectedElement = document.getElementById(`option-container-${index}`);
+    if (selectedElement) {
+        selectedElement.classList.add('selected');
+        selectedElement.style.borderColor = '#4C1D95';
+        selectedElement.style.background = '#ede9fe';
     }
     
-    getOptionText(index) {
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
-        if (!question) return '';
-        const options = [];
-        if (question.option_a) options.push(question.option_a);
-        if (question.option_b) options.push(question.option_b);
-        if (question.option_c) options.push(question.option_c);
-        if (question.option_d) options.push(question.option_d);
-        return options[index] || '';
+    const question = this.currentCourseQuestions[this.currentQuestionIndex];
+    if (question) {
+        const optionText = this.getOptionText(index);
+        // ✅ FIX: Use question.id, not currentQuestionIndex
+        this.userTestAnswers[question.id] = {
+            selectedOption: optionText,
+            selectedOptionIndex: index,
+            answered: false,
+            timestamp: new Date().toISOString(),
+            courseId: question.course_id,
+            courseName: this.currentCourseForTest?.name,
+            questionText: question.question_text,
+            difficulty: question.difficulty
+        };
+        this.saveUserProgress();
     }
-    
+}
     // ============================================================
     // ✅ CHECK ANSWER
     // ============================================================
