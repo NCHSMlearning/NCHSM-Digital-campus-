@@ -5531,7 +5531,8 @@ window.openDocumentUploadModal = openDocumentUploadModal;
 window.previewDocument = previewDocument;
 window.uploadUserDocuments = uploadUserDocuments;
 window.viewDocument = viewDocument;
-
+window.updateUserEmailFromModal = updateUserEmailFromModal;
+window.clearEmailStatus = clearEmailStatus;
 console.log('✅ Users Management fully optimized and exposed to global scope!');
 /*******************************************************
  * SECTION 10: UNIT MANAGEMENT - COMPLETE TVET/KRCHN SUPPORT
