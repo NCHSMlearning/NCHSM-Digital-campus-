@@ -5347,7 +5347,161 @@ async function handleEditUser(e) {
         setButtonLoading(submitButton, false, originalText);
     }
 }
+// ============================================
+// 📧 UPDATE USER EMAIL - AUTH + PROFILE
+// ============================================
 
+async function updateUserEmailFromModal() {
+    const userId = document.getElementById('edit_user_id')?.value;
+    const emailInput = document.getElementById('edit_user_email');
+    const statusDiv = document.getElementById('emailUpdateStatus');
+    
+    if (!userId) {
+        showNotification('❌ No user selected. Please load a user first.', 'error');
+        return;
+    }
+    
+    const newEmail = emailInput?.value?.trim();
+    if (!newEmail) {
+        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Please enter an email address</span>';
+        return;
+    }
+    
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Please enter a valid email address</span>';
+        return;
+    }
+    
+    // Check admin permissions
+    const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}');
+    if (!['superadmin', 'admin'].includes(currentUser?.role)) {
+        statusDiv.innerHTML = '<span style="color: #dc2626;">❌ Permission denied. Admin privileges required.</span>';
+        return;
+    }
+    
+    statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Checking email availability...</span>';
+    
+    try {
+        const supabase = getSb();
+        
+        // 1. Get current user data
+        const { data: userData, error: userError } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .select('user_id, email, full_name')
+            .eq('user_id', userId)
+            .single();
+        
+        if (userError || !userData) {
+            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ User not found</span>';
+            return;
+        }
+        
+        const oldEmail = userData.email;
+        if (oldEmail === newEmail) {
+            statusDiv.innerHTML = '<span style="color: #f59e0b;">ℹ️ No change needed</span>';
+            return;
+        }
+        
+        // 2. Check if email already in use by another user
+        const { data: existingUser } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .select('user_id')
+            .eq('email', newEmail.toLowerCase())
+            .neq('user_id', userId)
+            .single();
+        
+        if (existingUser) {
+            statusDiv.innerHTML = '<span style="color: #dc2626;">❌ This email is already in use by another account</span>';
+            return;
+        }
+        
+        // 3. Confirm with admin
+        if (!confirm(`⚠️ Are you sure you want to change the email from:\n\n${oldEmail}\n\nto:\n\n${newEmail}\n\nThis will update the user's login credentials.`)) {
+            statusDiv.innerHTML = '<span style="color: #6b7280;">ℹ️ Email update cancelled</span>';
+            return;
+        }
+        
+        statusDiv.innerHTML = '<span style="color: #4C1D95;">⏳ Updating email in Auth and Profile...</span>';
+        
+        // 4. ✅ UPDATE AUTH TABLE
+        const { error: authError } = await supabase.auth.admin.updateUserById(
+            userId,
+            { email: newEmail.toLowerCase() }
+        );
+        
+        if (authError) {
+            throw new Error('Auth update failed: ' + authError.message);
+        }
+        console.log('✅ Auth email updated successfully');
+        
+        // 5. ✅ UPDATE PROFILE TABLE
+        const { error: profileError } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .update({ 
+                email: newEmail.toLowerCase(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+        
+        if (profileError) {
+            // Try to revert auth if profile fails
+            console.error('Profile update failed, reverting auth...');
+            await supabase.auth.admin.updateUserById(userId, { email: oldEmail });
+            throw new Error('Profile update failed: ' + profileError.message);
+        }
+        console.log('✅ Profile email updated successfully');
+        
+        // 6. Log the change in audit logs
+        try {
+            await logAudit('EMAIL_CHANGE', `Changed email for ${userData.full_name} from ${oldEmail} to ${newEmail}`, userId, 'SUCCESS');
+        } catch (auditError) {
+            console.warn('Audit log failed:', auditError);
+        }
+        
+        // 7. Update the displayed email
+        emailInput.value = newEmail;
+        document.getElementById('edit_user_email').value = newEmail;
+        
+        // 8. Show success
+        statusDiv.innerHTML = `<span style="color: #059669;">✅ Email updated successfully from ${oldEmail} to ${newEmail}</span>`;
+        showNotification(`✅ Email changed to ${newEmail}`, 'success');
+        
+        // 9. Refresh the user list
+        setTimeout(() => {
+            if (typeof loadAllUsers === 'function') {
+                loadAllUsers(1, USERS_STATE?.filters || {});
+            }
+        }, 800);
+        
+    } catch (error) {
+        console.error('Email update error:', error);
+        statusDiv.innerHTML = `<span style="color: #dc2626;">❌ ${error.message}</span>`;
+        showNotification('❌ Failed to update email', 'error');
+    }
+}
+
+// Clear status when modal closes
+function clearEmailStatus() {
+    const statusDiv = document.getElementById('emailUpdateStatus');
+    if (statusDiv) {
+        statusDiv.innerHTML = '';
+    }
+}
+
+// ============================================
+// OVERRIDE closeModal to clear email status
+// ============================================
+
+const originalCloseModal = window.closeModal;
+window.closeModal = function(modalId) {
+    if (modalId === 'userEditModal') {
+        clearEmailStatus();
+    }
+    if (typeof originalCloseModal === 'function') {
+        originalCloseModal(modalId);
+    }
+};
 // ============================================
 // ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
 // ============================================
