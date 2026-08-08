@@ -7,6 +7,8 @@
 // ✅ Latest question banks on top
 // ✅ Full TVET/KRCHN support with dynamic program detection
 // ✅ Filter order: Years → Levels → Categories
+// ✅ Points calculation: 2 points per correct answer
+// ✅ Points display in stats
 // ============================================================
 
 // ============================================================
@@ -595,6 +597,32 @@ class NurseIQModule {
     }
     
     // ============================================================
+    // 💰 CALCULATE NURSEIQ POINTS - FIXED!
+    // ============================================================
+    
+    calculateNurseIQPoints() {
+        let totalCorrect = 0;
+        let totalAnswered = 0;
+        
+        Object.values(this.userTestAnswers).forEach(answer => {
+            if (answer.answered) {
+                totalAnswered++;
+                if (answer.correct) totalCorrect++;
+            }
+        });
+        
+        // Points = correct answers × 2
+        const points = totalCorrect * 2;
+        
+        return {
+            answered: totalAnswered,
+            correct: totalCorrect,
+            points: points,
+            accuracy: totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0
+        };
+    }
+    
+    // ============================================================
     // 📊 GET DASHBOARD METRICS
     // ============================================================
     getDashboardMetrics() {
@@ -636,6 +664,9 @@ class NurseIQModule {
             const progress = Math.min(Math.round((totalAnswered / targetQuestions) * 100), 100);
             const streak = this.calculateStudyStreak();
             
+            // ✅ Calculate points
+            const points = totalCorrect * 2;
+            
             let mostActiveCourse = { name: 'None', answered: 0 };
             Object.entries(courses).forEach(([courseId, courseData]) => {
                 if (courseData.answered > mostActiveCourse.answered) {
@@ -656,7 +687,8 @@ class NurseIQModule {
                 streak,
                 totalCourses: Object.keys(courses).length,
                 mostActiveCourse: mostActiveCourse.name !== 'None' ? mostActiveCourse : null,
-                lastUpdated: new Date().toISOString()
+                lastUpdated: new Date().toISOString(),
+                points: points  // ✅ ADDED
             };
             
             localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
@@ -666,6 +698,21 @@ class NurseIQModule {
             console.error('Error calculating metrics:', error);
             return this.getDefaultMetrics();
         }
+    }
+    
+    getDefaultMetrics() {
+        return {
+            totalAnswered: 0,
+            totalCorrect: 0,
+            accuracy: 0,
+            progress: 0,
+            recentActivity: 0,
+            streak: 0,
+            totalCourses: 0,
+            mostActiveCourse: null,
+            lastUpdated: new Date().toISOString(),
+            points: 0  // ✅ ADDED
+        };
     }
     
     calculateStudyStreak() {
@@ -721,20 +768,6 @@ class NurseIQModule {
         }
     }
     
-    getDefaultMetrics() {
-        return {
-            totalAnswered: 0,
-            totalCorrect: 0,
-            accuracy: 0,
-            progress: 0,
-            recentActivity: 0,
-            streak: 0,
-            totalCourses: 0,
-            mostActiveCourse: null,
-            lastUpdated: new Date().toISOString()
-        };
-    }
-    
     updateDashboardMetrics() {
         try {
             const metrics = this.getDashboardMetrics();
@@ -745,7 +778,14 @@ class NurseIQModule {
         }
     }
     
+    // ============================================================
+    // 📊 UPDATE STATS UI - FIXED WITH POINTS
+    // ============================================================
+    
     updateStatsUI(metrics) {
+        // ✅ Calculate points
+        const stats = this.calculateNurseIQPoints();
+        
         // Update all stats elements
         const elements = {
             nurseiqTotalQuestions: metrics.totalAnswered,
@@ -759,7 +799,9 @@ class NurseIQModule {
             nurseiqStreakQuick: metrics.streak + ' days',
             streakDisplay: metrics.streak > 0 ? `🔥 ${metrics.streak} day streak` : '🔥 0 day streak',
             totalQuestionsWelcome: metrics.totalAnswered,
-            totalCoursesWelcome: metrics.totalCourses || 0
+            totalCoursesWelcome: metrics.totalCourses || 0,
+            // ✅ ADD THIS - Show points earned
+            nurseiqPoints: stats.points
         };
         
         Object.entries(elements).forEach(([id, value]) => {
@@ -772,6 +814,8 @@ class NurseIQModule {
                 }
             }
         });
+        
+        console.log('📊 NurseIQ Stats:', stats);
     }
     
     // ============================================================
@@ -1311,81 +1355,82 @@ class NurseIQModule {
     // ============================================================
     // 📥 LOAD CURRENT QUESTION
     // ============================================================
-  loadCurrentQuestion() {
-    const question = this.currentCourseQuestions[this.currentQuestionIndex];
-    if (!question) return;
-    
-    // Update question text
-    const questionText = document.getElementById('questionText');
-    if (questionText) {
-        questionText.textContent = question.question_text || 'Question text not available';
-    }
-    
-    // Update difficulty badge
-    const difficultyBadge = document.getElementById('difficultyBadge');
-    if (difficultyBadge) {
-        difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
-        difficultyBadge.style.cssText = `padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;`;
-        if (question.difficulty === 'easy') {
-            difficultyBadge.style.background = '#d1fae5';
-            difficultyBadge.style.color = '#065f46';
-        } else if (question.difficulty === 'hard') {
-            difficultyBadge.style.background = '#fee2e2';
-            difficultyBadge.style.color = '#991b1b';
-        } else {
-            difficultyBadge.style.background = '#fef3c7';
-            difficultyBadge.style.color = '#92400e';
+    loadCurrentQuestion() {
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        if (!question) return;
+        
+        // Update question text
+        const questionText = document.getElementById('questionText');
+        if (questionText) {
+            questionText.textContent = question.question_text || 'Question text not available';
         }
-    }
-    
-    // ✅ FIX: Clear explanation when navigating to new question
-    const explanationContainer = document.getElementById('explanationContainer');
-    if (explanationContainer) {
-        explanationContainer.style.display = 'none';
-    }
-    
-    // ✅ FIX: Reset all option styles
-    document.querySelectorAll('#optionsContainer > div').forEach(el => {
-        el.classList.remove('selected', 'correct', 'incorrect');
-        el.style.borderColor = '#e2e8f0';
-        el.style.background = 'white';
-    });
-    
-    // Load options
-    this.loadAnswerOptions(question);
-    this.updateQuestionButtons();
-    
-    // ✅ FIX: If question was already answered, show the answer state
-    const savedAnswer = this.userTestAnswers[question.id];
-    if (savedAnswer?.answered && savedAnswer.selectedOptionIndex !== undefined) {
-        const index = savedAnswer.selectedOptionIndex;
-        const selectedElement = document.getElementById(`option-container-${index}`);
-        if (selectedElement) {
-            const isCorrect = savedAnswer.correct;
-            if (isCorrect) {
-                selectedElement.classList.add('correct');
-                selectedElement.style.borderColor = '#10b981';
-                selectedElement.style.background = '#d1fae5';
+        
+        // Update difficulty badge
+        const difficultyBadge = document.getElementById('difficultyBadge');
+        if (difficultyBadge) {
+            difficultyBadge.textContent = question.difficulty?.toUpperCase() || 'MEDIUM';
+            difficultyBadge.style.cssText = `padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;`;
+            if (question.difficulty === 'easy') {
+                difficultyBadge.style.background = '#d1fae5';
+                difficultyBadge.style.color = '#065f46';
+            } else if (question.difficulty === 'hard') {
+                difficultyBadge.style.background = '#fee2e2';
+                difficultyBadge.style.color = '#991b1b';
             } else {
-                selectedElement.classList.add('incorrect');
-                selectedElement.style.borderColor = '#dc2626';
-                selectedElement.style.background = '#fee2e2';
-                
-                // Show correct answer if available
-                const correctAnswer = savedAnswer.correctAnswer;
-                if (correctAnswer) {
-                    const options = [];
-                    if (question.option_a) options.push(question.option_a);
-                    if (question.option_b) options.push(question.option_b);
-                    if (question.option_c) options.push(question.option_c);
-                    if (question.option_d) options.push(question.option_d);
-                    const correctIndex = options.indexOf(correctAnswer);
-                    if (correctIndex >= 0) {
-                        const correctElement = document.getElementById(`option-container-${correctIndex}`);
-                        if (correctElement) {
-                            correctElement.style.borderColor = '#10b981';
-                            correctElement.style.background = '#d1fae5';
-                            correctElement.classList.add('correct');
+                difficultyBadge.style.background = '#fef3c7';
+                difficultyBadge.style.color = '#92400e';
+            }
+        }
+        
+        // Clear explanation when navigating to new question
+        const explanationContainer = document.getElementById('explanationContainer');
+        if (explanationContainer) {
+            explanationContainer.style.display = 'none';
+        }
+        
+        // Reset all option styles
+        document.querySelectorAll('#optionsContainer > div').forEach(el => {
+            el.classList.remove('selected', 'correct', 'incorrect');
+            el.style.borderColor = '#e2e8f0';
+            el.style.background = 'white';
+        });
+        
+        // Load options
+        this.loadAnswerOptions(question);
+        this.updateQuestionButtons();
+        
+        // If question was already answered, show the answer state
+        const savedAnswer = this.userTestAnswers[question.id];
+        if (savedAnswer?.answered && savedAnswer.selectedOptionIndex !== undefined) {
+            const index = savedAnswer.selectedOptionIndex;
+            const selectedElement = document.getElementById(`option-container-${index}`);
+            if (selectedElement) {
+                const isCorrect = savedAnswer.correct;
+                if (isCorrect) {
+                    selectedElement.classList.add('correct');
+                    selectedElement.style.borderColor = '#10b981';
+                    selectedElement.style.background = '#d1fae5';
+                } else {
+                    selectedElement.classList.add('incorrect');
+                    selectedElement.style.borderColor = '#dc2626';
+                    selectedElement.style.background = '#fee2e2';
+                    
+                    // Show correct answer if available
+                    const correctAnswer = savedAnswer.correctAnswer;
+                    if (correctAnswer) {
+                        const options = [];
+                        if (question.option_a) options.push(question.option_a);
+                        if (question.option_b) options.push(question.option_b);
+                        if (question.option_c) options.push(question.option_c);
+                        if (question.option_d) options.push(question.option_d);
+                        const correctIndex = options.indexOf(correctAnswer);
+                        if (correctIndex >= 0) {
+                            const correctElement = document.getElementById(`option-container-${correctIndex}`);
+                            if (correctElement) {
+                                correctElement.style.borderColor = '#10b981';
+                                correctElement.style.background = '#d1fae5';
+                                correctElement.classList.add('correct');
+                            }
                         }
                     }
                 }
@@ -1402,7 +1447,6 @@ class NurseIQModule {
             }
         }
     }
-}
     
     // ============================================================
     // 📄 LOAD ANSWER OPTIONS
@@ -1452,40 +1496,41 @@ class NurseIQModule {
         }
     }
     
-   // ============================================================
-// 🎯 SELECT OPTION - FIXED
-// ============================================================
-selectOption(index) {
-    document.querySelectorAll('#optionsContainer > div').forEach(el => {
-        el.classList.remove('selected', 'correct', 'incorrect');
-        el.style.borderColor = '#e2e8f0';
-        el.style.background = 'white';
-    });
-    
-    const selectedElement = document.getElementById(`option-container-${index}`);
-    if (selectedElement) {
-        selectedElement.classList.add('selected');
-        selectedElement.style.borderColor = '#4C1D95';
-        selectedElement.style.background = '#ede9fe';
+    // ============================================================
+    // 🎯 SELECT OPTION - FIXED
+    // ============================================================
+    selectOption(index) {
+        document.querySelectorAll('#optionsContainer > div').forEach(el => {
+            el.classList.remove('selected', 'correct', 'incorrect');
+            el.style.borderColor = '#e2e8f0';
+            el.style.background = 'white';
+        });
+        
+        const selectedElement = document.getElementById(`option-container-${index}`);
+        if (selectedElement) {
+            selectedElement.classList.add('selected');
+            selectedElement.style.borderColor = '#4C1D95';
+            selectedElement.style.background = '#ede9fe';
+        }
+        
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        if (question) {
+            const optionText = this.getOptionText(index);
+            // Use question.id, not currentQuestionIndex
+            this.userTestAnswers[question.id] = {
+                selectedOption: optionText,
+                selectedOptionIndex: index,
+                answered: false,
+                timestamp: new Date().toISOString(),
+                courseId: question.course_id,
+                courseName: this.currentCourseForTest?.name,
+                questionText: question.question_text,
+                difficulty: question.difficulty
+            };
+            this.saveUserProgress();
+        }
     }
     
-    const question = this.currentCourseQuestions[this.currentQuestionIndex];
-    if (question) {
-        const optionText = this.getOptionText(index);
-        // ✅ FIX: Use question.id, not currentQuestionIndex
-        this.userTestAnswers[question.id] = {
-            selectedOption: optionText,
-            selectedOptionIndex: index,
-            answered: false,
-            timestamp: new Date().toISOString(),
-            courseId: question.course_id,
-            courseName: this.currentCourseForTest?.name,
-            questionText: question.question_text,
-            difficulty: question.difficulty
-        };
-        this.saveUserProgress();
-    }
-}
     // ============================================================
     // ✅ CHECK ANSWER
     // ============================================================
@@ -1780,3 +1825,4 @@ if (document.readyState === 'loading') {
 console.log('✅ NurseIQ module loaded - Same instant student data loading as Finance Module!');
 console.log('📚 Questions grouped by course, latest on top!');
 console.log('🏷️ Auto-detects KRCHN/TVET programs like Finance Module!');
+console.log('💰 Points: 2 per correct answer!');
