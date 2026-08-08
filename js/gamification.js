@@ -1,13 +1,13 @@
-// gamification.js - Complete Badges, Streaks, Points & Leaderboard System
-// NOW INCLUDES NurseIQ attempts and scores
-// 🔧 FIXED: Gamification widget DISABLED to prevent duplicate streak display
-// 🔧 FIXED: Points calculation includes ALL sources
-// 🔧 FIXED: Duplicate display issues resolved
+// gamification.js - COMPLETE FIXED VERSION
+// ✅ No duplicate streak display
+// ✅ Total points synced with dashboard
+// ✅ NurseIQ properly integrated
+// ✅ Database total_points updated
 
 (function() {
     'use strict';
     
-    console.log('🏆 Gamification module loading (with NurseIQ integration)...');
+    console.log('🏆 Gamification module loading (COMPLETE FIXED VERSION)...');
     
     class GamificationModule {
         constructor() {
@@ -23,6 +23,9 @@
             this.currentRankFilter = 'weekly';
             this.nurseiqPoints = 0;
             this.nurseiqAttempts = [];
+            this.totalPoints = 0;
+            this.loginPoints = 0;
+            this.loginCount = 0;
             
             // Badge definitions
             this.badgeDefinitions = {
@@ -112,13 +115,15 @@
             await this.waitForUser();
             await this.loadUserGamificationData();
             await this.loadNurseIQData();
-            this.injectGamificationUI();
+            await this.loadLoginData();
+            this.calculateTotalPoints();
             this.setupEventListeners();
             this.updateAllUI();
             await this.loadLeaderboard();
             
-            console.log(`✅ Gamification ready: Level ${this.level}, ${this.getTotalPoints()} points, ${this.streak} day streak`);
+            console.log(`✅ Gamification ready: Level ${this.level}, ${this.totalPoints} total points, ${this.streak} day streak`);
             console.log(`📚 NurseIQ: ${this.nurseiqPoints} points from ${this.nurseiqAttempts.length} attempts`);
+            console.log(`🔑 Login: ${this.loginCount} logins, ${this.loginPoints} points`);
         }
         
         async waitForUser() {
@@ -144,21 +149,66 @@
         }
         
         // ============================================================
-        // 📊 GET TOTAL POINTS - FIXED!
+        // 📊 CALCULATE TOTAL POINTS - FIXED!
         // ============================================================
         
-        getTotalPoints() {
-            return (this.attendancePoints || 0) + (this.nurseiqPoints || 0);
+        calculateTotalPoints() {
+            // Sum all sources
+            this.totalPoints = (this.attendancePoints || 0) + 
+                               (this.nurseiqPoints || 0) + 
+                               (this.loginPoints || 0);
+            
+            // Also include any bonus points from badges
+            let badgeBonus = 0;
+            for (const badge of this.badges) {
+                const def = this.badgeDefinitions[badge.id];
+                if (def) badgeBonus += def.points;
+            }
+            // Badge points are already included in attendancePoints when awarded
+            
+            console.log(`💰 Total points: ${this.totalPoints} (Attendance: ${this.attendancePoints}, NurseIQ: ${this.nurseiqPoints}, Login: ${this.loginPoints})`);
+            return this.totalPoints;
         }
         
         // ============================================================
-        // 📚 LOAD NURSEIQ DATA
+        // 🔑 LOAD LOGIN DATA
+        // ============================================================
+        
+        async loadLoginData() {
+            if (!this.userId || !window.db?.supabase) return;
+            
+            try {
+                const { data, error } = await window.db.supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('login_count, total_points')
+                    .eq('user_id', this.userId)
+                    .single();
+                
+                if (data && !error) {
+                    this.loginCount = data.login_count || 0;
+                    this.loginPoints = this.loginCount * 10;
+                    
+                    // If total_points exists in DB, use it
+                    if (data.total_points) {
+                        this.totalPoints = data.total_points;
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not load login data:', error);
+                this.loginCount = 0;
+                this.loginPoints = 0;
+            }
+        }
+        
+        // ============================================================
+        // 📚 LOAD NURSEIQ DATA - FIXED!
         // ============================================================
         
         async loadNurseIQData() {
             if (!this.userId || !window.db?.supabase) return;
             
             try {
+                // Get NurseIQ attempts
                 const { data: attempts, error } = await window.db.supabase
                     .from('nurseiq_attempts')
                     .select('*')
@@ -176,6 +226,7 @@
                 for (const attempt of this.nurseiqAttempts) {
                     const scorePercent = (attempt.score / attempt.total_questions) * 100;
                     
+                    // Points per attempt based on score
                     if (scorePercent >= 90) {
                         totalNurseIQPoints += 30;
                     } else if (scorePercent >= 70) {
@@ -193,13 +244,18 @@
                     }
                 }
                 
+                // Bonus for reaching milestones
                 if (totalQuestions >= 50) {
-                    await this.unlockBadge('nurseiq_master');
+                    if (!this.hasBadge('nurseiq_master')) {
+                        await this.unlockBadge('nurseiq_master');
+                    }
                     totalNurseIQPoints += 100;
                 }
                 
                 if (perfectScores >= 3) {
-                    await this.unlockBadge('nurseiq_perfect');
+                    if (!this.hasBadge('nurseiq_perfect')) {
+                        await this.unlockBadge('nurseiq_perfect');
+                    }
                     totalNurseIQPoints += 75;
                 }
                 
@@ -235,8 +291,12 @@
                     this.xp = data.gamification_xp || 0;
                     this.badges = data.earned_badges || [];
                     this.lastCheckIn = data.last_check_in ? new Date(data.last_check_in) : null;
+                    this.totalPoints = data.total_points || 0;
                     
                     if (!this.userProfile) this.userProfile = data;
+                    
+                    // Update xpToNextLevel based on level
+                    this.xpToNextLevel = Math.floor(100 * Math.pow(1.2, this.level - 1));
                 } else {
                     await this.createGamificationRecord();
                 }
@@ -272,6 +332,8 @@
                             total_checkins: 0,
                             nurseiq_points: 0,
                             total_nurseiq_attempts: 0,
+                            total_points: 0,
+                            login_count: 0,
                             created_at: new Date().toISOString()
                         }]);
                     
@@ -306,10 +368,15 @@
             }
         }
         
+        // ============================================================
+        // 💾 SAVE TO DATABASE - FIXED!
+        // ============================================================
+        
         async saveToDatabase() {
             if (!this.userId || !window.db?.supabase) return;
             
-            const totalPoints = this.getTotalPoints();
+            // Recalculate total points
+            this.calculateTotalPoints();
             
             try {
                 const { error } = await window.db.supabase
@@ -323,12 +390,14 @@
                         last_check_in: this.lastCheckIn ? this.lastCheckIn.toISOString() : null,
                         nurseiq_points: this.nurseiqPoints,
                         total_nurseiq_attempts: this.nurseiqAttempts.length,
-                        total_points: totalPoints, // ← ADDED: Store total points
+                        total_points: this.totalPoints, // ✅ Store total points
                         updated_at: new Date().toISOString()
                     })
                     .eq('user_id', this.userId);
                 
                 if (error) throw error;
+                
+                console.log(`💾 Saved: ${this.totalPoints} total points`);
                 
             } catch (error) {
                 console.error('Error saving to database:', error);
@@ -336,14 +405,12 @@
         }
         
         // ============================================================
-        // 🔧 INJECT GAMIFICATION UI - WIDGET DISABLED
+        // 🔧 INJECT UI - NO DUPLICATE STREAK
         // ============================================================
         
         injectGamificationUI() {
-            // ✅ Gamification widget DISABLED - streak shown in main dashboard
-            // The dashboard already has a beautiful streak card with:
-            // - Progress bar, milestones, lights, restore button
-            // So we skip adding another widget here
+            // ✅ Streak is handled by dashboard - skip here
+            // Only add level progress and badges
             
             this.addLevelProgressBar();
             this.addBadgesSection();
@@ -351,55 +418,107 @@
         }
         
         addLevelProgressBar() {
-            const welcomeCard = document.querySelector('.welcome-card');
-            if (!welcomeCard) return;
+            // Check if welcome card exists
+            const welcomeCard = document.querySelector('.welcome-card, .welcome-section, #welcome-section');
+            if (!welcomeCard) {
+                // Try to find a good insertion point
+                const mainContent = document.querySelector('.main, #main-content, .tab-content.active');
+                if (!mainContent) return;
+            }
+            
+            // Check if already exists
             if (document.querySelector('.level-progress-container')) return;
             
-            const totalPoints = this.getTotalPoints();
-            const percent = (this.xp / this.xpToNextLevel) * 100;
+            const totalPoints = this.totalPoints || this.calculateTotalPoints();
+            const percent = this.xpToNextLevel > 0 ? (this.xp / this.xpToNextLevel) * 100 : 0;
             
             const progressContainer = document.createElement('div');
             progressContainer.className = 'level-progress-container';
             progressContainer.id = 'level-progress-container';
+            progressContainer.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                padding: 12px 20px;
+                margin: 10px 0 16px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+                border: 1px solid #e5e7eb;
+            `;
             progressContainer.innerHTML = `
-                <div class="level-progress-bar">
-                    <div class="level-progress-fill" id="level-progress-fill" style="width: ${percent}%"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="background: #4C1D95; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: white;">
+                            <i class="fas fa-trophy" style="font-size: 16px;"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; color: #0A3D62; font-size: 14px;">Level ${this.level}</div>
+                            <div style="font-size: 11px; color: #94a3b8;">${this.xp}/${this.xpToNextLevel} XP</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <span style="font-size: 12px; color: #475569;">
+                            <i class="fas fa-fire" style="color: #f59e0b;"></i> ${this.streak} day streak
+                        </span>
+                        <span style="font-size: 12px; color: #475569;">
+                            <i class="fas fa-stethoscope" style="color: #4C1D95;"></i> ${this.nurseiqPoints} pts
+                        </span>
+                        <span style="font-size: 12px; color: #475569;">
+                            <i class="fas fa-calendar-check" style="color: #059669;"></i> ${this.attendancePoints} pts
+                        </span>
+                        <span style="font-size: 14px; font-weight: 700; color: #4C1D95;">
+                            🏆 ${totalPoints} pts
+                        </span>
+                    </div>
                 </div>
-                <div class="level-progress-text" id="level-progress-text">
-                    Level ${this.level} · ${this.xp}/${this.xpToNextLevel} XP to Level ${this.level + 1}
-                </div>
-                <div class="level-progress-text" style="font-size: 10px; margin-top: 4px;">
-                    <i class="fas fa-stethoscope"></i> NurseIQ: ${this.nurseiqPoints} pts | 
-                    <i class="fas fa-calendar-check"></i> Attendance: ${this.attendancePoints} pts |
-                    <i class="fas fa-trophy"></i> Total: ${totalPoints} pts
+                <div class="level-progress-bar" style="margin-top: 8px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                    <div class="level-progress-fill" id="level-progress-fill" style="width: ${Math.min(percent, 100)}%; height: 100%; background: linear-gradient(90deg, #4C1D95, #7c3aed); border-radius: 3px; transition: width 0.5s ease;"></div>
                 </div>
             `;
             
-            welcomeCard.insertAdjacentElement('afterend', progressContainer);
+            // Insert after welcome card or at top of content
+            const target = welcomeCard || document.querySelector('.tab-content.active > *:first-child');
+            if (target) {
+                target.parentNode.insertBefore(progressContainer, target.nextSibling);
+            } else {
+                document.querySelector('.tab-content.active')?.prepend(progressContainer);
+            }
         }
         
         addBadgesSection() {
-            const cardsGrid = document.querySelector('.cards-grid');
-            if (!cardsGrid) return;
+            // Find a good insertion point
+            const targetSection = document.querySelector('.cards-grid, .stats-grid, .dashboard-grid');
+            if (!targetSection) return;
+            
             if (document.querySelector('.badges-section')) return;
             
             const badgesSection = document.createElement('div');
             badgesSection.className = 'badges-section';
             badgesSection.id = 'badges-section';
+            badgesSection.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                padding: 16px 20px;
+                margin: 16px 0;
+                border: 1px solid #e5e7eb;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            `;
             badgesSection.innerHTML = `
-                <div class="badges-header">
-                    <h3><i class="fas fa-medal"></i> Your Achievements</h3>
-                    <button class="view-all-badges" id="view-all-badges">View All <i class="fas fa-arrow-right"></i></button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-medal" style="color: #FDB913;"></i> Your Achievements
+                        <span style="font-size: 11px; font-weight: 400; color: #94a3b8; background: #f1f5f9; padding: 2px 10px; border-radius: 12px;">
+                            ${this.badges.length} unlocked
+                        </span>
+                    </h4>
+                    <button class="view-all-badges" id="view-all-badges" style="background: none; border: none; color: #4C1D95; font-weight: 600; font-size: 13px; cursor: pointer;">
+                        View All <i class="fas fa-arrow-right" style="font-size: 11px;"></i>
+                    </button>
                 </div>
-                <div class="badges-grid" id="badges-grid">
-                    <div class="gamification-empty">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>Loading achievements...</p>
-                    </div>
+                <div class="badges-grid" id="badges-grid" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    ${this.renderBadges()}
                 </div>
             `;
             
-            cardsGrid.insertAdjacentElement('afterend', badgesSection);
+            targetSection.parentNode.insertBefore(badgesSection, targetSection.nextSibling);
             
             const viewAllBtn = document.getElementById('view-all-badges');
             if (viewAllBtn) {
@@ -407,7 +526,64 @@
             }
         }
         
+        renderBadges() {
+            const allBadges = Object.values(this.badgeDefinitions);
+            const unlocked = this.badges.map(b => b.id);
+            
+            // Show first 6 badges (all unlocked + some locked)
+            const displayBadges = [];
+            const unlockedBadges = allBadges.filter(b => unlocked.includes(b.id));
+            const lockedBadges = allBadges.filter(b => !unlocked.includes(b.id));
+            
+            // Show all unlocked, then fill with locked
+            displayBadges.push(...unlockedBadges);
+            const remaining = 6 - displayBadges.length;
+            if (remaining > 0) {
+                displayBadges.push(...lockedBadges.slice(0, remaining));
+            }
+            
+            return displayBadges.map(badge => {
+                const isUnlocked = unlocked.includes(badge.id);
+                return `
+                    <div class="badge-item" style="
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        background: ${isUnlocked ? '#f8fafc' : '#f1f5f9'};
+                        padding: 8px 14px;
+                        border-radius: 8px;
+                        border: 1px solid ${isUnlocked ? '#c4b5fd' : '#e5e7eb'};
+                        opacity: ${isUnlocked ? '1' : '0.6'};
+                        cursor: ${isUnlocked ? 'default' : 'not-allowed'};
+                    ">
+                        <div style="
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 50%;
+                            background: ${isUnlocked ? '#4C1D95' : '#94a3b8'};
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-size: 14px;
+                            flex-shrink: 0;
+                        ">
+                            <i class="fas ${isUnlocked ? badge.icon : 'fa-lock'}"></i>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-size: 12px; font-weight: 600; color: ${isUnlocked ? '#0A3D62' : '#94a3b8'};">
+                                ${isUnlocked ? badge.name : '🔒 ' + badge.name}
+                            </div>
+                            ${isUnlocked ? `<div style="font-size: 10px; color: #6b7280;">+${badge.points} pts</div>` : ''}
+                        </div>
+                        ${isUnlocked ? '<i class="fas fa-check-circle" style="color: #10b981;"></i>' : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+        
         addLeaderboardSection() {
+            // Find insertion point
             const badgesSection = document.querySelector('.badges-section');
             if (!badgesSection) return;
             if (document.querySelector('.leaderboard-section')) return;
@@ -415,30 +591,48 @@
             const leaderboardSection = document.createElement('div');
             leaderboardSection.className = 'leaderboard-section';
             leaderboardSection.id = 'leaderboard-section';
+            leaderboardSection.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                padding: 16px 20px;
+                margin: 16px 0;
+                border: 1px solid #e5e7eb;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            `;
             leaderboardSection.innerHTML = `
-                <div class="leaderboard-header">
-                    <h3><i class="fas fa-ranking-star"></i> Class Leaderboard</h3>
-                    <div class="leaderboard-tabs">
-                        <button class="leaderboard-tab active" data-rank="weekly">Weekly</button>
-                        <button class="leaderboard-tab" data-rank="monthly">Monthly</button>
-                        <button class="leaderboard-tab" data-rank="alltime">All Time</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <h4 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-ranking-star" style="color: #FDB913;"></i> Class Leaderboard
+                    </h4>
+                    <div class="leaderboard-tabs" style="display: flex; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 8px;">
+                        <button class="leaderboard-tab active" data-rank="weekly" style="padding: 4px 14px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: #4C1D95; color: white;">Weekly</button>
+                        <button class="leaderboard-tab" data-rank="monthly" style="padding: 4px 14px; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; background: transparent; color: #64748b;">Monthly</button>
+                        <button class="leaderboard-tab" data-rank="alltime" style="padding: 4px 14px; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s; background: transparent; color: #64748b;">All Time</button>
                     </div>
                 </div>
                 <div class="leaderboard-list" id="leaderboard-list">
-                    <div class="gamification-empty">
+                    <div style="text-align: center; padding: 20px; color: #94a3b8;">
                         <i class="fas fa-spinner fa-spin"></i>
-                        <p>Loading leaderboard...</p>
+                        <p style="margin: 8px 0 0 0;">Loading leaderboard...</p>
                     </div>
                 </div>
             `;
             
             badgesSection.insertAdjacentElement('afterend', leaderboardSection);
             
-            const tabs = document.querySelectorAll('.leaderboard-tab');
+            // Setup tab switching
+            const tabs = leaderboardSection.querySelectorAll('.leaderboard-tab');
             tabs.forEach(tab => {
                 tab.addEventListener('click', (e) => {
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
+                    tabs.forEach(t => {
+                        t.style.background = 'transparent';
+                        t.style.color = '#64748b';
+                        t.style.fontWeight = '500';
+                    });
+                    tab.style.background = '#4C1D95';
+                    tab.style.color = 'white';
+                    tab.style.fontWeight = '600';
+                    
                     this.currentRankFilter = tab.getAttribute('data-rank');
                     this.loadLeaderboard();
                 });
@@ -470,15 +664,24 @@
             document.addEventListener('nurseiqTestCompleted', async (e) => {
                 console.log('📚 NurseIQ test completed, updating points...');
                 await this.loadNurseIQData();
+                await this.calculateTotalPoints();
                 await this.saveToDatabase();
                 this.updateUI();
                 await this.loadLeaderboard();
                 this.showNotification('NurseIQ Update!', `You earned ${e.detail.points || 0} points from your practice!`, 'points');
             });
+            
+            // Listen for login events to update login points
+            document.addEventListener('loginRecorded', async () => {
+                await this.loadLoginData();
+                await this.calculateTotalPoints();
+                await this.saveToDatabase();
+                this.updateUI();
+            });
         }
         
         // ============================================================
-        // 🎯 HANDLE ATTENDANCE - FIXED POINTS
+        // 🎯 HANDLE ATTENDANCE
         // ============================================================
         
         async handleAttendance(detail) {
@@ -550,7 +753,7 @@
         }
         
         // ============================================================
-        // ➕ ADD POINTS - FIXED
+        // ➕ ADD POINTS
         // ============================================================
         
         async addPoints(amount, reason) {
@@ -564,6 +767,7 @@
                 this.showNotification('Level Up!', `Congratulations! You reached Level ${this.level}!`, 'levelup');
             }
             
+            await this.calculateTotalPoints();
             await this.saveToDatabase();
             this.updateUI();
             this.showNotification('Points Earned!', `+${amount} points - ${reason}`, 'points');
@@ -601,31 +805,29 @@
         }
         
         updateUI() {
-            const totalPoints = this.getTotalPoints();
-            
-            // Update dashboard elements if they exist
-            const streakCount = document.getElementById('streak-count');
-            if (streakCount) streakCount.textContent = this.streak;
-            
-            const pointsCount = document.getElementById('points-count');
-            if (pointsCount) pointsCount.textContent = totalPoints;
-            
-            const levelNumber = document.getElementById('level-number');
-            if (levelNumber) levelNumber.textContent = this.level;
+            this.calculateTotalPoints();
             
             // Update progress bar
             const progressFill = document.getElementById('level-progress-fill');
-            const progressText = document.getElementById('level-progress-text');
-            if (progressFill && progressText) {
-                const percent = (this.xp / this.xpToNextLevel) * 100;
+            const progressContainer = document.getElementById('level-progress-container');
+            
+            if (progressFill) {
+                const percent = this.xpToNextLevel > 0 ? (this.xp / this.xpToNextLevel) * 100 : 0;
                 progressFill.style.width = `${Math.min(percent, 100)}%`;
-                progressText.textContent = `Level ${this.level} · ${this.xp}/${this.xpToNextLevel} XP to Level ${this.level + 1}`;
             }
             
-            // Update dashboard points display
-            const dashboardPoints = document.querySelector('.dashboard-points-display');
-            if (dashboardPoints) {
-                dashboardPoints.textContent = totalPoints;
+            // Update level text in progress container
+            if (progressContainer) {
+                const levelText = progressContainer.querySelector('.level-text');
+                if (levelText) {
+                    levelText.textContent = `Level ${this.level} · ${this.xp}/${this.xpToNextLevel} XP`;
+                }
+                
+                // Update points display
+                const pointsDisplay = progressContainer.querySelector('.points-display');
+                if (pointsDisplay) {
+                    pointsDisplay.textContent = this.totalPoints;
+                }
             }
         }
         
@@ -633,26 +835,14 @@
             const badgesGrid = document.getElementById('badges-grid');
             if (!badgesGrid) return;
             
-            const badgesList = Object.values(this.badgeDefinitions);
+            // Re-render badges
+            badgesGrid.innerHTML = this.renderBadges();
             
-            badgesGrid.innerHTML = badgesList.map(badge => {
-                const isUnlocked = this.hasBadge(badge.id);
-                return `
-                    <div class="badge-card ${isUnlocked ? 'unlocked' : 'locked'}">
-                        <div class="badge-icon">
-                            <i class="fas ${badge.icon}"></i>
-                        </div>
-                        <div class="badge-info">
-                            <h4>${badge.name}</h4>
-                            <p>${badge.description}</p>
-                            <div class="badge-points">+${badge.points} points</div>
-                        </div>
-                        <div class="badge-status">
-                            <i class="fas ${isUnlocked ? 'fa-check-circle' : 'fa-lock'}"></i>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            // Update badge count
+            const badgeCount = document.querySelector('.badges-section .badge-count');
+            if (badgeCount) {
+                badgeCount.textContent = `${this.badges.length} unlocked`;
+            }
         }
         
         // ============================================================
@@ -664,9 +854,9 @@
             if (!leaderboardList) return;
             
             leaderboardList.innerHTML = `
-                <div class="gamification-empty">
+                <div style="text-align: center; padding: 20px; color: #94a3b8;">
                     <i class="fas fa-spinner fa-spin"></i>
-                    <p>Loading student leaderboard...</p>
+                    <p style="margin: 8px 0 0 0;">Loading students...</p>
                 </div>
             `;
             
@@ -696,30 +886,23 @@
                 
                 if (!data || data.length === 0) {
                     leaderboardList.innerHTML = `
-                        <div class="gamification-empty">
-                            <i class="fas fa-chart-line" style="font-size: 40px; color: #cbd5e1;"></i>
-                            <p style="font-weight: 600; margin-top: 12px;">Leaderboard Coming Soon!</p>
-                            <p style="font-size: 13px;">Start using the system to see your name here!</p>
+                        <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                            <i class="fas fa-chart-line" style="font-size: 40px; display: block; margin-bottom: 12px; color: #d1d5db;"></i>
+                            <p style="font-weight: 600; margin: 0;">No students on leaderboard yet</p>
+                            <p style="font-size: 13px; margin: 4px 0 0 0;">Start using the system to see your name here!</p>
                         </div>
                     `;
                     return;
                 }
                 
-                leaderboardList.innerHTML = data.map((item, index) => {
-                    let rankClass = '';
+                let html = '';
+                data.forEach((item, index) => {
                     let rankIcon = '';
-                    if (index === 0) {
-                        rankClass = 'gold';
-                        rankIcon = '👑';
-                    } else if (index === 1) {
-                        rankClass = 'silver';
-                        rankIcon = '🥈';
-                    } else if (index === 2) {
-                        rankClass = 'bronze';
-                        rankIcon = '🥉';
-                    } else {
-                        rankIcon = `${index + 1}`;
-                    }
+                    let rankClass = '';
+                    if (index === 0) { rankIcon = '👑'; rankClass = 'gold'; }
+                    else if (index === 1) { rankIcon = '🥈'; rankClass = 'silver'; }
+                    else if (index === 2) { rankIcon = '🥉'; rankClass = 'bronze'; }
+                    else { rankIcon = `${index + 1}`; rankClass = ''; }
                     
                     const name = item.full_name || 'Student';
                     const nameParts = name.split(' ');
@@ -732,38 +915,81 @@
                     
                     const totalPoints = item.total_points || (item.gamification_points || 0) + (item.nurseiq_points || 0);
                     
-                    return `
-                        <div class="leaderboard-item">
-                            <div class="leaderboard-rank ${rankClass}">${rankIcon}</div>
-                            <div class="leaderboard-avatar">${avatar}</div>
-                            <div class="leaderboard-info">
-                                <div class="leaderboard-name">
+                    html += `
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            padding: 10px 14px;
+                            border-bottom: 1px solid #f1f5f9;
+                            ${item.user_id === this.userId ? 'background: #ede9fe; border-left: 3px solid #4C1D95;' : ''}
+                        ">
+                            <div style="
+                                font-weight: 700;
+                                font-size: 16px;
+                                min-width: 32px;
+                                text-align: center;
+                                ${rankClass === 'gold' ? 'color: #f59e0b;' : ''}
+                                ${rankClass === 'silver' ? 'color: #9ca3af;' : ''}
+                                ${rankClass === 'bronze' ? 'color: #d97706;' : ''}
+                            ">${rankIcon}</div>
+                            
+                            <div style="
+                                width: 32px;
+                                height: 32px;
+                                border-radius: 50%;
+                                background: #4C1D95;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                color: white;
+                                font-weight: 700;
+                                font-size: 12px;
+                                flex-shrink: 0;
+                            ">${avatar}</div>
+                            
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: 500; color: #1e293b; font-size: 14px; display: flex; align-items: center; gap: 6px;">
                                     ${this.escapeHtml(name)}
-                                    ${item.program ? `<span class="program-badge">${item.program.substring(0, 3)}</span>` : ''}
+                                    ${item.user_id === this.userId ? '<span style="font-size: 9px; background: #4C1D95; color: white; padding: 1px 8px; border-radius: 10px;">You</span>' : ''}
+                                    ${item.program ? `<span style="font-size: 9px; background: #f1f5f9; color: #64748b; padding: 1px 8px; border-radius: 10px;">${item.program.substring(0, 3)}</span>` : ''}
                                 </div>
-                                <div class="leaderboard-stats">
-                                    <i class="fas fa-fire"></i> ${item.attendance_streak || 0} day streak
-                                    <i class="fas fa-trophy" style="margin-left: 8px;"></i> Level ${item.gamification_level || 1}
-                                    ${item.total_nurseiq_attempts > 0 ? `<i class="fas fa-stethoscope" style="margin-left: 8px;"></i> ${item.total_nurseiq_attempts} tests` : ''}
+                                <div style="font-size: 10px; color: #94a3b8; display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <span>🔥 ${item.attendance_streak || 0} day streak</span>
+                                    <span>🏆 Level ${item.gamification_level || 1}</span>
+                                    ${item.total_nurseiq_attempts > 0 ? `<span>🩺 ${item.total_nurseiq_attempts} tests</span>` : ''}
                                 </div>
                             </div>
-                            <div class="leaderboard-points">
-                                ${totalPoints} pts
-                                <small style="display: block; font-size: 9px; color: #6b7280;">
+                            
+                            <div style="text-align: right; flex-shrink: 0;">
+                                <div style="font-weight: 700; color: #4C1D95; font-size: 16px;">${totalPoints}</div>
+                                <div style="font-size: 8px; color: #94a3b8;">
                                     🎓 ${item.gamification_points || 0} + 🩺 ${item.nurseiq_points || 0}
-                                </small>
+                                </div>
                             </div>
+                            
+                            ${index === 0 ? '<span style="font-size: 11px; color: #f59e0b; background: #fef3c7; padding: 2px 10px; border-radius: 12px; font-weight: 600;">🏆 Top</span>' : ''}
                         </div>
                     `;
-                }).join('');
+                });
+                
+                // Add footer with info
+                html += `
+                    <div style="padding: 8px 14px; background: #f8fafc; border-top: 1px solid #e5e7eb; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+                        <span>💡 Points = Attendance + NurseIQ + Login Bonus + Badges</span>
+                        <span>🏆 Showing top ${data.length} students</span>
+                    </div>
+                `;
+                
+                leaderboardList.innerHTML = html;
                 
             } catch (error) {
                 console.error('Error loading leaderboard:', error);
                 leaderboardList.innerHTML = `
-                    <div class="gamification-empty">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p>Error loading student leaderboard</p>
-                        <small>Please refresh the page</small>
+                    <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 30px; display: block; margin-bottom: 8px;"></i>
+                        <p style="margin: 0;">Error loading leaderboard</p>
+                        <p style="font-size: 12px; margin: 4px 0 0 0;">Please refresh the page</p>
                     </div>
                 `;
             }
@@ -777,43 +1003,97 @@
         }
         
         updateDashboardStats() {
-            const totalPoints = this.getTotalPoints();
+            const totalPoints = this.totalPoints || this.calculateTotalPoints();
             
+            // Update dashboard if elements exist
             const dashboardPoints = document.getElementById('dashboard-points');
             if (dashboardPoints) dashboardPoints.textContent = totalPoints;
             
             const dashboardStreak = document.getElementById('dashboard-streak');
             if (dashboardStreak) dashboardStreak.textContent = this.streak;
+            
+            // Update gamification display in sidebar if exists
+            const sidebarPoints = document.getElementById('sidebar-gamification-points');
+            if (sidebarPoints) sidebarPoints.textContent = totalPoints;
         }
         
         showNotification(title, message, type, icon = 'fa-award') {
+            // Remove existing toast
             const existingToast = document.querySelector('.achievement-toast');
             if (existingToast) existingToast.remove();
             
+            const colors = {
+                'points': { bg: '#4C1D95', icon: 'fa-star' },
+                'badge': { bg: '#FDB913', icon: 'fa-medal' },
+                'levelup': { bg: '#10b981', icon: 'fa-trophy' }
+            };
+            
+            const colorInfo = colors[type] || colors.points;
+            
             const toast = document.createElement('div');
             toast.className = 'achievement-toast';
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 80px;
+                right: 20px;
+                background: #1e293b;
+                color: white;
+                padding: 14px 20px;
+                border-radius: 12px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                z-index: 99999;
+                max-width: 350px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                animation: slideInRight 0.4s ease forwards;
+                border-left: 4px solid ${colorInfo.bg};
+                cursor: pointer;
+            `;
+            
             toast.innerHTML = `
-                <i class="fas ${type === 'badge' ? 'fa-medal' : type === 'points' ? 'fa-star' : type === 'levelup' ? 'fa-trophy' : 'fa-award'}"></i>
-                <div class="achievement-toast-content">
-                    <h4>${title}</h4>
-                    <p>${message}</p>
+                <div style="
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    background: ${colorInfo.bg};
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-shrink: 0;
+                ">
+                    <i class="fas ${colorInfo.icon}" style="color: white; font-size: 16px;"></i>
                 </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 600; font-size: 14px;">${title}</div>
+                    <div style="font-size: 12px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${message}</div>
+                </div>
+                <button onclick="this.closest('.achievement-toast').remove()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 14px; padding: 4px;">
+                    <i class="fas fa-times"></i>
+                </button>
             `;
             
             document.body.appendChild(toast);
             
+            // Auto-remove after 4 seconds
             setTimeout(() => {
-                toast.style.animation = 'slideIn 0.3s ease reverse';
-                setTimeout(() => toast.remove(), 300);
+                if (toast.parentNode) {
+                    toast.style.animation = 'slideOutRight 0.3s ease forwards';
+                    setTimeout(() => toast.remove(), 300);
+                }
             }, 4000);
             
-            toast.addEventListener('click', () => toast.remove());
+            // Click to dismiss
+            toast.addEventListener('click', () => {
+                toast.style.animation = 'slideOutRight 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            });
         }
         
         showAllBadges() {
-            const badgesGrid = document.getElementById('badges-grid');
-            if (badgesGrid) {
-                badgesGrid.scrollIntoView({ behavior: 'smooth' });
+            const badgesSection = document.querySelector('.badges-section');
+            if (badgesSection) {
+                badgesSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
     }
