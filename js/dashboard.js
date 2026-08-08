@@ -856,17 +856,16 @@ class DashboardModule {
             achievements: data?.gamification?.badges || []
         };
         
-        // ✅ Login data - FIXED STREAK
+        // ✅ Login data
         const loginCount = data?.login?.count || 0;
         const loginPoints = data?.login?.points || 0;
         
-        // ✅ CRITICAL FIX: Use streak from RPC data
         this.metrics.login = { 
             count: loginCount, 
             points: loginPoints, 
-            streak: data?.login?.streak || 0,      // ← FIXED
-            maxStreak: data?.login?.maxStreak || 0, // ← FIXED
-            streakRestores: data?.login?.restores || 0 // ← FIXED
+            streak: data?.login?.streak || 0,
+            maxStreak: data?.login?.maxStreak || 0,
+            streakRestores: data?.login?.restores || 0
         };
         
         // Attendance data
@@ -878,21 +877,21 @@ class DashboardModule {
         // Exam card data
         this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
         
-       // ✅ FIXED - Preserves ALL fields from RPC
-this.metrics.nurseiq = {
-    questions: data?.nurseiq?.questions || 0,
-    score: data?.nurseiq?.score || 0,
-    accuracy: data?.nurseiq?.accuracy || 0,
-    progress: data?.nurseiq?.progress || 0,
-    points: data?.nurseiq?.points || 0  // ← ADD THIS
-};
-
-// If progress is 0 but questions > 0, calculate it
-if (this.metrics.nurseiq.questions > 0 && this.metrics.nurseiq.progress === 0) {
-    this.metrics.nurseiq.progress = Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100);
-}
-
-console.log('📊 NurseIQ loaded:', this.metrics.nurseiq);
+        // ✅ FIXED: NurseIQ data - PRESERVE ALL FIELDS
+        this.metrics.nurseiq = {
+            questions: data?.nurseiq?.questions || 0,
+            score: data?.nurseiq?.score || 0,
+            accuracy: data?.nurseiq?.accuracy || 0,
+            progress: data?.nurseiq?.progress || 0,
+            points: data?.nurseiq?.points || 0  // ✅ ADDED
+        };
+        
+        // If progress is 0 but questions > 0, calculate it
+        if (this.metrics.nurseiq.questions > 0 && this.metrics.nurseiq.progress === 0) {
+            this.metrics.nurseiq.progress = Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100);
+        }
+        
+        console.log('📊 NurseIQ loaded:', this.metrics.nurseiq);
         
         // XP data
         this.metrics.xp = data.xp || { 
@@ -912,16 +911,16 @@ console.log('📊 NurseIQ loaded:', this.metrics.nurseiq);
         console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
         console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
         console.log(`📊 Level from RPC: ${this.metrics.xp.level}`);
-        console.log(`🔥 Streak from RPC: ${this.metrics.login.streak}`); // ← Should show 13
+        console.log(`🔥 Streak from RPC: ${this.metrics.login.streak}`);
         
         // Load reviews and newsletter
         await this.loadReviewsSnapshot();
         await this.loadNewsletterSnapshot();
         
-        // ✅ Update UI - THIS WILL NOW SHOW THE CORRECT STREAK
+        // ✅ Update UI
         this.saveToCache();
         this.updateUIFromMetrics();
-        this.updateStreakUI();  // ← Make sure this is called
+        this.updateStreakUI();
         
         // Update announcement
         if (this.elements.announcementText) {
@@ -1788,119 +1787,118 @@ console.log('📊 NurseIQ loaded:', this.metrics.nurseiq);
     // 🎨 UPDATE UI FROM METRICS - FIXED!
     // ============================================================
     
-    updateUIFromMetrics() {
-        const m = this.metrics;
-        
-        // Attendance
-        if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
-        if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
-        if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
-        if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
-        if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
-        
-        // Login points
-        if (this.elements.loginPointsDisplay) {
-            this.elements.loginPointsDisplay.innerText = m.login?.points || 0;
-        }
-        if (this.elements.loginCountDisplay) {
-            this.elements.loginCountDisplay.innerText = m.login?.count || 0;
-        }
-        
-        // ✅ TOTAL POINTS - USE STORED VALUE FROM RPC
-        if (this.elements.totalPointsDisplay) {
-            const total = this.metrics.totalPoints || this.calculateTotalPoints();
-            this.elements.totalPointsDisplay.innerText = total;
-        }
-        
-        // ✅ Gamification points display
-        if (this.elements.gamificationPointsDisplay) {
-            this.elements.gamificationPointsDisplay.innerText = this.gamificationPoints || 0;
-        }
-        
-        // Attendance color coding
-        const rate = m.attendance.rate || 0;
-        const percentEl = document.querySelector('.attendance-percent');
-        if (percentEl) {
-            percentEl.classList.remove('attendance-critical', 'attendance-warning', 'attendance-good');
-            if (rate < 50) percentEl.classList.add('attendance-critical');
-            else if (rate < 75) percentEl.classList.add('attendance-warning');
-            else percentEl.classList.add('attendance-good');
-        }
-        
-        const warningText = document.getElementById('warning-text');
-        if (warningText) {
-            if (rate < 50) warningText.innerText = 'CRITICAL';
-            else if (rate < 75) warningText.innerText = 'BELOW 75%';
-            else warningText.innerText = 'GOOD';
-        }
-        
-        // Exam Card
-        const approved = m.examCard.approved || 0;
-        if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
-        if (this.elements.examStatus) {
-            this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
-        }
-        if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
-        
-       // ✅ FIXED - Shows points, not questions
-if (this.elements.nurseiqProgress) {
-    const progress = m.nurseiq.progress || 0;
-    this.elements.nurseiqProgress.innerText = progress + '%';
-}
-if (this.elements.nurseiqAccuracy) {
-    const accuracy = m.nurseiq.accuracy || 0;
-    this.elements.nurseiqAccuracy.innerText = accuracy + '%';
-}
-if (this.elements.nurseiqQuestions) {
-    const questions = m.nurseiq.questions || 0;
-    this.elements.nurseiqQuestions.innerText = questions;
-}
-if (this.elements.nurseiqPoints) {
-    // ✅ Use points field, fallback to questions × 2 if points missing
-    const points = m.nurseiq.points || (m.nurseiq.questions * 2) || 0;
-    this.elements.nurseiqPoints.innerText = points;
-}
-
-// Log for debugging
-console.log('📊 NurseIQ displayed:', {
-    progress: m.nurseiq.progress,
-    accuracy: m.nurseiq.accuracy,
-    questions: m.nurseiq.questions,
-    points: m.nurseiq.points
-});
-        
-        // Resources & Exams
-        if (this.elements.resources) this.elements.resources.innerText = m.resources;
-        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
-        
-        // ✅ XP - USE DATA FROM RPC
-        if (this.elements.userLevel) {
-            this.elements.userLevel.innerText = m.xp.level || 1;
-        }
-        if (this.elements.userXp) {
-            this.elements.userXp.innerText = m.xp.current || 0;
-        }
-        if (this.elements.userXpMax) {
-            this.elements.userXpMax.innerText = m.xp.max || 100;
-        }
-        if (this.elements.xpProgressFill) {
-            const percent = m.xp.percent || 0;
-            this.elements.xpProgressFill.style.width = percent + '%';
-        }
-        
-        // Update last updated time
-        if (this.elements.dashboardLastUpdated) {
-            const now = this.getKenyaNow();
-            this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true,
-                timeZone: 'Africa/Nairobi'
-            });
-        }
+   updateUIFromMetrics() {
+    const m = this.metrics;
+    
+    // Attendance
+    if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
+    if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
+    if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
+    if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
+    if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
+    
+    // Login points
+    if (this.elements.loginPointsDisplay) {
+        this.elements.loginPointsDisplay.innerText = m.login?.points || 0;
     }
+    if (this.elements.loginCountDisplay) {
+        this.elements.loginCountDisplay.innerText = m.login?.count || 0;
+    }
+    
+    // ✅ TOTAL POINTS
+    if (this.elements.totalPointsDisplay) {
+        const total = this.metrics.totalPoints || this.calculateTotalPoints();
+        this.elements.totalPointsDisplay.innerText = total;
+    }
+    
+    // ✅ Gamification points display
+    if (this.elements.gamificationPointsDisplay) {
+        // Use m.gamification.points if available, fallback to this.gamificationPoints
+        const points = m.gamification?.points || this.gamificationPoints || 0;
+        this.elements.gamificationPointsDisplay.innerText = points;
+    }
+    
+    // Attendance color coding
+    const rate = m.attendance.rate || 0;
+    const percentEl = document.querySelector('.attendance-percent');
+    if (percentEl) {
+        percentEl.classList.remove('attendance-critical', 'attendance-warning', 'attendance-good');
+        if (rate < 50) percentEl.classList.add('attendance-critical');
+        else if (rate < 75) percentEl.classList.add('attendance-warning');
+        else percentEl.classList.add('attendance-good');
+    }
+    
+    const warningText = document.getElementById('warning-text');
+    if (warningText) {
+        if (rate < 50) warningText.innerText = 'CRITICAL';
+        else if (rate < 75) warningText.innerText = 'BELOW 75%';
+        else warningText.innerText = 'GOOD';
+    }
+    
+    // Exam Card
+    const approved = m.examCard.approved || 0;
+    if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
+    if (this.elements.examStatus) {
+        this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+        this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
+    }
+    if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
+    
+    // ✅ FIXED: NurseIQ - Show ALL fields correctly
+    if (this.elements.nurseiqProgress) {
+        this.elements.nurseiqProgress.innerText = (m.nurseiq.progress || 0) + '%';
+    }
+    if (this.elements.nurseiqAccuracy) {
+        this.elements.nurseiqAccuracy.innerText = (m.nurseiq.accuracy || 0) + '%';
+    }
+    if (this.elements.nurseiqQuestions) {
+        this.elements.nurseiqQuestions.innerText = m.nurseiq.questions || 0;
+    }
+    if (this.elements.nurseiqPoints) {
+        // ✅ SHOW POINTS, NOT QUESTIONS
+        const points = m.nurseiq.points || (m.nurseiq.questions * 2) || 0;
+        this.elements.nurseiqPoints.innerText = points;
+    }
+    
+    // Resources & Exams
+    if (this.elements.resources) this.elements.resources.innerText = m.resources;
+    if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
+    
+    // XP
+    if (this.elements.userLevel) {
+        this.elements.userLevel.innerText = m.xp.level || 1;
+    }
+    if (this.elements.userXp) {
+        this.elements.userXp.innerText = m.xp.current || 0;
+    }
+    if (this.elements.userXpMax) {
+        this.elements.userXpMax.innerText = m.xp.max || 100;
+    }
+    if (this.elements.xpProgressFill) {
+        const percent = m.xp.percent || 0;
+        this.elements.xpProgressFill.style.width = percent + '%';
+    }
+    
+    // Update last updated time
+    if (this.elements.dashboardLastUpdated) {
+        const now = this.getKenyaNow();
+        this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+            timeZone: 'Africa/Nairobi'
+        });
+    }
+    
+    // ✅ Log NurseIQ display values
+    console.log('📊 NurseIQ displayed:', {
+        progress: m.nurseiq.progress,
+        accuracy: m.nurseiq.accuracy,
+        questions: m.nurseiq.questions,
+        points: m.nurseiq.points
+    });
+}
     // ============================================================
 // 💾 SAVE TO CACHE
 // ============================================================
