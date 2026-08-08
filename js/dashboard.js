@@ -878,11 +878,21 @@ class DashboardModule {
         // Exam card data
         this.metrics.examCard = data.examCard || { approved: 0, eligible: false };
         
-        // NurseIQ data
-        this.metrics.nurseiq = data.nurseiq || { questions: 0, accuracy: 0, progress: 0 };
-        this.metrics.nurseiq.progress = this.metrics.nurseiq.questions > 0 
-            ? Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100) 
-            : 0;
+       // ✅ FIXED - Preserves ALL fields from RPC
+this.metrics.nurseiq = {
+    questions: data?.nurseiq?.questions || 0,
+    score: data?.nurseiq?.score || 0,
+    accuracy: data?.nurseiq?.accuracy || 0,
+    progress: data?.nurseiq?.progress || 0,
+    points: data?.nurseiq?.points || 0  // ← ADD THIS
+};
+
+// If progress is 0 but questions > 0, calculate it
+if (this.metrics.nurseiq.questions > 0 && this.metrics.nurseiq.progress === 0) {
+    this.metrics.nurseiq.progress = Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100);
+}
+
+console.log('📊 NurseIQ loaded:', this.metrics.nurseiq);
         
         // XP data
         this.metrics.xp = data.xp || { 
@@ -1833,11 +1843,32 @@ class DashboardModule {
         }
         if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
         
-        // NurseIQ
-        if (this.elements.nurseiqProgress) this.elements.nurseiqProgress.innerText = m.nurseiq.progress + '%';
-        if (this.elements.nurseiqAccuracy) this.elements.nurseiqAccuracy.innerText = m.nurseiq.accuracy + '%';
-        if (this.elements.nurseiqQuestions) this.elements.nurseiqQuestions.innerText = m.nurseiq.questions;
-        if (this.elements.nurseiqPoints) this.elements.nurseiqPoints.innerText = m.nurseiq.questions;
+       // ✅ FIXED - Shows points, not questions
+if (this.elements.nurseiqProgress) {
+    const progress = m.nurseiq.progress || 0;
+    this.elements.nurseiqProgress.innerText = progress + '%';
+}
+if (this.elements.nurseiqAccuracy) {
+    const accuracy = m.nurseiq.accuracy || 0;
+    this.elements.nurseiqAccuracy.innerText = accuracy + '%';
+}
+if (this.elements.nurseiqQuestions) {
+    const questions = m.nurseiq.questions || 0;
+    this.elements.nurseiqQuestions.innerText = questions;
+}
+if (this.elements.nurseiqPoints) {
+    // ✅ Use points field, fallback to questions × 2 if points missing
+    const points = m.nurseiq.points || (m.nurseiq.questions * 2) || 0;
+    this.elements.nurseiqPoints.innerText = points;
+}
+
+// Log for debugging
+console.log('📊 NurseIQ displayed:', {
+    progress: m.nurseiq.progress,
+    accuracy: m.nurseiq.accuracy,
+    questions: m.nurseiq.questions,
+    points: m.nurseiq.points
+});
         
         // Resources & Exams
         if (this.elements.resources) this.elements.resources.innerText = m.resources;
