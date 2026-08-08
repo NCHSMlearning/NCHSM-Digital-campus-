@@ -95,7 +95,83 @@
             return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
         }
     }
-    
+    // ============================================
+// 🏆 AWARD ATTENDANCE POINTS
+// ============================================
+
+async function awardAttendancePoints(studentId, targetName, distance) {
+    try {
+        const supabase = getSupabase();
+        if (!supabase) {
+            console.warn('No Supabase client available');
+            return 0;
+        }
+        
+        // Base points for check-in
+        let points = 10;
+        
+        // Bonus for being very close (within 20m)
+        if (distance < 20) {
+            points += 5; // +5 bonus for being super accurate
+            console.log('🎯 Super accurate! +5 bonus points!');
+        }
+        
+        // Get current points
+        const { data: profile, error: fetchError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('gamification_points, attendance_points, total_points, login_count')
+            .eq('user_id', studentId)
+            .single();
+        
+        if (fetchError) {
+            console.warn('Could not fetch profile:', fetchError);
+            return 0;
+        }
+        
+        const currentPoints = profile?.gamification_points || 0;
+        const currentAttendancePoints = profile?.attendance_points || 0;
+        const loginCount = profile?.login_count || 0;
+        const newPoints = currentPoints + points;
+        const newAttendancePoints = currentAttendancePoints + points;
+        const newTotal = newPoints + (loginCount * 10);
+        
+        // Update points
+        const { error: updateError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .update({
+                gamification_points: newPoints,
+                attendance_points: newAttendancePoints,
+                total_points: newTotal,
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', studentId);
+        
+        if (updateError) {
+            console.error('❌ Error updating points:', updateError);
+            return 0;
+        }
+        
+        console.log(`✅ Awarded ${points} points for attendance at ${targetName}`);
+        console.log(`📊 New attendance points: ${newAttendancePoints}`);
+        console.log(`🏆 New total points: ${newTotal}`);
+        
+        // Trigger event for dashboard to update
+        document.dispatchEvent(new CustomEvent('attendanceCheckedIn', {
+            detail: { points, target: targetName, distance, newTotal }
+        }));
+        
+        // Also update the dashboard metrics if available
+        if (window.dashboardModule && typeof window.dashboardModule.loadFreshData === 'function') {
+            setTimeout(() => window.dashboardModule.loadFreshData(), 500);
+        }
+        
+        return points;
+        
+    } catch (error) {
+        console.error('❌ Error awarding attendance points:', error);
+        return 0;
+    }
+}
     // ============================================
     // 🍞 BEAUTIFUL TOAST - NO "This site says"!
     // ============================================
@@ -596,176 +672,183 @@
     // ✅ DO CHECK-IN
     // ============================================
     
-    async function doCheckIn() {
-        const btn = document.getElementById('check-in-button');
-        const targetSelect = document.getElementById('attendance-target');
-        const sessionTypeSelect = document.getElementById('session-type');
-        
-        // Get selected target
-        if (!selectedTarget && targetSelect?.value) {
-            const parts = targetSelect.value.split('|');
-            if (parts.length >= 6) {
-                selectedTarget = {
-                    id: parts[0],
-                    name: parts[1],
-                    type: parts[2],
-                    latitude: parseFloat(parts[3]),
-                    longitude: parseFloat(parts[4]),
-                    radius: parseFloat(parts[5])
-                };
-            }
-        }
-        
-        if (!selectedTarget) {
-            showToast('Please select a target first', 'warning');
-            return;
-        }
-        
-        btn.disabled = true;
-        btn.innerHTML = '📍 Getting GPS...';
-        btn.style.opacity = '0.6';
-        
-        try {
-            const studentId = getCurrentStudentId();
-            if (!studentId) {
-                showToast('Please log in first', 'error');
-                btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
-                btn.style.opacity = '1';
-                return;
-            }
-            
-            const supabase = getSupabase();
-            if (!supabase) {
-                showToast('Database not available', 'error');
-                btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
-                btn.style.opacity = '1';
-                return;
-            }
-            
-            // Get student profile
-            const { data: studentProfile } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, full_name, block, program, intake_year')
-                .eq('user_id', studentId)
-                .maybeSingle();
-            
-            const studentFullName = studentProfile?.full_name || 'Student';
-            const studentBlock = studentProfile?.block || 'Not Assigned';
-            const studentProgram = studentProfile?.program || 'KRCHN';
-            const studentRegNumber = studentProfile?.student_id || 'N/A';
-            
-            // Get GPS location
-            const location = await getAccurateLocation();
-            await updateLocationDisplay(location);
-            
-            const distance = calculateDistance(
-                location.lat, location.lon,
-                selectedTarget.latitude, selectedTarget.longitude
-            );
-            const radius = selectedTarget.radius || 50;
-            const accuracy = location.acc || 0;
-            
-            let status = 'Absent';
-            let statusMessage = '';
-            
-            if (accuracy > radius * 2) {
-                status = 'Pending';
-                statusMessage = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m)`;
-            } else if (distance <= radius) {
-                status = 'Present';
-                statusMessage = `✅ Verified within ${radius}m`;
-            } else if (distance <= radius * 2) {
-                status = 'Pending';
-                statusMessage = `⚠️ Within ${radius * 2}m, needs review`;
-            } else {
-                status = 'Absent';
-                statusMessage = `❌ Too far (${distance.toFixed(0)}m)`;
-            }
-            
-            // Show confirmation
-            const confirmed = await showConfirmModal({
-                icon: '📍',
-                title: 'Verify Check-in',
-                subtitle: 'Please confirm your attendance details:',
-                details: {
-                    'Student': studentFullName,
-                    'Reg No': studentRegNumber,
-                    'Block': studentBlock,
-                    'Program': studentProgram,
-                    'Target': selectedTarget.name,
-                    'Type': selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'clinical' ? 'Clinical' : 'Session',
-                    'Distance': distance.toFixed(0) + 'm',
-                    'GPS Accuracy': '±' + accuracy.toFixed(0) + 'm',
-                    'Status': status
-                }
-            });
-            
-            if (!confirmed) {
-                btn.disabled = false;
-                btn.innerHTML = '📍 Check In Now';
-                btn.style.opacity = '1';
-                showToast('Check-in cancelled', 'warning');
-                return;
-            }
-            
-            btn.innerHTML = '💾 Saving...';
-            
-            const sessionType = sessionTypeSelect?.value || 'class';
-            
-            // Build record
-            const record = {
-                student_id: studentId,
-                user_id: studentId,
-                registration_number: studentRegNumber,
-                student_name: studentFullName,
-                block: studentBlock,
-                program: studentProgram,
-                check_in_time: new Date().toISOString(),
-                session_type: sessionType,
-                target_id: selectedTarget.id,
-                target_name: selectedTarget.name,
-                latitude: location.lat,
-                longitude: location.lon,
-                accuracy_m: location.acc,
-                distance_meters: distance,
-                is_verified: status === 'Present',
-                attendance_status: status,
-                target_latitude: selectedTarget.latitude,
-                target_longitude: selectedTarget.longitude,
-                target_radius: radius,
-                location_address: location.address || '',
-                role: 'student'
+  async function doCheckIn() {
+    const btn = document.getElementById('check-in-button');
+    const targetSelect = document.getElementById('attendance-target');
+    const sessionTypeSelect = document.getElementById('session-type');
+    
+    // Get selected target
+    if (!selectedTarget && targetSelect?.value) {
+        const parts = targetSelect.value.split('|');
+        if (parts.length >= 6) {
+            selectedTarget = {
+                id: parts[0],
+                name: parts[1],
+                type: parts[2],
+                latitude: parseFloat(parts[3]),
+                longitude: parseFloat(parts[4]),
+                radius: parseFloat(parts[5])
             };
-            
-            const { error } = await supabase
-                .from('geo_attendance_logs')
-                .insert([record]);
-            
-            if (error) throw error;
-            
-            showSuccessModal({
-                target: selectedTarget.name,
-                type: selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'clinical' ? 'Clinical' : 'Session',
-                distance: distance.toFixed(0),
-                accuracy: accuracy.toFixed(0),
-                status: status,
-                note: statusMessage
-            });
-            
-            await loadHistory();
-            await updateStats();
-            
-        } catch (error) {
-            console.error('❌ Check-in error:', error);
-            showToast('Check-in failed: ' + error.message, 'error');
-        } finally {
+        }
+    }
+    
+    if (!selectedTarget) {
+        showToast('Please select a target first', 'warning');
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '📍 Getting GPS...';
+    btn.style.opacity = '0.6';
+    
+    try {
+        const studentId = getCurrentStudentId();
+        if (!studentId) {
+            showToast('Please log in first', 'error');
             btn.disabled = false;
             btn.innerHTML = '📍 Check In Now';
             btn.style.opacity = '1';
+            return;
         }
+        
+        const supabase = getSupabase();
+        if (!supabase) {
+            showToast('Database not available', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '📍 Check In Now';
+            btn.style.opacity = '1';
+            return;
+        }
+        
+        // Get student profile
+        const { data: studentProfile } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id, student_id, full_name, block, program, intake_year')
+            .eq('user_id', studentId)
+            .maybeSingle();
+        
+        const studentFullName = studentProfile?.full_name || 'Student';
+        const studentBlock = studentProfile?.block || 'Not Assigned';
+        const studentProgram = studentProfile?.program || 'KRCHN';
+        const studentRegNumber = studentProfile?.student_id || 'N/A';
+        
+        // Get GPS location
+        const location = await getAccurateLocation();
+        await updateLocationDisplay(location);
+        
+        const distance = calculateDistance(
+            location.lat, location.lon,
+            selectedTarget.latitude, selectedTarget.longitude
+        );
+        const radius = selectedTarget.radius || 50;
+        const accuracy = location.acc || 0;
+        
+        let status = 'Absent';
+        let statusMessage = '';
+        
+        if (accuracy > radius * 2) {
+            status = 'Pending';
+            statusMessage = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m)`;
+        } else if (distance <= radius) {
+            status = 'Present';
+            statusMessage = `✅ Verified within ${radius}m`;
+        } else if (distance <= radius * 2) {
+            status = 'Pending';
+            statusMessage = `⚠️ Within ${radius * 2}m, needs review`;
+        } else {
+            status = 'Absent';
+            statusMessage = `❌ Too far (${distance.toFixed(0)}m)`;
+        }
+        
+        // Show confirmation
+        const confirmed = await showConfirmModal({
+            icon: '📍',
+            title: 'Verify Check-in',
+            subtitle: 'Please confirm your attendance details:',
+            details: {
+                'Student': studentFullName,
+                'Reg No': studentRegNumber,
+                'Block': studentBlock,
+                'Program': studentProgram,
+                'Target': selectedTarget.name,
+                'Type': selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'clinical' ? 'Clinical' : 'Session',
+                'Distance': distance.toFixed(0) + 'm',
+                'GPS Accuracy': '±' + accuracy.toFixed(0) + 'm',
+                'Status': status
+            }
+        });
+        
+        if (!confirmed) {
+            btn.disabled = false;
+            btn.innerHTML = '📍 Check In Now';
+            btn.style.opacity = '1';
+            showToast('Check-in cancelled', 'warning');
+            return;
+        }
+        
+        btn.innerHTML = '💾 Saving...';
+        
+        const sessionType = sessionTypeSelect?.value || 'class';
+        
+        // Build record
+        const record = {
+            student_id: studentId,
+            user_id: studentId,
+            registration_number: studentRegNumber,
+            student_name: studentFullName,
+            block: studentBlock,
+            program: studentProgram,
+            check_in_time: new Date().toISOString(),
+            session_type: sessionType,
+            target_id: selectedTarget.id,
+            target_name: selectedTarget.name,
+            latitude: location.lat,
+            longitude: location.lon,
+            accuracy_m: location.acc,
+            distance_meters: distance,
+            is_verified: status === 'Present',
+            attendance_status: status,
+            target_latitude: selectedTarget.latitude,
+            target_longitude: selectedTarget.longitude,
+            target_radius: radius,
+            location_address: location.address || '',
+            role: 'student'
+        };
+        
+        const { error } = await supabase
+            .from('geo_attendance_logs')
+            .insert([record]);
+        
+        if (error) throw error;
+        
+        // ✅ AWARD POINTS
+        let awardedPoints = 0;
+        if (status === 'Present') {
+            awardedPoints = await awardAttendancePoints(studentId, selectedTarget.name, distance);
+        }
+        
+        showSuccessModal({
+            target: selectedTarget.name,
+            type: selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'clinical' ? 'Clinical' : 'Session',
+            distance: distance.toFixed(0),
+            accuracy: accuracy.toFixed(0),
+            status: status,
+            note: statusMessage,
+            points: awardedPoints  // ✅ Show points earned
+        });
+        
+        await loadHistory();
+        await updateStats();
+        
+    } catch (error) {
+        console.error('❌ Check-in error:', error);
+        showToast('Check-in failed: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '📍 Check In Now';
+        btn.style.opacity = '1';
     }
+}
     
     // ============================================
     // 🔄 UPDATE STATS
