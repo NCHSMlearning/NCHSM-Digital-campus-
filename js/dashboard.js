@@ -1870,7 +1870,23 @@ class DashboardModule {
             });
         }
     }
-    
+    // ============================================================
+// 💾 SAVE TO CACHE
+// ============================================================
+
+saveToCache() {
+    if (!this.cacheKey) return;
+    try {
+        localStorage.setItem(this.cacheKey, JSON.stringify({
+            data: this.metrics,
+            timestamp: Date.now()
+        }));
+        console.log('💾 Dashboard data cached successfully');
+    } catch (e) {
+        // Cache save failed - not critical, just log silently
+        console.debug('Cache save skipped:', e.message);
+    }
+}
     // ============================================================
     // ⏰ LIVE CLOCK
     // ============================================================
