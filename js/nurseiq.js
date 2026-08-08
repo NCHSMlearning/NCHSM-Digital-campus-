@@ -204,7 +204,22 @@ class NurseIQModule {
         this._isSaving = false;
         this._isLoadingQuestions = false;
     }
-    
+     
+    getOptionText(index) {
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        if (!question) return 'Option';
+        
+        const options = [];
+        if (question.option_a && question.option_a.trim() !== '') options.push(question.option_a);
+        if (question.option_b && question.option_b.trim() !== '') options.push(question.option_b);
+        if (question.option_c && question.option_c.trim() !== '') options.push(question.option_c);
+        if (question.option_d && question.option_d.trim() !== '') options.push(question.option_d);
+        
+        if (index >= 0 && index < options.length) {
+            return options[index];
+        }
+        return 'Option ' + String.fromCharCode(65 + index);
+    }
     // ============================================================
     // 🔧 GET SUPABASE CLIENT
     // ============================================================
