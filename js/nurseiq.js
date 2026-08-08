@@ -9,6 +9,8 @@
 // ✅ Filter order: Years → Levels → Categories
 // ✅ Points calculation: 2 points per correct answer
 // ✅ Points display in stats
+// ✅ SAVES TO DATABASE (user_progress, nurseiq_attempts, profile)
+// ✅ SHOWS ALREADY ANSWERED QUESTIONS (green/red indicators)
 // ============================================================
 
 // ============================================================
@@ -85,15 +87,11 @@ function isTVETProgram(programCode) {
 // ============================================================
 
 function getCurrentUserData() {
-    // Try window objects first (fastest)
     let user = window.currentUserProfile || window.currentUser || window.user;
-    
     if (user) {
         console.log('👤 User found in window:', user.full_name || user.name);
         return user;
     }
-    
-    // Try localStorage
     try {
         const stored = localStorage.getItem('nchsm_user');
         if (stored) {
@@ -102,7 +100,6 @@ function getCurrentUserData() {
             return user;
         }
     } catch (e) {}
-    
     try {
         const stored = localStorage.getItem('userProfile');
         if (stored) {
@@ -111,7 +108,6 @@ function getCurrentUserData() {
             return user;
         }
     } catch (e) {}
-    
     console.warn('⚠️ No user found');
     return null;
 }
@@ -130,11 +126,9 @@ function getCurrentUserId() {
 
 class NurseIQModule {
     constructor() {
-        // ===== INSTANT LOAD FROM USER DATA (Like Finance Module) =====
         this.user = getCurrentUserData();
         this.userId = getCurrentUserId();
         
-        // Auto-detect program (same as Finance Module)
         const program = this.user?.program || this.user?.program_code || 'KRCHN';
         this.programType = getProgramType(program);
         this.programLevel = getProgramLevel(program);
@@ -144,7 +138,6 @@ class NurseIQModule {
         this.intakeYear = this.user?.intake_year || this.user?.intake || '2026';
         this.userBlock = this.user?.block || this.user?.current_block || 'Introductory';
         
-        // Store in state
         this.currentProgram = this.isTVETStudent ? 'tvet' : 'nursing';
         
         console.log(`🚀 NurseIQ Module initialized`);
@@ -203,8 +196,12 @@ class NurseIQModule {
         this.saveTimeout = null;
         this._isSaving = false;
         this._isLoadingQuestions = false;
+        this._dbSaveAttempted = false;
     }
-     
+    
+    // ============================================================
+    // 🔧 GET OPTION TEXT
+    // ============================================================
     getOptionText(index) {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (!question) return 'Option';
@@ -220,6 +217,7 @@ class NurseIQModule {
         }
         return 'Option ' + String.fromCharCode(65 + index);
     }
+    
     // ============================================================
     // 🔧 GET SUPABASE CLIENT
     // ============================================================
@@ -298,18 +296,16 @@ class NurseIQModule {
     }
     
     // ============================================================
-    // 🎨 UPDATE UI FOR PROGRAM (Like Finance Module)
+    // 🎨 UPDATE UI FOR PROGRAM
     // ============================================================
     updateUIForProgram() {
         const isTVET = this.isTVETStudent;
-        const isNursing = !isTVET;
         const displayName = this.programDisplayName;
         const programCode = this.programCode;
         const color = isTVET ? '#1a7a5a' : '#4C1D95';
         
         console.log(`🔄 Updating UI for: ${displayName} (${isTVET ? 'TVET' : 'Nursing'})`);
         
-        // Update student info display
         const programDisplayEl = document.getElementById('studentProgramDisplay');
         if (programDisplayEl) programDisplayEl.textContent = displayName;
         
@@ -322,7 +318,6 @@ class NurseIQModule {
         const blockEl = document.getElementById('studentBlockTerm');
         if (blockEl) blockEl.textContent = this.userBlock;
         
-        // Update welcome section
         const welcomeStudentProgram = document.getElementById('welcomeStudentProgram');
         if (welcomeStudentProgram) welcomeStudentProgram.textContent = displayName;
         
@@ -335,7 +330,6 @@ class NurseIQModule {
         const welcomeProgramInfo = document.getElementById('welcomeProgramInfo');
         if (welcomeProgramInfo) welcomeProgramInfo.textContent = `${displayName} - ${isTVET ? 'TVET' : 'Nursing'} Program`;
         
-        // Update title and badge
         const titleEl = document.getElementById('nurseiqTitle');
         if (titleEl) titleEl.textContent = isTVET ? 'TVETIQ' : 'NurseIQ';
         
@@ -387,7 +381,6 @@ class NurseIQModule {
         const programDisplaySubtitle = document.getElementById('programDisplaySubtitle');
         if (programDisplaySubtitle) programDisplaySubtitle.textContent = displayName;
         
-        // Update welcome elements
         const welcomeIcon = document.getElementById('welcomeIconElement');
         if (welcomeIcon) welcomeIcon.className = isTVET ? 'fas fa-tools' : 'fas fa-book-medical';
         
@@ -404,14 +397,11 @@ class NurseIQModule {
         const loadBtnText = document.getElementById('loadBtnText');
         if (loadBtnText) loadBtnText.textContent = isTVET ? 'Load TVET Courses' : 'Load Course Catalog';
         
-        // Update filter options
         this.updateFilterOptions();
         
-        // Update stats visibility
         if (this.nurseiqStatsBar) this.nurseiqStatsBar.style.display = 'block';
         if (this.nurseiqQuickStats) this.nurseiqQuickStats.style.display = 'grid';
         
-        // Store in localStorage
         localStorage.setItem('nurseiq_program_mode', this.currentProgram);
         localStorage.setItem('nurseiq_program_display', displayName);
         localStorage.setItem('nurseiq_program_code', programCode);
@@ -426,7 +416,6 @@ class NurseIQModule {
     updateFilterOptions() {
         const isTVET = this.isTVETStudent;
         
-        // Year filter
         const yearFilter = document.getElementById('nurseiqYearFilter');
         if (yearFilter) {
             yearFilter.innerHTML = `
@@ -438,7 +427,6 @@ class NurseIQModule {
             `;
         }
         
-        // Level filter
         const levelFilter = document.getElementById('nurseiqLevelFilter');
         if (levelFilter) {
             levelFilter.innerHTML = '';
@@ -463,7 +451,6 @@ class NurseIQModule {
             });
         }
         
-        // Category filter
         const categoryFilter = document.getElementById('nurseiqCategoryFilter');
         if (categoryFilter) {
             categoryFilter.innerHTML = '';
@@ -512,7 +499,7 @@ class NurseIQModule {
                 console.log('📊 Loaded from localStorage:', Object.keys(this.userTestAnswers).length, 'answered questions');
             }
             
-            // Load from database
+            // Load from database - OVERWRITE localStorage with database data
             const supabase = this.getSupabaseClient();
             if (supabase && this.userId && !this.userId.startsWith('anonymous_')) {
                 const { data, error } = await supabase
@@ -523,8 +510,10 @@ class NurseIQModule {
                 
                 if (!error && data && data.progress_data) {
                     const dbAnswers = data.progress_data.answers || {};
-                    this.userTestAnswers = { ...dbAnswers, ...this.userTestAnswers };
+                    // Merge: database takes priority
+                    this.userTestAnswers = { ...this.userTestAnswers, ...dbAnswers };
                     console.log('📊 Loaded from database, total:', Object.keys(this.userTestAnswers).length);
+                    // Save merged data back to localStorage
                     this.saveUserProgress();
                 }
             }
@@ -575,6 +564,9 @@ class NurseIQModule {
         }
     }
     
+    // ============================================================
+    // 💾 SAVE TO DATABASE - FIXED
+    // ============================================================
     async saveProgressToDatabase() {
         if (!this.userId || this.userId.startsWith('anonymous_')) return;
         if (this._isSaving) return;
@@ -588,13 +580,33 @@ class NurseIQModule {
                 return;
             }
             
+            // Count correct answers for points
+            let totalAnswered = 0;
+            let correctAnswers = 0;
+            
+            Object.values(this.userTestAnswers).forEach(answer => {
+                if (answer && answer.answered) {
+                    totalAnswered++;
+                    if (answer.correct) correctAnswers++;
+                }
+            });
+            
+            const points = correctAnswers * 2;
+            
             const progressData = {
                 version: this.progressVersion,
                 answers: this.userTestAnswers,
-                lastSaved: new Date().toISOString()
+                lastSaved: new Date().toISOString(),
+                stats: {
+                    totalAnswered,
+                    correctAnswers,
+                    points,
+                    accuracy: totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0
+                }
             };
             
-            const { error } = await supabase
+            // 1. Save to user_progress
+            const { error: progressError } = await supabase
                 .from('user_progress')
                 .upsert({
                     user_id: this.userId,
@@ -602,7 +614,59 @@ class NurseIQModule {
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id' });
             
-            if (error) console.error('❌ Database save error:', error);
+            if (progressError) {
+                console.error('❌ Error saving to user_progress:', progressError);
+            } else {
+                console.log('✅ Saved to user_progress');
+            }
+            
+            // 2. Save/Update nurseiq_attempts
+            if (totalAnswered > 0) {
+                const { error: attemptsError } = await supabase
+                    .from('nurseiq_attempts')
+                    .upsert({
+                        student_id: this.userId,
+                        score: correctAnswers,
+                        total_questions: totalAnswered,
+                        completed_at: new Date().toISOString()
+                    }, { onConflict: 'student_id' });
+                
+                if (attemptsError) {
+                    console.error('❌ Error saving to nurseiq_attempts:', attemptsError);
+                } else {
+                    console.log('✅ Saved to nurseiq_attempts');
+                }
+            }
+            
+            // 3. Update consolidated_user_profiles_table
+            const { data: profile } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('login_count, gamification_points, attendance_points')
+                .eq('user_id', this.userId)
+                .single();
+            
+            if (profile) {
+                const totalPoints = (profile.login_count || 0) * 10 + 
+                                   (profile.gamification_points || 0) + 
+                                   (profile.attendance_points || 0) + 
+                                   points;
+                
+                const { error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .update({
+                        nurseiq_points: points,
+                        total_points: totalPoints,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', this.userId);
+                
+                if (profileError) {
+                    console.error('❌ Error updating profile:', profileError);
+                } else {
+                    console.log(`✅ Profile updated: NurseIQ=${points}, Total=${totalPoints}`);
+                    this._dbSaveAttempted = true;
+                }
+            }
             
         } catch (error) {
             console.error('❌ Exception in saveProgressToDatabase:', error);
@@ -612,21 +676,19 @@ class NurseIQModule {
     }
     
     // ============================================================
-    // 💰 CALCULATE NURSEIQ POINTS - FIXED!
+    // 💰 CALCULATE NURSEIQ POINTS
     // ============================================================
-    
     calculateNurseIQPoints() {
         let totalCorrect = 0;
         let totalAnswered = 0;
         
         Object.values(this.userTestAnswers).forEach(answer => {
-            if (answer.answered) {
+            if (answer && answer.answered) {
                 totalAnswered++;
                 if (answer.correct) totalCorrect++;
             }
         });
         
-        // Points = correct answers × 2
         const points = totalCorrect * 2;
         
         return {
@@ -651,7 +713,7 @@ class NurseIQModule {
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
             
             Object.values(this.userTestAnswers).forEach(answer => {
-                if (answer.answered) {
+                if (answer && answer.answered) {
                     totalAnswered++;
                     if (answer.correct) totalCorrect++;
                     
@@ -678,8 +740,6 @@ class NurseIQModule {
             const targetQuestions = 100;
             const progress = Math.min(Math.round((totalAnswered / targetQuestions) * 100), 100);
             const streak = this.calculateStudyStreak();
-            
-            // ✅ Calculate points
             const points = totalCorrect * 2;
             
             let mostActiveCourse = { name: 'None', answered: 0 };
@@ -703,7 +763,7 @@ class NurseIQModule {
                 totalCourses: Object.keys(courses).length,
                 mostActiveCourse: mostActiveCourse.name !== 'None' ? mostActiveCourse : null,
                 lastUpdated: new Date().toISOString(),
-                points: points  // ✅ ADDED
+                points: points
             };
             
             localStorage.setItem(this.dashboardMetricsKey, JSON.stringify(metrics));
@@ -726,7 +786,7 @@ class NurseIQModule {
             totalCourses: 0,
             mostActiveCourse: null,
             lastUpdated: new Date().toISOString(),
-            points: 0  // ✅ ADDED
+            points: 0
         };
     }
     
@@ -734,7 +794,7 @@ class NurseIQModule {
         try {
             const timestamps = [];
             Object.values(this.userTestAnswers).forEach(answer => {
-                if (answer.answered && answer.timestamp) {
+                if (answer && answer.answered && answer.timestamp) {
                     timestamps.push(new Date(answer.timestamp));
                 }
             });
@@ -794,14 +854,11 @@ class NurseIQModule {
     }
     
     // ============================================================
-    // 📊 UPDATE STATS UI - FIXED WITH POINTS
+    // 📊 UPDATE STATS UI
     // ============================================================
-    
     updateStatsUI(metrics) {
-        // ✅ Calculate points
         const stats = this.calculateNurseIQPoints();
         
-        // Update all stats elements
         const elements = {
             nurseiqTotalQuestions: metrics.totalAnswered,
             nurseiqTotalCourses: metrics.totalCourses || 0,
@@ -815,7 +872,6 @@ class NurseIQModule {
             streakDisplay: metrics.streak > 0 ? `🔥 ${metrics.streak} day streak` : '🔥 0 day streak',
             totalQuestionsWelcome: metrics.totalAnswered,
             totalCoursesWelcome: metrics.totalCourses || 0,
-            // ✅ ADD THIS - Show points earned
             nurseiqPoints: stats.points
         };
         
@@ -847,7 +903,6 @@ class NurseIQModule {
             const supabase = this.getSupabaseClient();
             if (!supabase) throw new Error('No database connection');
             
-            // Fetch questions with course info
             const { data: questions, error } = await supabase
                 .from('medical_assessments')
                 .select(`*, courses (id, course_name, unit_code, color, description)`)
@@ -858,7 +913,6 @@ class NurseIQModule {
             if (error) throw error;
             console.log(`✅ Fetched ${questions?.length || 0} questions`);
             
-            // Group by course
             const coursesMap = {};
             const courseUpdatedDates = {};
             
@@ -898,13 +952,11 @@ class NurseIQModule {
                 }
             });
             
-            // Apply latest update date and user stats
             Object.keys(coursesMap).forEach(courseId => {
                 coursesMap[courseId].stats.lastUpdated = courseUpdatedDates[courseId] || new Date();
                 coursesMap[courseId].userStats = this.getCourseUserStats(courseId, coursesMap[courseId].questions);
             });
             
-            // Sort by latest update
             const coursesArray = Object.values(coursesMap);
             coursesArray.sort((a, b) => {
                 const dateA = a.stats.lastUpdated || new Date(0);
@@ -912,10 +964,7 @@ class NurseIQModule {
                 return dateB - dateA;
             });
             
-            // Filter by program
             const filteredCourses = this.filterCoursesByProgram(coursesArray);
-            
-            // Display
             this.displayQuestionBankCards(filteredCourses);
             
         } catch (error) {
@@ -985,7 +1034,6 @@ class NurseIQModule {
                 return false;
             });
         } else {
-            // Nursing
             const nursingKeywords = [
                 'nursing', 'krchn', 'health', 'medical', 'clinical',
                 'midwifery', 'pediatric', 'anatomy', 'physiology',
@@ -1022,7 +1070,6 @@ class NurseIQModule {
         const color = isTVET ? '#1a7a5a' : '#4C1D95';
         const iconClass = isTVET ? 'fa-tools' : 'fa-graduation-cap';
         
-        // Apply search filter
         const searchTerm = this.studentQuestionBankSearch?.value?.toLowerCase() || '';
         let filteredCourses = courses;
         
@@ -1048,7 +1095,6 @@ class NurseIQModule {
         
         let html = `<div class="question-bank-container">`;
         
-        // Program info banner
         html += `
             <div class="program-info-banner ${isTVET ? 'tvet' : 'nursing'}" 
                  style="background: ${color}15; border-left: 4px solid ${color}; padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
@@ -1063,7 +1109,6 @@ class NurseIQModule {
             </div>
         `;
         
-        // Resume card
         const lastProgress = this.getLastCourseProgress();
         if (lastProgress) {
             const lastCourse = filteredCourses.find(c => c.id === lastProgress.courseId);
@@ -1222,7 +1267,6 @@ class NurseIQModule {
         this.studentQuestionBankContent.innerHTML = html;
         console.log(`✅ ${filteredCourses.length} courses displayed`);
         
-        // Update stats
         this.updateDashboardMetrics();
     }
     
@@ -1368,7 +1412,7 @@ class NurseIQModule {
     }
     
     // ============================================================
-    // 📥 LOAD CURRENT QUESTION
+    // 📥 LOAD CURRENT QUESTION - FIXED with already answered
     // ============================================================
     loadCurrentQuestion() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
@@ -1414,7 +1458,7 @@ class NurseIQModule {
         this.loadAnswerOptions(question);
         this.updateQuestionButtons();
         
-        // If question was already answered, show the answer state
+        // ✅ FIX: Check if question was already answered - use question.id
         const savedAnswer = this.userTestAnswers[question.id];
         if (savedAnswer?.answered && savedAnswer.selectedOptionIndex !== undefined) {
             const index = savedAnswer.selectedOptionIndex;
@@ -1490,7 +1534,7 @@ class NurseIQModule {
                      onclick="window.selectOption(${index})" 
                      id="option-container-${index}"
                      onmouseover="this.style.borderColor='#4C1D95'; this.style.background='#f8fafc'"
-                     onmouseout="if(!this.classList.contains('selected')){this.style.borderColor='#e2e8f0'; this.style.background='white'}">
+                     onmouseout="if(!this.classList.contains('selected') && !this.classList.contains('correct') && !this.classList.contains('incorrect')){this.style.borderColor='#e2e8f0'; this.style.background='white'}">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="width: 24px; height: 24px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px;">${optionLetter}</span>
                         <span>${option}</span>
@@ -1501,7 +1545,7 @@ class NurseIQModule {
         
         optionsContainer.innerHTML = optionsHtml;
         
-        // Check if already answered
+        // ✅ FIX: Check if already answered - use question.id
         const savedAnswer = this.userTestAnswers[question.id];
         if (savedAnswer?.answered) {
             const selectedIndex = savedAnswer.selectedOptionIndex;
@@ -1531,7 +1575,7 @@ class NurseIQModule {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (question) {
             const optionText = this.getOptionText(index);
-            // Use question.id, not currentQuestionIndex
+            // ✅ FIX: Use question.id (UUID), not index
             this.userTestAnswers[question.id] = {
                 selectedOption: optionText,
                 selectedOptionIndex: index,
@@ -1547,16 +1591,22 @@ class NurseIQModule {
     }
     
     // ============================================================
-    // ✅ CHECK ANSWER
+    // ✅ CHECK ANSWER - FIXED
     // ============================================================
     checkAnswer() {
-        const userAnswer = this.userTestAnswers[this.currentQuestionIndex];
+        const question = this.currentCourseQuestions[this.currentQuestionIndex];
+        if (!question) {
+            this.showNotification('No question found!', 'error');
+            return;
+        }
+        
+        // ✅ FIX: Use question.id (UUID), not question index
+        const userAnswer = this.userTestAnswers[question.id];
         if (!userAnswer || userAnswer.selectedOptionIndex === undefined) {
             this.showNotification('Please select an answer first!', 'warning');
             return;
         }
         
-        const question = this.currentCourseQuestions[this.currentQuestionIndex];
         const correctAnswer = question.correct_answer || '';
         const selectedOption = userAnswer.selectedOption;
         const isCorrect = selectedOption === correctAnswer;
@@ -1595,6 +1645,7 @@ class NurseIQModule {
             }
         }
         
+        // ✅ FIX: Use question.id (UUID) as the key
         this.userTestAnswers[question.id] = {
             ...userAnswer,
             answered: true,
@@ -1614,18 +1665,23 @@ class NurseIQModule {
             explanationText.textContent = question.explanation || 'No explanation available.';
         }
         
+        // ✅ Save progress (this saves to localStorage AND database)
         this.saveUserProgress();
+        
+        // ✅ Force save to database immediately
+        this.saveProgressToDatabase();
+        
         this.showNotification(isCorrect ? '✅ Correct! Well done!' : '❌ Incorrect. Review the explanation.', isCorrect ? 'success' : 'error');
     }
     
     // ============================================================
-    // 🔄 RESET QUESTION
+    // 🔄 RESET QUESTION - FIXED
     // ============================================================
     resetQuestion() {
         const question = this.currentCourseQuestions[this.currentQuestionIndex];
         if (question) {
+            // ✅ FIX: Use question.id (UUID)
             delete this.userTestAnswers[question.id];
-            delete this.userTestAnswers[this.currentQuestionIndex];
         }
         
         document.querySelectorAll('#optionsContainer > div').forEach(el => {
@@ -1692,6 +1748,8 @@ class NurseIQModule {
         );
         
         if (confirmFinish) {
+            // ✅ Force save before finishing
+            await this.saveProgressToDatabase();
             this.loadQuestionBankCards();
             this.showNotification(`🎉 Practice complete! ${accuracy}% accuracy`, 'success');
             this.saveUserProgress();
@@ -1743,22 +1801,27 @@ class NurseIQModule {
     }
     
     // ============================================================
+    // 🚀 FORCE SAVE TO DATABASE
+    // ============================================================
+    async forceSaveToDatabase() {
+        console.log('💾 Force saving NurseIQ to database...');
+        await this.saveProgressToDatabase();
+        console.log('✅ Force save complete!');
+    }
+    
+    // ============================================================
     // 🚀 INITIALIZE
     // ============================================================
     async initialize() {
         console.log('🚀 Initializing NurseIQ Module...');
         
-        // Cache DOM elements
         this.cacheElements();
-        
-        // Update UI with program info
         this.updateUIForProgram();
-        
-        // Load user progress
         await this.loadUserProgress();
-        
-        // Load question bank
         await this.loadQuestionBankCards();
+        
+        // ✅ Force save to database on init
+        await this.saveProgressToDatabase();
         
         this.initialized = true;
         console.log('✅ NurseIQ Module initialized successfully');
@@ -1824,6 +1887,13 @@ window.clearAllProgress = function() {
         }
     }
 };
+window.forceSaveNurseIQ = function() {
+    if (nurseiqModule) {
+        nurseiqModule.forceSaveToDatabase();
+    } else {
+        console.error('❌ NurseIQ module not initialized');
+    }
+};
 
 // ============================================================
 // 🚀 AUTO-INITIALIZE ON PAGE LOAD
@@ -1837,7 +1907,8 @@ if (document.readyState === 'loading') {
     setTimeout(() => initNurseIQ().catch(console.error), 500);
 }
 
-console.log('✅ NurseIQ module loaded - Same instant student data loading as Finance Module!');
+console.log('✅ NurseIQ module loaded - SAVES TO DATABASE!');
 console.log('📚 Questions grouped by course, latest on top!');
 console.log('🏷️ Auto-detects KRCHN/TVET programs like Finance Module!');
 console.log('💰 Points: 2 per correct answer!');
+console.log('💾 Saves progress to user_progress, nurseiq_attempts, and profile!');
