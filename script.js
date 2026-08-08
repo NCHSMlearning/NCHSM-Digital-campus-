@@ -17295,16 +17295,6 @@ function formatActionType(type) {
     return types[type] || type;
 }
 
-function getStatusBadge(status) {
-    if (status === 'pending') {
-        return '<span style="background: #fef3c7; color: #d97706; padding: 4px 8px; border-radius: 12px;">⏳ Pending</span>';
-    } else if (status === 'approved') {
-        return '<span style="background: #d1fae5; color: #059669; padding: 4px 8px; border-radius: 12px;">✅ Approved</span>';
-    } else {
-        return '<span style="background: #fee2e2; color: #dc2626; padding: 4px 8px; border-radius: 12px;">❌ Rejected</span>';
-    }
-}
-
 function formatDate(dateString) {
     if (!dateString) return 'N/A';
     var date = new Date(dateString);
