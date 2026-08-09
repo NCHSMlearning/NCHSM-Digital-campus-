@@ -8533,7 +8533,7 @@ function debounce(fn, delay = 300) {
 }
 
 // ============================================
-// LOAD EXAMS - SIMPLIFIED (NO RELATIONSHIPS)
+// LOAD EXAMS - FIXED (Properly attaches course data)
 // ============================================
 async function loadExams(forceRefresh = false) {
     console.log('📝 Loading exams...');
@@ -8566,7 +8566,7 @@ async function loadExams(forceRefresh = false) {
     try {
         const supabase = getSb();
         
-        // ✅ JUST SELECT * - NO RELATIONSHIPS
+        // ✅ Get all exams first
         const { data: exams, error } = await supabase
             .from('exams')
             .select('*')
@@ -8577,36 +8577,34 @@ async function loadExams(forceRefresh = false) {
         
         console.log(`✅ Loaded ${exams?.length || 0} exams`);
         
-        // Try to get course names separately
-        if (exams && exams.length > 0) {
-            const courseIds = [...new Set(exams.map(e => e.course_id).filter(Boolean))];
+        // ✅ Load ALL courses
+        const { data: allCourses, error: coursesError } = await supabase
+            .from('courses')
+            .select('id, course_name, name, unit_code, target_program');
+        
+        if (coursesError) {
+            console.error('Error fetching courses:', coursesError);
+        } else {
+            // Build course map
+            const courseMap = {};
+            allCourses?.forEach(c => {
+                courseMap[c.id] = c;
+            });
             
-            if (courseIds.length > 0) {
-                try {
-                    const { data: courses } = await supabase
-                        .from('courses')
-                        .select('id, course_name, course_code, unit_code')
-                        .in('id', courseIds);
-                    
-                    const courseMap = {};
-                    courses?.forEach(c => {
-                        courseMap[c.id] = c;
-                    });
-                    
-                    // Store globally
-                    window._courseMap = courseMap;
-                    
-                    exams.forEach(exam => {
-                        if (exam.course_id && courseMap[exam.course_id]) {
-                            exam.course = courseMap[exam.course_id];
-                        }
-                    });
-                    
-                    console.log(`✅ Loaded ${courses?.length || 0} course names`);
-                } catch (courseError) {
-                    console.warn('Could not load course names:', courseError);
+            // Store globally
+            window._courseMap = courseMap;
+            
+            // ✅ Attach course data to exams
+            let attachedCount = 0;
+            exams.forEach(exam => {
+                if (exam.course_id && courseMap[exam.course_id]) {
+                    exam.course = courseMap[exam.course_id];
+                    attachedCount++;
                 }
-            }
+            });
+            
+            console.log(`✅ Loaded ${allCourses?.length || 0} courses`);
+            console.log(`✅ Attached course data to ${attachedCount} exams`);
         }
 
         ExamCache.set('exams_list', exams || []);
@@ -8686,7 +8684,8 @@ function getStatusBadge(status) {
 }
 
 // ============================================
-// RENDER EXAMS TABLE - CORRECT COLUMNS
+// RENDER EXAMS TABLE - FULLY FIXED
+// Properly uses e.course with all fallbacks
 // ============================================
 function renderExamsTable(exams) {
     if (!DOM.examsTbody) return;
@@ -8704,28 +8703,68 @@ function renderExamsTable(exams) {
     }
 
     let html = '';
+    let debugCount = 0;
     
     for (const e of exams) {
-        // ✅ Get course name - from your data
+        // ============================================================
+        // ✅ COURSE NAME - COMPLETE FALLBACK CHAIN
+        // ============================================================
         let courseName = 'N/A';
+        
+        // 1. Check if course object is attached and has course_name
         if (e.course?.course_name) {
             courseName = e.course.course_name;
-        } else if (e.course?.course_code) {
-            courseName = e.course.course_code;
-        } else if (e.course_code) {
-            courseName = e.course_code;
-        } else if (e.course_name) {
+        } 
+        // 2. Check if course object has name
+        else if (e.course?.name) {
+            courseName = e.course.name;
+        } 
+        // 3. Check if course object has unit_code
+        else if (e.course?.unit_code) {
+            courseName = e.course.unit_code;
+        } 
+        // 4. Check if exam has direct course_name
+        else if (e.course_name) {
             courseName = e.course_name;
-        } else if (e.unit_name) {
+        } 
+        // 5. Check if exam has unit_name
+        else if (e.unit_name) {
             courseName = e.unit_name;
-        } else if (e.course_id) {
-            if (window._courseMap && window._courseMap[e.course_id]) {
-                courseName = window._courseMap[e.course_id].course_name || 
-                            window._courseMap[e.course_id].course_code || 
-                            `Course ID: ${String(e.course_id).substring(0, 8)}...`;
-            } else {
+        } 
+        // 6. Check if exam has subject_name
+        else if (e.subject_name) {
+            courseName = e.subject_name;
+        } 
+        // 7. Check global course map by course_id
+        else if (e.course_id && window._courseMap && window._courseMap[e.course_id]) {
+            const c = window._courseMap[e.course_id];
+            courseName = c.course_name || c.name || c.unit_code || 'Unknown Course';
+        } 
+        // 8. Check if course_id is a string and try to match
+        else if (e.course_id) {
+            // Try to find by partial match in course map
+            let found = false;
+            if (window._courseMap) {
+                const title = (e.title || '').toLowerCase();
+                for (const [id, course] of Object.entries(window._courseMap)) {
+                    const courseNameLower = (course.course_name || course.name || '').toLowerCase();
+                    if (courseNameLower && title.includes(courseNameLower)) {
+                        courseName = course.course_name || course.name;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) {
+                // Show shortened course ID
                 courseName = `Course ID: ${String(e.course_id).substring(0, 8)}...`;
             }
+        }
+        
+        // Debug log for first 3 exams
+        if (debugCount < 3) {
+            console.log(`📚 Exam: "${e.title}" -> Course ID: ${e.course_id}, Course Name: "${courseName}"`);
+            debugCount++;
         }
         
         // ✅ Get title
@@ -8864,6 +8903,9 @@ function renderExamsTable(exams) {
     }
     
     DOM.examsTbody.innerHTML = html;
+    
+    // ✅ Log summary
+    console.log(`✅ Rendered ${exams.length} exams with course names`);
 }
 
 // ============================================
@@ -9266,9 +9308,15 @@ async function openEditExamModal(id) {
 }
 
 // ============================================
-// SAVE EDITED EXAM - COMPLETE FIX
+// SAVE EDITED EXAM - COMPLETE FIX WITH EVENT
 // ============================================
-async function saveEditedExam() {
+async function saveEditedExam(event) {
+    // ✅ PREVENT PAGE REFRESH
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
     console.log('💾 Saving exam changes...');
     
     const idEl = document.getElementById('edit_exam_id');
@@ -9308,6 +9356,7 @@ async function saveEditedExam() {
         updated_at: new Date().toISOString()
     };
     
+    // Remove empty values
     Object.keys(data).forEach(k => {
         if (data[k] === undefined || data[k] === null || data[k] === '') {
             delete data[k];
@@ -9316,8 +9365,10 @@ async function saveEditedExam() {
     
     console.log('📤 Update data:', data);
     
+    // Show loading on button
     const saveBtn = document.querySelector('#editExamForm button[type="submit"]') || 
-                    document.querySelector('#examEditModal .btn-action');
+                    document.querySelector('#examEditModal .btn-action') ||
+                    document.querySelector('#examEditModal button:contains("Save")');
     
     const originalText = saveBtn?.textContent || 'Save Changes';
     if (saveBtn) {
@@ -9340,8 +9391,13 @@ async function saveEditedExam() {
         console.log('✅ Exam updated successfully!');
         showFeedback('✅ Exam updated successfully!', 'success');
         
+        // Clear cache
         ExamCache.clear();
-        setTimeout(() => loadExams(true), 500);
+        
+        // Reload exams
+        await loadExams(true);
+        
+        // Close modal
         closeEditModal();
         
     } catch (error) {
@@ -9353,7 +9409,6 @@ async function saveEditedExam() {
         }
     }
 }
-
 // ============================================
 // RENDER ASSIGNED CLASSES
 // ============================================
@@ -10247,7 +10302,102 @@ function setEditCourseValue(courseId) {
         nameDisplay.textContent = displayName + (unitCode ? ` (${unitCode})` : '');
     }
 }
+// ============================================
+// POPULATE EXAM COURSE SELECTS - FIXED
+// ============================================
+async function populateExamCourseSelects(program, selected = '') {
+    console.log('📚 populateExamCourseSelects called with:', program, selected);
+    
+    const select = document.getElementById('exam_course_id');
+    if (!select) {
+        console.warn('⚠️ exam_course_id not found');
+        return;
+    }
+    
+    select.innerHTML = '<option value="">-- Optional: Select Course --</option>';
+    
+    if (!program) {
+        // Load all courses
+        try {
+            const supabase = getSb();
+            const { data, error } = await supabase
+                .from('courses')
+                .select('id, course_name, target_program, unit_code')
+                .order('course_name', { ascending: true })
+                .limit(100);
+            
+            if (!error && data) {
+                data.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    option.textContent = `${course.course_name} (${course.unit_code || 'N/A'}) - ${course.target_program || 'General'}`;
+                    if (selected && course.id === selected) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+                console.log(`✅ Loaded ${data.length} courses`);
+            }
+        } catch (error) {
+            console.error('Error loading courses:', error);
+        }
+        return;
+    }
+    
+    try {
+        const supabase = getSb();
+        const { data, error } = await supabase
+            .from('courses')
+            .select('id, course_name, target_program, unit_code')
+            .eq('target_program', program)
+            .order('course_name', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            console.log(`No courses found for program: ${program}`);
+            // Try to load all courses as fallback
+            const { data: allCourses } = await supabase
+                .from('courses')
+                .select('id, course_name, target_program, unit_code')
+                .limit(100);
+            
+            if (allCourses && allCourses.length > 0) {
+                allCourses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    const displayName = course.course_name || 'Untitled';
+                    option.textContent = `${displayName} (${course.unit_code || 'N/A'}) - ${course.target_program || 'General'}`;
+                    if (selected && course.id === selected) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+                console.log(`✅ Loaded ${allCourses.length} courses as fallback`);
+                return;
+            }
+            return;
+        }
+        
+        data.forEach(course => {
+            const option = document.createElement('option');
+            option.value = course.id;
+            option.textContent = `${course.course_name} (${course.unit_code || 'N/A'})`;
+            if (selected && course.id === selected) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        
+        console.log(`✅ Loaded ${data.length} courses for program: ${program}`);
+        
+    } catch (error) {
+        console.error('Error loading courses:', error);
+    }
+}
 
+// Make it global
+window.populateExamCourseSelects = populateExamCourseSelects;
 // ============================================
 // INIT
 // ============================================
