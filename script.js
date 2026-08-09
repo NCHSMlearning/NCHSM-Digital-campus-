@@ -1358,111 +1358,698 @@ async function logAudit(action_type, details, target_id = null, status = 'SUCCES
 }
 
 // ============================================================
-// ✅ FIXED: XSS-SAFE loadAuditLogs()
-// Uses textContent instead of innerHTML
+// LOAD AUDIT LOGS - FIXED
 // ============================================================
+let auditLogsData = [];
+let filteredAuditLogs = [];
+let auditCurrentPage = 1;
+let auditPerPage = 25;
+let auditSortField = 'timestamp';
+let auditSortOrder = 'desc';
+let auditViewMode = 'detailed';
 
 async function loadAuditLogs() {
+    console.log('📋 Loading audit logs...');
+    
     const tbody = document.getElementById('audit-table');
-    if (!tbody) return;
+    if (!tbody) {
+        console.warn('⚠️ audit-table not found');
+        return;
+    }
     
-    // Clear safely using textContent
-    tbody.textContent = '';
+    // Show loading state
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" style="padding: 60px 20px; text-align: center; color: #94a3b8;">
+                <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="margin: 0;">Loading audit logs...</p>
+            </td>
+        </tr>
+    `;
     
-    // Add loading state
-    const loadingRow = document.createElement('tr');
-    const loadingCell = document.createElement('td');
-    loadingCell.colSpan = 5;
-    loadingCell.textContent = 'Loading audit logs...';
-    loadingRow.appendChild(loadingCell);
-    tbody.appendChild(loadingRow);
-
     try {
-        const { data: logs, error } = await fetchData(AUDIT_TABLE, '*', {}, 'timestamp', false);
-
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Supabase client not available');
+        }
+        
+        // Try 'timestamp' column first
+        let { data: logs, error } = await supabase
+            .from('audit_logs')
+            .select('*')
+            .order('timestamp', { ascending: false })
+            .limit(500);
+        
         if (error) {
-            tbody.textContent = '';
-            const errorRow = document.createElement('tr');
-            const errorCell = document.createElement('td');
-            errorCell.colSpan = 5;
-            errorCell.textContent = `Error loading logs: ${error.message}`;
-            errorCell.style.color = 'red';
-            errorRow.appendChild(errorCell);
-            tbody.appendChild(errorRow);
-            return;
+            // Fallback to 'created_at'
+            console.warn('⚠️ Trying with created_at column...');
+            const result = await supabase
+                .from('audit_logs')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(500);
+            
+            if (result.error) throw result.error;
+            logs = result.data;
         }
-
-        // Clear loading state
-        tbody.textContent = '';
-
-        if (!logs || logs.length === 0) {
-            const emptyRow = document.createElement('tr');
-            const emptyCell = document.createElement('td');
-            emptyCell.colSpan = 5;
-            emptyCell.textContent = 'No audit logs found';
-            emptyCell.style.textAlign = 'center';
-            emptyCell.style.padding = '40px';
-            emptyRow.appendChild(emptyCell);
-            tbody.appendChild(emptyRow);
-            return;
+        
+        auditLogsData = logs || [];
+        console.log(`✅ Loaded ${auditLogsData.length} audit logs`);
+        
+        // Populate filter dropdowns
+        populateAuditFilters();
+        
+        // Apply filters and render
+        applyAuditFilters();
+        
+        // Update stats
+        updateAuditStats();
+        
+        // Update last updated time
+        const lastUpdated = document.getElementById('auditLastUpdated');
+        if (lastUpdated) {
+            lastUpdated.textContent = new Date().toLocaleString();
         }
-
-        // ✅ SAFE: Build rows using textContent, NOT innerHTML
-        logs.forEach(log => {
-            const row = document.createElement('tr');
-            
-            // Timestamp
-            const td1 = document.createElement('td');
-            td1.textContent = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A';
-            row.appendChild(td1);
-            
-            // User/Role
-            const td2 = document.createElement('td');
-            const userRole = log.user_role || 'SYSTEM';
-            const userId = log.user_id ? log.user_id.substring(0, 8) : 'N/A';
-            td2.textContent = `${userRole} (${userId})`;
-            row.appendChild(td2);
-            
-            // Action Type
-            const td3 = document.createElement('td');
-            td3.textContent = log.action_type || 'Unknown';
-            row.appendChild(td3);
-            
-            // Details - ✅ XSS SAFE: textContent escapes all HTML
-            const td4 = document.createElement('td');
-            const detailsText = log.details || '';
-            const targetId = log.target_id ? log.target_id.substring(0, 8) : 'N/A';
-            td4.textContent = `${detailsText} (Target ID: ${targetId})`;
-            row.appendChild(td4);
-            
-            // Status
-            const td5 = document.createElement('td');
-            const statusSpan = document.createElement('span');
-            const isSuccess = log.status === 'SUCCESS' || log.status === 'success';
-            statusSpan.className = isSuccess ? 'status-approved' : 'status-danger';
-            statusSpan.textContent = log.status || 'UNKNOWN';
-            td5.appendChild(statusSpan);
-            row.appendChild(td5);
-            
-            tbody.appendChild(row);
-        });
-
-        // ✅ Auto-clean malicious entries after loading
+        
+        // Auto-clean malicious entries
         await cleanMaliciousLogEntries();
-
+        
     } catch (error) {
-        console.error('Error loading audit logs:', error);
-        tbody.textContent = '';
-        const errorRow = document.createElement('tr');
-        const errorCell = document.createElement('td');
-        errorCell.colSpan = 5;
-        errorCell.textContent = `Error: ${error.message}`;
-        errorCell.style.color = 'red';
-        errorRow.appendChild(errorCell);
-        tbody.appendChild(errorRow);
+        console.error('❌ Error loading audit logs:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="padding: 40px 20px; text-align: center; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 8px;"></i>
+                    Error: ${error.message}
+                    <br>
+                    <button onclick="loadAuditLogs()" style="margin-top: 10px; padding: 6px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+}
+// ============================================================
+// POPULATE AUDIT FILTER DROPDOWNS
+// ============================================================
+
+function populateAuditFilters() {
+    // Populate user filter
+    const userFilter = document.getElementById('log-filter-user');
+    if (userFilter) {
+        const currentValue = userFilter.value;
+        const users = [...new Set(auditLogsData.map(log => log.user).filter(Boolean))];
+        userFilter.innerHTML = '<option value="">-- All Users --</option>';
+        users.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u;
+            opt.textContent = u;
+            userFilter.appendChild(opt);
+        });
+        if (currentValue) userFilter.value = currentValue;
+    }
+    
+    // Populate action filter
+    const actionFilter = document.getElementById('log-filter-action');
+    if (actionFilter) {
+        // Keep the existing HTML options, just ensure it works
+        // No need to repopulate as it has static options
     }
 }
 
+// ============================================================
+// APPLY AUDIT FILTERS
+// ============================================================
+
+function applyAuditFilters() {
+    const userFilter = document.getElementById('log-filter-user')?.value || '';
+    const actionFilter = document.getElementById('log-filter-action')?.value || '';
+    const dateStart = document.getElementById('log-filter-date-start')?.value || '';
+    const dateEnd = document.getElementById('log-filter-date-end')?.value || '';
+    
+    auditFilters.user = userFilter;
+    auditFilters.action = actionFilter;
+    auditFilters.dateStart = dateStart;
+    auditFilters.dateEnd = dateEnd;
+    
+    filteredAuditLogs = [...auditLogsData];
+    
+    // Apply user filter
+    if (userFilter) {
+        filteredAuditLogs = filteredAuditLogs.filter(log => 
+            (log.user || '').toLowerCase().includes(userFilter.toLowerCase()) ||
+            (log.user_role || '').toLowerCase().includes(userFilter.toLowerCase())
+        );
+    }
+    
+    // Apply action filter
+    if (actionFilter) {
+        filteredAuditLogs = filteredAuditLogs.filter(log => 
+            (log.action_type || '').toUpperCase() === actionFilter.toUpperCase()
+        );
+    }
+    
+    // Apply date filters
+    if (dateStart) {
+        const start = new Date(dateStart);
+        filteredAuditLogs = filteredAuditLogs.filter(log => {
+            const logDate = new Date(log.timestamp || log.created_at);
+            return logDate >= start;
+        });
+    }
+    
+    if (dateEnd) {
+        const end = new Date(dateEnd);
+        filteredAuditLogs = filteredAuditLogs.filter(log => {
+            const logDate = new Date(log.timestamp || log.created_at);
+            return logDate <= end;
+        });
+    }
+    
+    // Reset to first page
+    auditCurrentPage = 1;
+    
+    // Render
+    renderAuditTable();
+    updateAuditPagination();
+}
+
+// ============================================================
+// RESET AUDIT FILTERS
+// ============================================================
+
+function resetAuditFilters() {
+    document.getElementById('log-filter-user').value = '';
+    document.getElementById('log-filter-action').value = '';
+    document.getElementById('log-filter-date-start').value = '';
+    document.getElementById('log-filter-date-end').value = '';
+    
+    applyAuditFilters();
+}
+
+// ============================================================
+// QUICK DATE FILTER
+// ============================================================
+
+function quickDateFilter(type) {
+    const startInput = document.getElementById('log-filter-date-start');
+    const endInput = document.getElementById('log-filter-date-end');
+    const now = new Date();
+    
+    if (type === 'today') {
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (startInput) startInput.value = today.toISOString().slice(0, 16);
+        if (endInput) endInput.value = now.toISOString().slice(0, 16);
+    } else if (type === 'yesterday') {
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (startInput) startInput.value = yesterday.toISOString().slice(0, 16);
+        if (endInput) endInput.value = now.toISOString().slice(0, 16);
+    } else if (type === 'week') {
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        if (startInput) startInput.value = weekAgo.toISOString().slice(0, 16);
+        if (endInput) endInput.value = now.toISOString().slice(0, 16);
+    } else if (type === 'month') {
+        const monthAgo = new Date(now);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        if (startInput) startInput.value = monthAgo.toISOString().slice(0, 16);
+        if (endInput) endInput.value = now.toISOString().slice(0, 16);
+    } else if (type === 'all') {
+        if (startInput) startInput.value = '';
+        if (endInput) endInput.value = '';
+    }
+    
+    applyAuditFilters();
+}
+
+// ============================================================
+// RENDER AUDIT TABLE
+// ============================================================
+
+function renderAuditTable() {
+    const tbody = document.getElementById('audit-table');
+    if (!tbody) return;
+    
+    // Calculate pagination
+    const start = (auditCurrentPage - 1) * auditPerPage;
+    const end = start + auditPerPage;
+    const pageData = filteredAuditLogs.slice(start, end);
+    
+    // Update showing count
+    const showingCount = document.getElementById('auditShowingCount');
+    if (showingCount) showingCount.textContent = filteredAuditLogs.length;
+    
+    const totalCount = document.getElementById('auditTotalCount');
+    if (totalCount) totalCount.textContent = auditLogsData.length;
+    
+    if (pageData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
+                    <i class="fas fa-inbox" style="font-size: 32px; display: block; margin-bottom: 8px;"></i>
+                    No audit logs found
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Sort data
+    const sorted = [...pageData];
+    sorted.sort((a, b) => {
+        let valA = a[auditSortField] || '';
+        let valB = b[auditSortField] || '';
+        
+        if (auditSortField === 'timestamp' || auditSortField === 'created_at') {
+            valA = new Date(valA).getTime() || 0;
+            valB = new Date(valB).getTime() || 0;
+        }
+        
+        if (valA < valB) return auditSortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return auditSortOrder === 'asc' ? 1 : -1;
+        return 0;
+    });
+    
+    let html = '';
+    
+    for (const log of sorted) {
+        const timestamp = log.timestamp || log.created_at || new Date().toISOString();
+        const dateStr = new Date(timestamp).toLocaleString();
+        
+        const userDisplay = log.user || log.user_role || 'System';
+        const roleDisplay = log.user_role || 'Unknown';
+        const action = log.action_type || 'UNKNOWN';
+        const details = log.details || 'No details';
+        const status = log.status || 'INFO';
+        const ip = log.ip_address || log.ip || '0.0.0.0';
+        
+        // Status badge
+        let statusBadge = '';
+        const statusLower = String(status).toUpperCase();
+        if (statusLower === 'SUCCESS' || statusLower === 'SUCCESSFUL') {
+            statusBadge = `<span class="status-badge success">✅ Success</span>`;
+        } else if (statusLower === 'FAILED' || statusLower === 'FAILURE') {
+            statusBadge = `<span class="status-badge failed">❌ Failed</span>`;
+        } else if (statusLower === 'WARNING') {
+            statusBadge = `<span class="status-badge warning">⚠️ Warning</span>`;
+        } else if (statusLower === 'MALICIOUS') {
+            statusBadge = `<span class="status-badge malicious">🚨 Malicious</span>`;
+        } else {
+            statusBadge = `<span class="status-badge info">ℹ️ ${status}</span>`;
+        }
+        
+        // Action icon
+        let actionIcon = '📋';
+        const actionUpper = String(action).toUpperCase();
+        if (actionUpper.includes('LOGIN') && !actionUpper.includes('FAILED')) actionIcon = '✅';
+        else if (actionUpper.includes('LOGIN_FAILED')) actionIcon = '❌';
+        else if (actionUpper.includes('LOGOUT')) actionIcon = '🚪';
+        else if (actionUpper.includes('CREATE')) actionIcon = '➕';
+        else if (actionUpper.includes('UPDATE') || actionUpper.includes('EDIT')) actionIcon = '✏️';
+        else if (actionUpper.includes('DELETE') || actionUpper.includes('REMOVE')) actionIcon = '🗑️';
+        else if (actionUpper.includes('APPROVE')) actionIcon = '✅';
+        else if (actionUpper.includes('REJECT')) actionIcon = '❌';
+        else if (actionUpper.includes('PUBLISH')) actionIcon = '📤';
+        else if (actionUpper.includes('BLOCK')) actionIcon = '🚫';
+        else if (actionUpper.includes('MALICIOUS')) actionIcon = '🚨';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" 
+                onmouseover="this.style.background='#f8fafc'" 
+                onmouseout="this.style.background='transparent'">
+                <td style="padding: 10px 14px; font-size: 12px; white-space: nowrap;">${dateStr}</td>
+                <td style="padding: 10px 14px;">
+                    <div style="font-weight: 500; font-size: 13px;">${escapeHtml(userDisplay)}</div>
+                    <div style="font-size: 11px; color: #94a3b8;">${escapeHtml(roleDisplay)}</div>
+                </td>
+                <td style="padding: 10px 14px;">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 16px;">${actionIcon}</span>
+                        <span style="font-weight: 500; font-size: 13px;">${escapeHtml(action)}</span>
+                    </span>
+                </td>
+                <td style="padding: 10px 14px; max-width: 300px;">
+                    <div style="font-size: 13px; word-wrap: break-word;">${escapeHtml(details)}</div>
+                </td>
+                <td style="padding: 10px 14px; text-align: center;">${statusBadge}</td>
+                <td style="padding: 10px 14px; text-align: center; font-size: 12px; color: #64748b; font-family: monospace;">${escapeHtml(ip)}</td>
+            </tr>
+        `;
+    }
+    
+    tbody.innerHTML = html;
+}
+
+// ============================================================
+// UPDATE AUDIT STATS
+// ============================================================
+
+function updateAuditStats() {
+    const total = auditLogsData.length;
+    const today = new Date().toISOString().split('T')[0];
+    const todayLogs = auditLogsData.filter(log => {
+        const logDate = new Date(log.timestamp || log.created_at).toISOString().split('T')[0];
+        return logDate === today;
+    });
+    
+    const users = [...new Set(auditLogsData.map(log => log.user || log.user_role).filter(Boolean))];
+    const failed = auditLogsData.filter(log => 
+        String(log.status || '').toUpperCase().includes('FAIL')
+    );
+    const malicious = auditLogsData.filter(log => 
+        String(log.status || '').toUpperCase() === 'MALICIOUS' ||
+        String(log.details || '').toLowerCase().includes('malicious')
+    );
+    
+    // Update stats
+    const totalEl = document.getElementById('auditTotalEvents');
+    if (totalEl) totalEl.textContent = total;
+    
+    const todayEl = document.getElementById('auditTodayEvents');
+    if (todayEl) todayEl.textContent = todayLogs.length;
+    
+    const activeUsers = document.getElementById('auditActiveUsers');
+    if (activeUsers) activeUsers.textContent = users.length;
+    
+    const failedEl = document.getElementById('auditFailedAttempts');
+    if (failedEl) failedEl.textContent = failed.length;
+    
+    const maliciousEl = document.getElementById('auditMaliciousCount');
+    if (maliciousEl) maliciousEl.textContent = malicious.length;
+    
+    // Update summary
+    const loginCount = auditLogsData.filter(log => 
+        String(log.action_type || '').toUpperCase().includes('LOGIN') &&
+        !String(log.action_type || '').toUpperCase().includes('FAILED')
+    ).length;
+    
+    const actionCount = auditLogsData.filter(log => 
+        !String(log.action_type || '').toUpperCase().includes('LOGIN')
+    ).length;
+    
+    const errorCount = auditLogsData.filter(log => 
+        String(log.status || '').toUpperCase().includes('FAIL') ||
+        String(log.status || '').toUpperCase().includes('ERROR')
+    ).length;
+    
+    const maliciousCount = auditLogsData.filter(log => 
+        String(log.status || '').toUpperCase() === 'MALICIOUS'
+    ).length;
+    
+    const loginEl = document.getElementById('auditSummaryLogin');
+    if (loginEl) loginEl.textContent = `🔐 Logins: ${loginCount}`;
+    
+    const actionsEl = document.getElementById('auditSummaryActions');
+    if (actionsEl) actionsEl.textContent = `📝 Actions: ${actionCount}`;
+    
+    const errorsEl = document.getElementById('auditSummaryErrors');
+    if (errorsEl) errorsEl.textContent = `❌ Errors: ${errorCount}`;
+    
+    const maliciousSummary = document.getElementById('auditSummaryMalicious');
+    if (maliciousSummary) maliciousSummary.textContent = `🚨 Malicious: ${maliciousCount}`;
+    
+    // Show/hide malicious warning
+    const warning = document.getElementById('auditMaliciousWarning');
+    const warningCount = document.getElementById('auditMaliciousCountDisplay');
+    if (warning && warningCount) {
+        if (maliciousCount > 0) {
+            warning.style.display = 'block';
+            warningCount.textContent = maliciousCount;
+        } else {
+            warning.style.display = 'none';
+        }
+    }
+}
+
+// ============================================================
+// UPDATE AUDIT PAGINATION
+// ============================================================
+
+function updateAuditPagination() {
+    const totalPages = Math.ceil(filteredAuditLogs.length / auditPerPage) || 1;
+    
+    const currentPageEl = document.getElementById('auditCurrentPage');
+    if (currentPageEl) currentPageEl.textContent = auditCurrentPage;
+    
+    const totalPagesEl = document.getElementById('auditTotalPages');
+    if (totalPagesEl) totalPagesEl.textContent = totalPages;
+    
+    // Generate page numbers
+    const pageNumbers = document.getElementById('auditPageNumbers');
+    if (pageNumbers) {
+        let html = '';
+        const maxVisible = 5;
+        let start = Math.max(1, auditCurrentPage - 2);
+        let end = Math.min(totalPages, auditCurrentPage + 2);
+        
+        if (start > 1) {
+            html += `<button onclick="changeAuditPage(1)" style="padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 4px; background: white; cursor: pointer; font-size: 12px;">1</button>`;
+            if (start > 2) html += `<span style="padding: 0 4px;">...</span>`;
+        }
+        
+        for (let i = start; i <= end; i++) {
+            const isActive = i === auditCurrentPage;
+            html += `<button onclick="changeAuditPage(${i})" style="padding: 4px 10px; border: 1px solid ${isActive ? '#4C1D95' : '#e2e8f0'}; border-radius: 4px; background: ${isActive ? '#4C1D95' : 'white'}; color: ${isActive ? 'white' : '#475569'}; cursor: pointer; font-size: 12px; font-weight: ${isActive ? '600' : '400'};">${i}</button>`;
+        }
+        
+        if (end < totalPages) {
+            if (end < totalPages - 1) html += `<span style="padding: 0 4px;">...</span>`;
+            html += `<button onclick="changeAuditPage(${totalPages})" style="padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 4px; background: white; cursor: pointer; font-size: 12px;">${totalPages}</button>`;
+        }
+        
+        pageNumbers.innerHTML = html;
+    }
+}
+
+// ============================================================
+// CHANGE AUDIT PAGE
+// ============================================================
+
+function changeAuditPage(page) {
+    const totalPages = Math.ceil(filteredAuditLogs.length / auditPerPage) || 1;
+    
+    if (page === 'first') page = 1;
+    else if (page === 'prev') page = auditCurrentPage - 1;
+    else if (page === 'next') page = auditCurrentPage + 1;
+    else if (page === 'last') page = totalPages;
+    
+    if (page < 1 || page > totalPages) return;
+    
+    auditCurrentPage = page;
+    renderAuditTable();
+    updateAuditPagination();
+}
+
+// ============================================================
+// CHANGE AUDIT ENTRIES PER PAGE
+// ============================================================
+
+function changeAuditEntriesPerPage() {
+    const select = document.getElementById('auditEntriesPerPage');
+    if (select) {
+        auditPerPage = parseInt(select.value) || 25;
+        auditCurrentPage = 1;
+        renderAuditTable();
+        updateAuditPagination();
+    }
+}
+
+// ============================================================
+// SORT AUDIT TABLE
+// ============================================================
+
+function sortAuditTable(field) {
+    if (auditSortField === field) {
+        auditSortOrder = auditSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        auditSortField = field;
+        auditSortOrder = 'desc';
+    }
+    
+    // Update sort indicators
+    document.querySelectorAll('.sort-indicator').forEach(el => {
+        el.textContent = '';
+        el.className = 'sort-indicator';
+    });
+    
+    const indicator = document.getElementById(`sort${field.charAt(0).toUpperCase() + field.slice(1)}`);
+    if (indicator) {
+        indicator.textContent = auditSortOrder === 'asc' ? '↑' : '↓';
+        indicator.className = 'sort-indicator active';
+    }
+    
+    renderAuditTable();
+}
+
+// ============================================================
+// SET AUDIT VIEW
+// ============================================================
+
+function setAuditView(mode) {
+    auditViewMode = mode;
+    
+    const detailedBtn = document.getElementById('auditViewDetailed');
+    const compactBtn = document.getElementById('auditViewCompact');
+    
+    if (detailedBtn && compactBtn) {
+        if (mode === 'detailed') {
+            detailedBtn.style.background = '#4C1D95';
+            detailedBtn.style.color = 'white';
+            compactBtn.style.background = '#e5e7eb';
+            compactBtn.style.color = '#475569';
+        } else {
+            compactBtn.style.background = '#4C1D95';
+            compactBtn.style.color = 'white';
+            detailedBtn.style.background = '#e5e7eb';
+            detailedBtn.style.color = '#475569';
+        }
+    }
+    
+    renderAuditTable();
+}
+
+// ============================================================
+// CLEAN MALICIOUS LOG ENTRIES - FIXED
+// ============================================================
+
+async function cleanMaliciousLogEntries() {
+    try {
+        const supabase = window.sb || window.supabase;
+        if (!supabase) return;
+        
+        // Delete entries flagged as malicious
+        const { data, error } = await supabase
+            .from('audit_logs')
+            .delete()
+            .eq('status', 'MALICIOUS');
+        
+        if (error) {
+            console.warn('⚠️ Could not clean malicious entries:', error.message);
+            return;
+        }
+        
+        if (data && data.length > 0) {
+            console.log(`🧹 Removed ${data.length} malicious entries`);
+        }
+        
+    } catch (error) {
+        console.warn('⚠️ Cleanup warning:', error.message);
+    }
+}
+
+// ============================================================
+// MANUAL CLEAN AUDIT LOGS
+// ============================================================
+
+async function manualCleanAuditLogs() {
+    if (!confirm('⚠️ This will delete ALL audit log entries marked as MALICIOUS.\n\nContinue?')) return;
+    
+    try {
+        const supabase = window.sb || window.supabase;
+        if (!supabase) throw new Error('Supabase not available');
+        
+        const { data, error } = await supabase
+            .from('audit_logs')
+            .delete()
+            .eq('status', 'MALICIOUS');
+        
+        if (error) throw error;
+        
+        alert(`✅ Removed ${data?.length || 0} malicious entries.`);
+        await loadAuditLogs();
+        
+    } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+// ============================================================
+// REFRESH AUDIT LOGS
+// ============================================================
+
+function refreshAuditLogs() {
+    loadAuditLogs();
+    if (typeof showNotification === 'function') {
+        showNotification('🔄 Audit logs refreshed!', 'success');
+    }
+}
+
+// ============================================================
+// EXPORT AUDIT LOGS TO CSV
+// ============================================================
+
+function exportAuditLogsToCSV() {
+    const data = filteredAuditLogs.length > 0 ? filteredAuditLogs : auditLogsData;
+    
+    if (!data || data.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No data to export', 'warning');
+        }
+        return;
+    }
+    
+    const headers = ['Timestamp', 'User', 'Role', 'Action', 'Details', 'Status', 'IP Address'];
+    const rows = data.map(log => [
+        new Date(log.timestamp || log.created_at || Date.now()).toLocaleString(),
+        log.user || log.user_role || 'System',
+        log.user_role || 'Unknown',
+        log.action_type || 'UNKNOWN',
+        (log.details || '').replace(/"/g, '""'),
+        log.status || 'INFO',
+        log.ip_address || log.ip || '0.0.0.0'
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit_logs_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    if (typeof showNotification === 'function') {
+        showNotification('✅ Audit logs exported!', 'success');
+    }
+}
+
+// ============================================================
+// ESCAPE HTML HELPER
+// ============================================================
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================================
+// EXPOSE FUNCTIONS TO GLOBAL
+// ============================================================
+
+window.loadAuditLogs = loadAuditLogs;
+window.applyAuditFilters = applyAuditFilters;
+window.resetAuditFilters = resetAuditFilters;
+window.quickDateFilter = quickDateFilter;
+window.changeAuditPage = changeAuditPage;
+window.changeAuditEntriesPerPage = changeAuditEntriesPerPage;
+window.sortAuditTable = sortAuditTable;
+window.setAuditView = setAuditView;
+window.manualCleanAuditLogs = manualCleanAuditLogs;
+window.refreshAuditLogs = refreshAuditLogs;
+window.exportAuditLogsToCSV = exportAuditLogsToCSV;
+window.escapeHtml = escapeHtml;
+
+console.log('✅ Audit Logs module loaded successfully!');
 // ============================================================
 // 🧹 AUTO-CLEAN: Remove XSS attempts from audit logs
 // ============================================================
@@ -10551,9 +11138,16 @@ window.updateFilterDropdown = updateFilterDropdown;
 
 console.log('✅ Super Admin Resources Module loaded with TVET/KRCHN support and Edit functionality!');
 /*******************************************************
- * 13. SECURITY & SYSTEM STATUS - COMPLETE
- * With proper password reset flow (works with ANON key)
+ * 13. SECURITY & SYSTEM STATUS - COMPLETE FIXED VERSION
+ * With proper password reset flow & session management
  *******************************************************/
+
+// ============================================================
+// GLOBAL STATE
+// ============================================================
+
+let currentAdminSession = null;
+let securityActivityLog = [];
 
 // ============================================================
 // PASSWORD RESET - PROPER USER FLOW (WORKS WITH ANON KEY)
@@ -10587,14 +11181,6 @@ async function sendPasswordResetEmail(email) {
 // 🔐 ADMIN FORCE RESET PASSWORD - VIA EDGE FUNCTION
 // ============================================================
 
-// ============================================================
-// 🔐 ADMIN FORCE RESET PASSWORD - FIXED (WORKS WITH ANON KEY)
-// ============================================================
-
-// ============================================================
-// 🔐 ADMIN FORCE RESET PASSWORD - UPDATED
-// ============================================================
-
 async function adminForceResetPassword(email, newPassword) {
     try {
         // Get the current admin's session token
@@ -10610,7 +11196,6 @@ async function adminForceResetPassword(email, newPassword) {
 
         console.log('🔐 Calling admin-reset-password edge function...');
         console.log('📧 Email:', email);
-        console.log('👤 Token exists:', !!session.access_token);
 
         // ✅ Call the EDGE FUNCTION
         const response = await fetch(
@@ -10640,6 +11225,10 @@ async function adminForceResetPassword(email, newPassword) {
 
         console.log('✅ Reset successful:', result);
 
+        // Log the action
+        await logAudit('ADMIN_FORCE_RESET', `Admin force reset password for: ${email}`, null, 'SUCCESS');
+        addSecurityActivity('🔑', 'Password Reset', `Force reset for ${email}`, 'SUCCESS');
+
         return { 
             success: true, 
             message: result.message || 'Password reset successful!' 
@@ -10647,6 +11236,7 @@ async function adminForceResetPassword(email, newPassword) {
 
     } catch (error) {
         console.error('❌ Admin force reset error:', error);
+        await logAudit('ADMIN_FORCE_RESET', `Failed to reset password for ${email}: ${error.message}`, null, 'FAILURE');
         return { 
             success: false, 
             message: error.message || 'Failed to reset password' 
@@ -10656,6 +11246,7 @@ async function adminForceResetPassword(email, newPassword) {
 
 // Make it globally accessible
 window.adminForceResetPassword = adminForceResetPassword;
+
 // ============================================================
 // ✅ MAIN PASSWORD RESET HANDLER - FIXED
 // ============================================================
@@ -10737,6 +11328,9 @@ async function handleGlobalPasswordReset(e) {
             if (typeof loadAllUsers === 'function') {
                 setTimeout(loadAllUsers, 1000);
             }
+            
+            // Refresh security activity
+            loadSecurityActivity();
         }
         
     } catch (error) {
@@ -10903,7 +11497,9 @@ window.lookupUser = lookupUser;
 function autoFillResetForm() {
     const user = window._foundUser;
     if (!user) {
-        showNotification('No user found to auto-fill. Please lookup a user first.', 'warning');
+        if (typeof showNotification === 'function') {
+            showNotification('No user found to auto-fill. Please lookup a user first.', 'warning');
+        }
         return;
     }
     
@@ -10921,7 +11517,9 @@ function autoFillResetForm() {
         }, 2000);
     }
     
-    showNotification(`✅ Auto-filled ${user.email}. Enter new password and click reset.`, 'success');
+    if (typeof showNotification === 'function') {
+        showNotification(`✅ Auto-filled ${user.email}. Enter new password and click reset.`, 'success');
+    }
 }
 
 /**
@@ -10942,220 +11540,176 @@ function clearLookupResult() {
 }
 
 // ============================================================
-// PASSWORD RESET HANDLERS (ADMIN DASHBOARD)
-// ============================================================
-
-/**
- * Handle Send Reset Email (User self-reset)
- * This is the RECOMMENDED method - works with ANON key!
- */
-async function handleSendResetEmail() {
-    const email = document.getElementById('reset_user_email').value.trim();
-    const feedback = document.getElementById('resetFeedback');
-    
-    if (!email) {
-        if (feedback) {
-            feedback.innerHTML = '❌ Please enter an email address.';
-            feedback.style.color = '#dc2626';
-        }
-        return;
-    }
-    
-    // Show loading
-    const btn = document.querySelector('#send-reset-email-btn');
-    const originalText = btn?.textContent;
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-    }
-    
-    try {
-        const result = await sendPasswordResetEmail(email);
-        
-        if (feedback) {
-            feedback.innerHTML = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
-            feedback.style.color = result.success ? '#059669' : '#dc2626';
-        }
-        
-        if (result.success) {
-            // Clear form
-            document.getElementById('reset_user_email').value = '';
-            clearLookupResult();
-        }
-        
-    } catch (error) {
-        if (feedback) {
-            feedback.innerHTML = `❌ Error: ${error.message}`;
-            feedback.style.color = '#dc2626';
-        }
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalText || 'Send Reset Email';
-        }
-    }
-}
-
-/**
- * Handle Admin Force Reset (Emergency only)
- */
-async function handleAdminForceReset() {
-    const email = document.getElementById('reset_user_email').value.trim();
-    const newPassword = document.getElementById('new_password').value.trim();
-    const feedback = document.getElementById('resetFeedback');
-    
-    if (!email || !newPassword) {
-        if (feedback) {
-            feedback.innerHTML = '❌ Email and New Password are required.';
-            feedback.style.color = '#dc2626';
-        }
-        return;
-    }
-    
-    if (newPassword.length < 6) {
-        if (feedback) {
-            feedback.innerHTML = '❌ Password must be at least 6 characters.';
-            feedback.style.color = '#dc2626';
-        }
-        return;
-    }
-    
-    // Confirm with admin
-    if (!confirm(`⚠️ WARNING: This will force reset the password for ${email}.\n\nThis bypasses the user's email verification.\n\nContinue?`)) {
-        return;
-    }
-    
-    // Show loading
-    const btn = document.querySelector('#admin-force-reset-btn');
-    const originalText = btn?.textContent;
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
-    }
-    
-    try {
-        const result = await adminForceResetPassword(email, newPassword);
-        
-        if (feedback) {
-            feedback.innerHTML = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
-            feedback.style.color = result.success ? '#059669' : '#dc2626';
-        }
-        
-        if (result.success) {
-            // Clear form
-            document.getElementById('reset_user_email').value = '';
-            document.getElementById('new_password').value = '';
-            clearLookupResult();
-        }
-        
-    } catch (error) {
-        if (feedback) {
-            feedback.innerHTML = `❌ Error: ${error.message}`;
-            feedback.style.color = '#dc2626';
-        }
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalText || 'Force Reset';
-        }
-    }
-}
-
-// ============================================================
 // SYSTEM STATUS FUNCTIONS
 // ============================================================
 
 async function loadSystemStatus() {
-    const { data } = await fetchData(SETTINGS_TABLE, '*', { key: GLOBAL_SETTINGS_KEY });
-    const statusData = data?.[0] || { value: 'ACTIVE', message: '' };
+    try {
+        const { data } = await fetchData(SETTINGS_TABLE, '*', { key: GLOBAL_SETTINGS_KEY });
+        const statusData = data?.[0] || { value: 'ACTIVE', message: '' };
 
-    const statusSelect = $('global_status');
-    if (statusSelect) statusSelect.value = statusData.value;
+        const statusSelect = document.getElementById('global_status');
+        if (statusSelect) statusSelect.value = statusData.value;
+        
+        const messageInput = document.getElementById('maintenance_message');
+        if (messageInput) messageInput.value = statusData.message || '';
+        
+        // Update status badge
+        updateStatusBadge(statusData.value);
+        
+    } catch (error) {
+        console.error('Error loading system status:', error);
+    }
+}
+
+function updateStatusBadge(status) {
+    const badge = document.getElementById('secStatusBadge');
+    if (!badge) return;
     
-    const messageInput = $('maintenance_message');
-    if (messageInput) messageInput.value = statusData.message || '';
+    if (status === 'ACTIVE') {
+        badge.style.background = '#d1fae5';
+        badge.style.color = '#065f46';
+        badge.innerHTML = '<i class="fas fa-circle" style="font-size: 8px; color: #10b981;"></i> ACTIVE';
+    } else if (status === 'MAINTENANCE') {
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#92400e';
+        badge.innerHTML = '<i class="fas fa-circle" style="font-size: 8px; color: #f59e0b;"></i> MAINTENANCE';
+    } else if (status === 'EMERGENCY_LOCKDOWN') {
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#991b1b';
+        badge.innerHTML = '<i class="fas fa-circle" style="font-size: 8px; color: #dc2626;"></i> LOCKDOWN';
+    }
+}
+
+function applySystemStatus() {
+    const statusSelect = document.getElementById('global_status');
+    if (statusSelect) {
+        updateSystemStatus(statusSelect.value);
+    }
 }
 
 async function updateSystemStatus(newStatus) {
-    const currentMessage = $('maintenance_message').value.trim();
+    const currentMessage = document.getElementById('maintenance_message')?.value?.trim() || '';
+    
     if (!confirm(`CRITICAL: Change system status to ${newStatus}? This affects ALL users.`)) {
         loadSystemStatus();
         return;
     }
     
     if (newStatus !== 'ACTIVE' && !currentMessage) {
-        showFeedback('A message is required for users when the system is not ACTIVE.', 'warning');
+        if (typeof showFeedback === 'function') {
+            showFeedback('A message is required for users when the system is not ACTIVE.', 'warning');
+        }
         loadSystemStatus();
         return;
     }
 
-    const { data: existing } = await fetchData(SETTINGS_TABLE, 'id', { key: GLOBAL_SETTINGS_KEY });
-    let error = null;
+    try {
+        const { data: existing } = await fetchData(SETTINGS_TABLE, 'id', { key: GLOBAL_SETTINGS_KEY });
+        let error = null;
 
-    const updateData = {
-        key: GLOBAL_SETTINGS_KEY,
-        value: newStatus,
-        message: newStatus === 'ACTIVE' ? null : currentMessage,
-        updated_at: new Date().toISOString()
-    };
+        const updateData = {
+            key: GLOBAL_SETTINGS_KEY,
+            value: newStatus,
+            message: newStatus === 'ACTIVE' ? null : currentMessage,
+            updated_at: new Date().toISOString()
+        };
 
-    if (existing?.length > 0) {
-        ({ error } = await sb.from(SETTINGS_TABLE).update(updateData).eq('id', existing[0].id));
-    } else {
-        ({ error } = await sb.from(SETTINGS_TABLE).insert([updateData]));
-    }
+        if (existing?.length > 0) {
+            const result = await sb.from(SETTINGS_TABLE).update(updateData).eq('id', existing[0].id);
+            error = result.error;
+        } else {
+            const result = await sb.from(SETTINGS_TABLE).insert([updateData]);
+            error = result.error;
+        }
 
-    if (error) {
-        await logAudit('SYSTEM_STATUS_CHANGE', `Failed to set status to ${newStatus}. Reason: ${error.message}`, null, 'FAILURE');
-        showFeedback(`Failed to update system status: ${error.message}`, 'error');
-    } else {
+        if (error) throw error;
+        
         await logAudit('SYSTEM_STATUS_CHANGE', `System status set to ${newStatus}. Message: ${updateData.message || 'N/A'}.`, null, 'SUCCESS');
-        showFeedback(`System status successfully set to: ${newStatus}!`, 'success');
+        addSecurityActivity('⚙️', 'System Status', `Changed to ${newStatus}`, 'SUCCESS');
+        
+        if (typeof showFeedback === 'function') {
+            showFeedback(`System status successfully set to: ${newStatus}!`, 'success');
+        }
+        
+        updateStatusBadge(newStatus);
+        
+    } catch (error) {
+        await logAudit('SYSTEM_STATUS_CHANGE', `Failed to set status to ${newStatus}. Reason: ${error.message}`, null, 'FAILURE');
+        if (typeof showFeedback === 'function') {
+            showFeedback(`Failed to update system status: ${error.message}`, 'error');
+        }
+    }
+}
+
+function clearSystemMessage() {
+    const messageInput = document.getElementById('maintenance_message');
+    if (messageInput) {
+        messageInput.value = '';
+        if (typeof showFeedback === 'function') {
+            showFeedback('Message cleared', 'info');
+        }
     }
 }
 
 async function saveSystemMessage() {
-    const status = $('global_status').value;
-    const message = $('maintenance_message').value.trim();
+    const status = document.getElementById('global_status')?.value || 'ACTIVE';
+    const message = document.getElementById('maintenance_message')?.value?.trim() || '';
 
     if (status === 'ACTIVE') {
-        showFeedback('Cannot save a maintenance message while the system is ACTIVE. Change status first.', 'warning');
+        if (typeof showFeedback === 'function') {
+            showFeedback('Cannot save a maintenance message while the system is ACTIVE. Change status first.', 'warning');
+        }
         return;
     }
     
     if (!message) {
-        showFeedback('Message cannot be empty.', 'error');
+        if (typeof showFeedback === 'function') {
+            showFeedback('Message cannot be empty.', 'error');
+        }
         return;
     }
 
-    const { data: existing } = await fetchData(SETTINGS_TABLE, 'id', { key: GLOBAL_SETTINGS_KEY });
-    let error = null;
+    try {
+        const { data: existing } = await fetchData(SETTINGS_TABLE, 'id', { key: GLOBAL_SETTINGS_KEY });
+        let error = null;
 
-    if (existing?.length > 0) {
-        ({ error } = await sb.from(SETTINGS_TABLE).update({ message }).eq('id', existing[0].id));
-    } else {
-        ({ error } = await sb.from(SETTINGS_TABLE).insert({ key: GLOBAL_SETTINGS_KEY, value: status, message }));
-    }
+        if (existing?.length > 0) {
+            const result = await sb.from(SETTINGS_TABLE).update({ message }).eq('id', existing[0].id);
+            error = result.error;
+        } else {
+            const result = await sb.from(SETTINGS_TABLE).insert({ key: GLOBAL_SETTINGS_KEY, value: status, message });
+            error = result.error;
+        }
 
-    if (error) {
-        await logAudit('SYSTEM_MESSAGE_UPDATE', `Failed to update system message. Reason: ${error.message}`, null, 'FAILURE');
-        showFeedback(`Failed to save message: ${error.message}`, 'error');
-    } else {
+        if (error) throw error;
+        
         await logAudit('SYSTEM_MESSAGE_UPDATE', `Updated system message for status ${status}.`, null, 'SUCCESS');
-        showFeedback('System message saved.', 'success');
+        addSecurityActivity('💬', 'System Message', `Updated message for ${status}`, 'SUCCESS');
+        
+        if (typeof showFeedback === 'function') {
+            showFeedback('System message saved.', 'success');
+        }
+        
+    } catch (error) {
+        await logAudit('SYSTEM_MESSAGE_UPDATE', `Failed to update system message. Reason: ${error.message}`, null, 'FAILURE');
+        if (typeof showFeedback === 'function') {
+            showFeedback(`Failed to save message: ${error.message}`, 'error');
+        }
     }
 }
 
 // ============================================================
-// ACCOUNT DEACTIVATION
+// ACCOUNT DEACTIVATION - FIXED
 // ============================================================
 
 /**
  * Enhanced account deactivation with user verification
  */
 async function handleAccountDeactivation(e) {
-    e.preventDefault();
-    const submitButton = e.submitter;
+    if (e) e.preventDefault();
+    
+    const submitButton = e?.submitter || document.querySelector('#account-deactivation-form button[type="submit"]');
     const originalText = submitButton?.textContent || 'Deactivate Account';
     
     if (submitButton) {
@@ -11163,10 +11717,12 @@ async function handleAccountDeactivation(e) {
         submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     }
 
-    const userInput = document.getElementById('deactivate_user_id').value.trim();
+    const userInput = document.getElementById('deactivate_user_id')?.value?.trim();
     
     if (!userInput) {
-        showNotification('❌ User ID or Email is required.', 'error');
+        if (typeof showNotification === 'function') {
+            showNotification('❌ User ID or Email is required.', 'error');
+        }
         if (submitButton) {
             submitButton.disabled = false;
             submitButton.innerHTML = originalText;
@@ -11185,7 +11741,9 @@ async function handleAccountDeactivation(e) {
         if (findError) throw findError;
         
         if (!users || users.length === 0) {
-            showNotification(`❌ User "${userInput}" not found.`, 'error');
+            if (typeof showNotification === 'function') {
+                showNotification(`❌ User "${userInput}" not found.`, 'error');
+            }
             if (submitButton) {
                 submitButton.disabled = false;
                 submitButton.innerHTML = originalText;
@@ -11198,7 +11756,9 @@ async function handleAccountDeactivation(e) {
         // Check if trying to deactivate self
         const currentUser = await getCurrentUser();
         if (currentUser && currentUser.user_id === user.user_id) {
-            showNotification('❌ You cannot deactivate your own account!', 'error');
+            if (typeof showNotification === 'function') {
+                showNotification('❌ You cannot deactivate your own account!', 'error');
+            }
             if (submitButton) {
                 submitButton.disabled = false;
                 submitButton.innerHTML = originalText;
@@ -11225,19 +11785,194 @@ async function handleAccountDeactivation(e) {
             
         if (profileError) throw profileError;
         
+        // Also expire any active sessions for this user
+        try {
+            await sb
+                .from('user_sessions')
+                .update({ 
+                    is_active: false, 
+                    terminated_at: new Date().toISOString(),
+                    termination_reason: 'account_deactivated'
+                })
+                .eq('user_id', user.user_id)
+                .eq('is_active', true);
+        } catch (sessionError) {
+            console.warn('Could not expire sessions:', sessionError);
+        }
+        
         await logAudit('USER_BLOCK', `Permanently blocked user: ${user.full_name} (${user.email})`, user.user_id, 'SUCCESS');
-        showNotification(`✅ User ${user.full_name} has been blocked and logged out.`, 'success');
+        addSecurityActivity('🚫', 'Account Deactivated', `Blocked ${user.full_name} (${user.email})`, 'SUCCESS');
+        
+        if (typeof showNotification === 'function') {
+            showNotification(`✅ User ${user.full_name} has been blocked and logged out.`, 'success');
+        }
+        
         document.getElementById('deactivate_user_id').value = '';
+        
+        // Refresh data
+        if (typeof loadAllUsers === 'function') {
+            setTimeout(loadAllUsers, 500);
+        }
+        if (typeof loadActiveSessions === 'function') {
+            setTimeout(loadActiveSessions, 500);
+        }
+        loadSecurityActivity();
 
     } catch (e) {
         console.error('Deactivation error:', e);
-        showNotification(`❌ Deactivation failed: ${e.message}`, 'error');
+        if (typeof showNotification === 'function') {
+            showNotification(`❌ Deactivation failed: ${e.message}`, 'error');
+        }
         await logAudit('USER_BLOCK', `Failed to block user ${userInput}. Reason: ${e.message}`, null, 'FAILURE');
     } finally {
         if (submitButton) {
             submitButton.disabled = false;
             submitButton.innerHTML = originalText;
         }
+    }
+}
+
+// ============================================================
+// SECURITY ACTIVITY LOG - NEW
+// ============================================================
+
+function addSecurityActivity(icon, action, details, status = 'SUCCESS') {
+    securityActivityLog.unshift({
+        timestamp: new Date().toISOString(),
+        icon: icon || '🔒',
+        action: action || 'Unknown',
+        details: details || '',
+        status: status || 'SUCCESS'
+    });
+    
+    // Keep only last 50
+    if (securityActivityLog.length > 50) {
+        securityActivityLog = securityActivityLog.slice(0, 50);
+    }
+    
+    // Store in localStorage for persistence
+    try {
+        localStorage.setItem('securityActivityLog', JSON.stringify(securityActivityLog));
+    } catch (e) {
+        // Ignore
+    }
+    
+    // Update UI
+    renderSecurityActivity();
+}
+
+function loadSecurityActivity() {
+    try {
+        const stored = localStorage.getItem('securityActivityLog');
+        if (stored) {
+            securityActivityLog = JSON.parse(stored);
+        }
+    } catch (e) {
+        securityActivityLog = [];
+    }
+    renderSecurityActivity();
+}
+
+function renderSecurityActivity() {
+    const tbody = document.getElementById('securityActivityTable');
+    if (!tbody) return;
+    
+    if (!securityActivityLog || securityActivityLog.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">
+                    <i class="fas fa-info-circle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                    No security activity recorded yet.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    const displayLogs = securityActivityLog.slice(0, 10);
+    
+    tbody.innerHTML = displayLogs.map(log => {
+        const time = new Date(log.timestamp).toLocaleString();
+        const statusColor = log.status === 'SUCCESS' ? '#10b981' : '#dc2626';
+        const statusText = log.status === 'SUCCESS' ? '✅ Success' : '❌ Failed';
+        
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px 12px; font-size: 12px; white-space: nowrap;">${time}</td>
+                <td style="padding: 10px 12px;">
+                    <span style="font-size: 18px;">${log.icon || '🔒'}</span>
+                </td>
+                <td style="padding: 10px 12px; font-weight: 500;">${escapeHtml(log.action || 'Unknown')}</td>
+                <td style="padding: 10px 12px;">${escapeHtml(log.details || '')}</td>
+                <td style="padding: 10px 12px; text-align: center;">
+                    <span style="color: ${statusColor}; font-weight: 600;">${statusText}</span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ============================================================
+// REFRESH SECURITY SETTINGS
+// ============================================================
+
+function refreshSecuritySettings() {
+    loadSystemStatus();
+    loadSecurityActivity();
+    if (typeof showNotification === 'function') {
+        showNotification('🔄 Security settings refreshed!', 'success');
+    }
+}
+
+function exportSecurityAudit() {
+    if (!securityActivityLog || securityActivityLog.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No security activity to export', 'warning');
+        }
+        return;
+    }
+    
+    const headers = ['Timestamp', 'Icon', 'Action', 'Details', 'Status'];
+    const rows = securityActivityLog.map(log => [
+        new Date(log.timestamp).toLocaleString(),
+        log.icon || '🔒',
+        log.action || 'Unknown',
+        (log.details || '').replace(/"/g, '""'),
+        log.status || 'SUCCESS'
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `security_audit_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    if (typeof showNotification === 'function') {
+        showNotification('✅ Security audit exported!', 'success');
+    }
+}
+
+// ============================================================
+// TOGGLE PASSWORD VISIBILITY
+// ============================================================
+
+function togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+    } else {
+        input.type = 'password';
     }
 }
 
@@ -11250,7 +11985,7 @@ window.sendPasswordResetEmail = sendPasswordResetEmail;
 window.adminForceResetPassword = adminForceResetPassword;
 window.handleSendResetEmail = handleSendResetEmail;
 window.handleAdminForceReset = handleAdminForceReset;
-window.handleGlobalPasswordReset = handleGlobalPasswordReset; // ✅ ADDED THIS
+window.handleGlobalPasswordReset = handleGlobalPasswordReset;
 
 // User Lookup Functions
 window.lookupUser = lookupUser;
@@ -11261,11 +11996,33 @@ window.clearLookupResult = clearLookupResult;
 window.loadSystemStatus = loadSystemStatus;
 window.updateSystemStatus = updateSystemStatus;
 window.saveSystemMessage = saveSystemMessage;
+window.clearSystemMessage = clearSystemMessage;
+window.applySystemStatus = applySystemStatus;
 
 // Account Deactivation
 window.handleAccountDeactivation = handleAccountDeactivation;
 
-console.log('✅ Security & System Status module loaded with proper password reset flow!');
+// Security Activity
+window.loadSecurityActivity = loadSecurityActivity;
+window.addSecurityActivity = addSecurityActivity;
+window.renderSecurityActivity = renderSecurityActivity;
+window.refreshSecuritySettings = refreshSecuritySettings;
+window.exportSecurityAudit = exportSecurityAudit;
+window.togglePasswordVisibility = togglePasswordVisibility;
+
+// Session Management - Integration
+window.loadActiveSessions = loadActiveSessions;
+window.terminateSession = terminateSession;
+window.terminateAllSessions = terminateAllSessions;
+
+console.log('✅ Security & System Status module loaded with complete fixes!');
+console.log('📋 Includes:');
+console.log('   - Password reset with Edge Function');
+console.log('   - User lookup with auto-fill');
+console.log('   - System status with kill switch');
+console.log('   - Account deactivation with session termination');
+console.log('   - Security activity log');
+console.log('   - Session management integration');
 /*******************************************************
  * 17. BACKUP & RESTORE - UPDATED WITH REAL DATA
  *******************************************************/
