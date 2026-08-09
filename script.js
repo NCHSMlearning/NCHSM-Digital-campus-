@@ -1939,31 +1939,6 @@ async function cleanMaliciousLogEntries() {
     }
 }
 
-// ============================================================
-// MANUAL CLEAN AUDIT LOGS
-// ============================================================
-
-async function manualCleanAuditLogs() {
-    if (!confirm('⚠️ This will delete ALL audit log entries marked as MALICIOUS.\n\nContinue?')) return;
-    
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) throw new Error('Supabase not available');
-        
-        const { data, error } = await supabase
-            .from('audit_logs')
-            .delete()
-            .eq('status', 'MALICIOUS');
-        
-        if (error) throw error;
-        
-        alert(`✅ Removed ${data?.length || 0} malicious entries.`);
-        await loadAuditLogs();
-        
-    } catch (error) {
-        alert(`❌ Error: ${error.message}`);
-    }
-}
 
 // ============================================================
 // REFRESH AUDIT LOGS
@@ -2039,30 +2014,6 @@ window.exportAuditLogsToCSV = exportAuditLogsToCSV;
 window.escapeHtml = escapeHtml;
 
 console.log('✅ Audit Logs module loaded successfully!');
-// ============================================================
-// 🧹 AUTO-CLEAN: Remove XSS attempts from audit logs
-// ============================================================
-
-async function cleanMaliciousLogEntries() {
-    try {
-        // Delete entries containing HTML tags (potential XSS)
-        const { data, error } = await sb
-            .from(AUDIT_TABLE)
-            .delete()
-            .or('details.ilike.%<%', 'details.ilike.%>%')
-            .or('details.ilike.%script%', 'details.ilike.%onerror%')
-            .or('details.ilike.%</td>%', 'details.ilike.%<tr>%');
-        
-        if (error) {
-            console.warn('⚠️ Could not clean malicious entries:', error.message);
-        } else if (data && data.length > 0) {
-            console.log(`🧹 Removed ${data.length} malicious log entries`);
-        }
-    } catch (e) {
-        // Silent fail - cleanup is optional
-        console.warn('Cleanup warning:', e.message);
-    }
-}
 
 // ============================================================
 // 🧹 MANUAL CLEANUP: Run this if you see XSS in logs
