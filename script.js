@@ -7640,8 +7640,9 @@ function debounce(fn, delay = 300) {
 }
 
 // ============================================
-// LOAD EXAMS - WITH CACHING
+// LOAD EXAMS - SIMPLIFIED (NO RELATIONSHIPS)
 // ============================================
+
 async function loadExams(forceRefresh = false) {
     console.log('📝 Loading exams...');
     
@@ -7673,25 +7674,45 @@ async function loadExams(forceRefresh = false) {
     try {
         const supabase = getSb();
         
+        // ✅ JUST SELECT * - NO RELATIONSHIPS
         const { data: exams, error } = await supabase
             .from('exams')
-            .select(`
-                *,
-                courses:course_id (
-                    id,
-                    course_name,
-                    unit_code
-                ),
-                subjects:subject_id (
-                    id,
-                    name,
-                    code
-                )
-            `)
+            .select('*')
             .order('created_at', { ascending: false })
             .limit(200);
 
         if (error) throw error;
+        
+        console.log(`✅ Loaded ${exams?.length || 0} exams`);
+        
+        // Try to get course names separately
+        if (exams && exams.length > 0) {
+            const courseIds = [...new Set(exams.map(e => e.course_id).filter(Boolean))];
+            
+            if (courseIds.length > 0) {
+                try {
+                    const { data: courses } = await supabase
+                        .from('courses')
+                        .select('id, course_name, course_code')
+                        .in('id', courseIds);
+                    
+                    const courseMap = {};
+                    courses?.forEach(c => {
+                        courseMap[c.id] = c;
+                    });
+                    
+                    exams.forEach(exam => {
+                        if (exam.course_id && courseMap[exam.course_id]) {
+                            exam.course = courseMap[exam.course_id];
+                        }
+                    });
+                    
+                    console.log(`✅ Loaded ${courses?.length || 0} course names`);
+                } catch (courseError) {
+                    console.warn('Could not load course names:', courseError);
+                }
+            }
+        }
 
         ExamCache.set('exams_list', exams || []);
         
@@ -7699,20 +7720,21 @@ async function loadExams(forceRefresh = false) {
         renderStudentExams(exams || []);
         updateExamStats(exams || []);
         
-        console.log(`✅ Loaded ${exams?.length || 0} exams`);
-        
     } catch (error) {
         console.error('Error loading exams:', error);
         DOM.examsTbody.innerHTML = `
             <tr>
                 <td colspan="12" style="padding: 30px; text-align: center; color: #dc2626; font-size: 13px;">
                     <i class="fas fa-exclamation-circle"></i> Failed to load exams: ${error.message}
+                    <br>
+                    <button onclick="loadExams(true)" style="margin-top: 10px; padding: 6px 16px; background: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
                 </td>
             </tr>
         `;
     }
 }
-
 // ============================================
 // UPDATE EXAM STATS
 // ============================================
@@ -7766,8 +7788,9 @@ function getStatusBadge(status) {
 }
 
 // ============================================
-// RENDER EXAMS TABLE - FIXED
+// RENDER EXAMS TABLE - CORRECT COLUMNS
 // ============================================
+
 function renderExamsTable(exams) {
     if (!DOM.examsTbody) return;
     
@@ -7786,23 +7809,34 @@ function renderExamsTable(exams) {
     let html = '';
     
     for (const e of exams) {
-        // ✅ FIXED: Get course name from multiple sources
+        // ✅ Get course name - from your data
         let courseName = 'N/A';
-        if (e.courses?.course_name) {
-            courseName = e.courses.course_name;
-        } else if (e.courses?.name) {
-            courseName = e.courses.name;
-        } else if (e.subjects?.name) {
-            courseName = e.subjects.name;
-        } else if (e.course_name) {
-            courseName = e.course_name;
-        } else if (e.subject_name) {
-            courseName = e.subject_name;
-        } else if (e.unit_name) {
-            courseName = e.unit_name;
+        if (e.course?.course_name) {
+            courseName = e.course.course_name;
+        } else if (e.course?.course_code) {
+            courseName = e.course.course_code;
+        } else if (e.course_code) {
+            courseName = e.course_code;
+        } else if (e.course_id) {
+            courseName = `Course ID: ${String(e.course_id).substring(0, 8)}...`;
         }
         
-        // ✅ FIXED: Format date properly
+        // ✅ Get title
+        const title = e.title || e.exam_name || 'Untitled';
+        
+        // ✅ Get exam type
+        const type = e.exam_type || 'N/A';
+        
+        // ✅ Get program
+        const programDisplay = e.target_program || e.program_type || 'N/A';
+        
+        // ✅ Get marks
+        const marksOutOf = e.marks_out_of || e.total_marks || 100;
+        
+        // ✅ Get pass mark
+        const passMark = e.pass_mark || 50;
+        
+        // ✅ Format date
         let formattedDate = 'N/A';
         let formattedTime = 'N/A';
         const examDate = e.exam_date || e.created_at;
@@ -7816,25 +7850,39 @@ function renderExamsTable(exams) {
                         month: 'short',
                         day: 'numeric'
                     });
-                    formattedTime = d.toLocaleTimeString('en-KE', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
                 }
             } catch (err) {
                 formattedDate = examDate || 'N/A';
             }
         }
         
-        const type = e.exam_type || 'N/A';
-        const programDisplay = e.target_program || e.program_type || 'N/A';
+        // ✅ Get time
+        if (e.exam_start_time) {
+            try {
+                const timeStr = e.exam_start_time;
+                if (timeStr && timeStr.includes(':')) {
+                    const parts = timeStr.split(':');
+                    formattedTime = parts[0] + ':' + parts[1];
+                }
+            } catch (err) {
+                formattedTime = e.exam_start_time || 'N/A';
+            }
+        }
+        
+        // ✅ Get intake
         const intakeDisplay = e.intake_year ? `${e.intake_year}${e.intake_month ? ' ' + e.intake_month : ''}` : 'N/A';
-        const marksOutOf = e.marks_out_of || e.total_marks || 100;
-        const passMark = e.pass_mark || 50;
+        
+        // ✅ Get block
         const blockDisplay = e.block || e.block_term || 'N/A';
+        
+        // ✅ Get duration
         const duration = e.duration_minutes || 'N/A';
         const durationDisplay = duration !== 'N/A' ? duration + 'm' : 'N/A';
-        const status = e.status || 'Draft';
+        
+        // ✅ Get status
+        const status = e.status || 'draft';
+        
+        // ✅ Get link
         const link = e.online_link || e.exam_link;
         
         html += `
@@ -7845,24 +7893,47 @@ function renderExamsTable(exams) {
                 data-status="${escapeHtml(status)}"
                 data-month="${escapeHtml(e.intake_month || '')}">
                 
+                <!-- Type -->
                 <td style="padding: 8px 10px; font-size: 12px; text-align: center;">
-                    <span style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${type === 'EXAM' ? '#dbeafe' : type === 'CAT' ? '#fef3c7' : '#ede9fe'}; color: ${type === 'EXAM' ? '#1e40af' : type === 'CAT' ? '#92400e' : '#5b21b6'};">
+                    <span style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${type === 'EXAM' ? '#dbeafe' : '#fef3c7'}; color: ${type === 'EXAM' ? '#1e40af' : '#92400e'};">
                         ${escapeHtml(type)}
                     </span>
                 </td>
+                
+                <!-- Program -->
                 <td style="padding: 8px 10px; font-size: 12px;">${escapeHtml(programDisplay)}</td>
+                
+                <!-- Course/Unit -->
                 <td style="padding: 8px 10px; font-size: 12px;">${escapeHtml(courseName)}</td>
-                <td style="padding: 8px 10px; font-weight: 500; font-size: 13px;">${escapeHtml(e.title || 'Untitled')}</td>
+                
+                <!-- Title -->
+                <td style="padding: 8px 10px; font-weight: 500; font-size: 13px;">${escapeHtml(title)}</td>
+                
+                <!-- Out Of -->
                 <td style="padding: 8px 10px; text-align: center; font-weight: 600;">${marksOutOf}</td>
+                
+                <!-- Pass Mark -->
                 <td style="padding: 8px 10px; text-align: center; font-weight: 600; color: ${parseInt(passMark) >= 50 ? '#059669' : '#dc2626'};">${passMark}%</td>
+                
+                <!-- Date/Time -->
                 <td style="padding: 8px 10px; font-size: 12px;">
                     <div>${formattedDate}</div>
                     <div style="font-size: 10px; color: #94a3b8;">${formattedTime}</div>
                 </td>
+                
+                <!-- Duration -->
                 <td style="padding: 8px 10px; text-align: center; font-size: 12px;">${durationDisplay}</td>
+                
+                <!-- Intake -->
                 <td style="padding: 8px 10px; font-size: 12px; text-align: center;">${escapeHtml(intakeDisplay)}</td>
+                
+                <!-- Block -->
                 <td style="padding: 8px 10px; font-size: 12px; text-align: center;">${escapeHtml(blockDisplay)}</td>
+                
+                <!-- Status -->
                 <td style="padding: 8px 10px; text-align: center;">${getStatusBadge(status)}</td>
+                
+                <!-- Actions -->
                 <td style="padding: 8px 10px; text-align: center; white-space: nowrap;">
                     <button onclick="openEditExamModal('${e.id}')" class="btn-sm" style="padding: 4px 10px; font-size: 11px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Edit">
                         <i class="fas fa-edit"></i>
@@ -7870,11 +7941,11 @@ function renderExamsTable(exams) {
                     <button onclick="openGradeModal('${e.id}')" class="btn-sm" style="padding: 4px 10px; font-size: 11px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Grade">
                         <i class="fas fa-check-double"></i>
                     </button>
-                    ${status !== 'Completed' && status !== 'Closed' ? `
+                    ${status !== 'Completed' && status !== 'Closed' && status !== 'completed' ? `
                     <button onclick="closeExam('${e.id}')" class="btn-sm" style="padding: 4px 10px; font-size: 11px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Close">
                         <i class="fas fa-lock"></i>
                     </button>` : ''}
-                    <button onclick="deleteExam('${e.id}', '${escapeHtml(e.title)}')" class="btn-sm" style="padding: 4px 10px; font-size: 11px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Delete">
+                    <button onclick="deleteExam('${e.id}', '${escapeHtml(title)}')" class="btn-sm" style="padding: 4px 10px; font-size: 11px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                     ${link ? `<a href="${escapeHtml(link)}" target="_blank" class="btn-sm" style="padding: 4px 10px; font-size: 11px; background: #059669; color: white; border: none; border-radius: 4px; text-decoration: none; display: inline-block;" title="Open Link">
