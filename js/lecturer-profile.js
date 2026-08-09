@@ -1,8 +1,8 @@
 // js/lecturer-profile.js
 /**
  * NCHSM Lecturer Profile Module
- * FIXED: Updates ALL tables (staff_records, consolidated_user_profiles, users, auth)
- * Department/Program from staff_records is authoritative
+ * FIXED: Safe updates - does NOT break auth login
+ * Updates only staff_records and consolidated_user_profiles_table
  */
 
 const LecturerProfile = {
@@ -50,7 +50,7 @@ const LecturerProfile = {
     },
     
     // ============================================
-    // LOAD PROFILE FROM ALL TABLES
+    // LOAD PROFILE - SAFE, READ ONLY
     // ============================================
     async loadProfile() {
         try {
@@ -117,29 +117,7 @@ const LecturerProfile = {
             }
             
             // ============================================
-            // 3. LOAD FROM users table
-            // ============================================
-            const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', user.email)
-                .maybeSingle();
-            
-            if (userError) {
-                console.warn('Error fetching users table:', userError);
-            }
-            
-            if (userData) {
-                this.userRecord = userData;
-                console.log('✅ Users table record loaded');
-                console.log('  Department:', userData.department);
-                console.log('  Program:', userData.program);
-            } else {
-                console.warn('⚠️ No users table record found for:', user.email);
-            }
-            
-            // ============================================
-            // 4. BUILD PROFILE - staff_records is AUTHORITATIVE
+            // 3. BUILD PROFILE - staff_records is AUTHORITATIVE
             // ============================================
             if (this.staffRecord) {
                 // Use staff_records as primary source
@@ -166,16 +144,15 @@ const LecturerProfile = {
                     join_date: this.consolidatedProfile?.created_at || this.staffRecord.created_at,
                     created_at: this.staffRecord.created_at,
                     updated_at: this.staffRecord.updated_at,
-                    // Source tracking
                     _source: 'staff_records_authoritative'
                 };
                 
-                console.log('✅ Profile built from staff_records (authoritative)');
+                console.log('✅ Profile built from staff_records');
                 console.log('  Department:', this.profile.department);
                 console.log('  Program:', this.profile.program);
                 
             } else if (this.consolidatedProfile) {
-                // Fallback to consolidated profile if no staff record
+                // Fallback to consolidated profile
                 this.profile = {
                     user_id: user.id,
                     full_name: this.consolidatedProfile.full_name || 'N/A',
@@ -194,152 +171,19 @@ const LecturerProfile = {
                     _source: 'consolidated_only'
                 };
                 console.log('📋 Profile built from consolidated profile only');
-                
             } else {
-                // No data found - use mock
                 console.warn('No profile data found, using mock');
                 this.profile = this.getMockProfile();
                 this.profile.email = user.email || this.profile.email;
             }
             
             this.renderProfile();
-            console.log('✅ Profile loaded from:', this.profile._source);
-            
-            // ============================================
-            // 5. SYNC TABLES IF THEY DON'T MATCH
-            // ============================================
-            await this.syncTables();
+            console.log('✅ Profile loaded successfully');
             
         } catch (error) {
             console.error('Failed to load profile:', error);
             this.profile = this.getMockProfile();
             this.renderProfile();
-        }
-    },
-    
-    // ============================================
-    // SYNC TABLES - Make all tables consistent
-    // ============================================
-    async syncTables() {
-        try {
-            const supabase = this.getSupabase();
-            if (!supabase) return;
-            
-            if (!this.authUser || !this.staffRecord) {
-                console.log('⚠️ Cannot sync: Missing auth user or staff record');
-                return;
-            }
-            
-            const staffDept = this.staffRecord.department;
-            const staffProgram = this.staffRecord.program;
-            const staffStatus = this.staffRecord.status || 'active';
-            
-            let needsUpdate = false;
-            
-            // Check consolidated profile
-            if (this.consolidatedProfile) {
-                if (this.consolidatedProfile.department !== staffDept ||
-                    this.consolidatedProfile.program !== staffProgram ||
-                    this.consolidatedProfile.status !== staffStatus) {
-                    needsUpdate = true;
-                    console.log('⚠️ Consolidated profile needs update');
-                }
-            } else {
-                needsUpdate = true;
-                console.log('⚠️ Consolidated profile missing');
-            }
-            
-            // Check users table
-            if (this.userRecord) {
-                if (this.userRecord.department !== staffDept ||
-                    this.userRecord.program !== staffProgram ||
-                    this.userRecord.status !== staffStatus) {
-                    needsUpdate = true;
-                    console.log('⚠️ Users table needs update');
-                }
-            } else {
-                needsUpdate = true;
-                console.log('⚠️ Users table record missing');
-            }
-            
-            if (!needsUpdate) {
-                console.log('✅ All tables are in sync');
-                return;
-            }
-            
-            console.log('🔄 Syncing tables...');
-            
-            // Update consolidated profile
-            if (this.consolidatedProfile) {
-                await supabase
-                    .from('consolidated_user_profiles_table')
-                    .update({
-                        department: staffDept,
-                        program: staffProgram,
-                        status: staffStatus,
-                        staff_id: this.staffRecord.id,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('user_id', this.authUser.id);
-                console.log('✅ Consolidated profile updated');
-            } else {
-                // Create consolidated profile
-                await supabase
-                    .from('consolidated_user_profiles_table')
-                    .insert({
-                        user_id: this.authUser.id,
-                        email: this.authUser.email,
-                        full_name: `${this.staffRecord.first_name || ''} ${this.staffRecord.other_names || ''}`.trim(),
-                        department: staffDept,
-                        program: staffProgram,
-                        role: 'lecturer',
-                        staff_id: this.staffRecord.id,
-                        status: staffStatus,
-                        phone: this.staffRecord.phone || '',
-                        gender: this.staffRecord.gender || '',
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    });
-                console.log('✅ Consolidated profile created');
-            }
-            
-            // Update users table
-            if (this.userRecord) {
-                await supabase
-                    .from('users')
-                    .update({
-                        department: staffDept,
-                        program: staffProgram,
-                        status: staffStatus,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', this.authUser.id);
-                console.log('✅ Users table updated');
-            } else {
-                // Create users record
-                await supabase
-                    .from('users')
-                    .insert({
-                        id: this.authUser.id,
-                        email: this.authUser.email,
-                        full_name: `${this.staffRecord.first_name || ''} ${this.staffRecord.other_names || ''}`.trim(),
-                        department: staffDept,
-                        program: staffProgram,
-                        role: 'lecturer',
-                        phone: this.staffRecord.phone || '',
-                        staff_id: this.staffRecord.id,
-                        status: staffStatus,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    });
-                console.log('✅ Users table record created');
-            }
-            
-            // Reload data
-            await this.loadProfile();
-            
-        } catch (error) {
-            console.error('❌ Error syncing tables:', error);
         }
     },
     
@@ -396,9 +240,9 @@ const LecturerProfile = {
             'profileId': p.staff_id || p.employee_id || p.user_id || 'N/A',
             'profileEmail': p.email || 'N/A',
             'profilePhone': p.phone || p.phone_number || 'N/A',
-            'profileDept': p.department || 'N/A',  // NOW SHOWS TVET!
+            'profileDept': p.department || 'N/A',
             'profileJoinDate': p.join_date ? this.formatDate(p.join_date) : p.created_at ? this.formatDate(p.created_at) : 'N/A',
-            'profileProgramFocus': p.program || p.department || 'N/A'  // NOW SHOWS CPOTT!
+            'profileProgramFocus': p.program || p.department || 'N/A'
         };
         
         Object.keys(fields).forEach(id => {
@@ -433,22 +277,7 @@ const LecturerProfile = {
             if (el) el.textContent = settingsFields[id];
         });
         
-        // Update stats
         this.updateStats();
-        
-        // Show warning if department mismatch
-        if (this.staffRecord && this.consolidatedProfile) {
-            if (this.staffRecord.department !== this.consolidatedProfile.department) {
-                console.warn('⚠️ Department mismatch: staff_records=', this.staffRecord.department, 
-                            'consolidated=', this.consolidatedProfile.department);
-                // Show a subtle warning
-                const deptEl = document.getElementById('profileDept');
-                if (deptEl) {
-                    deptEl.style.color = '#f59e0b';
-                    deptEl.title = 'Department from staff_records: ' + this.staffRecord.department;
-                }
-            }
-        }
     },
     
     // ============================================
@@ -472,7 +301,8 @@ const LecturerProfile = {
     },
     
     // ============================================
-    // SAVE PROFILE - Updates ALL Tables
+    // SAVE PROFILE - SAFE UPDATES ONLY
+    // Does NOT modify auth user directly
     // ============================================
     async saveProfile() {
         const updates = {
@@ -517,7 +347,7 @@ const LecturerProfile = {
             if (!userId) throw new Error('User ID not found');
             
             // ============================================
-            // 1. UPDATE staff_records
+            // 1. UPDATE staff_records (SAFE)
             // ============================================
             if (this.staffRecord) {
                 const { error: staffError } = await supabase
@@ -537,7 +367,7 @@ const LecturerProfile = {
             }
             
             // ============================================
-            // 2. UPDATE consolidated_user_profiles_table
+            // 2. UPDATE consolidated_user_profiles_table (SAFE)
             // ============================================
             if (this.consolidatedProfile) {
                 const { error: consError } = await supabase
@@ -574,57 +404,9 @@ const LecturerProfile = {
             }
             
             // ============================================
-            // 3. UPDATE users table
+            // ⚠️ DO NOT UPDATE auth.users - This breaks login!
+            // Auth email should only be changed via password reset flow
             // ============================================
-            if (this.userRecord) {
-                const { error: userError } = await supabase
-                    .from('users')
-                    .update({
-                        full_name: updates.full_name,
-                        email: updates.email,
-                        phone: updates.phone,
-                        department: updates.department,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', userId);
-                
-                if (userError) throw userError;
-                console.log('✅ users table updated');
-            } else {
-                // Create if doesn't exist
-                await supabase
-                    .from('users')
-                    .insert({
-                        id: userId,
-                        full_name: updates.full_name,
-                        email: updates.email,
-                        phone: updates.phone,
-                        department: updates.department,
-                        program: this.profile?.program || 'CPOTT',
-                        role: 'lecturer',
-                        staff_id: this.staffRecord?.id || null,
-                        status: 'active',
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    });
-                console.log('✅ users table created');
-            }
-            
-            // ============================================
-            // 4. UPDATE auth.users (for email changes)
-            // ============================================
-            if (updates.email !== this.authUser?.email) {
-                const { error: authError } = await supabase.auth.updateUser({
-                    email: updates.email
-                });
-                
-                if (authError) {
-                    console.warn('Auth email update failed:', authError);
-                    // Don't throw - email update might need confirmation
-                } else {
-                    console.log('✅ Auth user email updated');
-                }
-            }
             
             // Update local profile
             this.profile = { ...this.profile, ...updates };
@@ -632,7 +414,7 @@ const LecturerProfile = {
             this.showReadOnly();
             
             window.hideLoading();
-            window.showNotification('✅ Profile updated successfully in all tables!', 'success');
+            window.showNotification('✅ Profile updated successfully!', 'success');
             
         } catch (error) {
             window.hideLoading();
@@ -642,7 +424,7 @@ const LecturerProfile = {
     },
     
     // ============================================
-    // CHANGE PASSWORD - Updates Auth AND staff_records
+    // CHANGE PASSWORD - Safe auth update
     // ============================================
     async changePassword() {
         const current = document.getElementById('currentPassword')?.value;
@@ -680,7 +462,7 @@ const LecturerProfile = {
             if (!supabase) throw new Error('Supabase client not available');
             
             // ============================================
-            // 1. UPDATE auth.users (Supabase Auth)
+            // 1. UPDATE auth.users (This is the ONLY place to update auth)
             // ============================================
             const { error: authError } = await supabase.auth.updateUser({
                 password: newPass
@@ -740,7 +522,7 @@ const LecturerProfile = {
     },
     
     // ============================================
-    // REFRESH PROFILE
+    // REFRESH
     // ============================================
     async refresh() {
         await this.loadProfile();
@@ -1011,7 +793,7 @@ const LecturerProfile = {
                     .from('avatars')
                     .getPublicUrl(filePath);
                 
-                // Update consolidated profile
+                // Update consolidated profile only
                 await supabase
                     .from('consolidated_user_profiles_table')
                     .update({ 
@@ -1107,4 +889,4 @@ window.saveSettings = () => LecturerProfile.saveSettings();
 window.saveAppearanceSettings = () => LecturerProfile.saveAppearanceSettings();
 window.loadAccountSettings = () => LecturerProfile.loadProfile();
 
-console.log('✅ LecturerProfile module loaded (UPDATED - syncs all tables)');
+console.log('✅ LecturerProfile module loaded (SAFE - does not break auth login)');
