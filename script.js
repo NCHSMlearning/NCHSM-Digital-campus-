@@ -18429,96 +18429,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
 console.log('✅ Grade functions registered globally');
 // =====================================================
-// STAFF MANAGEMENT - Full Module with Department Editing
-// FIXED: No duplicate creation, properly handles UPDATE vs INSERT
+// STAFF MANAGEMENT - Full Module with Document Upload
+// MATCHES REGISTRATION FLOW
 // =====================================================
 
 let staffRecords = [];
 const STAFF_DEPARTMENTS = [
-    'Nursing', 'Tutors', 'Front Desk', 'Administration', 
-    'Finance', 'ICT', 'Library', 'Clinical', 'TVET'
+    'Nursing', 'TVET', 'Community Health', 'Health Records', 
+    'ICT', 'Administration', 'Front Desk', 'Library', 'Clinical'
 ];
 
+// ============================================
+// STORED STAFF DOCUMENTS
+// ============================================
+const staffUploadedDocs = {
+    lecturer_id: null,
+    kra_pin: null,
+    university_cert: null,
+    cv: null
+};
+
+
 
 // ============================================
-// HELPER: Get Supabase client
+// HELPER: Get document label
 // ============================================
-function getSb() {
-    if (typeof sb !== 'undefined') return sb;
-    if (typeof window.supabase !== 'undefined') return window.supabase;
-    if (typeof supabase !== 'undefined') return supabase;
-    console.warn('⚠️ Supabase client not found');
-    return null;
-}
-
-// ============================================
-// HELPER: Create consolidated profile (only if not exists)
-// ============================================
-async function createConsolidatedProfile(staffData) {
-    try {
-        const sb = getSb();
-        if (!sb) return false;
-        
-        // Check if profile already exists
-        const { data: existing } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id')
-            .eq('email', staffData.email)
-            .maybeSingle();
-        
-        if (existing) {
-            console.log('✅ Consolidated profile already exists for:', staffData.email);
-            // Update it instead
-            await sb
-                .from('consolidated_user_profiles_table')
-                .update({
-                    full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
-                    department: staffData.department,
-                    program: staffData.program || 'KRCHN',
-                    phone: staffData.phone || '',
-                    gender: staffData.gender || '',
-                    updated_at: new Date().toISOString()
-                })
-                .eq('email', staffData.email);
-            return true;
-        }
-        
-        // Generate a UUID for the user
-        const userId = crypto.randomUUID ? crypto.randomUUID() : 
-                       'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                           const r = Math.random() * 16 | 0;
-                           const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                           return v.toString(16);
-                       });
-        
-        const profileData = {
-            user_id: userId,
-            email: staffData.email,
-            full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
-            role: staffData.designation === 'Lecturer' || staffData.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
-            department: staffData.department,
-            program: staffData.program || 'KRCHN',
-            status: staffData.status || 'active',
-            staff_id: staffData.id,
-            login_count: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            gender: staffData.gender || '',
-            phone: staffData.phone || ''
-        };
-        
-        const { error } = await sb
-            .from('consolidated_user_profiles_table')
-            .insert([profileData]);
-        
-        if (error) throw error;
-        console.log('✅ Consolidated profile created for:', staffData.email);
-        return true;
-        
-    } catch (error) {
-        console.warn('⚠️ Error with consolidated profile:', error.message);
-        return false;
-    }
+function getStaffDocLabel(docType) {
+    const labels = {
+        lecturer_id: 'National ID/Passport',
+        kra_pin: 'KRA PIN Certificate',
+        university_cert: 'University Certificate',
+        cv: 'CV/Resume'
+    };
+    return labels[docType] || docType;
 }
 
 // ============================================
@@ -18670,6 +18613,11 @@ function renderStaffTable() {
                     <button onclick="editStaff('${staff.id}')" class="btn-sm" style="background:#3b82f6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">
                         <i class="fas fa-edit"></i> Edit
                     </button>
+                    <button onclick="viewStaffDocuments('${staff.id}')" 
+                            style="background:#10b981;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;" 
+                            title="View documents">
+                        <i class="fas fa-file-alt"></i> Docs
+                    </button>
                     <button onclick="quickEditDepartment('${staff.id}')" 
                             style="background:#8b5cf6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;" 
                             title="Change department">
@@ -18703,6 +18651,7 @@ function openAddStaffModal() {
     // Reset form to add mode
     document.getElementById('modalTitle').textContent = 'Register Staff';
     document.getElementById('editStaffId').value = '';
+    document.getElementById('submitBtnText').textContent = 'Save Staff';
     
     // Reset form fields
     document.getElementById('staffTitle').value = 'Mr.';
@@ -18733,15 +18682,40 @@ function openAddStaffModal() {
     const passwordSection = document.getElementById('staffPasswordSection');
     if (passwordSection) passwordSection.style.display = 'block';
     
+    // Reset document uploads
+    resetStaffDocuments();
+    
     // Change submit button to save mode
     const submitBtn = document.querySelector('#staffForm button[type="submit"]');
     if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Staff';
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Save Staff</span>';
         submitBtn.onclick = saveStaff;
     }
     
     modal.style.display = 'flex';
     console.log('✅ Modal opened successfully');
+}
+
+// ============================================
+// RESET STAFF DOCUMENTS
+// ============================================
+function resetStaffDocuments() {
+    const docTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
+    docTypes.forEach(docType => {
+        staffUploadedDocs[docType] = null;
+        const card = document.getElementById(`doc_${docType}`);
+        const statusEl = document.getElementById(`doc_${docType}_status`);
+        const filenameEl = document.getElementById(`doc_${docType}_filename`);
+        const input = document.getElementById(`doc_${docType}_input`);
+        
+        if (card) card.classList.remove('uploaded');
+        if (statusEl) {
+            statusEl.textContent = 'Not uploaded';
+            statusEl.className = 'doc-status';
+        }
+        if (filenameEl) filenameEl.textContent = '';
+        if (input) input.value = '';
+    });
 }
 
 // ============================================
@@ -18765,7 +18739,172 @@ function toggleStaffPasswordField() {
 }
 
 // ============================================
-// SAVE STAFF - CREATE NEW (WITH DUPLICATE CHECK)
+// HANDLE STAFF DOCUMENT UPLOAD
+// ============================================
+function handleStaffDocumentUpload(event, docType) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+        alert(`❌ ${getStaffDocLabel(docType)} exceeds 5MB limit.`);
+        event.target.value = '';
+        return;
+    }
+    
+    staffUploadedDocs[docType] = file;
+    
+    const card = document.getElementById(`doc_${docType}`);
+    const statusEl = document.getElementById(`doc_${docType}_status`);
+    const filenameEl = document.getElementById(`doc_${docType}_filename`);
+    
+    if (card) card.classList.add('uploaded');
+    if (statusEl) {
+        statusEl.textContent = '✅ Uploaded';
+        statusEl.className = 'doc-status uploaded-text';
+    }
+    if (filenameEl) {
+        filenameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    }
+    
+    // Show progress
+    const progressEl = document.getElementById('staffDocUploadProgress');
+    const progressBar = document.getElementById('staffDocProgressBar');
+    if (progressEl) {
+        progressEl.classList.add('active');
+        if (progressBar) progressBar.style.width = '100%';
+    }
+    setTimeout(() => {
+        if (progressEl) {
+            progressEl.classList.remove('active');
+            if (progressBar) progressBar.style.width = '0%';
+        }
+    }, 800);
+    
+    console.log(`✅ ${getStaffDocLabel(docType)} uploaded:`, file.name);
+}
+
+// ============================================
+// REMOVE STAFF DOCUMENT
+// ============================================
+function removeStaffDocument(docType) {
+    if (!confirm(`Remove ${getStaffDocLabel(docType)}?`)) return;
+    
+    staffUploadedDocs[docType] = null;
+    const card = document.getElementById(`doc_${docType}`);
+    const statusEl = document.getElementById(`doc_${docType}_status`);
+    const filenameEl = document.getElementById(`doc_${docType}_filename`);
+    const input = document.getElementById(`doc_${docType}_input`);
+    
+    if (card) card.classList.remove('uploaded');
+    if (statusEl) {
+        statusEl.textContent = 'Not uploaded';
+        statusEl.className = 'doc-status';
+    }
+    if (filenameEl) filenameEl.textContent = '';
+    if (input) input.value = '';
+    
+    console.log(`🗑️ ${getStaffDocLabel(docType)} removed`);
+}
+
+// ============================================
+// VIEW STAFF DOCUMENTS
+// ============================================
+async function viewStaffDocuments(staffId) {
+    console.log('📄 Viewing documents for:', staffId);
+    
+    try {
+        const sb = getSb();
+        if (!sb) throw new Error('Supabase client not available');
+        
+        const modal = document.getElementById('viewDocsModal');
+        const content = document.getElementById('viewDocsContent');
+        const title = document.getElementById('viewDocsTitle');
+        
+        if (!modal || !content) return;
+        
+        const staff = staffRecords.find(s => s.id === staffId);
+        title.textContent = `📄 ${staff?.first_name || 'Staff'} Documents`;
+        
+        // Show loading
+        content.innerHTML = '<p style="color:#94a3b8; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading documents...</p>';
+        modal.style.display = 'flex';
+        
+        // Fetch documents from user_documents table
+        const { data, error } = await sb
+            .from('user_documents')
+            .select('*')
+            .eq('user_id', staffId);
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            content.innerHTML = `
+                <div style="text-align:center; padding:30px; color:#94a3b8;">
+                    <i class="fas fa-folder-open" style="font-size:40px; display:block; margin-bottom:12px;"></i>
+                    <p>No documents uploaded for this staff member.</p>
+                    <p style="font-size:0.8rem;">Documents can be uploaded when editing the staff profile.</p>
+                </div>
+            `;
+        } else {
+            const docIcons = {
+                'lecturer_id': '🪪',
+                'kra_pin': '📄',
+                'university_cert': '🎓',
+                'cv': '📝'
+            };
+            
+            const docLabels = {
+                'lecturer_id': 'National ID / Passport',
+                'kra_pin': 'KRA PIN Certificate',
+                'university_cert': 'University Certificate',
+                'cv': 'CV / Resume'
+            };
+            
+            content.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    ${data.map(doc => `
+                        <div style="display:flex; align-items:center; gap:14px; padding:12px 16px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;">
+                            <span style="font-size:24px;">${docIcons[doc.document_type] || '📄'}</span>
+                            <div style="flex:1;">
+                                <div style="font-weight:600; font-size:14px; color:#1e293b;">${docLabels[doc.document_type] || doc.document_type}</div>
+                                <div style="font-size:12px; color:#64748B;">${doc.file_name || 'Document'}</div>
+                                <div style="font-size:11px; color:#94a3b8;">Uploaded: ${new Date(doc.upload_date).toLocaleDateString()}</div>
+                            </div>
+                            <div>
+                                <a href="${doc.file_path}" target="_blank" style="background:#4C1D95; color:white; border:none; padding:6px 14px; border-radius:8px; cursor:pointer; text-decoration:none; font-size:12px;">
+                                    <i class="fas fa-download"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error viewing documents:', error);
+        const content = document.getElementById('viewDocsContent');
+        if (content) {
+            content.innerHTML = `
+                <div style="text-align:center; padding:30px; color:#dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size:40px; display:block; margin-bottom:12px;"></i>
+                    <p>Error loading documents: ${error.message}</p>
+                </div>
+            `;
+        }
+    }
+}
+
+// ============================================
+// CLOSE VIEW DOCS MODAL
+// ============================================
+function closeViewDocsModal() {
+    const modal = document.getElementById('viewDocsModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// ============================================
+// SAVE STAFF - CREATE NEW (Matches Registration Flow)
 // ============================================
 async function saveStaff() {
     console.log('🔧 Saving new staff...');
@@ -18796,7 +18935,7 @@ async function saveStaff() {
         other_names: document.getElementById('staffOtherNames').value.trim(),
         department: document.getElementById('staffDepartment').value,
         program: document.getElementById('staffProgram').value,
-        designation: document.getElementById('staffDesignation').value || 'Staff',
+        designation: document.getElementById('staffDesignation').value || 'lecturer',
         email: document.getElementById('staffEmail').value.trim(),
         phone: document.getElementById('staffPhone').value.trim(),
         national_id: document.getElementById('staffNationalId').value.trim(),
@@ -18836,9 +18975,12 @@ async function saveStaff() {
             throw checkError;
         }
         
+        let staffId;
+        
         // If email exists, UPDATE instead of INSERT
         if (existing) {
             console.log('⚠️ Staff with email already exists. Updating instead...');
+            staffId = existing.id;
             
             // Don't override password if not provided
             if (password) {
@@ -18854,17 +18996,46 @@ async function saveStaff() {
             
             if (updateError) throw updateError;
             
-            // Update consolidated profile
-            await createConsolidatedProfile(staffData);
-            
             alert(`✅ Staff ${staffData.first_name} updated successfully! (Email already existed)`);
             
         } else {
-            // INSERT new staff
-            const staffId = 'STAFF' + String(Date.now()).slice(-6);
+            // ✅ INSERT new staff - Auto-generate Staff ID like registration
+            const deptCodes = {
+                'Nursing': 'NUR',
+                'TVET': 'TVT',
+                'Community Health': 'COM',
+                'Health Records': 'HRT',
+                'ICT': 'ICT',
+                'Administration': 'ADM',
+                'Front Desk': 'FRT',
+                'Library': 'LIB',
+                'Clinical': 'CLN'
+            };
+            
+            const deptCode = deptCodes[staffData.department] || 'STA';
+            
+            // Get last staff ID for this department
+            const { data: deptStaff } = await sb
+                .from('staff_records')
+                .select('id')
+                .ilike('id', 'NCHSM' + deptCode + '-%')
+                .order('created_at', { ascending: false });
+            
+            let nextNumber = 1;
+            if (deptStaff && deptStaff.length > 0) {
+                const lastId = deptStaff[0].id;
+                const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
+                if (match) {
+                    nextNumber = parseInt(match[1]) + 1;
+                } else {
+                    nextNumber = deptStaff.length + 1;
+                }
+            }
+            
+            staffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
             staffData.id = staffId;
             
-            // Base64 encode password
+            // ✅ Base64 encode password (matches registration)
             if (password) {
                 staffData.password_hash = btoa(password);
             }
@@ -18878,20 +19049,53 @@ async function saveStaff() {
             
             if (insertError) throw insertError;
             
-            // Create consolidated profile
-            await createConsolidatedProfile(staffData);
-            
-            // Create auth user if login enabled
-            if (loginEnabled && password) {
-                const fullName = `${staffData.first_name} ${staffData.other_names || ''}`.trim();
-                await createAuthUser(staffData.email, password, fullName, 'staff', staffId);
-            }
-            
             alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`);
+        }
+        
+        // ============================================
+        // UPLOAD DOCUMENTS (if any)
+        // ============================================
+        const docTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
+        let docsUploaded = 0;
+        
+        for (const docType of docTypes) {
+            if (staffUploadedDocs[docType]) {
+                const file = staffUploadedDocs[docType];
+                const ext = file.name.split('.').pop();
+                const docPath = `documents/${staffId}/${docType}.${ext}`;
+                
+                try {
+                    const { error: uploadError } = await sb.storage
+                        .from('user-documents')
+                        .upload(docPath, file, { upsert: true });
+                    
+                    if (!uploadError) {
+                        // Insert document record
+                        await sb.from('user_documents').insert({
+                            user_id: staffId,
+                            document_type: docType,
+                            file_path: docPath,
+                            file_name: file.name,
+                            upload_date: new Date().toISOString()
+                        });
+                        docsUploaded++;
+                        console.log(`✅ ${docType} document uploaded`);
+                    } else {
+                        console.warn(`⚠️ Could not upload ${docType}:`, uploadError);
+                    }
+                } catch (err) {
+                    console.warn(`⚠️ Error uploading ${docType}:`, err);
+                }
+            }
+        }
+        
+        if (docsUploaded > 0) {
+            console.log(`📁 ${docsUploaded} documents uploaded`);
         }
         
         closeAddStaffModal();
         loadAllStaff();
+        resetStaffDocuments();
         
     } catch (error) {
         console.error('❌ Save error:', error);
@@ -18899,7 +19103,7 @@ async function saveStaff() {
     } finally {
         const submitBtn = document.querySelector('#staffForm button[type="submit"]');
         if (submitBtn) {
-            submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Staff';
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Save Staff</span>';
             submitBtn.disabled = false;
         }
     }
@@ -18925,6 +19129,7 @@ async function editStaff(staffId) {
     
     // Update modal title
     document.getElementById('modalTitle').textContent = `✏️ Edit Staff: ${staff.first_name}`;
+    document.getElementById('submitBtnText').textContent = 'Update Staff';
     
     // Store staff ID for update
     document.getElementById('editStaffId').value = staff.id;
@@ -18949,6 +19154,14 @@ async function editStaff(staffId) {
     document.getElementById('staffStatus').value = staff.status || 'active';
     document.getElementById('staffEnableLogin').checked = staff.login_enabled || false;
     
+    // Show staff ID
+    const staffIdDisplay = document.getElementById('staffIdDisplay');
+    if (staffIdDisplay) {
+        staffIdDisplay.value = staff.id;
+        staffIdDisplay.style.color = '#0b1120';
+        staffIdDisplay.style.fontWeight = '600';
+    }
+    
     // HIDE password section - we don't change password during edit
     const passwordSection = document.getElementById('staffPasswordSection');
     if (passwordSection) {
@@ -18961,10 +19174,44 @@ async function editStaff(staffId) {
         loginCheckbox.disabled = true;
     }
     
+    // Reset document uploads for new uploads
+    resetStaffDocuments();
+    
+    // Check for existing documents
+    try {
+        const sb = getSb();
+        if (sb) {
+            const { data: docs } = await sb
+                .from('user_documents')
+                .select('document_type, file_name')
+                .eq('user_id', staffId);
+            
+            if (docs && docs.length > 0) {
+                docs.forEach(doc => {
+                    const docType = doc.document_type;
+                    const card = document.getElementById(`doc_${docType}`);
+                    const statusEl = document.getElementById(`doc_${docType}_status`);
+                    const filenameEl = document.getElementById(`doc_${docType}_filename`);
+                    
+                    if (card) card.classList.add('uploaded');
+                    if (statusEl) {
+                        statusEl.textContent = '✅ Existing';
+                        statusEl.className = 'doc-status uploaded-text';
+                    }
+                    if (filenameEl) {
+                        filenameEl.textContent = doc.file_name || 'Previously uploaded';
+                    }
+                });
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load existing documents:', e);
+    }
+    
     // Change submit button to update mode
     const submitBtn = document.querySelector('#staffForm button[type="submit"]');
     if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Staff';
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Update Staff</span>';
         submitBtn.onclick = updateStaff;
     }
     
@@ -18991,7 +19238,7 @@ async function updateStaff() {
         other_names: document.getElementById('staffOtherNames').value.trim(),
         department: document.getElementById('staffDepartment').value,
         program: document.getElementById('staffProgram').value,
-        designation: document.getElementById('staffDesignation').value.trim() || 'Staff',
+        designation: document.getElementById('staffDesignation').value.trim() || 'lecturer',
         email: document.getElementById('staffEmail').value.trim(),
         phone: document.getElementById('staffPhone').value.trim(),
         national_id: document.getElementById('staffNationalId').value.trim(),
@@ -19041,24 +19288,65 @@ async function updateStaff() {
         
         if (staffError) throw staffError;
         
-        // Also update consolidated profile if exists
-        try {
-            const fullName = `${staffData.first_name} ${staffData.other_names || ''}`.trim();
-            await sb
-                .from('consolidated_user_profiles_table')
-                .update({
-                    full_name: fullName,
-                    email: staffData.email,
-                    department: staffData.department,
-                    program: staffData.program,
-                    phone: staffData.phone,
-                    gender: staffData.gender,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('staff_id', staffId);
-            console.log('✅ Consolidated profile updated');
-        } catch (profileError) {
-            console.warn('⚠️ Could not update consolidated profile:', profileError);
+        // ============================================
+        // UPLOAD NEW DOCUMENTS (if any)
+        // ============================================
+        const docTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
+        let docsUploaded = 0;
+        
+        for (const docType of docTypes) {
+            if (staffUploadedDocs[docType]) {
+                const file = staffUploadedDocs[docType];
+                const ext = file.name.split('.').pop();
+                const docPath = `documents/${staffId}/${docType}.${ext}`;
+                
+                try {
+                    // Check if document already exists
+                    const { data: existingDoc } = await sb
+                        .from('user_documents')
+                        .select('id')
+                        .eq('user_id', staffId)
+                        .eq('document_type', docType)
+                        .maybeSingle();
+                    
+                    if (existingDoc) {
+                        // Update existing document
+                        await sb
+                            .from('user_documents')
+                            .update({
+                                file_path: docPath,
+                                file_name: file.name,
+                                upload_date: new Date().toISOString()
+                            })
+                            .eq('id', existingDoc.id);
+                    } else {
+                        // Insert new document
+                        await sb.from('user_documents').insert({
+                            user_id: staffId,
+                            document_type: docType,
+                            file_path: docPath,
+                            file_name: file.name,
+                            upload_date: new Date().toISOString()
+                        });
+                    }
+                    
+                    // Upload file to storage
+                    const { error: uploadError } = await sb.storage
+                        .from('user-documents')
+                        .upload(docPath, file, { upsert: true });
+                    
+                    if (!uploadError) {
+                        docsUploaded++;
+                        console.log(`✅ ${docType} document uploaded/updated`);
+                    }
+                } catch (err) {
+                    console.warn(`⚠️ Error uploading ${docType}:`, err);
+                }
+            }
+        }
+        
+        if (docsUploaded > 0) {
+            console.log(`📁 ${docsUploaded} documents uploaded/updated`);
         }
         
         console.log('✅ Staff updated successfully');
@@ -19067,17 +19355,26 @@ async function updateStaff() {
         // Close modal and refresh
         closeAddStaffModal();
         loadAllStaff();
+        resetStaffDocuments();
         
         // Reset form to add mode
         document.getElementById('modalTitle').textContent = 'Register Staff';
+        document.getElementById('submitBtnText').textContent = 'Save Staff';
         const resetBtn = document.querySelector('#staffForm button[type="submit"]');
         if (resetBtn) {
-            resetBtn.innerHTML = '<i class="fas fa-save"></i> Save Staff';
+            resetBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Save Staff</span>';
             resetBtn.onclick = saveStaff;
         }
         document.getElementById('editStaffId').value = '';
         const loginCheckbox = document.getElementById('staffEnableLogin');
         if (loginCheckbox) loginCheckbox.disabled = false;
+        
+        const staffIdDisplay = document.getElementById('staffIdDisplay');
+        if (staffIdDisplay) {
+            staffIdDisplay.value = 'Auto-generated on save';
+            staffIdDisplay.style.color = '#6b7280';
+            staffIdDisplay.style.fontWeight = 'normal';
+        }
         
     } catch (error) {
         console.error('❌ Update error:', error);
@@ -19086,7 +19383,7 @@ async function updateStaff() {
         // Reset button
         const submitBtn = document.querySelector('#staffForm button[type="submit"]');
         if (submitBtn) {
-            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Staff';
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Update Staff</span>';
             submitBtn.disabled = false;
         }
     }
@@ -19148,17 +19445,6 @@ async function quickEditDepartment(staffId) {
         
         if (error) throw error;
         
-        // Update consolidated profile
-        try {
-            await sb
-                .from('consolidated_user_profiles_table')
-                .update({
-                    department: newDept,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('staff_id', staffId);
-        } catch (e) {}
-        
         alert(`✅ Department updated to: ${newDept}`);
         loadAllStaff();
         
@@ -19169,7 +19455,7 @@ async function quickEditDepartment(staffId) {
 }
 
 // ============================================
-// RESET STAFF PASSWORD
+// RESET STAFF PASSWORD (Matches Registration encoding)
 // ============================================
 async function resetStaffPassword(staffId, staffName) {
     const newPassword = prompt(`Reset password for ${staffName}\n\nEnter new password (min 6 chars):`);
@@ -19188,6 +19474,7 @@ async function resetStaffPassword(staffId, staffName) {
         const sb = getSb();
         if (!sb) throw new Error('Supabase client not available');
         
+        // ✅ Base64 encode password (matches registration)
         const { error } = await sb
             .from('staff_records')
             .update({ 
@@ -19223,14 +19510,6 @@ async function deleteStaff(staffId, staffName) {
             .eq('id', staffId);
         
         if (error) throw error;
-        
-        // Try to delete from consolidated profile
-        try {
-            await sb
-                .from('consolidated_user_profiles_table')
-                .delete()
-                .eq('staff_id', staffId);
-        } catch (e) {}
         
         alert(`✅ Staff ${staffName} deleted!`);
         loadAllStaff();
@@ -19360,17 +19639,43 @@ function importStaffFromCSV() {
                             if (error) throw error;
                             updated++;
                         } else {
-                            // INSERT new
-                            const staffId = 'STAFF' + String(Date.now()).slice(-6) + String(i).padStart(3, '0');
-                            staffData.id = staffId;
+                            // Generate staff ID
+                            const deptCodes = {
+                                'Nursing': 'NUR',
+                                'TVET': 'TVT',
+                                'Community Health': 'COM',
+                                'Health Records': 'HRT',
+                                'ICT': 'ICT',
+                                'Administration': 'ADM',
+                                'Front Desk': 'FRT',
+                                'Library': 'LIB',
+                                'Clinical': 'CLN'
+                            };
+                            const deptCode = deptCodes[staffData.department] || 'STA';
+                            
+                            const { data: deptStaff } = await sb
+                                .from('staff_records')
+                                .select('id')
+                                .ilike('id', 'NCHSM' + deptCode + '-%')
+                                .order('created_at', { ascending: false });
+                            
+                            let nextNumber = 1;
+                            if (deptStaff && deptStaff.length > 0) {
+                                const lastId = deptStaff[0].id;
+                                const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
+                                if (match) {
+                                    nextNumber = parseInt(match[1]) + 1;
+                                } else {
+                                    nextNumber = deptStaff.length + 1;
+                                }
+                            }
+                            
+                            staffData.id = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
                             staffData.created_at = new Date().toISOString();
                             
                             const { error } = await sb.from('staff_records').insert([staffData]);
                             if (error) throw error;
                             imported++;
-                            
-                            // Create consolidated profile
-                            await createConsolidatedProfile(staffData);
                         }
                     } catch (err) {
                         errors.push(`${staffData.first_name}: ${err.message}`);
@@ -19404,7 +19709,7 @@ function importStaffFromCSV() {
 }
 
 // ============================================
-// STAFF LOGIN FUNCTION
+// STAFF LOGIN FUNCTION (Matches Registration)
 // ============================================
 async function staffLogin(emailOrId, password) {
     try {
@@ -19423,7 +19728,7 @@ async function staffLogin(emailOrId, password) {
             return { success: false, message: 'Invalid credentials' };
         }
         
-        // Check password (stored as base64)
+        // ✅ Check password (stored as base64 - matches registration)
         if (data.password_hash) {
             const storedPassword = atob(data.password_hash);
             if (storedPassword !== password) {
@@ -19476,6 +19781,21 @@ function initStaffManagement() {
     const loginCheckbox = document.getElementById('staffEnableLogin');
     if (loginCheckbox) loginCheckbox.addEventListener('change', toggleStaffPasswordField);
     
+    // Close modals on outside click
+    const addModal = document.getElementById('addStaffModal');
+    if (addModal) {
+        addModal.addEventListener('click', function(e) {
+            if (e.target === this) closeAddStaffModal();
+        });
+    }
+    
+    const viewModal = document.getElementById('viewDocsModal');
+    if (viewModal) {
+        viewModal.addEventListener('click', function(e) {
+            if (e.target === this) closeViewDocsModal();
+        });
+    }
+    
     console.log('✅ Staff Management initialized');
 }
 
@@ -19497,8 +19817,12 @@ window.initStaffManagement = initStaffManagement;
 window.toggleStaffPasswordField = toggleStaffPasswordField;
 window.staffLogin = staffLogin;
 window.quickEditDepartment = quickEditDepartment;
+window.handleStaffDocumentUpload = handleStaffDocumentUpload;
+window.removeStaffDocument = removeStaffDocument;
+window.viewStaffDocuments = viewStaffDocuments;
+window.closeViewDocsModal = closeViewDocsModal;
 
-console.log('✅ Staff Management module ready (full version with department editing)');
+console.log('✅ Staff Management module ready (with document upload support)');
 /*******************************************************
  * SUPER ADMIN APPROVAL SYSTEM
  * All admin actions require Super Admin approval
