@@ -19053,6 +19053,69 @@ async function saveStaff() {
         }
         
         // ============================================
+        // ✅ CREATE/UPDATE CONSOLIDATED PROFILE
+        // ============================================
+        try {
+            const fullName = `${staffData.title || ''} ${staffData.first_name} ${staffData.other_names || ''}`.trim();
+            
+            // Check if consolidated profile exists
+            const { data: existingCons } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id')
+                .eq('email', staffData.email)
+                .maybeSingle();
+            
+            if (existingCons) {
+                // UPDATE existing consolidated profile
+                const { error: consUpdateError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .update({
+                        full_name: fullName,
+                        phone: staffData.phone,
+                        department: staffData.department,
+                        program: staffData.program,
+                        role: 'lecturer',
+                        staff_id: staffId,
+                        status: staffData.status || 'active',
+                        gender: staffData.gender || '',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('email', staffData.email);
+                
+                if (consUpdateError) {
+                    console.warn('⚠️ Could not update consolidated profile:', consUpdateError);
+                } else {
+                    console.log('✅ Consolidated profile updated');
+                }
+            } else {
+                // CREATE new consolidated profile
+                const { error: consInsertError } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .insert({
+                        email: staffData.email,
+                        full_name: fullName,
+                        phone: staffData.phone,
+                        department: staffData.department,
+                        program: staffData.program,
+                        role: 'lecturer',
+                        staff_id: staffId,
+                        status: staffData.status || 'active',
+                        gender: staffData.gender || '',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    });
+                
+                if (consInsertError) {
+                    console.warn('⚠️ Could not create consolidated profile:', consInsertError);
+                } else {
+                    console.log('✅ Consolidated profile created');
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ Error with consolidated profile:', e);
+        }
+        
+        // ============================================
         // UPLOAD DOCUMENTS (if any)
         // ============================================
         const docTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
@@ -19108,7 +19171,6 @@ async function saveStaff() {
         }
     }
 }
-
 // ============================================
 // EDIT STAFF - LOAD DATA FOR EDITING
 // ============================================
@@ -19221,6 +19283,7 @@ async function editStaff(staffId) {
 
 // ============================================
 // UPDATE STAFF - DETAILS ONLY (NO PASSWORD)
+// ALSO UPDATES consolidated_user_profiles_table AND auth
 // ============================================
 async function updateStaff() {
     console.log('🔄 Updating staff...');
@@ -19280,16 +19343,130 @@ async function updateStaff() {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
         submitBtn.disabled = true;
         
-        // UPDATE staff_records
+        // ============================================
+        // 1. UPDATE staff_records
+        // ============================================
         const { error: staffError } = await sb
             .from('staff_records')
             .update(staffData)
             .eq('id', staffId);
         
         if (staffError) throw staffError;
+        console.log('✅ staff_records updated');
         
         // ============================================
-        // UPLOAD NEW DOCUMENTS (if any)
+        // 2. UPDATE consolidated_user_profiles_table
+        // ============================================
+        try {
+            const fullName = `${staffData.title || ''} ${staffData.first_name} ${staffData.other_names || ''}`.trim();
+            
+            const { error: consError } = await sb
+                .from('consolidated_user_profiles_table')
+                .update({
+                    full_name: fullName,
+                    email: staffData.email,
+                    phone: staffData.phone,
+                    department: staffData.department,
+                    program: staffData.program,
+                    gender: staffData.gender,
+                    status: staffData.status,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('staff_id', staffId);
+            
+            if (consError) {
+                console.warn('⚠️ Could not update consolidated profile:', consError);
+                
+                // Try updating by email instead
+                const { error: consError2 } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .update({
+                        full_name: fullName,
+                        phone: staffData.phone,
+                        department: staffData.department,
+                        program: staffData.program,
+                        gender: staffData.gender,
+                        status: staffData.status,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('email', staffData.email);
+                
+                if (consError2) {
+                    console.warn('⚠️ Could not update consolidated profile by email:', consError2);
+                } else {
+                    console.log('✅ consolidated_user_profiles_table updated (by email)');
+                }
+            } else {
+                console.log('✅ consolidated_user_profiles_table updated');
+            }
+        } catch (e) {
+            console.warn('⚠️ Error updating consolidated profile:', e);
+        }
+        
+        // ============================================
+        // 3. UPDATE auth.users (for email changes)
+        // ============================================
+        try {
+            // Get current staff record to check if email changed
+            const { data: currentStaff } = await sb
+                .from('staff_records')
+                .select('email')
+                .eq('id', staffId)
+                .single();
+            
+            if (currentStaff && currentStaff.email !== staffData.email) {
+                // Email changed - need to update auth
+                // Get the auth user by email
+                const { data: authUsers } = await sb.auth.admin.listUsers({
+                    filters: { email: currentStaff.email }
+                });
+                
+                const authUser = authUsers?.users?.[0];
+                if (authUser) {
+                    const { error: authError } = await sb.auth.admin.updateUserById(
+                        authUser.id,
+                        { email: staffData.email }
+                    );
+                    
+                    if (authError) {
+                        console.warn('⚠️ Could not update auth email:', authError);
+                    } else {
+                        console.log('✅ Auth user email updated');
+                    }
+                }
+            }
+            
+            // Also update user metadata in auth
+            const { data: authUsers } = await sb.auth.admin.listUsers({
+                filters: { email: staffData.email }
+            });
+            
+            const authUser = authUsers?.users?.[0];
+            if (authUser) {
+                const { error: metaError } = await sb.auth.admin.updateUserById(
+                    authUser.id,
+                    {
+                        user_metadata: {
+                            full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
+                            department: staffData.department,
+                            program: staffData.program,
+                            role: 'lecturer'
+                        }
+                    }
+                );
+                
+                if (metaError) {
+                    console.warn('⚠️ Could not update auth metadata:', metaError);
+                } else {
+                    console.log('✅ Auth user metadata updated');
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ Error updating auth:', e);
+        }
+        
+        // ============================================
+        // 4. UPLOAD NEW DOCUMENTS (if any)
         // ============================================
         const docTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
         let docsUploaded = 0;
@@ -19388,7 +19565,6 @@ async function updateStaff() {
         }
     }
 }
-
 // ============================================
 // QUICK DEPARTMENT EDIT (INLINE)
 // ============================================
