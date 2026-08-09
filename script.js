@@ -18429,17 +18429,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
 console.log('✅ Grade functions registered globally');
 // =====================================================
-// STAFF MANAGEMENT - Connected to Supabase
-// Uses ONLY staff_records table
+// STAFF MANAGEMENT - Full Module with Department Editing
+// FIXED: No duplicate creation, properly handles UPDATE vs INSERT
 // =====================================================
 
 let staffRecords = [];
+const STAFF_DEPARTMENTS = [
+    'Nursing', 'Tutors', 'Front Desk', 'Administration', 
+    'Finance', 'ICT', 'Library', 'Clinical', 'TVET'
+];
+
 
 // ============================================
-// HELPER: Create consolidated profile
+// HELPER: Get Supabase client
+// ============================================
+function getSb() {
+    if (typeof sb !== 'undefined') return sb;
+    if (typeof window.supabase !== 'undefined') return window.supabase;
+    if (typeof supabase !== 'undefined') return supabase;
+    console.warn('⚠️ Supabase client not found');
+    return null;
+}
+
+// ============================================
+// HELPER: Create consolidated profile (only if not exists)
 // ============================================
 async function createConsolidatedProfile(staffData) {
     try {
+        const sb = getSb();
+        if (!sb) return false;
+        
         // Check if profile already exists
         const { data: existing } = await sb
             .from('consolidated_user_profiles_table')
@@ -18449,6 +18468,18 @@ async function createConsolidatedProfile(staffData) {
         
         if (existing) {
             console.log('✅ Consolidated profile already exists for:', staffData.email);
+            // Update it instead
+            await sb
+                .from('consolidated_user_profiles_table')
+                .update({
+                    full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
+                    department: staffData.department,
+                    program: staffData.program || 'KRCHN',
+                    phone: staffData.phone || '',
+                    gender: staffData.gender || '',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('email', staffData.email);
             return true;
         }
         
@@ -18478,55 +18509,21 @@ async function createConsolidatedProfile(staffData) {
         
         const { error } = await sb
             .from('consolidated_user_profiles_table')
-            .upsert([profileData], { onConflict: 'email' });
+            .insert([profileData]);
         
         if (error) throw error;
         console.log('✅ Consolidated profile created for:', staffData.email);
         return true;
         
     } catch (error) {
-        console.warn('⚠️ Error creating consolidated profile:', error.message);
+        console.warn('⚠️ Error with consolidated profile:', error.message);
         return false;
     }
 }
 
 // ============================================
-// HELPER: Create auth user (optional, skip if fails)
+// LOAD ALL STAFF
 // ============================================
-async function createAuthUser(email, password, fullName, role, staffId) {
-    try {
-        // Try to sign up
-        const { data, error } = await sb.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-                data: {
-                    full_name: fullName,
-                    role: role,
-                    staff_id: staffId
-                }
-            }
-        });
-        
-        if (error) {
-            console.warn('⚠️ Auth signup skipped:', error.message);
-            return null;
-        }
-        
-        if (data?.user) {
-            console.log('✅ Auth user created:', data.user.id);
-            return data.user.id;
-        }
-        
-        return null;
-        
-    } catch (error) {
-        console.warn('⚠️ Auth creation skipped:', error.message);
-        return null;
-    }
-}
-
-// Load staff from database
 async function loadAllStaff() {
     console.log('👥 Loading staff records...');
     
@@ -18536,6 +18533,9 @@ async function loadAllStaff() {
     }
     
     try {
+        const sb = getSb();
+        if (!sb) throw new Error('Supabase client not available');
+        
         const { data, error } = await sb
             .from('staff_records')
             .select('*')
@@ -18551,6 +18551,7 @@ async function loadAllStaff() {
         staffRecords = data || [];
         updateStaffStats();
         renderStaffTable();
+        console.log('✅ Loaded', staffRecords.length, 'staff records');
         
     } catch (error) {
         console.error('Error loading staff:', error);
@@ -18563,7 +18564,9 @@ async function loadAllStaff() {
     }
 }
 
-// Update stats cards
+// ============================================
+// UPDATE STATS
+// ============================================
 function updateStaffStats() {
     const total = staffRecords.length;
     const active = staffRecords.filter(s => s.status === 'active').length;
@@ -18581,7 +18584,9 @@ function updateStaffStats() {
     if (femaleEl) femaleEl.textContent = female;
 }
 
-// Render staff table
+// ============================================
+// RENDER STAFF TABLE
+// ============================================
 function renderStaffTable() {
     const tbody = document.getElementById('staffTableBody');
     if (!tbody) return;
@@ -18633,12 +18638,24 @@ function renderStaffTable() {
         const genderDisplay = staff.gender === 'M' || staff.gender === 'Male' ? 'Male' : 
                              staff.gender === 'F' || staff.gender === 'Female' ? 'Female' : '-';
         
+        // Department with quick edit button
+        const deptDisplay = `
+            <span style="display:flex; align-items:center; gap:6px;">
+                ${escapeHtml(staff.department || 'N/A')}
+                <button onclick="quickEditDepartment('${staff.id}')" 
+                        style="background:transparent; border:none; color:#4C1D95; cursor:pointer; font-size:12px; padding:2px 6px;" 
+                        title="Quick edit department">
+                    <i class="fas fa-pen"></i>
+                </button>
+            </span>
+        `;
+        
         tbody.innerHTML += `
             <tr style="border-bottom: 1px solid #e5e7eb;">
                 <td style="padding: 12px;">${escapeHtml(staff.title || '')}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.first_name)}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.other_names || '')}</td>
-                <td style="padding: 12px;">${escapeHtml(staff.department)}</td>
+                <td style="padding: 12px;">${deptDisplay}</td>
                 <td style="padding: 12px;">${programBadge}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.email)}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.phone)}</td>
@@ -18650,16 +18667,29 @@ function renderStaffTable() {
                 <td style="padding: 12px;">${escapeHtml(staff.nsrf_number || '-')}</td>
                 <td style="padding: 12px;">${loginStatus}</td>
                 <td style="padding: 12px;">
-                    <button onclick="editStaff('${staff.id}')" class="btn-sm" style="background:#3b82f6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">Edit</button>
-                    <button onclick="resetStaffPassword('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#f59e0b;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">Reset Pwd</button>
-                    <button onclick="deleteStaff('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#ef4444;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">Delete</button>
+                    <button onclick="editStaff('${staff.id}')" class="btn-sm" style="background:#3b82f6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button onclick="quickEditDepartment('${staff.id}')" 
+                            style="background:#8b5cf6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;" 
+                            title="Change department">
+                        <i class="fas fa-building"></i> Dept
+                    </button>
+                    <button onclick="resetStaffPassword('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#f59e0b;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">
+                        <i class="fas fa-key"></i>
+                    </button>
+                    <button onclick="deleteStaff('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#ef4444;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             </tr>
         `;
     });
 }
 
-// Open Add Staff Modal
+// ============================================
+// OPEN ADD STAFF MODAL
+// ============================================
 function openAddStaffModal() {
     console.log('🔧 Opening Add Staff Modal...');
     
@@ -18670,7 +18700,11 @@ function openAddStaffModal() {
         return;
     }
     
-    // Reset form
+    // Reset form to add mode
+    document.getElementById('modalTitle').textContent = 'Register Staff';
+    document.getElementById('editStaffId').value = '';
+    
+    // Reset form fields
     document.getElementById('staffTitle').value = 'Mr.';
     document.getElementById('staffFirstName').value = '';
     document.getElementById('staffOtherNames').value = '';
@@ -18689,22 +18723,38 @@ function openAddStaffModal() {
     document.getElementById('staffGuardianPhone').value = '';
     document.getElementById('staffStatus').value = 'active';
     document.getElementById('staffEnableLogin').checked = true;
+    document.getElementById('staffEnableLogin').disabled = false;
+    
+    // Reset password fields
+    document.getElementById('staffPassword').value = '';
+    document.getElementById('staffConfirmPassword').value = '';
     
     // Show password section
     const passwordSection = document.getElementById('staffPasswordSection');
     if (passwordSection) passwordSection.style.display = 'block';
     
+    // Change submit button to save mode
+    const submitBtn = document.querySelector('#staffForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Staff';
+        submitBtn.onclick = saveStaff;
+    }
+    
     modal.style.display = 'flex';
     console.log('✅ Modal opened successfully');
 }
 
-// Close modal
+// ============================================
+// CLOSE MODAL
+// ============================================
 function closeAddStaffModal() {
     const modal = document.getElementById('addStaffModal');
     if (modal) modal.style.display = 'none';
 }
 
-// Toggle password field
+// ============================================
+// TOGGLE PASSWORD FIELD
+// ============================================
 function toggleStaffPasswordField() {
     const loginCheckbox = document.getElementById('staffEnableLogin');
     const passwordSection = document.getElementById('staffPasswordSection');
@@ -18715,10 +18765,10 @@ function toggleStaffPasswordField() {
 }
 
 // ============================================
-// SAVE STAFF - WITH SUPABASE AUTH (Path A)
+// SAVE STAFF - CREATE NEW (WITH DUPLICATE CHECK)
 // ============================================
 async function saveStaff() {
-    console.log('🔧 Saving staff with Supabase Auth...');
+    console.log('🔧 Saving new staff...');
     
     const loginEnabled = document.getElementById('staffEnableLogin').checked;
     const password = document.getElementById('staffPassword')?.value;
@@ -18767,107 +18817,78 @@ async function saveStaff() {
     }
     
     try {
-        // Generate staff ID
-        const staffId = 'STAFF' + String(Date.now()).slice(-6);
-        staffData.id = staffId;
+        const sb = getSb();
+        if (!sb) throw new Error('Supabase client not available');
         
-        // Base64 encode password for staff_records
-        const passwordHash = loginEnabled && password ? btoa(password) : '';
-        staffData.password_hash = passwordHash;
-        staffData.created_at = new Date().toISOString();
-        staffData.updated_at = new Date().toISOString();
+        const submitBtn = document.querySelector('#staffForm button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        submitBtn.disabled = true;
         
-        // ============================================
-        // STEP 1: CREATE AUTH USER FIRST (SUPABASE)
-        // ============================================
-        let authUserId = null;
-        const authPassword = password || 'Temp@' + Date.now() + '!';
-        
-        console.log('🔐 Creating Supabase Auth user for:', staffData.email);
-        
-        // Check if user already exists in auth
-        try {
-            const { data: existing } = await sb.auth.signInWithPassword({
-                email: staffData.email,
-                password: authPassword
-            });
-            if (existing?.user) {
-                authUserId = existing.user.id;
-                console.log('✅ Auth user already exists:', authUserId);
-            }
-        } catch (e) {
-            // User doesn't exist, create them
-            const { data: signUpData, error: signUpError } = await sb.auth.signUp({
-                email: staffData.email,
-                password: authPassword,
-                options: {
-                    data: {
-                        full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
-                        role: 'staff',
-                        staff_id: staffId
-                    }
-                }
-            });
-            
-            if (signUpError) {
-                console.error('❌ Auth signup error:', signUpError);
-                // If email already exists, try to sign in
-                const { data: signInData } = await sb.auth.signInWithPassword({
-                    email: staffData.email,
-                    password: authPassword
-                });
-                if (signInData?.user) {
-                    authUserId = signInData.user.id;
-                }
-            } else if (signUpData?.user) {
-                authUserId = signUpData.user.id;
-                console.log('✅ Auth user created:', authUserId);
-            }
-        }
-        
-        // ============================================
-        // STEP 2: INSERT INTO staff_records
-        // ============================================
-        const { error: staffError, data: staffResult } = await sb
+        // ✅ CHECK IF EMAIL ALREADY EXISTS
+        const { data: existing, error: checkError } = await sb
             .from('staff_records')
-            .insert([staffData])
-            .select();
+            .select('id, email')
+            .eq('email', staffData.email)
+            .maybeSingle();
         
-        if (staffError) throw staffError;
-        console.log('✅ Staff saved to staff_records:', staffResult);
-        
-        // ============================================
-        // STEP 3: CREATE CONSOLIDATED PROFILE
-        // ============================================
-        if (authUserId) {
-            const profileData = {
-                user_id: authUserId,
-                email: staffData.email,
-                full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
-                role: staffData.designation === 'Lecturer' || staffData.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
-                department: staffData.department,
-                program: staffData.program || 'KRCHN',
-                status: 'active',
-                staff_id: staffId,
-                login_count: 0,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                gender: staffData.gender || '',
-                phone: staffData.phone || ''
-            };
-            
-            const { error: profileError } = await sb
-                .from('consolidated_user_profiles_table')
-                .upsert([profileData], { onConflict: 'email' });
-            
-            if (profileError) {
-                console.warn('⚠️ Profile error:', profileError);
-            } else {
-                console.log('✅ Consolidated profile created');
-            }
+        if (checkError && checkError.code !== 'PGRST116') {
+            throw checkError;
         }
         
-        alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}\n✅ Auth user created for login`);
+        // If email exists, UPDATE instead of INSERT
+        if (existing) {
+            console.log('⚠️ Staff with email already exists. Updating instead...');
+            
+            // Don't override password if not provided
+            if (password) {
+                staffData.password_hash = btoa(password);
+            }
+            staffData.updated_at = new Date().toISOString();
+            
+            // UPDATE existing record
+            const { error: updateError } = await sb
+                .from('staff_records')
+                .update(staffData)
+                .eq('id', existing.id);
+            
+            if (updateError) throw updateError;
+            
+            // Update consolidated profile
+            await createConsolidatedProfile(staffData);
+            
+            alert(`✅ Staff ${staffData.first_name} updated successfully! (Email already existed)`);
+            
+        } else {
+            // INSERT new staff
+            const staffId = 'STAFF' + String(Date.now()).slice(-6);
+            staffData.id = staffId;
+            
+            // Base64 encode password
+            if (password) {
+                staffData.password_hash = btoa(password);
+            }
+            staffData.created_at = new Date().toISOString();
+            staffData.updated_at = new Date().toISOString();
+            
+            // INSERT new record
+            const { error: insertError } = await sb
+                .from('staff_records')
+                .insert([staffData]);
+            
+            if (insertError) throw insertError;
+            
+            // Create consolidated profile
+            await createConsolidatedProfile(staffData);
+            
+            // Create auth user if login enabled
+            if (loginEnabled && password) {
+                const fullName = `${staffData.first_name} ${staffData.other_names || ''}`.trim();
+                await createAuthUser(staffData.email, password, fullName, 'staff', staffId);
+            }
+            
+            alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`);
+        }
         
         closeAddStaffModal();
         loadAllStaff();
@@ -18875,10 +18896,21 @@ async function saveStaff() {
     } catch (error) {
         console.error('❌ Save error:', error);
         alert(`❌ Error: ${error.message}`);
+    } finally {
+        const submitBtn = document.querySelector('#staffForm button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Staff';
+            submitBtn.disabled = false;
+        }
     }
 }
-// Edit staff
+
+// ============================================
+// EDIT STAFF - LOAD DATA FOR EDITING
+// ============================================
 async function editStaff(staffId) {
+    console.log('✏️ Editing staff:', staffId);
+    
     const staff = staffRecords.find(s => s.id === staffId);
     if (!staff) {
         alert('Staff record not found');
@@ -18891,6 +18923,13 @@ async function editStaff(staffId) {
         return;
     }
     
+    // Update modal title
+    document.getElementById('modalTitle').textContent = `✏️ Edit Staff: ${staff.first_name}`;
+    
+    // Store staff ID for update
+    document.getElementById('editStaffId').value = staff.id;
+    
+    // Populate form with existing data
     document.getElementById('staffTitle').value = staff.title || 'Mr.';
     document.getElementById('staffFirstName').value = staff.first_name || '';
     document.getElementById('staffOtherNames').value = staff.other_names || '';
@@ -18910,23 +18949,228 @@ async function editStaff(staffId) {
     document.getElementById('staffStatus').value = staff.status || 'active';
     document.getElementById('staffEnableLogin').checked = staff.login_enabled || false;
     
+    // HIDE password section - we don't change password during edit
     const passwordSection = document.getElementById('staffPasswordSection');
     if (passwordSection) {
-        passwordSection.style.display = staff.login_enabled ? 'block' : 'none';
-        const pwdInput = document.getElementById('staffPassword');
-        if (pwdInput) {
-            pwdInput.required = false;
-            pwdInput.placeholder = 'Leave blank to keep current';
-        }
+        passwordSection.style.display = 'none';
     }
     
-    // Store staff ID for update
-    document.getElementById('editStaffId').value = staff.id;
+    // Disable login checkbox during edit
+    const loginCheckbox = document.getElementById('staffEnableLogin');
+    if (loginCheckbox) {
+        loginCheckbox.disabled = true;
+    }
+    
+    // Change submit button to update mode
+    const submitBtn = document.querySelector('#staffForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Staff';
+        submitBtn.onclick = updateStaff;
+    }
     
     modal.style.display = 'flex';
+    console.log('✅ Staff data loaded for editing:', staff.first_name);
 }
 
-// Reset staff password
+// ============================================
+// UPDATE STAFF - DETAILS ONLY (NO PASSWORD)
+// ============================================
+async function updateStaff() {
+    console.log('🔄 Updating staff...');
+    
+    const staffId = document.getElementById('editStaffId').value;
+    if (!staffId) {
+        alert('Staff ID not found');
+        return;
+    }
+    
+    // Collect form data
+    const staffData = {
+        title: document.getElementById('staffTitle').value,
+        first_name: document.getElementById('staffFirstName').value.trim(),
+        other_names: document.getElementById('staffOtherNames').value.trim(),
+        department: document.getElementById('staffDepartment').value,
+        program: document.getElementById('staffProgram').value,
+        designation: document.getElementById('staffDesignation').value.trim() || 'Staff',
+        email: document.getElementById('staffEmail').value.trim(),
+        phone: document.getElementById('staffPhone').value.trim(),
+        national_id: document.getElementById('staffNationalId').value.trim(),
+        gender: document.getElementById('staffGender').value,
+        bank_name: document.getElementById('staffBankName').value.trim(),
+        bank_account: document.getElementById('staffBankAccount').value.trim(),
+        shif_number: document.getElementById('staffShifNumber').value.trim(),
+        nsrf_number: document.getElementById('staffNsrfNumber').value.trim(),
+        tax_pin: document.getElementById('staffTaxPin').value.trim(),
+        guardian_phone: document.getElementById('staffGuardianPhone').value.trim(),
+        status: document.getElementById('staffStatus').value || 'active',
+        updated_at: new Date().toISOString()
+    };
+    
+    // Validate required fields
+    if (!staffData.first_name) {
+        alert('First Name is required');
+        return;
+    }
+    if (!staffData.department) {
+        alert('Department is required');
+        return;
+    }
+    if (!staffData.email) {
+        alert('Email is required');
+        return;
+    }
+    if (!staffData.phone) {
+        alert('Phone is required');
+        return;
+    }
+    
+    try {
+        const sb = getSb();
+        if (!sb) throw new Error('Supabase client not available');
+        
+        const submitBtn = document.querySelector('#staffForm button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        submitBtn.disabled = true;
+        
+        // UPDATE staff_records
+        const { error: staffError } = await sb
+            .from('staff_records')
+            .update(staffData)
+            .eq('id', staffId);
+        
+        if (staffError) throw staffError;
+        
+        // Also update consolidated profile if exists
+        try {
+            const fullName = `${staffData.first_name} ${staffData.other_names || ''}`.trim();
+            await sb
+                .from('consolidated_user_profiles_table')
+                .update({
+                    full_name: fullName,
+                    email: staffData.email,
+                    department: staffData.department,
+                    program: staffData.program,
+                    phone: staffData.phone,
+                    gender: staffData.gender,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('staff_id', staffId);
+            console.log('✅ Consolidated profile updated');
+        } catch (profileError) {
+            console.warn('⚠️ Could not update consolidated profile:', profileError);
+        }
+        
+        console.log('✅ Staff updated successfully');
+        alert(`✅ Staff ${staffData.first_name} updated successfully!`);
+        
+        // Close modal and refresh
+        closeAddStaffModal();
+        loadAllStaff();
+        
+        // Reset form to add mode
+        document.getElementById('modalTitle').textContent = 'Register Staff';
+        const resetBtn = document.querySelector('#staffForm button[type="submit"]');
+        if (resetBtn) {
+            resetBtn.innerHTML = '<i class="fas fa-save"></i> Save Staff';
+            resetBtn.onclick = saveStaff;
+        }
+        document.getElementById('editStaffId').value = '';
+        const loginCheckbox = document.getElementById('staffEnableLogin');
+        if (loginCheckbox) loginCheckbox.disabled = false;
+        
+    } catch (error) {
+        console.error('❌ Update error:', error);
+        alert(`❌ Error updating staff: ${error.message}`);
+        
+        // Reset button
+        const submitBtn = document.querySelector('#staffForm button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Staff';
+            submitBtn.disabled = false;
+        }
+    }
+}
+
+// ============================================
+// QUICK DEPARTMENT EDIT (INLINE)
+// ============================================
+async function quickEditDepartment(staffId) {
+    if (!staffId) {
+        alert('Staff ID is required');
+        return;
+    }
+    
+    // Find the staff record
+    const staff = staffRecords.find(s => s.id === staffId);
+    if (!staff) {
+        alert('Staff record not found');
+        return;
+    }
+    
+    // Show department selection dialog
+    const currentDept = staff.department || 'Not Set';
+    const options = STAFF_DEPARTMENTS.map(d => 
+        `${d === currentDept ? '✓ ' : '  '}${d}`
+    ).join('\n');
+    
+    const newDept = prompt(
+        `Current Department: ${currentDept}\n\n` +
+        `Select new department (type exactly as shown):\n${options}`,
+        currentDept
+    );
+    
+    if (!newDept || newDept === currentDept) {
+        if (newDept === currentDept) {
+            alert('Department unchanged');
+        }
+        return;
+    }
+    
+    // Validate department
+    if (!STAFF_DEPARTMENTS.includes(newDept)) {
+        alert(`❌ Invalid department. Choose from: ${STAFF_DEPARTMENTS.join(', ')}`);
+        return;
+    }
+    
+    try {
+        const sb = getSb();
+        if (!sb) throw new Error('Supabase client not available');
+        
+        // Update department
+        const { error } = await sb
+            .from('staff_records')
+            .update({ 
+                department: newDept,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', staffId);
+        
+        if (error) throw error;
+        
+        // Update consolidated profile
+        try {
+            await sb
+                .from('consolidated_user_profiles_table')
+                .update({
+                    department: newDept,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('staff_id', staffId);
+        } catch (e) {}
+        
+        alert(`✅ Department updated to: ${newDept}`);
+        loadAllStaff();
+        
+    } catch (error) {
+        console.error('❌ Department update error:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+// ============================================
+// RESET STAFF PASSWORD
+// ============================================
 async function resetStaffPassword(staffId, staffName) {
     const newPassword = prompt(`Reset password for ${staffName}\n\nEnter new password (min 6 chars):`);
     if (!newPassword || newPassword.length < 6) {
@@ -18941,11 +19185,15 @@ async function resetStaffPassword(staffId, staffName) {
     }
     
     try {
+        const sb = getSb();
+        if (!sb) throw new Error('Supabase client not available');
+        
         const { error } = await sb
             .from('staff_records')
             .update({ 
                 password_hash: btoa(newPassword),
-                login_enabled: true
+                login_enabled: true,
+                updated_at: new Date().toISOString()
             })
             .eq('id', staffId);
         
@@ -18959,16 +19207,30 @@ async function resetStaffPassword(staffId, staffName) {
     }
 }
 
-// Delete staff
+// ============================================
+// DELETE STAFF
+// ============================================
 async function deleteStaff(staffId, staffName) {
     if (!confirm(`⚠️ Delete staff "${staffName}"? This cannot be undone.`)) return;
     
     try {
-        const { error } = await sb.from('staff_records').delete().eq('id', staffId);
+        const sb = getSb();
+        if (!sb) throw new Error('Supabase client not available');
+        
+        const { error } = await sb
+            .from('staff_records')
+            .delete()
+            .eq('id', staffId);
+        
         if (error) throw error;
         
         // Try to delete from consolidated profile
-        await sb.from('consolidated_user_profiles_table').delete().eq('staff_id', staffId);
+        try {
+            await sb
+                .from('consolidated_user_profiles_table')
+                .delete()
+                .eq('staff_id', staffId);
+        } catch (e) {}
         
         alert(`✅ Staff ${staffName} deleted!`);
         loadAllStaff();
@@ -18978,12 +19240,16 @@ async function deleteStaff(staffId, staffName) {
     }
 }
 
-// Filter staff
+// ============================================
+// FILTER STAFF
+// ============================================
 function filterStaffTable() {
     renderStaffTable();
 }
 
-// Export to CSV
+// ============================================
+// EXPORT TO CSV
+// ============================================
 function exportStaffToCSV() {
     const headers = ['Staff ID', 'Title', 'First Name', 'Other Names', 'Department', 'Program', 'Designation', 'Email', 'Phone', 'National ID', 'Gender', 'Bank Name', 'Bank Account', 'SHIF', 'NSRF', 'Tax PIN', 'Guardian Phone', 'Login Enabled', 'Status'];
     
@@ -19006,7 +19272,9 @@ function exportStaffToCSV() {
     URL.revokeObjectURL(link.href);
 }
 
-// Import Staff from CSV
+// ============================================
+// IMPORT STAFF FROM CSV
+// ============================================
 function importStaffFromCSV() {
     console.log('🔧 Import Staff from CSV...');
     
@@ -19037,6 +19305,7 @@ function importStaffFromCSV() {
                 let imported = 0;
                 let errors = [];
                 let skipped = 0;
+                let updated = 0;
                 
                 for (let i = 1; i < lines.length; i++) {
                     if (!lines[i].trim()) continue;
@@ -19052,21 +19321,7 @@ function importStaffFromCSV() {
                         continue;
                     }
                     
-                    const staffId = 'STAFF' + String(Date.now()).slice(-6) + String(i).padStart(3, '0');
-                    
-                    const { data: existing } = await sb
-                        .from('staff_records')
-                        .select('id')
-                        .eq('email', row.email)
-                        .maybeSingle();
-                    
-                    if (existing) {
-                        errors.push(`Duplicate email: ${row.email}`);
-                        continue;
-                    }
-                    
                     const staffData = {
-                        id: staffId,
                         title: row.title || '',
                         first_name: row.first_name || '',
                         other_names: row.other_names || '',
@@ -19085,25 +19340,46 @@ function importStaffFromCSV() {
                         guardian_phone: row.guardian_phone || '',
                         login_enabled: row.login_enabled === 'true' || row.login_enabled === 'TRUE' || false,
                         status: row.status || 'active',
-                        created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     };
                     
                     try {
-                        const { error } = await sb.from('staff_records').insert([staffData]);
-                        if (error) throw error;
+                        // Check if email exists
+                        const { data: existing } = await sb
+                            .from('staff_records')
+                            .select('id')
+                            .eq('email', staffData.email)
+                            .maybeSingle();
                         
-                        // Create consolidated profile
-                        await createConsolidatedProfile(staffData);
-                        
-                        imported++;
+                        if (existing) {
+                            // UPDATE existing
+                            const { error } = await sb
+                                .from('staff_records')
+                                .update(staffData)
+                                .eq('id', existing.id);
+                            if (error) throw error;
+                            updated++;
+                        } else {
+                            // INSERT new
+                            const staffId = 'STAFF' + String(Date.now()).slice(-6) + String(i).padStart(3, '0');
+                            staffData.id = staffId;
+                            staffData.created_at = new Date().toISOString();
+                            
+                            const { error } = await sb.from('staff_records').insert([staffData]);
+                            if (error) throw error;
+                            imported++;
+                            
+                            // Create consolidated profile
+                            await createConsolidatedProfile(staffData);
+                        }
                     } catch (err) {
                         errors.push(`${staffData.first_name}: ${err.message}`);
                     }
                 }
                 
                 let message = `✅ Import complete!\n\n`;
-                message += `📥 Imported: ${imported} staff\n`;
+                message += `📥 Imported: ${imported} new staff\n`;
+                message += `🔄 Updated: ${updated} existing staff\n`;
                 if (skipped > 0) message += `⏭️ Skipped: ${skipped} empty rows\n`;
                 if (errors.length > 0) {
                     message += `❌ Errors: ${errors.length}\n\n`;
@@ -19127,42 +19403,64 @@ function importStaffFromCSV() {
     document.body.removeChild(fileInput);
 }
 
-// Staff login function
+// ============================================
+// STAFF LOGIN FUNCTION
+// ============================================
 async function staffLogin(emailOrId, password) {
-    const { data, error } = await sb
-        .from('staff_records')
-        .select('*')
-        .or(`email.eq.${emailOrId},id.eq.${emailOrId}`)
-        .eq('login_enabled', true)
-        .eq('status', 'active')
-        .single();
-    
-    if (error || !data) {
-        return { success: false, message: 'Invalid credentials' };
+    try {
+        const sb = getSb();
+        if (!sb) return { success: false, message: 'Supabase not available' };
+        
+        const { data, error } = await sb
+            .from('staff_records')
+            .select('*')
+            .or(`email.eq.${emailOrId},id.eq.${emailOrId}`)
+            .eq('login_enabled', true)
+            .eq('status', 'active')
+            .single();
+        
+        if (error || !data) {
+            return { success: false, message: 'Invalid credentials' };
+        }
+        
+        // Check password (stored as base64)
+        if (data.password_hash) {
+            const storedPassword = atob(data.password_hash);
+            if (storedPassword !== password) {
+                return { success: false, message: 'Invalid password' };
+            }
+        } else {
+            return { success: false, message: 'No password set. Please contact admin.' };
+        }
+        
+        const session = {
+            staffId: data.id,
+            name: `${data.title || ''} ${data.first_name} ${data.other_names || ''}`.trim(),
+            email: data.email,
+            department: data.department,
+            program: data.program || 'KRCHN',
+            role: 'staff'
+        };
+        
+        localStorage.setItem('staffSession', JSON.stringify(session));
+        return { success: true, staff: session };
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        return { success: false, message: error.message };
     }
-    
-    const storedPassword = atob(data.password_hash);
-    if (storedPassword !== password) {
-        return { success: false, message: 'Invalid password' };
-    }
-    
-    const session = {
-        staffId: data.id,
-        name: `${data.title || ''} ${data.first_name} ${data.other_names || ''}`,
-        email: data.email,
-        department: data.department,
-        program: data.program || 'KRCHN',
-        role: 'staff'
-    };
-    
-    localStorage.setItem('staffSession', JSON.stringify(session));
-    return { success: true, staff: session };
 }
 
-// Initialize
+// ============================================
+// INITIALIZE STAFF MANAGEMENT
+// ============================================
 function initStaffManagement() {
+    console.log('🚀 Initializing Staff Management...');
+    
+    // Load data
     loadAllStaff();
     
+    // Set up event listeners
     const searchInput = document.getElementById('staffSearchInput');
     if (searchInput) searchInput.addEventListener('keyup', filterStaffTable);
     
@@ -19177,14 +19475,19 @@ function initStaffManagement() {
     
     const loginCheckbox = document.getElementById('staffEnableLogin');
     if (loginCheckbox) loginCheckbox.addEventListener('change', toggleStaffPasswordField);
+    
+    console.log('✅ Staff Management initialized');
 }
 
-// Make global
+// ============================================
+// MAKE FUNCTIONS GLOBAL
+// ============================================
 window.loadAllStaff = loadAllStaff;
 window.openAddStaffModal = openAddStaffModal;
 window.closeAddStaffModal = closeAddStaffModal;
 window.saveStaff = saveStaff;
 window.editStaff = editStaff;
+window.updateStaff = updateStaff;
 window.resetStaffPassword = resetStaffPassword;
 window.deleteStaff = deleteStaff;
 window.filterStaffTable = filterStaffTable;
@@ -19193,8 +19496,9 @@ window.importStaffFromCSV = importStaffFromCSV;
 window.initStaffManagement = initStaffManagement;
 window.toggleStaffPasswordField = toggleStaffPasswordField;
 window.staffLogin = staffLogin;
+window.quickEditDepartment = quickEditDepartment;
 
-console.log('✅ Staff Management module ready (simplified - uses only staff_records)');
+console.log('✅ Staff Management module ready (full version with department editing)');
 /*******************************************************
  * SUPER ADMIN APPROVAL SYSTEM
  * All admin actions require Super Admin approval
