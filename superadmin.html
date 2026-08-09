@@ -5940,78 +5940,419 @@
         <div id="currentFeeStructure"></div>
     </div>
 </section>
-            <!-- System Health Section -->
-            <section id="system-health" class="tab-content">
-                <h2><i class="fas fa-heartbeat"></i> System Health Monitor</h2>
-                <div class="health-cards">
-                    <div class="health-card">
-                        <h4>Server Load</h4>
-                        <div class="progress-bar"><div id="server-load-bar" class="progress-fill" style="width: 45%"></div></div>
-                        <span id="server-load-text">45%</span>
-                    </div>
-                    <div class="health-card">
-                        <h4>Database Performance</h4>
-                        <div class="progress-bar"><div id="db-performance-bar" class="progress-fill" style="width: 78%"></div></div>
-                        <span id="db-query-time">78% - 12ms avg</span>
-                    </div>
-                    <div class="health-card">
-                        <h4>Storage Usage</h4>
-                        <div class="progress-bar"><div id="storage-usage-bar" class="progress-fill" style="width: 62%"></div></div>
-                        <span id="storage-used">62GB / 100GB</span>
-                    </div>
-                    <div class="health-card">
-                        <h4>API Response Time</h4>
-                        <div class="progress-bar"><div id="api-response-bar" class="progress-fill" style="width: 92%"></div></div>
-                        <span id="api-response-time">92% - 180ms avg</span>
-                    </div>
-                </div>
-                
-                <h3>System Metrics</h3>
-                <div class="cards">
-                    <div class="card"><h3>Uptime</h3><p class="data">99.8%</p><p class="minor-data">Last 30 days</p></div>
-                    <div class="card"><h3>Error Rate</h3><p class="data">0.2%</p><p class="minor-data">Last 24 hours</p></div>
-                    <div class="card"><h3>Active Connections</h3><p class="data">142</p><p class="minor-data">Current</p></div>
-                    <div class="card"><h3>Peak Usage</h3><p class="data">2:00 PM</p><p class="minor-data">Daily peak time</p></div>
-                </div>
-            </section>
+          <!-- ============================================ -->
+<!-- ✅ SYSTEM HEALTH - ULTRA MODERN             -->
+<!-- ============================================ -->
+<section id="system-health" class="tab-content">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #059669, #10b981); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(5,150,105,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-heartbeat"></i> System Health Monitor
+                <span id="systemStatusBadge" style="background: #10b981; font-size: 10px; padding: 2px 12px; border-radius: 20px; font-weight: 400; animation: pulse-live 2s infinite;">
+                    <i class="fas fa-circle" style="font-size: 6px; color: #10b981; margin-right: 4px;"></i> ONLINE
+                </span>
+            </h2>
+            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-database"></i> Real-time system metrics and performance monitoring
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="refreshSystemHealth()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="exportHealthReport()" style="background: white; color: #059669; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-download"></i> Export Report
+            </button>
+        </div>
+    </div>
 
-            <!-- User Analytics Section -->
-            <section id="user-analytics" class="tab-content">
-                <h2><i class="fas fa-chart-line"></i> User Behavior Analytics</h2>
-                <div class="analytics-grid">
-                    <div class="analytics-card"><h4>Login Frequency Heatmap</h4><div style="height: 200px; background: #f5f7fa; border-radius: 6px; display: flex; align-items: center; justify-content: center;">Heatmap Visualization</div></div>
-                    <div class="analytics-card"><h4>Feature Usage</h4><div style="height: 200px; background: #f5f7fa; border-radius: 6px; display: flex; align-items: center; justify-content: center;">Feature Usage Chart</div></div>
-                    <div class="analytics-card"><h4>Peak Usage Times</h4><div style="height: 200px; background: #f5f7fa; border-radius: 6px; display: flex; align-items: center; justify-content: center;">Usage Times Chart</div></div>
-                </div>
-                
-                <h3>User Engagement Metrics</h3>
-                <div class="cards">
-                    <div class="card"><h3>Avg. Session Duration</h3><p class="data">12.4m</p><p class="minor-data">+2.3% from last week</p></div>
-                    <div class="card"><h3>Daily Active Users</h3><p class="data">342</p><p class="minor-data">+15 from yesterday</p></div>
-                    <div class="card"><h3>Weekly Retention</h3><p class="data">78%</p><p class="minor-data">Stable</p></div>
-                    <div class="card"><h3>Feature Adoption</h3><p class="data">64%</p><p class="minor-data">+5% this month</p></div>
-                </div>
-            </section>
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 20px; border-top: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Server Uptime</span>
+                <i class="fas fa-server" style="color: #10b981; opacity: 0.5;"></i>
+            </div>
+            <div style="font-size: 32px; font-weight: 800; color: #10b981; margin-top: 4px;" id="healthUptime">99.8%</div>
+            <div style="font-size: 11px; color: #94a3b8;">Last 30 days</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 20px; border-top: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Active Users</span>
+                <i class="fas fa-users" style="color: #3b82f6; opacity: 0.5;"></i>
+            </div>
+            <div style="font-size: 32px; font-weight: 800; color: #3b82f6; margin-top: 4px;" id="healthActiveUsers">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Currently online</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 20px; border-top: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Error Rate</span>
+                <i class="fas fa-exclamation-triangle" style="color: #f59e0b; opacity: 0.5;"></i>
+            </div>
+            <div style="font-size: 32px; font-weight: 800; color: #f59e0b; margin-top: 4px;" id="healthErrorRate">0%</div>
+            <div style="font-size: 11px; color: #94a3b8;">Last 24 hours</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 20px; border-top: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Total Users</span>
+                <i class="fas fa-user-check" style="color: #8b5cf6; opacity: 0.5;"></i>
+            </div>
+            <div style="font-size: 32px; font-weight: 800; color: #8b5cf6; margin-top: 4px;" id="healthTotalUsers">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Registered accounts</div>
+        </div>
+    </div>
 
-            <!-- Task Scheduler Section -->
-            <section id="task-scheduler" class="tab-content">
-                <h2><i class="fas fa-clock"></i> Automated Task Scheduler</h2>
-                <div class="scheduled-tasks">
-                    <div class="task-item"><h4>Daily Backup</h4><select id="backup-time"><option value="02:00">2:00 AM</option><option value="03:00" selected>3:00 AM</option><option value="04:00">4:00 AM</option></select><button onclick="scheduleBackup()" class="btn-action" style="margin-top: 10px; width: 100%;"><i class="fas fa-save"></i> Schedule</button></div>
-                    <div class="task-item"><h4>Weekly Reports</h4><select id="report-day"><option value="monday">Monday</option><option value="sunday" selected>Sunday</option></select><button onclick="scheduleReports()" class="btn-action" style="margin-top: 10px; width: 100%;"><i class="fas fa-chart-bar"></i> Schedule</button></div>
-                    <div class="task-item"><h4>Clean Temp Files</h4><select id="cleanup-frequency"><option value="daily">Daily</option><option value="weekly" selected>Weekly</option><option value="monthly">Monthly</option></select><button onclick="scheduleCleanup()" class="btn-action" style="margin-top: 10px; width: 100%;"><i class="fas fa-broom"></i> Schedule</button></div>
-                    <div class="task-item"><h4>System Health Check</h4><select id="health-check-frequency"><option value="hourly">Hourly</option><option value="daily" selected>Daily</option></select><button onclick="scheduleHealthCheck()" class="btn-action" style="margin-top: 10px; width: 100%;"><i class="fas fa-stethoscope"></i> Schedule</button></div>
+    <!-- Health Metrics Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="margin: 0; font-size: 13px; color: #1e293b;">🖥️ Server Load</h4>
+                <span style="font-size: 12px; color: #94a3b8;" id="serverLoadPercent">0%</span>
+            </div>
+            <div style="height: 8px; background: #e5e7eb; border-radius: 6px; overflow: hidden;">
+                <div id="server-load-bar" style="height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 6px; width: 0%; transition: width 0.8s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #94a3b8;">
+                <span>📊 Load Average</span>
+                <span id="serverLoadValue">0.00 / 0.00 / 0.00</span>
+            </div>
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="margin: 0; font-size: 13px; color: #1e293b;">🗄️ Database Performance</h4>
+                <span style="font-size: 12px; color: #94a3b8;" id="dbPerformancePercent">0%</span>
+            </div>
+            <div style="height: 8px; background: #e5e7eb; border-radius: 6px; overflow: hidden;">
+                <div id="db-performance-bar" style="height: 100%; background: linear-gradient(90deg, #3b82f6, #2563eb); border-radius: 6px; width: 0%; transition: width 0.8s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #94a3b8;">
+                <span>⚡ Query Time</span>
+                <span id="dbQueryTime">0ms avg</span>
+            </div>
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="margin: 0; font-size: 13px; color: #1e293b;">💾 Storage Usage</h4>
+                <span style="font-size: 12px; color: #94a3b8;" id="storagePercent">0%</span>
+            </div>
+            <div style="height: 8px; background: #e5e7eb; border-radius: 6px; overflow: hidden;">
+                <div id="storage-usage-bar" style="height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706); border-radius: 6px; width: 0%; transition: width 0.8s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #94a3b8;">
+                <span>📁 Used / Total</span>
+                <span id="storageUsed">0 MB / 0 MB</span>
+            </div>
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="margin: 0; font-size: 13px; color: #1e293b;">🌐 API Response</h4>
+                <span style="font-size: 12px; color: #94a3b8;" id="apiPercent">0%</span>
+            </div>
+            <div style="height: 8px; background: #e5e7eb; border-radius: 6px; overflow: hidden;">
+                <div id="api-response-bar" style="height: 100%; background: linear-gradient(90deg, #8b5cf6, #6d28d9); border-radius: 6px; width: 0%; transition: width 0.8s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #94a3b8;">
+                <span>⏱️ Avg Response</span>
+                <span id="apiResponseTime">0ms</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Status Timeline -->
+    <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-chart-line" style="color: #4C1D95;"></i> System Performance Timeline
+                <span style="font-size: 11px; font-weight: 400; color: #94a3b8;">Last 24 hours</span>
+            </h3>
+            <span id="healthLastUpdated" style="font-size: 11px; color: #94a3b8;">
+                <i class="fas fa-clock"></i> Updated: --
+            </span>
+        </div>
+        <div style="height: 200px; background: #f8fafc; border-radius: 8px; position: relative; overflow: hidden;">
+            <canvas id="systemHealthChart" style="width: 100%; height: 100%;"></canvas>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+        <button onclick="runHealthCheck()" style="background: #4C1D95; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <i class="fas fa-stethoscope"></i> Run Full Health Check
+        </button>
+        <button onclick="clearSystemCache()" style="background: #f59e0b; color: #0A3D62; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <i class="fas fa-broom"></i> Clear System Cache
+        </button>
+        <button onclick="checkForUpdates()" style="background: #10b981; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <i class="fas fa-cloud-download-alt"></i> Check for Updates
+        </button>
+        <button onclick="exportHealthReport()" style="background: #0A3D62; color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <i class="fas fa-file-pdf"></i> Generate Report
+        </button>
+    </div>
+</section>
+<!-- ============================================ -->
+<!-- ✅ TASK SCHEDULER - ULTRA MODERN              -->
+<!-- ============================================ -->
+<section id="task-scheduler" class="tab-content">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-clock" style="color: #FDB913;"></i> Automated Task Scheduler
+                <span style="background: #10b981; font-size: 10px; padding: 2px 12px; border-radius: 20px; font-weight: 400; animation: pulse-live 2s infinite;">
+                    <i class="fas fa-circle" style="font-size: 6px; color: #10b981; margin-right: 4px;"></i> LIVE
+                </span>
+            </h2>
+            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-robot"></i> Schedule and manage automated system tasks
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="refreshScheduledTasks()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="exportTaskLogs()" style="background: white; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-file-export"></i> Export Logs
+            </button>
+            <button onclick="runAllTasks()" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-play"></i> Run All Now
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 16px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Total Tasks</div>
+            <div style="font-size: 28px; font-weight: 800; color: #10b981;" id="taskTotalCount">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Scheduled tasks</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Running</div>
+            <div style="font-size: 28px; font-weight: 800; color: #3b82f6;" id="taskRunningCount">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Active now</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Queued</div>
+            <div style="font-size: 28px; font-weight: 800; color: #f59e0b;" id="taskQueuedCount">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Waiting to run</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px; border-left: 4px solid #ef4444; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Failed</div>
+            <div style="font-size: 28px; font-weight: 800; color: #ef4444;" id="taskFailedCount">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Last 7 days</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Success Rate</div>
+            <div style="font-size: 28px; font-weight: 800; color: #8b5cf6;" id="taskSuccessRate">0%</div>
+            <div style="font-size: 11px; color: #94a3b8;">All-time</div>
+        </div>
+    </div>
+
+    <!-- Task Configuration Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        
+        <!-- Daily Backup -->
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #dbeafe; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-database" style="color: #2563eb; font-size: 18px;"></i>
                 </div>
-                
-                <h3>Scheduled Tasks Log</h3>
-                <table>
-                    <thead><tr><th>Task Name</th><th>Schedule</th><th>Last Run</th><th>Status</th><th>Next Run</th><th>Actions</th></tr></thead>
-                    <tbody id="scheduled-tasks-table">
-                        <tr><td>Daily Database Backup</td><td>Daily at 3:00 AM</td><td>Today, 3:00 AM</td><td><span class="badge badge-success">Completed</span></td><td>Tomorrow, 3:00 AM</td><td><button class="btn-action"><i class="fas fa-play"></i> Run Now</button><button class="btn-warning"><i class="fas fa-pause"></i> Pause</button></td></tr>
-                        <tr><td>Weekly Report Generation</td><td>Weekly on Sunday</td><td>Last Sunday, 2:00 AM</td><td><span class="badge badge-success">Completed</span></td><td>Next Sunday, 2:00 AM</td><td><button class="btn-action"><i class="fas fa-play"></i> Run Now</button><button class="btn-warning"><i class="fas fa-pause"></i> Pause</button></td></tr>
-                    </tbody>
-                </table>
-            </section>
+                <div>
+                    <h4 style="margin: 0; font-size: 14px; color: #1e293b;">Daily Backup</h4>
+                    <span style="font-size: 11px; color: #94a3b8;" id="backupStatus">⏸️ Paused</span>
+                </div>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 11px; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">Schedule Time</label>
+                <select id="backup-time" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                    <option value="00:00">12:00 AM</option>
+                    <option value="01:00">1:00 AM</option>
+                    <option value="02:00">2:00 AM</option>
+                    <option value="03:00" selected>3:00 AM</option>
+                    <option value="04:00">4:00 AM</option>
+                    <option value="05:00">5:00 AM</option>
+                    <option value="23:00">11:00 PM</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="scheduleTask('backup')" style="flex: 1; padding: 8px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                    <i class="fas fa-save"></i> Schedule
+                </button>
+                <button onclick="runTaskNow('backup')" style="padding: 8px 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;" title="Run Now">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button onclick="toggleTaskPause('backup')" style="padding: 8px 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;" title="Pause/Resume">
+                    <i class="fas fa-pause" id="backupPauseIcon"></i>
+                </button>
+            </div>
+            <div style="margin-top: 8px; font-size: 10px; color: #94a3b8;">
+                Last run: <span id="backupLastRun">Never</span>
+            </div>
+        </div>
+
+        <!-- Weekly Reports -->
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #fef3c7; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-chart-bar" style="color: #d97706; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 14px; color: #1e293b;">Weekly Reports</h4>
+                    <span style="font-size: 11px; color: #94a3b8;" id="reportsStatus">⏸️ Paused</span>
+                </div>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 11px; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">Day of Week</label>
+                <select id="report-day" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                    <option value="monday">Monday</option>
+                    <option value="tuesday">Tuesday</option>
+                    <option value="wednesday">Wednesday</option>
+                    <option value="thursday">Thursday</option>
+                    <option value="friday">Friday</option>
+                    <option value="saturday">Saturday</option>
+                    <option value="sunday" selected>Sunday</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="scheduleTask('reports')" style="flex: 1; padding: 8px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                    <i class="fas fa-save"></i> Schedule
+                </button>
+                <button onclick="runTaskNow('reports')" style="padding: 8px 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;" title="Run Now">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button onclick="toggleTaskPause('reports')" style="padding: 8px 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;" title="Pause/Resume">
+                    <i class="fas fa-pause" id="reportsPauseIcon"></i>
+                </button>
+            </div>
+            <div style="margin-top: 8px; font-size: 10px; color: #94a3b8;">
+                Last run: <span id="reportsLastRun">Never</span>
+            </div>
+        </div>
+
+        <!-- Clean Temp Files -->
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #d1fae5; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-broom" style="color: #059669; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 14px; color: #1e293b;">Clean Temp Files</h4>
+                    <span style="font-size: 11px; color: #94a3b8;" id="cleanupStatus">⏸️ Paused</span>
+                </div>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 11px; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">Frequency</label>
+                <select id="cleanup-frequency" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                    <option value="hourly">Hourly</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly" selected>Weekly</option>
+                    <option value="monthly">Monthly</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="scheduleTask('cleanup')" style="flex: 1; padding: 8px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                    <i class="fas fa-save"></i> Schedule
+                </button>
+                <button onclick="runTaskNow('cleanup')" style="padding: 8px 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;" title="Run Now">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button onclick="toggleTaskPause('cleanup')" style="padding: 8px 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;" title="Pause/Resume">
+                    <i class="fas fa-pause" id="cleanupPauseIcon"></i>
+                </button>
+            </div>
+            <div style="margin-top: 8px; font-size: 10px; color: #94a3b8;">
+                Last run: <span id="cleanupLastRun">Never</span>
+            </div>
+        </div>
+
+        <!-- System Health Check -->
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #ede9fe; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-stethoscope" style="color: #6d28d9; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 14px; color: #1e293b;">System Health Check</h4>
+                    <span style="font-size: 11px; color: #94a3b8;" id="healthCheckStatus">⏸️ Paused</span>
+                </div>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 11px; color: #64748b; font-weight: 600; display: block; margin-bottom: 4px;">Frequency</label>
+                <select id="health-check-frequency" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                    <option value="hourly">Hourly</option>
+                    <option value="daily" selected>Daily</option>
+                    <option value="weekly">Weekly</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="scheduleTask('healthcheck')" style="flex: 1; padding: 8px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                    <i class="fas fa-save"></i> Schedule
+                </button>
+                <button onclick="runTaskNow('healthcheck')" style="padding: 8px 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;" title="Run Now">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button onclick="toggleTaskPause('healthcheck')" style="padding: 8px 12px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;" title="Pause/Resume">
+                    <i class="fas fa-pause" id="healthcheckPauseIcon"></i>
+                </button>
+            </div>
+            <div style="margin-top: 8px; font-size: 10px; color: #94a3b8;">
+                Last run: <span id="healthcheckLastRun">Never</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scheduled Tasks Log -->
+    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <h3 style="margin: 0; color: #1e293b; font-size: 16px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-history" style="color: #4C1D95;"></i> Task Execution Log
+                </h3>
+                <span style="font-size: 11px; color: #94a3b8;" id="taskLogCount">0 entries</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <select id="taskLogFilter" onchange="filterTaskLogs()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; background: white;">
+                    <option value="all">All Tasks</option>
+                    <option value="backup">Backup</option>
+                    <option value="reports">Reports</option>
+                    <option value="cleanup">Cleanup</option>
+                    <option value="healthcheck">Health Check</option>
+                </select>
+                <button onclick="clearTaskLogs()" style="padding: 6px 14px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-trash"></i> Clear Logs
+                </button>
+            </div>
+        </div>
+        <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="position: sticky; top: 0; z-index: 10; background: #f8fafc;">
+                    <tr style="border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 10px 16px; text-align: left; font-weight: 600; color: #475569;">Task</th>
+                        <th style="padding: 10px 16px; text-align: left; font-weight: 600; color: #475569;">Schedule</th>
+                        <th style="padding: 10px 16px; text-align: left; font-weight: 600; color: #475569;">Last Run</th>
+                        <th style="padding: 10px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                        <th style="padding: 10px 16px; text-align: left; font-weight: 600; color: #475569;">Next Run</th>
+                        <th style="padding: 10px 16px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduled-tasks-table">
+                    <!-- Rendered by JavaScript -->
+                    <tr>
+                        <td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 12px; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top: 3px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p style="margin: 0;">Loading scheduled tasks...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
 
             <!-- Bulk Operations Section -->
             <section id="bulk-operations" class="tab-content">
@@ -11199,7 +11540,7 @@
 <!-- ============================================ -->
 <!-- 🔥🔥🔥 NEW MODULES 🔥🔥🔥                    -->
 <!-- ============================================ -->
-
+<script src="./js/superadmin-scheduledTasks.js"></script>
 <!-- 1. SUPER ADMIN ANALYTICS MODULE -->
 <script src="./js/superadmin-analytics.js"></script>
 
