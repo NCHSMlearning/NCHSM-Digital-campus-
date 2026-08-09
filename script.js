@@ -1367,6 +1367,15 @@ let auditCurrentPage = 1;
 let auditPerPage = 25;
 let auditSortField = 'timestamp';
 let auditSortOrder = 'desc';
+let auditFilters = {
+    user: '',
+    action: '',
+    dateStart: '',
+    dateEnd: ''
+};
+// ============================================================
+// LOAD AUDIT LOGS
+// ============================================================
 
 async function loadAuditLogs() {
     console.log('📋 Loading audit logs...');
