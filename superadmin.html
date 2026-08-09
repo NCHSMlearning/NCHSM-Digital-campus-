@@ -9424,128 +9424,574 @@
                 <div id="live-preview"><p>Loading live preview...</p></div>
             </section>
 
-           <!-- Audit Logs Section -->
+          <!-- ============================================ -->
+<!-- ✅ ENHANCED AUDIT LOGS SECTION - MODERN UI    -->
+<!-- ============================================ -->
 <section id="audit" class="tab-content">
-    <h2>Audit & Security Logs</h2>
-    <div class="toolbar">
-        <select id="log-filter-user"><option value="">-- Filter by User --</option></select>
-        <select id="log-filter-action"><option value="">-- Filter by Action --</option></select>
-        <input type="date" id="log-filter-date-start">
-        <input type="date" id="log-filter-date-end">
-        <button onclick="applyAuditFilters()" class="btn-action">Apply Filters</button>
-        <button onclick="exportAuditLogsToCSV()" class="btn-action export-btn">Export All (CSV)</button>
-        <button onclick="manualCleanAuditLogs()" class="btn-danger" style="background:#dc2626;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;">
-            <i class="fas fa-broom"></i> Clean Malicious Entries
-        </button>
-    </div>
-    
-    <div class="table-responsive">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>User/Role</th>
-                    <th>Action Type</th>
-                    <th>Details</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="audit-table">
-                <!-- SAFELY rendered by JavaScript using textContent -->
-            </tbody>
-        </table>
-    </div>
-</section>
-<!-- Security Settings Section -->
-<section id="security" class="tab-content">
-    <h2><i class="fas fa-shield-alt"></i> System Security & Settings</h2>
-    
-    <!-- ===== GLOBAL SYSTEM STATUS ===== -->
-    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
-        <h3 style="color: #0A3D62; margin-top: 0;">
-            <i class="fas fa-power-off"></i> Global System Status (Kill Switch)
-        </h3>
-        <div class="inline-form" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
-            <label style="font-weight: 600;">Current System Status:</label>
-            <select id="global_status" onchange="updateSystemStatus(this.value)" style="padding: 10px 16px; border-radius: 8px; border: 1px solid #ddd; min-width: 200px;">
-                <option value="ACTIVE">🟢 System Online (ACTIVE)</option>
-                <option value="MAINTENANCE">🟡 Maintenance Mode</option>
-                <option value="EMERGENCY_LOCKDOWN">🔴 EMERGENCY LOCKDOWN</option>
-            </select>
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #4C1D95, #7c3aed); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(76,29,149,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-shield-alt"></i> Audit & Security Logs
+                <span style="background: #10b981; font-size: 10px; padding: 2px 12px; border-radius: 20px; font-weight: 400; animation: pulse-live 2s infinite;">
+                    <i class="fas fa-circle" style="font-size: 6px; color: #10b981; margin-right: 4px;"></i> LIVE
+                </span>
+            </h2>
+            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-history"></i> Complete system activity monitoring with real-time tracking
+            </p>
         </div>
-        <div id="status_details" style="margin-top: 15px;">
-            <textarea id="maintenance_message" rows="3" placeholder="Enter message for users..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: vertical;"></textarea>
-            <button onclick="saveSystemMessage()" class="btn-action" style="margin-top: 10px; background: #4C1D95; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">
-                <i class="fas fa-save"></i> Save System Message
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="refreshAuditLogs()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="exportAuditLogsToCSV()" style="background: white; color: #4C1D95; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-file-export"></i> Export CSV
+            </button>
+            <button onclick="manualCleanAuditLogs()" style="background: #dc2626; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-broom"></i> Clean Malicious
             </button>
         </div>
     </div>
-    
-    <!-- ===== FORCE PASSWORD RESET - WITH USER LOOKUP ===== -->
-    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
-        <h3 style="color: #0A3D62; margin-top: 0;">
-            <i class="fas fa-key"></i> Force Password Reset
-        </h3>
-        <p style="color: #6b7280; font-size: 14px; margin-bottom: 15px;">
-            <i class="fas fa-info-circle"></i> First verify the user exists, then reset their password
-        </p>
-        
-        <!-- 🔍 USER LOOKUP SECTION -->
-        <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #4C1D95;">
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                <input type="email" id="userLookupEmail" placeholder="Enter user email to verify" 
-                       style="flex: 1; min-width: 200px; padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
-                <button onclick="lookupUser()" class="btn-action" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; white-space: nowrap;">
-                    <i class="fas fa-search"></i> Lookup User
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #4C1D95; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Total Events</div>
+            <div style="font-size: 28px; font-weight: 800; color: #4C1D95;" id="auditTotalEvents">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">All-time records</div>
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Today</div>
+            <div style="font-size: 28px; font-weight: 800; color: #10b981;" id="auditTodayEvents">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Last 24 hours</div>
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Active Users</div>
+            <div style="font-size: 28px; font-weight: 800; color: #3b82f6;" id="auditActiveUsers">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Unique users today</div>
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #ef4444; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Failed Attempts</div>
+            <div style="font-size: 28px; font-weight: 800; color: #ef4444;" id="auditFailedAttempts">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Login/security failures</div>
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Malicious</div>
+            <div style="font-size: 28px; font-weight: 800; color: #f59e0b;" id="auditMaliciousCount">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Flagged entries</div>
+        </div>
+    </div>
+
+    <!-- Advanced Filter Bar -->
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <select id="log-filter-user" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+                <option value="">-- All Users --</option>
+            </select>
+            <select id="log-filter-action" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 160px;">
+                <option value="">-- All Actions --</option>
+                <optgroup label="🔐 Authentication">
+                    <option value="LOGIN">✅ Login</option>
+                    <option value="LOGOUT">🚪 Logout</option>
+                    <option value="LOGIN_FAILED">❌ Login Failed</option>
+                    <option value="PASSWORD_RESET">🔑 Password Reset</option>
+                    <option value="PASSWORD_CHANGED">🔄 Password Changed</option>
+                </optgroup>
+                <optgroup label="👤 User Management">
+                    <option value="USER_CREATED">➕ User Created</option>
+                    <option value="USER_UPDATED">✏️ User Updated</option>
+                    <option value="USER_DELETED">🗑️ User Deleted</option>
+                    <option value="ROLE_CHANGED">🔄 Role Changed</option>
+                    <option value="USER_BLOCKED">🚫 User Blocked</option>
+                </optgroup>
+                <optgroup label="📚 Academic">
+                    <option value="UNIT_CREATED">📖 Unit Created</option>
+                    <option value="UNIT_UPDATED">✏️ Unit Updated</option>
+                    <option value="UNIT_DELETED">🗑️ Unit Deleted</option>
+                    <option value="COURSE_CREATED">📚 Course Created</option>
+                    <option value="MARKS_ENTRY">📝 Marks Entry</option>
+                    <option value="MARKS_APPROVED">✅ Marks Approved</option>
+                    <option value="MARKS_PUBLISHED">📤 Marks Published</option>
+                    <option value="RESOURCE_UPLOADED">📎 Resource Uploaded</option>
+                </optgroup>
+                <optgroup label="⚙️ System">
+                    <option value="SETTINGS_UPDATED">⚙️ Settings Updated</option>
+                    <option value="BACKUP_CREATED">💾 Backup Created</option>
+                    <option value="SYSTEM_MAINTENANCE">🔧 System Maintenance</option>
+                    <option value="DATA_EXPORTED">📊 Data Exported</option>
+                    <option value="PERMISSION_CHANGED">🔒 Permission Changed</option>
+                </optgroup>
+                <optgroup label="🚨 Security">
+                    <option value="MALICIOUS">🚨 Malicious Activity</option>
+                    <option value="SUSPICIOUS">⚠️ Suspicious Activity</option>
+                    <option value="BLOCKED_IP">🛡️ IP Blocked</option>
+                </optgroup>
+            </select>
+            <input type="datetime-local" id="log-filter-date-start" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+            <span style="color: #94a3b8; font-weight: 300;">→</span>
+            <input type="datetime-local" id="log-filter-date-end" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+            <button onclick="applyAuditFilters()" style="background: #4C1D95; color: white; padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-filter"></i> Apply
+            </button>
+            <button onclick="resetAuditFilters()" style="background: #e5e7eb; color: #475569; padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-undo"></i> Reset
+            </button>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; border-top: 1px solid #e5e7eb; padding-top: 12px;">
+            <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Quick:</span>
+            <button onclick="quickDateFilter('today')" style="padding: 4px 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 16px; cursor: pointer; font-size: 11px;">Today</button>
+            <button onclick="quickDateFilter('yesterday')" style="padding: 4px 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 16px; cursor: pointer; font-size: 11px;">Yesterday</button>
+            <button onclick="quickDateFilter('week')" style="padding: 4px 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 16px; cursor: pointer; font-size: 11px;">Last 7 Days</button>
+            <button onclick="quickDateFilter('month')" style="padding: 4px 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 16px; cursor: pointer; font-size: 11px;">This Month</button>
+            <button onclick="quickDateFilter('all')" style="padding: 4px 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 16px; cursor: pointer; font-size: 11px;">All Time</button>
+        </div>
+    </div>
+
+    <!-- Audit Logs Table -->
+    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <!-- Table Header Tools -->
+        <div style="padding: 12px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 13px; color: #64748b;">
+                    <i class="fas fa-info-circle"></i> Showing <strong id="auditShowingCount">0</strong> of <strong id="auditTotalCount">0</strong> entries
+                </span>
+                <select id="auditEntriesPerPage" onchange="changeAuditEntriesPerPage()" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 12px;">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span style="font-size: 12px; color: #94a3b8;">per page</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="setAuditView('detailed')" id="auditViewDetailed" style="padding: 4px 12px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                    <i class="fas fa-list"></i> Detailed
                 </button>
-                <button onclick="clearLookupResult()" class="btn-action" style="background: #6b7280; padding: 10px 16px; border: none; border-radius: 8px; color: white; cursor: pointer;">
+                <button onclick="setAuditView('compact')" id="auditViewCompact" style="padding: 4px 12px; background: #e5e7eb; color: #475569; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                    <i class="fas fa-th-list"></i> Compact
+                </button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive" style="overflow-x: auto;">
+            <table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #f1f5f9; border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; min-width: 160px; cursor: pointer;" onclick="sortAuditTable('timestamp')">
+                            <i class="fas fa-clock"></i> Timestamp
+                            <span class="sort-indicator" id="sortTimestamp">↓</span>
+                        </th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; min-width: 180px; cursor: pointer;" onclick="sortAuditTable('user')">
+                            <i class="fas fa-user-circle"></i> User / Role
+                            <span class="sort-indicator" id="sortUser"></span>
+                        </th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; min-width: 130px; cursor: pointer;" onclick="sortAuditTable('action')">
+                            <i class="fas fa-bolt"></i> Action Type
+                            <span class="sort-indicator" id="sortAction"></span>
+                        </th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; min-width: 250px;">
+                            <i class="fas fa-info-circle"></i> Details
+                        </th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; min-width: 90px; cursor: pointer;" onclick="sortAuditTable('status')">
+                            <i class="fas fa-check-circle"></i> Status
+                            <span class="sort-indicator" id="sortStatus"></span>
+                        </th>
+                        <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569; min-width: 110px;">
+                            <i class="fas fa-ip"></i> IP Address
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="audit-table">
+                    <!-- Rendered by JavaScript -->
+                    <tr>
+                        <td colspan="6" style="padding: 60px 20px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p style="margin: 0;">Loading audit logs...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Footer -->
+        <div style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="font-size: 13px; color: #64748b;">
+                Page <span id="auditCurrentPage">1</span> of <span id="auditTotalPages">1</span>
+            </div>
+            <div style="display: flex; gap: 4px;">
+                <button onclick="changeAuditPage('first')" id="auditPageFirst" style="padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 4px; background: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+                <button onclick="changeAuditPage('prev')" id="auditPagePrev" style="padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 4px; background: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-angle-left"></i>
+                </button>
+                <span id="auditPageNumbers" style="display: flex; gap: 4px;"></span>
+                <button onclick="changeAuditPage('next')" id="auditPageNext" style="padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 4px; background: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-angle-right"></i>
+                </button>
+                <button onclick="changeAuditPage('last')" id="auditPageLast" style="padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 4px; background: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-angle-double-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Summary -->
+    <div style="margin-top: 20px; background: white; border-radius: 12px; padding: 16px 20px; border: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+        <span style="font-weight: 600; color: #475569; font-size: 13px;">
+            <i class="fas fa-chart-pie"></i> Summary:
+        </span>
+        <span id="auditSummaryLogin" style="font-size: 13px; color: #10b981;">🔐 Logins: 0</span>
+        <span id="auditSummaryActions" style="font-size: 13px; color: #3b82f6;">📝 Actions: 0</span>
+        <span id="auditSummaryErrors" style="font-size: 13px; color: #ef4444;">❌ Errors: 0</span>
+        <span id="auditSummaryMalicious" style="font-size: 13px; color: #f59e0b;">🚨 Malicious: 0</span>
+        <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">
+            <i class="fas fa-database"></i> Last updated: <span id="auditLastUpdated">--</span>
+        </span>
+    </div>
+
+    <!-- Malicious Warning -->
+    <div id="auditMaliciousWarning" style="display: none; margin-top: 16px; background: #fef2f2; border-radius: 12px; padding: 16px 20px; border: 1px solid #fca5a5;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-exclamation-triangle" style="color: #dc2626; font-size: 20px;"></i>
+            <div>
+                <span style="font-weight: 700; color: #dc2626;">⚠️ Malicious Activity Detected</span>
+                <p style="margin: 4px 0 0 0; font-size: 13px; color: #991b1b;">
+                    <span id="auditMaliciousCountDisplay">0</span> entries flagged as malicious. 
+                    <button onclick="manualCleanAuditLogs()" style="background: #dc2626; color: white; border: none; padding: 4px 16px; border-radius: 4px; cursor: pointer;">Clean Now</button>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    @keyframes pulse-live {
+        0% { opacity: 0.7; }
+        50% { opacity: 1; }
+        100% { opacity: 0.7; }
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .sort-indicator {
+        font-size: 10px;
+        color: #94a3b8;
+        margin-left: 4px;
+    }
+    .sort-indicator.active {
+        color: #4C1D95;
+    }
+    .status-badge {
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-badge.success { background: #d1fae5; color: #065f46; }
+    .status-badge.failed { background: #fee2e2; color: #991b1b; }
+    .status-badge.warning { background: #fef3c7; color: #92400e; }
+    .status-badge.info { background: #dbeafe; color: #1e40af; }
+    .status-badge.malicious { background: #fef2f2; color: #dc2626; border: 1px solid #dc2626; }
+    #audit-table tr:hover { background: #f8fafc; }
+</style>
+<!-- ============================================ -->
+<!-- ✅ ENHANCED SECURITY SETTINGS - MODERN UI    -->
+<!-- ============================================ -->
+<section id="security" class="tab-content">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(220,38,38,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-shield-alt"></i> System Security & Settings
+                <span style="background: #10b981; font-size: 10px; padding: 2px 12px; border-radius: 20px; font-weight: 400; animation: pulse-live 2s infinite;">
+                    <i class="fas fa-circle" style="font-size: 6px; color: #10b981; margin-right: 4px;"></i> LIVE
+                </span>
+            </h2>
+            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-lock"></i> Global security controls, password management, and account oversight
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="refreshSecuritySettings()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="exportSecurityAudit()" style="background: white; color: #dc2626; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-file-export"></i> Export Audit
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">System Status</div>
+            <div style="font-size: 20px; font-weight: 800; color: #10b981;" id="secSystemStatus">🟢 Active</div>
+            <div style="font-size: 11px; color: #94a3b8;">All systems normal</div>
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Total Users</div>
+            <div style="font-size: 28px; font-weight: 800; color: #3b82f6;" id="secTotalUsers">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Registered accounts</div>
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Active Sessions</div>
+            <div style="font-size: 28px; font-weight: 800; color: #f59e0b;" id="secActiveSessions">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Currently logged in</div>
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #ef4444; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Blocked Users</div>
+            <div style="font-size: 28px; font-weight: 800; color: #ef4444;" id="secBlockedUsers">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Accounts deactivated</div>
+        </div>
+        <div style="background: white; padding: 16px; border-radius: 12px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">2FA Enabled</div>
+            <div style="font-size: 28px; font-weight: 800; color: #8b5cf6;" id="sec2FAEnabled">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Users with 2FA</div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 1. GLOBAL SYSTEM STATUS (KILL SWITCH)        -->
+    <!-- ============================================ -->
+    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <div>
+                <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-power-off" style="color: #dc2626;"></i> Global System Status
+                    <span style="font-size: 12px; font-weight: 400; color: #94a3b8; margin-left: 10px;">
+                        <i class="fas fa-info-circle"></i> Emergency kill switch
+                    </span>
+                </h3>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    Instantly take the entire system offline, enable maintenance, or lockdown in emergencies
+                </p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <span id="secStatusBadge" style="padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; background: #d1fae5; color: #065f46;">
+                    <i class="fas fa-circle" style="font-size: 8px; color: #10b981;"></i> ACTIVE
+                </span>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; background: #f8fafc; padding: 16px 20px; border-radius: 10px;">
+            <label style="font-weight: 600; font-size: 14px; color: #475569;">System Mode:</label>
+            <select id="global_status" onchange="updateSystemStatus(this.value)" style="padding: 10px 20px; border-radius: 10px; border: 2px solid #e2e8f0; font-size: 14px; background: white; min-width: 220px; font-weight: 500; cursor: pointer;">
+                <option value="ACTIVE" style="color: #10b981;">🟢 Active - System Online</option>
+                <option value="MAINTENANCE" style="color: #f59e0b;">🟡 Maintenance Mode</option>
+                <option value="EMERGENCY_LOCKDOWN" style="color: #dc2626;">🔴 EMERGENCY LOCKDOWN</option>
+            </select>
+            <button onclick="applySystemStatus()" style="background: #4C1D95; color: white; padding: 10px 24px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-check"></i> Apply
+            </button>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
+                <i class="fas fa-comment"></i> System Message (Shown to all users):
+            </label>
+            <textarea id="maintenance_message" rows="2" placeholder="Enter message for users (e.g., 'System maintenance in progress...')" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; resize: vertical;"></textarea>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button onclick="saveSystemMessage()" style="background: #059669; color: white; padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    <i class="fas fa-save"></i> Save Message
+                </button>
+                <button onclick="clearSystemMessage()" style="background: #e5e7eb; color: #475569; padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 2. FORCE PASSWORD RESET                      -->
+    <!-- ============================================ -->
+    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <div>
+                <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-key" style="color: #f59e0b;"></i> Force Password Reset
+                    <span style="font-size: 12px; font-weight: 400; color: #94a3b8; margin-left: 10px;">
+                        <i class="fas fa-info-circle"></i> Admin-only override
+                    </span>
+                </h3>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    Search for a user, verify their identity, then force a password reset
+                </p>
+            </div>
+        </div>
+
+        <!-- User Lookup -->
+        <div style="background: #eff6ff; padding: 16px 20px; border-radius: 10px; margin-bottom: 16px; border-left: 4px solid #3b82f6;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <div style="flex: 2; min-width: 200px;">
+                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-search"></i> Verify User
+                    </label>
+                    <input type="email" id="userLookupEmail" placeholder="Enter user email to verify" 
+                           style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                </div>
+                <button onclick="lookupUser()" style="background: #4C1D95; color: white; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-search"></i> Lookup
+                </button>
+                <button onclick="clearLookupResult()" style="background: #6b7280; color: white; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
                     <i class="fas fa-times"></i> Clear
                 </button>
             </div>
-            <div id="userLookupResult" style="margin-top: 10px; display: none; padding: 12px; border-radius: 8px;"></div>
+            <div id="userLookupResult" style="margin-top: 12px; display: none; padding: 12px 16px; border-radius: 8px; background: white; border: 1px solid #e2e8f0;"></div>
         </div>
-        
-        <!-- 🔒 PASSWORD RESET FORM -->
-        <form id="global-password-reset-form" class="inline-form" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; padding: 0; background: transparent;">
-            <div style="flex: 1; min-width: 200px;">
-                <label style="font-weight: 600; display: block; margin-bottom: 5px; font-size: 13px; color: #475569;">User Email *</label>
-                <input type="email" id="reset_user_email" placeholder="User Email" required 
-                       style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+
+        <!-- Password Reset Form -->
+        <form id="global-password-reset-form" onsubmit="event.preventDefault(); forcePasswordReset();">
+            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: flex-end;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-envelope"></i> User Email *
+                    </label>
+                    <input type="email" id="reset_user_email" placeholder="user@nchsm.ac.ke" required 
+                           style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-lock"></i> New Password *
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="password" id="new_password" placeholder="Min 8 characters" required 
+                               style="flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
+                        <button type="button" onclick="togglePasswordVisibility('new_password')" style="background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0 8px;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" style="background: #dc2626; color: white; padding: 10px 28px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap; height: 42px;">
+                    <i class="fas fa-sync-alt"></i> Force Reset
+                </button>
             </div>
-            <div style="flex: 1; min-width: 180px;">
-                <label style="font-weight: 600; display: block; margin-bottom: 5px; font-size: 13px; color: #475569;">New Password *</label>
-                <input type="password" id="new_password" placeholder="New Password" required 
-                       style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+            <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                <i class="fas fa-info-circle"></i> Password must be at least 8 characters with uppercase, lowercase, and numbers
             </div>
-            <button type="submit" class="btn-danger" style="background: #dc2626; color: white; padding: 10px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
-                <i class="fas fa-sync-alt"></i> Force Password Reset
-            </button>
         </form>
         
-        <div id="resetFeedback" style="margin-top: 10px; font-size: 14px;"></div>
+        <div id="resetFeedback" style="margin-top: 12px; font-size: 14px; display: none; padding: 10px 16px; border-radius: 8px;"></div>
     </div>
-    
-    <!-- ===== ACCOUNT DEACTIVATION ===== -->
-    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
-        <h3 style="color: #0A3D62; margin-top: 0;">
-            <i class="fas fa-user-slash"></i> Account Deactivation
-        </h3>
-        <p style="color: #6b7280; font-size: 14px; margin-bottom: 15px;">
-            <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> 
-            This will permanently block the user from logging in.
-        </p>
-        <form id="account-deactivation-form" class="inline-form" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; padding: 0; background: transparent;">
-            <div style="flex: 1; min-width: 250px;">
-                <label style="font-weight: 600; display: block; margin-bottom: 5px; font-size: 13px; color: #475569;">User ID or Email *</label>
-                <input type="text" id="deactivate_user_id" placeholder="User ID or Email to Deactivate" required 
-                       style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+
+    <!-- ============================================ -->
+    <!-- 3. ACCOUNT DEACTIVATION                      -->
+    <!-- ============================================ -->
+    <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <div>
+                <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-user-slash" style="color: #dc2626;"></i> Account Deactivation
+                    <span style="font-size: 12px; font-weight: 400; color: #94a3b8; margin-left: 10px;">
+                        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Permanent action
+                    </span>
+                </h3>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    Block a user from logging in permanently. This action can be reversed by reactivating the account.
+                </p>
             </div>
-            <button type="submit" class="btn-danger" style="background: #dc2626; color: white; padding: 10px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                <i class="fas fa-ban"></i> Deactivate Account
-            </button>
+        </div>
+
+        <form id="account-deactivation-form" onsubmit="event.preventDefault(); deactivateAccount();">
+            <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; align-items: flex-end;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-id-card"></i> User Email or ID *
+                    </label>
+                    <input type="text" id="deactivate_user_id" placeholder="user@nchsm.ac.ke or STU-2026-001" required 
+                           style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-flag"></i> Reason (Optional)
+                    </label>
+                    <select id="deactivation_reason" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                        <option value="">-- Select Reason --</option>
+                        <option value="inactive">Inactive Account</option>
+                        <option value="policy_violation">Policy Violation</option>
+                        <option value="fraudulent">Fraudulent Activity</option>
+                        <option value="requested">User Requested</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <button type="submit" style="background: #dc2626; color: white; padding: 10px 28px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap; height: 42px;">
+                    <i class="fas fa-ban"></i> Deactivate
+                </button>
+            </div>
         </form>
+
+        <div id="deactivationFeedback" style="margin-top: 12px; font-size: 14px; display: none; padding: 10px 16px; border-radius: 8px;"></div>
     </div>
-</section><!-- ============================================================ -->
+
+    <!-- ============================================ -->
+    <!-- 4. RECENT SECURITY ACTIVITY                  -->
+    <!-- ============================================ -->
+    <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <div>
+                <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-history" style="color: #4C1D95;"></i> Recent Security Activity
+                    <span style="font-size: 12px; font-weight: 400; color: #94a3b8; margin-left: 10px;">
+                        <i class="fas fa-clock"></i> Last 10 events
+                    </span>
+                </h3>
+            </div>
+            <button onclick="loadSecurityActivity()" style="background: #4C1D95; color: white; padding: 6px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+
+        <div style="overflow-x: auto; max-height: 300px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb; position: sticky; top: 0; z-index: 10;">
+                    <tr>
+                        <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Time</th>
+                        <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">User</th>
+                        <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Action</th>
+                        <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">IP</th>
+                        <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="securityActivityTable">
+                    <tr>
+                        <td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 12px; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top: 3px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p style="margin: 0;">Loading security activity...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<style>
+    @keyframes pulse-live {
+        0% { opacity: 0.7; }
+        50% { opacity: 1; }
+        100% { opacity: 0.7; }
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .status-badge {
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-badge.active { background: #d1fae5; color: #065f46; }
+    .status-badge.maintenance { background: #fef3c7; color: #92400e; }
+    .status-badge.lockdown { background: #fee2e2; color: #991b1b; }
+    #securityActivityTable tr:hover { background: #f8fafc; }
+    .security-event-icon { font-size: 16px; width: 24px; text-align: center; }
+</style>
+                        
+<!-- ============================================================ -->
 <!-- ✅ TAB 4: ADMIN APPROVALS - MODERN                           -->
 <!-- ============================================================ -->
 <section id="admin-approvals" class="tab-content">
