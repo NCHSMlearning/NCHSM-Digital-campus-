@@ -4740,10 +4740,60 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""></script>
 <script src="code-protection.js"></script>
+
 <!-- ============================================ -->
 <!-- GLOBAL FUNCTIONS FOR LECTURER HTML - FIXED -->
 <!-- ============================================ -->
 <script>
+// ============================================================
+// 🚀 SESSION FIX - Create staffSession from userProfile
+// MUST RUN FIRST BEFORE ANY OTHER CHECKS!
+// ============================================================
+(function fixSession() {
+    console.log('📄 SESSION FIX: Checking for session...');
+    
+    const profile = localStorage.getItem('userProfile');
+    const session = localStorage.getItem('staffSession');
+    
+    console.log('📦 userProfile:', profile ? '✅ EXISTS' : '❌ NULL');
+    console.log('📦 staffSession:', session ? '✅ EXISTS' : '❌ NULL');
+    
+    // If userProfile exists but staffSession doesn't, create it
+    if (profile && !session) {
+        try {
+            const userData = JSON.parse(profile);
+            console.log('👤 Creating staffSession from profile for:', userData.email);
+            
+            const staffSession = {
+                staffId: userData.staff_id || userData.user_id || userData.id,
+                name: userData.full_name || userData.name || 'Lecturer',
+                email: userData.email || 'N/A',
+                department: userData.department || 'N/A',
+                program: userData.program || 'N/A',
+                role: userData.role || 'lecturer',
+                user_id: userData.user_id,
+                is_staff: userData.is_staff || true
+            };
+            
+            localStorage.setItem('staffSession', JSON.stringify(staffSession));
+            console.log('✅ staffSession created successfully!');
+        } catch(e) {
+            console.error('❌ Error creating staffSession:', e);
+        }
+    }
+    
+    // Final check - if no session at all, redirect to login
+    const finalSession = localStorage.getItem('staffSession');
+    const finalProfile = localStorage.getItem('userProfile');
+    
+    if (!finalSession && !finalProfile) {
+        console.log('❌ No session found, redirecting to login...');
+        window.location.href = 'login.html';
+    } else {
+        console.log('✅ Session OK! Loading dashboard...');
+    }
+})();
+
 // Hides the .html extension in the URL  
 if (window.location.pathname.endsWith('.html')) {
     const cleanPath = window.location.pathname.replace(/\.html$/, '');
