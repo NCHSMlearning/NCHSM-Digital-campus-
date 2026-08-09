@@ -1433,7 +1433,7 @@
     };
 
     // ============================================
-    // STUDENT ID DUPLICATE CHECK - NEW
+    // STUDENT ID DUPLICATE CHECK
     // ============================================
     let studentIdCheckTimeout = null;
     let studentIdCheckInProgress = false;
@@ -2230,10 +2230,11 @@
     }
 
     // ============================================
-    // ADD LECTURER TO STAFF_RECORDS
+    // ADD LECTURER TO STAFF_RECORDS (FIXED)
     // ============================================
-    async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender) {
+    async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender, program) {
         try {
+            // Check if staff already exists
             const { data: existing } = await sb
                 .from('staff_records')
                 .select('id')
@@ -2245,6 +2246,7 @@
                 return true;
             }
             
+            // Generate staff ID
             let finalStaffId = staffId;
             if (!finalStaffId || finalStaffId.trim() === '') {
                 const deptCodes = {
@@ -2283,12 +2285,21 @@
             const firstName = nameParts[0] || '';
             const otherNames = nameParts.slice(1).join(' ') || '';
             
+            // ✅ REQUIRED: Department must be provided - NO default
+            if (!department) {
+                console.error('❌ Department is required for lecturer registration');
+                return false;
+            }
+            
+            // ✅ Use program if provided, otherwise 'N/A'
+            const staffProgram = program || 'N/A';
+            
             const staffData = {
                 id: finalStaffId,
                 title: 'Mr.',
                 first_name: firstName,
                 other_names: otherNames,
-                department: department || 'Nursing',
+                department: department,  // ✅ No default - must be provided
                 designation: 'lecturer',
                 email: email,
                 phone: phone || '',
@@ -2298,7 +2309,7 @@
                 status: 'active',
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                program: 'N/A'
+                program: staffProgram  // ✅ Use the provided program
             };
             
             const { error } = await sb
@@ -2311,6 +2322,8 @@
             }
             
             console.log('✅ Staff added to staff_records with ID:', finalStaffId);
+            console.log('📊 Department:', staffData.department);
+            console.log('📊 Program:', staffData.program);
             return true;
             
         } catch (error) {
@@ -2480,6 +2493,7 @@
         }
         
         if (role === 'lecturer') {
+            // ✅ REQUIRED: Department must be selected
             if (!department) {
                 showFeedback('❌ Please select your department.', 'error');
                 btn.disabled = false;
@@ -2517,7 +2531,8 @@
             } else if (role === 'lecturer') {
                 userMetadata = { 
                     ...userMetadata, 
-                    department: department,
+                    department: department,  // ✅ Pass the selected department
+                    program: program_type,    // ✅ Pass the selected program
                     employment_date: employment_date,
                     staff_id: 'AUTO_GENERATED',
                     doc_lecturer_id: uploadedDocs.lecturer_id ? 'uploaded' : 'pending',
@@ -2557,9 +2572,10 @@
                     password,
                     full_name,
                     '',
-                    department || 'Nursing',
+                    department,    // ✅ Pass department (no default)
                     phone,
-                    gender
+                    gender,
+                    program_type   // ✅ Pass program
                 );
                 
                 if (staffAdded) {
@@ -2685,6 +2701,7 @@
     console.log('  ✅ Student ID duplicate checking (real-time)');
     console.log('  👔 Lecturer Staff ID auto-generated');
     console.log('  ✅ Lecturer documents are OPTIONAL');
+    console.log('  ✅ Department and Program are REQUIRED for lecturers');
 </script>
 
 </body>
