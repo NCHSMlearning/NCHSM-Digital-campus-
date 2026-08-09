@@ -1358,15 +1358,15 @@ async function logAudit(action_type, details, target_id = null, status = 'SUCCES
 }
 
 // ============================================================
-// LOAD AUDIT LOGS - FIXED
+// LOAD AUDIT LOGS - MATCHES YOUR TABLE STRUCTURE
 // ============================================================
+
 let auditLogsData = [];
 let filteredAuditLogs = [];
 let auditCurrentPage = 1;
 let auditPerPage = 25;
 let auditSortField = 'timestamp';
 let auditSortOrder = 'desc';
-let auditViewMode = 'detailed';
 
 async function loadAuditLogs() {
     console.log('📋 Loading audit logs...');
@@ -1393,28 +1393,49 @@ async function loadAuditLogs() {
             throw new Error('Supabase client not available');
         }
         
-        // Try 'timestamp' column first
-        let { data: logs, error } = await supabase
+        // 🔥 MATCH YOUR TABLE COLUMNS
+        const { data: logs, error } = await supabase
             .from('audit_logs')
             .select('*')
             .order('timestamp', { ascending: false })
             .limit(500);
         
         if (error) {
-            // Fallback to 'created_at'
-            console.warn('⚠️ Trying with created_at column...');
-            const result = await supabase
-                .from('audit_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(500);
-            
-            if (result.error) throw result.error;
-            logs = result.data;
+            console.error('❌ Query error:', error);
+            throw error;
         }
         
         auditLogsData = logs || [];
         console.log(`✅ Loaded ${auditLogsData.length} audit logs`);
+        
+        // If no data, insert a sample log
+        if (auditLogsData.length === 0) {
+            try {
+                await supabase
+                    .from('audit_logs')
+                    .insert([{
+                        user_id: '00000000-0000-0000-0000-000000000000',
+                        user_email: 'system@nchsm.ac.ke',
+                        user_role: 'SYSTEM',
+                        action_type: 'SYSTEM_INIT',
+                        description: 'Audit logs loaded',
+                        details: 'System initialized audit logging',
+                        status: 'SUCCESS',
+                        timestamp: new Date().toISOString(),
+                        module: 'SYSTEM',
+                        target_table: 'audit_logs'
+                    }]);
+                // Reload
+                const { data: newLogs } = await supabase
+                    .from('audit_logs')
+                    .select('*')
+                    .order('timestamp', { ascending: false })
+                    .limit(500);
+                if (newLogs) auditLogsData = newLogs;
+            } catch (e) {
+                console.warn('Could not create sample log:', e);
+            }
+        }
         
         // Populate filter dropdowns
         populateAuditFilters();
@@ -1431,16 +1452,13 @@ async function loadAuditLogs() {
             lastUpdated.textContent = new Date().toLocaleString();
         }
         
-        // Auto-clean malicious entries
-        await cleanMaliciousLogEntries();
-        
     } catch (error) {
         console.error('❌ Error loading audit logs:', error);
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="padding: 40px 20px; text-align: center; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 8px;"></i>
-                    Error: ${error.message}
+                    Error: ${error.message || 'Unknown error'}
                     <br>
                     <button onclick="loadAuditLogs()" style="margin-top: 10px; padding: 6px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
                         <i class="fas fa-sync-alt"></i> Retry
@@ -1450,36 +1468,31 @@ async function loadAuditLogs() {
         `;
     }
 }
+
 // ============================================================
-// POPULATE AUDIT FILTER DROPDOWNS
+// POPULATE AUDIT FILTERS - MATCHES YOUR TABLE
 // ============================================================
 
 function populateAuditFilters() {
-    // Populate user filter
     const userFilter = document.getElementById('log-filter-user');
-    if (userFilter) {
+    if (userFilter && auditLogsData.length > 0) {
         const currentValue = userFilter.value;
-        const users = [...new Set(auditLogsData.map(log => log.user).filter(Boolean))];
+        const users = [...new Set(auditLogsData.map(log => log.user_role || log.user_email || 'System'))];
         userFilter.innerHTML = '<option value="">-- All Users --</option>';
         users.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u;
-            opt.textContent = u;
-            userFilter.appendChild(opt);
+            if (u) {
+                const opt = document.createElement('option');
+                opt.value = u;
+                opt.textContent = u;
+                userFilter.appendChild(opt);
+            }
         });
         if (currentValue) userFilter.value = currentValue;
-    }
-    
-    // Populate action filter
-    const actionFilter = document.getElementById('log-filter-action');
-    if (actionFilter) {
-        // Keep the existing HTML options, just ensure it works
-        // No need to repopulate as it has static options
     }
 }
 
 // ============================================================
-// APPLY AUDIT FILTERS
+// APPLY AUDIT FILTERS - MATCHES YOUR TABLE
 // ============================================================
 
 function applyAuditFilters() {
@@ -1488,29 +1501,21 @@ function applyAuditFilters() {
     const dateStart = document.getElementById('log-filter-date-start')?.value || '';
     const dateEnd = document.getElementById('log-filter-date-end')?.value || '';
     
-    auditFilters.user = userFilter;
-    auditFilters.action = actionFilter;
-    auditFilters.dateStart = dateStart;
-    auditFilters.dateEnd = dateEnd;
-    
     filteredAuditLogs = [...auditLogsData];
     
-    // Apply user filter
     if (userFilter) {
         filteredAuditLogs = filteredAuditLogs.filter(log => 
-            (log.user || '').toLowerCase().includes(userFilter.toLowerCase()) ||
-            (log.user_role || '').toLowerCase().includes(userFilter.toLowerCase())
+            (log.user_role || '').toLowerCase().includes(userFilter.toLowerCase()) ||
+            (log.user_email || '').toLowerCase().includes(userFilter.toLowerCase())
         );
     }
     
-    // Apply action filter
     if (actionFilter) {
         filteredAuditLogs = filteredAuditLogs.filter(log => 
             (log.action_type || '').toUpperCase() === actionFilter.toUpperCase()
         );
     }
     
-    // Apply date filters
     if (dateStart) {
         const start = new Date(dateStart);
         filteredAuditLogs = filteredAuditLogs.filter(log => {
@@ -1527,77 +1532,23 @@ function applyAuditFilters() {
         });
     }
     
-    // Reset to first page
     auditCurrentPage = 1;
-    
-    // Render
     renderAuditTable();
     updateAuditPagination();
 }
 
 // ============================================================
-// RESET AUDIT FILTERS
-// ============================================================
-
-function resetAuditFilters() {
-    document.getElementById('log-filter-user').value = '';
-    document.getElementById('log-filter-action').value = '';
-    document.getElementById('log-filter-date-start').value = '';
-    document.getElementById('log-filter-date-end').value = '';
-    
-    applyAuditFilters();
-}
-
-// ============================================================
-// QUICK DATE FILTER
-// ============================================================
-
-function quickDateFilter(type) {
-    const startInput = document.getElementById('log-filter-date-start');
-    const endInput = document.getElementById('log-filter-date-end');
-    const now = new Date();
-    
-    if (type === 'today') {
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        if (startInput) startInput.value = today.toISOString().slice(0, 16);
-        if (endInput) endInput.value = now.toISOString().slice(0, 16);
-    } else if (type === 'yesterday') {
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (startInput) startInput.value = yesterday.toISOString().slice(0, 16);
-        if (endInput) endInput.value = now.toISOString().slice(0, 16);
-    } else if (type === 'week') {
-        const weekAgo = new Date(now);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        if (startInput) startInput.value = weekAgo.toISOString().slice(0, 16);
-        if (endInput) endInput.value = now.toISOString().slice(0, 16);
-    } else if (type === 'month') {
-        const monthAgo = new Date(now);
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        if (startInput) startInput.value = monthAgo.toISOString().slice(0, 16);
-        if (endInput) endInput.value = now.toISOString().slice(0, 16);
-    } else if (type === 'all') {
-        if (startInput) startInput.value = '';
-        if (endInput) endInput.value = '';
-    }
-    
-    applyAuditFilters();
-}
-
-// ============================================================
-// RENDER AUDIT TABLE
+// RENDER AUDIT TABLE - MATCHES YOUR TABLE
 // ============================================================
 
 function renderAuditTable() {
     const tbody = document.getElementById('audit-table');
     if (!tbody) return;
     
-    // Calculate pagination
     const start = (auditCurrentPage - 1) * auditPerPage;
     const end = start + auditPerPage;
     const pageData = filteredAuditLogs.slice(start, end);
     
-    // Update showing count
     const showingCount = document.getElementById('auditShowingCount');
     if (showingCount) showingCount.textContent = filteredAuditLogs.length;
     
@@ -1616,48 +1567,31 @@ function renderAuditTable() {
         return;
     }
     
-    // Sort data
-    const sorted = [...pageData];
-    sorted.sort((a, b) => {
-        let valA = a[auditSortField] || '';
-        let valB = b[auditSortField] || '';
-        
-        if (auditSortField === 'timestamp' || auditSortField === 'created_at') {
-            valA = new Date(valA).getTime() || 0;
-            valB = new Date(valB).getTime() || 0;
-        }
-        
-        if (valA < valB) return auditSortOrder === 'asc' ? -1 : 1;
-        if (valA > valB) return auditSortOrder === 'asc' ? 1 : -1;
-        return 0;
-    });
-    
     let html = '';
     
-    for (const log of sorted) {
+    for (const log of pageData) {
+        // 🔥 USE YOUR COLUMN NAMES
         const timestamp = log.timestamp || log.created_at || new Date().toISOString();
         const dateStr = new Date(timestamp).toLocaleString();
-        
-        const userDisplay = log.user || log.user_role || 'System';
+        const userDisplay = log.user_email || log.user_role || 'System';
         const roleDisplay = log.user_role || 'Unknown';
         const action = log.action_type || 'UNKNOWN';
-        const details = log.details || 'No details';
+        const details = log.details || log.description || 'No details';
         const status = log.status || 'INFO';
-        const ip = log.ip_address || log.ip || '0.0.0.0';
+        const ip = log.ip_address || '0.0.0.0';
         
-        // Status badge
         let statusBadge = '';
-        const statusLower = String(status).toUpperCase();
-        if (statusLower === 'SUCCESS' || statusLower === 'SUCCESSFUL') {
+        const statusUpper = String(status).toUpperCase();
+        if (statusUpper === 'SUCCESS' || statusUpper === 'SUCCESSFUL') {
             statusBadge = `<span class="status-badge success">✅ Success</span>`;
-        } else if (statusLower === 'FAILED' || statusLower === 'FAILURE') {
+        } else if (statusUpper === 'FAILED' || statusUpper === 'FAILURE') {
             statusBadge = `<span class="status-badge failed">❌ Failed</span>`;
-        } else if (statusLower === 'WARNING') {
+        } else if (statusUpper === 'WARNING') {
             statusBadge = `<span class="status-badge warning">⚠️ Warning</span>`;
-        } else if (statusLower === 'MALICIOUS') {
+        } else if (statusUpper === 'MALICIOUS') {
             statusBadge = `<span class="status-badge malicious">🚨 Malicious</span>`;
         } else {
-            statusBadge = `<span class="status-badge info">ℹ️ ${status}</span>`;
+            statusBadge = `<span class="status-badge info">ℹ️ ${escapeHtml(status)}</span>`;
         }
         
         // Action icon
@@ -1674,9 +1608,10 @@ function renderAuditTable() {
         else if (actionUpper.includes('PUBLISH')) actionIcon = '📤';
         else if (actionUpper.includes('BLOCK')) actionIcon = '🚫';
         else if (actionUpper.includes('MALICIOUS')) actionIcon = '🚨';
+        else if (actionUpper.includes('SYSTEM')) actionIcon = '⚙️';
         
         html += `
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" 
+            <tr style="border-bottom: 1px solid #f1f5f9;" 
                 onmouseover="this.style.background='#f8fafc'" 
                 onmouseout="this.style.background='transparent'">
                 <td style="padding: 10px 14px; font-size: 12px; white-space: nowrap;">${dateStr}</td>
@@ -1689,9 +1624,11 @@ function renderAuditTable() {
                         <span style="font-size: 16px;">${actionIcon}</span>
                         <span style="font-weight: 500; font-size: 13px;">${escapeHtml(action)}</span>
                     </span>
+                    ${log.module ? `<div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">📁 ${escapeHtml(log.module)}</div>` : ''}
                 </td>
                 <td style="padding: 10px 14px; max-width: 300px;">
                     <div style="font-size: 13px; word-wrap: break-word;">${escapeHtml(details)}</div>
+                    ${log.target_table ? `<div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">📊 ${escapeHtml(log.target_table)}</div>` : ''}
                 </td>
                 <td style="padding: 10px 14px; text-align: center;">${statusBadge}</td>
                 <td style="padding: 10px 14px; text-align: center; font-size: 12px; color: #64748b; font-family: monospace;">${escapeHtml(ip)}</td>
@@ -1703,7 +1640,7 @@ function renderAuditTable() {
 }
 
 // ============================================================
-// UPDATE AUDIT STATS
+// UPDATE AUDIT STATS - MATCHES YOUR TABLE
 // ============================================================
 
 function updateAuditStats() {
@@ -1714,13 +1651,12 @@ function updateAuditStats() {
         return logDate === today;
     });
     
-    const users = [...new Set(auditLogsData.map(log => log.user || log.user_role).filter(Boolean))];
+    const users = [...new Set(auditLogsData.map(log => log.user_email || log.user_role).filter(Boolean))];
     const failed = auditLogsData.filter(log => 
         String(log.status || '').toUpperCase().includes('FAIL')
     );
     const malicious = auditLogsData.filter(log => 
-        String(log.status || '').toUpperCase() === 'MALICIOUS' ||
-        String(log.details || '').toLowerCase().includes('malicious')
+        String(log.status || '').toUpperCase() === 'MALICIOUS'
     );
     
     // Update stats
@@ -1796,7 +1732,6 @@ function updateAuditPagination() {
     const totalPagesEl = document.getElementById('auditTotalPages');
     if (totalPagesEl) totalPagesEl.textContent = totalPages;
     
-    // Generate page numbers
     const pageNumbers = document.getElementById('auditPageNumbers');
     if (pageNumbers) {
         let html = '';
@@ -1868,77 +1803,56 @@ function sortAuditTable(field) {
         auditSortOrder = 'desc';
     }
     
-    // Update sort indicators
-    document.querySelectorAll('.sort-indicator').forEach(el => {
-        el.textContent = '';
-        el.className = 'sort-indicator';
-    });
-    
-    const indicator = document.getElementById(`sort${field.charAt(0).toUpperCase() + field.slice(1)}`);
-    if (indicator) {
-        indicator.textContent = auditSortOrder === 'asc' ? '↑' : '↓';
-        indicator.className = 'sort-indicator active';
-    }
-    
     renderAuditTable();
 }
 
 // ============================================================
-// SET AUDIT VIEW
+// RESET AUDIT FILTERS
 // ============================================================
 
-function setAuditView(mode) {
-    auditViewMode = mode;
-    
-    const detailedBtn = document.getElementById('auditViewDetailed');
-    const compactBtn = document.getElementById('auditViewCompact');
-    
-    if (detailedBtn && compactBtn) {
-        if (mode === 'detailed') {
-            detailedBtn.style.background = '#4C1D95';
-            detailedBtn.style.color = 'white';
-            compactBtn.style.background = '#e5e7eb';
-            compactBtn.style.color = '#475569';
-        } else {
-            compactBtn.style.background = '#4C1D95';
-            compactBtn.style.color = 'white';
-            detailedBtn.style.background = '#e5e7eb';
-            detailedBtn.style.color = '#475569';
-        }
-    }
-    
-    renderAuditTable();
+function resetAuditFilters() {
+    document.getElementById('log-filter-user').value = '';
+    document.getElementById('log-filter-action').value = '';
+    document.getElementById('log-filter-date-start').value = '';
+    document.getElementById('log-filter-date-end').value = '';
+    applyAuditFilters();
 }
 
 // ============================================================
-// CLEAN MALICIOUS LOG ENTRIES - FIXED
+// QUICK DATE FILTER
 // ============================================================
 
-async function cleanMaliciousLogEntries() {
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) return;
-        
-        // Delete entries flagged as malicious
-        const { data, error } = await supabase
-            .from('audit_logs')
-            .delete()
-            .eq('status', 'MALICIOUS');
-        
-        if (error) {
-            console.warn('⚠️ Could not clean malicious entries:', error.message);
-            return;
-        }
-        
-        if (data && data.length > 0) {
-            console.log(`🧹 Removed ${data.length} malicious entries`);
-        }
-        
-    } catch (error) {
-        console.warn('⚠️ Cleanup warning:', error.message);
+function quickDateFilter(type) {
+    const startInput = document.getElementById('log-filter-date-start');
+    const endInput = document.getElementById('log-filter-date-end');
+    const now = new Date();
+    
+    if (type === 'today') {
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (startInput) startInput.value = today.toISOString().slice(0, 16);
+        if (endInput) endInput.value = now.toISOString().slice(0, 16);
+    } else if (type === 'yesterday') {
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (startInput) startInput.value = yesterday.toISOString().slice(0, 16);
+        if (endInput) endInput.value = now.toISOString().slice(0, 16);
+    } else if (type === 'week') {
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        if (startInput) startInput.value = weekAgo.toISOString().slice(0, 16);
+        if (endInput) endInput.value = now.toISOString().slice(0, 16);
+    } else if (type === 'month') {
+        const monthAgo = new Date(now);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        if (startInput) startInput.value = monthAgo.toISOString().slice(0, 16);
+        if (endInput) endInput.value = now.toISOString().slice(0, 16);
+    } else if (type === 'all') {
+        if (startInput) startInput.value = '';
+        if (endInput) endInput.value = '';
     }
+    
+    applyAuditFilters();
 }
-
 
 // ============================================================
 // REFRESH AUDIT LOGS
@@ -1965,15 +1879,16 @@ function exportAuditLogsToCSV() {
         return;
     }
     
-    const headers = ['Timestamp', 'User', 'Role', 'Action', 'Details', 'Status', 'IP Address'];
+    const headers = ['Timestamp', 'User', 'Role', 'Action', 'Module', 'Details', 'Status', 'IP Address'];
     const rows = data.map(log => [
         new Date(log.timestamp || log.created_at || Date.now()).toLocaleString(),
-        log.user || log.user_role || 'System',
+        log.user_email || log.user_role || 'System',
         log.user_role || 'Unknown',
         log.action_type || 'UNKNOWN',
-        (log.details || '').replace(/"/g, '""'),
+        log.module || '',
+        (log.details || log.description || '').replace(/"/g, '""'),
         log.status || 'INFO',
-        log.ip_address || log.ip || '0.0.0.0'
+        log.ip_address || '0.0.0.0'
     ]);
     
     let csv = headers.join(',') + '\n';
@@ -1997,6 +1912,17 @@ function exportAuditLogsToCSV() {
 }
 
 // ============================================================
+// ESCAPE HTML HELPER
+// ============================================================
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================================
 // EXPOSE FUNCTIONS TO GLOBAL
 // ============================================================
 
@@ -2007,13 +1933,11 @@ window.quickDateFilter = quickDateFilter;
 window.changeAuditPage = changeAuditPage;
 window.changeAuditEntriesPerPage = changeAuditEntriesPerPage;
 window.sortAuditTable = sortAuditTable;
-window.setAuditView = setAuditView;
-window.manualCleanAuditLogs = manualCleanAuditLogs;
 window.refreshAuditLogs = refreshAuditLogs;
 window.exportAuditLogsToCSV = exportAuditLogsToCSV;
 window.escapeHtml = escapeHtml;
 
-console.log('✅ Audit Logs module loaded successfully!');
+console.log('✅ Audit Logs module loaded - matching your table structure!');
 
 // ============================================================
 // 🧹 MANUAL CLEANUP: Run this if you see XSS in logs
@@ -12353,6 +12277,167 @@ function togglePasswordVisibility(inputId) {
         input.type = 'text';
     } else {
         input.type = 'password';
+    }
+}
+// ============================================================
+// SEND RESET EMAIL - HANDLER FOR ADMIN DASHBOARD
+// ============================================================
+
+/**
+ * Handle Send Reset Email (User self-reset)
+ * This is the RECOMMENDED method - works with ANON key!
+ */
+async function handleSendResetEmail() {
+    const email = document.getElementById('reset_user_email')?.value?.trim();
+    const feedback = document.getElementById('resetFeedback');
+    
+    if (!email) {
+        if (feedback) {
+            feedback.innerHTML = '❌ Please enter an email address.';
+            feedback.style.color = '#dc2626';
+            feedback.style.display = 'block';
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Please enter an email address.', 'error');
+        }
+        return;
+    }
+    
+    // Show loading
+    const btn = document.querySelector('#send-reset-email-btn');
+    const originalText = btn?.textContent || 'Send Reset Email';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    }
+    
+    try {
+        // Call the existing sendPasswordResetEmail function
+        const result = await sendPasswordResetEmail(email);
+        
+        if (feedback) {
+            feedback.innerHTML = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
+            feedback.style.color = result.success ? '#059669' : '#dc2626';
+            feedback.style.display = 'block';
+        }
+        
+        if (result.success) {
+            // Clear form
+            document.getElementById('reset_user_email').value = '';
+            if (typeof clearLookupResult === 'function') {
+                clearLookupResult();
+            }
+            if (typeof showNotification === 'function') {
+                showNotification('✅ Password reset email sent! Check your inbox.', 'success');
+            }
+        }
+        
+    } catch (error) {
+        if (feedback) {
+            feedback.innerHTML = `❌ Error: ${error.message}`;
+            feedback.style.color = '#dc2626';
+            feedback.style.display = 'block';
+        }
+        if (typeof showNotification === 'function') {
+            showNotification(`❌ ${error.message}`, 'error');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
+
+// ============================================================
+// ADMIN FORCE RESET - HANDLER
+// ============================================================
+
+/**
+ * Handle Admin Force Reset (Emergency only)
+ */
+async function handleAdminForceReset() {
+    const email = document.getElementById('reset_user_email')?.value?.trim();
+    const newPassword = document.getElementById('new_password')?.value?.trim();
+    const feedback = document.getElementById('resetFeedback');
+    
+    if (!email || !newPassword) {
+        if (feedback) {
+            feedback.innerHTML = '❌ Email and New Password are required.';
+            feedback.style.color = '#dc2626';
+            feedback.style.display = 'block';
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Email and New Password are required.', 'error');
+        }
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        if (feedback) {
+            feedback.innerHTML = '❌ Password must be at least 6 characters.';
+            feedback.style.color = '#dc2626';
+            feedback.style.display = 'block';
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Password must be at least 6 characters.', 'error');
+        }
+        return;
+    }
+    
+    // Confirm with admin
+    if (!confirm(`⚠️ WARNING: This will force reset the password for ${email}.\n\nThis bypasses the user's email verification.\n\nContinue?`)) {
+        return;
+    }
+    
+    // Show loading
+    const btn = document.querySelector('#admin-force-reset-btn');
+    const originalText = btn?.textContent || 'Force Reset';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+    }
+    
+    try {
+        // Call the adminForceResetPassword function
+        const result = await adminForceResetPassword(email, newPassword);
+        
+        if (feedback) {
+            feedback.innerHTML = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
+            feedback.style.color = result.success ? '#059669' : '#dc2626';
+            feedback.style.display = 'block';
+        }
+        
+        if (result.success) {
+            // Clear form
+            document.getElementById('reset_user_email').value = '';
+            document.getElementById('new_password').value = '';
+            if (typeof clearLookupResult === 'function') {
+                clearLookupResult();
+            }
+            if (typeof showNotification === 'function') {
+                showNotification('✅ Password force reset successful!', 'success');
+            }
+            // Refresh user data
+            if (typeof loadAllUsers === 'function') {
+                setTimeout(loadAllUsers, 1000);
+            }
+        }
+        
+    } catch (error) {
+        if (feedback) {
+            feedback.innerHTML = `❌ Error: ${error.message}`;
+            feedback.style.color = '#dc2626';
+            feedback.style.display = 'block';
+        }
+        if (typeof showNotification === 'function') {
+            showNotification(`❌ ${error.message}`, 'error');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
 }
 
