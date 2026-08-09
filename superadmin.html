@@ -8278,7 +8278,7 @@
 </section>
 <!-- ============================================ -->
 <!-- CATS / EXAMS SECTION - ALL NCHSM COURSES (COMPLETE) -->
-<!-- MARKS ENTRY, GRADING, ANALYTICS REMOVED -->
+<!-- WITH SEARCHABLE COURSE DROPDOWNS -->
 <!-- ============================================ -->
 <section id="cats" class="tab-content" style="padding: 0 24px 40px 24px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; min-height: 100vh;">
     
@@ -8337,19 +8337,19 @@
         <!-- Stats -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px;">
             <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 20px; font-weight: 800; color: #7c3aed;">0</div>
+                <div class="exam-stat-value" style="font-size: 20px; font-weight: 800; color: #7c3aed;">0</div>
                 <div style="font-size: 11px; color: #94a3b8; font-weight: 500;">Total Exams</div>
             </div>
             <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 20px; font-weight: 800; color: #059669;">0</div>
+                <div class="exam-stat-value" style="font-size: 20px; font-weight: 800; color: #059669;">0</div>
                 <div style="font-size: 11px; color: #94a3b8; font-weight: 500;">Published</div>
             </div>
             <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 20px; font-weight: 800; color: #f59e0b;">0</div>
+                <div class="exam-stat-value" style="font-size: 20px; font-weight: 800; color: #f59e0b;">0</div>
                 <div style="font-size: 11px; color: #94a3b8; font-weight: 500;">In Progress</div>
             </div>
             <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; text-align: center;">
-                <div style="font-size: 20px; font-weight: 800; color: #94a3b8;">0</div>
+                <div class="exam-stat-value" style="font-size: 20px; font-weight: 800; color: #94a3b8;">0</div>
                 <div style="font-size: 11px; color: #94a3b8; font-weight: 500;">Draft</div>
             </div>
         </div>
@@ -8358,14 +8358,11 @@
         <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; background: #f8fafc; padding: 14px 18px; border-radius: 16px;">
             <input type="text" id="exam-search" placeholder="🔍 Search Assessments..." onkeyup="filterExamsTable()" style="flex: 1; min-width: 180px; padding: 10px 18px; border-radius: 40px; border: 1px solid #e2e8f0; background: white; font-size: 13px; outline: none; transition: 0.2s;">
             
-            <!-- ALL NCHSM PROGRAMS - COMPLETE LIST -->
             <select id="exam_filter_program" onchange="filterExamsTable()" style="padding: 10px 16px; border-radius: 40px; border: 1px solid #e2e8f0; background: white; font-size: 12px; outline: none; min-width: 200px;">
                 <option value="">All Programs (25+)</option>
-                
                 <optgroup label="🎓 KRCHN Nursing">
                     <option value="KRCHN">KRCHN - Kenya Registered Community Health Nursing</option>
                 </optgroup>
-                
                 <optgroup label="🎯 TVET Diploma Programs">
                     <option value="DPOTT">DPOTT - Diploma in Perioperative Theatre Technology</option>
                     <option value="DCH">DCH - Diploma in Community Health</option>
@@ -8377,7 +8374,6 @@
                     <option value="DICT">DICT - Diploma in ICT</option>
                     <option value="DME">DME - Diploma in Medical Engineering</option>
                 </optgroup>
-                
                 <optgroup label="📜 TVET Certificate Programs">
                     <option value="CPOTT">CPOTT - Certificate in Perioperative Theatre Technology</option>
                     <option value="CCH">CCH - Certificate in Community Health</option>
@@ -8392,13 +8388,11 @@
                     <option value="CCG">CCG - Certificate in Caregiver</option>
                     <option value="COMT">COMT - Certificate in Orthopedic Trauma Medicine</option>
                 </optgroup>
-                
                 <optgroup label="🔧 TVET Artisan Programs">
                     <option value="ACH">ACH - Artisan in Community Health</option>
                     <option value="AAG">AAG - Artisan in Agriculture</option>
                     <option value="ASW">ASW - Artisan in Social Work</option>
                 </optgroup>
-                
                 <optgroup label="📊 Other TVET Programs">
                     <option value="CCA">CCA - Certificate in Computer Applications</option>
                     <option value="PTE">PTE - TVET/CDACC (PTE)</option>
@@ -8471,7 +8465,7 @@
     </div>
 
     <!-- ============================================ -->
-    <!-- TAB 2: CREATE EXAM - ALL NCHSM PROGRAMS -->
+    <!-- TAB 2: CREATE EXAM - WITH SEARCHABLE COURSE -->
     <!-- ============================================ -->
     <div id="examCreateTab" class="exam-tab-content" style="display: none; background: white; padding: 28px; border-radius: 24px; box-shadow: 0 8px 40px rgba(0,0,0,0.03); border: 1px solid #f1f5f9;">
         <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 28px; border-radius: 20px;">
@@ -8560,17 +8554,15 @@
                     </div>
                 </div>
                 
-                <!-- Row 4: ALL NCHSM PROGRAMS - COMPLETE -->
+                <!-- Row 4: ALL NCHSM PROGRAMS -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
                     <div>
                         <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">Program *</label>
-                        <select id="exam_program" required style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: white; font-size: 13px; outline: none;">
+                        <select id="exam_program" required style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: white; font-size: 13px; outline: none;" onchange="updateCreateCourseDropdown()">
                             <option value="">-- Select Program --</option>
-                            
                             <optgroup label="🎓 KRCHN Nursing">
                                 <option value="KRCHN">KRCHN - Kenya Registered Community Health Nursing</option>
                             </optgroup>
-                            
                             <optgroup label="🎯 TVET Diploma Programs">
                                 <option value="DPOTT">DPOTT - Diploma in Perioperative Theatre Technology</option>
                                 <option value="DCH">DCH - Diploma in Community Health</option>
@@ -8582,7 +8574,6 @@
                                 <option value="DICT">DICT - Diploma in ICT</option>
                                 <option value="DME">DME - Diploma in Medical Engineering</option>
                             </optgroup>
-                            
                             <optgroup label="📜 TVET Certificate Programs">
                                 <option value="CPOTT">CPOTT - Certificate in Perioperative Theatre Technology</option>
                                 <option value="CCH">CCH - Certificate in Community Health</option>
@@ -8597,13 +8588,11 @@
                                 <option value="CCG">CCG - Certificate in Caregiver</option>
                                 <option value="COMT">COMT - Certificate in Orthopedic Trauma Medicine</option>
                             </optgroup>
-                            
                             <optgroup label="🔧 TVET Artisan Programs">
                                 <option value="ACH">ACH - Artisan in Community Health</option>
                                 <option value="AAG">AAG - Artisan in Agriculture</option>
                                 <option value="ASW">ASW - Artisan in Social Work</option>
                             </optgroup>
-                            
                             <optgroup label="📊 Other TVET Programs">
                                 <option value="CCA">CCA - Certificate in Computer Applications</option>
                                 <option value="PTE">PTE - TVET/CDACC (PTE)</option>
@@ -8654,12 +8643,51 @@
                     </div>
                 </div>
                 
-                <!-- Course -->
+                <!-- Course - SEARCHABLE DROPDOWN -->
                 <div>
-                    <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">Course/Unit (Optional)</label>
-                    <select id="exam_course_id" style="width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: white; font-size: 14px; outline: none;">
-                        <option value="">-- Select Course --</option>
-                    </select>
+                    <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 5px;">
+                        Course/Unit (Optional)
+                        <span style="font-weight: 400; font-size: 10px; color: #94a3b8; margin-left: 8px;">
+                            <i class="fas fa-search"></i> Type to search
+                        </span>
+                    </label>
+                    
+                    <div class="searchable-dropdown" id="createCourseSearchContainer" style="position: relative; width: 100%;">
+                        <input type="text" 
+                               id="createCourseSearchInput" 
+                               placeholder="🔍 Search courses by name or code..." 
+                               autocomplete="off"
+                               style="width: 100%; padding: 11px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; background: white;"
+                               onfocus="this.style.borderColor='#7c3aed'; this.style.boxShadow='0 0 0 3px rgba(124,58,237,0.08)'"
+                               onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                        
+                        <div id="createCourseDropdownList" style="
+                            position: absolute;
+                            top: 100%;
+                            left: 0;
+                            right: 0;
+                            max-height: 220px;
+                            overflow-y: auto;
+                            background: white;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 0 0 12px 12px;
+                            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+                            display: none;
+                            z-index: 1000;
+                            margin-top: 2px;
+                        ">
+                            <!-- Options populated by JS -->
+                        </div>
+                        
+                        <input type="hidden" id="exam_course_id" value="">
+                    </div>
+                    
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap;">
+                        <span><i class="fas fa-info-circle"></i> Type to search, click to select</span>
+                        <span id="createSelectedCourseDisplay" style="color: #7c3aed; font-weight: 500; display: none;">
+                            <i class="fas fa-check-circle"></i> Selected: <span id="createSelectedCourseName"></span>
+                        </span>
+                    </div>
                 </div>
                 
                 <!-- Classes -->
@@ -8758,6 +8786,61 @@
     
     #cats {
         scroll-behavior: smooth;
+    }
+
+    /* Searchable Dropdown Styles */
+    .searchable-dropdown .dropdown-item {
+        padding: 8px 14px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background 0.15s;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .searchable-dropdown .dropdown-item:hover {
+        background: #f3e8ff;
+    }
+    .searchable-dropdown .dropdown-item:last-child {
+        border-bottom: none;
+    }
+    .searchable-dropdown .dropdown-item .course-code {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-left: 8px;
+    }
+    .searchable-dropdown .dropdown-item .program-tag {
+        font-size: 10px;
+        background: #e0e7ff;
+        color: #4C1D95;
+        padding: 1px 8px;
+        border-radius: 12px;
+        margin-left: 8px;
+        white-space: nowrap;
+    }
+    .searchable-dropdown .dropdown-item.selected {
+        background: #f3e8ff;
+    }
+    .searchable-dropdown .no-results {
+        padding: 12px 14px;
+        color: #94a3b8;
+        text-align: center;
+        font-size: 13px;
+    }
+    .searchable-dropdown .dropdown-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    .searchable-dropdown .dropdown-list::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+    .searchable-dropdown .dropdown-list::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    .searchable-dropdown .dropdown-list::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
     }
 </style>
    <!-- Resources Section with Past Papers Support - UPDATED FOR TVET/KRCHN with EDIT -->
@@ -10127,13 +10210,52 @@
                     </div>
                 </div>
 
-                <div style="margin-bottom: 20px;">
-                    <label style="font-weight: 600; display: block; margin-bottom: 5px;">Course/Unit (Optional)</label>
-                    <select id="edit_exam_course" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-                        <option value="">-- No Course --</option>
-                    </select>
-                </div>
-
+              <div style="margin-bottom: 20px;">
+    <label style="font-weight: 600; display: block; margin-bottom: 5px;">
+        Course/Unit (Optional)
+        <span style="font-weight: 400; font-size: 11px; color: #94a3b8; margin-left: 8px;">
+            <i class="fas fa-search"></i> Type to search
+        </span>
+    </label>
+    
+    <!-- Searchable Course Dropdown -->
+    <div class="searchable-dropdown" id="courseSearchContainer" style="position: relative; width: 100%;">
+        <input type="text" 
+               id="courseSearchInput" 
+               placeholder="🔍 Search courses by name or code..." 
+               autocomplete="off"
+               style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; background: white;"
+               onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'"
+               onblur="this.style.borderColor='#ddd'; this.style.boxShadow='none'">
+        
+        <div id="courseDropdownList" style="
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 220px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 1000;
+            margin-top: 2px;
+        ">
+            <!-- Options will be populated here -->
+        </div>
+        
+        <input type="hidden" id="edit_exam_course" value="">
+    </div>
+    
+    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap;">
+        <span><i class="fas fa-info-circle"></i> Type to search, click to select</span>
+        <span id="selectedCourseDisplay" style="color: #4C1D95; font-weight: 500; display: none;">
+            <i class="fas fa-check-circle"></i> Selected: <span id="selectedCourseName"></span>
+        </span>
+    </div>
+</div>
                 <!-- ====== MARKS ====== -->
                 <h4 style="color: #4C1D95; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
                     <i class="fas fa-chart-bar"></i> Marks & Grading
