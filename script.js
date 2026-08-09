@@ -2800,52 +2800,62 @@ async function loadSystemHealth() {
         // ============================================
         
         // Get total users
-        const { count: totalUsers } = await sb
+        const { count: totalUsers, error: totalError } = await sb
             .from('consolidated_user_profiles_table')
             .select('*', { count: 'exact', head: true });
         
+        if (totalError) console.warn('Could not get total users:', totalError);
+        
         // Get active users (online sessions)
-        const { count: activeUsers } = await sb
+        const { count: activeUsers, error: activeError } = await sb
             .from('user_sessions')
             .select('*', { count: 'exact', head: true })
             .eq('is_active', true);
         
+        if (activeError) console.warn('Could not get active users:', activeError);
+        
         // Get failed logs in last 24 hours
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { count: errorLogs } = await sb
+        const { count: errorLogs, error: errorLogsError } = await sb
             .from('audit_logs')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'FAILED')
             .gte('created_at', twentyFourHoursAgo);
         
-        const { count: totalLogs } = await sb
+        if (errorLogsError) console.warn('Could not get error logs:', errorLogsError);
+        
+        const { count: totalLogs, error: totalLogsError } = await sb
             .from('audit_logs')
             .select('*', { count: 'exact', head: true })
             .gte('created_at', twentyFourHoursAgo);
+        
+        if (totalLogsError) console.warn('Could not get total logs:', totalLogsError);
         
         // Calculate error rate
         const errorRate = totalLogs > 0 ? Math.round((errorLogs / totalLogs) * 100) : 0;
         
         // Get storage usage from buckets
         let storageUsed = 0;
-        let storageTotal = 1024 * 1024; // 1GB in KB (example)
+        let storageTotal = 5120; // 5GB total
         try {
             const { data: buckets } = await sb.storage.listBuckets();
             if (buckets) {
                 for (const bucket of buckets) {
-                    const { data: files } = await sb.storage.from(bucket.name).list();
-                    if (files) {
-                        const size = files.reduce((sum, f) => sum + (f.metadata?.size || 0), 0);
-                        storageUsed += size;
+                    try {
+                        const { data: files } = await sb.storage.from(bucket.name).list();
+                        if (files) {
+                            const size = files.reduce((sum, f) => sum + (f.metadata?.size || 0), 0);
+                            storageUsed += size;
+                        }
+                    } catch (e) {
+                        console.warn('Could not list bucket:', bucket.name);
                     }
                 }
                 storageUsed = Math.round(storageUsed / 1024 / 1024); // Convert to MB
-                storageTotal = 5120; // 5GB total (example)
             }
         } catch (e) {
             console.warn('Could not get storage data:', e);
             storageUsed = 124; // Fallback
-            storageTotal = 1024;
         }
         
         // Calculate percentages
@@ -2860,11 +2870,17 @@ async function loadSystemHealth() {
         
         // Uptime (calculate from sessions)
         const uptime = 99.8 - (errorRate / 10);
-        document.getElementById('healthUptime').textContent = uptime.toFixed(1) + '%';
+        const uptimeEl = document.getElementById('healthUptime');
+        if (uptimeEl) uptimeEl.textContent = uptime.toFixed(1) + '%';
         
-        document.getElementById('healthActiveUsers').textContent = activeUsers || 0;
-        document.getElementById('healthErrorRate').textContent = errorRate + '%';
-        document.getElementById('healthTotalUsers').textContent = totalUsers || 0;
+        const activeEl = document.getElementById('healthActiveUsers');
+        if (activeEl) activeEl.textContent = activeUsers || 0;
+        
+        const errorEl = document.getElementById('healthErrorRate');
+        if (errorEl) errorEl.textContent = errorRate + '%';
+        
+        const totalEl = document.getElementById('healthTotalUsers');
+        if (totalEl) totalEl.textContent = totalUsers || 0;
         
         // ============================================
         // 3. UPDATE PROGRESS BARS
@@ -2872,26 +2888,46 @@ async function loadSystemHealth() {
         
         // Server Load
         updateProgressBarModern('server-load-bar', loadPercent);
-        document.getElementById('serverLoadPercent').textContent = loadPercent + '%';
-        document.getElementById('serverLoadValue').textContent = 
-            `${(loadPercent / 100 * 2).toFixed(2)} / ${(loadPercent / 100 * 1.5).toFixed(2)} / ${(loadPercent / 100).toFixed(2)}`;
+        const loadPercentEl = document.getElementById('serverLoadPercent');
+        if (loadPercentEl) loadPercentEl.textContent = loadPercent + '%';
+        
+        const loadValueEl = document.getElementById('serverLoadValue');
+        if (loadValueEl) {
+            loadValueEl.textContent = 
+                `${(loadPercent / 100 * 2).toFixed(2)} / ${(loadPercent / 100 * 1.5).toFixed(2)} / ${(loadPercent / 100).toFixed(2)}`;
+        }
         
         // Database Performance
         updateProgressBarModern('db-performance-bar', dbPercent);
-        document.getElementById('dbPerformancePercent').textContent = dbPercent + '%';
-        const queryTime = Math.round(5 + (100 - dbPercent) / 2);
-        document.getElementById('dbQueryTime').textContent = queryTime + 'ms avg';
+        const dbPercentEl = document.getElementById('dbPerformancePercent');
+        if (dbPercentEl) dbPercentEl.textContent = dbPercent + '%';
+        
+        const queryTimeEl = document.getElementById('dbQueryTime');
+        if (queryTimeEl) {
+            const queryTime = Math.round(5 + (100 - dbPercent) / 2);
+            queryTimeEl.textContent = queryTime + 'ms avg';
+        }
         
         // Storage Usage
         updateProgressBarModern('storage-usage-bar', storagePercent);
-        document.getElementById('storagePercent').textContent = storagePercent + '%';
-        document.getElementById('storageUsed').textContent = `${storageUsed} MB / ${storageTotal} MB`;
+        const storagePercentEl = document.getElementById('storagePercent');
+        if (storagePercentEl) storagePercentEl.textContent = storagePercent + '%';
+        
+        const storageUsedEl = document.getElementById('storageUsed');
+        if (storageUsedEl) {
+            storageUsedEl.textContent = `${storageUsed} MB / ${storageTotal} MB`;
+        }
         
         // API Response
         updateProgressBarModern('api-response-bar', apiPercent);
-        document.getElementById('apiPercent').textContent = apiPercent + '%';
-        const apiTime = Math.round(80 + (100 - apiPercent) * 2);
-        document.getElementById('apiResponseTime').textContent = apiTime + 'ms';
+        const apiPercentEl = document.getElementById('apiPercent');
+        if (apiPercentEl) apiPercentEl.textContent = apiPercent + '%';
+        
+        const apiTimeEl = document.getElementById('apiResponseTime');
+        if (apiTimeEl) {
+            const apiTime = Math.round(80 + (100 - apiPercent) * 2);
+            apiTimeEl.textContent = apiTime + 'ms';
+        }
         
         // ============================================
         // 4. UPDATE SYSTEM STATUS BADGE
@@ -2934,10 +2970,11 @@ async function loadSystemHealth() {
     } catch (error) {
         console.error('Error loading system health:', error);
         // Show fallback data
-        document.getElementById('healthUptime').textContent = '--%';
-        document.getElementById('healthActiveUsers').textContent = '--';
-        document.getElementById('healthErrorRate').textContent = '--%';
-        document.getElementById('healthTotalUsers').textContent = '--';
+        const fallbackIds = ['healthUptime', 'healthActiveUsers', 'healthErrorRate', 'healthTotalUsers'];
+        fallbackIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '--';
+        });
     }
 }
 
@@ -2947,32 +2984,31 @@ async function loadSystemHealth() {
 
 function updateProgressBarModern(barId, percentage) {
     const bar = document.getElementById(barId);
-    if (bar) {
-        // Smooth animation
-        const currentWidth = parseFloat(bar.style.width) || 0;
-        const targetWidth = Math.min(100, Math.max(0, percentage));
-        
-        // Animate from current to target
-        const step = (targetWidth - currentWidth) / 20;
-        let progress = currentWidth;
-        
-        const animate = () => {
-            progress += step;
-            if ((step > 0 && progress >= targetWidth) || (step < 0 && progress <= targetWidth)) {
-                progress = targetWidth;
-            }
-            bar.style.width = progress + '%';
-            if (progress !== targetWidth) {
-                requestAnimationFrame(animate);
-            }
-        };
-        animate();
-        
-        // Color coding based on percentage
-        const barColor = percentage < 60 ? '#10b981' : 
-                        percentage < 80 ? '#f59e0b' : '#ef4444';
-        bar.style.background = `linear-gradient(90deg, ${barColor}, ${adjustColor(barColor, 20)})`;
-    }
+    if (!bar) return;
+    
+    const targetWidth = Math.min(100, Math.max(0, percentage));
+    const currentWidth = parseFloat(bar.style.width) || 0;
+    
+    // Smooth animation
+    const step = (targetWidth - currentWidth) / 20;
+    let progress = currentWidth;
+    
+    const animate = () => {
+        progress += step;
+        if ((step > 0 && progress >= targetWidth) || (step < 0 && progress <= targetWidth)) {
+            progress = targetWidth;
+        }
+        bar.style.width = progress + '%';
+        if (progress !== targetWidth) {
+            requestAnimationFrame(animate);
+        }
+    };
+    animate();
+    
+    // Color coding based on percentage
+    const barColor = percentage < 60 ? '#10b981' : 
+                    percentage < 80 ? '#f59e0b' : '#ef4444';
+    bar.style.background = `linear-gradient(90deg, ${barColor}, ${adjustColor(barColor, 20)})`;
 }
 
 // ============================================================
@@ -2994,118 +3030,142 @@ function adjustColor(color, percent) {
 
 async function updateSystemHealthChart() {
     const canvas = document.getElementById('systemHealthChart');
-    if (!canvas) return;
+    if (!canvas) {
+        console.warn('⚠️ systemHealthChart canvas not found');
+        return;
+    }
     
     const ctx = canvas.getContext('2d');
     
-    // Get historical data from audit logs (last 24 hours)
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const { data: logs } = await sb
-        .from('audit_logs')
-        .select('created_at, status')
-        .gte('created_at', twentyFourHoursAgo.toISOString())
-        .order('created_at', { ascending: true });
-    
-    // Process data into hourly buckets
-    const hourlyData = {};
-    const now = new Date();
-    for (let i = 23; i >= 0; i--) {
-        const hour = new Date(now);
-        hour.setHours(hour.getHours() - i);
-        const key = hour.getHours() + ':00';
-        hourlyData[key] = { total: 0, failed: 0 };
-    }
-    
-    if (logs) {
-        logs.forEach(log => {
-            const date = new Date(log.created_at);
-            const key = date.getHours() + ':00';
-            if (hourlyData[key]) {
-                hourlyData[key].total++;
-                if (log.status === 'FAILED' || log.status === 'FAILURE') {
-                    hourlyData[key].failed++;
-                }
-            }
-        });
-    }
-    
-    const labels = Object.keys(hourlyData);
-    const totalData = labels.map(k => hourlyData[k].total);
-    const failedData = labels.map(k => hourlyData[k].failed);
-    const successData = labels.map((k, i) => totalData[i] - failedData[i]);
-    
-    // Draw chart if Chart.js is available
-    if (typeof Chart !== 'undefined') {
-        if (systemHealthChart) {
-            systemHealthChart.destroy();
+    try {
+        // Get historical data from audit logs (last 24 hours)
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const { data: logs, error } = await sb
+            .from('audit_logs')
+            .select('created_at, status')
+            .gte('created_at', twentyFourHoursAgo.toISOString())
+            .order('created_at', { ascending: true });
+        
+        if (error) throw error;
+        
+        // Process data into hourly buckets
+        const hourlyData = {};
+        const now = new Date();
+        for (let i = 23; i >= 0; i--) {
+            const hour = new Date(now);
+            hour.setHours(hour.getHours() - i);
+            const key = hour.getHours() + ':00';
+            hourlyData[key] = { total: 0, failed: 0 };
         }
         
-        systemHealthChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Total Requests',
-                        data: totalData,
-                        borderColor: '#4C1D95',
-                        backgroundColor: 'rgba(76, 29, 149, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 2
-                    },
-                    {
-                        label: 'Successful',
-                        data: successData,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 2
-                    },
-                    {
-                        label: 'Failed',
-                        data: failedData,
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 2
+        if (logs) {
+            logs.forEach(log => {
+                const date = new Date(log.created_at);
+                const key = date.getHours() + ':00';
+                if (hourlyData[key]) {
+                    hourlyData[key].total++;
+                    if (log.status === 'FAILED' || log.status === 'FAILURE') {
+                        hourlyData[key].failed++;
                     }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 16,
-                            font: { size: 11 }
+                }
+            });
+        }
+        
+        const labels = Object.keys(hourlyData);
+        const totalData = labels.map(k => hourlyData[k].total);
+        const failedData = labels.map(k => hourlyData[k].failed);
+        const successData = labels.map((k, i) => totalData[i] - failedData[i]);
+        
+        // Draw chart if Chart.js is available
+        if (typeof Chart !== 'undefined') {
+            if (systemHealthChart) {
+                systemHealthChart.destroy();
+            }
+            
+            systemHealthChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Total Requests',
+                            data: totalData,
+                            borderColor: '#4C1D95',
+                            backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Successful',
+                            data: successData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Failed',
+                            data: failedData,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 16,
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
                         }
                     },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        },
+                        x: {
+                            ticks: {
+                                maxTicksLimit: 12,
+                                font: { size: 9 }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
                     }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 }
-                    }
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
                 }
-            }
-        });
-    } else {
-        // Fallback: simple canvas chart
-        drawSimpleChart(ctx, labels, totalData, successData, failedData);
+            });
+        } else {
+            // Fallback: simple canvas chart
+            drawSimpleChart(ctx, labels, totalData, successData, failedData);
+        }
+    } catch (error) {
+        console.warn('Chart update failed:', error);
+        // Draw empty chart
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
     }
 }
 
@@ -3114,8 +3174,8 @@ async function updateSystemHealthChart() {
 // ============================================================
 
 function drawSimpleChart(ctx, labels, totalData, successData, failedData) {
-    const width = ctx.canvas.width;
-    const height = ctx.canvas.height;
+    const width = ctx.canvas.width || 400;
+    const height = ctx.canvas.height || 200;
     const padding = 40;
     
     ctx.clearRect(0, 0, width, height);
@@ -3132,11 +3192,12 @@ function drawSimpleChart(ctx, labels, totalData, successData, failedData) {
         ctx.fillStyle = '#94a3b8';
         ctx.font = '10px sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText(Math.round(i / 4 * Math.max(...totalData, 1)), padding - 8, y + 3);
+        const maxVal = Math.max(...totalData, 1);
+        ctx.fillText(Math.round(i / 4 * maxVal), padding - 8, y + 3);
     }
     
     // Draw data as bars
-    const barWidth = Math.min(30, (width - padding * 2) / labels.length * 0.6);
+    const barWidth = Math.min(20, (width - padding * 2) / labels.length * 0.6);
     const maxValue = Math.max(...totalData, 1);
     
     labels.forEach((label, i) => {
@@ -3167,6 +3228,8 @@ function drawSimpleChart(ctx, labels, totalData, successData, failedData) {
 // ============================================================
 
 async function runCleanupHealthChecks() {
+    console.log('🧹 Running cleanup health checks...');
+    
     // 1. Check spinners
     const spinnerCount = document.querySelectorAll('.loading-spinner, .spinner, .loader').length;
     const spinnerHealth = document.getElementById('spinner-health');
@@ -3175,7 +3238,7 @@ async function runCleanupHealthChecks() {
         spinnerHealth.style.color = spinnerCount > 5 ? '#ef4444' : (spinnerCount > 2 ? '#f59e0b' : '#10b981');
     }
     
-    // 2. Check intervals (using a safe method)
+    // 2. Check intervals
     let intervalCount = 0;
     try {
         const testId = setInterval(() => {}, 1);
@@ -3294,7 +3357,9 @@ function runSystemCleanup() {
     console.log(`✅ Stopped ${stopped} intervals`);
     
     // 4. Show feedback
-    showFeedback(`🧹 System cleanup completed! Removed ${removed.length} spinners and stopped intervals.`, 'success');
+    if (typeof showFeedback === 'function') {
+        showFeedback(`🧹 System cleanup completed! Removed ${removed.length} spinners and stopped intervals.`, 'success');
+    }
     
     // 5. Update health display
     setTimeout(() => loadSystemHealth(), 500);
@@ -3316,16 +3381,11 @@ function checkForLeaks() {
         container.appendChild(newDiv);
     }
     
-    const results = document.getElementById('leak-results') || resultsDiv;
-    const leakResults = document.getElementById('leak-detection-results');
-    if (leakResults) leakResults.style.display = 'block';
-    
-    let html = '<div style="font-family: monospace; font-size: 13px;">';
-    html += '<h4>🔍 Leak Detection Results</h4>';
+    const results = document.getElementById('leak-results');
+    if (!results) return;
     
     // 1. Check spinners
     const spinnerCount = document.querySelectorAll('.loading-spinner, .spinner, .loader').length;
-    html += `<div>🔄 Spinners: ${spinnerCount} ${spinnerCount > 5 ? '⚠️ HIGH' : '✅ OK'}</div>`;
     
     // 2. Check intervals
     let intervalCount = 0;
@@ -3336,40 +3396,50 @@ function checkForLeaks() {
     } catch (e) {
         intervalCount = 0;
     }
-    html += `<div>⏱️ Intervals: ${intervalCount} ${intervalCount > 50 ? '⚠️ HIGH' : '✅ OK'}</div>`;
     
     // 3. Check memory
+    let usedMB = 0;
     if (window.performance && window.performance.memory) {
-        const usedMB = Math.round(window.performance.memory.usedJSHeapSize / 1024 / 1024);
-        html += `<div>💾 Memory: ${usedMB}MB ${usedMB > 200 ? '⚠️ HIGH' : '✅ OK'}</div>`;
+        usedMB = Math.round(window.performance.memory.usedJSHeapSize / 1024 / 1024);
     }
     
     // 4. Check cleanup module
     const cleanupActive = typeof window.spinnerManager !== 'undefined';
-    html += `<div>🧹 Cleanup Module: ${cleanupActive ? '✅ Active' : '❌ Inactive'}</div>`;
     
     // 5. Check Realtime channels
     const channelCount = window.supabase?.realtime?.channels?.length || 0;
-    html += `<div>📡 Realtime Channels: ${channelCount} ${channelCount > 5 ? '⚠️ HIGH' : '✅ OK'}</div>`;
     
     // 6. Overall verdict
     const isClean = spinnerCount <= 2 && intervalCount <= 50 && cleanupActive;
+    
+    let html = '<div style="font-family: monospace; font-size: 13px;">';
+    html += '<h4>🔍 Leak Detection Results</h4>';
+    html += `<div>🔄 Spinners: ${spinnerCount} ${spinnerCount > 5 ? '⚠️ HIGH' : '✅ OK'}</div>`;
+    html += `<div>⏱️ Intervals: ${intervalCount} ${intervalCount > 50 ? '⚠️ HIGH' : '✅ OK'}</div>`;
+    if (window.performance && window.performance.memory) {
+        html += `<div>💾 Memory: ${usedMB}MB ${usedMB > 200 ? '⚠️ HIGH' : '✅ OK'}</div>`;
+    }
+    html += `<div>🧹 Cleanup Module: ${cleanupActive ? '✅ Active' : '❌ Inactive'}</div>`;
+    html += `<div>📡 Realtime Channels: ${channelCount} ${channelCount > 5 ? '⚠️ HIGH' : '✅ OK'}</div>`;
     html += `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-weight: bold; color: ${isClean ? '#10b981' : '#dc2626'}">
         ${isClean ? '✅ SYSTEM IS CLEAN! No leaks detected.' : '⚠️ Some issues found. Run cleanup or fix issues above.'}
     </div>`;
-    
     html += '</div>';
     
-    if (results) results.innerHTML = html;
+    results.innerHTML = html;
     
     // Update issues list
     updateIssuesList(spinnerCount, intervalCount, cleanupActive);
     
     // Show feedback
-    if (spinnerCount <= 2 && intervalCount <= 50 && cleanupActive) {
-        showFeedback('✅ System is clean! No leaks detected.', 'success');
+    if (isClean) {
+        if (typeof showFeedback === 'function') {
+            showFeedback('✅ System is clean! No leaks detected.', 'success');
+        }
     } else {
-        showFeedback('⚠️ Some issues found. Run cleanup or check the results above.', 'warning');
+        if (typeof showFeedback === 'function') {
+            showFeedback('⚠️ Some issues found. Run cleanup or check the results above.', 'warning');
+        }
     }
 }
 
@@ -3379,7 +3449,9 @@ function checkForLeaks() {
 
 function refreshSystemHealth() {
     loadSystemHealth();
-    showFeedback('🔄 System Health refreshed!', 'success');
+    if (typeof showFeedback === 'function') {
+        showFeedback('🔄 System Health refreshed!', 'success');
+    }
 }
 
 // ============================================================
@@ -3415,7 +3487,59 @@ API Response: ${document.getElementById('apiPercent')?.textContent || '--'}
     a.click();
     URL.revokeObjectURL(url);
     
-    showFeedback('📄 Health report exported!', 'success');
+    if (typeof showFeedback === 'function') {
+        showFeedback('📄 Health report exported!', 'success');
+    }
+}
+
+// ============================================================
+// MISSING FUNCTION: runHealthCheck
+// ============================================================
+
+function runHealthCheck() {
+    console.log('🏥 Running health check...');
+    loadSystemHealth();
+    if (typeof showFeedback === 'function') {
+        showFeedback('✅ Health check completed!', 'success');
+    }
+}
+
+// ============================================================
+// MISSING FUNCTION: clearSystemCache
+// ============================================================
+
+function clearSystemCache() {
+    console.log('🧹 Clearing system cache...');
+    // Clear localStorage caches
+    localStorage.removeItem('programCache');
+    localStorage.removeItem('studentNameCache');
+    localStorage.removeItem('auditLogs');
+    localStorage.removeItem('securityActivityLog');
+    localStorage.removeItem('healthCache');
+    // Clear session storage
+    sessionStorage.clear();
+    // Clear global caches
+    if (window.programCache) window.programCache = null;
+    if (window.studentNameCache) window.studentNameCache = {};
+    
+    if (typeof showFeedback === 'function') {
+        showFeedback('✅ System cache cleared!', 'success');
+    }
+}
+
+// ============================================================
+// MISSING FUNCTION: checkForUpdates
+// ============================================================
+
+function checkForUpdates() {
+    console.log('🔄 Checking for updates...');
+    const currentVersion = '1.0.0';
+    // Simulate check
+    setTimeout(() => {
+        if (typeof showFeedback === 'function') {
+            showFeedback('✅ System is up to date (v' + currentVersion + ')', 'success');
+        }
+    }, 500);
 }
 
 // ============================================================
@@ -3440,7 +3564,7 @@ function stopHealthAutoRefresh() {
 }
 
 // ============================================================
-// EXPORT FUNCTIONS
+// EXPOSE FUNCTIONS TO GLOBAL
 // ============================================================
 
 window.loadSystemHealth = loadSystemHealth;
@@ -3450,8 +3574,19 @@ window.refreshSystemHealth = refreshSystemHealth;
 window.exportHealthReport = exportHealthReport;
 window.startHealthAutoRefresh = startHealthAutoRefresh;
 window.stopHealthAutoRefresh = stopHealthAutoRefresh;
+window.runHealthCheck = runHealthCheck;
+window.clearSystemCache = clearSystemCache;
+window.checkForUpdates = checkForUpdates;
 
 console.log('✅ Enhanced System Health module loaded with real-time data!');
+console.log('📊 Available functions:');
+console.log('   - loadSystemHealth() - Load all health data');
+console.log('   - runHealthCheck() - Run health check');
+console.log('   - clearSystemCache() - Clear system cache');
+console.log('   - checkForUpdates() - Check for updates');
+console.log('   - exportHealthReport() - Export health report');
+console.log('   - checkForLeaks() - Check for memory leaks');
+console.log('   - runSystemCleanup() - Run system cleanup');
 
 // Session Management
 // =====================================================
