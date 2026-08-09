@@ -2229,109 +2229,110 @@
         }, 5000);
     }
 
-    // ============================================
-    // ADD LECTURER TO STAFF_RECORDS (FIXED)
-    // ============================================
-    async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender, program) {
-        try {
-            // Check if staff already exists
-            const { data: existing } = await sb
-                .from('staff_records')
-                .select('id')
-                .eq('email', email)
-                .maybeSingle();
-            
-            if (existing) {
-                console.log('⚠️ Staff already exists in staff_records:', email);
-                return true;
-            }
-            
-            // Generate staff ID
-            let finalStaffId = staffId;
-            if (!finalStaffId || finalStaffId.trim() === '') {
-                const deptCodes = {
-                    'Nursing': 'NUR',
-                    'TVET': 'TVT',
-                    'Community Health': 'COM',
-                    'Health Records': 'HRT',
-                    'ICT': 'ICT',
-                    'Administration': 'ADM'
-                };
-                
-                const deptCode = deptCodes[department] || 'STA';
-                
-                const { data: deptStaff } = await sb
-                    .from('staff_records')
-                    .select('id')
-                    .ilike('id', 'NCHSM' + deptCode + '-%')
-                    .order('created_at', { ascending: false });
-                
-                let nextNumber = 1;
-                if (deptStaff && deptStaff.length > 0) {
-                    const lastId = deptStaff[0].id;
-                    const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
-                    if (match) {
-                        nextNumber = parseInt(match[1]) + 1;
-                    } else {
-                        nextNumber = deptStaff.length + 1;
-                    }
-                }
-                
-                finalStaffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
-                console.log('🆕 Auto-generated Staff ID:', finalStaffId);
-            }
-            
-            const nameParts = fullName.trim().split(' ');
-            const firstName = nameParts[0] || '';
-            const otherNames = nameParts.slice(1).join(' ') || '';
-            
-            // ✅ REQUIRED: Department must be provided - NO default
-            if (!department) {
-                console.error('❌ Department is required for lecturer registration');
-                return false;
-            }
-            
-            // ✅ Use program if provided, otherwise 'N/A'
-            const staffProgram = program || 'N/A';
-            
-            const staffData = {
-                id: finalStaffId,
-                title: 'Mr.',
-                first_name: firstName,
-                other_names: otherNames,
-                department: department,  // ✅ No default - must be provided
-                designation: 'lecturer',
-                email: email,
-                phone: phone || '',
-                gender: gender || 'Male',
-                login_enabled: true,
-                password_hash: btoa(password),
-                status: 'active',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                program: staffProgram  // ✅ Use the provided program
+   // ============================================
+// ADD LECTURER TO STAFF_RECORDS - FIXED (Pending Approval)
+// ============================================
+async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender, program) {
+    try {
+        // Check if staff already exists
+        const { data: existing } = await sb
+            .from('staff_records')
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
+        
+        if (existing) {
+            console.log('⚠️ Staff already exists in staff_records:', email);
+            return true;
+        }
+        
+        // Generate staff ID
+        let finalStaffId = staffId;
+        if (!finalStaffId || finalStaffId.trim() === '') {
+            const deptCodes = {
+                'Nursing': 'NUR',
+                'TVET': 'TVT',
+                'Community Health': 'COM',
+                'Health Records': 'HRT',
+                'ICT': 'ICT',
+                'Administration': 'ADM'
             };
             
-            const { error } = await sb
-                .from('staff_records')
-                .insert([staffData]);
+            const deptCode = deptCodes[department] || 'STA';
             
-            if (error) {
-                console.error('❌ Failed to add staff to staff_records:', error);
-                return false;
+            const { data: deptStaff } = await sb
+                .from('staff_records')
+                .select('id')
+                .ilike('id', 'NCHSM' + deptCode + '-%')
+                .order('created_at', { ascending: false });
+            
+            let nextNumber = 1;
+            if (deptStaff && deptStaff.length > 0) {
+                const lastId = deptStaff[0].id;
+                const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
+                if (match) {
+                    nextNumber = parseInt(match[1]) + 1;
+                } else {
+                    nextNumber = deptStaff.length + 1;
+                }
             }
             
-            console.log('✅ Staff added to staff_records with ID:', finalStaffId);
-            console.log('📊 Department:', staffData.department);
-            console.log('📊 Program:', staffData.program);
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Error adding staff to staff_records:', error);
+            finalStaffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
+            console.log('🆕 Auto-generated Staff ID:', finalStaffId);
+        }
+        
+        const nameParts = fullName.trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const otherNames = nameParts.slice(1).join(' ') || '';
+        
+        // ✅ REQUIRED: Department must be provided - NO default
+        if (!department) {
+            console.error('❌ Department is required for lecturer registration');
             return false;
         }
+        
+        // ✅ Use program if provided, otherwise 'N/A'
+        const staffProgram = program || 'N/A';
+        
+        // ✅ FIXED: Staff starts as PENDING, needs admin approval
+        const staffData = {
+            id: finalStaffId,
+            title: 'Mr.',
+            first_name: firstName,
+            other_names: otherNames,
+            department: department,
+            designation: 'lecturer',
+            email: email,
+            phone: phone || '',
+            gender: gender || 'Male',
+            login_enabled: false,   // ❌ Login disabled until approved
+            password_hash: btoa(password),
+            status: 'pending',      // ❌ Needs admin approval
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            program: staffProgram
+        };
+        
+        const { error } = await sb
+            .from('staff_records')
+            .insert([staffData]);
+        
+        if (error) {
+            console.error('❌ Failed to add staff to staff_records:', error);
+            return false;
+        }
+        
+        console.log('✅ Staff added to staff_records with ID:', finalStaffId);
+        console.log('📊 Department:', staffData.department);
+        console.log('📊 Program:', staffData.program);
+        console.log('🔒 Status: pending (needs admin approval)');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error adding staff to staff_records:', error);
+        return false;
     }
-
+}
     // ============================================
     // FORM SUBMISSION
     // ============================================
