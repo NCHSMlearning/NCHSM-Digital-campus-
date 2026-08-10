@@ -303,7 +303,7 @@ async function nckAddSelectedStudent() {
             .from('nck_marks')
             .insert({
                 admission_number: admission,
-                student_name: student.full_name,
+                student_name: student.full_name,  // ✅ FIXED: using student_name
                 student_id: student.student_id,
                 block: block,
                 subject_name: sheet,
@@ -340,7 +340,7 @@ async function nckAddAllAvailableStudents() {
             .from('nck_marks')
             .insert({
                 admission_number: s.admission_number,
-                student_name: s.full_name,
+                student_name: s.full_name,  // ✅ FIXED: using student_name
                 student_id: s.student_id,
                 block: block,
                 subject_name: sheet,
@@ -1113,7 +1113,7 @@ async function saveAllNCKMarks() {
                 .from('nck_marks')
                 .upsert({
                     student_id: studentId,
-                    full_name: student.full_name || 'Unknown',
+                    student_name: student.full_name || 'Unknown',  // ✅ FIXED
                     admission_number: student.admission_number || studentId,
                     block: currentNCKBlock,
                     subject_name: currentNCKSheetType,
@@ -1574,7 +1574,7 @@ async function saveSingleStudentMarks(studentId, studentName, scores, gradedBy) 
             .from('nck_marks')
             .upsert({
                 student_id: studentId,
-                full_name: studentName || 'Unknown',
+                student_name: studentName || 'Unknown',  // ✅ FIXED: using student_name
                 admission_number: studentId,
                 block: currentNCKBlock,
                 subject_name: currentNCKSheetType,
@@ -1666,10 +1666,10 @@ async function exportNCKData() {
             return;
         }
 
-        const headers = ['Student ID', 'Full Name', 'Admission', 'Block', 'Subject', 'Program', 'Scores', 'Final Score', 'Grade', 'Status', 'Graded By', 'Published'];
+        const headers = ['Student ID', 'Student Name', 'Admission', 'Block', 'Subject', 'Program', 'Scores', 'Final Score', 'Grade', 'Status', 'Graded By', 'Published'];
         const rows = marks.map(m => [
             m.student_id || '',
-            m.full_name || '',
+            m.student_name || '',  // ✅ FIXED: using student_name
             m.admission_number || '',
             m.block || '',
             m.subject_name || '',
