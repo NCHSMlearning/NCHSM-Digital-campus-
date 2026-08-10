@@ -6,7 +6,7 @@
 // ✅ View & Download fee structure actions
 // ✅ Fee balance updates when viewing specific periods
 // ✅ Email notification after successful payment 
-// ✅ Detailed fee structure with vote heads from  database
+// ✅ Detailed fee structure with vote heads from database
 // ✅ Communicates with Super Admin Finance Module
 // ============================================================
 
@@ -174,12 +174,12 @@ function updateFinanceBadge(data) {
 // ============================================================
 
 function toggleFeeStructure() {
-    const container = document.getElementById('studentFeeStructureDisplay');
-    const toggleBtn = document.getElementById('toggleFeeBtn');
-    const toggleText = document.getElementById('toggleFeeText');
+    const container = document.getElementById('finance-studentFeeStructureDisplay');
+    const toggleBtn = document.querySelector('[aria-controls="finance-studentFeeStructureDisplay"]');
+    const toggleText = document.getElementById('finance-toggleFeeText');
     
     if (!container) {
-        console.warn('⚠️ studentFeeStructureDisplay not found');
+        console.warn('⚠️ finance-studentFeeStructureDisplay not found');
         return;
     }
     
@@ -188,7 +188,8 @@ function toggleFeeStructure() {
         container.style.animation = 'fadeIn 0.3s ease';
         
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="toggleFeeText">Hide Fee Structure</span>';
+            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="finance-toggleFeeText">Hide Fee Structure</span>';
+            toggleBtn.setAttribute('aria-expanded', 'true');
         }
         if (toggleText) {
             toggleText.textContent = 'Hide Fee Structure';
@@ -215,7 +216,8 @@ function toggleFeeStructure() {
         container.style.display = 'none';
         container.style.animation = 'fadeOut 0.3s ease';
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-eye"></i> <span id="toggleFeeText">View Fee Structure</span>';
+            toggleBtn.innerHTML = '<i class="fas fa-eye"></i> <span id="finance-toggleFeeText">View Fee Structure</span>';
+            toggleBtn.setAttribute('aria-expanded', 'false');
         }
         if (toggleText) {
             toggleText.textContent = 'View Fee Structure';
@@ -594,13 +596,13 @@ function processFeeStructureData(data, programType, programLevel) {
 // ============================================================
 
 function renderFeeStructureData() {
-    const container = document.getElementById('feeStructureContent');
+    const container = document.getElementById('finance-feeStructureContent');
     if (!container) {
-        console.warn('⚠️ feeStructureContent not found');
+        console.warn('⚠️ finance-feeStructureContent not found');
         return;
     }
     
-    const displayContainer = document.getElementById('studentFeeStructureDisplay');
+    const displayContainer = document.getElementById('finance-studentFeeStructureDisplay');
     if (displayContainer && displayContainer.style.display === 'none') {
         return;
     }
@@ -615,6 +617,9 @@ function renderFeeStructureData() {
                 <p style="font-size: 12px;">Please contact the finance office.</p>
             </div>
         `;
+        container.style.display = 'block';
+        document.getElementById('finance-feeLoadingState').style.display = 'none';
+        document.getElementById('finance-feeEmptyState').style.display = 'block';
         return;
     }
     
@@ -627,7 +632,7 @@ function renderFeeStructureData() {
     // Build the table HTML with View buttons
     let html = `
         <div style="overflow-x: auto;">
-            <table class="fee-structure-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <table class="finance-fee-structure-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
                         <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; width: 50px;">S/N</th>
@@ -663,8 +668,7 @@ function renderFeeStructureData() {
                     </td>
                 `).join('')}
                 <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; text-align: center;">
-                    <!-- ✅ VIEW VOTE HEAD BUTTON -->
-                    <button onclick="viewVoteHeadDetails('${vh.label}')" class="action-btn view" style="background: #dbeafe; color: #1e40af; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                    <button onclick="viewVoteHeadDetails('${vh.label}')" class="finance-action-btn view" style="background: #dbeafe; color: #1e40af; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
                         <i class="fas fa-eye"></i> View
                     </button>
                 </td>
@@ -674,7 +678,7 @@ function renderFeeStructureData() {
     
     // Total row with Full Details button
     html += `
-        <tr class="total-row" style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
+        <tr class="finance-total-row" style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
             <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: center; color: #0A3D62;">-</td>
             <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #0A3D62;">
                 <i class="fas fa-calculator" style="color: #4C1D95; margin-right: 6px;"></i> TOTAL
@@ -686,7 +690,7 @@ function renderFeeStructureData() {
                 </td>
             `).join('')}
             <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: center;">
-                <button onclick="viewFullFeeStructure()" class="action-btn details" style="background: #4C1D95; color: white; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                <button onclick="viewFullFeeStructure()" class="finance-action-btn details" style="background: #4C1D95; color: white; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;">
                     <i class="fas fa-file-invoice"></i> Full Details
                 </button>
             </td>
@@ -731,10 +735,10 @@ function renderFeeStructureData() {
                 </span>
             </div>
             <div>
-                <button onclick="generateFeeStructurePDF()" class="action-btn download" style="background: #4C1D95; color: white; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                <button onclick="generateFeeStructurePDF()" class="finance-action-btn download" style="background: #4C1D95; color: white; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;">
                     <i class="fas fa-file-pdf"></i> Download PDF
                 </button>
-                <button onclick="printFeeStructureTable()" class="action-btn" style="background: #475569; color: white; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                <button onclick="printFeeStructureTable()" class="finance-action-btn" style="background: #475569; color: white; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer;">
                     <i class="fas fa-print"></i> Print
                 </button>
             </div>
@@ -756,10 +760,14 @@ function renderFeeStructureData() {
     container.innerHTML = html;
     container.style.display = 'block';
     
-    // Hide loading state
-    const loadingState = document.getElementById('feeLoadingState');
+    // Hide loading state, show content
+    const loadingState = document.getElementById('finance-feeLoadingState');
     if (loadingState) {
         loadingState.style.display = 'none';
+    }
+    const emptyState = document.getElementById('finance-feeEmptyState');
+    if (emptyState) {
+        emptyState.style.display = 'none';
     }
     
     console.log('✅ Fee structure rendered with View buttons');
@@ -820,7 +828,9 @@ function viewVoteHeadDetails(voteHeadName) {
             width: 500
         });
     } else {
-        alert(detailsHtml.replace(/<[^>]*>/g, ''));
+        // Fallback - show in a simple alert
+        const textContent = detailsHtml.replace(/<[^>]*>/g, '');
+        alert(textContent);
     }
 }
 
@@ -901,7 +911,9 @@ function viewFullFeeStructure() {
             padding: '20px'
         });
     } else {
-        alert(tableHtml.replace(/<[^>]*>/g, ''));
+        // Fallback
+        const textContent = tableHtml.replace(/<[^>]*>/g, '');
+        alert(textContent);
     }
 }
 
@@ -983,12 +995,12 @@ function updateProgramInfo(user, programType, programLevel) {
     const periodLabel = getPeriodLabel(programType);
     const periods = getPeriods(programType, programLevel);
     
-    const programDisplay = document.getElementById('studentProgramDisplay');
+    const programDisplay = document.getElementById('finance-studentProgramDisplay');
     if (programDisplay) {
         programDisplay.textContent = user.program || 'N/A';
     }
     
-    const periodTypeBadge = document.getElementById('periodTypeBadge');
+    const periodTypeBadge = document.getElementById('finance-periodTypeBadge');
     if (periodTypeBadge) {
         if (programType === 'KRCHN') {
             periodTypeBadge.textContent = 'KRCHN';
@@ -1001,17 +1013,17 @@ function updateProgramInfo(user, programType, programLevel) {
         }
     }
     
-    const currentPeriodLabel = document.getElementById('currentPeriodLabel');
+    const currentPeriodLabel = document.getElementById('finance-currentPeriodLabel');
     if (currentPeriodLabel) {
         currentPeriodLabel.textContent = `Current ${periodLabel}`;
     }
     
-    const progressPeriodLabel = document.getElementById('progressPeriodLabel');
+    const progressPeriodLabel = document.getElementById('finance-progressPeriodLabel');
     if (progressPeriodLabel) {
         progressPeriodLabel.textContent = `Current ${periodLabel}`;
     }
     
-    const feeStructureLabel = document.getElementById('feeStructureLabel');
+    const feeStructureLabel = document.getElementById('finance-feeStructureLabel');
     if (feeStructureLabel) {
         feeStructureLabel.textContent = periodLabel;
     }
@@ -1020,7 +1032,7 @@ function updateProgramInfo(user, programType, programLevel) {
 }
 
 function updatePeriodFilter(programType, programLevel) {
-    const periodFilter = document.getElementById('financePeriodFilter');
+    const periodFilter = document.getElementById('finance-periodFilter');
     if (!periodFilter) return;
     const periods = getPeriods(programType, programLevel);
     while (periodFilter.options.length > 1) {
@@ -1250,12 +1262,12 @@ function updateFinanceUI(data) {
     renderPaymentTimeline(data.feeStructure || []);
     
     // Render fee structure if visible
-    const container = document.getElementById('studentFeeStructureDisplay');
+    const container = document.getElementById('finance-studentFeeStructureDisplay');
     if (container && container.style.display !== 'none') {
         renderFeeStructureData();
     }
     
-    const lastUpdated = document.getElementById('financeLastUpdated');
+    const lastUpdated = document.getElementById('finance-lastUpdated');
     if (lastUpdated) {
         lastUpdated.textContent = new Date().toLocaleString();
     }
@@ -1269,45 +1281,45 @@ function updateBalance(data) {
     const paidThisSemester = data.paidThisSemester || 0;
     const progress = data.paymentProgress || 0;
     
-    const balanceDisplay = document.getElementById('studentBalanceDisplay');
+    const balanceDisplay = document.getElementById('finance-studentBalanceDisplay');
     if (balanceDisplay) balanceDisplay.textContent = `KES ${balance.toLocaleString()}`;
     
-    const semesterFeeDisplay = document.getElementById('studentPeriodFee');
+    const semesterFeeDisplay = document.getElementById('finance-studentPeriodFee');
     if (semesterFeeDisplay) semesterFeeDisplay.textContent = `KES ${semesterFee.toLocaleString()}`;
     
-    const paidDisplay = document.getElementById('studentPaidThisPeriod');
+    const paidDisplay = document.getElementById('finance-studentPaidThisPeriod');
     if (paidDisplay) paidDisplay.textContent = `KES ${paidThisSemester.toLocaleString()}`;
     
-    const outstandingDisplay = document.getElementById('studentOutstanding');
+    const outstandingDisplay = document.getElementById('finance-studentOutstanding');
     if (outstandingDisplay) outstandingDisplay.textContent = `KES ${balance.toLocaleString()}`;
     
     updateBalanceStatus(balance);
     
     const progressPercent = Math.min(Math.round(progress), 100);
-    const progressFill = document.getElementById('paymentProgressFill');
+    const progressFill = document.getElementById('finance-paymentProgressFill');
     if (progressFill) progressFill.style.width = `${progressPercent}%`;
     
-    const progressText = document.getElementById('paymentProgressText');
+    const progressText = document.getElementById('finance-paymentProgressText');
     if (progressText) progressText.textContent = `${progressPercent}%`;
     
-    const progressText2 = document.getElementById('paymentProgressText2');
+    const progressText2 = document.getElementById('finance-paymentProgressText2');
     if (progressText2) progressText2.textContent = `${progressPercent}%`;
     
-    const totalDueAmount = document.getElementById('totalDueAmount');
+    const totalDueAmount = document.getElementById('finance-totalDueAmount');
     if (totalDueAmount) totalDueAmount.textContent = `KES ${semesterFee.toLocaleString()}`;
     
-    const totalPaidAmount = document.getElementById('totalPaidAmount');
+    const totalPaidAmount = document.getElementById('finance-totalPaidAmount');
     if (totalPaidAmount) totalPaidAmount.textContent = `KES ${paidThisSemester.toLocaleString()}`;
     
-    const balanceAmount = document.getElementById('balanceAmount');
+    const balanceAmount = document.getElementById('finance-balanceAmount');
     if (balanceAmount) balanceAmount.textContent = `KES ${balance.toLocaleString()}`;
 }
 
 function updateBalanceStatus(balance) {
-    const statusEl = document.getElementById('balanceStatusDisplay');
+    const statusEl = document.getElementById('finance-balanceStatusDisplay');
     if (!statusEl) return;
-    const dot = document.getElementById('statusDot');
-    const text = document.getElementById('statusText');
+    const dot = document.getElementById('finance-statusDot');
+    const text = document.getElementById('finance-statusText');
     if (balance === 0) {
         statusEl.style.background = 'rgba(16,185,129,0.2)';
         statusEl.style.color = '#10b981';
@@ -1332,27 +1344,27 @@ function updateStats(data) {
     const pending = payments.filter(p => p.status === 'pending').length;
     const overdue = payments.filter(p => p.status === 'failed' || p.status === 'overdue').length;
     
-    const paidEl = document.getElementById('financePaidCount');
+    const paidEl = document.getElementById('finance-paidCount');
     if (paidEl) paidEl.textContent = paid;
-    const pendingEl = document.getElementById('financePendingCount');
+    const pendingEl = document.getElementById('finance-pendingCount');
     if (pendingEl) pendingEl.textContent = pending;
-    const overdueEl = document.getElementById('financeOverdueCount');
+    const overdueEl = document.getElementById('finance-overdueCount');
     if (overdueEl) overdueEl.textContent = overdue;
-    const transactionsEl = document.getElementById('financeTotalTransactions');
+    const transactionsEl = document.getElementById('finance-totalTransactions');
     if (transactionsEl) transactionsEl.textContent = payments.length;
-    const recordCount = document.getElementById('paymentRecordCount');
+    const recordCount = document.getElementById('finance-paymentRecordCount');
     if (recordCount) recordCount.textContent = `${payments.length} records`;
 }
 
 function renderPaymentTimeline(feeStructure) {
-    const timeline = document.getElementById('paymentTimeline');
+    const timeline = document.getElementById('finance-paymentTimeline');
     if (!timeline) return;
     
     const programType = studentFinanceState.programType || 'TVET';
     const programLevel = studentFinanceState.programLevel || 'certificate';
     const periodLabel = getPeriodLabel(programType);
     
-    const timelineLabel = document.getElementById('timelineProgramLabel');
+    const timelineLabel = document.getElementById('finance-timelineProgramLabel');
     if (timelineLabel) {
         timelineLabel.textContent = `${programType} - ${programLevel === 'certificate' ? 'Certificate' : 'Diploma'}`;
     }
@@ -1417,19 +1429,29 @@ function renderPaymentTimeline(feeStructure) {
 // ============================================================
 
 function renderPayments(payments) {
-    const tbody = document.getElementById('studentPaymentHistory');
+    const tbody = document.getElementById('finance-studentPaymentHistory');
     if (!tbody) return;
     
+    const emptyState = document.getElementById('finance-emptyPaymentState');
+    
     if (!payments || payments.length === 0) {
+        if (emptyState) {
+            emptyState.style.display = 'table-row';
+        }
         tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
-                    <i class="fas fa-info-circle" style="font-size: 20px; display: block; margin-bottom: 8px;"></i>
-                    <p>No payment records found</p>
+            <tr id="finance-emptyPaymentState" style="display:table-row;">
+                <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-inbox" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
+                    No payment records found
+                    <p style="font-size: 12px; margin-top: 5px;">Try adjusting your filters or make your first payment.</p>
                 </td>
             </tr>
         `;
         return;
+    }
+    
+    if (emptyState) {
+        emptyState.style.display = 'none';
     }
     
     tbody.innerHTML = payments.map((p, index) => {
@@ -1459,13 +1481,13 @@ function renderPayments(payments) {
                     </span>
                 </td>
                 <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: center;">
-                    <button class="action-btn view" onclick="viewFeeStructure('${p.period}')" title="View Fee Structure for ${p.period}">
+                    <button class="finance-action-btn view" onclick="viewFeeStructure('${p.period}')" title="View Fee Structure for ${p.period}">
                         <i class="fas fa-eye"></i> View
                     </button>
-                    <button class="action-btn download" onclick="downloadFeeStructure('${p.period}')" title="Download Fee Structure for ${p.period}">
+                    <button class="finance-action-btn download" onclick="downloadFeeStructure('${p.period}')" title="Download Fee Structure for ${p.period}">
                         <i class="fas fa-download"></i> Download
                     </button>
-                    ${p.status === 'completed' ? `<button class="action-btn download" onclick="resendPaymentEmail()" title="Resend payment email" style="color: #4C1D95;">
+                    ${p.status === 'completed' ? `<button class="finance-action-btn download" onclick="resendPaymentEmail()" title="Resend payment email" style="color: #4C1D95;">
                         <i class="fas fa-envelope"></i>
                     </button>` : ''}
                 </td>
@@ -1479,9 +1501,9 @@ function renderPayments(payments) {
 // ============================================================
 
 function filterStudentPayments() {
-    const statusFilter = document.getElementById('financePaymentFilter')?.value || 'all';
-    const periodFilter = document.getElementById('financePeriodFilter')?.value || 'all';
-    const searchTerm = document.getElementById('financeSearch')?.value?.toLowerCase() || '';
+    const statusFilter = document.getElementById('finance-paymentFilter')?.value || 'all';
+    const periodFilter = document.getElementById('finance-periodFilter')?.value || 'all';
+    const searchTerm = document.getElementById('finance-search')?.value?.toLowerCase() || '';
     
     const payments = studentFinanceState.payments || [];
     
@@ -1496,7 +1518,7 @@ function filterStudentPayments() {
     });
     
     renderPayments(filtered);
-    const recordCount = document.getElementById('paymentRecordCount');
+    const recordCount = document.getElementById('finance-paymentRecordCount');
     if (recordCount) recordCount.textContent = `${filtered.length} records`;
 }
 
@@ -1504,14 +1526,15 @@ function viewFeeStructure(periodName) {
     if (!periodName) return;
     studentFinanceState.selectedPeriod = periodName;
     
-    const container = document.getElementById('studentFeeStructureDisplay');
-    const toggleBtn = document.getElementById('toggleFeeBtn');
-    const toggleText = document.getElementById('toggleFeeText');
+    const container = document.getElementById('finance-studentFeeStructureDisplay');
+    const toggleBtn = document.querySelector('[aria-controls="finance-studentFeeStructureDisplay"]');
+    const toggleText = document.getElementById('finance-toggleFeeText');
     
     if (container.style.display === 'none') {
         container.style.display = 'block';
         if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="toggleFeeText">Hide Fee Structure</span>';
+            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="finance-toggleFeeText">Hide Fee Structure</span>';
+            toggleBtn.setAttribute('aria-expanded', 'true');
         }
         if (toggleText) {
             toggleText.textContent = 'Hide Fee Structure';
@@ -1539,6 +1562,8 @@ function applyFeeFilters() {
 }
 
 function resetFeeFilters() {
+    document.getElementById('finance-feeYearFilter').value = 'all';
+    document.getElementById('finance-feePeriodFilter').value = 'all';
     studentFinanceState.selectedPeriod = null;
     renderFeeStructureData();
     showToast('Filters reset', 'info');
@@ -1549,26 +1574,32 @@ function resetFeeFilters() {
 // ============================================================
 
 function downloadStudentStatement() {
-    Swal.fire({
-        title: 'Generating Statement',
-        html: `
-            <div style="text-align: center;">
-                <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
-                <p>Your fee statement is being generated...</p>
-                <p style="font-size: 12px; color: #94a3b8;">Please wait</p>
-            </div>
-        `,
-        showConfirmButton: false,
-        timer: 2000
-    });
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Generating Statement',
+            html: `
+                <div style="text-align: center;">
+                    <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite; margin-bottom: 16px;"></div>
+                    <p>Your fee statement is being generated...</p>
+                    <p style="font-size: 12px; color: #94a3b8;">Please wait</p>
+                </div>
+            `,
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
     
     setTimeout(() => {
-        Swal.fire({
-            title: '✅ Statement Ready!',
-            text: 'Your fee statement has been downloaded.',
-            icon: 'success',
-            confirmButtonColor: '#4C1D95'
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '✅ Statement Ready!',
+                text: 'Your fee statement has been downloaded.',
+                icon: 'success',
+                confirmButtonColor: '#4C1D95'
+            });
+        } else {
+            showToast('✅ Statement downloaded successfully!', 'success');
+        }
         
         notifySuperAdmin('statement_downloaded', {
             studentId: studentFinanceState.student?.id,
@@ -1598,25 +1629,30 @@ function viewStudentInvoice() {
         `;
     });
     
-    Swal.fire({
-        title: '📄 Fee Breakdown',
-        html: `
-            <div style="text-align: left;">
-                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin: 10px 0; border: 1px solid #e5e7eb;">
-                    ${invoicesHtml}
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '📄 Fee Breakdown',
+            html: `
+                <div style="text-align: left;">
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin: 10px 0; border: 1px solid #e5e7eb;">
+                        ${invoicesHtml}
+                    </div>
+                    <p style="font-size: 12px; color: #94a3b8; margin-top: 8px;">
+                        <i class="fas fa-info-circle"></i> 
+                        ${programType === 'KRCHN' ? '3 Semesters per year for 3 years' : 
+                          programLevel === 'certificate' ? '3 Terms per year for 1 year' : 
+                          '3 Terms per year for 2 years'}
+                    </p>
                 </div>
-                <p style="font-size: 12px; color: #94a3b8; margin-top: 8px;">
-                    <i class="fas fa-info-circle"></i> 
-                    ${programType === 'KRCHN' ? '3 Semesters per year for 3 years' : 
-                      programLevel === 'certificate' ? '3 Terms per year for 1 year' : 
-                      '3 Terms per year for 2 years'}
-                </p>
-            </div>
-        `,
-        confirmButtonText: 'Close',
-        confirmButtonColor: '#4C1D95',
-        width: 600
-    });
+            `,
+            confirmButtonText: 'Close',
+            confirmButtonColor: '#4C1D95',
+            width: 600
+        });
+    } else {
+        showToast('📄 View fee breakdown in console', 'info');
+        console.log(invoicesHtml);
+    }
 }
 
 function downloadFeeStructure(periodName) {
@@ -1707,12 +1743,12 @@ function showToast(message, type = 'info') {
 // ============================================================
 
 function showFinanceLoading() {
-    const historyBody = document.getElementById('studentPaymentHistory');
+    const historyBody = document.getElementById('finance-studentPaymentHistory');
     if (historyBody) {
         historyBody.innerHTML = `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;" role="status">
+                    <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
                     <p style="margin-top: 10px;">Loading payment history...</p>
                 </td>
             </tr>
@@ -1721,7 +1757,7 @@ function showFinanceLoading() {
 }
 
 function showFinanceError(message) {
-    const historyBody = document.getElementById('studentPaymentHistory');
+    const historyBody = document.getElementById('finance-studentPaymentHistory');
     if (historyBody) {
         historyBody.innerHTML = `
             <tr>
@@ -1742,11 +1778,11 @@ function showFinanceError(message) {
 // ============================================================
 
 function openPaymentModal() {
-    const modal = document.getElementById('paymentModal');
+    const modal = document.getElementById('finance-paymentModal');
     if (!modal) return;
     
     // Populate periods
-    const periodSelect = document.getElementById('paymentPeriodSelect');
+    const periodSelect = document.getElementById('finance-paymentPeriodSelect');
     if (periodSelect) {
         const programType = studentFinanceState.programType || 'TVET';
         const programLevel = studentFinanceState.programLevel || 'certificate';
@@ -1768,11 +1804,11 @@ function openPaymentModal() {
                 const index = periods.indexOf(selectedPeriod);
                 if (index !== -1) {
                     const amount = getFeeAmount(programType, index, programLevel);
-                    const amountInput = document.getElementById('paymentAmountInput');
+                    const amountInput = document.getElementById('finance-paymentAmountInput');
                     if (amountInput && !amountInput.value) {
                         amountInput.value = amount;
                     }
-                    const descInput = document.getElementById('paymentDescriptionInput');
+                    const descInput = document.getElementById('finance-paymentDescriptionInput');
                     if (descInput) {
                         descInput.value = `${selectedPeriod} Tuition Fees`;
                     }
@@ -1781,7 +1817,7 @@ function openPaymentModal() {
         });
     }
     
-    const amountInput = document.getElementById('paymentAmountInput');
+    const amountInput = document.getElementById('finance-paymentAmountInput');
     if (amountInput) {
         const balance = studentFinanceState.balance || 0;
         if (balance > 0) {
@@ -1790,19 +1826,25 @@ function openPaymentModal() {
         }
     }
     
-    const descInput = document.getElementById('paymentDescriptionInput');
+    const descInput = document.getElementById('finance-paymentDescriptionInput');
     if (descInput && studentFinanceState.currentPeriod) {
         descInput.value = `${studentFinanceState.currentPeriod} Tuition Fees`;
     }
     
-    document.querySelectorAll('#paymentMethodsContainer > div').forEach(el => {
-        el.classList.remove('payment-method-selected');
+    // Reset payment method selection
+    document.querySelectorAll('#finance-paymentMethodsContainer > div').forEach(el => {
+        el.classList.remove('finance-payment-method-selected');
     });
-    document.getElementById('paymentMethodDetails').style.display = 'none';
-    document.getElementById('mpesaFields').style.display = 'none';
-    document.getElementById('cardFields').style.display = 'none';
-    document.getElementById('bankFields').style.display = 'none';
-    document.getElementById('paypalFields').style.display = 'none';
+    document.getElementById('finance-paymentMethodDetails').style.display = 'none';
+    document.getElementById('finance-mpesaFields').style.display = 'none';
+    document.getElementById('finance-cardFields').style.display = 'none';
+    document.getElementById('finance-bankFields').style.display = 'none';
+    document.getElementById('finance-paypalFields').style.display = 'none';
+    
+    // Hide validation errors
+    document.querySelectorAll('.finance-validation-error').forEach(el => {
+        el.style.display = 'none';
+    });
     
     selectPaymentMethod('mpesa');
     
@@ -1817,7 +1859,7 @@ function openPaymentModal() {
 }
 
 function closePaymentModal() {
-    const modal = document.getElementById('paymentModal');
+    const modal = document.getElementById('finance-paymentModal');
     if (modal) {
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
@@ -1825,22 +1867,22 @@ function closePaymentModal() {
 }
 
 function selectPaymentMethod(method) {
-    document.querySelectorAll('#paymentMethodsContainer > div').forEach(el => {
-        el.classList.remove('payment-method-selected');
+    document.querySelectorAll('#finance-paymentMethodsContainer > div').forEach(el => {
+        el.classList.remove('finance-payment-method-selected');
     });
     
-    const selectedEl = document.getElementById(`method-${method}`);
+    const selectedEl = document.getElementById(`finance-method-${method}`);
     if (selectedEl) {
-        selectedEl.classList.add('payment-method-selected');
+        selectedEl.classList.add('finance-payment-method-selected');
     }
     
-    document.getElementById('mpesaFields').style.display = 'none';
-    document.getElementById('cardFields').style.display = 'none';
-    document.getElementById('bankFields').style.display = 'none';
-    document.getElementById('paypalFields').style.display = 'none';
+    document.getElementById('finance-mpesaFields').style.display = 'none';
+    document.getElementById('finance-cardFields').style.display = 'none';
+    document.getElementById('finance-bankFields').style.display = 'none';
+    document.getElementById('finance-paypalFields').style.display = 'none';
     
-    const detailsContent = document.getElementById('methodDetailsContent');
-    const detailsContainer = document.getElementById('paymentMethodDetails');
+    const detailsContent = document.getElementById('finance-methodDetailsContent');
+    const detailsContainer = document.getElementById('finance-paymentMethodDetails');
     
     const methodNames = {
         mpesa: 'M-Pesa STK Push',
@@ -1873,32 +1915,167 @@ function selectPaymentMethod(method) {
     detailsContainer.style.display = 'block';
     
     if (method === 'mpesa') {
-        document.getElementById('mpesaFields').style.display = 'block';
+        document.getElementById('finance-mpesaFields').style.display = 'block';
         const user = window.currentUserProfile || window.currentUser;
         if (user?.phone) {
-            const phoneInput = document.getElementById('mpesaPhoneInput');
+            const phoneInput = document.getElementById('finance-mpesaPhoneInput');
             if (phoneInput) phoneInput.value = user.phone;
         }
     } else if (method === 'card') {
-        document.getElementById('cardFields').style.display = 'block';
+        document.getElementById('finance-cardFields').style.display = 'block';
     } else if (method === 'bank') {
-        document.getElementById('bankFields').style.display = 'block';
+        document.getElementById('finance-bankFields').style.display = 'block';
     } else if (method === 'paypal') {
-        document.getElementById('paypalFields').style.display = 'block';
+        document.getElementById('finance-paypalFields').style.display = 'block';
         const user = window.currentUserProfile || window.currentUser;
         if (user?.email) {
-            const emailInput = document.getElementById('paypalEmailInput');
+            const emailInput = document.getElementById('finance-paypalEmailInput');
             if (emailInput) emailInput.value = user.email;
         }
     }
     
     studentFinanceState.selectedPaymentMethod = method;
+    
+    // Hide method error if shown
+    document.getElementById('finance-methodError').style.display = 'none';
 }
 
+// ============================================================
+// 📝 PAYMENT FORM VALIDATION
+// ============================================================
+
+function validatePaymentForm() {
+    let isValid = true;
+    const errors = document.querySelectorAll('.finance-validation-error');
+    errors.forEach(err => err.style.display = 'none');
+    
+    // Validate period
+    const period = document.getElementById('finance-paymentPeriodSelect');
+    if (!period.value) {
+        const errorEl = period.nextElementSibling;
+        if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+            errorEl.style.display = 'block';
+        }
+        isValid = false;
+    }
+    
+    // Validate amount
+    const amount = document.getElementById('finance-paymentAmountInput');
+    if (!amount.value || parseFloat(amount.value) < 1) {
+        const errorEl = amount.nextElementSibling;
+        if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+            errorEl.style.display = 'block';
+        }
+        isValid = false;
+    }
+    
+    // Validate payment method
+    const selectedMethod = document.querySelector('.finance-payment-method-selected');
+    if (!selectedMethod) {
+        document.getElementById('finance-methodError').style.display = 'block';
+        isValid = false;
+    }
+    
+    // Get selected method
+    let method = null;
+    if (selectedMethod) {
+        const id = selectedMethod.id;
+        method = id.replace('finance-method-', '');
+    }
+    
+    // Method-specific validation
+    if (method === 'mpesa') {
+        const phone = document.getElementById('finance-mpesaPhoneInput');
+        if (!phone.value || phone.value.replace(/\D/g, '').length < 10) {
+            const errorEl = phone.nextElementSibling?.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+                errorEl.style.display = 'block';
+            }
+            isValid = false;
+        }
+    } else if (method === 'card') {
+        const cardNumber = document.getElementById('finance-cardNumberInput');
+        const expiry = document.getElementById('finance-cardExpiryInput');
+        const cvv = document.getElementById('finance-cardCvvInput');
+        
+        if (!cardNumber.value || cardNumber.value.replace(/\s/g, '').length < 16) {
+            const errorEl = cardNumber.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+                errorEl.style.display = 'block';
+            }
+            isValid = false;
+        }
+        if (!expiry.value || !expiry.value.match(/^\d{2}\/\d{2}$/)) {
+            const errorEl = expiry.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+                errorEl.style.display = 'block';
+            }
+            isValid = false;
+        }
+        if (!cvv.value || cvv.value.length < 3) {
+            const errorEl = cvv.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+                errorEl.style.display = 'block';
+            }
+            isValid = false;
+        }
+    } else if (method === 'bank') {
+        const accountName = document.getElementById('finance-bankAccountNameInput');
+        const accountNumber = document.getElementById('finance-bankAccountNumberInput');
+        const bankName = document.getElementById('finance-bankNameInput');
+        
+        if (!accountName.value) {
+            const errorEl = accountName.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+                errorEl.style.display = 'block';
+            }
+            isValid = false;
+        }
+        if (!accountNumber.value) {
+            const errorEl = accountNumber.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+                errorEl.style.display = 'block';
+            }
+            isValid = false;
+        }
+        if (!bankName.value) {
+            const errorEl = bankName.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+                errorEl.style.display = 'block';
+            }
+            isValid = false;
+        }
+    } else if (method === 'paypal') {
+        const email = document.getElementById('finance-paypalEmailInput');
+        if (!email.value || !email.value.includes('@')) {
+            const errorEl = email.nextElementSibling?.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('finance-validation-error')) {
+                errorEl.style.display = 'block';
+            }
+            isValid = false;
+        }
+    }
+    
+    if (!isValid) {
+        showToast('Please fix all validation errors before submitting.', 'error');
+    }
+    
+    return isValid;
+}
+
+// ============================================================
+// 💳 PROCESS PAYMENT
+// ============================================================
+
 function processPayment() {
-    const period = document.getElementById('paymentPeriodSelect')?.value;
-    const amount = parseFloat(document.getElementById('paymentAmountInput')?.value);
-    const description = document.getElementById('paymentDescriptionInput')?.value || `${period} Tuition Fees`;
+    // Validate form first
+    if (!validatePaymentForm()) {
+        return;
+    }
+    
+    const period = document.getElementById('finance-paymentPeriodSelect')?.value;
+    const amount = parseFloat(document.getElementById('finance-paymentAmountInput')?.value);
+    const description = document.getElementById('finance-paymentDescriptionInput')?.value || `${period} Tuition Fees`;
     const method = studentFinanceState.selectedPaymentMethod || 'mpesa';
     
     if (!period) {
@@ -1913,7 +2090,7 @@ function processPayment() {
     
     if (method === 'mpesa') {
         closePaymentModal();
-        const phoneInput = document.getElementById('mpesaPhoneInput');
+        const phoneInput = document.getElementById('finance-mpesaPhoneInput');
         let phone = phoneInput?.value || '';
         
         if (!phone || phone.trim() === '') {
@@ -1930,20 +2107,21 @@ function processPayment() {
         
         processSTKPush(amount, period, cleanPhone, phone);
     } else if (method === 'paypal') {
-        const email = document.getElementById('paypalEmailInput')?.value;
+        const email = document.getElementById('finance-paypalEmailInput')?.value;
         if (!email || !email.includes('@')) {
             showToast('❌ Please enter a valid PayPal email', 'error');
             return;
         }
+        closePaymentModal();
         showToast('⏳ Redirecting to PayPal...', 'info');
         setTimeout(() => {
             const result = { status: 'success', transactionId: `PAYPAL-${Date.now()}` };
             handleSTKSuccess(result, amount, period);
         }, 2000);
     } else if (method === 'card') {
-        const cardNumber = document.getElementById('cardNumberInput')?.value;
-        const expiry = document.getElementById('cardExpiryInput')?.value;
-        const cvv = document.getElementById('cardCvvInput')?.value;
+        const cardNumber = document.getElementById('finance-cardNumberInput')?.value;
+        const expiry = document.getElementById('finance-cardExpiryInput')?.value;
+        const cvv = document.getElementById('finance-cardCvvInput')?.value;
         
         if (!cardNumber || cardNumber.replace(/\s/g, '').length < 16) {
             showToast('❌ Please enter a valid card number', 'error');
@@ -1964,9 +2142,9 @@ function processPayment() {
             handleSTKSuccess(result, amount, period);
         }, 3000);
     } else if (method === 'bank') {
-        const accountName = document.getElementById('bankAccountNameInput')?.value;
-        const accountNumber = document.getElementById('bankAccountNumberInput')?.value;
-        const bankName = document.getElementById('bankNameInput')?.value;
+        const accountName = document.getElementById('finance-bankAccountNameInput')?.value;
+        const accountNumber = document.getElementById('finance-bankAccountNumberInput')?.value;
+        const bankName = document.getElementById('finance-bankNameInput')?.value;
         
         if (!accountName) {
             showToast('❌ Please enter account name', 'error');
@@ -1977,41 +2155,45 @@ function processPayment() {
             return;
         }
         closePaymentModal();
-        Swal.fire({
-            title: '🏦 Bank Transfer Details',
-            html: `
-                <div style="text-align: left;">
-                    <p>Please make a bank transfer using the details below:</p>
-                    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 12px 0; border: 1px solid #e5e7eb;">
-                        <p style="margin: 4px 0;"><strong>Bank:</strong> Equity Bank</p>
-                        <p style="margin: 4px 0;"><strong>Branch:</strong> Nakuru</p>
-                        <p style="margin: 4px 0;"><strong>Account Name:</strong> Nakuru College of Health Sciences</p>
-                        <p style="margin: 4px 0;"><strong>Account Number:</strong> 0130200214036</p>
-                        <p style="margin: 4px 0;"><strong>Reference:</strong> ${period} - ${Date.now()}</p>
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '🏦 Bank Transfer Details',
+                html: `
+                    <div style="text-align: left;">
+                        <p>Please make a bank transfer using the details below:</p>
+                        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 12px 0; border: 1px solid #e5e7eb;">
+                            <p style="margin: 4px 0;"><strong>Bank:</strong> Equity Bank</p>
+                            <p style="margin: 4px 0;"><strong>Branch:</strong> Nakuru</p>
+                            <p style="margin: 4px 0;"><strong>Account Name:</strong> Nakuru College of Health Sciences</p>
+                            <p style="margin: 4px 0;"><strong>Account Number:</strong> 0130200214036</p>
+                            <p style="margin: 4px 0;"><strong>Reference:</strong> ${period} - ${Date.now()}</p>
+                        </div>
+                        <div style="background: #fef3c7; padding: 10px; border-radius: 8px; border: 1px solid #f59e0b; margin: 12px 0;">
+                            <p style="margin: 0; font-size: 13px; color: #92400e;">
+                                <i class="fas fa-info-circle"></i> After transfer, send proof to: nchsmfinance@gmail.com
+                            </p>
+                        </div>
+                        <div style="background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center;">
+                            <p style="margin: 0; font-weight: 600; color: #0A3D62;">Amount to Transfer: KES ${amount.toLocaleString()}</p>
+                        </div>
                     </div>
-                    <div style="background: #fef3c7; padding: 10px; border-radius: 8px; border: 1px solid #f59e0b; margin: 12px 0;">
-                        <p style="margin: 0; font-size: 13px; color: #92400e;">
-                            <i class="fas fa-info-circle"></i> After transfer, send proof to: nchsmfinance@gmail.com
-                        </p>
-                    </div>
-                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center;">
-                        <p style="margin: 0; font-weight: 600; color: #0A3D62;">Amount to Transfer: KES ${amount.toLocaleString()}</p>
-                    </div>
-                </div>
-            `,
-            confirmButtonText: 'I Have Transferred',
-            cancelButtonText: 'Cancel',
-            showCancelButton: true,
-            confirmButtonColor: '#059669',
-            cancelButtonColor: '#64748b'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                showToast('📧 Please send payment proof to nchsmfinance@gmail.com', 'info');
-                const txnResult = { status: 'pending', transactionId: `BANK-${Date.now()}` };
-                saveSTKPaymentRecord(amount, period, txnResult);
-                showToast('⏳ Payment recorded as pending. Awaiting confirmation.', 'warning');
-            }
-        });
+                `,
+                confirmButtonText: 'I Have Transferred',
+                cancelButtonText: 'Cancel',
+                showCancelButton: true,
+                confirmButtonColor: '#059669',
+                cancelButtonColor: '#64748b'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    showToast('📧 Please send payment proof to nchsmfinance@gmail.com', 'info');
+                    const txnResult = { status: 'pending', transactionId: `BANK-${Date.now()}` };
+                    saveSTKPaymentRecord(amount, period, txnResult);
+                    showToast('⏳ Payment recorded as pending. Awaiting confirmation.', 'warning');
+                }
+            });
+        } else {
+            showToast('📧 Please send payment proof to nchsmfinance@gmail.com', 'info');
+        }
     }
 }
 
@@ -2020,30 +2202,32 @@ function processPayment() {
 // ============================================================
 
 function processSTKPush(amount, period, phoneNumber, displayPhone) {
-    Swal.fire({
-        title: '⏳ Processing Payment',
-        html: `
-            <div style="text-align: center;">
-                <div style="display: inline-block; width: 60px; height: 60px; border: 4px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;"></div>
-                <p style="font-size: 16px; font-weight: 600;">Sending STK Push...</p>
-                <p style="color: #64748b; font-size: 14px;">Please check your phone for the M-Pesa prompt</p>
-                <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Phone:</strong> ${displayPhone}</p>
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Amount:</strong> KES ${amount.toLocaleString()}</p>
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Period:</strong> ${period}</p>
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '⏳ Processing Payment',
+            html: `
+                <div style="text-align: center;">
+                    <div style="display: inline-block; width: 60px; height: 60px; border: 4px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite; margin-bottom: 16px;"></div>
+                    <p style="font-size: 16px; font-weight: 600;">Sending STK Push...</p>
+                    <p style="color: #64748b; font-size: 14px;">Please check your phone for the M-Pesa prompt</p>
+                    <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Phone:</strong> ${displayPhone}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Amount:</strong> KES ${amount.toLocaleString()}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Period:</strong> ${period}</p>
+                    </div>
+                    <div style="padding: 10px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b; font-size: 13px; color: #92400e;">
+                        <i class="fas fa-clock"></i> Waiting for confirmation... 
+                        <span id="finance-stkTimer" style="font-weight: 700; color: #d97706;">30</span> seconds remaining
+                    </div>
+                    <button onclick="cancelSTKPayment()" style="margin-top: 16px; padding: 8px 20px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                        <i class="fas fa-times"></i> Cancel Payment
+                    </button>
                 </div>
-                <div style="padding: 10px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b; font-size: 13px; color: #92400e;">
-                    <i class="fas fa-clock"></i> Waiting for confirmation... 
-                    <span id="stkTimer" style="font-weight: 700; color: #d97706;">30</span> seconds remaining
-                </div>
-                <button onclick="cancelSTKPayment()" style="margin-top: 16px; padding: 8px 20px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
-                    <i class="fas fa-times"></i> Cancel Payment
-                </button>
-            </div>
-        `,
-        showConfirmButton: false,
-        allowOutsideClick: false
-    });
+            `,
+            showConfirmButton: false,
+            allowOutsideClick: false
+        });
+    }
     
     studentFinanceState.stkPayment.isProcessing = true;
     studentFinanceState.stkPayment.phoneNumber = phoneNumber;
@@ -2053,6 +2237,7 @@ function processSTKPush(amount, period, phoneNumber, displayPhone) {
     
     startSTKTimer();
     
+    // Simulate STK Push response (replace with actual API call)
     setTimeout(() => {
         const result = {
             status: 'success',
@@ -2066,46 +2251,55 @@ function processSTKPush(amount, period, phoneNumber, displayPhone) {
 
 function startSTKTimer() {
     let timeLeft = 30;
-    if (window.stkTimer) {
-        clearInterval(window.stkTimer);
+    if (window.financeStkTimer) {
+        clearInterval(window.financeStkTimer);
     }
-    window.stkTimer = setInterval(() => {
+    window.financeStkTimer = setInterval(() => {
         timeLeft--;
-        const timerEl = document.getElementById('stkTimer');
+        const timerEl = document.getElementById('finance-stkTimer');
         if (timerEl) {
             timerEl.textContent = timeLeft;
         }
         if (timeLeft <= 0) {
-            clearInterval(window.stkTimer);
+            clearInterval(window.financeStkTimer);
         }
     }, 1000);
 }
 
 function cancelSTKPayment() {
-    Swal.fire({
-        title: 'Cancel Payment?',
-        text: 'Are you sure you want to cancel this payment?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc2626',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: 'Yes, Cancel',
-        cancelButtonText: 'No, Continue'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            studentFinanceState.stkPayment.status = 'cancelled';
-            studentFinanceState.stkPayment.isProcessing = false;
-            clearInterval(window.stkTimer);
-            Swal.close();
-            showToast('Payment cancelled', 'warning');
-        }
-    });
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Cancel Payment?',
+            text: 'Are you sure you want to cancel this payment?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, Cancel',
+            cancelButtonText: 'No, Continue'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                studentFinanceState.stkPayment.status = 'cancelled';
+                studentFinanceState.stkPayment.isProcessing = false;
+                clearInterval(window.financeStkTimer);
+                if (typeof Swal !== 'undefined') {
+                    Swal.close();
+                }
+                showToast('Payment cancelled', 'warning');
+            }
+        });
+    } else {
+        studentFinanceState.stkPayment.status = 'cancelled';
+        studentFinanceState.stkPayment.isProcessing = false;
+        clearInterval(window.financeStkTimer);
+        showToast('Payment cancelled', 'warning');
+    }
 }
 
 function handleSTKSuccess(result, amount, period) {
     studentFinanceState.stkPayment.status = 'success';
     studentFinanceState.stkPayment.isProcessing = false;
-    clearInterval(window.stkTimer);
+    clearInterval(window.financeStkTimer);
     
     const user = window.currentUserProfile || window.currentUser;
     const transactionId = result.transactionId || result.checkoutRequestID || `TXN-${Date.now()}`;
@@ -2137,27 +2331,29 @@ function handleSTKSuccess(result, amount, period) {
         timestamp: new Date().toISOString()
     });
     
-    Swal.fire({
-        title: '✅ Payment Successful!',
-        html: `
-            <div style="text-align: center;">
-                <i class="fas fa-check-circle" style="font-size: 60px; color: #059669; margin-bottom: 16px;"></i>
-                <p style="font-size: 20px; font-weight: 700; color: #059669;">Payment Successful! ✅</p>
-                <p style="color: #64748b; font-size: 15px;">Your payment of <strong>KES ${amount.toLocaleString()}</strong> has been confirmed.</p>
-                <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Period:</strong> ${period}</p>
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Transaction ID:</strong> ${transactionId}</p>
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Reference:</strong> ${reference}</p>
-                    <p style="margin: 4px 0; font-size: 13px;"><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '✅ Payment Successful!',
+            html: `
+                <div style="text-align: center;">
+                    <i class="fas fa-check-circle" style="font-size: 60px; color: #059669; margin-bottom: 16px;"></i>
+                    <p style="font-size: 20px; font-weight: 700; color: #059669;">Payment Successful! ✅</p>
+                    <p style="color: #64748b; font-size: 15px;">Your payment of <strong>KES ${amount.toLocaleString()}</strong> has been confirmed.</p>
+                    <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Period:</strong> ${period}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Transaction ID:</strong> ${transactionId}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Reference:</strong> ${reference}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+                    </div>
+                    <div style="padding: 10px; background: #d1fae5; border-radius: 8px; border: 1px solid #86efac; font-size: 13px; color: #065f46;">
+                        <i class="fas fa-envelope"></i> A confirmation email has been sent to your registered email address.
+                    </div>
                 </div>
-                <div style="padding: 10px; background: #d1fae5; border-radius: 8px; border: 1px solid #86efac; font-size: 13px; color: #065f46;">
-                    <i class="fas fa-envelope"></i> A confirmation email has been sent to your registered email address.
-                </div>
-            </div>
-        `,
-        confirmButtonText: 'Done',
-        confirmButtonColor: '#059669'
-    });
+            `,
+            confirmButtonText: 'Done',
+            confirmButtonColor: '#059669'
+        });
+    }
     
     setTimeout(() => {
         loadStudentFinance();
@@ -2244,6 +2440,21 @@ function savePaymentLocally(paymentRecord) {
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Add finance-spin keyframe if not exists
+    if (!document.getElementById('financeSpinStyle')) {
+        const style = document.createElement('style');
+        style.id = 'financeSpinStyle';
+        style.textContent = `
+            @keyframes finance-spin { to { transform: rotate(360deg); } }
+            @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+            @keyframes pulse-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Listen for tab activation
     const financeTab = document.querySelector('a[data-tab="finance"]');
     if (financeTab) {
         financeTab.addEventListener('click', function() {
@@ -2256,53 +2467,39 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(loadStudentFinance, 800);
     });
     
+    // Check if finance tab is active on load
     const currentTab = document.querySelector('.tab-content.active');
     if (currentTab && currentTab.id === 'finance') {
         setTimeout(loadStudentFinance, 500);
     }
     
-    const paymentFilter = document.getElementById('financePaymentFilter');
+    // Set up filter event listeners
+    const paymentFilter = document.getElementById('finance-paymentFilter');
     if (paymentFilter) paymentFilter.addEventListener('change', filterStudentPayments);
     
-    const periodFilter = document.getElementById('financePeriodFilter');
+    const periodFilter = document.getElementById('finance-periodFilter');
     if (periodFilter) periodFilter.addEventListener('change', filterStudentPayments);
     
-    const searchInput = document.getElementById('financeSearch');
+    const searchInput = document.getElementById('finance-search');
     if (searchInput) searchInput.addEventListener('keyup', filterStudentPayments);
     
+    // Payment form submission
+    const paymentForm = document.getElementById('finance-paymentForm');
+    if (paymentForm) {
+        paymentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            processPayment();
+        });
+    }
+    
+    // Listen for admin events
     listenForAdminEvents();
     
+    // Notify admin module that student finance is ready
     notifySuperAdmin('module_ready', {
         version: '2.0.0',
         timestamp: new Date().toISOString()
     });
-    
-    if (!document.getElementById('financeSpinStyle')) {
-        const style = document.createElement('style');
-        style.id = 'financeSpinStyle';
-        style.textContent = `
-            @keyframes spin { to { transform: rotate(360deg); } }
-            @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-            @keyframes pulse-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-            @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
-            .action-btn { background: transparent; border: none; padding: 4px 8px; margin: 0 2px; cursor: pointer; font-size: 12px; border-radius: 4px; transition: all 0.2s ease; }
-            .action-btn.view { color: #1e40af; background: #dbeafe; padding: 5px 12px; border-radius: 6px; }
-            .action-btn.view:hover { background: #bfdbfe; }
-            .action-btn.download { color: #065f46; background: #d1fae5; padding: 5px 12px; border-radius: 6px; }
-            .action-btn.download:hover { background: #a7f3d0; }
-            .action-btn.details { background: #4C1D95; color: white; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; }
-            .action-btn.details:hover { background: #6d28d9; }
-            .payment-method-selected { border-color: #4C1D95 !important; background: #ede9fe !important; box-shadow: 0 0 0 3px rgba(76,29,149,0.1); }
-            .fee-structure-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-            .fee-structure-table th { background: #f8fafc; padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .fee-structure-table td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; }
-            .fee-structure-table tr:hover td { background: #f8fafc; }
-            .fee-structure-table .total-row { background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95; }
-            .fee-structure-table .total-row td { padding: 12px 14px; }
-        `;
-        document.head.appendChild(style);
-    }
     
     // Expose functions globally for HTML onclick
     window.toggleFeeStructure = toggleFeeStructure;
@@ -2327,6 +2524,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.viewFullFeeStructure = viewFullFeeStructure;
     window.renderFeeStructureData = renderFeeStructureData;
     window.notifySuperAdmin = notifySuperAdmin;
+    window.showToast = showToast;
 });
 
 console.log('✅ Student Finance module loaded successfully!');
