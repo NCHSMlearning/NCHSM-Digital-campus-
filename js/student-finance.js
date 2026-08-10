@@ -1,7 +1,7 @@
 // ============================================================
 // 📊 STUDENT FINANCE MODULE - COMPLETE FIXED VERSION
 // Supports KRCHN (Semesters) and TVET (Terms with Years)
-// ✅ M-Pesa STK Push Integration
+// ✅ M-Pesa STK Push Integration with PayHero
 // ✅ Real-time payment status updates
 // ✅ View & Download fee structure actions
 // ✅ Fee balance updates when viewing specific periods
@@ -11,8 +11,54 @@
 // ============================================================
 
 // ============================================================
+// 💳 PAYHERO CONFIGURATION - FILLED WITH YOUR CREDENTIALS
+// ============================================================
+
+const PAYHERO_CONFIG = {
+    // Base URLs
+    baseUrl: 'https://api.payhero.co.ke',
+    sandboxUrl: 'https://sandbox.payhero.co.ke',
+    
+    // Account details (from PayHero)
+    accountId: '11408',
+    username: 'GaVlxPPTPlUzkNd2sppW',
+    password: 'BAzYyKhaT0S41Zr4Y8BDQeoi9BVW3cGAaga1M2Og',
+    
+    // Basic Auth Token (from PayHero)
+    authToken: 'Basic R2FWbHhQUFRQbFV6a05kMnNwcFc6QkF6WXlLaGFUMFM0MVpyNFk4QkRRZW9pOUJWVzNjR0FhZ2ExTTJPZw==',
+    
+    // Environment: 'production' or 'sandbox'
+    environment: 'production',
+    
+    // Callback URLs (update with your domain)
+callbackUrl: 'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/mpesa-callback',
+    returnUrl: 'https://nchsm.co.ke/student/finance',
+    
+    // Lipwa Link
+    lipwaLink: 'https://lipwa.link/11408',
+    
+    // M-Pesa details (optional - if you have a PayBill)
+    businessShortcode: '', // Your PayBill or Till number
+    passkey: '', // Your passkey if using PayBill
+};
+
+// ============================================================
+// 🔄 PAYHERO STATE
+// ============================================================
+
+const payheroState = {
+    isInitialized: false,
+    isProcessing: false,
+    availableBalance: 0,
+    currentTransaction: null,
+    stkCheckInterval: null,
+    recentTransactions: []
+};
+
+// ============================================================
 // 📦 STATE
 // ============================================================
+
 const studentFinanceState = {
     balance: 0,
     totalPaid: 0,
@@ -47,12 +93,11 @@ const studentFinanceState = {
 };
 
 // ============================================================
-// 🔗 COMMUNICATION WITH SUPER ADMIN MODULE - FIXED
+// 🔗 COMMUNICATION WITH SUPER ADMIN MODULE
 // ============================================================
 
 function notifySuperAdmin(eventType, data) {
     try {
-        // Dispatch custom event for admin module
         const adminEvent = new CustomEvent('studentFinanceEvent', {
             detail: {
                 type: eventType,
@@ -64,12 +109,10 @@ function notifySuperAdmin(eventType, data) {
         window.dispatchEvent(adminEvent);
         console.log(`📤 Notified Super Admin: ${eventType}`, data);
         
-        // Call admin function if available
         if (typeof window.handleStudentFinanceEvent === 'function') {
             window.handleStudentFinanceEvent(eventType, data);
         }
         
-        // Log to admin_events - FIXED: using then() instead of catch()
         if (typeof supabase !== 'undefined' && supabase) {
             supabase
                 .from('admin_events')
@@ -132,6 +175,596 @@ function listenForAdminEvents() {
 }
 
 // ============================================================
+// 💳 PAYHERO STK PUSH FUNCTIONS
+// ============================================================
+
+// Get PayHero Base URL
+function getPayHeroBaseUrl() {
+    if (PAYHERO_CONFIG.environment === 'sandbox') {
+        return PAYHERO_CONFIG.sandboxUrl;
+    }
+    return PAYHERO_CONFIG.baseUrl;
+}
+
+// Test connection
+async function testPayHeroConnection() {
+    try {
+        const response = await fetch(`${getPayHeroBaseUrl()}/v1/auth/validate`, {
+            method: 'GET',
+            headers: {
+                'Authorization': PAYHERO_CONFIG.authToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+        }
+        
+        const data = await response.json();
+        return { success: true, data: data };
+        
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+// Initialize PayHero
+async function initPayHero() {
+    try {
+        console.log('💳 Initializing PayHero...');
+        
+        const testResult = await testPayHeroConnection();
+        if (!testResult.success) {
+            console.error('❌ PayHero connection failed:', testResult.error);
+            showToast('⚠️ Payment service connection failed. Please try again.', 'error');
+            return { success: false, error: testResult.error };
+        }
+        
+        payheroState.isInitialized = true;
+        console.log('✅ PayHero initialized successfully');
+        
+        await fetchPayHeroBalance();
+        
+        return { success: true };
+        
+    } catch (error) {
+        console.error('❌ PayHero initialization error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Fetch balance
+async function fetchPayHeroBalance() {
+    try {
+        const response = await fetch(`${getPayHeroBaseUrl()}/v1/accounts/balance`, {
+            method: 'GET',
+            headers: {
+                'Authorization': PAYHERO_CONFIG.authToken,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        payheroState.availableBalance = data.balance || data.available_balance || 0;
+        console.log(`💰 Available balance: KES ${payheroState.availableBalance}`);
+        return payheroState.availableBalance;
+        
+    } catch (error) {
+        console.error('❌ Error fetching balance:', error);
+        return 0;
+    }
+}
+
+// Format phone number for PayHero
+function formatPhoneNumber(phone) {
+    if (!phone) return null;
+    
+    let clean = phone.replace(/\D/g, '');
+    
+    if (clean.length === 10 && clean.startsWith('07')) {
+        return '254' + clean.substring(1);
+    } else if (clean.length === 10 && clean.startsWith('01')) {
+        return '254' + clean.substring(1);
+    } else if (clean.length === 12 && clean.startsWith('254')) {
+        return clean;
+    } else if (clean.length === 9 && clean.startsWith('7')) {
+        return '254' + clean;
+    } else {
+        return clean;
+    }
+}
+
+// Show STK Processing Dialog
+function showSTKProcessingDialog(amount, phone) {
+    if (typeof Swal === 'undefined') {
+        console.warn('⚠️ SweetAlert not loaded');
+        return;
+    }
+    
+    Swal.fire({
+        title: '⏳ Processing Payment',
+        html: `
+            <div style="text-align: center;">
+                <div style="display: inline-block; width: 60px; height: 60px; border: 4px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite; margin-bottom: 16px;"></div>
+                <p style="font-size: 16px; font-weight: 600;">Sending STK Push...</p>
+                <p style="color: #64748b; font-size: 14px;">Please check your phone for the M-Pesa prompt</p>
+                <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Phone:</strong> ${phone}</p>
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Amount:</strong> KES ${amount.toLocaleString()}</p>
+                    <p style="margin: 4px 0; font-size: 13px;"><strong>Period:</strong> ${studentFinanceState.currentPeriod || 'Current'}</p>
+                </div>
+                <div style="padding: 10px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b; font-size: 13px; color: #92400e;">
+                    <i class="fas fa-clock"></i> Waiting for confirmation... 
+                    <span id="finance-stkTimer" style="font-weight: 700; color: #d97706;">90</span> seconds remaining
+                </div>
+                <div id="finance-stkStatus" style="margin-top: 12px; font-size: 13px; color: #64748b;">
+                    ⏳ Waiting for your response...
+                </div>
+                <button onclick="cancelSTKPush()" style="margin-top: 16px; padding: 8px 20px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                    <i class="fas fa-times"></i> Cancel Payment
+                </button>
+            </div>
+        `,
+        showConfirmButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        width: 500
+    });
+}
+
+// Update STK Dialog Status
+function updateSTKDialogStatus(message) {
+    const statusEl = document.getElementById('finance-stkStatus');
+    if (statusEl) {
+        statusEl.textContent = message;
+    }
+}
+
+function updateSTKDialogTimer(seconds) {
+    const timerEl = document.getElementById('finance-stkTimer');
+    if (timerEl) {
+        timerEl.textContent = seconds;
+    }
+}
+
+// Cancel STK Push
+function cancelSTKPush() {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Cancel Payment?',
+            text: 'Are you sure you want to cancel this payment?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, Cancel',
+            cancelButtonText: 'No, Continue'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (payheroState.stkCheckInterval) {
+                    clearInterval(payheroState.stkCheckInterval);
+                }
+                payheroState.isProcessing = false;
+                Swal.close();
+                showToast('Payment cancelled', 'warning');
+                
+                if (payheroState.currentTransaction?.id) {
+                    cancelPayHeroTransaction(payheroState.currentTransaction.id);
+                }
+            }
+        });
+    }
+}
+
+// Cancel transaction on PayHero
+async function cancelPayHeroTransaction(transactionId) {
+    try {
+        const response = await fetch(`${getPayHeroBaseUrl()}/v1/payments/${transactionId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Authorization': PAYHERO_CONFIG.authToken,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            console.log('✅ Transaction cancelled on PayHero');
+        }
+    } catch (error) {
+        console.error('❌ Error cancelling transaction:', error);
+    }
+}
+
+// Initiate STK Push - UPDATED with Supabase polling
+async function initiateSTKPush(amount, phoneNumber, reference, period) {
+    try {
+        if (!amount || amount <= 0) {
+            showToast('❌ Please enter a valid amount', 'error');
+            return { success: false, error: 'Invalid amount' };
+        }
+        
+        const cleanPhone = formatPhoneNumber(phoneNumber);
+        if (!cleanPhone) {
+            showToast('❌ Please enter a valid phone number (e.g., 0712345678)', 'error');
+            return { success: false, error: 'Invalid phone number' };
+        }
+        
+        if (!payheroState.isInitialized) {
+            const initResult = await initPayHero();
+            if (!initResult.success) {
+                showToast('❌ Payment service not available. Please try again.', 'error');
+                return { success: false, error: 'PayHero not initialized' };
+            }
+        }
+        
+        showSTKProcessingDialog(amount, cleanPhone);
+        
+        const stkRequest = {
+            amount: amount,
+            phone: cleanPhone,
+            account_reference: reference || `STK-${Date.now()}`,
+            transaction_desc: `${period} Tuition Fees Payment`,
+            callback_url: PAYHERO_CONFIG.callbackUrl,
+            account_id: PAYHERO_CONFIG.accountId
+        };
+        
+        const response = await fetch(`${getPayHeroBaseUrl()}/v1/payments/mpesa/stk`, {
+            method: 'POST',
+            headers: {
+                'Authorization': PAYHERO_CONFIG.authToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(stkRequest)
+        });
+        
+        const responseData = await response.json();
+        
+        if (!response.ok) {
+            console.error('❌ STK Push failed:', responseData);
+            Swal.close();
+            showToast(`❌ Payment failed: ${responseData.message || 'Unknown error'}`, 'error');
+            return { success: false, error: responseData.message || 'STK Push failed' };
+        }
+        
+        // Get the checkout ID from the response
+        const checkoutId = responseData.checkout_request_id || responseData.id;
+        
+        payheroState.currentTransaction = {
+            id: checkoutId,
+            checkoutRequestID: checkoutId,
+            amount: amount,
+            phone: cleanPhone,
+            period: period,
+            reference: reference,
+            status: 'pending',
+            timestamp: new Date().toISOString()
+        };
+        
+        // Start polling from Supabase instead of PayHero
+        updateSTKDialogStatus('✅ STK Push sent! Check your phone for the M-Pesa prompt.');
+        startPollingFromSupabase(checkoutId);
+        
+        // Also try to create a pending record in Supabase
+        try {
+            await saveSTKPaymentRecord(amount, period, {
+                status: 'pending',
+                transactionId: checkoutId,
+                checkoutRequestID: checkoutId,
+                paymentMethod: 'M-Pesa STK Push'
+            });
+        } catch (e) {
+            console.warn('⚠️ Could not save pending record:', e);
+        }
+        
+        console.log('✅ STK Push initiated, polling from Supabase:', checkoutId);
+        
+        notifySuperAdmin('stk_push_initiated', {
+            studentId: studentFinanceState.student?.id,
+            amount: amount,
+            phone: cleanPhone,
+            period: period,
+            checkoutId: checkoutId,
+            timestamp: new Date().toISOString()
+        });
+        
+        return { 
+            success: true, 
+            transaction: payheroState.currentTransaction,
+            data: responseData
+        };
+        
+    } catch (error) {
+        console.error('❌ STK Push error:', error);
+        Swal.close();
+        showToast(`❌ Payment error: ${error.message}`, 'error');
+        return { success: false, error: error.message };
+    }
+}
+
+// Check STK status
+async function checkSTKPaymentStatus(transactionId) {
+    try {
+        const response = await fetch(`${getPayHeroBaseUrl()}/v1/payments/${transactionId}/status`, {
+            method: 'GET',
+            headers: {
+                'Authorization': PAYHERO_CONFIG.authToken,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            console.warn('⚠️ Status check failed:', response.status);
+            return 'pending';
+        }
+        
+        const data = await response.json();
+        return data.status || data.payment_status || 'pending';
+        
+    } catch (error) {
+        console.error('❌ Status check error:', error);
+        return 'pending';
+    }
+}
+// ============================================================
+// 🔍 SUPABASE STATUS CHECK FUNCTIONS
+// ============================================================
+
+/**
+ * Check payment status from Supabase via Edge Function
+ */
+async function checkPaymentStatusFromSupabase(checkoutId) {
+    try {
+        const response = await fetch(
+            `https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/mpesa-status?checkoutId=${checkoutId}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        )
+
+        if (!response.ok) {
+            const errorData = await response.json()
+            console.error('❌ Status check failed:', errorData)
+            return { status: 'error', message: errorData.message || 'Status check failed' }
+        }
+
+        const data = await response.json()
+        console.log('📊 Payment status from Supabase:', data.status, data.transaction?.status)
+
+        return data
+
+    } catch (error) {
+        console.error('❌ Status check error:', error)
+        return { status: 'error', message: error.message }
+    }
+}
+
+/**
+ * Poll payment status from Supabase
+ */
+function startPollingFromSupabase(checkoutId, maxAttempts = 30, interval = 3000) {
+    let attempts = 0
+
+    if (payheroState.stkCheckInterval) {
+        clearInterval(payheroState.stkCheckInterval)
+    }
+
+    payheroState.stkCheckInterval = setInterval(async () => {
+        attempts++
+
+        if (attempts > maxAttempts) {
+            clearInterval(payheroState.stkCheckInterval)
+            updateSTKDialogStatus('⏰ Payment timeout. Please try again or contact support.')
+            handleSTKFailure()
+            return
+        }
+
+        const timeLeft = maxAttempts - attempts
+        updateSTKDialogTimer(timeLeft)
+
+        // Check status from Supabase
+        const result = await checkPaymentStatusFromSupabase(checkoutId)
+
+        if (result.status === 'completed' || result.transaction?.status === 'completed') {
+            clearInterval(payheroState.stkCheckInterval)
+            // Update transaction with data from Supabase
+            if (result.transaction) {
+                payheroState.currentTransaction = {
+                    ...payheroState.currentTransaction,
+                    id: result.transaction.transaction_id || payheroState.currentTransaction.id,
+                    status: 'completed',
+                    mpesaReceipt: result.transaction.mpesa_receipt,
+                    transactionDate: result.transaction.transaction_date
+                }
+            }
+            handleSTKSuccess()
+        } else if (result.status === 'failed' || result.transaction?.status === 'failed') {
+            clearInterval(payheroState.stkCheckInterval)
+            handleSTKFailure()
+        } else if (result.status === 'error') {
+            // If there's an error, but we have a pending transaction, continue polling
+            if (result.message?.includes('pending')) {
+                // Still processing
+            } else {
+                console.warn('⚠️ Status check error:', result.message)
+            }
+        }
+
+    }, interval)
+}
+// Start STK Status Polling
+function startSTKStatusPolling(transactionId) {
+    let attempts = 0;
+    const maxAttempts = 30;
+    
+    if (payheroState.stkCheckInterval) {
+        clearInterval(payheroState.stkCheckInterval);
+    }
+    
+    payheroState.stkCheckInterval = setInterval(async () => {
+        attempts++;
+        
+        if (attempts > maxAttempts) {
+            clearInterval(payheroState.stkCheckInterval);
+            updateSTKDialogStatus('⏰ Payment timeout. Please try again or contact support.');
+            return;
+        }
+        
+        const timeLeft = maxAttempts - attempts;
+        updateSTKDialogTimer(timeLeft);
+        
+        const status = await checkSTKPaymentStatus(transactionId);
+        
+        if (status === 'completed' || status === 'success') {
+            clearInterval(payheroState.stkCheckInterval);
+            handleSTKSuccess();
+        } else if (status === 'failed' || status === 'cancelled') {
+            clearInterval(payheroState.stkCheckInterval);
+            handleSTKFailure();
+        }
+        
+    }, 3000);
+}
+
+// Handle STK Success - UPDATED with Supabase data
+function handleSTKSuccess() {
+    const transaction = payheroState.currentTransaction;
+    
+    if (!transaction) return;
+    
+    payheroState.isProcessing = false;
+    transaction.status = 'completed';
+    
+    if (typeof Swal !== 'undefined') {
+        Swal.close();
+        
+        Swal.fire({
+            title: '✅ Payment Successful!',
+            html: `
+                <div style="text-align: center;">
+                    <i class="fas fa-check-circle" style="font-size: 60px; color: #059669; margin-bottom: 16px;"></i>
+                    <p style="font-size: 20px; font-weight: 700; color: #059669;">Payment Successful! ✅</p>
+                    <p style="color: #64748b; font-size: 15px;">Your payment of <strong>KES ${transaction.amount.toLocaleString()}</strong> has been confirmed.</p>
+                    <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Period:</strong> ${transaction.period}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Transaction ID:</strong> ${transaction.id}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Reference:</strong> ${transaction.reference}</p>
+                        ${transaction.mpesaReceipt ? `<p style="margin: 4px 0; font-size: 13px;"><strong>M-Pesa Receipt:</strong> ${transaction.mpesaReceipt}</p>` : ''}
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+                    </div>
+                    <div style="padding: 10px; background: #d1fae5; border-radius: 8px; border: 1px solid #86efac; font-size: 13px; color: #065f46;">
+                        <i class="fas fa-envelope"></i> A confirmation email has been sent to your registered email address.
+                    </div>
+                </div>
+            `,
+            confirmButtonText: 'Done',
+            confirmButtonColor: '#059669'
+        });
+    }
+    
+    // Save the completed record
+    saveSTKPaymentRecord(transaction.amount, transaction.period, {
+        status: 'success',
+        transactionId: transaction.id,
+        checkoutRequestID: transaction.checkoutRequestID,
+        paymentMethod: 'M-Pesa STK Push',
+        mpesaReceipt: transaction.mpesaReceipt
+    });
+    
+    const user = window.currentUserProfile || window.currentUser;
+    if (user?.id) {
+        const paymentData = {
+            amount: transaction.amount,
+            period: transaction.period,
+            transactionId: transaction.id,
+            reference: transaction.reference,
+            method: 'M-Pesa STK Push',
+            date: new Date().toISOString()
+        };
+        sendPaymentConfirmationEmail(user.id, paymentData);
+    }
+    
+    notifySuperAdmin('payment_completed', {
+        studentId: user?.id,
+        studentName: user?.full_name || user?.name,
+        amount: transaction.amount,
+        period: transaction.period,
+        transactionId: transaction.id,
+        method: 'M-Pesa STK',
+        timestamp: new Date().toISOString()
+    });
+    
+    setTimeout(() => {
+        loadStudentFinance();
+    }, 1000);
+    
+    showToast(`✅ Payment of KES ${transaction.amount.toLocaleString()} successful!`, 'success');
+}
+
+// Handle STK Failure - UPDATED
+function handleSTKFailure() {
+    const transaction = payheroState.currentTransaction;
+    
+    if (!transaction) return;
+    
+    payheroState.isProcessing = false;
+    transaction.status = 'failed';
+    
+    if (typeof Swal !== 'undefined') {
+        Swal.close();
+        
+        Swal.fire({
+            title: '❌ Payment Failed',
+            html: `
+                <div style="text-align: center;">
+                    <i class="fas fa-times-circle" style="font-size: 60px; color: #dc2626; margin-bottom: 16px;"></i>
+                    <p style="font-size: 18px; font-weight: 600; color: #dc2626;">Payment Failed</p>
+                    <p style="color: #64748b; font-size: 14px;">Your payment could not be completed.</p>
+                    <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Amount:</strong> KES ${transaction.amount.toLocaleString()}</p>
+                        <p style="margin: 4px 0; font-size: 13px;"><strong>Transaction ID:</strong> ${transaction.id}</p>
+                    </div>
+                    <div style="padding: 10px; background: #fee2e2; border-radius: 8px; border: 1px solid #fecaca; font-size: 13px; color: #991b1b;">
+                        <i class="fas fa-info-circle"></i> Please try again or use a different payment method.
+                    </div>
+                </div>
+            `,
+            confirmButtonText: 'Try Again',
+            cancelButtonText: 'Cancel',
+            showCancelButton: true,
+            confirmButtonColor: '#4C1D95',
+            cancelButtonColor: '#64748b'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                openPaymentModal();
+            }
+        });
+    }
+    
+    // Update the record to failed
+    if (transaction.id) {
+        saveSTKPaymentRecord(transaction.amount, transaction.period, {
+            status: 'failed',
+            transactionId: transaction.id,
+            checkoutRequestID: transaction.checkoutRequestID,
+            paymentMethod: 'M-Pesa STK Push'
+        });
+    }
+    
+    showToast('❌ Payment failed. Please try again.', 'error');
+}
+
+// ============================================================
 // 🔔 UPDATE FINANCE BADGE
 // ============================================================
 
@@ -170,7 +803,7 @@ function updateFinanceBadge(data) {
 }
 
 // ============================================================
-// 🎯 TOGGLE FEE STRUCTURE - FIXED
+// 🎯 TOGGLE FEE STRUCTURE
 // ============================================================
 
 function toggleFeeStructure() {
@@ -196,11 +829,9 @@ function toggleFeeStructure() {
         }
         studentFinanceState.feeStructureVisible = true;
         
-        // Render the fee structure
         if (studentFinanceState.feeStructureRaw) {
             renderFeeStructureData();
         } else {
-            // Try to load from database
             loadStudentFinance();
         }
         
@@ -494,7 +1125,7 @@ async function fetchFeeStructureFromDatabase(program, programType, programLevel)
 }
 
 // ============================================================
-// 📊 PROCESS FEE STRUCTURE DATA - UPDATED FOR KRCHN
+// 📊 PROCESS FEE STRUCTURE DATA
 // ============================================================
 
 function processFeeStructureData(data, programType, programLevel) {
@@ -522,7 +1153,6 @@ function processFeeStructureData(data, programType, programLevel) {
             allTerms = record.terms;
         }
 
-        // Collect all unique vote heads across all periods
         components.forEach(comp => {
             if (!allVoteHeads.has(comp.label)) {
                 allVoteHeads.set(comp.label, {
@@ -533,8 +1163,6 @@ function processFeeStructureData(data, programType, programLevel) {
         });
     });
 
-    // Build vote heads with amounts per period
-    // For each vote head, get the amount from each period's components
     const voteHeads = [];
     allVoteHeads.forEach((vh, label) => {
         const amounts = periods.map(period => {
@@ -547,7 +1175,6 @@ function processFeeStructureData(data, programType, programLevel) {
         });
     });
 
-    // Sort vote heads by display order (custom order for KRCHN)
     const krchnOrder = [
         'ADMISSION FEE',
         'TUITION',
@@ -566,11 +1193,9 @@ function processFeeStructureData(data, programType, programLevel) {
         'TRANSPORT @ 2000/-'
     ];
 
-    // For TVET, sort alphabetically
     if (programType === 'TVET') {
         voteHeads.sort((a, b) => a.label.localeCompare(b.label));
     } else {
-        // Sort by KRCHN order
         voteHeads.sort((a, b) => {
             const indexA = krchnOrder.indexOf(a.label);
             const indexB = krchnOrder.indexOf(b.label);
@@ -592,7 +1217,7 @@ function processFeeStructureData(data, programType, programLevel) {
 }
 
 // ============================================================
-// 📄 RENDER FEE STRUCTURE WITH VOTE HEADS - FIXED
+// 📄 RENDER FEE STRUCTURE WITH VOTE HEADS
 // ============================================================
 
 function renderFeeStructureData() {
@@ -607,7 +1232,6 @@ function renderFeeStructureData() {
         return;
     }
     
-    // Get data from state
     const data = studentFinanceState.feeStructureRaw;
     if (!data || !data.periods || data.periods.length === 0) {
         container.innerHTML = `
@@ -629,7 +1253,6 @@ function renderFeeStructureData() {
     
     const { periods, voteHeads, periodTotals } = data;
     
-    // Build the table HTML with View buttons
     let html = `
         <div style="overflow-x: auto;">
             <table class="finance-fee-structure-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
@@ -649,7 +1272,6 @@ function renderFeeStructureData() {
                 <tbody>
     `;
     
-    // Render each vote head with View button
     let sn = 0;
     voteHeads.forEach((vh) => {
         const hasAnyAmount = vh.amounts.some(a => a > 0);
@@ -676,7 +1298,6 @@ function renderFeeStructureData() {
         `;
     });
     
-    // Total row with Full Details button
     html += `
         <tr class="finance-total-row" style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
             <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: center; color: #0A3D62;">-</td>
@@ -697,7 +1318,6 @@ function renderFeeStructureData() {
         </tr>
     `;
     
-    // Hostel row if applicable
     const hasHostel = periods.some(p => p.hostel > 0);
     if (hasHostel) {
         html += `
@@ -745,7 +1365,6 @@ function renderFeeStructureData() {
         </div>
     `;
     
-    // Add notes if available
     if (data.terms && data.terms.length > 0) {
         html += `
             <div style="margin-top: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
@@ -760,7 +1379,6 @@ function renderFeeStructureData() {
     container.innerHTML = html;
     container.style.display = 'block';
     
-    // Hide loading state, show content
     const loadingState = document.getElementById('finance-feeLoadingState');
     if (loadingState) {
         loadingState.style.display = 'none';
@@ -774,7 +1392,7 @@ function renderFeeStructureData() {
 }
 
 // ============================================================
-// 👁️ VIEW FUNCTIONS - FIXED
+// 👁️ VIEW FUNCTIONS
 // ============================================================
 
 function viewVoteHeadDetails(voteHeadName) {
@@ -828,7 +1446,6 @@ function viewVoteHeadDetails(voteHeadName) {
             width: 500
         });
     } else {
-        // Fallback - show in a simple alert
         const textContent = detailsHtml.replace(/<[^>]*>/g, '');
         alert(textContent);
     }
@@ -911,7 +1528,6 @@ function viewFullFeeStructure() {
             padding: '20px'
         });
     } else {
-        // Fallback
         const textContent = tableHtml.replace(/<[^>]*>/g, '');
         alert(textContent);
     }
@@ -946,7 +1562,6 @@ async function loadStudentFinance() {
         updateProgramInfo(user, programType, programLevel);
         showFinanceLoading();
 
-        // Fetch fee structure from database
         const feeData = await fetchFeeStructureFromDatabase(user.program, programType, programLevel);
         if (feeData) {
             studentFinanceState.feeStructureRaw = feeData;
@@ -1261,7 +1876,6 @@ function updateFinanceUI(data) {
     renderPayments(data.payments || []);
     renderPaymentTimeline(data.feeStructure || []);
     
-    // Render fee structure if visible
     const container = document.getElementById('finance-studentFeeStructureDisplay');
     if (container && container.style.display !== 'none') {
         renderFeeStructureData();
@@ -1781,7 +2395,6 @@ function openPaymentModal() {
     const modal = document.getElementById('finance-paymentModal');
     if (!modal) return;
     
-    // Populate periods
     const periodSelect = document.getElementById('finance-paymentPeriodSelect');
     if (periodSelect) {
         const programType = studentFinanceState.programType || 'TVET';
@@ -1831,7 +2444,6 @@ function openPaymentModal() {
         descInput.value = `${studentFinanceState.currentPeriod} Tuition Fees`;
     }
     
-    // Reset payment method selection
     document.querySelectorAll('#finance-paymentMethodsContainer > div').forEach(el => {
         el.classList.remove('finance-payment-method-selected');
     });
@@ -1841,7 +2453,6 @@ function openPaymentModal() {
     document.getElementById('finance-bankFields').style.display = 'none';
     document.getElementById('finance-paypalFields').style.display = 'none';
     
-    // Hide validation errors
     document.querySelectorAll('.finance-validation-error').forEach(el => {
         el.style.display = 'none';
     });
@@ -1935,8 +2546,6 @@ function selectPaymentMethod(method) {
     }
     
     studentFinanceState.selectedPaymentMethod = method;
-    
-    // Hide method error if shown
     document.getElementById('finance-methodError').style.display = 'none';
 }
 
@@ -1949,7 +2558,6 @@ function validatePaymentForm() {
     const errors = document.querySelectorAll('.finance-validation-error');
     errors.forEach(err => err.style.display = 'none');
     
-    // Validate period
     const period = document.getElementById('finance-paymentPeriodSelect');
     if (!period.value) {
         const errorEl = period.nextElementSibling;
@@ -1959,7 +2567,6 @@ function validatePaymentForm() {
         isValid = false;
     }
     
-    // Validate amount
     const amount = document.getElementById('finance-paymentAmountInput');
     if (!amount.value || parseFloat(amount.value) < 1) {
         const errorEl = amount.nextElementSibling;
@@ -1969,21 +2576,18 @@ function validatePaymentForm() {
         isValid = false;
     }
     
-    // Validate payment method
     const selectedMethod = document.querySelector('.finance-payment-method-selected');
     if (!selectedMethod) {
         document.getElementById('finance-methodError').style.display = 'block';
         isValid = false;
     }
     
-    // Get selected method
     let method = null;
     if (selectedMethod) {
         const id = selectedMethod.id;
         method = id.replace('finance-method-', '');
     }
     
-    // Method-specific validation
     if (method === 'mpesa') {
         const phone = document.getElementById('finance-mpesaPhoneInput');
         if (!phone.value || phone.value.replace(/\D/g, '').length < 10) {
@@ -2064,11 +2668,10 @@ function validatePaymentForm() {
 }
 
 // ============================================================
-// 💳 PROCESS PAYMENT
+// 💳 PROCESS PAYMENT - UPDATED WITH PAYHERO
 // ============================================================
 
 function processPayment() {
-    // Validate form first
     if (!validatePaymentForm()) {
         return;
     }
@@ -2098,6 +2701,7 @@ function processPayment() {
             return;
         }
         
+        // Format phone number
         let cleanPhone = phone.replace(/\D/g, '');
         if (cleanPhone.startsWith('0')) {
             cleanPhone = '254' + cleanPhone.substring(1);
@@ -2105,7 +2709,12 @@ function processPayment() {
             cleanPhone = '254' + cleanPhone;
         }
         
-        processSTKPush(amount, period, cleanPhone, phone);
+        // Generate reference
+        const reference = `STK-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        
+        // Initiate STK Push with PayHero
+        initiateSTKPush(amount, cleanPhone, reference, period);
+        
     } else if (method === 'paypal') {
         const email = document.getElementById('finance-paypalEmailInput')?.value;
         if (!email || !email.includes('@')) {
@@ -2118,6 +2727,7 @@ function processPayment() {
             const result = { status: 'success', transactionId: `PAYPAL-${Date.now()}` };
             handleSTKSuccess(result, amount, period);
         }, 2000);
+        
     } else if (method === 'card') {
         const cardNumber = document.getElementById('finance-cardNumberInput')?.value;
         const expiry = document.getElementById('finance-cardExpiryInput')?.value;
@@ -2141,6 +2751,7 @@ function processPayment() {
             const result = { status: 'success', transactionId: `CARD-${Date.now()}` };
             handleSTKSuccess(result, amount, period);
         }, 3000);
+        
     } else if (method === 'bank') {
         const accountName = document.getElementById('finance-bankAccountNameInput')?.value;
         const accountNumber = document.getElementById('finance-bankAccountNumberInput')?.value;
@@ -2198,171 +2809,6 @@ function processPayment() {
 }
 
 // ============================================================
-// 📱 STK PAYMENT FUNCTIONS
-// ============================================================
-
-function processSTKPush(amount, period, phoneNumber, displayPhone) {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: '⏳ Processing Payment',
-            html: `
-                <div style="text-align: center;">
-                    <div style="display: inline-block; width: 60px; height: 60px; border: 4px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite; margin-bottom: 16px;"></div>
-                    <p style="font-size: 16px; font-weight: 600;">Sending STK Push...</p>
-                    <p style="color: #64748b; font-size: 14px;">Please check your phone for the M-Pesa prompt</p>
-                    <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
-                        <p style="margin: 4px 0; font-size: 13px;"><strong>Phone:</strong> ${displayPhone}</p>
-                        <p style="margin: 4px 0; font-size: 13px;"><strong>Amount:</strong> KES ${amount.toLocaleString()}</p>
-                        <p style="margin: 4px 0; font-size: 13px;"><strong>Period:</strong> ${period}</p>
-                    </div>
-                    <div style="padding: 10px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b; font-size: 13px; color: #92400e;">
-                        <i class="fas fa-clock"></i> Waiting for confirmation... 
-                        <span id="finance-stkTimer" style="font-weight: 700; color: #d97706;">30</span> seconds remaining
-                    </div>
-                    <button onclick="cancelSTKPayment()" style="margin-top: 16px; padding: 8px 20px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
-                        <i class="fas fa-times"></i> Cancel Payment
-                    </button>
-                </div>
-            `,
-            showConfirmButton: false,
-            allowOutsideClick: false
-        });
-    }
-    
-    studentFinanceState.stkPayment.isProcessing = true;
-    studentFinanceState.stkPayment.phoneNumber = phoneNumber;
-    studentFinanceState.stkPayment.amount = amount;
-    studentFinanceState.stkPayment.period = period;
-    studentFinanceState.stkPayment.status = 'processing';
-    
-    startSTKTimer();
-    
-    // Simulate STK Push response (replace with actual API call)
-    setTimeout(() => {
-        const result = {
-            status: 'success',
-            transactionId: `MPESA-${Date.now()}`,
-            checkoutRequestID: `CHECKOUT-${Date.now()}`,
-            message: 'Payment confirmed successfully'
-        };
-        handleSTKSuccess(result, amount, period);
-    }, 5000);
-}
-
-function startSTKTimer() {
-    let timeLeft = 30;
-    if (window.financeStkTimer) {
-        clearInterval(window.financeStkTimer);
-    }
-    window.financeStkTimer = setInterval(() => {
-        timeLeft--;
-        const timerEl = document.getElementById('finance-stkTimer');
-        if (timerEl) {
-            timerEl.textContent = timeLeft;
-        }
-        if (timeLeft <= 0) {
-            clearInterval(window.financeStkTimer);
-        }
-    }, 1000);
-}
-
-function cancelSTKPayment() {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: 'Cancel Payment?',
-            text: 'Are you sure you want to cancel this payment?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#64748b',
-            confirmButtonText: 'Yes, Cancel',
-            cancelButtonText: 'No, Continue'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                studentFinanceState.stkPayment.status = 'cancelled';
-                studentFinanceState.stkPayment.isProcessing = false;
-                clearInterval(window.financeStkTimer);
-                if (typeof Swal !== 'undefined') {
-                    Swal.close();
-                }
-                showToast('Payment cancelled', 'warning');
-            }
-        });
-    } else {
-        studentFinanceState.stkPayment.status = 'cancelled';
-        studentFinanceState.stkPayment.isProcessing = false;
-        clearInterval(window.financeStkTimer);
-        showToast('Payment cancelled', 'warning');
-    }
-}
-
-function handleSTKSuccess(result, amount, period) {
-    studentFinanceState.stkPayment.status = 'success';
-    studentFinanceState.stkPayment.isProcessing = false;
-    clearInterval(window.financeStkTimer);
-    
-    const user = window.currentUserProfile || window.currentUser;
-    const transactionId = result.transactionId || result.checkoutRequestID || `TXN-${Date.now()}`;
-    const reference = `PAY-${Date.now()}`;
-    
-    saveSTKPaymentRecord(amount, period, result);
-    
-    // Send email notification
-    if (user?.id) {
-        const paymentData = {
-            amount: amount,
-            period: period,
-            transactionId: transactionId,
-            reference: reference,
-            method: 'M-Pesa STK Push',
-            date: new Date().toISOString()
-        };
-        sendPaymentConfirmationEmail(user.id, paymentData);
-    }
-    
-    notifySuperAdmin('payment_completed', {
-        studentId: user?.id,
-        studentName: user?.full_name || user?.name,
-        amount: amount,
-        period: period,
-        transactionId: transactionId,
-        reference: reference,
-        method: 'M-Pesa STK',
-        timestamp: new Date().toISOString()
-    });
-    
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: '✅ Payment Successful!',
-            html: `
-                <div style="text-align: center;">
-                    <i class="fas fa-check-circle" style="font-size: 60px; color: #059669; margin-bottom: 16px;"></i>
-                    <p style="font-size: 20px; font-weight: 700; color: #059669;">Payment Successful! ✅</p>
-                    <p style="color: #64748b; font-size: 15px;">Your payment of <strong>KES ${amount.toLocaleString()}</strong> has been confirmed.</p>
-                    <div style="background: #f8fafc; border-radius: 8px; padding: 12px; margin: 12px 0; text-align: left;">
-                        <p style="margin: 4px 0; font-size: 13px;"><strong>Period:</strong> ${period}</p>
-                        <p style="margin: 4px 0; font-size: 13px;"><strong>Transaction ID:</strong> ${transactionId}</p>
-                        <p style="margin: 4px 0; font-size: 13px;"><strong>Reference:</strong> ${reference}</p>
-                        <p style="margin: 4px 0; font-size: 13px;"><strong>Date:</strong> ${new Date().toLocaleString()}</p>
-                    </div>
-                    <div style="padding: 10px; background: #d1fae5; border-radius: 8px; border: 1px solid #86efac; font-size: 13px; color: #065f46;">
-                        <i class="fas fa-envelope"></i> A confirmation email has been sent to your registered email address.
-                    </div>
-                </div>
-            `,
-            confirmButtonText: 'Done',
-            confirmButtonColor: '#059669'
-        });
-    }
-    
-    setTimeout(() => {
-        loadStudentFinance();
-    }, 1000);
-    
-    showToast(`✅ Payment of KES ${amount.toLocaleString()} successful!`, 'success');
-}
-
-// ============================================================
 // 📝 SAVE STK PAYMENT RECORD
 // ============================================================
 
@@ -2381,11 +2827,12 @@ async function saveSTKPaymentRecord(amount, period, result) {
             payment_method: method,
             status: status,
             transaction_id: transactionId,
-            checkout_request_id: studentFinanceState.stkPayment.checkoutRequestID || result.checkoutRequestID,
+            checkout_request_id: payheroState.currentTransaction?.checkoutRequestID || result.checkoutRequestID,
             payment_date: new Date().toISOString(),
-            phone_number: studentFinanceState.stkPayment.phoneNumber || '',
+            phone_number: payheroState.currentTransaction?.phone || '',
             notes: `${period} Tuition Fees - ${method} Payment`,
-            reference: `PAY-${Date.now()}`
+            reference: `PAY-${Date.now()}`,
+            source: 'payhero'
         };
         
         if (typeof supabase !== 'undefined' && supabase) {
@@ -2454,6 +2901,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.appendChild(style);
     }
     
+    // Initialize PayHero on load
+    setTimeout(() => {
+        initPayHero();
+    }, 2000);
+    
     // Listen for tab activation
     const financeTab = document.querySelector('a[data-tab="finance"]');
     if (financeTab) {
@@ -2467,7 +2919,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(loadStudentFinance, 800);
     });
     
-    // Check if finance tab is active on load
     const currentTab = document.querySelector('.tab-content.active');
     if (currentTab && currentTab.id === 'finance') {
         setTimeout(loadStudentFinance, 500);
@@ -2495,13 +2946,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Listen for admin events
     listenForAdminEvents();
     
-    // Notify admin module that student finance is ready
+    // Notify admin module
     notifySuperAdmin('module_ready', {
         version: '2.0.0',
         timestamp: new Date().toISOString()
     });
     
-    // Expose functions globally for HTML onclick
+    // Expose functions globally
     window.toggleFeeStructure = toggleFeeStructure;
     window.loadStudentFinance = loadStudentFinance;
     window.openPaymentModal = openPaymentModal;
@@ -2516,7 +2967,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.generateFeeStructurePDF = generateFeeStructurePDF;
     window.printFeeStructureTable = printFeeStructureTable;
     window.resendPaymentEmail = resendPaymentEmail;
-    window.cancelSTKPayment = cancelSTKPayment;
+    window.cancelSTKPayment = cancelSTKPush;
     window.applyFeeFilters = applyFeeFilters;
     window.resetFeeFilters = resetFeeFilters;
     window.clearPeriodFilter = clearPeriodFilter;
@@ -2525,10 +2976,14 @@ document.addEventListener('DOMContentLoaded', function() {
     window.renderFeeStructureData = renderFeeStructureData;
     window.notifySuperAdmin = notifySuperAdmin;
     window.showToast = showToast;
+    window.initPayHero = initPayHero;
+    window.initiateSTKPush = initiateSTKPush;
+    window.cancelSTKPush = cancelSTKPush;
 });
 
 console.log('✅ Student Finance module loaded successfully!');
 console.log('📊 Supports KRCHN (Semesters) and TVET (Terms)');
 console.log('📋 Vote heads loaded from database');
 console.log('🔗 Communicates with Super Admin Module');
+console.log('💳 PayHero STK Push integration enabled');
 console.log('👁️ View buttons available in the ACTIONS column');
