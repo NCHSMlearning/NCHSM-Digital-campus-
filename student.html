@@ -1170,34 +1170,90 @@
                     </div>
                 </div>
 
-                <!-- ===== SECURITY SETTINGS ===== -->
-                <div style="background: #f8fafc; border-radius: 8px; padding: 16px; border: 1px solid #e2e8f0;">
-                    <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: 15px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
-                        <i class="fas fa-lock" style="color: #FDB913;"></i> Security Settings
-                    </h4>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div>
-                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Current Password</label>
-                            <input type="password" id="current-password" placeholder="Enter current password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">New Password</label>
-                            <input type="password" id="new-password" placeholder="Enter new password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Confirm New Password</label>
-                            <input type="password" id="confirm-password" placeholder="Confirm new password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                        </div>
-                        <button type="button" id="change-password-btn" style="background: #4C1D95; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; font-size: 14px; transition: all 0.3s ease;" onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
-                            <i class="fas fa-key"></i> Change Password
-                        </button>
-                        <div id="password-feedback" style="display: none; padding: 8px 12px; border-radius: 6px; font-size: 13px;"></div>
-                    </div>
+                <<!-- ===== SECURITY SETTINGS - WITH 2FA ===== -->
+<div style="background: #f8fafc; border-radius: 8px; padding: 16px; border: 1px solid #e2e8f0;">
+    <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: 15px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
+        <i class="fas fa-lock" style="color: #FDB913;"></i> Security Settings
+    </h4>
+    
+    <!-- ===== PASSWORD CHANGE ===== -->
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <div>
+            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Current Password</label>
+            <input type="password" id="current-password" placeholder="Enter current password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+        </div>
+        <div>
+            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">New Password</label>
+            <input type="password" id="new-password" placeholder="Enter new password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+        </div>
+        <div>
+            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Confirm New Password</label>
+            <input type="password" id="confirm-password" placeholder="Confirm new password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+        </div>
+        <button type="button" id="change-password-btn" style="background: #4C1D95; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; font-size: 14px; transition: all 0.3s ease;" onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+            <i class="fas fa-key"></i> Change Password
+        </button>
+        <div id="password-feedback" style="display: none; padding: 8px 12px; border-radius: 6px; font-size: 13px;"></div>
+    </div>
+    
+    <!-- ===== DIVIDER ===== -->
+    <div style="border-top: 2px dashed #e5e7eb; margin: 12px 0 16px 0;"></div>
+    
+    <!-- ===== TWO-FACTOR AUTHENTICATION ===== -->
+    <div>
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-shield-alt" style="color: #4C1D95; font-size: 18px;"></i>
+                <div>
+                    <h5 style="margin: 0; color: #0A3D62; font-size: 14px; font-weight: 600;">Two-Factor Authentication</h5>
+                    <p style="margin: 0; font-size: 12px; color: #64748B;">Add an extra layer of security to your account</p>
+                </div>
+            </div>
+            <div id="profile2FAStatus">
+                <span id="profile2FABadge" style="padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 11px;"></i> Not Enabled
+                </span>
+            </div>
+        </div>
+        
+        <div id="profile2FADetails" style="background: #f1f5f9; border-radius: 8px; padding: 12px 16px; margin-top: 6px;">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="flex: 1;">
+                    <span style="font-size: 13px; color: #475569;">
+                        <i class="fas fa-info-circle" style="color: #4C1D95;"></i> 
+                        <span id="profile2FAMessage">Secure your account with 2FA using Google Authenticator</span>
+                    </span>
+                </div>
+                <button id="profileEnable2FA" 
+                        onclick="window.openProfile2FASetup()" 
+                        style="padding: 8px 20px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s ease; white-space: nowrap; display: flex; align-items: center; gap: 6px;"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" 
+                        onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-shield-alt"></i> 
+                    <span id="profile2FABtnText">Enable 2FA</span>
+                </button>
+            </div>
+            <div id="profile2FAStatusMsg" style="margin-top: 6px; font-size: 12px; color: #94a3b8; display: none;"></div>
+            
+            <!-- Recovery Codes Section (shown when 2FA is enabled) -->
+            <div id="profileRecoveryCodes" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <i class="fas fa-key" style="color: #f59e0b;"></i>
+                    <span style="font-size: 13px; color: #475569;">
+                        <strong>Recovery Codes:</strong> 
+                        <span id="profileRecoveryCount">0</span> codes remaining
+                    </span>
+                    <button onclick="window.generateProfileRecoveryCodes()" style="padding: 4px 14px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.3s ease;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f1f5f9'">
+                        <i class="fas fa-redo-alt"></i> Generate New
+                    </button>
+                    <button onclick="window.disableProfile2FA()" style="padding: 4px 14px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.3s ease;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                        <i class="fas fa-times-circle"></i> Disable 2FA
+                    </button>
                 </div>
             </div>
         </div>
-
+    </div>
+</div>
         <!-- ===== FORM ACTIONS ===== -->
         <div style="display: flex; gap: 10px; margin-top: 25px; padding-top: 18px; border-top: 2px solid #f1f5f9; flex-wrap: wrap;">
             <button type="button" id="edit-profile-button" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; font-size: 14px; transition: all 0.3s ease;" 
