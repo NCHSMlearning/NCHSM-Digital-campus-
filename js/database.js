@@ -10,14 +10,12 @@ class Database {
             clinicalAreas: [],
             resources: [],
             messages: [],
-            // ✅ NEW: Supplementary data cache
             supplementaryUnits: [],
             supplementaryRegistrations: [],
             failedUnits: []
         };
         this.isInitialized = false;
         this.profileModule = null;
-        // Track connection usage
         this.connectionCount = 0;
         this.lastConnectionTime = null;
     }
@@ -706,7 +704,6 @@ class Database {
                 lastLogin: profile?.last_login || null,
                 lastLogout: profile?.last_logout || null,
                 loginCount: profile?.login_count || 0,
-                // ✅ Supplementary data
                 failedUnits: failedUnits.length || 0,
                 supplementaryRegistrations: suppRegistrations.length || 0,
                 hasSupplementaryEligibility: failedUnits.length > 0
@@ -1360,50 +1357,103 @@ class Database {
         }
     }
     
+    // ============================================================
+    // 📸 PHOTO HANDLING - CORRECTED
+    // ============================================================
+    
     async uploadPassportPhoto(file) {
         try {
+            const supabase = this.supabase;
+            const userId = this.currentUserId;
+            
+            if (!userId) {
+                throw new Error('No user ID found');
+            }
+            
+            // Validate file
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                return { success: false, error: 'Invalid file type. Please upload JPG, PNG, or WebP.' };
+            }
+            
+            if (file.size > 2 * 1024 * 1024) {
+                return { success: false, error: 'File too large. Maximum size is 2 MB.' };
+            }
+            
+            // ✅ Use correct bucket and path
             const fileExt = file.name.split('.').pop();
-            const filePath = `${this.currentUserId}.${fileExt}`;
+            const filePath = `profiles/${userId}/photo.${fileExt}`;
             
-            // Upload to storage
-            const { error: uploadError } = await this.supabase.storage
-                .from('passports')
-                .upload(filePath, file, { cacheControl: '3600', upsert: true });
+            console.log('📸 Uploading photo to:', filePath);
             
-            if (uploadError) throw uploadError;
+            // ✅ Upload to 'user-documents' bucket
+            const { error: uploadError } = await supabase.storage
+                .from('user-documents')
+                .upload(filePath, file, { 
+                    cacheControl: '3600', 
+                    upsert: true,
+                    contentType: file.type 
+                });
             
-            // Get public URL
-            const { data: urlData } = this.supabase.storage
-                .from('passports')
+            if (uploadError) {
+                console.error('❌ Upload error:', uploadError);
+                throw uploadError;
+            }
+            
+            // ✅ Get public URL
+            const { data: urlData } = supabase.storage
+                .from('user-documents')
                 .getPublicUrl(filePath);
             
             const publicUrl = urlData.publicUrl;
             
-            // Update profile with photo URL
-            const { error: updateError } = await this.supabase
+            // ✅ Update profile
+            const { error: updateError } = await supabase
                 .from('consolidated_user_profiles_table')
                 .update({ 
+                    profile_photo_url: filePath,
                     passport_url: publicUrl,
                     updated_at: new Date().toISOString() 
                 })
-                .eq('user_id', this.currentUserId);
+                .eq('user_id', userId);
             
             if (updateError) throw updateError;
             
             // Update cached profile
             if (this.currentUserProfile) {
+                this.currentUserProfile.profile_photo_url = filePath;
                 this.currentUserProfile.passport_url = publicUrl;
             }
             
-            // Update last activity
             await this.updateLastActivity();
             
-            return { success: true, filePath: publicUrl };
+            console.log('✅ Photo uploaded successfully:', filePath);
+            console.log('🔗 Public URL:', publicUrl);
+            
+            return { success: true, filePath: filePath, publicUrl: publicUrl };
             
         } catch (error) {
-            console.error('Failed to upload photo:', error);
+            console.error('❌ Failed to upload photo:', error);
             return { success: false, error: error.message };
         }
+    }
+    
+    getPhotoUrl(userId = null) {
+        const id = userId || this.currentUserId;
+        if (!id) return null;
+        
+        const profile = this.currentUserProfile;
+        if (!profile) return null;
+        
+        const photoPath = profile.profile_photo_url || profile.passport_url;
+        if (!photoPath) return null;
+        
+        if (photoPath.startsWith('http')) {
+            return photoPath;
+        }
+        
+        const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        return `${supabaseUrl}/storage/v1/object/public/user-documents/${photoPath}`;
     }
     
     // Get current user profile for other modules
@@ -1479,4 +1529,4 @@ document.addEventListener('DOMContentLoaded', function() {
     // The main app will call window.db.initialize() when needed
 });
 
-console.log('✅ database.js loaded with Supplementary Registration support!');
+console.log('✅ database.js loaded with Supplementary Registration support and corrected photo upload!');
