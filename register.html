@@ -619,6 +619,141 @@
         }
 
         /* ============================================
+                   ERROR VALIDATION MODAL
+                   ============================================ */
+        .validation-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        .validation-modal-overlay.show {
+            display: flex;
+        }
+        .validation-modal-content {
+            background: white;
+            border-radius: 24px;
+            max-width: 500px;
+            width: 95%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 35px 30px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+            animation: bounceIn 0.5s ease;
+        }
+        .validation-modal-content .modal-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 32px;
+        }
+        .validation-modal-content .modal-icon.error {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .validation-modal-content .modal-icon.warning {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .validation-modal-content .modal-icon.success {
+            background: #d1fae5;
+            color: #10b981;
+        }
+        .validation-modal-content h3 {
+            color: #1e293b;
+            text-align: center;
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+        .validation-modal-content .modal-subtitle {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        .validation-modal-content .error-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+        }
+        .validation-modal-content .error-list li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: #f8fafc;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            border-left: 3px solid #dc2626;
+            font-size: 0.85rem;
+            color: #1e293b;
+        }
+        .validation-modal-content .error-list li .error-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .validation-modal-content .error-list li .error-field {
+            font-weight: 600;
+            color: #0A3D62;
+        }
+        .validation-modal-content .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 20px;
+        }
+        .validation-modal-content .modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Poppins', sans-serif;
+        }
+        .validation-modal-content .modal-actions .btn-primary {
+            background: #4C1D95;
+            color: white;
+        }
+        .validation-modal-content .modal-actions .btn-primary:hover {
+            background: #3b1580;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76,29,149,0.3);
+        }
+        .validation-modal-content .modal-actions .btn-secondary {
+            background: #e5e7eb;
+            color: #475569;
+        }
+        .validation-modal-content .modal-actions .btn-secondary:hover {
+            background: #d1d5db;
+        }
+        .validation-modal-content .modal-actions .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        .validation-modal-content .modal-actions .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+        }
+
+        /* ============================================
                    TERMS MODAL
                    ============================================ */
         .terms-modal-overlay {
@@ -829,6 +964,7 @@
             .photo-preview { width: 100px; height: 100px; }
             .documents-grid { grid-template-columns: 1fr; }
             .terms-modal-content { padding: 20px; }
+            .validation-modal-content { padding: 25px 20px; }
         }
         
         .btn-loading {
@@ -1013,7 +1149,7 @@
                     <div class="help-text">
                         <strong>Nursing (KRCHN):</strong> KRCHN/XXXX/MAR/YYYY (e.g., KRCHN/0032/MAR/2024)
                         <br><strong>TVET:</strong> PROGRAM/XXXXX/MM/YY (e.g., DPOTT/10726/05/26)
-                        <br>Valid TVET Programs: DPOTT, DCH, DHRIT, DSL, DSW, DCJS, DHSS, DICT, DME
+                        <br>Valid TVET Programs: DPOTT, DCH, DHRIT, DSL, DSW, DCJS, DHSS, DICT, DME, CPOTT, CCH, CHRIT, CPC, CSL, CSW, CCJS, CAG, CHSS, CICT, CCG, COMT, ACH, AAG, ASW, CCA, PTE
                     </div>
                 </div>
                 
@@ -1046,6 +1182,8 @@
                             <option value="CAG" data-desc="Certificate in Agriculture - 1 year">Certificate in Agriculture</option>
                             <option value="CHSS" data-desc="Certificate in Health Support Services - 1 year">Certificate in Health Support Services</option>
                             <option value="CICT" data-desc="Certificate in ICT - 1 year">Certificate in ICT</option>
+                            <option value="CCG" data-desc="Certificate in Caregiver - 6 months">Certificate in Caregiver</option>
+                            <option value="COMT" data-desc="Certificate in Orthopedic Trauma Medicine - 1 year">Certificate in Orthopedic Trauma Medicine</option>
                         </optgroup>
                         <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
                             <option value="ACH" data-desc="Artisan in Community Health - 6 months">Artisan in Community Health</option>
@@ -1097,18 +1235,19 @@
                                     <option value="11">November (11)</option>
                                     <option value="12">December (12)</option>
                                 </select>
+                          
                                 <select id="tvet_intake_year" name="tvet_intake_year">
-                                    <option value="24">2024</option>
-                                    <option value="25">2025</option>
-                                    <option value="26" selected>2026</option>
-                                    <option value="27">2027</option>
-                                    <option value="28">2028</option>
-                                    <option value="29">2029</option>
-                                    <option value="30">2030</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                    <option value="2029">2029</option>
+                                    <option value="2030">2030</option>
                                 </select>
                             </div>
-                            <div class="help-text">TVET intake: Select month (01-12) and year (2 digits)</div>
-                            <div class="intake-preview">📅 Will display as: <strong id="tvetDisplay">03/26 Intake</strong></div>
+                            <div class="help-text">TVET intake: Select month (01-12) and year</div>
+                            <div class="intake-preview">📅 Will display as: <strong id="tvetDisplay">March 2026 Intake</strong></div>
                         </div>
                     </div>
                 </div>
@@ -1333,6 +1472,28 @@
 </div>
 
 <!-- ============================================ -->
+<!-- VALIDATION ERROR MODAL -->
+<!-- ============================================ -->
+<div class="validation-modal-overlay" id="validationModal">
+    <div class="validation-modal-content">
+        <div class="modal-icon error" id="validationModalIcon">⚠️</div>
+        <h3 id="validationModalTitle">Cannot Proceed</h3>
+        <p class="modal-subtitle" id="validationModalSubtitle">Please fix the following issues before continuing:</p>
+        <ul class="error-list" id="validationErrorList">
+            <!-- Dynamically populated -->
+        </ul>
+        <div class="modal-actions">
+            <button class="btn-primary" onclick="closeValidationModal()">
+                <i class="fas fa-arrow-left"></i> Go Back & Fix
+            </button>
+            <button class="btn-secondary" onclick="closeValidationModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
 <!-- TERMS & CONDITIONS MODAL -->
 <!-- ============================================ -->
 <div class="terms-modal-overlay" id="termsModal">
@@ -1433,6 +1594,79 @@
     };
 
     // ============================================
+    // VALIDATION MODAL FUNCTIONS
+    // ============================================
+    function showValidationModal(errors) {
+        const modal = document.getElementById('validationModal');
+        const errorList = document.getElementById('validationErrorList');
+        const title = document.getElementById('validationModalTitle');
+        const subtitle = document.getElementById('validationModalSubtitle');
+        const icon = document.getElementById('validationModalIcon');
+        
+        if (!modal) return;
+        
+        // Clear previous errors
+        errorList.innerHTML = '';
+        
+        if (errors && errors.length > 0) {
+            title.textContent = '⚠️ Cannot Proceed';
+            subtitle.textContent = `Please fix the following ${errors.length} issue(s) before continuing:`;
+            icon.className = 'modal-icon error';
+            icon.textContent = '⚠️';
+            
+            errors.forEach(error => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="error-icon">${error.icon || '❌'}</span>
+                    <div>
+                        <span class="error-field">${error.field}:</span>
+                        <span>${error.message}</span>
+                    </div>
+                `;
+                errorList.appendChild(li);
+            });
+        } else {
+            title.textContent = '✅ All Good!';
+            subtitle.textContent = 'No issues found. You can proceed.';
+            icon.className = 'modal-icon success';
+            icon.textContent = '✅';
+            
+            const li = document.createElement('li');
+            li.style.borderLeftColor = '#10b981';
+            li.innerHTML = `
+                <span class="error-icon">✅</span>
+                <div>
+                    <span>All fields are valid and ready to go!</span>
+                </div>
+            `;
+            errorList.appendChild(li);
+        }
+        
+        modal.classList.add('show');
+        
+        // Auto-close after 5 seconds if no errors
+        if (!errors || errors.length === 0) {
+            setTimeout(() => {
+                closeValidationModal();
+            }, 3000);
+        }
+    }
+
+    function closeValidationModal() {
+        const modal = document.getElementById('validationModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
+
+    // Close modal on outside click
+    document.getElementById('validationModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeValidationModal();
+        }
+    });
+
+    // ============================================
     // STUDENT ID DUPLICATE CHECK
     // ============================================
     let studentIdCheckTimeout = null;
@@ -1504,11 +1738,17 @@
             const year = tvetMatch[4];
             
             const validTvetPrograms = [
+                // Diploma Programs
                 'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 
-                'DCJS', 'DHSS', 'DICT', 'DME', 'CPOTT', 
-                'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 
-                'CCJS', 'CAG', 'CHSS', 'CICT', 'ACH', 
-                'AAG', 'ASW', 'CCA', 'PTE'
+                'DCJS', 'DHSS', 'DICT', 'DME',
+                // Certificate Programs
+                'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 
+                'CCJS', 'CAG', 'CHSS', 'CICT',
+                'CCG', 'COMT',  // ✅ Added missing programs
+                // Artisan Programs
+                'ACH', 'AAG', 'ASW',
+                // Other
+                'CCA', 'PTE'
             ];
             
             if (!validTvetPrograms.includes(program)) {
@@ -1554,6 +1794,32 @@
     }
 
     // ============================================
+    // CHECK IF STUDENT ID IS VALID (For Navigation)
+    // ============================================
+    function isStudentIdValid() {
+        const input = document.getElementById('student_id_number');
+        const status = document.getElementById('student-id-status');
+        
+        if (!input || !status) return false;
+        
+        const value = input.value.trim();
+        if (!value) return false;
+        
+        // Check if status shows invalid
+        if (status.classList.contains('invalid')) return false;
+        
+        // Check if status shows checking (still validating)
+        if (status.classList.contains('checking')) return false;
+        
+        // Check if status shows valid
+        if (status.classList.contains('valid')) return true;
+        
+        // Fallback: validate the format
+        const validation = validateStudentIdWithDuplicate(value);
+        return validation.valid;
+    }
+
+    // ============================================
     // INITIALIZATION
     // ============================================
     document.addEventListener('DOMContentLoaded', () => {
@@ -1574,6 +1840,7 @@
                     studentIdStatus.textContent = '';
                     studentIdStatus.className = 'help-text';
                     this.style.borderColor = '#e2e8f0';
+                    this.dataset.valid = '';
                     return;
                 }
                 
@@ -1584,6 +1851,8 @@
                     studentIdStatus.textContent = '❌ ' + validation.message;
                     studentIdStatus.className = 'help-text invalid';
                     this.style.borderColor = '#DC2626';
+                    this.dataset.valid = 'false';
+                    if (studentIdCheckTimeout) clearTimeout(studentIdCheckTimeout);
                     return;
                 }
                 
@@ -1591,8 +1860,8 @@
                 studentIdStatus.textContent = '⏳ Checking if ID is available...';
                 studentIdStatus.className = 'help-text checking';
                 this.style.borderColor = '#f59e0b';
+                this.dataset.valid = 'checking';
                 
-                // Clear previous timeout
                 if (studentIdCheckTimeout) clearTimeout(studentIdCheckTimeout);
                 
                 studentIdCheckTimeout = setTimeout(async () => {
@@ -1606,6 +1875,7 @@
                             studentIdStatus.textContent = '❌ This Student ID is already registered. Please check and try again.';
                             studentIdStatus.className = 'help-text invalid';
                             this.style.borderColor = '#DC2626';
+                            this.dataset.valid = 'false';
                         } else {
                             let formatText = '';
                             if (validation.format === 'krchn') {
@@ -1616,6 +1886,7 @@
                             studentIdStatus.textContent = formatText + ' ✅ Available';
                             studentIdStatus.className = 'help-text valid';
                             this.style.borderColor = '#10b981';
+                            this.dataset.valid = 'true';
                             
                             // Auto-select program if it matches
                             const programSelect = document.getElementById('program_type');
@@ -1634,6 +1905,7 @@
                         console.error('Error checking student ID:', error);
                         studentIdStatus.textContent = '⚠️ Could not verify ID availability';
                         studentIdStatus.className = 'help-text warning';
+                        this.dataset.valid = 'unknown';
                     } finally {
                         studentIdCheckInProgress = false;
                     }
@@ -1768,47 +2040,107 @@
     });
 
     // ============================================
-    // PROGRESS INDICATOR
+    // PROGRESS INDICATOR - FIXED WITH VALIDATION MODAL
     // ============================================
     let currentStep = 1;
 
-    function goToStep(step) {
-        if (step > currentStep) {
-            const currentSection = document.querySelector(`.form-section[data-section="${currentStep}"]`);
-            if (currentSection) {
-                const role = document.getElementById('role').value;
-                const inputs = currentSection.querySelectorAll('input[required], select[required]');
-                let valid = true;
+function goToStep(step) {
+    // Check if going forward
+    if (step > currentStep) {
+        const currentSection = document.querySelector(`.form-section[data-section="${currentStep}"]`);
+        if (currentSection) {
+            const role = document.getElementById('role').value;
+            const inputs = currentSection.querySelectorAll('input[required], select[required]');
+            let errors = [];
+            
+            for (const input of inputs) {
+                const isHidden = input.closest('.role-fields') && !input.closest('.role-fields').classList.contains('active');
+                if (isHidden) continue;
+                if (input.closest('#lecturer-fields') && role !== 'lecturer') continue;
+                if (input.closest('#student-fields') && role !== 'student') continue;
+                if (input.type === 'file') continue;
                 
-                for (const input of inputs) {
-                    const isHidden = input.closest('.role-fields') && !input.closest('.role-fields').classList.contains('active');
-                    if (isHidden) continue;
-                    if (input.closest('#lecturer-fields') && role !== 'lecturer') continue;
-                    if (input.closest('#student-fields') && role !== 'student') continue;
-                    if (input.type === 'file') continue;
-                    
-                    if (!input.value.trim()) {
+                // ✅ STUDENT ID VALIDATION
+                if (input.id === 'student_id_number' && role === 'student') {
+                    const studentId = input.value.trim();
+                    if (!studentId) {
                         input.style.borderColor = '#DC2626';
-                        valid = false;
-                    } else {
-                        input.style.borderColor = '#e2e8f0';
+                        errors.push({
+                            field: 'Student ID',
+                            message: 'Please enter your Student ID.',
+                            icon: '❌'
+                        });
+                        continue;
                     }
-                }
-                
-                if (!valid) {
-                    showFeedback('Please fill all required fields before proceeding.', 'warning');
-                    return;
+                    
+                    const validation = validateStudentIdWithDuplicate(studentId);
+                    if (!validation.valid) {
+                        input.style.borderColor = '#DC2626';
+                        errors.push({
+                            field: 'Student ID',
+                            message: validation.message,
+                            icon: '❌'
+                        });
+                        continue;
+                    }
+                    
+                    // Check if duplicate check is still pending
+                    const statusEl = document.getElementById('student-id-status');
+                    if (statusEl && statusEl.classList.contains('checking')) {
+                        errors.push({
+                            field: 'Student ID',
+                            message: 'Please wait, checking Student ID availability...',
+                            icon: '⏳'
+                        });
+                        continue;
+                    }
+                    
+                    // Check if duplicate check failed
+                    if (statusEl && statusEl.classList.contains('invalid')) {
+                        input.style.borderColor = '#DC2626';
+                        errors.push({
+                            field: 'Student ID',
+                            message: 'This Student ID is already registered.',
+                            icon: '❌'
+                        });
+                        continue;
+                    }
+                    
+                    input.style.borderColor = '#10b981';
+                } else if (!input.value.trim()) {
+                    input.style.borderColor = '#DC2626';
+                    const label = input.previousElementSibling?.textContent?.trim() || 'This field';
+                    errors.push({
+                        field: label,
+                        message: 'This field is required.',
+                        icon: '📝'
+                    });
+                } else {
+                    input.style.borderColor = '#e2e8f0';
                 }
             }
+            
+            // If there are errors, show the modal
+            if (errors.length > 0) {
+                // Find the first error field and scroll to it
+                const errorField = document.querySelector('input[style*="border-color: #DC2626"], select[style*="border-color: #DC2626"]');
+                if (errorField) {
+                    errorField.focus();
+                    errorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                showValidationModal(errors);
+                return;
+            }
         }
-        
-        currentStep = step;
-        document.querySelectorAll('.form-section').forEach(section => {
-            section.style.display = section.dataset.section == step ? 'block' : 'none';
-        });
-        updateProgress();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    
+    currentStep = step;
+    document.querySelectorAll('.form-section').forEach(section => {
+        section.style.display = section.dataset.section == step ? 'block' : 'none';
+    });
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
     function updateProgress() {
         document.querySelectorAll('.progress-step').forEach(step => {
@@ -1829,27 +2161,37 @@
         updateIntakePreview();
     });
 
-    function updateIntakePreview() {
-        const program = document.getElementById('program_type').value;
-        const isKRCHN = program === 'KRCHN';
-        const isTVET = program && program !== '' && program !== 'KRCHN';
-        
-        if (isKRCHN) {
-            document.getElementById('krchn-intake').classList.remove('hidden');
-            document.getElementById('tvet-intake').classList.add('hidden');
-            const year = document.getElementById('krchn_intake_year').value || '2026';
-            document.getElementById('krchnDisplay').textContent = `March ${year}`;
-        } else if (isTVET) {
-            document.getElementById('krchn-intake').classList.add('hidden');
-            document.getElementById('tvet-intake').classList.remove('hidden');
-            const month = document.getElementById('tvet_intake_month').value || '03';
-            const year = document.getElementById('tvet_intake_year').value || '26';
-            document.getElementById('tvetDisplay').textContent = `${month}/${year} Intake`;
-        } else {
-            document.getElementById('krchn-intake').classList.add('hidden');
-            document.getElementById('tvet-intake').classList.add('hidden');
+  function updateIntakePreview() {
+    const program = document.getElementById('program_type').value;
+    const isKRCHN = program === 'KRCHN';
+    const isTVET = program && program !== '' && program !== 'KRCHN';
+    
+    if (isKRCHN) {
+        document.getElementById('krchn-intake').classList.remove('hidden');
+        document.getElementById('tvet-intake').classList.add('hidden');
+        const year = document.getElementById('krchn_intake_year').value || '2026';
+        document.getElementById('krchnDisplay').textContent = `March ${year}`;
+    } else if (isTVET) {
+        document.getElementById('krchn-intake').classList.add('hidden');
+        document.getElementById('tvet-intake').classList.remove('hidden');
+        const month = document.getElementById('tvet_intake_month').value || '03';
+        const year = document.getElementById('tvet_intake_year').value || '2026';
+        const monthNames = {
+            '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+            '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+            '09': 'September', '10': 'October', '11': 'November', '12': 'December'
+        };
+        // ✅ Show full month name and year
+        let displayYear = year;
+        if (year.length === 2) {
+            displayYear = '20' + year;
         }
+        document.getElementById('tvetDisplay').textContent = `${monthNames[month] || month} ${displayYear} Intake`;
+    } else {
+        document.getElementById('krchn-intake').classList.add('hidden');
+        document.getElementById('tvet-intake').classList.add('hidden');
     }
+}
 
     document.getElementById('krchn_intake_year').addEventListener('change', updateIntakePreview);
     document.getElementById('tvet_intake_month').addEventListener('change', updateIntakePreview);
@@ -1916,65 +2258,73 @@
         updateProgress();
     });
 
-    // ============================================
-    // PROFILE PHOTO UPLOAD
-    // ============================================
-    function handlePhotoUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        
-        if (file.size > 5 * 1024 * 1024) {
-            showFeedback('❌ Photo size exceeds 5MB limit.', 'error');
-            event.target.value = '';
-            return;
-        }
-        
-        if (!file.type.startsWith('image/')) {
-            showFeedback('❌ Please upload an image file.', 'error');
-            event.target.value = '';
-            return;
-        }
-        
-        const preview = document.getElementById('photoPreview');
-        const reader = new FileReader();
-        
-        const progressEl = document.getElementById('photoProgress');
-        const progressBar = document.getElementById('photoProgressBar');
-        progressEl.classList.add('active');
-        
-        reader.onload = function(e) {
-            const oldImg = preview.querySelector('img');
-            if (oldImg) oldImg.remove();
-            const placeholderIcon = preview.querySelector('.placeholder-icon');
-            const placeholderText = preview.querySelector('.placeholder-text');
-            if (placeholderIcon) placeholderIcon.style.display = 'none';
-            if (placeholderText) placeholderText.style.display = 'none';
-            
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.alt = 'Profile photo';
-            preview.prepend(img);
-            
-            const statusEl = document.getElementById('photoStatus');
-            statusEl.textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-            statusEl.className = 'photo-status uploaded';
-            
-            setTimeout(() => {
-                progressEl.classList.remove('active');
-                progressBar.style.width = '0%';
-            }, 500);
-        };
-        
-        reader.onprogress = function(e) {
-            if (e.lengthComputable) {
-                const progress = (e.loaded / e.total) * 100;
-                progressBar.style.width = progress + '%';
-            }
-        };
-        
-        reader.readAsDataURL(file);
-        uploadedDocs.profile_photo = file;
+   // ============================================
+// PROFILE PHOTO UPLOAD - CLEAN VERSION
+// ============================================
+function handlePhotoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showFeedback('❌ Photo size exceeds 5MB limit.', 'error');
+        event.target.value = '';
+        return;
     }
+    
+    if (!file.type.startsWith('image/')) {
+        showFeedback('❌ Please upload an image file.', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    const preview = document.getElementById('photoPreview');
+    const reader = new FileReader();
+    
+    const progressEl = document.getElementById('photoProgress');
+    const progressBar = document.getElementById('photoProgressBar');
+    progressEl.classList.add('active');
+    
+    reader.onload = function(e) {
+        const oldImg = preview.querySelector('img');
+        if (oldImg) oldImg.remove();
+        const placeholderIcon = preview.querySelector('.placeholder-icon');
+        const placeholderText = preview.querySelector('.placeholder-text');
+        if (placeholderIcon) placeholderIcon.style.display = 'none';
+        if (placeholderText) placeholderText.style.display = 'none';
+        
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.alt = 'Profile photo';
+        preview.prepend(img);
+        
+        const statusEl = document.getElementById('photoStatus');
+        statusEl.textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        statusEl.className = 'photo-status uploaded';
+        
+        setTimeout(() => {
+            progressEl.classList.remove('active');
+            progressBar.style.width = '0%';
+        }, 500);
+        
+        // ✅ Store the file for upload
+        uploadedDocs.profile_photo = file;
+        console.log('✅ Photo selected for upload:', file.name);
+    };
+    
+    reader.onprogress = function(e) {
+        if (e.lengthComputable) {
+            const progress = (e.loaded / e.total) * 100;
+            progressBar.style.width = progress + '%';
+        }
+    };
+    
+    reader.onerror = function() {
+        showFeedback('❌ Failed to read photo file.', 'error');
+        progressEl.classList.remove('active');
+    };
+    
+    reader.readAsDataURL(file);
+}
 
     // ============================================
     // DOCUMENT UPLOAD
@@ -2163,24 +2513,32 @@
                 '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
                 '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
             };
-            intakeDisplay = `${monthNames[month] || month} 20${year}`;
+            intakeDisplay = `${monthNames[month] || month} ${year}`;
         }
         return { intake_year: intakeYear, intake_month: intakeMonth, display: intakeDisplay };
     }
 
-    function getDisplayIntake(program, year, month) {
-        if (!year) return 'N/A';
-        if (program === 'KRCHN') {
-            return `March ${year}`;
-        } else {
-            const monthNames = {
-                '01': 'JAN', '02': 'FEB', '03': 'MAR', '04': 'APR',
-                '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
-                '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
-            };
-            return `${monthNames[month] || month} 20${year}`;
-        }
+   // ✅ Fixed
+function getDisplayIntake(program, year, month) {
+    if (!year) return 'N/A';
+    
+    // Convert to 4-digit if needed
+    let fullYear = year;
+    if (year.length === 2) {
+        fullYear = '20' + year;
     }
+    
+    if (program === 'KRCHN') {
+        return `March ${fullYear}`;
+    } else {
+        const monthNames = {
+            '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+            '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+            '09': 'September', '10': 'October', '11': 'November', '12': 'December'
+        };
+        return `${monthNames[month] || month} ${fullYear}`;
+    }
+}
 
     // ============================================
     // SUCCESS ANIMATION
@@ -2703,6 +3061,7 @@ async function addStaffToRecords(userId, email, password, fullName, staffId, dep
     console.log('  👔 Lecturer Staff ID auto-generated');
     console.log('  ✅ Lecturer documents are OPTIONAL');
     console.log('  ✅ Department and Program are REQUIRED for lecturers');
+    console.log('  ✅ Validation modal shows errors when proceeding');
 </script>
 
 </body>
