@@ -9223,37 +9223,90 @@
                     </div>
                 </div>
                 
-                <!-- Report Settings -->
-                <div>
-                    <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 6px;">Report Card Settings</label>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; padding: 14px; background: white; border-radius: 14px; border: 1px solid #e2e8f0;">
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
-                            <input type="checkbox" id="exam_show_attendance"> Show Attendance
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
-                            <input type="checkbox" id="exam_show_grades" checked> Show Grades
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
-                            <input type="checkbox" id="exam_show_teacher_remarks"> Teacher Remarks
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
-                            <input type="checkbox" id="exam_show_principal_remarks"> Principal Remarks
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
-                            <input type="checkbox" id="exam_show_performance_metrics"> Performance Metrics
-                        </label>
-                    </div>
-                </div>
-                
-                <!-- Submit -->
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid #e2e8f0;">
-                    <button type="submit" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; border: none; padding: 12px 32px; border-radius: 40px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(124,58,237,0.35);">
-                        <i class="fas fa-save"></i> Create Exam
+               <!-- Report Settings -->
+<div>
+    <label style="font-weight: 600; font-size: 11px; text-transform: uppercase; color: #475569; display: block; margin-bottom: 6px;">Report Card Settings</label>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; padding: 14px; background: white; border-radius: 14px; border: 1px solid #e2e8f0;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
+            <input type="checkbox" id="exam_show_attendance"> Show Attendance
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
+            <input type="checkbox" id="exam_show_grades" checked> Show Grades
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
+            <input type="checkbox" id="exam_show_teacher_remarks"> Teacher Remarks
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
+            <input type="checkbox" id="exam_show_principal_remarks"> Principal Remarks
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer;">
+            <input type="checkbox" id="exam_show_performance_metrics"> Performance Metrics
+        </label>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- 📧 EMAIL NOTIFICATION SETTINGS - ADD THIS -->
+<!-- ============================================ -->
+<div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 16px 20px; margin: 16px 0;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; font-size: 14px; color: #065f46;">
+            <input type="checkbox" id="exam_notify_students" checked style="width: 18px; height: 18px; accent-color: #059669;">
+            <i class="fas fa-envelope"></i> Notify Students via Email
+        </label>
+        <span style="font-size: 11px; color: #6b7280; background: #d1fae5; padding: 2px 12px; border-radius: 20px;">
+            <i class="fas fa-info-circle"></i> Students will receive exam details
+        </span>
+        <span id="student_notify_count" style="font-size: 12px; color: #059669; font-weight: 600; background: white; padding: 2px 12px; border-radius: 20px; border: 1px solid #86efac;">
+            <i class="fas fa-users"></i> 0 students
+        </span>
+    </div>
+    
+    <!-- Student Selection -->
+    <div id="exam_student_selection" style="margin-top: 10px;">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: start;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="font-size: 12px; font-weight: 500; color: #374151; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-users"></i> Select Students to Notify
+                </label>
+                <select id="exam_notify_target" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 13px; background: white;">
+                    <option value="all">📢 All Students (Program + Block)</option>
+                    <option value="program">🎓 All Students in Program</option>
+                    <option value="block">📚 All Students in Block</option>
+                    <option value="specific">👤 Specific Students</option>
+                </select>
+            </div>
+            <div style="flex: 2; min-width: 250px;" id="specific_students_container" style="display: none;">
+                <label style="font-size: 12px; font-weight: 500; color: #374151; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-search"></i> Search & Select Students
+                </label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="exam_student_search" placeholder="Type name or email..." 
+                           style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 13px;">
+                    <button type="button" onclick="searchStudentsForNotification()" style="padding: 8px 16px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; white-space: nowrap;">
+                        <i class="fas fa-search"></i> Search
                     </button>
-                    <button type="reset" style="background: #f1f5f9; color: #475569; border: none; padding: 12px 24px; border-radius: 40px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-undo"></i> Reset
-                    </button>
                 </div>
+                <div id="student_search_results" style="max-height: 150px; overflow-y: auto; margin-top: 6px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px; background: white; display: none;">
+                    <!-- Results populated by JS -->
+                </div>
+                <div id="selected_students_list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; min-height: 24px;">
+                    <span style="font-size: 12px; color: #94a3b8;"><i class="fas fa-info-circle"></i> No students selected</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Submit -->
+<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+    <button type="submit" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; border: none; padding: 12px 32px; border-radius: 40px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(124,58,237,0.35);">
+        <i class="fas fa-save"></i> Create Exam
+    </button>
+    <button type="reset" style="background: #f1f5f9; color: #475569; border: none; padding: 12px 24px; border-radius: 40px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-undo"></i> Reset
+    </button>
+</div>
                 
             </form>
         </div>
