@@ -18,7 +18,24 @@ window.sb = sb;
 
 //  FIX: Create alias for loadUnits to use
 window.supabase = window.sb;
+// ============================================
+// 📸 HELPER: Get full photo URL from profile
+// ============================================
 
+function getProfilePhotoUrl(profile) {
+    if (!profile || !profile.profile_photo_url) return null;
+    
+    const path = profile.profile_photo_url;
+    
+    // If it's already a full URL, return it
+    if (path.startsWith('http')) {
+        return path;
+    }
+    
+    // Otherwise construct the full URL
+    const baseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    return `${baseUrl}/storage/v1/object/public/user-documents/${path}`;
+}
 // ============================================
 // 🔥🔥🔥 ADD CLEANUP MODULE HERE 🔥🔥🔥
 // ============================================
@@ -4502,7 +4519,23 @@ function renderUsersTable(users) {
     let html = '';
     
     for (const u of users) {
-        // ✅ Student/Staff ID based on role
+        // ✅ FIXED: Get photo URL properly
+        let photoUrl = null;
+        let hasPhoto = false;
+        if (u.profile_photo_url) {
+            // If it's already a full URL, use it
+            if (u.profile_photo_url.startsWith('http')) {
+                photoUrl = u.profile_photo_url;
+                hasPhoto = true;
+            } else {
+                // Construct the full URL from Supabase storage
+                photoUrl = `${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}`;
+                hasPhoto = true;
+            }
+        }
+        const initial = u.full_name?.charAt(0)?.toUpperCase() || 'U';
+        
+        // Student/Staff ID based on role
         let idDisplay = 'N/A';
         let idLabel = 'ID';
         if (u.role === 'student') {
@@ -4524,7 +4557,7 @@ function renderUsersTable(users) {
         const programBadgeColor = isTVET ? '#92400e' : '#1e40af';
         const programIcon = isTVET ? 'fa-tools' : 'fa-graduation-cap';
         
-        // ✅ FIXED: Pass intake_month to getDisplayIntake
+        // Intake display
         const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year, u.intake_month) : 'N/A';
         
         // Block/Term display
@@ -4538,7 +4571,6 @@ function renderUsersTable(users) {
         const isApproved = u.status === 'approved' || u.status === 'active';
         const isBlocked = u.block_program_year === true;
         const statusText = isBlocked ? 'BLOCKED' : (isApproved ? 'Approved' : 'Pending');
-        const statusClass = isBlocked ? 'status-danger' : (isApproved ? 'status-approved' : 'status-pending');
         const statusBg = isBlocked ? '#fee2e2' : (isApproved ? '#d1fae5' : '#fef3c7');
         const statusColor = isBlocked ? '#991b1b' : (isApproved ? '#065f46' : '#92400e');
         
@@ -4551,16 +4583,22 @@ function renderUsersTable(users) {
         };
         const roleLabel = roleLabels[u.role] || u.role || 'User';
         
-        // Avatar
-        const initial = u.full_name?.charAt(0)?.toUpperCase() || 'U';
+        // ✅ FIXED: Use the constructed photoUrl
         const avatarColors = ['#4C1D95', '#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
         const colorIndex = (u.full_name?.length || 0) % avatarColors.length;
         const avatarColor = avatarColors[colorIndex];
-        const hasPhoto = u.profile_photo_url && u.profile_photo_url.startsWith('http');
         
-        // ✅ Read document status directly from profile
+        // ✅ Document status - read directly from profile
         const docKcseStatus = u.doc_kcse || 'pending';
         const docIdStatus = u.doc_id || 'pending';
+        
+        // ✅ Build avatar HTML with proper photo handling
+        let avatarHtml = '';
+        if (hasPhoto && photoUrl) {
+            avatarHtml = `<img src="${photoUrl}" alt="${escapeHtml(u.full_name)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\\'font-size:16px;font-weight:700;color:white;\\'>${initial}</span>'">`;
+        } else {
+            avatarHtml = `<span style="font-size: 16px; font-weight: 700; color: white;">${initial}</span>`;
+        }
         
         html += `
             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" 
@@ -4578,10 +4616,7 @@ function renderUsersTable(users) {
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <!-- Avatar -->
                         <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px solid #e5e7eb; background: ${hasPhoto ? 'transparent' : avatarColor};">
-                            ${hasPhoto 
-                                ? `<img src="${u.profile_photo_url}" alt="${escapeHtml(u.full_name)}" style="width: 100%; height: 100%; object-fit: cover;">`
-                                : `<span style="font-size: 16px; font-weight: 700; color: white;">${initial}</span>`
-                            }
+                            ${avatarHtml}
                         </div>
                         <div style="flex: 1; min-width: 0;">
                             <div style="font-weight: 600; color: #1e293b; font-size: 14px;">${escapeHtml(u.full_name || 'Unknown')}</div>
@@ -4651,7 +4686,6 @@ function renderUsersTable(users) {
     
     tbody.innerHTML = html;
 }
-
 // ============================================
 // 📊 UPDATE BULK SELECTED COUNT
 // ============================================
@@ -4910,6 +4944,7 @@ async function loadFilterOptions() {
 // ✅ Reads doc_kcse and doc_id from profile directly
 // ✅ Passes intake_month to getDisplayIntake
 // ✅ Updates stats with updatePendingStats()
+// ✅ FIXED: Profile photo URL construction
 // ============================================
 
 async function loadPendingApprovals() {
@@ -4960,14 +4995,22 @@ async function loadPendingApprovals() {
             // ✅ FIXED: Pass intake_month to getDisplayIntake
             const intakeDisplay = getDisplayIntake(u.program, u.intake_year, u.intake_month);
             
-            // ✅ FIXED PHOTO DISPLAY
+            // ✅ FIXED: Get photo URL properly
             let photoHtml = '';
             if (u.profile_photo_url) {
-                photoHtml = `<img src="${u.profile_photo_url}" 
+                // Construct the full URL from Supabase storage
+                let photoUrl = '';
+                if (u.profile_photo_url.startsWith('http')) {
+                    photoUrl = u.profile_photo_url;
+                } else {
+                    photoUrl = `${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}`;
+                }
+                
+                photoHtml = `<img src="${photoUrl}" 
                                   alt="Photo" 
                                   style="width:35px;height:35px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
                                   onclick="viewDocument('${escapedUserId}','photo')"
-                                  onerror="this.style.display='none';">`;
+                                  onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block';">`;
             } else {
                 photoHtml = `<span class="badge badge-secondary" style="font-size:11px;cursor:pointer;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`;
             }
@@ -5028,7 +5071,6 @@ async function loadPendingApprovals() {
         tbody.innerHTML = `<tr><td colspan="11" style="color:red;">Error: ${error.message}</td></tr>`;
     }
 }
-
 // ============================================
 // 📊 UPDATE PENDING STATS - NEW FUNCTION
 // ============================================
@@ -5135,48 +5177,47 @@ async function loadStudents() {
     }
 }
 
-// ============================================
-// 📅 GET DISPLAY INTAKE - FIXED (Not hardcoded)
-// ============================================
-
 function getDisplayIntake(program, year, month = null) {
     if (!year) return 'N/A';
     
+    // ✅ FIX: Convert 2-digit year to 4-digit year
+    let fullYear = year;
+    if (year.length === 2) {
+        const yearNum = parseInt(year);
+        // If year is 20-99, it's 2000-2099
+        if (yearNum >= 20 && yearNum <= 99) {
+            fullYear = '20' + year;
+        } else if (yearNum >= 0 && yearNum <= 19) {
+            fullYear = '20' + year;
+        }
+    }
+    
     const monthNames = {
-        // Numeric months
         '01': 'January', '02': 'February', '03': 'March', '04': 'April',
         '05': 'May', '06': 'June', '07': 'July', '08': 'August',
         '09': 'September', '10': 'October', '11': 'November', '12': 'December',
-        // Three-letter months (from KRCHN)
         'JAN': 'January', 'FEB': 'February', 'MAR': 'March', 'APR': 'April',
         'MAY': 'May', 'JUN': 'June', 'JUL': 'July', 'AUG': 'August',
-        'SEP': 'September', 'OCT': 'October', 'NOV': 'November', 'DEC': 'December',
-        // Full month names (just in case)
-        'JANUARY': 'January', 'FEBRUARY': 'February', 'MARCH': 'March',
-        'APRIL': 'April', 'MAY': 'May', 'JUNE': 'June', 'JULY': 'July',
-        'AUGUST': 'August', 'SEPTEMBER': 'September', 'OCTOBER': 'October',
-        'NOVEMBER': 'November', 'DECEMBER': 'December'
+        'SEP': 'September', 'OCT': 'October', 'NOV': 'November', 'DEC': 'December'
     };
     
     // KRCHN always uses March intake
     if (program === 'KRCHN') {
-        return `March ${year}`;
+        return `March ${fullYear}`;
     }
     
     // TVET uses the selected month
     if (month) {
         const monthName = monthNames[String(month).toUpperCase()] || month;
         if (monthName !== String(month).toUpperCase()) {
-            return `${monthName} ${year}`;
+            return `${monthName} ${fullYear}`;
         } else {
-            return `Intake ${year} (${month})`;
+            return `Intake ${fullYear} (${month})`;
         }
     }
     
-    // Fallback if no month provided
-    return `Intake ${year}`;
+    return `Intake ${fullYear}`;
 }
-
 // ============================================
 // 🚀 INITIALIZE MANAGE USERS - UPDATED
 // ============================================
@@ -6128,6 +6169,7 @@ async function deleteProfile(userId, fullName, isRejection = false) {
 // ============================================
 // OPEN EDIT USER MODAL - COMPLETE WITH ALL FIELDS
 // FIXED: Better error handling and data loading
+// FIXED: Profile photo URL construction
 // ============================================
 
 async function openEditUserModal(userId) {
@@ -6307,11 +6349,27 @@ async function openEditUserModal(userId) {
             }
         }
 
-        // ====== SET PROFILE PHOTO PREVIEW ======
+        // ====== SET PROFILE PHOTO PREVIEW - FIXED ======
         const photoPreview = document.getElementById('edit_user_photo_preview');
         if (photoPreview) {
+            // ✅ FIXED: Get photo URL properly
+            let photoUrl = null;
+            let hasPhoto = false;
+            
             if (user.profile_photo_url) {
-                photoPreview.innerHTML = `<img src="${user.profile_photo_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+                // If it's already a full URL, use it
+                if (user.profile_photo_url.startsWith('http')) {
+                    photoUrl = user.profile_photo_url;
+                    hasPhoto = true;
+                } else {
+                    // Construct the full URL from Supabase storage
+                    photoUrl = `${SUPABASE_URL}/storage/v1/object/public/user-documents/${user.profile_photo_url}`;
+                    hasPhoto = true;
+                }
+            }
+            
+            if (hasPhoto && photoUrl) {
+                photoPreview.innerHTML = `<img src="${photoUrl}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-user\\' style=\\'font-size:32px;color:#94a3b8;\\'></i>'">`;
             } else {
                 // Show letter avatar
                 const initial = (user.full_name || 'U').charAt(0).toUpperCase();
@@ -6338,6 +6396,7 @@ async function openEditUserModal(userId) {
         modal.style.display = 'flex';
         
         console.log('✅ Edit user modal opened for:', user.full_name);
+        console.log('📸 Photo URL:', user.profile_photo_url ? 'Has photo' : 'No photo');
         
         // ====== LOAD ACADEMIC HISTORY ======
         await loadAcademicHistory(user.user_id || user.id);
@@ -6347,7 +6406,6 @@ async function openEditUserModal(userId) {
         showFeedback(`Failed to load user: ${e.message}`, 'error');
     }
 }
-
 // ============================================
 // HANDLE EDIT USER - COMPLETE WITH ALL FIELDS
 // FIXED: Removed 'term' column (doesn't exist)
