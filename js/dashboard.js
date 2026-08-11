@@ -448,67 +448,102 @@ class DashboardModule {
     // 🔧 FIX NURSEIQ POINTS DISPLAY - ADD THIS METHOD
     // ============================================================
     
-    async fixNurseIQDisplay() {
-        console.log('🔧 Fixing NurseIQ display...');
-        
-        try {
-            if (!this.userId || !this.sb) {
-                console.warn('⚠️ Cannot fix NurseIQ: No userId or Supabase client');
-                return;
-            }
-            
-            // Get NurseIQ points from database directly
-            const { data, error } = await this.sb
-                .from('consolidated_user_profiles_table')
-                .select('nurseiq_points, total_points')
-                .eq('user_id', this.userId)
-                .single();
-            
-            if (error) {
-                console.error('Error fetching NurseIQ:', error);
-                return;
-            }
-            
-            const nurseiqPoints = data?.nurseiq_points || 0;
-            const totalPoints = data?.total_points || 0;
-            
-            console.log(`📊 Database NurseIQ: ${nurseiqPoints}`);
-            console.log(`📊 Database Total: ${totalPoints}`);
-            
-            // Store in metrics
-            this.nurseIQPoints = nurseiqPoints;
-            this.metrics.nurseiqPoints = nurseiqPoints;
-            this.metrics.totalPoints = totalPoints;
-            
-            if (this.metrics.nurseiq) {
-                this.metrics.nurseiq.points = nurseiqPoints;
-            }
-            
-            // ✅ Update the UI elements directly
-            if (this.elements.nurseiqPoints) {
-                this.elements.nurseiqPoints.innerText = nurseiqPoints;
-                console.log(`✅ NurseIQ points set to: ${nurseiqPoints}`);
-            } else {
-                console.warn('⚠️ NurseIQ points element not found');
-            }
-            
-            if (this.elements.totalPointsDisplay) {
-                this.elements.totalPointsDisplay.innerText = totalPoints;
-                console.log(`✅ Total points set to: ${totalPoints}`);
-            }
-            
-            // ✅ Update the XP stats
-            this.updateNurseIQStats(nurseiqPoints);
-            
-            // ✅ Update gamification display too
-            if (this.elements.gamificationPointsDisplay) {
-                this.elements.gamificationPointsDisplay.innerText = this.gamificationPoints || 0;
-            }
-            
-        } catch (error) {
-            console.error('Error fixing NurseIQ display:', error);
+   // ============================================================
+// 🔧 FIX NURSEIQ POINTS DISPLAY - UPDATED
+// ============================================================
+
+async fixNurseIQDisplay() {
+    console.log('🔧 Fixing NurseIQ display...');
+    
+    try {
+        if (!this.userId || !this.sb) {
+            console.warn('⚠️ Cannot fix NurseIQ: No userId or Supabase client');
+            return;
         }
+        
+        // Get NurseIQ points from database directly
+        const { data, error } = await this.sb
+            .from('consolidated_user_profiles_table')
+            .select('nurseiq_points, total_points, gamification_points, login_count')
+            .eq('user_id', this.userId)
+            .single();
+        
+        if (error) {
+            console.error('Error fetching NurseIQ:', error);
+            // Try fallback from RPC
+            const { data: rpcData } = await this.sb.rpc('get_student_dashboard', {
+                p_user_id: this.userId
+            });
+            if (rpcData) {
+                const points = rpcData?.nurseiq?.points || 0;
+                this.nurseIQPoints = points;
+                this.metrics.nurseiq.points = points;
+                if (this.elements.nurseiqPoints) {
+                    this.elements.nurseiqPoints.innerText = points;
+                }
+                console.log(`✅ NurseIQ points from RPC: ${points}`);
+                return;
+            }
+            return;
+        }
+        
+        const nurseiqPoints = data?.nurseiq_points || 0;
+        const totalPoints = data?.total_points || 0;
+        const gamificationPoints = data?.gamification_points || 0;
+        const loginCount = data?.login_count || 0;
+        
+        console.log(`📊 Database NurseIQ: ${nurseiqPoints}`);
+        console.log(`📊 Database Total: ${totalPoints}`);
+        console.log(`🏆 Gamification: ${gamificationPoints}`);
+        
+        // Store in metrics
+        this.nurseIQPoints = nurseiqPoints;
+        this.metrics.nurseiqPoints = nurseiqPoints;
+        this.metrics.totalPoints = totalPoints;
+        this.gamificationPoints = gamificationPoints;
+        
+        if (this.metrics.nurseiq) {
+            this.metrics.nurseiq.points = nurseiqPoints;
+        }
+        
+        // ✅ Update the UI elements directly
+        if (this.elements.nurseiqPoints) {
+            this.elements.nurseiqPoints.innerText = nurseiqPoints;
+            console.log(`✅ NurseIQ points set to: ${nurseiqPoints}`);
+        } else {
+            console.warn('⚠️ NurseIQ points element not found');
+        }
+        
+        if (this.elements.totalPointsDisplay) {
+            this.elements.totalPointsDisplay.innerText = totalPoints;
+            console.log(`✅ Total points set to: ${totalPoints}`);
+        }
+        
+        if (this.elements.gamificationPointsDisplay) {
+            this.elements.gamificationPointsDisplay.innerText = gamificationPoints;
+        }
+        
+        // ✅ Update login count display
+        if (this.elements.loginCountDisplay) {
+            this.elements.loginCountDisplay.innerText = loginCount;
+        }
+        
+        // ✅ Update login points (10 per login)
+        const loginPoints = loginCount * 10;
+        if (this.elements.loginPointsDisplay) {
+            this.elements.loginPointsDisplay.innerText = loginPoints;
+        }
+        
+        // ✅ Update the XP stats
+        this.updateNurseIQStats(nurseiqPoints);
+        
+        // ✅ Update leaderboard
+        this.loadLeaderboardData('all');
+        
+    } catch (error) {
+        console.error('Error fixing NurseIQ display:', error);
     }
+}
     
     // ============================================================
     // 📊 UPDATE NURSEIQ STATS IN THE UI
