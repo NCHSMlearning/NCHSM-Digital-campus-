@@ -1061,58 +1061,57 @@
                         Select a program above to see details
                     </div>
                 </div>
-                
-                <div id="intake-container">
-                    <div id="krchn-intake" class="intake-section">
-                        <div class="form-group">
-                            <label><i data-feather="calendar"></i> Intake Year</label>
-                            <select id="krchn_intake_year" name="krchn_intake_year">
-                                <option value="">-- Select Intake Year --</option>
-                                <option value="2024">2024</option>
-                                <option value="2025">2025</option>
-                                <option value="2026" selected>2026</option>
-                                <option value="2027">2027</option>
-                                <option value="2028">2028</option>
-                            </select>
-                            <div class="help-text">KRCHN Nursing intake (March intake each year)</div>
-                            <div class="intake-preview">📅 Will display as: <strong id="krchnDisplay">March 2026</strong></div>
-                        </div>
-                    </div>
+              <!-- KRCHN Intake -->
+<div id="krchn-intake" class="intake-section">
+    <div class="form-group">
+        <label><i data-feather="calendar"></i> Intake Year</label>
+        <select id="krchn_intake_year" name="krchn_intake_year">
+            <option value="">-- Select Intake Year --</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+        </select>
+        <div class="help-text">KRCHN Nursing intake (March intake each year)</div>
+        <div class="intake-preview">📅 Will display as: <strong id="krchnDisplay">March 2026</strong></div>
+    </div>
+</div>
 
-                    <div id="tvet-intake" class="intake-section hidden">
-                        <div class="form-group">
-                            <label><i data-feather="calendar"></i> Intake</label>
-                            <div class="tvet-intake-row">
-                                <select id="tvet_intake_month" name="tvet_intake_month">
-                                    <option value="01">January (01)</option>
-                                    <option value="02">February (02)</option>
-                                    <option value="03" selected>March (03)</option>
-                                    <option value="04">April (04)</option>
-                                    <option value="05">May (05)</option>
-                                    <option value="06">June (06)</option>
-                                    <option value="07">July (07)</option>
-                                    <option value="08">August (08)</option>
-                                    <option value="09">September (09)</option>
-                                    <option value="10">October (10)</option>
-                                    <option value="11">November (11)</option>
-                                    <option value="12">December (12)</option>
-                                </select>
-                                <select id="tvet_intake_year" name="tvet_intake_year">
-                                    <option value="24">2024</option>
-                                    <option value="25">2025</option>
-                                    <option value="26" selected>2026</option>
-                                    <option value="27">2027</option>
-                                    <option value="28">2028</option>
-                                    <option value="29">2029</option>
-                                    <option value="30">2030</option>
-                                </select>
-                            </div>
-                            <div class="help-text">TVET intake: Select month (01-12) and year (2 digits)</div>
-                            <div class="intake-preview">📅 Will display as: <strong id="tvetDisplay">03/26 Intake</strong></div>
-                        </div>
-                    </div>
-                </div>
-
+<!-- TVET Intake -->
+<div id="tvet-intake" class="intake-section hidden">
+    <div class="form-group">
+        <label><i data-feather="calendar"></i> Intake</label>
+        <div class="tvet-intake-row">
+            <select id="tvet_intake_month" name="tvet_intake_month">
+                <option value="01">January (01)</option>
+                <option value="02">February (02)</option>
+                <option value="03" selected>March (03)</option>
+                <option value="04">April (04)</option>
+                <option value="05">May (05)</option>
+                <option value="06">June (06)</option>
+                <option value="07">July (07)</option>
+                <option value="08">August (08)</option>
+                <option value="09">September (09)</option>
+                <option value="10">October (10)</option>
+                <option value="11">November (11)</option>
+                <option value="12">December (12)</option>
+            </select>
+            <!-- ✅ FIXED: Use full years -->
+            <select id="tvet_intake_year" name="tvet_intake_year">
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026" selected>2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+                <option value="2029">2029</option>
+                <option value="2030">2030</option>
+            </select>
+        </div>
+        <div class="help-text">TVET intake: Select month (01-12) and year</div>
+        <div class="intake-preview">📅 Will display as: <strong id="tvetDisplay">March 2026 Intake</strong></div>
+    </div>
+</div>
                 <div class="two-columns">
                     <div class="form-group">
                         <label><i data-feather="heart"></i> Parent/Guardian Name</label>
@@ -1503,13 +1502,19 @@
             const month = tvetMatch[3];
             const year = tvetMatch[4];
             
-            const validTvetPrograms = [
-                'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 
-                'DCJS', 'DHSS', 'DICT', 'DME', 'CPOTT', 
-                'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 
-                'CCJS', 'CAG', 'CHSS', 'CICT', 'ACH', 
-                'AAG', 'ASW', 'CCA', 'PTE'
-            ];
+           const validTvetPrograms = [
+    // Diploma Programs
+    'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 
+    'DCJS', 'DHSS', 'DICT', 'DME',
+    // Certificate Programs
+    'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 
+    'CCJS', 'CAG', 'CHSS', 'CICT',
+    'CCG', 'COMT',  // ✅ Added missing programs
+    // Artisan Programs
+    'ACH', 'AAG', 'ASW',
+    // Other
+    'CCA', 'PTE'
+];
             
             if (!validTvetPrograms.includes(program)) {
                 return { 
@@ -1917,53 +1922,65 @@
     });
 
     // ============================================
-    // PROFILE PHOTO UPLOAD
-    // ============================================
-    function handlePhotoUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+// PROFILE PHOTO UPLOAD - FIXED
+// ============================================
+function handlePhotoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showFeedback('❌ Photo size exceeds 5MB limit.', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    if (!file.type.startsWith('image/')) {
+        showFeedback('❌ Please upload an image file.', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    const preview = document.getElementById('photoPreview');
+    const reader = new FileReader();
+    
+    const progressEl = document.getElementById('photoProgress');
+    const progressBar = document.getElementById('photoProgressBar');
+    progressEl.classList.add('active');
+    
+    reader.onload = function(e) {
+        const oldImg = preview.querySelector('img');
+        if (oldImg) oldImg.remove();
+        const placeholderIcon = preview.querySelector('.placeholder-icon');
+        const placeholderText = preview.querySelector('.placeholder-text');
+        if (placeholderIcon) placeholderIcon.style.display = 'none';
+        if (placeholderText) placeholderText.style.display = 'none';
         
-        if (file.size > 5 * 1024 * 1024) {
-            showFeedback('❌ Photo size exceeds 5MB limit.', 'error');
-            event.target.value = '';
-            return;
-        }
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.alt = 'Profile photo';
+        preview.prepend(img);
         
-        if (!file.type.startsWith('image/')) {
-            showFeedback('❌ Please upload an image file.', 'error');
-            event.target.value = '';
-            return;
-        }
+        const statusEl = document.getElementById('photoStatus');
+        statusEl.textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        statusEl.className = 'photo-status uploaded';
         
-        const preview = document.getElementById('photoPreview');
-        const reader = new FileReader();
+        setTimeout(() => {
+            progressEl.classList.remove('active');
+            progressBar.style.width = '0%';
+        }, 500);
         
-        const progressEl = document.getElementById('photoProgress');
-        const progressBar = document.getElementById('photoProgressBar');
-        progressEl.classList.add('active');
-        
-        reader.onload = function(e) {
-            const oldImg = preview.querySelector('img');
-            if (oldImg) oldImg.remove();
-            const placeholderIcon = preview.querySelector('.placeholder-icon');
-            const placeholderText = preview.querySelector('.placeholder-text');
-            if (placeholderIcon) placeholderIcon.style.display = 'none';
-            if (placeholderText) placeholderText.style.display = 'none';
-            
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.alt = 'Profile photo';
-            preview.prepend(img);
-            
-            const statusEl = document.getElementById('photoStatus');
-            statusEl.textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-            statusEl.className = 'photo-status uploaded';
-            
-            setTimeout(() => {
-                progressEl.classList.remove('active');
-                progressBar.style.width = '0%';
-            }, 500);
-        };
+        // ✅ Store the file for upload
+        uploadedDocs.profile_photo = file;
+        console.log('✅ Photo selected for upload:', file.name);
+    };
+    
+    reader.onerror = function() {
+        showFeedback('❌ Failed to read photo file.', 'error');
+        progressEl.classList.remove('active');
+    };
+    
+    reader.readAsDataURL(file);
+}
         
         reader.onprogress = function(e) {
             if (e.lengthComputable) {
@@ -2139,48 +2156,153 @@
         }
     }
 
-    // ============================================
-    // GET INTAKE DATA
-    // ============================================
-    function getIntakeData() {
-        const program = document.getElementById('program_type').value;
-        const isKRCHN = program === 'KRCHN';
-        const isTVET = program && program !== '' && program !== 'KRCHN';
-        let intakeYear = '';
-        let intakeMonth = '';
-        let intakeDisplay = '';
-        if (isKRCHN) {
-            intakeYear = document.getElementById('krchn_intake_year').value || '';
-            intakeMonth = 'MAR';
-            intakeDisplay = `March ${intakeYear}`;
-        } else if (isTVET) {
-            const year = document.getElementById('tvet_intake_year').value || '';
-            const month = document.getElementById('tvet_intake_month').value || '03';
-            intakeYear = year;
-            intakeMonth = month;
-            const monthNames = {
-                '01': 'JAN', '02': 'FEB', '03': 'MAR', '04': 'APR',
-                '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
-                '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
-            };
-            intakeDisplay = `${monthNames[month] || month} 20${year}`;
+   // ============================================
+// GET INTAKE DATA - FIXED FOR BOTH TVET & NURSING
+// ✅ Stores full 4-digit year for both
+// ✅ Handles different month formats
+// ============================================
+function getIntakeData() {
+    const program = document.getElementById('program_type').value;
+    const isKRCHN = program === 'KRCHN';
+    const isTVET = program && program !== '' && program !== 'KRCHN';
+    let intakeYear = '';
+    let intakeMonth = '';
+    let intakeDisplay = '';
+    
+    if (isKRCHN) {
+        // KRCHN: Year from dropdown, month is always MAR
+        const year = document.getElementById('krchn_intake_year').value || '';
+        intakeYear = year;  // Already 4-digit (e.g., "2026")
+        intakeMonth = 'MAR';
+        intakeDisplay = `March ${intakeYear}`;
+        
+    } else if (isTVET) {
+        // TVET: Year and month from dropdowns
+        const year = document.getElementById('tvet_intake_year').value || '';
+        const month = document.getElementById('tvet_intake_month').value || '03';
+        
+        // ✅ Convert 2-digit year to 4-digit if needed
+        let fullYear = year;
+        if (year.length === 2) {
+            const yearNum = parseInt(year);
+            if (yearNum >= 20 && yearNum <= 99) {
+                fullYear = '20' + year;
+            } else if (yearNum >= 0 && yearNum <= 19) {
+                fullYear = '20' + year;
+            }
         }
-        return { intake_year: intakeYear, intake_month: intakeMonth, display: intakeDisplay };
+        
+        intakeYear = fullYear;  // ✅ 4-digit (e.g., "2026")
+        intakeMonth = month;    // e.g., "03"
+        
+        const monthNames = {
+            '01': 'JAN', '02': 'FEB', '03': 'MAR', '04': 'APR',
+            '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
+            '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
+        };
+        intakeDisplay = `${monthNames[month] || month} ${fullYear}`;
     }
+    
+    return { 
+        intake_year: intakeYear,    // Always 4-digit
+        intake_month: intakeMonth,   // MAR or 01-12
+        display: intakeDisplay       // e.g., "March 2026"
+    };
+}
 
-    function getDisplayIntake(program, year, month) {
-        if (!year) return 'N/A';
-        if (program === 'KRCHN') {
-            return `March ${year}`;
-        } else {
-            const monthNames = {
-                '01': 'JAN', '02': 'FEB', '03': 'MAR', '04': 'APR',
-                '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
-                '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
-            };
-            return `${monthNames[month] || month} 20${year}`;
+// ============================================
+// GET DISPLAY INTAKE - FIXED FOR BOTH
+// ✅ Handles 2-digit and 4-digit years
+// ✅ Handles both KRCHN and TVET formats
+// ✅ Returns consistent display
+// ============================================
+function getDisplayIntake(program, year, month) {
+    if (!year) return 'N/A';
+    
+    // ✅ Convert to 4-digit year if needed
+    let fullYear = year;
+    if (typeof year === 'string') {
+        if (year.length === 2) {
+            const yearNum = parseInt(year);
+            if (yearNum >= 20 && yearNum <= 99) {
+                fullYear = '20' + year;
+            } else if (yearNum >= 0 && yearNum <= 19) {
+                fullYear = '20' + year;
+            }
+        } else if (year.length === 4) {
+            fullYear = year;
         }
     }
+    
+    const monthNames = {
+        // Numeric months (TVET)
+        '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+        '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+        '09': 'September', '10': 'October', '11': 'November', '12': 'December',
+        // Three-letter months (KRCHN)
+        'JAN': 'January', 'FEB': 'February', 'MAR': 'March', 'APR': 'April',
+        'MAY': 'May', 'JUN': 'June', 'JUL': 'July', 'AUG': 'August',
+        'SEP': 'September', 'OCT': 'October', 'NOV': 'November', 'DEC': 'December',
+        // Full month names (just in case)
+        'JANUARY': 'January', 'FEBRUARY': 'February', 'MARCH': 'March',
+        'APRIL': 'April', 'MAY': 'May', 'JUNE': 'June', 'JULY': 'July',
+        'AUGUST': 'August', 'SEPTEMBER': 'September', 'OCTOBER': 'October',
+        'NOVEMBER': 'November', 'DECEMBER': 'December'
+    };
+    
+    // KRCHN always uses March intake
+    if (program === 'KRCHN') {
+        return `March ${fullYear}`;
+    }
+    
+    // TVET uses the selected month
+    if (month) {
+        const monthName = monthNames[String(month).toUpperCase()] || month;
+        // If month is already a full name, use it
+        if (monthName !== String(month).toUpperCase()) {
+            return `${monthName} ${fullYear}`;
+        } else {
+            return `Intake ${fullYear} (${month})`;
+        }
+    }
+    
+    return `Intake ${fullYear}`;
+}
+
+// ============================================
+// UPDATE INTAKE PREVIEW - FIXED
+// ============================================
+function updateIntakePreview() {
+    const program = document.getElementById('program_type').value;
+    const isKRCHN = program === 'KRCHN';
+    const isTVET = program && program !== '' && program !== 'KRCHN';
+    
+    if (isKRCHN) {
+        document.getElementById('krchn-intake').classList.remove('hidden');
+        document.getElementById('tvet-intake').classList.add('hidden');
+        const year = document.getElementById('krchn_intake_year').value || '2026';
+        document.getElementById('krchnDisplay').textContent = `March ${year}`;
+    } else if (isTVET) {
+        document.getElementById('krchn-intake').classList.add('hidden');
+        document.getElementById('tvet-intake').classList.remove('hidden');
+        const year = document.getElementById('tvet_intake_year').value || '2026';
+        const month = document.getElementById('tvet_intake_month').value || '03';
+        const monthNames = {
+            '01': 'JAN', '02': 'FEB', '03': 'MAR', '04': 'APR',
+            '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AUG',
+            '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
+        };
+        // ✅ Show full year in preview
+        let displayYear = year;
+        if (year.length === 2) {
+            displayYear = '20' + year;
+        }
+        document.getElementById('tvetDisplay').textContent = `${monthNames[month] || month} ${displayYear} Intake`;
+    } else {
+        document.getElementById('krchn-intake').classList.add('hidden');
+        document.getElementById('tvet-intake').classList.add('hidden');
+    }
+}
 
     // ============================================
     // SUCCESS ANIMATION
