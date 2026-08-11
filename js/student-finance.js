@@ -152,10 +152,6 @@ function formatPhoneNumber(phone) {
     return clean;
 }
 
-// ============================================================
-// 📱 INITIATE STK PUSH - SAME PAGE, NO REDIRECT
-// ============================================================
-
 async function initiatePayHeroSTK(amount, phoneNumber, reference, period, customerName = '') {
     try {
         if (!PAYHERO_CONFIG.channelId) {
@@ -186,7 +182,6 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
         
         console.log('📤 Sending STK Push request:', requestData);
         
-        // Show processing on same page
         showPaymentProcessing(amount);
         
         const response = await fetch(PAYHERO_CONFIG.baseUrl, {
@@ -232,14 +227,12 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
         } else {
             console.error('❌ STK Push failed:', data);
             hidePaymentProcessing();
+            hideSTKStatus();
+            
             let errorMsg = data.error_message || data.message || data.error || 'Payment request failed';
             
             if (data.status === 429) {
                 errorMsg = 'Too many requests. Please wait a few minutes.';
-            } else if (errorMsg && errorMsg.includes('insufficient balance')) {
-                // Show Lipwa fallback on same page
-                showLipwaFallback(amount, cleanPhone, period, reference);
-                return { success: true, fallback: 'lipwa' };
             }
             
             showToast('❌ ' + errorMsg, 'error');
@@ -248,67 +241,12 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
     } catch (error) {
         console.error('❌ Request error:', error);
         hidePaymentProcessing();
+        hideSTKStatus();
         showToast('❌ Network error. Please try again.', 'error');
         return { success: false, error: error.message };
     }
 }
 
-// ============================================================
-// 💳 LIPWA FALLBACK - SAME PAGE
-// ============================================================
-
-function showLipwaFallback(amount, phone, period, reference) {
-    const ref = reference || 'PAY-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-    let cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.startsWith('0')) cleanPhone = '254' + cleanPhone.substring(1);
-    
-    const lipwaUrl = PAYHERO_CONFIG.lipwaLink + 
-        `?amount=${amount}&phone=${cleanPhone}&reference=${ref}&description=${encodeURIComponent(period + ' Tuition Fees')}&callback=${encodeURIComponent(PAYHERO_CONFIG.callbackUrl)}`;
-    
-    // Show popup on same page
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: '💰 Lipwa Payment',
-            html: `
-                <div style="text-align: center;">
-                    <p>Click the button below to complete your payment via Lipwa.</p>
-                    <p style="font-size: 13px; color: #64748b; margin: 8px 0;">
-                        Amount: <strong>KES ${amount.toLocaleString()}</strong>
-                    </p>
-                    <button onclick="window.open('${lipwaUrl}', '_blank')" 
-                            style="background: #4C1D95; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px 0;">
-                        <i class="fas fa-external-link-alt"></i> Open Lipwa Payment
-                    </button>
-                    <p style="font-size: 11px; color: #94a3b8;">Complete payment in the new tab. Return here after payment.</p>
-                    <button onclick="Swal.close(); loadStudentFinance();" 
-                            style="background: #e2e8f0; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-top: 6px;">
-                        <i class="fas fa-sync-alt"></i> Check Payment Status
-                    </button>
-                </div>
-            `,
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            width: 400
-        });
-    }
-    
-    const user = window.currentUserProfile || window.currentUser;
-    savePaymentLocally({
-        student_id: user?.id || 'student_001',
-        student_name: user?.full_name || user?.name || 'Student',
-        amount: amount,
-        period: period,
-        payment_method: 'M-Pesa (Lipwa)',
-        status: 'pending',
-        reference: ref,
-        phone_number: cleanPhone,
-        notes: period + ' Tuition Fees - Lipwa Link Payment',
-        payment_date: new Date().toISOString(),
-        source: 'lipwa'
-    });
-    
-    startPaymentCheck(ref);
-}
 
 // ============================================================
 // 🎨 SHOW PAYMENT PROCESSING - SAME PAGE
@@ -361,17 +299,12 @@ async function checkPaymentStatus(reference) {
     }
 }
 
-// ============================================================
-// 🔄 POLL STK STATUS - SAME PAGE
-// ============================================================
-
 function startSTKStatusPolling(reference) {
     let attempts = 0;
     const maxAttempts = 30;
     
     if (payheroState.stkCheckInterval) clearInterval(payheroState.stkCheckInterval);
     
-    // Show status on same page
     showSTKStatus(reference);
     
     payheroState.stkCheckInterval = setInterval(async () => {
@@ -380,6 +313,7 @@ function startSTKStatusPolling(reference) {
             clearInterval(payheroState.stkCheckInterval);
             updateSTKStatusDisplay('⏰ Payment timeout. Please try again.', 'error');
             hidePaymentProcessing();
+            setTimeout(() => hideSTKStatus(), 3000);
             handleSTKFailure();
             return;
         }
@@ -392,19 +326,17 @@ function startSTKStatusPolling(reference) {
             if (payment.status === 'completed' || payment.status === 'success') {
                 clearInterval(payheroState.stkCheckInterval);
                 updateSTKStatusDisplay('✅ Payment confirmed!', 'success');
+                setTimeout(() => hideSTKStatus(), 2000);
                 handleSTKSuccess();
             } else if (payment.status === 'failed' || payment.status === 'cancelled') {
                 clearInterval(payheroState.stkCheckInterval);
                 updateSTKStatusDisplay('❌ Payment failed', 'error');
+                setTimeout(() => hideSTKStatus(), 3000);
                 handleSTKFailure();
             }
         }
     }, 3000);
 }
-
-// ============================================================
-// 🎨 SHOW STK STATUS - SAME PAGE
-// ============================================================
 
 function showSTKStatus(reference) {
     const container = document.getElementById('finance-stkStatusDisplay');
@@ -418,13 +350,15 @@ function showSTKStatus(reference) {
                         <p style="margin: 0; font-weight: 600; color: #0A3D62;">Processing STK Push</p>
                         <p id="finance-stkStatusMessage" style="margin: 2px 0 0 0; font-size: 13px; color: #64748b;">⏳ Waiting for confirmation...</p>
                         <p style="margin: 2px 0 0 0; font-size: 11px; color: #94a3b8;">Ref: ${reference}</p>
+                        <button onclick="cancelSTKPush()" style="margin-top: 6px; background: #fee2e2; color: #dc2626; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
                     </div>
                 </div>
             </div>
         `;
     }
 }
-
 function updateSTKStatusDisplay(message, type = 'info') {
     const statusEl = document.getElementById('finance-stkStatusMessage');
     if (statusEl) {
@@ -1781,7 +1715,6 @@ function resendPaymentEmail() {
     showToast('📧 Resending confirmation email...', 'info');
     setTimeout(() => showToast('✅ Email resent!', 'success'), 1500);
 }
-
 function cancelSTKPush() {
     console.log('🔄 Cancelling STK Push...');
     hidePaymentProcessing();
@@ -1790,7 +1723,59 @@ function cancelSTKPush() {
         clearInterval(payheroState.stkCheckInterval);
         payheroState.stkCheckInterval = null;
     }
+    payheroState.isProcessing = false;
     showToast('STK Push cancelled', 'info');
+    
+    if (payheroState.currentTransaction) {
+        payheroState.currentTransaction.status = 'cancelled';
+        saveSTKPaymentRecord(payheroState.currentTransaction.amount, payheroState.currentTransaction.period, {
+            status: 'cancelled',
+            transactionId: payheroState.currentTransaction.id,
+            reference: payheroState.currentTransaction.reference,
+            paymentMethod: 'M-Pesa STK Push',
+            phoneNumber: payheroState.currentTransaction.phone
+        });
+    }
+}
+function updateSTKStatusDisplay(message, type = 'info') {
+    const statusEl = document.getElementById('finance-stkStatusMessage');
+    if (statusEl) {
+        const colors = {
+            success: '#059669',
+            error: '#dc2626',
+            info: '#64748b'
+        };
+        statusEl.style.color = colors[type] || colors.info;
+        statusEl.textContent = message;
+    }
+}
+
+function hideSTKStatus() {
+    const container = document.getElementById('finance-stkStatusDisplay');
+    if (container) {
+        container.style.display = 'none';
+    }
+}
+
+function showPaymentProcessing(amount) {
+    const container = document.getElementById('finance-paymentProcessing');
+    if (container) {
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div style="text-align: center; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb; margin: 10px 0;">
+                <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
+                <p style="margin: 8px 0 4px 0; font-weight: 600; color: #0A3D62;">Initiating STK Push...</p>
+                <p style="font-size: 13px; color: #64748b;">Amount: KES ${amount.toLocaleString()}</p>
+            </div>
+        `;
+    }
+}
+
+function hidePaymentProcessing() {
+    const container = document.getElementById('finance-paymentProcessing');
+    if (container) {
+        container.style.display = 'none';
+    }
 }
 
 // ============================================================
