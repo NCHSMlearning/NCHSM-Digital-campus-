@@ -9384,6 +9384,9 @@ console.log('✅ Attendance Management module loaded with TVET/KRCHN support!');
  * ✅ Searchable course dropdowns (Create & Edit)
  * ✅ Grade management with modal
  * ✅ Assigned classes management
+ * ✅ filterExamsTable exposed globally
+ * ✅ updateCreateCourseDropdown exposed globally
+ * ✅ getSb() replaced with window.sb
  *******************************************************/
 
 // ============================================
@@ -9438,7 +9441,7 @@ function cacheDomElements() {
 }
 
 // ============================================
-// DEBOUNCE HELPER
+// DEBOUNCE HELPER - GLOBAL
 // ============================================
 function debounce(fn, delay = 300) {
     let timer;
@@ -9447,6 +9450,8 @@ function debounce(fn, delay = 300) {
         timer = setTimeout(() => fn.apply(this, args), delay);
     };
 }
+// Make debounce global
+window.debounce = debounce;
 
 // ============================================
 // LOAD EXAMS - FIXED (Properly attaches course data)
@@ -9480,7 +9485,11 @@ async function loadExams(forceRefresh = false) {
     `;
 
     try {
-        const supabase = getSb();
+        // 🔧 FIX: Use window.sb instead of getSb()
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Supabase client not available');
+        }
         
         // ✅ Get all exams first
         const { data: exams, error } = await supabase
@@ -9965,7 +9974,11 @@ async function handleAddExam(e) {
     const user = await getCurrentUser();
 
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Supabase client not available');
+        }
+        
         const examData = {
             title: fields.title,
             exam_name: fields.title,
@@ -10021,7 +10034,11 @@ async function openEditExamModal(id) {
     console.log('📝 Opening edit modal for exam:', id);
     
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Supabase client not available');
+        }
+        
         const { data: exam, error } = await supabase
             .from('exams')
             .select('*')
@@ -10169,6 +10186,7 @@ async function openEditExamModal(id) {
         showFeedback('❌ Failed to load exam: ' + error.message, 'error');
     }
 }
+
 // ============================================
 // SAVE EDITED EXAM - COMPLETE FIX
 // ============================================
@@ -10248,7 +10266,11 @@ async function saveEditedExam(event) {
     }
     
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Supabase client not available');
+        }
+        
         const { error } = await supabase
             .from('exams')
             .update(data)
@@ -10312,7 +10334,11 @@ async function addClass(examId) {
     const className = input.value.trim();
     
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Supabase client not available');
+        }
+        
         const { data: exam } = await supabase.from('exams').select('assigned_classes').eq('id', examId).single();
         const current = exam?.assigned_classes || [];
         if (current.includes(className)) {
@@ -10333,7 +10359,11 @@ async function removeClass(examId, className) {
     if (!confirm(`Remove "${className}"?`)) return;
     
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Supabase client not available');
+        }
+        
         const { data: exam } = await supabase.from('exams').select('assigned_classes').eq('id', examId).single();
         const current = (exam?.assigned_classes || []).filter(c => c !== className);
         await supabase.from('exams').update({ assigned_classes: current }).eq('id', examId);
@@ -10351,7 +10381,11 @@ async function deleteExam(id, name) {
     if (!confirm(`Delete "${name}"?`)) return;
     
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Supabase client not available');
+        }
+        
         const { error } = await supabase.from('exams').delete().eq('id', id);
         if (error) throw error;
         ExamCache.clear();
@@ -10369,7 +10403,11 @@ async function closeExam(id) {
     if (!confirm('Close this exam?')) return;
     
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            throw new Error('Supabase client not available');
+        }
+        
         const { error } = await supabase
             .from('exams')
             .update({ status: 'Completed', updated_at: new Date().toISOString() })
@@ -10397,6 +10435,35 @@ function closeEditModal() {
         }
     }
 }
+
+// ============================================
+// FILTER EXAMS TABLE - GLOBAL
+// ============================================
+const filterExamsTable = debounce(function() {
+    const search = document.getElementById('exam-search')?.value?.toLowerCase() || '';
+    const program = document.getElementById('exam_filter_program')?.value || '';
+    const status = document.getElementById('exam_filter_status')?.value || '';
+    const month = document.getElementById('exam_filter_intake_month')?.value || '';
+    
+    const rows = document.querySelectorAll('#exams-table-body tr');
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) return;
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 12) return;
+        
+        const title = cells[3]?.textContent?.toLowerCase() || '';
+        const prog = cells[1]?.textContent || '';
+        const stat = cells[10]?.textContent || '';
+        const intake = cells[8]?.textContent || '';
+        
+        let show = true;
+        if (search && !title.includes(search)) show = false;
+        if (program && !prog.includes(program)) show = false;
+        if (status && !stat.toLowerCase().includes(status.toLowerCase())) show = false;
+        if (month && !intake.includes(month)) show = false;
+        row.style.display = show ? '' : 'none';
+    });
+}, 300);
 
 // ============================================
 // EXPORT EXAMS
@@ -10492,7 +10559,12 @@ async function getCurrentUser() {
             const user = JSON.parse(stored);
             if (user?.user_id) return user;
         }
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            console.warn('Supabase client not available');
+            return null;
+        }
+        
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             const { data: profile } = await supabase
@@ -10508,6 +10580,7 @@ async function getCurrentUser() {
         }
         return null;
     } catch (e) {
+        console.warn('Error getting current user:', e);
         return null;
     }
 }
@@ -10565,7 +10638,13 @@ async function initCreateCourseDropdown(program = '') {
 
 async function loadCoursesForCreateDropdown(program = '') {
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            console.error('❌ Supabase client not available');
+            createCoursesData = [];
+            return;
+        }
+        
         let query = supabase
             .from('courses')
             .select('id, course_name, unit_code, code, name, target_program');
@@ -10720,7 +10799,13 @@ async function initEditCourseDropdown(program = '', selectedId = '') {
 
 async function loadCoursesForEditDropdown(program = '') {
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            console.error('❌ Supabase client not available');
+            editCoursesData = [];
+            return;
+        }
+        
         let query = supabase
             .from('courses')
             .select('id, course_name, unit_code, code, name, target_program');
@@ -10830,7 +10915,6 @@ function setEditCourseValue(courseId) {
     }
 }
 
-
 // ============================================
 // GRADE MODAL FUNCTIONS
 // ============================================
@@ -10839,7 +10923,12 @@ async function openGradeModal(examId, examName = '') {
     try {
         console.log('🎯 Opening grade modal for exam:', examId);
         
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            showFeedback('❌ Supabase client not available', 'error');
+            return;
+        }
+        
         const currentUser = await getCurrentUser();
         
         if (!currentUser || !currentUser.user_id) {
@@ -11055,7 +11144,12 @@ function updateGradeTotal(studentId) {
 
 async function saveGrades(examId) {
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            showFeedback('❌ Supabase client not available', 'error');
+            return;
+        }
+        
         const rows = document.querySelectorAll('#gradeTableBody tr');
         const currentUser = await getCurrentUser();
         
@@ -11135,7 +11229,7 @@ function getExamTypeLabel(examType) {
 }
 
 // ============================================
-// POPULATE EXAM COURSE SELECTS - FIXED
+// POPULATE EXAM COURSE SELECTS
 // ============================================
 async function populateExamCourseSelects(program, selected = '') {
     console.log('📚 populateExamCourseSelects called with:', program, selected);
@@ -11150,7 +11244,12 @@ async function populateExamCourseSelects(program, selected = '') {
     
     if (!program) {
         try {
-            const supabase = getSb();
+            const supabase = window.sb || window.supabase;
+            if (!supabase) {
+                console.warn('Supabase client not available');
+                return;
+            }
+            
             const { data, error } = await supabase
                 .from('courses')
                 .select('id, course_name, target_program, unit_code')
@@ -11176,7 +11275,12 @@ async function populateExamCourseSelects(program, selected = '') {
     }
     
     try {
-        const supabase = getSb();
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            console.warn('Supabase client not available');
+            return;
+        }
+        
         const { data, error } = await supabase
             .from('courses')
             .select('id, course_name, target_program, unit_code')
@@ -11226,9 +11330,6 @@ async function populateExamCourseSelects(program, selected = '') {
     }
 }
 
-// Make it global
-window.populateExamCourseSelects = populateExamCourseSelects;
-
 // ============================================
 // INIT
 // ============================================
@@ -11262,15 +11363,36 @@ function initExams() {
 }
 
 // ============================================
-// EXPOSE GLOBALS
+// 🔧 EXPOSE GLOBALLY - FIX ALL REFERENCES
 // ============================================
+
+// 1. Filter function
+window.filterExamsTable = filterExamsTable;
+
+// 2. Course dropdown functions
+window.updateCreateCourseDropdown = updateCreateCourseDropdown;
+window.initCreateCourseDropdown = initCreateCourseDropdown;
+window.loadCoursesForCreateDropdown = loadCoursesForCreateDropdown;
+window.filterCreateCourseDropdown = filterCreateCourseDropdown;
+window.selectCreateCourse = selectCreateCourse;
+window.initEditCourseDropdown = initEditCourseDropdown;
+window.selectEditCourse = selectEditCourse;
+window.setEditCourseValue = setEditCourseValue;
+
+// 3. Make sure debounce is global
+window.debounce = debounce;
+
+// 4. Make sure createCoursesData is global
+window.createCoursesData = createCoursesData;
+window.editCoursesData = editCoursesData;
+
+// 5. Main functions
 window.loadExams = loadExams;
 window.showExamTab = showExamTab;
 window.deleteExam = deleteExam;
 window.closeExam = closeExam;
 window.openEditExamModal = openEditExamModal;
 window.saveEditedExam = saveEditedExam;
-window.filterExamsTable = filterExamsTable;
 window.exportExamsToCSV = exportExamsToCSV;
 window.handleAddExam = handleAddExam;
 window.addCustomBlocks = addCustomBlocks;
@@ -11291,15 +11413,9 @@ window.saveGrades = saveGrades;
 window.filterGradeStudents = filterGradeStudents;
 window.updateGradeTotal = updateGradeTotal;
 window.getExamTypeLabel = getExamTypeLabel;
-window.initCreateCourseDropdown = initCreateCourseDropdown;
-window.updateCreateCourseDropdown = updateCreateCourseDropdown;
-window.initEditCourseDropdown = initEditCourseDropdown;
-window.setEditCourseValue = setEditCourseValue;
-window.selectCreateCourse = selectCreateCourse;
-window.selectEditCourse = selectEditCourse;
 window.populateExamCourseSelects = populateExamCourseSelects;
 
-console.log('🚀 CATS/Exams loaded (complete fixed version with searchable dropdowns)!');
+console.log('✅ CATS/Exams loaded (complete fixed version with searchable dropdowns)!');
 
 
 /*******************************************************
