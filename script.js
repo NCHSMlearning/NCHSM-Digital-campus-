@@ -5651,7 +5651,7 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
 }
 
 // ============================================
-// SHOW APPROVAL MODAL - PRESERVED
+// SHOW APPROVAL MODAL - FIXED WITH DYNAMIC PROGRAMS
 // ============================================
 
 function showApprovalModal(user) {
@@ -5663,42 +5663,51 @@ function showApprovalModal(user) {
     const programType = getProgramType(user.program);
     const isTVET = programType === 'TVET';
     
-    const programOptions = `
-        <option value="KRCHN" ${user.program === 'KRCHN' ? 'selected' : ''}>🎓 KRCHN Nursing</option>
-        <optgroup label="🎯 TVET Diploma Programs">
-            <option value="DPOTT" ${user.program === 'DPOTT' ? 'selected' : ''}>Diploma in Perioperative Theatre Technology</option>
-            <option value="DCH" ${user.program === 'DCH' ? 'selected' : ''}>Diploma in Community Health</option>
-            <option value="DHRIT" ${user.program === 'DHRIT' ? 'selected' : ''}>Diploma in Health Records and IT</option>
-            <option value="DSL" ${user.program === 'DSL' ? 'selected' : ''}>Diploma in Science Lab</option>
-            <option value="DSW" ${user.program === 'DSW' ? 'selected' : ''}>Diploma in Social Work</option>
-            <option value="DCJS" ${user.program === 'DCJS' ? 'selected' : ''}>Diploma in Criminal Justice</option>
-            <option value="DHSS" ${user.program === 'DHSS' ? 'selected' : ''}>Diploma in Health Support Services</option>
-            <option value="DICT" ${user.program === 'DICT' ? 'selected' : ''}>Diploma in ICT</option>
-            <option value="DME" ${user.program === 'DME' ? 'selected' : ''}>Diploma in Medical Engineering</option>
-        </optgroup>
-        <optgroup label="📜 TVET Certificate Programs">
-            <option value="CPOTT" ${user.program === 'CPOTT' ? 'selected' : ''}>Certificate in Perioperative Theatre Technology</option>
-            <option value="CCH" ${user.program === 'CCH' ? 'selected' : ''}>Certificate in Community Health</option>
-            <option value="CHRIT" ${user.program === 'CHRIT' ? 'selected' : ''}>Certificate in Health Records and IT</option>
-            <option value="CPC" ${user.program === 'CPC' ? 'selected' : ''}>Certificate in Patient Care</option>
-            <option value="CSL" ${user.program === 'CSL' ? 'selected' : ''}>Certificate in Science Lab</option>
-            <option value="CSW" ${user.program === 'CSW' ? 'selected' : ''}>Certificate in Social Work</option>
-            <option value="CCJS" ${user.program === 'CCJS' ? 'selected' : ''}>Certificate in Criminal Justice</option>
-            <option value="CAG" ${user.program === 'CAG' ? 'selected' : ''}>Certificate in Agriculture</option>
-            <option value="CHSS" ${user.program === 'CHSS' ? 'selected' : ''}>Certificate in Health Support Services</option>
-            <option value="CICT" ${user.program === 'CICT' ? 'selected' : ''}>Certificate in ICT</option>
-        </optgroup>
-        <optgroup label="🔧 TVET Artisan Programs">
-            <option value="ACH" ${user.program === 'ACH' ? 'selected' : ''}>Artisan in Community Health</option>
-            <option value="AAG" ${user.program === 'AAG' ? 'selected' : ''}>Artisan in Agriculture</option>
-            <option value="ASW" ${user.program === 'ASW' ? 'selected' : ''}>Artisan in Social Work</option>
-        </optgroup>
-        <optgroup label="📊 Other TVET Programs">
-            <option value="CCA" ${user.program === 'CCA' ? 'selected' : ''}>Certificate in Computer Applications</option>
-            <option value="PTE" ${user.program === 'PTE' ? 'selected' : ''}>TVET/CDACC (PTE)</option>
-        </optgroup>
-    `;
+    // ✅ FIXED: Build program options dynamically from MASTER_PROGRAMS
+    let programOptions = '';
     
+    // Group programs by display category
+    const groups = {};
+    for (const [code, info] of Object.entries(MASTER_PROGRAMS)) {
+        const key = info.display || info.category || 'Other';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push({ code, ...info });
+    }
+    
+    // Define the order of groups
+    const groupOrder = [
+        '🎓 KRCHN Nursing',
+        '🎯 TVET Diploma Programs',
+        '📜 TVET Certificate Programs',
+        '🔧 TVET Artisan Programs',
+        '📊 Other TVET Programs'
+    ];
+    
+    // Build HTML
+    for (const groupName of groupOrder) {
+        if (groups[groupName] && groups[groupName].length > 0) {
+            programOptions += `<optgroup label="${groupName}">`;
+            groups[groupName].forEach(p => {
+                const selected = user.program === p.code ? 'selected' : '';
+                programOptions += `<option value="${p.code}" ${selected}>${p.name}</option>`;
+            });
+            programOptions += `</optgroup>`;
+        }
+    }
+    
+    // Add any remaining groups
+    for (const [groupName, items] of Object.entries(groups)) {
+        if (!groupOrder.includes(groupName)) {
+            programOptions += `<optgroup label="${groupName}">`;
+            items.forEach(p => {
+                const selected = user.program === p.code ? 'selected' : '';
+                programOptions += `<option value="${p.code}" ${selected}>${p.name}</option>`;
+            });
+            programOptions += `</optgroup>`;
+        }
+    }
+    
+    // ✅ FIXED: Block options - use dynamic generation
     const blockOptions = isTVET 
         ? ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
         : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
@@ -5803,6 +5812,24 @@ function showApprovalModal(user) {
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
                         </div>
                         <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Month</label>
+                            <select id="edit_intake_month" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                <option value="">-- Select Month --</option>
+                                <option value="January" ${user.intake_month === 'January' ? 'selected' : ''}>January</option>
+                                <option value="February" ${user.intake_month === 'February' ? 'selected' : ''}>February</option>
+                                <option value="March" ${user.intake_month === 'March' ? 'selected' : ''}>March</option>
+                                <option value="April" ${user.intake_month === 'April' ? 'selected' : ''}>April</option>
+                                <option value="May" ${user.intake_month === 'May' ? 'selected' : ''}>May</option>
+                                <option value="June" ${user.intake_month === 'June' ? 'selected' : ''}>June</option>
+                                <option value="July" ${user.intake_month === 'July' ? 'selected' : ''}>July</option>
+                                <option value="August" ${user.intake_month === 'August' ? 'selected' : ''}>August</option>
+                                <option value="September" ${user.intake_month === 'September' ? 'selected' : ''}>September</option>
+                                <option value="October" ${user.intake_month === 'October' ? 'selected' : ''}>October</option>
+                                <option value="November" ${user.intake_month === 'November' ? 'selected' : ''}>November</option>
+                                <option value="December" ${user.intake_month === 'December' ? 'selected' : ''}>December</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Block / Term</label>
                             <select id="edit_block" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
                                 ${blockSelectOptions}
@@ -5844,7 +5871,6 @@ function showApprovalModal(user) {
     document.body.appendChild(modal);
     modal.dataset.userId = user.user_id;
 }
-
 function closeApprovalModal() {
     const modal = document.getElementById('approvalModal');
     if (modal) {
