@@ -1,5 +1,5 @@
 /* ========================================
-   NCHSM BRAND LOGIN STYLES - ULTIMATE
+   NCHSM BRAND LOGIN STYLES - ULTRA MODERN
    Nakuru College of Health Sciences & Management
    ======================================== */
 
@@ -567,26 +567,62 @@ body::after {
 }
 
 /* ============================================
-   THEME TOGGLE BUTTON
+   TOP CONTROLS (Main Site + Theme Toggle)
    ============================================ */
+.top-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 0.75rem;
+}
+
+.main-site-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--nchsm-green);
+    color: #fff;
+    border-radius: var(--radius-full);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.75rem;
+    transition: all var(--transition-base);
+    box-shadow: 0 4px 12px rgba(13, 107, 62, 0.25);
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.main-site-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 107, 62, 0.35);
+    background: var(--nchsm-green-dark);
+}
+
+.main-site-btn i {
+    width: 16px;
+    height: 16px;
+}
+
 .theme-controls {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 10;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
 }
 
 .theme-toggle-btn {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     padding: 0.4rem 0.8rem;
     background: var(--nchsm-gray);
     border: 1px solid var(--nchsm-gray-light);
     border-radius: var(--radius-full);
     cursor: pointer;
     transition: all var(--transition-fast);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
     color: var(--nchsm-gray-dark);
     font-family: inherit;
@@ -1055,6 +1091,48 @@ body::after {
     color: var(--nchsm-gold);
 }
 
+/* ===== 2FA ENABLE BUTTON ===== */
+#enable2FABtn {
+    width: 100%;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #0d6b3e, #1a8a52);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: inherit;
+}
+
+#enable2FABtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    background: var(--nchsm-green-dark);
+}
+
+#enable2FABtn:disabled {
+    opacity: 0.8;
+    cursor: default;
+}
+
+#enable2FABtn i {
+    width: 18px;
+    height: 18px;
+}
+
+#twoFAStatus {
+    margin-top: 0.5rem;
+    text-align: center;
+    font-size: 0.85rem;
+    display: none;
+}
+
 /* ===== KEYBOARD SHORTCUTS ===== */
 .keyboard-hints {
     display: flex;
@@ -1112,6 +1190,22 @@ body::after {
     width: 16px;
     height: 16px;
     color: #f59e0b;
+}
+
+.attempts-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--nchsm-gray-light);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-left: 0.5rem;
+}
+
+.attempts-progress {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.3s ease, background 0.3s ease;
+    background: #2ecc71;
 }
 
 /* ===== ERROR MESSAGE ===== */
@@ -1670,12 +1764,13 @@ body.dark-theme .signup-link:hover {
     background: rgba(212, 175, 55, 0.1);
 }
 
-body.dark-theme .quick-link {
-    color: var(--nchsm-text-light);
+body.dark-theme #enable2FABtn {
+    background: linear-gradient(135deg, #d4af37, #f0d060);
+    color: var(--nchsm-green-dark);
 }
 
-body.dark-theme .quick-link:hover {
-    color: var(--nchsm-gold);
+body.dark-theme #enable2FABtn:hover:not(:disabled) {
+    background: var(--nchsm-gold-light);
 }
 
 body.dark-theme .footer {
@@ -1960,9 +2055,8 @@ body.light-theme .theme-toggle-btn:hover {
         max-width: 380px;
     }
     
-    .theme-controls {
-        top: 0.5rem;
-        right: 0.5rem;
+    .top-controls {
+        flex-wrap: wrap;
     }
     
     .theme-toggle-btn {
@@ -1981,7 +2075,8 @@ body.light-theme .theme-toggle-btn:hover {
     body::before,
     body::after,
     .particles,
-    .theme-controls {
+    .theme-controls,
+    .top-controls {
         display: none !important;
     }
     
