@@ -10040,13 +10040,28 @@ async function openEditExamModal(id) {
             return;
         }
         
-        // Populate all fields
-        document.getElementById('edit_exam_id').value = exam.id;
-        document.getElementById('edit_exam_title').value = exam.title || exam.exam_name || '';
-        document.getElementById('edit_exam_type').value = exam.exam_type || 'CAT';
-        document.getElementById('edit_exam_status').value = exam.status || 'Upcoming';
-        document.getElementById('edit_exam_basis').value = exam.exam_basis || 'ordinary';
+        // 🔧 FIX: Use the correct element IDs
+        // exam id
+        const idEl = document.getElementById('edit_exam_id');
+        if (idEl) idEl.value = exam.id;
         
+        // title
+        const titleEl = document.getElementById('edit_exam_title');
+        if (titleEl) titleEl.value = exam.title || exam.exam_name || '';
+        
+        // exam type
+        const typeEl = document.getElementById('edit_exam_type');
+        if (typeEl) typeEl.value = exam.exam_type || 'CAT';
+        
+        // status
+        const statusEl = document.getElementById('edit_exam_status');
+        if (statusEl) statusEl.value = exam.status || 'Upcoming';
+        
+        // basis
+        const basisEl = document.getElementById('edit_exam_basis');
+        if (basisEl) basisEl.value = exam.exam_basis || 'ordinary';
+        
+        // date
         const dateEl = document.getElementById('edit_exam_date');
         if (dateEl && exam.exam_date) {
             const d = new Date(exam.exam_date);
@@ -10055,6 +10070,7 @@ async function openEditExamModal(id) {
             }
         }
         
+        // start time
         const startTimeEl = document.getElementById('edit_exam_start_time');
         if (startTimeEl && exam.exam_start_time) {
             const timeStr = exam.exam_start_time;
@@ -10063,35 +10079,63 @@ async function openEditExamModal(id) {
             }
         }
         
-        document.getElementById('edit_exam_duration').value = exam.duration_minutes || 60;
-        document.getElementById('edit_exam_deadline').value = exam.marks_entry_deadline || '';
+        // duration
+        const durationEl = document.getElementById('edit_exam_duration');
+        if (durationEl) durationEl.value = exam.duration_minutes || 60;
         
-        // Program
+        // deadline
+        const deadlineEl = document.getElementById('edit_exam_deadline');
+        if (deadlineEl) deadlineEl.value = exam.marks_entry_deadline || '';
+        
+        // 🔧 FIX: Program dropdown - using 'edit_exam_program'
         const programEl = document.getElementById('edit_exam_program');
         if (programEl) {
             const program = exam.target_program || exam.program_type || '';
             programEl.value = program;
             console.log('✅ Program set to:', program);
             
-            // ✅ Initialize edit course dropdown
+            // Initialize edit course dropdown
             if (typeof initEditCourseDropdown === 'function') {
                 await initEditCourseDropdown(program, exam.course_id);
             }
+        } else {
+            console.warn('⚠️ edit_exam_program not found');
         }
         
-        document.getElementById('edit_exam_block').value = exam.block || exam.block_term || '';
-        document.getElementById('edit_exam_intake').value = exam.intake_year || '';
-        document.getElementById('edit_exam_intake_month').value = exam.intake_month || '';
-        document.getElementById('edit_exam_out_of').value = exam.marks_out_of || exam.total_marks || 100;
-        document.getElementById('edit_exam_pass_mark').value = exam.pass_mark || 50;
-        document.getElementById('edit_exam_min_fee').value = exam.min_fee_balance || 0;
-        document.getElementById('edit_exam_link').value = exam.online_link || exam.exam_link || '';
+        // Block
+        const blockEl = document.getElementById('edit_exam_block');
+        if (blockEl) blockEl.value = exam.block || exam.block_term || '';
+        
+        // Intake year
+        const intakeEl = document.getElementById('edit_exam_intake');
+        if (intakeEl) intakeEl.value = exam.intake_year || '';
+        
+        // Intake month
+        const monthEl = document.getElementById('edit_exam_intake_month');
+        if (monthEl) monthEl.value = exam.intake_month || '';
+        
+        // Marks out of
+        const outOfEl = document.getElementById('edit_exam_out_of');
+        if (outOfEl) outOfEl.value = exam.marks_out_of || exam.total_marks || 100;
+        
+        // Pass mark
+        const passMarkEl = document.getElementById('edit_exam_pass_mark');
+        if (passMarkEl) passMarkEl.value = exam.pass_mark || 50;
+        
+        // Min fee
+        const minFeeEl = document.getElementById('edit_exam_min_fee');
+        if (minFeeEl) minFeeEl.value = exam.min_fee_balance || 0;
+        
+        // Link
+        const linkEl = document.getElementById('edit_exam_link');
+        if (linkEl) linkEl.value = exam.online_link || exam.exam_link || '';
         
         // Assigned Classes
         if (typeof renderAssignedClasses === 'function') {
             renderAssignedClasses(exam.id, exam.assigned_classes || []);
         }
         
+        // Show modal
         modal.style.display = 'flex';
         console.log('✅ Edit modal opened with all data!');
         
@@ -10100,7 +10144,6 @@ async function openEditExamModal(id) {
         showFeedback('❌ Failed to load exam: ' + error.message, 'error');
     }
 }
-
 // ============================================
 // SAVE EDITED EXAM - COMPLETE FIX
 // ============================================
