@@ -6632,7 +6632,676 @@ async function handleEditUser(e) {
         setButtonLoading(submitButton, false, originalText);
     }
 }
+// ============================================================
+// 📄 VIEW USER DOCUMENTS - COMPLETE
+// ============================================================
 
+function viewUserDocuments(userId) {
+    if (!userId) {
+        showFeedback('❌ No user selected', 'error');
+        return;
+    }
+    
+    // Get user name for the modal title
+    const userName = document.getElementById('edit_user_name')?.value || 'User';
+    
+    // Open the document viewer modal
+    openDocumentViewerModal(userId, userName);
+}
+
+// ============================================================
+// 📄 OPEN DOCUMENT VIEWER MODAL
+// ============================================================
+
+async function openDocumentViewerModal(userId, userName) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('documentViewerModal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'documentViewerModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 100000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 20px; max-width: 900px; width: 95%; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;">
+                <!-- Header -->
+                <div style="padding: 16px 24px; border-bottom: 2px solid #4C1D95; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                    <div>
+                        <h3 style="margin: 0; color: #4C1D95;">
+                            <i class="fas fa-file-alt"></i> <span id="docViewerTitle">User Documents</span>
+                        </h3>
+                        <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
+                            <span id="docViewerUserName">Loading...</span>
+                        </p>
+                    </div>
+                    <button onclick="closeDocumentViewerModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280; padding: 0 10px;">&times;</button>
+                </div>
+                
+                <!-- Body -->
+                <div id="docViewerContent" style="padding: 24px; max-height: 60vh; overflow-y: auto;">
+                    <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 32px; display: block; margin-bottom: 12px;"></i>
+                        Loading documents...
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end; background: #f8fafc;">
+                    <button onclick="closeDocumentViewerModal()" style="padding: 8px 20px; background: #e5e7eb; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add styles for animations if not present
+        if (!document.getElementById('modalAnimations')) {
+            const style = document.createElement('style');
+            style.id = 'modalAnimations';
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes slideIn {
+                    from { transform: translateY(30px) scale(0.95); opacity: 0; }
+                    to { transform: translateY(0) scale(1); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+    
+    // Set title and user name
+    document.getElementById('docViewerTitle').textContent = '📄 User Documents';
+    document.getElementById('docViewerUserName').textContent = userName || 'User';
+    
+    // Show modal
+    modal.style.display = 'flex';
+    
+    // Load documents
+    await loadUserDocumentsForViewer(userId);
+}
+
+// ============================================================
+// 📄 LOAD USER DOCUMENTS FOR VIEWER
+// ============================================================
+
+async function loadUserDocumentsForViewer(userId) {
+    const container = document.getElementById('docViewerContent');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #94a3b8;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 32px; display: block; margin-bottom: 12px;"></i>
+            Loading documents...
+        </div>
+    `;
+    
+    try {
+        const supabase = getSb();
+        if (!supabase) {
+            throw new Error('Database connection not available');
+        }
+        
+        // Get user profile to check document status
+        const { data: profile, error: profileError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('full_name, doc_kcse, doc_id, profile_photo_url, student_id')
+            .eq('user_id', userId)
+            .single();
+        
+        if (profileError) {
+            console.warn('Profile fetch error:', profileError);
+        }
+        
+        // Get documents from user_documents table
+        const { data: documents, error: docError } = await supabase
+            .from('user_documents')
+            .select('*')
+            .eq('user_id', userId)
+            .order('upload_date', { ascending: false });
+        
+        if (docError) {
+            console.error('Error loading documents:', docError);
+        }
+        
+        // Build document list
+        let html = '';
+        
+        // ====== PROFILE PHOTO ======
+        html += `
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-camera" style="color: #4C1D95;"></i> Profile Photo
+                    <span style="font-size: 11px; font-weight: 400; color: #94a3b8; margin-left: auto;">
+                        ${profile?.profile_photo_url ? '✅ Uploaded' : '❌ Not uploaded'}
+                    </span>
+                </h4>
+                ${profile?.profile_photo_url ? `
+                    <div style="display: flex; align-items: center; gap: 20px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <img src="${getPhotoUrl(profile)}" alt="Profile Photo" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #4C1D95;">
+                        <div>
+                            <div style="font-weight: 500; color: #1e293b;">Profile Photo</div>
+                            <div style="font-size: 12px; color: #64748b;">Uploaded for ID card</div>
+                            <button onclick="window.open('${getPhotoUrl(profile)}', '_blank')" style="margin-top: 4px; padding: 4px 12px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-external-link-alt"></i> View Full
+                            </button>
+                        </div>
+                    </div>
+                ` : `
+                    <div style="padding: 20px; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca; text-align: center; color: #991b1b;">
+                        <i class="fas fa-camera" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                        No profile photo uploaded
+                        <br>
+                        <small style="color: #6b7280;">Student should upload a passport photo</small>
+                    </div>
+                `}
+            </div>
+        `;
+        
+        // ====== KCSE CERTIFICATE ======
+        html += `
+            <div style="margin-bottom: 16px;">
+                <h4 style="color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-file-pdf" style="color: #dc2626;"></i> KCSE Certificate
+                    <span style="font-size: 11px; font-weight: 400; color: #94a3b8; margin-left: auto;">
+                        ${profile?.doc_kcse === 'uploaded' || profile?.doc_kcse === 'verified' ? '✅ Uploaded' : '❌ Not uploaded'}
+                    </span>
+                </h4>
+                ${findDocument(documents, 'kcse') ? `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
+                        <div>
+                            <div style="font-weight: 500; color: #1e293b;">${findDocument(documents, 'kcse')?.file_name || 'KCSE Certificate'}</div>
+                            <div style="font-size: 11px; color: #64748b;">
+                                Uploaded: ${findDocument(documents, 'kcse')?.upload_date ? new Date(findDocument(documents, 'kcse').upload_date).toLocaleDateString() : 'Unknown'}
+                                ${findDocument(documents, 'kcse')?.status ? ` • Status: ${findDocument(documents, 'kcse').status}` : ''}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="viewDocumentFile('${findDocument(documents, 'kcse')?.file_path}')" style="padding: 4px 14px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button onclick="downloadDocumentFile('${findDocument(documents, 'kcse')?.file_path}', '${findDocument(documents, 'kcse')?.file_name || 'kcse_certificate.pdf'}')" style="padding: 4px 14px; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                ` : `
+                    <div style="padding: 16px; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca; text-align: center; color: #991b1b; font-size: 13px;">
+                        <i class="fas fa-file-pdf" style="font-size: 20px; display: block; margin-bottom: 4px;"></i>
+                        No KCSE certificate uploaded
+                    </div>
+                `}
+            </div>
+        `;
+        
+        // ====== ID / PASSPORT ======
+        html += `
+            <div style="margin-bottom: 16px;">
+                <h4 style="color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-id-card" style="color: #3b82f6;"></i> ID / Passport
+                    <span style="font-size: 11px; font-weight: 400; color: #94a3b8; margin-left: auto;">
+                        ${profile?.doc_id === 'uploaded' || profile?.doc_id === 'verified' ? '✅ Uploaded' : '❌ Not uploaded'}
+                    </span>
+                </h4>
+                ${findDocument(documents, 'id') ? `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #eff6ff; border-radius: 8px; border: 1px solid #93c5fd;">
+                        <div>
+                            <div style="font-weight: 500; color: #1e293b;">${findDocument(documents, 'id')?.file_name || 'ID / Passport'}</div>
+                            <div style="font-size: 11px; color: #64748b;">
+                                Uploaded: ${findDocument(documents, 'id')?.upload_date ? new Date(findDocument(documents, 'id').upload_date).toLocaleDateString() : 'Unknown'}
+                                ${findDocument(documents, 'id')?.status ? ` • Status: ${findDocument(documents, 'id').status}` : ''}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="viewDocumentFile('${findDocument(documents, 'id')?.file_path}')" style="padding: 4px 14px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button onclick="downloadDocumentFile('${findDocument(documents, 'id')?.file_path}', '${findDocument(documents, 'id')?.file_name || 'id_passport.pdf'}')" style="padding: 4px 14px; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                ` : `
+                    <div style="padding: 16px; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca; text-align: center; color: #991b1b; font-size: 13px;">
+                        <i class="fas fa-id-card" style="font-size: 20px; display: block; margin-bottom: 4px;"></i>
+                        No ID / Passport uploaded
+                    </div>
+                `}
+            </div>
+        `;
+        
+        // ====== OTHER DOCUMENTS ======
+        const otherDocs = documents?.filter(d => d.document_type !== 'kcse' && d.document_type !== 'id' && d.document_type !== 'photo') || [];
+        
+        if (otherDocs.length > 0) {
+            html += `
+                <div style="margin-bottom: 16px;">
+                    <h4 style="color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-folder-open" style="color: #f59e0b;"></i> Other Documents (${otherDocs.length})
+                    </h4>
+                    ${otherDocs.map(doc => `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #fef3c7; border-radius: 8px; border: 1px solid #fde68a; margin-bottom: 8px;">
+                            <div>
+                                <div style="font-weight: 500; color: #1e293b;">${doc.file_name || doc.document_type || 'Document'}</div>
+                                <div style="font-size: 11px; color: #64748b;">
+                                    Type: ${doc.document_type || 'General'} • Uploaded: ${doc.upload_date ? new Date(doc.upload_date).toLocaleDateString() : 'Unknown'}
+                                    ${doc.status ? ` • Status: ${doc.status}` : ''}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="viewDocumentFile('${doc.file_path}')" style="padding: 4px 14px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                <button onclick="downloadDocumentFile('${doc.file_path}', '${doc.file_name || 'document.pdf'}')" style="padding: 4px 14px; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // ====== SUMMARY STATS ======
+        const uploadedCount = documents?.length || 0;
+        const verifiedCount = documents?.filter(d => d.status === 'verified').length || 0;
+        const pendingCount = documents?.filter(d => d.status === 'pending' || !d.status).length || 0;
+        
+        html += `
+            <div style="margin-top: 20px; padding: 16px; background: #f1f5f9; border-radius: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; text-align: center;">
+                <div>
+                    <div style="font-size: 20px; font-weight: 700; color: #4C1D95;">${uploadedCount}</div>
+                    <div style="font-size: 11px; color: #64748b;">Total Documents</div>
+                </div>
+                <div>
+                    <div style="font-size: 20px; font-weight: 700; color: #10b981;">${verifiedCount}</div>
+                    <div style="font-size: 11px; color: #64748b;">Verified</div>
+                </div>
+                <div>
+                    <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${pendingCount}</div>
+                    <div style="font-size: 11px; color: #64748b;">Pending</div>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading documents:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc2626;">
+                <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 12px;"></i>
+                Error loading documents: ${error.message}
+                <br>
+                <button onclick="loadUserDocumentsForViewer('${userId}')" style="margin-top: 12px; padding: 6px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-sync-alt"></i> Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+// ============================================================
+// 🔍 FIND DOCUMENT HELPER
+// ============================================================
+
+function findDocument(documents, docType) {
+    if (!documents || documents.length === 0) return null;
+    return documents.find(d => d.document_type === docType) || null;
+}
+
+// ============================================================
+// 👁️ VIEW DOCUMENT FILE
+// ============================================================
+
+function viewDocumentFile(filePath) {
+    if (!filePath) {
+        showFeedback('❌ No file path provided', 'error');
+        return;
+    }
+    
+    const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const fullUrl = `${supabaseUrl}/storage/v1/object/public/user-documents/${filePath}`;
+    
+    // Open in new tab
+    window.open(fullUrl, '_blank');
+}
+
+// ============================================================
+// ⬇️ DOWNLOAD DOCUMENT FILE
+// ============================================================
+
+function downloadDocumentFile(filePath, fileName) {
+    if (!filePath) {
+        showFeedback('❌ No file path provided', 'error');
+        return;
+    }
+    
+    const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const fullUrl = `${supabaseUrl}/storage/v1/object/public/user-documents/${filePath}`;
+    
+    // Create download link
+    const link = document.createElement('a');
+    link.href = fullUrl;
+    link.download = fileName || 'document.pdf';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showFeedback('📥 Downloading...', 'success');
+}
+
+// ============================================================
+// ❌ CLOSE DOCUMENT VIEWER MODAL
+// ============================================================
+
+function closeDocumentViewerModal() {
+    const modal = document.getElementById('documentViewerModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// ============================================================
+// 📸 GET PHOTO URL HELPER
+// ============================================================
+
+function getPhotoUrl(profile) {
+    if (!profile || !profile.profile_photo_url) {
+        return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile?.full_name || 'User') + '&background=4C1D95&color=fff&size=120';
+    }
+    
+    const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    
+    if (profile.profile_photo_url.startsWith('http')) {
+        return profile.profile_photo_url;
+    }
+    
+    return `${supabaseUrl}/storage/v1/object/public/user-documents/${profile.profile_photo_url}`;
+}
+// ============================================================
+// 📚 LOAD ACADEMIC HISTORY - FOR EDIT USER MODAL
+// ============================================================
+
+async function loadAcademicHistory(userId) {
+    const container = document.getElementById('academicHistoryContainer');
+    if (!container) {
+        console.warn('⚠️ academicHistoryContainer not found');
+        return;
+    }
+    
+    container.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: #94a3b8;">
+            <i class="fas fa-spinner fa-spin"></i> Loading academic history...
+        </div>
+    `;
+    
+    try {
+        const supabase = getSb();
+        if (!supabase) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle"></i> Database connection not available
+                </div>
+            `;
+            return;
+        }
+        
+        // 1. Get user profile for summary
+        const { data: profile, error: profileError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, program, block, intake_year, intake_month')
+            .eq('user_id', userId)
+            .single();
+        
+        if (profileError) {
+            console.warn('Profile fetch error:', profileError);
+        }
+        
+        // 2. Get unit registrations
+        const { data: registrations, error: regError } = await supabase
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', userId)
+            .order('submitted_date', { ascending: false })
+            .limit(30);
+        
+        if (regError) {
+            console.error('Error loading registrations:', regError);
+        }
+        
+        // 3. Get exam grades
+        const { data: grades, error: gradeError } = await supabase
+            .from('exam_grades')
+            .select('*, exams:exam_id(unit_code, course_name, block_term, exam_name)')
+            .eq('student_id', userId)
+            .order('graded_at', { ascending: false })
+            .limit(30);
+        
+        if (gradeError) {
+            console.error('Error loading grades:', gradeError);
+        }
+        
+        // 4. Get attendance history
+        const { data: attendance, error: attError } = await supabase
+            .from('geo_attendance_logs')
+            .select('check_in_time, session_type, target_name, is_verified')
+            .eq('student_id', userId)
+            .order('check_in_time', { ascending: false })
+            .limit(10);
+        
+        if (attError) {
+            console.error('Error loading attendance:', attError);
+        }
+        
+        // Check if we have any data
+        const hasData = (registrations && registrations.length > 0) || 
+                       (grades && grades.length > 0) || 
+                       (attendance && attendance.length > 0);
+        
+        if (!hasData) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                    <i class="fas fa-info-circle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                    No academic history available
+                    <br>
+                    <small style="font-size: 12px;">This student has no registrations, grades, or attendance records yet.</small>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+        
+        // ====== ACADEMIC SUMMARY ======
+        if (profile) {
+            const isTVET = profile.program && profile.program !== 'KRCHN';
+            const blockLabel = isTVET ? 'Term' : 'Block';
+            const intakeDisplay = profile.intake_year ? 
+                getDisplayIntake(profile.program, profile.intake_year, profile.intake_month) : 
+                'N/A';
+            
+            html += `
+                <div style="background: #f8fafc; border-radius: 8px; padding: 12px; border-left: 4px solid #4C1D95;">
+                    <strong style="font-size: 13px; color: #1e293b;">📊 Academic Summary</strong>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 6px;">
+                        <div>
+                            <span style="font-size: 11px; color: #94a3b8;">Program</span>
+                            <div style="font-weight: 600; font-size: 13px; color: #0A3D62;">${escapeHtml(profile.program || 'N/A')}</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: #94a3b8;">${blockLabel}</span>
+                            <div style="font-weight: 600; font-size: 13px; color: #0A3D62;">${escapeHtml(profile.block || profile.current_block || 'N/A')}</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: #94a3b8;">Intake</span>
+                            <div style="font-weight: 600; font-size: 13px; color: #0A3D62;">${escapeHtml(intakeDisplay)}</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: #94a3b8;">Registered Units</span>
+                            <div style="font-weight: 600; font-size: 13px; color: #4C1D95;">${registrations ? registrations.length : 0}</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 11px; color: #94a3b8;">Exams Taken</span>
+                            <div style="font-weight: 600; font-size: 13px; color: #3b82f6;">${grades ? grades.length : 0}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ====== REGISTERED UNITS ======
+        if (registrations && registrations.length > 0) {
+            const approved = registrations.filter(r => r.status === 'approved').length;
+            const pending = registrations.filter(r => r.status === 'pending').length;
+            const supplementary = registrations.filter(r => r.reg_type === 'Supplementary' || r.reg_type === 'Retake').length;
+            
+            html += `
+                <div style="background: #f0fdf4; border-radius: 8px; padding: 12px; border-left: 4px solid #10b981;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <strong style="font-size: 13px; color: #1e293b;">📚 Registered Units (${registrations.length})</strong>
+                        <div style="display: flex; gap: 12px; font-size: 12px; flex-wrap: wrap;">
+                            <span style="color: #059669;">✅ ${approved} Approved</span>
+                            ${pending > 0 ? `<span style="color: #f59e0b;">⏳ ${pending} Pending</span>` : ''}
+                            ${supplementary > 0 ? `<span style="color: #8b5cf6;">🔄 ${supplementary} Supp/Retake</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="margin-top: 8px; max-height: 120px; overflow-y: auto;">
+                        ${registrations.slice(0, 15).map(r => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px;">
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <span style="font-weight: 600; color: #4C1D95;">${escapeHtml(r.unit_code || 'N/A')}</span>
+                                    <span style="color: #64748b;">${escapeHtml(r.unit_name || '')}</span>
+                                    ${r.reg_type && r.reg_type !== 'Normal' ? `<span style="background: #fef3c7; color: #92400e; padding: 0 6px; border-radius: 4px; font-size: 9px;">${escapeHtml(r.reg_type)}</span>` : ''}
+                                </div>
+                                <div>
+                                    <span style="color: ${r.status === 'approved' ? '#059669' : r.status === 'pending' ? '#f59e0b' : '#dc2626'}; font-weight: 500; font-size: 11px;">
+                                        ${r.status === 'approved' ? '✅' : r.status === 'pending' ? '⏳' : '❌'} ${escapeHtml(r.status || 'N/A')}
+                                    </span>
+                                    ${r.submitted_date ? `<span style="font-size: 9px; color: #94a3b8; margin-left: 4px;">${new Date(r.submitted_date).toLocaleDateString()}</span>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${registrations.length > 15 ? `<div style="text-align: center; font-size: 11px; color: #94a3b8; padding: 4px 0;">+ ${registrations.length - 15} more</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ====== EXAM GRADES ======
+        if (grades && grades.length > 0) {
+            const passed = grades.filter(g => (g.total_score || 0) >= 50).length;
+            const avgScore = grades.length > 0 ? Math.round(grades.reduce((sum, g) => sum + (g.total_score || 0), 0) / grades.length) : 0;
+            
+            html += `
+                <div style="background: #eff6ff; border-radius: 8px; padding: 12px; border-left: 4px solid #3b82f6;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <strong style="font-size: 13px; color: #1e293b;">📝 Exam Grades (${grades.length})</strong>
+                        <div style="display: flex; gap: 12px; font-size: 12px; flex-wrap: wrap;">
+                            <span style="color: #059669;">✅ ${passed} Passed</span>
+                            <span style="color: #dc2626;">❌ ${grades.length - passed} Failed</span>
+                            <span style="color: #4C1D95; font-weight: 600;">📊 Avg: ${avgScore}%</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 8px; max-height: 120px; overflow-y: auto;">
+                        ${grades.slice(0, 10).map(g => {
+                            const score = g.total_score || 0;
+                            const isPass = score >= 50;
+                            const unitInfo = g.exams || {};
+                            const unitCode = unitInfo.unit_code || unitInfo.course_name || g.subject_name || 'N/A';
+                            const unitName = unitInfo.exam_name || unitInfo.course_name || '';
+                            
+                            return `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px;">
+                                    <div>
+                                        <span style="font-weight: 600; color: #4C1D95;">${escapeHtml(unitCode)}</span>
+                                        <span style="color: #64748b; margin-left: 4px;">${escapeHtml(unitName)}</span>
+                                        ${unitInfo.block_term ? `<span style="color: #94a3b8; font-size: 10px; margin-left: 4px;">(${escapeHtml(unitInfo.block_term)})</span>` : ''}
+                                    </div>
+                                    <div>
+                                        <span style="color: ${isPass ? '#059669' : '#dc2626'}; font-weight: 600;">
+                                            ${score > 0 ? score + '%' : 'N/A'}
+                                        </span>
+                                        <span style="font-size: 10px; color: ${isPass ? '#059669' : '#dc2626'}; margin-left: 4px;">
+                                            ${isPass ? '✅ Pass' : '❌ Fail'}
+                                        </span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                        ${grades.length > 10 ? `<div style="text-align: center; font-size: 11px; color: #94a3b8; padding: 4px 0;">+ ${grades.length - 10} more</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ====== ATTENDANCE HISTORY ======
+        if (attendance && attendance.length > 0) {
+            const verified = attendance.filter(a => a.is_verified === true).length;
+            
+            html += `
+                <div style="background: #f5f3ff; border-radius: 8px; padding: 12px; border-left: 4px solid #8b5cf6;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <strong style="font-size: 13px; color: #1e293b;">📍 Recent Attendance (${attendance.length})</strong>
+                        <span style="font-size: 12px; color: #059669;">✅ ${verified} Verified</span>
+                    </div>
+                    <div style="margin-top: 8px; max-height: 80px; overflow-y: auto;">
+                        ${attendance.map(a => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px;">
+                                <div>
+                                    <span style="font-weight: 500;">${escapeHtml(a.session_type || 'N/A')}</span>
+                                    <span style="color: #64748b;">${escapeHtml(a.target_name || '')}</span>
+                                </div>
+                                <div>
+                                    <span style="color: ${a.is_verified ? '#059669' : '#f59e0b'};">
+                                        ${a.is_verified ? '✅' : '⏳'} ${a.is_verified ? 'Verified' : 'Pending'}
+                                    </span>
+                                    <span style="font-size: 9px; color: #94a3b8; margin-left: 4px;">
+                                        ${a.check_in_time ? new Date(a.check_in_time).toLocaleDateString() : ''}
+                                    </span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+        console.log(`✅ Academic history loaded for user: ${userId}`);
+        
+    } catch (error) {
+        console.error('Error loading academic history:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #dc2626;">
+                <i class="fas fa-exclamation-circle"></i> Error loading academic history
+                <br>
+                <small style="font-size: 12px;">${escapeHtml(error.message || 'Unknown error')}</small>
+            </div>
+        `;
+    }
+}
 // ============================================================
 // 🔧 MISSING FUNCTIONS
 // ============================================================
