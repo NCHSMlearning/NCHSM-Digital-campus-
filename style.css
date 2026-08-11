@@ -1239,7 +1239,7 @@ a:focus-visible {
 /* 12. ADDITIONAL COMPONENTS (Optional Additions) */
 /* ========================================================= */
 
-/* Toast Notifications - Add if using in your app */
+/* Toast Notifications */
 .toast {
     position: fixed;
     bottom: 24px;
@@ -1258,10 +1258,10 @@ a:focus-visible {
     font-weight: 500;
 }
 
-.toast-success { background: var(--success-color); }
-.toast-error { background: var(--danger-color); }
-.toast-info { background: var(--info-color); }
-
+/* ✅ OVERRIDE ALL TOAST COLORS TO GREEN */
+.toast-success { background: #10B981 !important; }
+.toast-error { background: #10B981 !important; }
+.toast-info { background: #10B981 !important; }
 @keyframes slideIn {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
