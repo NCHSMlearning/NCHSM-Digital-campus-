@@ -802,60 +802,132 @@ window.NCHSMLogin = {
         });
     },
     
-    // ============================================
-    // OTP INPUT HANDLING
-    // ============================================
-    initOTPInputs: function() {
-        document.querySelectorAll('.otp-digit').forEach((input, index, inputs) => {
-            input.addEventListener('input', function() {
-                // Only allow digits
-                this.value = this.value.replace(/[^0-9]/g, '');
+  // ============================================
+// 2FA OTP INPUT - BEST PRACTICE VERSION
+// ============================================
+initOTPInputs: function() {
+    // Handle all OTP inputs (login and setup)
+    document.querySelectorAll('.otp-digit').forEach((input, index, inputs) => {
+        
+        // --- INPUT EVENT: Auto-advance & Auto-verify ---
+        input.addEventListener('input', function(e) {
+            // Only allow digits
+            this.value = this.value.replace(/[^0-9]/g, '');
+            
+            // Auto-advance to next field
+            if (this.value.length === 1 && index < inputs.length - 1) {
+                inputs[index + 1].focus();
+            }
+            
+            // ✅ AUTO-VERIFY when all 6 digits are entered
+            const allFilled = Array.from(inputs).every(inp => inp.value.length === 1);
+            
+            if (allFilled) {
+                // Get the code
+                let code = '';
+                inputs.forEach(inp => code += inp.value);
+                console.log('📱 2FA Code entered:', code);
                 
-                if (this.value.length === 1 && index < inputs.length - 1) {
-                    inputs[index + 1].focus();
-                }
-                const allFilled = Array.from(inputs).every(inp => inp.value.length === 1);
-                if (allFilled) {
-                    // Find the verify button and click it
-                    const modal = this.closest('.modal-overlay');
-                    if (modal) {
-                        const verifyBtn = modal.querySelector('.verify-otp, #verifyOTP');
-                        if (verifyBtn) verifyBtn.click();
+                // Find which modal this belongs to
+                const modal = this.closest('.modal-overlay');
+                
+                if (modal) {
+                    // Find the verify button
+                    let verifyBtn = modal.querySelector('#verifyOTP');
+                    if (!verifyBtn) verifyBtn = modal.querySelector('.verify-otp');
+                    if (!verifyBtn) verifyBtn = modal.querySelector('.btn-primary');
+                    
+                    if (verifyBtn) {
+                        // Show loading state on button
+                        const originalText = verifyBtn.textContent;
+                        verifyBtn.textContent = '⏳ Verifying...';
+                        verifyBtn.disabled = true;
+                        
+                        // Auto-click after short delay (shows user feedback)
+                        setTimeout(() => {
+                            verifyBtn.click();
+                            
+                            // Reset button after click (will be reset by the verification function)
+                            setTimeout(() => {
+                                verifyBtn.textContent = originalText;
+                                verifyBtn.disabled = false;
+                            }, 2000);
+                        }, 400);
                     }
                 }
-            });
-            
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
-                    inputs[index - 1].focus();
-                }
-                if (e.key === 'Enter') {
-                    const modal = this.closest('.modal-overlay');
-                    if (modal) {
-                        const verifyBtn = modal.querySelector('.verify-otp, #verifyOTP');
-                        if (verifyBtn) verifyBtn.click();
-                    }
-                }
-            });
-            
-            input.addEventListener('paste', function(e) {
-                const paste = (e.clipboardData || window.clipboardData).getData('text');
-                if (paste && paste.length === 6 && /^\d+$/.test(paste)) {
-                    e.preventDefault();
-                    inputs.forEach((inp, i) => {
-                        inp.value = paste[i] || '';
-                    });
-                    // Auto-submit after paste
-                    const modal = this.closest('.modal-overlay');
-                    if (modal) {
-                        const verifyBtn = modal.querySelector('.verify-otp, #verifyOTP');
-                        if (verifyBtn) verifyBtn.click();
-                    }
-                }
-            });
+            }
         });
-    },
+        
+        // --- KEYBOARD EVENT: Backspace & Enter ---
+        input.addEventListener('keydown', function(e) {
+            // Backspace goes to previous field
+            if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
+                inputs[index - 1].focus();
+                inputs[index - 1].value = '';
+            }
+            
+            // Enter key submits
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const modal = this.closest('.modal-overlay');
+                if (modal) {
+                    const verifyBtn = modal.querySelector('#verifyOTP, .verify-otp, .btn-primary');
+                    if (verifyBtn) verifyBtn.click();
+                }
+            }
+            
+            // Arrow keys navigation
+            if (e.key === 'ArrowRight' && index < inputs.length - 1) {
+                inputs[index + 1].focus();
+            }
+            if (e.key === 'ArrowLeft' && index > 0) {
+                inputs[index - 1].focus();
+            }
+        });
+        
+        // --- PASTE EVENT: Handle copied codes ---
+        input.addEventListener('paste', function(e) {
+            const paste = (e.clipboardData || window.clipboardData).getData('text');
+            
+            if (paste && paste.length === 6 && /^\d+$/.test(paste)) {
+                e.preventDefault();
+                
+                // Fill all inputs
+                inputs.forEach((inp, i) => {
+                    inp.value = paste[i] || '';
+                });
+                
+                // Auto-verify after paste
+                const modal = this.closest('.modal-overlay');
+                if (modal) {
+                    const verifyBtn = modal.querySelector('#verifyOTP, .verify-otp, .btn-primary');
+                    if (verifyBtn) {
+                        // Show feedback
+                        verifyBtn.textContent = '⏳ Verifying...';
+                        verifyBtn.disabled = true;
+                        
+                        setTimeout(() => {
+                            verifyBtn.click();
+                            setTimeout(() => {
+                                verifyBtn.textContent = 'Verify Code';
+                                verifyBtn.disabled = false;
+                            }, 2000);
+                        }, 400);
+                    }
+                }
+            }
+        });
+        
+        // --- FOCUS EVENT: Auto-select text ---
+        input.addEventListener('focus', function() {
+            if (this.value.length > 0) {
+                this.select();
+            }
+        });
+    });
     
+    console.log('✅ 2FA OTP Inputs initialized (Best Practice)');
+},
     // ============================================
     // LOAD STAFF RECORDS
     // ============================================
