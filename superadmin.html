@@ -6790,25 +6790,10 @@
                 <option value="all">📚 All Programs</option>
             </select>
             
+            <!-- ✅ FIXED: Removed hardcoded options, populated by JavaScript -->
             <select id="user-block-filter" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
                 <option value="all">📅 All Blocks/Terms</option>
-                <optgroup label="🎓 KRCHN Blocks">
-                    <option value="Introductory">Introductory</option>
-                    <option value="Block 1">Block 1</option>
-                    <option value="Block 2">Block 2</option>
-                    <option value="Block 3">Block 3</option>
-                    <option value="Block 4">Block 4</option>
-                    <option value="Block 5">Block 5</option>
-                    <option value="Final">Final</option>
-                </optgroup>
-                <optgroup label="🔧 TVET Terms">
-                    <option value="Year 1 Term 1">Year 1 Term 1</option>
-                    <option value="Year 1 Term 2">Year 1 Term 2</option>
-                    <option value="Year 2 Term 1">Year 2 Term 1</option>
-                    <option value="Year 2 Term 2">Year 2 Term 2</option>
-                    <option value="Year 3 Term 1">Year 3 Term 1</option>
-                    <option value="Year 3 Term 2">Year 3 Term 2</option>
-                </optgroup>
+                <!-- Dynamically populated by JavaScript -->
             </select>
             
             <button onclick="filterUsers()" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">
@@ -7053,7 +7038,9 @@
                         <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Program *</label>
                         <select id="edit_user_program" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;" onchange="updateBlockTermOptions('edit_user_program', 'edit_user_block')">
                             <option value="">-- Select Program --</option>
-                            <option value="KRCHN">🎓 KRCHN Nursing</option>
+                            <optgroup label="🎓 KRCHN Programs">
+                                <option value="KRCHN">🎓 KRCHN Nursing</option>
+                            </optgroup>
                             <optgroup label="🎯 TVET Diploma Programs">
                                 <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
                                 <option value="DCH">Diploma in Community Health</option>
@@ -7091,7 +7078,8 @@
                     <div>
                         <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Intake Year</label>
                         <input type="text" id="edit_user_intake_year" 
-                               style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                               style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;" 
+                               placeholder="e.g., 2026">
                     </div>
                     <div>
                         <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Intake Month</label>
@@ -7430,7 +7418,7 @@
 </section>
 
 <!-- ============================================================ -->
-<!-- ➕ TAB 3: ENROLL ACCOUNTS - COMPLETE                          -->
+<!-- ➕ TAB 3: ENROLL ACCOUNTS - COMPLETE WITH INTAKE MONTH       -->
 <!-- ============================================================ -->
 <section id="enroll" class="tab-content">
     <div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(16,185,129,0.3);">
@@ -7487,9 +7475,33 @@
                 </select>
             </div>
             <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Intake *</label>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Intake Year *</label>
                 <select id="account-intake" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
-                    <option value="">-- Select Intake --</option>
+                    <option value="">-- Select Intake Year --</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                    <option value="2028">2028</option>
+                </select>
+            </div>
+            <!-- ✅ NEW: Intake Month Field -->
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Intake Month *</label>
+                <select id="account-intake-month" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
+                    <option value="">-- Select Month --</option>
+                    <option value="01">January</option>
+                    <option value="02">February</option>
+                    <option value="03">March</option>
+                    <option value="04">April</option>
+                    <option value="05">May</option>
+                    <option value="06">June</option>
+                    <option value="07">July</option>
+                    <option value="08">August</option>
+                    <option value="09">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
                 </select>
             </div>
             <div>
