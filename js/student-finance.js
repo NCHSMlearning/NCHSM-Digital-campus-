@@ -96,19 +96,30 @@ function notifySuperAdmin(eventType, data) {
             window.handleStudentFinanceEvent(eventType, data);
         }
         
-        if (typeof supabase !== 'undefined' && supabase) {
-            supabase
-                .from('admin_notifications')
-                .insert([{
-                    module: 'student_finance',
-                    event_type: eventType,
-                    event_data: data,
-                    created_at: new Date().toISOString()
-                }])
-                .then(() => {})
-                .catch((error) => {
-                    console.warn('⚠️ Could not log to admin_notifications:', error.message);
-                });
+        // Use the correct columns for admin_notifications
+        if (typeof supabase !== 'undefined' && supabase && typeof supabase.from === 'function') {
+            try {
+                const student = studentFinanceState.student || window.currentUserProfile || window.currentUser;
+                
+                supabase
+                    .from('admin_notifications')
+                    .insert([{
+                        notification_type: eventType,
+                        student_id: student?.id || data?.studentId || 'unknown',
+                        student_name: student?.full_name || student?.name || data?.studentName || 'Unknown Student',
+                        details: typeof data === 'object' ? JSON.stringify(data) : String(data),
+                        is_read: false,
+                        timestamp: new Date().toISOString()
+                    }])
+                    .then(() => {
+                        // Success - do nothing
+                    })
+                    .catch((error) => {
+                        console.warn('⚠️ Could not save notification:', error.message);
+                    });
+            } catch (error) {
+                console.warn('⚠️ Admin notification error:', error.message);
+            }
         }
         return true;
     } catch (error) {
