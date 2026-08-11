@@ -1,10 +1,11 @@
 // ============================================================
-// 📋 PROFILE MODULE - COMPLETE FIXED VERSION
+// 📋 PROFILE MODULE - COMPLETE WITH 2FA
 // ✅ Photos stored in user-documents bucket
 // ✅ profile_photo_url and passport_url both updated
 // ✅ Works with admin approvals
 // ✅ Student sees their photo after registration
 // ✅ Admin sees updated photos
+// ✅ FULL 2FA INTEGRATION
 // ============================================================
 
 class ProfileModule {
@@ -64,8 +65,6 @@ class ProfileModule {
         this.passportPreview = document.getElementById('passport-preview');
         this.passportFileInput = document.getElementById('passport-file-input');
         
-        // ==================== FORM FIELDS ====================
-        
         // Personal Information - EDITABLE
         this.profileName = document.getElementById('profile-name-input');
         this.profileStudentId = document.getElementById('profile-student-id');
@@ -99,7 +98,7 @@ class ProfileModule {
         this.completedBlocksContainer = document.getElementById('completed-blocks');
         this.blockTimeline = document.getElementById('block-timeline-profile');
         
-        // ==================== DOCUMENT UPLOAD ELEMENTS ====================
+        // Document Upload Elements
         this.docKcseInput = document.getElementById('doc-kcse-input');
         this.docIdInput = document.getElementById('doc-id-input');
         this.docKcseFilename = document.getElementById('doc-kcse-filename');
@@ -107,14 +106,14 @@ class ProfileModule {
         this.docKcseBadge = document.getElementById('doc-kcse-badge');
         this.docIdBadge = document.getElementById('doc-id-badge');
         
-        // ==================== PASSWORD RESET ELEMENTS ====================
+        // Password Reset Elements
         this.currentPassword = document.getElementById('current-password');
         this.newPassword = document.getElementById('new-password');
         this.confirmPassword = document.getElementById('confirm-password');
         this.changePasswordBtn = document.getElementById('change-password-btn');
         this.passwordFeedback = document.getElementById('password-feedback');
         
-        // ==================== ACTION BUTTONS ====================
+        // Action Buttons
         this.editProfileButton = document.getElementById('edit-profile-button');
         this.saveProfileButton = document.getElementById('save-profile-button');
         this.cancelEditButton = document.getElementById('cancel-edit-button');
@@ -180,6 +179,18 @@ class ProfileModule {
         document.addEventListener('photoUpdated', (event) => {
             console.log('📸 Photo updated, reloading...');
             this.loadProfilePhoto();
+        });
+        
+        // Listen for 2FA enabled
+        document.addEventListener('2FAEnabled', () => {
+            this.update2FAUI();
+            this.showStatus('✅ 2FA enabled successfully!', 'success');
+        });
+        
+        // Listen for 2FA disabled
+        document.addEventListener('2FADisabled', () => {
+            this.update2FAUI();
+            this.showStatus('2FA has been disabled.', 'info');
         });
     }
     
@@ -276,6 +287,11 @@ class ProfileModule {
                 }
             }, 2000);
         }
+        
+        // Check 2FA status after init
+        setTimeout(() => {
+            this.update2FAUI();
+        }, 1500);
     }
     
     // ============================================================
@@ -316,6 +332,7 @@ class ProfileModule {
             this.updateDocumentStatus();
             this.updateBlockProgress();
             this.updateUIState('view');
+            this.update2FAUI(); // ✅ Check 2FA status
             
             console.log('✅ Profile loaded successfully');
             
@@ -325,163 +342,157 @@ class ProfileModule {
         }
     }
     
-   // ============================================================
-// 📝 POPULATE PROFILE FORM - FIXED
-// ✅ Updates both display and input fields
-// ✅ Shows all data correctly
-// ============================================================
-
-populateProfileForm() {
-    if (!this.userProfile) return;
+    // ============================================================
+    // 📝 POPULATE PROFILE FORM - FIXED
+    // ============================================================
     
-    // ============================================
-    // 📊 UPDATE DISPLAY FIELDS (Header Section)
-    // ============================================
-    
-    // Profile Name (Display)
-    const nameDisplay = document.getElementById('profile-name');
-    if (nameDisplay) nameDisplay.textContent = this.userProfile.full_name || 'Loading...';
-    
-    // Student ID (Display)
-    const studentIdDisplay = document.getElementById('profile-student-id');
-    if (studentIdDisplay) studentIdDisplay.textContent = this.userProfile.student_id || this.userProfile.reg_no || '-';
-    
-    // Email (Display)
-    const emailDisplay = document.getElementById('profile-email');
-    if (emailDisplay) emailDisplay.textContent = this.userProfile.email || '-';
-    
-    // Phone (Display)
-    const phoneDisplay = document.getElementById('profile-phone');
-    if (phoneDisplay) phoneDisplay.textContent = this.userProfile.phone || this.userProfile.phone_number || '-';
-    
-    // Program (Display)
-    const programDisplay = document.getElementById('profile-program');
-    if (programDisplay) programDisplay.textContent = this.userProfile.program || '-';
-    
-    // ============================================
-    // 📝 FORM INPUTS (Editable fields)
-    // ============================================
-    
-    // Personal Information - EDITABLE
-    if (this.profileName) this.profileName.value = this.userProfile.full_name || '';
-    
-    // Student ID - Input (readonly)
-    if (this.profileStudentId) this.profileStudentId.value = this.userProfile.student_id || this.userProfile.reg_no || '';
-    
-    // Email - Input (readonly)
-    if (this.profileEmail) this.profileEmail.value = this.userProfile.email || '';
-    
-    // Phone - Input
-    if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
-    if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';
-    
-    // Date of Birth
-    if (this.profileDob && this.userProfile.date_of_birth) {
-        const dob = new Date(this.userProfile.date_of_birth);
-        if (!isNaN(dob)) {
-            this.profileDob.value = dob.toISOString().split('T')[0];
+    populateProfileForm() {
+        if (!this.userProfile) return;
+        
+        // ============================================
+        // 📊 UPDATE DISPLAY FIELDS (Header Section)
+        // ============================================
+        
+        // Profile Name (Display)
+        const nameDisplay = document.getElementById('profile-name');
+        if (nameDisplay) nameDisplay.textContent = this.userProfile.full_name || 'Loading...';
+        
+        // Student ID (Display)
+        const studentIdDisplay = document.getElementById('profile-student-id');
+        if (studentIdDisplay) studentIdDisplay.textContent = this.userProfile.student_id || this.userProfile.reg_no || '-';
+        
+        // Email (Display)
+        const emailDisplay = document.getElementById('profile-email');
+        if (emailDisplay) emailDisplay.textContent = this.userProfile.email || '-';
+        
+        // Phone (Display)
+        const phoneDisplay = document.getElementById('profile-phone');
+        if (phoneDisplay) phoneDisplay.textContent = this.userProfile.phone || this.userProfile.phone_number || '-';
+        
+        // Program (Display)
+        const programDisplay = document.getElementById('profile-program');
+        if (programDisplay) programDisplay.textContent = this.userProfile.program || '-';
+        
+        // ============================================
+        // 📝 FORM INPUTS (Editable fields)
+        // ============================================
+        
+        // Personal Information - EDITABLE
+        if (this.profileName) this.profileName.value = this.userProfile.full_name || '';
+        
+        // Student ID - Input (readonly)
+        if (this.profileStudentId) this.profileStudentId.value = this.userProfile.student_id || this.userProfile.reg_no || '';
+        
+        // Email - Input (readonly)
+        if (this.profileEmail) this.profileEmail.value = this.userProfile.email || '';
+        
+        // Phone - Input
+        if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
+        if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';
+        
+        // Date of Birth
+        if (this.profileDob && this.userProfile.date_of_birth) {
+            const dob = new Date(this.userProfile.date_of_birth);
+            if (!isNaN(dob)) {
+                this.profileDob.value = dob.toISOString().split('T')[0];
+            }
+        } else if (this.profileDob) {
+            this.profileDob.value = '';
         }
-    } else if (this.profileDob) {
-        this.profileDob.value = '';
+        
+        // Gender
+        if (this.profileGender) {
+            this.profileGender.value = this.userProfile.gender || '';
+        }
+        
+        // National ID
+        if (this.profileNationalId) this.profileNationalId.value = this.userProfile.national_id || '';
+        
+        // Address
+        if (this.profileAddress) this.profileAddress.value = this.userProfile.address || '';
+        
+        // Guardian Information
+        if (this.profileGuardianName) this.profileGuardianName.value = this.userProfile.guardian_name || '';
+        if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';
+        
+        // ============================================
+        // 📚 ACADEMIC INFORMATION (Read-only)
+        // ============================================
+        
+        if (this.profileProgram) this.profileProgram.value = this.userProfile.program || '';
+        if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
+        if (this.profileIntakeMonth) this.profileIntakeMonth.value = this.userProfile.intake_month || '';
+        
+        if (this.profileBlock) {
+            const isTVET = this.isTVETStudent();
+            const blockOrTerm = isTVET ? this.userProfile.term || this.userProfile.block : this.userProfile.block || this.userProfile.current_block;
+            this.profileBlock.value = blockOrTerm || 'Introductory';
+        }
+        
+        // ============================================
+        // 📊 UPDATE QUICK STATS
+        // ============================================
+        
+        this.updateQuickStats();
+        
+        console.log('✅ Profile form populated with:', {
+            name: this.userProfile.full_name,
+            student_id: this.userProfile.student_id,
+            email: this.userProfile.email,
+            phone: this.userProfile.phone,
+            program: this.userProfile.program,
+            block: this.userProfile.block,
+            intake_year: this.userProfile.intake_year,
+            intake_month: this.userProfile.intake_month
+        });
     }
     
-    // Gender
-    if (this.profileGender) {
-        this.profileGender.value = this.userProfile.gender || '';
-    }
-    
-    // National ID
-    if (this.profileNationalId) this.profileNationalId.value = this.userProfile.national_id || '';
-    
-    // Address
-    if (this.profileAddress) this.profileAddress.value = this.userProfile.address || '';
-    
-    // Guardian Information
-    if (this.profileGuardianName) this.profileGuardianName.value = this.userProfile.guardian_name || '';
-    if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';
-    
-    // ============================================
-    // 📚 ACADEMIC INFORMATION (Read-only)
-    // ============================================
-    
-    if (this.profileProgram) this.profileProgram.value = this.userProfile.program || '';
-    if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
-    if (this.profileIntakeMonth) this.profileIntakeMonth.value = this.userProfile.intake_month || '';
-    
-    if (this.profileBlock) {
-        const isTVET = this.isTVETStudent();
-        const blockOrTerm = isTVET ? this.userProfile.term || this.userProfile.block : this.userProfile.block || this.userProfile.current_block;
-        this.profileBlock.value = blockOrTerm || 'Introductory';
-    }
-    
-    // ============================================
-    // 📊 UPDATE QUICK STATS
-    // ============================================
-    
-    this.updateQuickStats();
-    
-    console.log('✅ Profile form populated with:', {
-        name: this.userProfile.full_name,
-        student_id: this.userProfile.student_id,
-        email: this.userProfile.email,
-        phone: this.userProfile.phone,
-        program: this.userProfile.program,
-        block: this.userProfile.block,
-        intake_year: this.userProfile.intake_year,
-        intake_month: this.userProfile.intake_month
-    });
-}
     // ============================================================
     // 🖼️ LOAD PROFILE PHOTO - FIXED
     // ============================================================
     
-   // ============================================================
-// 🖼️ LOAD PROFILE PHOTO - FIXED
-// ============================================================
-
-async loadProfilePhoto() {
-    if (!this.userProfile) return;
-    
-    // Check both fields
-    let photoUrl = this.userProfile.profile_photo_url || this.userProfile.passport_url || null;
-    
-    let finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
-        encodeURIComponent(this.userProfile.full_name || 'Student') + 
-        '&background=4C1D95&color=fff&size=120';
-    
-    if (photoUrl) {
-        try {
-            if (photoUrl.startsWith('http')) {
-                finalPhotoSrc = photoUrl;
-            } else {
-                const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
-                let fullPath = photoUrl;
-                if (!photoUrl.startsWith('profiles/')) {
-                    fullPath = `profiles/${this.userId}/${photoUrl}`;
+    async loadProfilePhoto() {
+        if (!this.userProfile) return;
+        
+        let photoUrl = this.userProfile.profile_photo_url || this.userProfile.passport_url || null;
+        
+        let finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
+            encodeURIComponent(this.userProfile.full_name || 'Student') + 
+            '&background=4C1D95&color=fff&size=120';
+        
+        if (photoUrl) {
+            try {
+                if (photoUrl.startsWith('http')) {
+                    finalPhotoSrc = photoUrl;
+                } else {
+                    const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+                    let fullPath = photoUrl;
+                    if (!photoUrl.startsWith('profiles/')) {
+                        fullPath = `profiles/${this.userId}/${photoUrl}`;
+                    }
+                    finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/user-documents/${fullPath}?t=${new Date().getTime()}`;
                 }
-                finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/user-documents/${fullPath}?t=${new Date().getTime()}`;
+                
+                // Test if image loads
+                await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = finalPhotoSrc;
+                });
+            } catch (error) {
+                console.warn('Photo load error:', error);
+                finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
+                    encodeURIComponent(this.userProfile.full_name || 'Student') + 
+                    '&background=4C1D95&color=fff&size=120';
             }
-            
-            // Test if image loads
-            await new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = resolve;
-                img.onerror = reject;
-                img.src = finalPhotoSrc;
-            });
-        } catch (error) {
-            console.warn('Photo load error:', error);
-            finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
-                encodeURIComponent(this.userProfile.full_name || 'Student') + 
-                '&background=4C1D95&color=fff&size=120';
+        }
+        
+        if (this.passportPreview) {
+            this.passportPreview.src = finalPhotoSrc;
+            this.passportPreview.alt = photoUrl ? 'Your passport photo' : 'Upload passport photo';
         }
     }
-    
-    if (this.passportPreview) {
-        this.passportPreview.src = finalPhotoSrc;
-        this.passportPreview.alt = photoUrl ? 'Your passport photo' : 'Upload passport photo';
-    }
-}
     
     // ============================================================
     // 📸 GET PHOTO URL - HELPER
@@ -493,16 +504,13 @@ async loadProfilePhoto() {
         const photoPath = profile.profile_photo_url || profile.passport_url || null;
         if (!photoPath) return null;
         
-        // If it's already a full URL, return it
         if (photoPath.startsWith('http')) {
             return photoPath;
         }
         
-        // Otherwise construct from Supabase storage
         const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
         let fullPath = photoPath;
         if (!photoPath.startsWith('profiles/')) {
-            // If it's just a filename, add the profiles folder
             fullPath = `profiles/${this.userId}/${photoPath}`;
         }
         return `${supabaseUrl}/storage/v1/object/public/user-documents/${fullPath}`;
@@ -645,10 +653,8 @@ async loadProfilePhoto() {
             if (!supabase) throw new Error('No database connection');
             
             const fileExt = file.name.split('.').pop();
-            // ✅ Store in the correct path for the user-documents bucket
             const filePath = `profiles/${this.userId}/photo.${fileExt}`;
             
-            // ✅ Upload to 'user-documents' bucket
             const { error: uploadError } = await supabase.storage
                 .from('user-documents')
                 .upload(filePath, file, { 
@@ -659,15 +665,14 @@ async loadProfilePhoto() {
             
             if (uploadError) throw uploadError;
             
-            // ✅ Update both fields for compatibility
             const { data: urlData } = supabase.storage.from('user-documents').getPublicUrl(filePath);
             const publicUrl = urlData.publicUrl;
             
             const { error: updateError } = await supabase
                 .from('consolidated_user_profiles_table')
                 .update({ 
-                    profile_photo_url: filePath,  // ✅ Store the path
-                    passport_url: publicUrl,      // ✅ Also store full URL for compatibility
+                    profile_photo_url: filePath,
+                    passport_url: publicUrl,
                     updated_at: new Date().toISOString()
                 })
                 .eq('user_id', this.userId);
@@ -678,7 +683,6 @@ async loadProfilePhoto() {
             this.pendingPhotoFile = null;
             await this.loadProfile();
             
-            // Dispatch event for admin to refresh
             document.dispatchEvent(new CustomEvent('photoUpdated', { 
                 detail: { userId: this.userId }
             }));
@@ -821,19 +825,15 @@ async loadProfilePhoto() {
         this.updateCompletedBlocks(completedBlocksCount, isTVET);
     }
     
-   // ============================================================
-// 📊 UPDATE QUICK STATS - FIXED
-// ============================================================
-
-updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent) {
-    const blockNum = currentBlockNumber || this.getCurrentBlockNumber();
-    const completed = completedBlocksCount !== undefined ? completedBlocksCount : this.getCompletedBlocksCount();
-    const progress = progressPercent !== undefined ? progressPercent : this.getProgressPercent();
-    
-    if (this.profileBlockNumber) this.profileBlockNumber.textContent = blockNum;
-    if (this.profileCompletedBlocks) this.profileCompletedBlocks.textContent = completed;
-    if (this.profileProgress) this.profileProgress.textContent = `${progress}%`;
-}
+    updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent) {
+        const blockNum = currentBlockNumber || this.getCurrentBlockNumber();
+        const completed = completedBlocksCount !== undefined ? completedBlocksCount : this.getCompletedBlocksCount();
+        const progress = progressPercent !== undefined ? progressPercent : this.getProgressPercent();
+        
+        if (this.profileBlockNumber) this.profileBlockNumber.textContent = blockNum;
+        if (this.profileCompletedBlocks) this.profileCompletedBlocks.textContent = completed;
+        if (this.profileProgress) this.profileProgress.textContent = `${progress}%`;
+    }
     
     updateBlockTimeline(currentBlock, isTVET) {
         if (!this.blockTimeline) return;
@@ -1148,7 +1148,6 @@ updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent) {
         this.showStatus('Profile updated successfully!', 'success');
         this.updateUIState('view');
         
-        // Dispatch event for admin to refresh
         document.dispatchEvent(new CustomEvent('profileUpdated', { 
             detail: { userId: this.userId }
         }));
@@ -1372,6 +1371,345 @@ updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent) {
     }
     
     // ============================================================
+    // 🛡️ 2FA FUNCTIONS
+    // ============================================================
+    
+    // Check 2FA status
+    async check2FAStatus() {
+        try {
+            if (!this.userId) return false;
+            
+            const supabase = this.getSupabaseClient();
+            if (!supabase) throw new Error('Database connection not available');
+            
+            const { data, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('two_factor_enabled, two_factor_secret, two_factor_setup_date')
+                .eq('user_id', this.userId)
+                .single();
+            
+            if (error) {
+                console.warn('Error checking 2FA status:', error);
+                return false;
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('Error checking 2FA:', error);
+            return false;
+        }
+    }
+    
+    // Update 2FA UI
+    async update2FAUI() {
+        const status = await this.check2FAStatus();
+        
+        const badge = document.getElementById('profile2FABadge');
+        const btn = document.getElementById('profileEnable2FA');
+        const btnText = document.getElementById('profile2FABtnText');
+        const msg = document.getElementById('profile2FAMessage');
+        const recoverySection = document.getElementById('profileRecoveryCodes');
+        const statusMsg = document.getElementById('profile2FAStatusMsg');
+        
+        if (!badge && !btn) {
+            // Elements don't exist yet - create them
+            this.create2FAElements();
+            // Try again after creating
+            setTimeout(() => this.update2FAUI(), 300);
+            return;
+        }
+        
+        if (status && status.two_factor_enabled && status.two_factor_secret) {
+            // 2FA is ENABLED
+            if (badge) {
+                badge.style.background = '#d1fae5';
+                badge.style.color = '#065f46';
+                badge.innerHTML = '<i class="fas fa-check-circle" style="font-size: 11px;"></i> Enabled';
+            }
+            if (btn) {
+                btn.style.background = '#10b981';
+                btn.style.cursor = 'default';
+                btn.disabled = true;
+                btn.style.opacity = '0.8';
+                btn.style.transform = 'none';
+            }
+            if (btnText) btnText.textContent = '✅ Active';
+            if (msg) msg.textContent = '✅ Your account is secured with Two-Factor Authentication';
+            if (statusMsg) {
+                statusMsg.style.display = 'block';
+                statusMsg.style.color = '#059669';
+                statusMsg.textContent = '🔐 2FA is active - your account is protected';
+            }
+            if (recoverySection) {
+                recoverySection.style.display = 'block';
+                this.loadRecoveryCodesCount();
+            }
+        } else {
+            // 2FA is NOT enabled
+            if (badge) {
+                badge.style.background = '#fef3c7';
+                badge.style.color = '#92400e';
+                badge.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size: 11px;"></i> Not Enabled';
+            }
+            if (btn) {
+                btn.style.background = 'linear-gradient(135deg, #4C1D95, #7c3aed)';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+            }
+            if (btnText) btnText.textContent = 'Enable 2FA';
+            if (msg) msg.textContent = 'Secure your account with 2FA using Google Authenticator';
+            if (statusMsg) {
+                statusMsg.style.display = 'block';
+                statusMsg.style.color = '#92400e';
+                statusMsg.textContent = '⚠️ 2FA is not enabled - click "Enable 2FA" to secure your account';
+            }
+            if (recoverySection) recoverySection.style.display = 'none';
+        }
+    }
+    
+    // Create 2FA UI elements if they don't exist
+    create2FAElements() {
+        // Check if 2FA section already exists
+        if (document.getElementById('profile2FABadge')) return;
+        
+        // Find the security section
+        const securitySection = document.querySelector('.profile-security-section');
+        if (!securitySection) {
+            console.warn('Security section not found, cannot create 2FA UI');
+            return;
+        }
+        
+        // Create 2FA section
+        const twoFADiv = document.createElement('div');
+        twoFADiv.className = 'profile-2fa-section';
+        twoFADiv.style.cssText = `
+            border-top: 2px dashed #e5e7eb;
+            margin-top: 16px;
+            padding-top: 16px;
+        `;
+        twoFADiv.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-shield-alt" style="color: #4C1D95; font-size: 18px;"></i>
+                    <div>
+                        <h5 style="margin: 0; color: #0A3D62; font-size: 14px; font-weight: 600;">Two-Factor Authentication</h5>
+                        <p style="margin: 0; font-size: 12px; color: #64748B;">Add an extra layer of security to your account</p>
+                    </div>
+                </div>
+                <div id="profile2FAStatus">
+                    <span id="profile2FABadge" style="padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 11px;"></i> Not Enabled
+                    </span>
+                </div>
+            </div>
+            
+            <div id="profile2FADetails" style="background: #f1f5f9; border-radius: 8px; padding: 12px 16px; margin-top: 6px;">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <div style="flex: 1;">
+                        <span style="font-size: 13px; color: #475569;">
+                            <i class="fas fa-info-circle" style="color: #4C1D95;"></i> 
+                            <span id="profile2FAMessage">Secure your account with 2FA using Google Authenticator</span>
+                        </span>
+                    </div>
+                    <button id="profileEnable2FA" 
+                            onclick="window.ProfileModuleInstance?.open2FASetup()" 
+                            style="padding: 8px 20px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s ease; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-shield-alt"></i> 
+                        <span id="profile2FABtnText">Enable 2FA</span>
+                    </button>
+                </div>
+                <div id="profile2FAStatusMsg" style="margin-top: 6px; font-size: 12px; color: #94a3b8; display: none;"></div>
+                
+                <div id="profileRecoveryCodes" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <i class="fas fa-key" style="color: #f59e0b;"></i>
+                        <span style="font-size: 13px; color: #475569;">
+                            <strong>Recovery Codes:</strong> 
+                            <span id="profileRecoveryCount">0</span> codes remaining
+                        </span>
+                        <button onclick="window.ProfileModuleInstance?.generateRecoveryCodes()" style="padding: 4px 14px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-redo-alt"></i> Generate New
+                        </button>
+                        <button onclick="window.ProfileModuleInstance?.disable2FA()" style="padding: 4px 14px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-times-circle"></i> Disable 2FA
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        securitySection.appendChild(twoFADiv);
+    }
+    
+    // Open 2FA setup
+    async open2FASetup() {
+        try {
+            if (!this.userId) {
+                this.showStatus('Please login first', 'error');
+                return;
+            }
+            
+            // Check current 2FA status
+            const status = await this.check2FAStatus();
+            if (status && status.two_factor_enabled && status.two_factor_secret) {
+                this.showStatus('2FA is already enabled for your account!', 'info');
+                await this.update2FAUI();
+                return;
+            }
+            
+            // Use the global NCHSMLogin to show QR code
+            if (window.NCHSMLogin && typeof window.NCHSMLogin.show2FASetup === 'function') {
+                const email = this.userProfile?.email || this.userProfile?.user_email;
+                if (!email) {
+                    this.showStatus('Email not found. Please contact support.', 'error');
+                    return;
+                }
+                
+                await window.NCHSMLogin.show2FASetup(this.userId, email);
+                
+                // Listen for 2FA enable success
+                document.addEventListener('2FAEnabled', () => {
+                    this.update2FAUI();
+                    this.showStatus('✅ 2FA enabled successfully!', 'success');
+                }, { once: true });
+                
+            } else if (typeof window.showQRCode === 'function') {
+                // Fallback to global showQRCode
+                window.showQRCode();
+            } else {
+                this.showStatus('2FA module not available. Please reload the page.', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error opening 2FA setup:', error);
+            this.showStatus(`Error: ${error.message}`, 'error');
+        }
+    }
+    
+    // Load recovery codes count
+    async loadRecoveryCodesCount() {
+        try {
+            if (!this.userId) return;
+            
+            const supabase = this.getSupabaseClient();
+            if (!supabase) return;
+            
+            const { data, error } = await supabase
+                .from('two_factor_recovery_codes')
+                .select('id')
+                .eq('user_id', this.userId)
+                .eq('is_used', false);
+            
+            if (error) throw error;
+            
+            const countEl = document.getElementById('profileRecoveryCount');
+            if (countEl) countEl.textContent = data?.length || 0;
+            
+        } catch (error) {
+            console.error('Error loading recovery codes:', error);
+        }
+    }
+    
+    // Generate recovery codes
+    async generateRecoveryCodes() {
+        try {
+            if (!this.userId) {
+                this.showStatus('Please login first', 'error');
+                return;
+            }
+            
+            const supabase = this.getSupabaseClient();
+            if (!supabase) throw new Error('Database connection not available');
+            
+            // Generate 10 new recovery codes
+            const codes = [];
+            for (let i = 0; i < 10; i++) {
+                const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+                codes.push(code);
+            }
+            
+            // Store in database (hashed)
+            for (const code of codes) {
+                const hashed = await this.hashToken(code);
+                await supabase
+                    .from('two_factor_recovery_codes')
+                    .insert({
+                        user_id: this.userId,
+                        recovery_code: hashed,
+                        created_at: new Date().toISOString()
+                    });
+            }
+            
+            // Show codes to user
+            alert('🔑 Your new recovery codes:\n\n' + codes.join('\n') + '\n\nStore these in a safe place! You can use them if you lose access to your authenticator app.');
+            
+            await this.loadRecoveryCodesCount();
+            this.showStatus('✅ New recovery codes generated!', 'success');
+            
+        } catch (error) {
+            console.error('Error generating recovery codes:', error);
+            this.showStatus(`Error: ${error.message}`, 'error');
+        }
+    }
+    
+    // Disable 2FA
+    async disable2FA() {
+        if (!confirm('⚠️ Are you sure you want to disable Two-Factor Authentication?\n\nYour account will be less secure without 2FA.')) {
+            return;
+        }
+        
+        try {
+            if (!this.userId) {
+                this.showStatus('Please login first', 'error');
+                return;
+            }
+            
+            const supabase = this.getSupabaseClient();
+            if (!supabase) throw new Error('Database connection not available');
+            
+            const { error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    two_factor_enabled: false,
+                    two_factor_verified: false,
+                    two_factor_secret: null,
+                    two_factor_setup_date: null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', this.userId);
+            
+            if (error) throw error;
+            
+            // Also delete recovery codes
+            await supabase
+                .from('two_factor_recovery_codes')
+                .delete()
+                .eq('user_id', this.userId);
+            
+            await this.update2FAUI();
+            this.showStatus('✅ 2FA has been disabled.', 'success');
+            
+            document.dispatchEvent(new CustomEvent('2FADisabled', { 
+                detail: { userId: this.userId }
+            }));
+            
+        } catch (error) {
+            console.error('Error disabling 2FA:', error);
+            this.showStatus(`Error: ${error.message}`, 'error');
+        }
+    }
+    
+    // Hash token for recovery codes
+    async hashToken(token) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(token);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    
+    // ============================================================
     // 🔧 UTILITY FUNCTIONS
     // ============================================================
     
@@ -1486,8 +1824,51 @@ function refreshStudentProfile(userId) {
     }
 }
 
-// Expose to global scope
+// ============================================================
+// 📌 EXPOSE GLOBALLY
+// ============================================================
+
+window.ProfileModule = ProfileModule;
+window.initProfileModule = initProfileModule;
 window.refreshStudentProfile = refreshStudentProfile;
+window.ProfileModuleInstance = profileModule;
+
+// ============================================================
+// 🎯 GLOBAL 2FA FUNCTIONS FOR HTML BUTTONS
+// ============================================================
+
+window.openProfile2FASetup = function() {
+    if (window.ProfileModuleInstance) {
+        window.ProfileModuleInstance.open2FASetup();
+    } else {
+        const instance = initProfileModule();
+        if (instance) {
+            setTimeout(() => instance.open2FASetup(), 500);
+        }
+    }
+};
+
+window.generateProfileRecoveryCodes = function() {
+    if (window.ProfileModuleInstance) {
+        window.ProfileModuleInstance.generateRecoveryCodes();
+    } else {
+        const instance = initProfileModule();
+        if (instance) {
+            setTimeout(() => instance.generateRecoveryCodes(), 500);
+        }
+    }
+};
+
+window.disableProfile2FA = function() {
+    if (window.ProfileModuleInstance) {
+        window.ProfileModuleInstance.disable2FA();
+    } else {
+        const instance = initProfileModule();
+        if (instance) {
+            setTimeout(() => instance.disable2FA(), 500);
+        }
+    }
+};
 
 // ============================================================
 // 📌 EVENT LISTENERS
@@ -1495,9 +1876,11 @@ window.refreshStudentProfile = refreshStudentProfile;
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize after a short delay to ensure everything is loaded
     setTimeout(() => {
-        initProfileModule();
+        const instance = initProfileModule();
+        if (instance) {
+            window.ProfileModuleInstance = instance;
+        }
     }, 500);
 });
 
@@ -1505,7 +1888,10 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('userDataLoaded', () => {
     setTimeout(() => {
         if (!profileModule) {
-            initProfileModule();
+            const instance = initProfileModule();
+            if (instance) {
+                window.ProfileModuleInstance = instance;
+            }
         } else if (profileModule.userId) {
             profileModule.loadProfile();
         }
@@ -1518,7 +1904,10 @@ document.addEventListener('click', (e) => {
     if (profileTab) {
         setTimeout(() => {
             if (!profileModule) {
-                initProfileModule();
+                const instance = initProfileModule();
+                if (instance) {
+                    window.ProfileModuleInstance = instance;
+                }
             } else {
                 profileModule.loadProfile();
             }
@@ -1527,42 +1916,26 @@ document.addEventListener('click', (e) => {
 });
 
 // ============================================================
-// 🌐 EXPOSE GLOBALLY
+// 🔄 UPDATE 2FA ON PROFILE TAB VISIBILITY
 // ============================================================
 
-window.ProfileModule = ProfileModule;
-window.initProfileModule = initProfileModule;
-
-// StudentProfile API for external calls
-window.StudentProfile = {
-    refresh: () => {
-        if (profileModule) {
-            profileModule.refresh();
-        } else {
-            const instance = initProfileModule();
-            if (instance) {
-                setTimeout(() => instance.refresh(), 500);
-            }
+const profileObserver = new MutationObserver(() => {
+    const profileTab = document.getElementById('profile');
+    if (profileTab && profileTab.style.display !== 'none') {
+        if (window.ProfileModuleInstance) {
+            window.ProfileModuleInstance.update2FAUI();
         }
-    },
-    load: () => {
-        if (profileModule) {
-            profileModule.loadProfile();
-        } else {
-            const instance = initProfileModule();
-            if (instance) {
-                setTimeout(() => instance.loadProfile(), 500);
-            }
-        }
-    },
-    getPhotoUrl: (profile) => {
-        if (profileModule) {
-            return profileModule.getPhotoUrl(profile);
-        }
-        return null;
     }
-};
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const profileTab = document.getElementById('profile');
+    if (profileTab) {
+        profileObserver.observe(profileTab, { attributes: true, attributeFilter: ['style'] });
+    }
+});
 
 console.log('✅ ProfileModule loaded with editable name and phone fields');
 console.log('📸 Photo handling fixed - uses user-documents bucket');
+console.log('🔐 2FA fully integrated with profile');
 console.log('🔄 Admin refresh available via refreshStudentProfile(userId)');
