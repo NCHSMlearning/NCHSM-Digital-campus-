@@ -564,81 +564,116 @@ class NurseIQModule {
         }
     }
     
-    // ============================================================
-    // 💾 SAVE TO DATABASE - FIXED
-    // ============================================================
-    async saveProgressToDatabase() {
-        if (!this.userId || this.userId.startsWith('anonymous_')) return;
-        if (this._isSaving) return;
+   // ============================================================
+// 💾 SAVE TO DATABASE - FIXED (no ON CONFLICT)
+// ============================================================
+async saveProgressToDatabase() {
+    if (!this.userId || this.userId.startsWith('anonymous_')) return;
+    if (this._isSaving) return;
+    
+    this._isSaving = true;
+    
+    try {
+        const supabase = this.getSupabaseClient();
+        if (!supabase) {
+            this._isSaving = false;
+            return;
+        }
         
-        this._isSaving = true;
+        // Count correct answers for points
+        let totalAnswered = 0;
+        let correctAnswers = 0;
         
-        try {
-            const supabase = this.getSupabaseClient();
-            if (!supabase) {
-                this._isSaving = false;
-                return;
+        Object.values(this.userTestAnswers).forEach(answer => {
+            if (answer && answer.answered) {
+                totalAnswered++;
+                if (answer.correct) correctAnswers++;
             }
-            
-            // Count correct answers for points
-            let totalAnswered = 0;
-            let correctAnswers = 0;
-            
-            Object.values(this.userTestAnswers).forEach(answer => {
-                if (answer && answer.answered) {
-                    totalAnswered++;
-                    if (answer.correct) correctAnswers++;
-                }
-            });
-            
-            const points = correctAnswers * 2;
-            
-            const progressData = {
-                version: this.progressVersion,
-                answers: this.userTestAnswers,
-                lastSaved: new Date().toISOString(),
-                stats: {
-                    totalAnswered,
-                    correctAnswers,
-                    points,
-                    accuracy: totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0
-                }
-            };
-            
-            // 1. Save to user_progress
-            const { error: progressError } = await supabase
-                .from('user_progress')
-                .upsert({
-                    user_id: this.userId,
-                    progress_data: progressData,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id' });
-            
-            if (progressError) {
-                console.error('❌ Error saving to user_progress:', progressError);
-            } else {
-                console.log('✅ Saved to user_progress');
+        });
+        
+        const points = correctAnswers * 2;
+        
+        const progressData = {
+            version: this.progressVersion,
+            answers: this.userTestAnswers,
+            lastSaved: new Date().toISOString(),
+            stats: {
+                totalAnswered,
+                correctAnswers,
+                points,
+                accuracy: totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0
             }
-            
-            // 2. Save/Update nurseiq_attempts
-            if (totalAnswered > 0) {
-                const { error: attemptsError } = await supabase
+        };
+        
+        // 1. Save to user_progress
+        const { error: progressError } = await supabase
+            .from('user_progress')
+            .upsert({
+                user_id: this.userId,
+                progress_data: progressData,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+        
+        if (progressError) {
+            console.error('❌ Error saving to user_progress:', progressError);
+        } else {
+            console.log('✅ Saved to user_progress');
+        }
+        
+        // 2. Save/Update nurseiq_attempts - FIXED: Check if record exists first
+        if (totalAnswered > 0) {
+            try {
+                // First check if a record exists for this student
+                const { data: existing, error: checkError } = await supabase
                     .from('nurseiq_attempts')
-                    .upsert({
-                        student_id: this.userId,
-                        score: correctAnswers,
-                        total_questions: totalAnswered,
-                        completed_at: new Date().toISOString()
-                    }, { onConflict: 'student_id' });
+                    .select('id')
+                    .eq('student_id', this.userId)
+                    .maybeSingle();
                 
-                if (attemptsError) {
-                    console.error('❌ Error saving to nurseiq_attempts:', attemptsError);
-                } else {
-                    console.log('✅ Saved to nurseiq_attempts');
+                if (checkError) {
+                    console.warn('⚠️ Error checking nurseiq_attempts:', checkError);
                 }
+                
+                if (existing) {
+                    // Update existing record
+                    const { error: updateError } = await supabase
+                        .from('nurseiq_attempts')
+                        .update({
+                            score: correctAnswers,
+                            total_questions: totalAnswered,
+                            completed_at: new Date().toISOString()
+                        })
+                        .eq('id', existing.id);
+                    
+                    if (updateError) {
+                        console.error('❌ Error updating nurseiq_attempts:', updateError);
+                    } else {
+                        console.log('✅ Updated nurseiq_attempts');
+                    }
+                } else {
+                    // Insert new record
+                    const { error: insertError } = await supabase
+                        .from('nurseiq_attempts')
+                        .insert([{
+                            student_id: this.userId,
+                            score: correctAnswers,
+                            total_questions: totalAnswered,
+                            completed_at: new Date().toISOString()
+                        }]);
+                    
+                    if (insertError) {
+                        console.error('❌ Error inserting nurseiq_attempts:', insertError);
+                    } else {
+                        console.log('✅ Inserted nurseiq_attempts');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error with nurseiq_attempts operation:', error);
             }
-            
-            // 3. Update consolidated_user_profiles_table
+        }
+        
+        // 3. Update consolidated_user_profiles_table
+        try {
             const { data: profile } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('login_count, gamification_points, attendance_points')
@@ -667,14 +702,16 @@ class NurseIQModule {
                     this._dbSaveAttempted = true;
                 }
             }
-            
         } catch (error) {
-            console.error('❌ Exception in saveProgressToDatabase:', error);
-        } finally {
-            this._isSaving = false;
+            console.error('❌ Error updating profile:', error);
         }
+        
+    } catch (error) {
+        console.error('❌ Exception in saveProgressToDatabase:', error);
+    } finally {
+        this._isSaving = false;
     }
-    
+}
     // ============================================================
     // 💰 CALCULATE NURSEIQ POINTS
     // ============================================================
