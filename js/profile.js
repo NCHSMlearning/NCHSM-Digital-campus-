@@ -1,6 +1,10 @@
 // ============================================================
-// 📋 PROFILE MODULE - COMPLETE VERSION
-// Matches the updated profile HTML section
+// 📋 PROFILE MODULE - COMPLETE FIXED VERSION
+// ✅ Photos stored in user-documents bucket
+// ✅ profile_photo_url and passport_url both updated
+// ✅ Works with admin approvals
+// ✅ Student sees their photo after registration
+// ✅ Admin sees updated photos
 // ============================================================
 
 class ProfileModule {
@@ -164,6 +168,19 @@ class ProfileModule {
                 }
             });
         }
+        
+        // Listen for profile updates from admin
+        document.addEventListener('profileUpdated', (event) => {
+            console.log('🔄 Profile updated by admin, reloading...');
+            this.loadProfile();
+            this.showStatus('Profile updated by admin!', 'success');
+        });
+        
+        // Listen for photo updates
+        document.addEventListener('photoUpdated', (event) => {
+            console.log('📸 Photo updated, reloading...');
+            this.loadProfilePhoto();
+        });
     }
     
     // ============================================================
@@ -362,24 +379,33 @@ class ProfileModule {
     }
     
     // ============================================================
-    // 🖼️ LOAD PROFILE PHOTO
+    // 🖼️ LOAD PROFILE PHOTO - FIXED
     // ============================================================
     
     async loadProfilePhoto() {
         if (!this.userProfile) return;
         
-        const photoUrl = this.userProfile.passport_url || this.userProfile.profile_photo_url;
+        // ✅ Check both fields
+        let photoUrl = this.userProfile.profile_photo_url || this.userProfile.passport_url || null;
+        
         let finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
             encodeURIComponent(this.userProfile.full_name || 'Student') + 
             '&background=4C1D95&color=fff&size=120';
         
         if (photoUrl) {
             try {
+                // ✅ If it's already a full URL, use it directly
                 if (photoUrl.startsWith('http')) {
                     finalPhotoSrc = photoUrl;
                 } else {
-                    const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
-                    finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/passports/${photoUrl}?t=${new Date().getTime()}`;
+                    // ✅ Construct full URL for 'user-documents' bucket
+                    const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+                    // If path starts with 'profiles/', keep it as is
+                    let fullPath = photoUrl;
+                    if (!photoUrl.startsWith('profiles/')) {
+                        fullPath = `profiles/${this.userId}/${photoUrl}`;
+                    }
+                    finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/user-documents/${fullPath}?t=${new Date().getTime()}`;
                 }
                 
                 // Test if image loads
@@ -401,6 +427,31 @@ class ProfileModule {
             this.passportPreview.src = finalPhotoSrc;
             this.passportPreview.alt = photoUrl ? 'Your passport photo' : 'Upload passport photo';
         }
+    }
+    
+    // ============================================================
+    // 📸 GET PHOTO URL - HELPER
+    // ============================================================
+    
+    getPhotoUrl(profile) {
+        if (!profile) return null;
+        
+        const photoPath = profile.profile_photo_url || profile.passport_url || null;
+        if (!photoPath) return null;
+        
+        // If it's already a full URL, return it
+        if (photoPath.startsWith('http')) {
+            return photoPath;
+        }
+        
+        // Otherwise construct from Supabase storage
+        const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        let fullPath = photoPath;
+        if (!photoPath.startsWith('profiles/')) {
+            // If it's just a filename, add the profiles folder
+            fullPath = `profiles/${this.userId}/${photoPath}`;
+        }
+        return `${supabaseUrl}/storage/v1/object/public/user-documents/${fullPath}`;
     }
     
     // ============================================================
@@ -525,6 +576,10 @@ class ProfileModule {
         return { valid: true };
     }
     
+    // ============================================================
+    // 📸 UPLOAD PASSPORT PHOTO - FIXED
+    // ============================================================
+    
     async uploadPassportPhoto() {
         const file = this.pendingPhotoFile;
         if (!file) return;
@@ -536,21 +591,29 @@ class ProfileModule {
             if (!supabase) throw new Error('No database connection');
             
             const fileExt = file.name.split('.').pop();
-            const filePath = `${this.userId}.${fileExt}`;
+            // ✅ Store in the correct path for the user-documents bucket
+            const filePath = `profiles/${this.userId}/photo.${fileExt}`;
             
+            // ✅ Upload to 'user-documents' bucket
             const { error: uploadError } = await supabase.storage
-                .from('passports')
-                .upload(filePath, file, { cacheControl: '3600', upsert: true, contentType: file.type });
+                .from('user-documents')
+                .upload(filePath, file, { 
+                    cacheControl: '3600', 
+                    upsert: true, 
+                    contentType: file.type 
+                });
             
             if (uploadError) throw uploadError;
             
-            const { data: urlData } = supabase.storage.from('passports').getPublicUrl(filePath);
+            // ✅ Update both fields for compatibility
+            const { data: urlData } = supabase.storage.from('user-documents').getPublicUrl(filePath);
             const publicUrl = urlData.publicUrl;
             
             const { error: updateError } = await supabase
                 .from('consolidated_user_profiles_table')
                 .update({ 
-                    passport_url: publicUrl, 
+                    profile_photo_url: filePath,  // ✅ Store the path
+                    passport_url: publicUrl,      // ✅ Also store full URL for compatibility
                     updated_at: new Date().toISOString()
                 })
                 .eq('user_id', this.userId);
@@ -560,6 +623,11 @@ class ProfileModule {
             this.showStatus('Photo uploaded successfully!', 'success');
             this.pendingPhotoFile = null;
             await this.loadProfile();
+            
+            // Dispatch event for admin to refresh
+            document.dispatchEvent(new CustomEvent('photoUpdated', { 
+                detail: { userId: this.userId }
+            }));
             
             setTimeout(() => {
                 if (this.profileStatus && this.profileStatus.textContent === 'Photo uploaded successfully!') {
@@ -999,6 +1067,7 @@ class ProfileModule {
             current_block: existingProfile?.current_block || this.userProfile?.current_block || null,
             intake_year: existingProfile?.intake_year || this.userProfile?.intake_year || null,
             intake_month: existingProfile?.intake_month || this.userProfile?.intake_month || null,
+            profile_photo_url: existingProfile?.profile_photo_url || this.userProfile?.profile_photo_url || null,
             passport_url: existingProfile?.passport_url || this.userProfile?.passport_url || null,
             doc_kcse: existingProfile?.doc_kcse || 'pending',
             doc_id: existingProfile?.doc_id || 'pending'
@@ -1025,6 +1094,11 @@ class ProfileModule {
         this.loadProfile();
         this.showStatus('Profile updated successfully!', 'success');
         this.updateUIState('view');
+        
+        // Dispatch event for admin to refresh
+        document.dispatchEvent(new CustomEvent('profileUpdated', { 
+            detail: { userId: this.userId }
+        }));
     }
     
     onSaveError(error) {
@@ -1348,6 +1422,21 @@ function initProfileModule() {
 }
 
 // ============================================================
+// 🔄 REFRESH PROFILE FROM ADMIN
+// ============================================================
+
+function refreshStudentProfile(userId) {
+    if (profileModule && profileModule.userId === userId) {
+        console.log('🔄 Refreshing profile for user:', userId);
+        profileModule.loadProfile();
+        profileModule.showStatus('Profile refreshed!', 'success');
+    }
+}
+
+// Expose to global scope
+window.refreshStudentProfile = refreshStudentProfile;
+
+// ============================================================
 // 📌 EVENT LISTENERS
 // ============================================================
 
@@ -1412,7 +1501,15 @@ window.StudentProfile = {
                 setTimeout(() => instance.loadProfile(), 500);
             }
         }
+    },
+    getPhotoUrl: (profile) => {
+        if (profileModule) {
+            return profileModule.getPhotoUrl(profile);
+        }
+        return null;
     }
 };
 
 console.log('✅ ProfileModule loaded with editable name and phone fields');
+console.log('📸 Photo handling fixed - uses user-documents bucket');
+console.log('🔄 Admin refresh available via refreshStudentProfile(userId)');
