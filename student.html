@@ -911,343 +911,323 @@
 
 </section>
 <!-- END NEWSLETTER TAB -->
-        <!-- ==================== PROFILE TAB - FULLY RESPONSIVE ==================== -->
-<section id="profile" class="tab-content" style="display: none; padding: 20px; max-width: 100%; overflow-x: hidden;">
+   <!-- ==================== PROFILE TAB - FULLY RESPONSIVE ==================== -->
+<section id="profile" class="tab-content" style="display: none; padding: 10px; max-width: 100%; overflow-x: hidden;">
 
-    <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
-    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-        <div>
-            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px; font-size: clamp(1.2rem, 2.5vw, 1.8rem);">
+    <!-- ========== HEADER ========== -->
+    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
+        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;">
+            <h2 style="color: white; margin: 0; font-weight: 700; font-size: 18px;">
                 <i class="fas fa-user" style="color: #FDB913;"></i> My Profile
             </h2>
-            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: clamp(12px, 1.2vw, 14px);">
-                <i class="fas fa-id-card"></i> View and manage your personal and academic information
+            <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 12px;">
+                <i class="fas fa-id-card"></i> View and manage your information
             </p>
-        </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <span style="background: #d1fae5; color: #059669; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                <i class="fas fa-circle" style="font-size: 8px; color: #059669;"></i> Active
-            </span>
-            <button onclick="window.StudentProfile?.refresh()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                <span style="background: #d1fae5; color: #059669; padding: 2px 12px; border-radius: 20px; font-size: 10px; font-weight: 600;">
+                    <i class="fas fa-circle" style="font-size: 6px;"></i> Active
+                </span>
+                <button onclick="window.StudentProfile?.refresh()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 4px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- ========== PROFILE STATUS ========== -->
-    <div id="profile-status" style="display: none; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;"></div>
+    <div id="profile-status" style="display: none; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 13px;"></div>
 
     <!-- ========== PROFILE FORM ========== -->
-    <form id="profile-form" novalidate style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #e5e7eb;">
+    <form id="profile-form" novalidate style="background: white; border-radius: 12px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid #e5e7eb;">
 
-        <!-- ===== PROFILE HEADER CARD ===== -->
-        <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 2px solid #f1f5f9; margin-bottom: 20px;">
+        <!-- ===== PROFILE HEADER ===== -->
+        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding-bottom: 15px; border-bottom: 2px solid #f1f5f9; margin-bottom: 15px;">
             
             <!-- Profile Photo -->
-            <div style="position: relative; flex-shrink: 0;">
-                <img id="passport-preview" src="https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=120" alt="Profile photo" 
-                    style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid #4C1D95; box-shadow: 0 4px 15px rgba(76,29,149,0.2); display: block;">
-                <label for="passport-file-input" style="position: absolute; bottom: 0; right: 0; background: #4C1D95; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid white; transition: all 0.2s; font-size: 14px;" 
-                    onmouseover="this.style.transform='scale(1.1)'" 
-                    onmouseout="this.style.transform='scale(1)'">
+            <div style="position: relative; margin-bottom: 10px;">
+                <img id="passport-preview" src="https://ui-avatars.com/api/?name=Student&background=4C1D95&color=fff&size=100" alt="Profile photo" 
+                    style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #4C1D95;">
+                <label for="passport-file-input" style="position: absolute; bottom: 0; right: 0; background: #4C1D95; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid white; font-size: 11px;">
                     <i class="fas fa-camera"></i>
                 </label>
                 <input type="file" id="passport-file-input" accept="image/*" style="display: none;">
             </div>
             
             <!-- User Info -->
-            <div style="flex: 1; min-width: 180px;">
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <h3 id="profile-name" style="color: #0A3D62; font-size: clamp(18px, 2vw, 20px); margin: 0;">Loading...</h3>
-                    <span style="background: #d1fae5; color: #059669; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">
-                        <i class="fas fa-check-circle"></i> Active
-                    </span>
-                </div>
-                <p style="color: #64748b; margin: 4px 0 8px 0; font-size: 14px;">
-                    <i class="fas fa-id-card" style="color: #4C1D95; width: 20px;"></i> <span id="profile-student-id">-</span>
+            <div>
+                <h3 id="profile-name" style="color: #0A3D62; font-size: 18px; margin: 0;">Loading...</h3>
+                <p style="color: #64748b; margin: 2px 0; font-size: 12px;">
+                    <i class="fas fa-id-card"></i> <span id="profile-student-id">-</span>
                 </p>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <span style="font-size: clamp(12px, 1vw, 13px); color: #475569; display: flex; align-items: center; gap: 4px;">
-                        <i class="fas fa-envelope" style="color: #4C1D95;"></i> <span id="profile-email">-</span>
-                    </span>
-                    <span style="font-size: clamp(12px, 1vw, 13px); color: #475569; display: flex; align-items: center; gap: 4px;">
-                        <i class="fas fa-phone" style="color: #4C1D95;"></i> <span id="profile-phone">-</span>
-                    </span>
-                    <span style="font-size: clamp(12px, 1vw, 13px); color: #475569; display: flex; align-items: center; gap: 4px;">
-                        <i class="fas fa-graduation-cap" style="color: #4C1D95;"></i> <span id="profile-program">-</span>
-                    </span>
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; font-size: 11px;">
+                    <span><i class="fas fa-envelope" style="color: #4C1D95;"></i> <span id="profile-email">-</span></span>
+                    <span><i class="fas fa-phone" style="color: #4C1D95;"></i> <span id="profile-phone">-</span></span>
+                    <span><i class="fas fa-graduation-cap" style="color: #4C1D95;"></i> <span id="profile-program">-</span></span>
                 </div>
             </div>
             
             <!-- Quick Stats -->
-            <div style="display: flex; gap: 20px; flex-shrink: 0; padding-left: 20px; border-left: 2px solid #e5e7eb;">
-                <div style="text-align: center; min-width: 50px;">
-                    <div style="font-size: clamp(18px, 2vw, 22px); font-weight: 800; color: #4C1D95;" id="profile-block-number">0</div>
-                    <div style="font-size: 11px; color: #94a3b8;">Block</div>
+            <div style="display: flex; gap: 15px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; width: 100%; justify-content: center;">
+                <div style="text-align: center;">
+                    <div style="font-size: 18px; font-weight: 800; color: #4C1D95;" id="profile-block-number">0</div>
+                    <div style="font-size: 9px; color: #94a3b8;">Block</div>
                 </div>
-                <div style="text-align: center; min-width: 50px;">
-                    <div style="font-size: clamp(18px, 2vw, 22px); font-weight: 800; color: #10b981;" id="profile-completed-blocks">0</div>
-                    <div style="font-size: 11px; color: #94a3b8;">Done</div>
+                <div style="text-align: center;">
+                    <div style="font-size: 18px; font-weight: 800; color: #10b981;" id="profile-completed-blocks">0</div>
+                    <div style="font-size: 9px; color: #94a3b8;">Done</div>
                 </div>
-                <div style="text-align: center; min-width: 50px;">
-                    <div style="font-size: clamp(18px, 2vw, 22px); font-weight: 800; color: #f59e0b;" id="profile-progress">0%</div>
-                    <div style="font-size: 11px; color: #94a3b8;">Progress</div>
+                <div style="text-align: center;">
+                    <div style="font-size: 18px; font-weight: 800; color: #f59e0b;" id="profile-progress">0%</div>
+                    <div style="font-size: 9px; color: #94a3b8;">Progress</div>
                 </div>
             </div>
         </div>
 
-        <!-- ===== TWO COLUMN LAYOUT - RESPONSIVE ===== -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-
-            <!-- ======================================== -->
-            <!-- LEFT COLUMN - FORM FIELDS -->
-            <!-- ======================================== -->
-            <div>
-
-                <!-- ===== PERSONAL INFORMATION ===== -->
-                <div style="margin-bottom: 20px;">
-                    <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(14px, 1.2vw, 15px); border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
-                        <i class="fas fa-user-circle" style="color: #FDB913;"></i> Personal Information
-                    </h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div style="grid-column: 1 / -1;">
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Full Name</label>
-                            <input type="text" id="profile-name-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Student ID</label>
-                            <input type="text" id="profile-student-id-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Email Address</label>
-                            <input type="email" id="profile-email-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Phone Number</label>
-                            <input type="tel" id="profile-phone-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Alternative Phone</label>
-                            <input type="tel" id="profile-alt-phone-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Date of Birth</label>
-                            <input type="date" id="profile-dob-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Gender</label>
-                            <select id="profile-gender-input" disabled style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                                <option value="">Select Gender</option>
-                                <option value="M">Male</option>
-                                <option value="F">Female</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">National ID / Passport</label>
-                            <input type="text" id="profile-national-id-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div style="grid-column: 1 / -1;">
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Physical Address</label>
-                            <input type="text" id="profile-address-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
+        <!-- ===== ACCORDION-STYLE SECTIONS FOR MOBILE ===== -->
+        
+        <!-- ===== SECTION 1: PERSONAL INFORMATION ===== -->
+        <details open style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-user-circle" style="color: #FDB913;"></i> Personal Information
+                <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">▼</span>
+            </summary>
+            <div style="padding: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="grid-column: 1 / -1;">
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Full Name</label>
+                        <input type="text" id="profile-name-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
                     </div>
-                </div>
-
-                <!-- ===== GUARDIAN INFORMATION ===== -->
-                <div style="margin-bottom: 20px;">
-                    <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(14px, 1.2vw, 15px); border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
-                        <i class="fas fa-users" style="color: #FDB913;"></i> Guardian Information
-                    </h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div style="grid-column: 1 / -1;">
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Parent/Guardian Name</label>
-                            <input type="text" id="profile-guardian-name-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div style="grid-column: 1 / -1;">
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Guardian Phone</label>
-                            <input type="tel" id="profile-guardian-phone-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ===== ACADEMIC INFORMATION ===== -->
-                <div style="margin-bottom: 20px;">
-                    <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(14px, 1.2vw, 15px); border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
-                        <i class="fas fa-graduation-cap" style="color: #FDB913;"></i> Academic Information
-                    </h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Program</label>
-                            <input type="text" id="profile-program-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Intake Year</label>
-                            <input type="text" id="profile-intake-year-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Intake Month</label>
-                            <input type="text" id="profile-intake-month-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Current Block</label>
-                            <input type="text" id="profile-block-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ===== ACADEMIC PROGRESS ===== -->
-                <div style="margin-bottom: 20px;">
-                    <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(14px, 1.2vw, 15px); border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
-                        <i class="fas fa-chart-line" style="color: #FDB913;"></i> Academic Progress
-                    </h4>
-                    <div style="background: #f8fafc; border-radius: 8px; padding: 16px; border: 1px solid #e2e8f0;">
-                        <div style="margin-bottom: 12px;">
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 8px;">Progression Timeline</label>
-                            <div id="block-timeline-profile" style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                <!-- Dynamically populated -->
-                            </div>
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 8px;">Overall Progress</label>
-                            <div style="background: white; border-radius: 8px; overflow: hidden; height: 24px; border: 1px solid #e2e8f0;">
-                                <div id="block-progress-fill" style="height: 100%; background: linear-gradient(90deg, #4C1D95, #7c3aed); width: 0%; transition: width 0.5s ease;"></div>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-                                <span id="block-progress-text" style="font-size: clamp(12px, 1vw, 13px); color: #475569; font-weight: 600;">0% Complete</span>
-                                <span id="current-block-status" style="font-size: clamp(12px, 1vw, 13px); color: #64748b;">Current: Not Set</span>
-                            </div>
-                        </div>
-                        <div style="margin-top: 12px;">
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 8px;">Completed Blocks</label>
-                            <div id="completed-blocks" style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                <span style="background: #e2e8f0; color: #64748b; padding: 4px 12px; border-radius: 12px; font-size: clamp(11px, 0.9vw, 12px);">None yet</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ======================================== -->
-            <!-- RIGHT COLUMN - DOCUMENTS & SECURITY -->
-            <!-- ======================================== -->
-            <div>
-
-                <!-- ===== DOCUMENT UPLOAD CARDS ===== -->
-                <div style="background: #f8fafc; border-radius: 8px; padding: 16px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
-                    <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(14px, 1.2vw, 15px); border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
-                        <i class="fas fa-file-upload" style="color: #FDB913;"></i> Upload Documents
-                    </h4>
-                    
-                    <!-- KCSE Certificate -->
-                    <div style="margin-bottom: 12px; padding: 12px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #1e293b;">📄 KCSE Certificate</span>
-                            <span id="doc-kcse-badge" style="background: #fef3c7; color: #92400e; padding: 2px 12px; border-radius: 12px; font-size: 11px;">Pending</span>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <input type="file" id="doc-kcse-input" accept=".pdf,.jpg,.png,.jpeg" style="display: none;">
-                            <button type="button" onclick="document.getElementById('doc-kcse-input').click()" style="background: #4C1D95; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: clamp(11px, 0.9vw, 12px); transition: all 0.3s ease;" onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
-                                <i class="fas fa-upload"></i> Upload
-                            </button>
-                            <span id="doc-kcse-filename" style="font-size: clamp(11px, 0.9vw, 12px); color: #94a3b8;">No file selected</span>
-                        </div>
-                    </div>
-                    
-                    <!-- ID / Passport -->
-                    <div style="padding: 12px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #1e293b;">🪪 ID / Passport</span>
-                            <span id="doc-id-badge" style="background: #fef3c7; color: #92400e; padding: 2px 12px; border-radius: 12px; font-size: 11px;">Pending</span>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <input type="file" id="doc-id-input" accept=".pdf,.jpg,.png,.jpeg" style="display: none;">
-                            <button type="button" onclick="document.getElementById('doc-id-input').click()" style="background: #4C1D95; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: clamp(11px, 0.9vw, 12px); transition: all 0.3s ease;" onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
-                                <i class="fas fa-upload"></i> Upload
-                            </button>
-                            <span id="doc-id-filename" style="font-size: clamp(11px, 0.9vw, 12px); color: #94a3b8;">No file selected</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ===== SECURITY SETTINGS - WITH 2FA ===== -->
-                <div style="background: #f8fafc; border-radius: 8px; padding: 16px; border: 1px solid #e2e8f0;" class="profile-security-section">
-                    <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(14px, 1.2vw, 15px); border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
-                        <i class="fas fa-lock" style="color: #FDB913;"></i> Security Settings
-                    </h4>
-                    
-                    <!-- ===== PASSWORD CHANGE ===== -->
-                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Current Password</label>
-                            <input type="password" id="current-password" placeholder="Enter current password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">New Password</label>
-                            <input type="password" id="new-password" placeholder="Enter new password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                        </div>
-                        <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Confirm New Password</label>
-                            <input type="password" id="confirm-password" placeholder="Confirm new password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                        </div>
-                        <button type="button" id="change-password-btn" style="background: #4C1D95; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; font-size: clamp(13px, 1vw, 14px); transition: all 0.3s ease;" onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
-                            <i class="fas fa-key"></i> Change Password
-                        </button>
-                        <div id="password-feedback" style="display: none; padding: 8px 12px; border-radius: 6px; font-size: clamp(12px, 1vw, 13px);"></div>
-                    </div>
-                    
-                    <!-- ===== DIVIDER ===== -->
-                    <div style="border-top: 2px dashed #e5e7eb; margin: 12px 0 16px 0;"></div>
-                    
-                    <!-- ===== TWO-FACTOR AUTHENTICATION ===== -->
                     <div>
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <i class="fas fa-shield-alt" style="color: #4C1D95; font-size: clamp(16px, 1.2vw, 18px);"></i>
-                                <div>
-                                    <h5 style="margin: 0; color: #0A3D62; font-size: clamp(13px, 1vw, 14px); font-weight: 600;">Two-Factor Authentication</h5>
-                                    <p style="margin: 0; font-size: clamp(11px, 0.9vw, 12px); color: #64748B;">Add an extra layer of security to your account</p>
-                                </div>
-                            </div>
-                            <div id="profile2FAStatus">
-                                <span id="profile2FABadge" style="padding: 4px 14px; border-radius: 20px; font-size: clamp(11px, 0.9vw, 12px); font-weight: 600; background: #fef3c7; color: #92400e; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-exclamation-triangle" style="font-size: 11px;"></i> Not Enabled
-                                </span>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Student ID</label>
+                        <input type="text" id="profile-student-id-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Email</label>
+                        <input type="email" id="profile-email-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Phone</label>
+                        <input type="tel" id="profile-phone-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Alt Phone</label>
+                        <input type="tel" id="profile-alt-phone-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Date of Birth</label>
+                        <input type="date" id="profile-dob-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Gender</label>
+                        <select id="profile-gender-input" disabled style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                            <option value="">Select</option>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">National ID</label>
+                        <input type="text" id="profile-national-id-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Address</label>
+                        <input type="text" id="profile-address-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- ===== SECTION 2: GUARDIAN INFORMATION ===== -->
+        <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-users" style="color: #FDB913;"></i> Guardian Information
+                <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">▼</span>
+            </summary>
+            <div style="padding: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="grid-column: 1 / -1;">
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Guardian Name</label>
+                        <input type="text" id="profile-guardian-name-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Guardian Phone</label>
+                        <input type="tel" id="profile-guardian-phone-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- ===== SECTION 3: ACADEMIC INFORMATION ===== -->
+        <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-graduation-cap" style="color: #FDB913;"></i> Academic Information
+                <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">▼</span>
+            </summary>
+            <div style="padding: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Program</label>
+                        <input type="text" id="profile-program-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Intake Year</label>
+                        <input type="text" id="profile-intake-year-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Intake Month</label>
+                        <input type="text" id="profile-intake-month-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Current Block</label>
+                        <input type="text" id="profile-block-input" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- ===== SECTION 4: ACADEMIC PROGRESS ===== -->
+        <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-chart-line" style="color: #FDB913;"></i> Academic Progress
+                <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">▼</span>
+            </summary>
+            <div style="padding: 12px;">
+                <div style="background: #f8fafc; border-radius: 6px; padding: 12px; border: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Progression Timeline</label>
+                        <div id="block-timeline-profile" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;"></div>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Overall Progress</label>
+                        <div style="background: white; border-radius: 6px; overflow: hidden; height: 18px; border: 1px solid #e2e8f0; margin-top: 4px;">
+                            <div id="block-progress-fill" style="height: 100%; background: linear-gradient(90deg, #4C1D95, #7c3aed); width: 0%; transition: width 0.5s ease;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 3px;">
+                            <span id="block-progress-text" style="font-size: 11px; color: #475569; font-weight: 600;">0% Complete</span>
+                            <span id="current-block-status" style="font-size: 11px; color: #64748b;">Current: Not Set</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 8px;">
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Completed Blocks</label>
+                        <div id="completed-blocks" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
+                            <span style="background: #e2e8f0; color: #64748b; padding: 2px 10px; border-radius: 12px; font-size: 10px;">None yet</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- ===== SECTION 5: DOCUMENTS ===== -->
+        <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-file-upload" style="color: #FDB913;"></i> Upload Documents
+                <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">▼</span>
+            </summary>
+            <div style="padding: 12px;">
+                <div style="padding: 10px; background: white; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-weight: 600; font-size: 12px;">📄 KCSE Certificate</span>
+                        <span id="doc-kcse-badge" style="background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 12px; font-size: 10px;">Pending</span>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <input type="file" id="doc-kcse-input" accept=".pdf,.jpg,.png,.jpeg" style="display: none;">
+                        <button type="button" onclick="document.getElementById('doc-kcse-input').click()" style="background: #4C1D95; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                        <span id="doc-kcse-filename" style="font-size: 10px; color: #94a3b8;">No file selected</span>
+                    </div>
+                </div>
+                <div style="padding: 10px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-weight: 600; font-size: 12px;">🪪 ID / Passport</span>
+                        <span id="doc-id-badge" style="background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 12px; font-size: 10px;">Pending</span>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <input type="file" id="doc-id-input" accept=".pdf,.jpg,.png,.jpeg" style="display: none;">
+                        <button type="button" onclick="document.getElementById('doc-id-input').click()" style="background: #4C1D95; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                        <span id="doc-id-filename" style="font-size: 10px; color: #94a3b8;">No file selected</span>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- ===== SECTION 6: SECURITY ===== -->
+        <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-lock" style="color: #FDB913;"></i> Security Settings
+                <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">▼</span>
+            </summary>
+            <div style="padding: 12px;">
+                <!-- Password Change -->
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Current Password</label>
+                        <input type="password" id="current-password" placeholder="Enter current password" style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">New Password</label>
+                        <input type="password" id="new-password" placeholder="Enter new password" style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #475569; font-weight: 600;">Confirm New Password</label>
+                        <input type="password" id="confirm-password" placeholder="Confirm new password" style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white;">
+                    </div>
+                    <button type="button" id="change-password-btn" style="background: #4C1D95; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; font-size: 13px;">
+                        <i class="fas fa-key"></i> Change Password
+                    </button>
+                    <div id="password-feedback" style="display: none; padding: 6px 10px; border-radius: 6px; font-size: 12px;"></div>
+                </div>
+
+                <div style="border-top: 2px dashed #e5e7eb; margin: 10px 0;"></div>
+
+                <!-- ===== 2FA SECTION ===== -->
+                <div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-shield-alt" style="color: #4C1D95; font-size: 16px;"></i>
+                            <div>
+                                <h5 style="margin: 0; color: #0A3D62; font-size: 13px; font-weight: 600;">Two-Factor Authentication</h5>
+                                <p style="margin: 0; font-size: 10px; color: #64748B;">Add extra security</p>
                             </div>
                         </div>
+                        <div id="profile2FAStatus">
+                            <span id="profile2FABadge" style="padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #fef3c7; color: #92400e; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-exclamation-triangle" style="font-size: 9px;"></i> Not Enabled
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div id="profile2FADetails" style="background: #f1f5f9; border-radius: 6px; padding: 8px 12px; margin-top: 4px;">
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <span style="font-size: 12px; color: #475569;">
+                                <i class="fas fa-info-circle" style="color: #4C1D95;"></i> 
+                                <span id="profile2FAMessage">Secure your account with 2FA using Google Authenticator</span>
+                            </span>
+                            <button id="profileEnable2FA" 
+                                    onclick="window.openProfile2FASetup()" 
+                                    style="padding: 6px 12px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                <i class="fas fa-shield-alt"></i> 
+                                <span id="profile2FABtnText">Enable 2FA</span>
+                            </button>
+                        </div>
+                        <div id="profile2FAStatusMsg" style="margin-top: 4px; font-size: 11px; color: #94a3b8; display: none;"></div>
                         
-                        <div id="profile2FADetails" style="background: #f1f5f9; border-radius: 8px; padding: 12px 16px; margin-top: 6px;">
-                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                                <div style="flex: 1;">
-                                    <span style="font-size: clamp(12px, 1vw, 13px); color: #475569;">
-                                        <i class="fas fa-info-circle" style="color: #4C1D95;"></i> 
-                                        <span id="profile2FAMessage">Secure your account with 2FA using Google Authenticator</span>
-                                    </span>
-                                </div>
-                                <button id="profileEnable2FA" 
-                                        onclick="window.openProfile2FASetup()" 
-                                        style="padding: 8px 20px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: clamp(12px, 1vw, 13px); transition: all 0.3s ease; white-space: nowrap; display: flex; align-items: center; gap: 6px;"
-                                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" 
-                                        onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                                    <i class="fas fa-shield-alt"></i> 
-                                    <span id="profile2FABtnText">Enable 2FA</span>
-                                </button>
-                            </div>
-                            <div id="profile2FAStatusMsg" style="margin-top: 6px; font-size: clamp(11px, 0.9vw, 12px); color: #94a3b8; display: none;"></div>
-                            
-                            <!-- Recovery Codes Section (shown when 2FA is enabled) -->
-                            <div id="profileRecoveryCodes" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
-                                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <!-- Recovery Codes -->
+                        <div id="profileRecoveryCodes" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-size: 12px; color: #475569;">
                                     <i class="fas fa-key" style="color: #f59e0b;"></i>
-                                    <span style="font-size: clamp(12px, 1vw, 13px); color: #475569;">
-                                        <strong>Recovery Codes:</strong> 
-                                        <span id="profileRecoveryCount">0</span> codes remaining
-                                    </span>
-                                    <button onclick="window.generateProfileRecoveryCodes()" style="padding: 4px 14px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: clamp(11px, 0.9vw, 12px); transition: all 0.3s ease;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f1f5f9'">
-                                        <i class="fas fa-redo-alt"></i> Generate New
+                                    <strong>Recovery Codes:</strong> 
+                                    <span id="profileRecoveryCount">0</span> remaining
+                                </span>
+                                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                                    <button onclick="window.generateProfileRecoveryCodes()" style="padding: 4px 10px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 4px; cursor: pointer; font-size: 10px;">
+                                        <i class="fas fa-redo-alt"></i> Generate
                                     </button>
-                                    <button onclick="window.disableProfile2FA()" style="padding: 4px 14px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer; font-size: clamp(11px, 0.9vw, 12px); transition: all 0.3s ease;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                                        <i class="fas fa-times-circle"></i> Disable 2FA
+                                    <button onclick="window.disableProfile2FA()" style="padding: 4px 10px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
+                                        <i class="fas fa-times-circle"></i> Disable
                                     </button>
                                 </div>
                             </div>
@@ -1255,196 +1235,27 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </details>
 
-        <!-- ===== FORM ACTIONS ===== -->
-        <div style="display: flex; gap: 10px; margin-top: 25px; padding-top: 18px; border-top: 2px solid #f1f5f9; flex-wrap: wrap;">
-            <button type="button" id="edit-profile-button" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; font-size: clamp(13px, 1vw, 14px); transition: all 0.3s ease;" 
-                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" 
-                onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+        <!-- ===== ACTION BUTTONS ===== -->
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 15px; padding-top: 15px; border-top: 2px solid #f1f5f9;">
+            <button type="button" id="edit-profile-button" style="width: 100%; padding: 10px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <i class="fas fa-edit"></i> Edit Profile
             </button>
-            <button type="submit" id="save-profile-button" style="display: none; background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; align-items: center; gap: 8px; font-size: clamp(13px, 1vw, 14px); transition: all 0.3s ease;" 
-                onmouseover="this.style.background='#059669'" 
-                onmouseout="this.style.background='#10b981'">
+            <button type="submit" id="save-profile-button" style="display: none; width: 100%; padding: 10px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <i class="fas fa-save"></i> Save Changes
             </button>
-            <button type="button" id="cancel-edit-button" style="display: none; background: transparent; color: #64748b; border: 2px solid #e2e8f0; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: clamp(13px, 1vw, 14px); transition: all 0.3s ease;" 
-                onmouseover="this.style.background='#f8fafc'" 
-                onmouseout="this.style.background='transparent'">
+            <button type="button" id="cancel-edit-button" style="display: none; width: 100%; padding: 10px; background: transparent; color: #64748b; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
                 Cancel
             </button>
         </div>
+        
+        <!-- Status Message -->
+        <div id="profile-status" style="display: none; margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 12px;"></div>
     </form>
 
 </section>
 <!-- END PROFILE -->
-
-<!-- ============================================================
-     📱 MOBILE RESPONSIVE CSS
-     ============================================================ -->
-<style>
-    @media (max-width: 768px) {
-        /* ===== PROFILE SECTION ===== */
-        #profile {
-            padding: 10px !important;
-        }
-        
-        /* ===== HEADER ===== */
-        #profile > div:first-child {
-            padding: 15px !important;
-            flex-direction: column !important;
-            align-items: stretch !important;
-            text-align: center !important;
-        }
-        
-        #profile > div:first-child > div {
-            text-align: center !important;
-        }
-        
-        #profile > div:first-child .header-actions {
-            justify-content: center !important;
-        }
-        
-        /* ===== PROFILE HEADER CARD ===== */
-        #profile .profile-header-card {
-            flex-direction: column !important;
-            align-items: center !important;
-            text-align: center !important;
-            padding-bottom: 15px !important;
-        }
-        
-        #profile .profile-header-card .profile-photo {
-            width: 80px !important;
-            height: 80px !important;
-        }
-        
-        #profile .profile-header-card .user-info {
-            text-align: center !important;
-            min-width: unset !important;
-        }
-        
-        #profile .profile-header-card .user-info .info-row {
-            justify-content: center !important;
-        }
-        
-        /* ===== QUICK STATS ===== */
-        #profile .quick-stats {
-            border-left: none !important;
-            padding-left: 0 !important;
-            padding-top: 15px !important;
-            border-top: 2px solid #e5e7eb !important;
-            justify-content: center !important;
-            width: 100% !important;
-        }
-        
-        /* ===== TWO COLUMN → ONE COLUMN ===== */
-        #profile .two-column-grid {
-            grid-template-columns: 1fr !important;
-            gap: 20px !important;
-        }
-        
-        /* ===== FORM FIELDS ===== */
-        #profile .form-grid {
-            grid-template-columns: 1fr !important;
-        }
-        
-        #profile .form-grid .full-width {
-            grid-column: 1 / -1 !important;
-        }
-        
-        /* ===== INPUT FIELDS ===== */
-        #profile input,
-        #profile select {
-            font-size: 14px !important;
-            padding: 10px !important;
-        }
-        
-        /* ===== BUTTONS ===== */
-        #profile .action-buttons {
-            flex-direction: column !important;
-        }
-        
-        #profile .action-buttons button {
-            width: 100% !important;
-            justify-content: center !important;
-        }
-        
-        /* ===== 2FA SECTION ===== */
-        #profile .profile-2fa-section .flex-row {
-            flex-direction: column !important;
-            align-items: stretch !important;
-        }
-        
-        #profile .profile-2fa-section .flex-row .btn-2fa {
-            width: 100% !important;
-            justify-content: center !important;
-        }
-        
-        /* ===== RECOVERY CODES ===== */
-        #profile .recovery-codes {
-            flex-direction: column !important;
-            align-items: stretch !important;
-        }
-        
-        #profile .recovery-codes button {
-            width: 100% !important;
-        }
-        
-        /* ===== DOCUMENT UPLOAD ===== */
-        #profile .document-upload .upload-row {
-            flex-direction: column !important;
-            align-items: stretch !important;
-        }
-        
-        #profile .document-upload .upload-row button {
-            width: 100% !important;
-        }
-    }
-
-    @media (max-width: 480px) {
-        /* ===== EXTRA SMALL SCREENS ===== */
-        #profile {
-            padding: 5px !important;
-        }
-        
-        #profile .profile-header-card .profile-photo {
-            width: 60px !important;
-            height: 60px !important;
-        }
-        
-        #profile .profile-header-card .user-info h3 {
-            font-size: 16px !important;
-        }
-        
-        #profile .quick-stats {
-            gap: 10px !important;
-        }
-        
-        #profile .quick-stats .stat-item {
-            min-width: 40px !important;
-        }
-        
-        #profile .quick-stats .stat-item .value {
-            font-size: 16px !important;
-        }
-        
-        /* ===== FORM ===== */
-        #profile-form {
-            padding: 12px !important;
-        }
-        
-        #profile-form .form-section {
-            padding: 10px !important;
-        }
-        
-        /* ===== 2FA BADGE ===== */
-        #profile .profile-2fa-section .badge {
-            font-size: 10px !important;
-            padding: 2px 10px !important;
-        }
-    }
-</style>
 <!-- ==================== CALENDAR TAB ==================== -->
 <section id="calendar" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
