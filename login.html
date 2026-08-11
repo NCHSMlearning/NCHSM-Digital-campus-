@@ -3,17 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NCHSM Digital Portal - Login</title>
+    <title>NCHSM Digital Portal - Secure Login</title>
+    
+    <!-- ========== SECURITY HEADERS ========== -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com https://unpkg.com https://www.gstatic.com https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: https://raw.githubusercontent.com https://www.gstatic.com https://img.icons8.com https://api.qrserver.com;
+        connect-src 'self' https://*.supabase.co https://api.brevo.com https://api.ipify.org https://api.pwnedpasswords.com;
+        frame-src https://accounts.google.com;
+        base-uri 'self';
+        form-action 'self';
+    ">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta name="csrf-token" content="">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
     
-    <!-- Preconnect for faster loading -->
+    <!-- Preconnect -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://accounts.google.com">
     
-    <!-- Preload background image -->
+    <!-- Preload background -->
     <link rel="preload" 
           as="image" 
           href="https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2026/02/IMG_20251219_080858_996-rotated.jpg">
@@ -21,73 +38,78 @@
     <!-- External CSS -->
     <link rel="stylesheet" href="login-styles.css">
     
+    <!-- TOTP Library for 2FA -->
+    <script src="https://cdn.jsdelivr.net/npm/otplib@12.0.1/otplib-browser.min.js"></script>
+    
     <!-- Feather Icons -->
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     
-    <!-- ✅ Google Identity Services - REQUIRED FOR GOOGLE AUTH -->
+    <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <!-- ✅ Google Identity Services - REQUIRED FOR GOOGLE AUTH -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-
-<!-- ✅ Handle Google Redirect Response -->
-<script>
-// This runs immediately when the page loads
-(function() {
-    console.log('🔍 Checking for Google redirect...');
     
-    // Check URL hash (fragment) for credential
-    if (window.location.hash && window.location.hash.includes('credential=')) {
-        console.log('🎯 Found credential in URL hash!');
-        const hash = window.location.hash;
-        const match = hash.match(/credential=([^&]+)/);
-        if (match) {
-            const credential = decodeURIComponent(match[1]);
-            console.log('📊 Credential found, length:', credential.length);
-            
-            // Store it temporarily
+    <!-- Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <script>
+    // ============================================
+    // GOOGLE REDIRECT HANDLER
+    // ============================================
+    (function() {
+        console.log('🔍 Checking for Google redirect...');
+        
+        // Check URL hash
+        if (window.location.hash && window.location.hash.includes('credential=')) {
+            const match = window.location.hash.match(/credential=([^&]+)/);
+            if (match) {
+                const credential = decodeURIComponent(match[1]);
+                sessionStorage.setItem('google_credential', credential);
+                
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                
+                window.dispatchEvent(new CustomEvent('googleCredentialReceived', {
+                    detail: { credential: credential }
+                }));
+            }
+        }
+        
+        // Check URL params
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('credential')) {
+            const credential = params.get('credential');
             sessionStorage.setItem('google_credential', credential);
             
-            // Clean the URL (remove the hash)
             if (window.history && window.history.replaceState) {
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
             
-            // Trigger login
             window.dispatchEvent(new CustomEvent('googleCredentialReceived', {
                 detail: { credential: credential }
             }));
         }
-    }
-    
-    // Check URL query params for credential
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('credential')) {
-        const credential = params.get('credential');
-        console.log('🎯 Found credential in URL params!');
-        sessionStorage.setItem('google_credential', credential);
         
-        // Clean the URL
-        if (window.history && window.history.replaceState) {
-            window.history.replaceState({}, document.title, window.location.pathname);
+        // Check for expired session
+        if (params.has('expired')) {
+            setTimeout(() => {
+                const errorMsg = document.getElementById('errorMsg');
+                if (errorMsg) {
+                    errorMsg.style.display = 'flex';
+                    errorMsg.querySelector('.error-text').textContent = 'Your session has expired. Please login again.';
+                }
+            }, 500);
         }
-        
-        window.dispatchEvent(new CustomEvent('googleCredentialReceived', {
-            detail: { credential: credential }
-        }));
-    }
-})();
-</script>
-    <!-- Supabase -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    })();
+    </script>
 </head>
 <body>
-    <!-- Skip to content link -->
+    <!-- Skip to content -->
     <a href="#main-content" class="skip-to-content">Skip to main content</a>
     
-    <!-- ===== PARTICLES BACKGROUND ===== -->
+    <!-- Particles Background -->
     <div class="particles" id="particles"></div>
     
-    <!-- ===== LOADING SKELETON ===== -->
+    <!-- Skeleton Loader -->
     <div class="skeleton-loader" id="skeletonLoader">
         <div class="skeleton-line"></div>
         <div class="skeleton-line"></div>
@@ -113,7 +135,7 @@
                     <p class="motto">"Excellence in Healthcare Education Since 1978"</p>
                 </div>
                 
-                <!-- Welcome Section -->
+                <!-- Welcome -->
                 <div class="welcome-section">
                     <h2>Welcome to NCHSM Digital Portal</h2>
                     <p class="tagline">Your gateway to excellence in healthcare education</p>
@@ -151,7 +173,7 @@
                     </div>
                 </div>
                 
-                <!-- Rotating Accreditation Badges -->
+                <!-- Accreditation -->
                 <div class="accreditation-scroll">
                     <div class="badge-track">
                         <span class="badge gold">✓ TVET Accredited</span>
@@ -163,7 +185,7 @@
                     </div>
                 </div>
                 
-                <!-- Stats with Animation -->
+                <!-- Stats -->
                 <div class="stats" id="statsSection">
                     <div class="stat">
                         <span class="number" data-target="2500">2,500+</span>
@@ -201,15 +223,12 @@
             <!-- ===== MAIN CONTENT ===== -->
             <main id="main-content" class="main-content">
                 <div class="login-card">
-                    <!-- ===== MAIN SITE BUTTON + THEME TOGGLE ===== -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 10px;">
-                        <!-- Main Site Button -->
-                        <a href="home.html" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: #0A3D62; color: #fff; border-radius: 9999px; text-decoration: none; font-weight: 600; font-size: 0.8rem; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(10, 61, 98, 0.2); border: none; cursor: pointer;">
-                            <i data-feather="home" style="width: 16px; height: 16px;"></i> Main Site
+                    <!-- Top Controls -->
+                    <div class="top-controls">
+                        <a href="home.html" class="main-site-btn">
+                            <i data-feather="home"></i> Main Site
                         </a>
-                        
-                        <!-- Theme Toggle -->
-                        <div class="theme-controls" style="position: static;">
+                        <div class="theme-controls">
                             <button id="themeToggle" class="theme-toggle-btn" aria-label="Toggle theme">
                                 <i data-feather="sun" id="themeIcon"></i>
                                 <span id="themeLabel">Light</span>
@@ -232,30 +251,36 @@
                         <span>Sign in to see your last login activity</span>
                     </div>
                     
-                    <!-- Attempts Remaining -->
-                    <div class="attempts-info" id="attemptsInfo">
+                    <!-- Attempts Info -->
+                    <div class="attempts-info" id="attemptsInfo" style="display:none;">
                         <i data-feather="alert-triangle"></i>
                         <span id="attemptsText">5 attempts remaining</span>
+                        <div class="attempts-bar">
+                            <div class="attempts-progress" id="attemptsProgress" style="width: 100%"></div>
+                        </div>
                     </div>
                     
                     <!-- Error Message -->
-                    <div id="errorMsg" class="error-message" role="alert" aria-live="assertive">
+                    <div id="errorMsg" class="error-message" role="alert" aria-live="assertive" style="display:none;">
                         <i data-feather="alert-circle" class="error-icon"></i>
                         <span class="error-text"></span>
                     </div>
                     
                     <!-- Success Message -->
-                    <div id="successMsg" class="success-message" role="status" aria-live="polite">
+                    <div id="successMsg" class="success-message" role="status" aria-live="polite" style="display:none;">
                         <i data-feather="check-circle" class="success-icon"></i>
                         <span class="success-text"></span>
                     </div>
                     
-                    <!-- Login Form -->
+                    <!-- ===== SECURE LOGIN FORM ===== -->
                     <form id="loginForm" class="login-form" novalidate>
+                        <!-- CSRF Token -->
+                        <input type="hidden" name="csrf_token" id="csrfToken" value="">
+                        
                         <!-- Email -->
                         <div class="form-group">
                             <label for="email" class="form-label">
-                                <i data-feather="mail" width="16" height="16"></i>
+                                <i data-feather="mail"></i>
                                 Email Address
                             </label>
                             <div class="input-wrapper">
@@ -266,15 +291,17 @@
                                        placeholder="student@nchsm.ac.ke" 
                                        required
                                        autocomplete="email"
-                                       aria-describedby="emailHelp">
+                                       aria-describedby="emailHelp"
+                                       maxlength="100"
+                                       pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$">
                             </div>
                             <small id="emailHelp" class="sr-only">Enter your college email address</small>
                         </div>
                         
-                        <!-- Password with Strength Meter -->
+                        <!-- Password -->
                         <div class="form-group">
                             <label for="password" class="form-label">
-                                <i data-feather="lock" width="16" height="16"></i>
+                                <i data-feather="lock"></i>
                                 Password
                             </label>
                             <div class="input-wrapper">
@@ -285,7 +312,9 @@
                                        placeholder="Enter your password" 
                                        required
                                        autocomplete="current-password"
-                                       aria-describedby="passwordHelp">
+                                       aria-describedby="passwordHelp"
+                                       maxlength="128"
+                                       minlength="8">
                                 <button type="button" 
                                         id="password-toggle-btn" 
                                         class="password-toggle"
@@ -296,11 +325,11 @@
                             </div>
                             <div class="password-strength">
                                 <div class="strength-bar">
-                                    <div class="strength-progress" id="strengthProgress"></div>
+                                    <div class="strength-progress" id="strengthProgress" style="width: 0%;"></div>
                                 </div>
                                 <span class="strength-text" id="strengthText">Enter a strong password</span>
                             </div>
-                            <small id="passwordHelp" class="sr-only">Enter your password</small>
+                            <small id="passwordHelp" class="sr-only">Enter your password (minimum 8 characters)</small>
                         </div>
                         
                         <!-- Options -->
@@ -312,20 +341,26 @@
                                 </div>
                                 <span class="tooltip" title="We'll keep you signed in for 30 days">ⓘ</span>
                             </div>
-                            <a href="forgot-password.html" 
-                               class="forgot-link"
-                               aria-label="Forgot password?">
+                            <a href="forgot-password.html" class="forgot-link" aria-label="Forgot password?">
                                 Forgot Password?
                             </a>
                         </div>
                         
-                        <!-- Login Button with Ripple -->
+                        <!-- Honeypot -->
+                        <div class="honeypot-container" style="position: absolute; left: -9999px; top: -9999px;">
+                            <label for="honeypot">Leave this empty</label>
+                            <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
+                        </div>
+                        
+                        <!-- Login Button -->
                         <button type="submit" 
                                 id="loginButton" 
                                 class="login-button"
-                                aria-live="polite">
+                                aria-live="polite"
+                                data-submit-count="0">
                             <span class="button-content">
                                 <span class="button-text">Sign In</span>
+                                <span class="spinner" style="display:none;">⏳</span>
                             </span>
                         </button>
                     </form>
@@ -337,15 +372,15 @@
                     
                     <!-- SSO Options -->
                     <div class="sso-options">
-                        <button class="sso-btn google" aria-label="Sign in with Google">
+                        <button class="sso-btn google" id="googleSignIn" aria-label="Sign in with Google">
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width="24" height="24">
                             <span>Google</span>
                         </button>
-                        <button class="sso-btn microsoft" aria-label="Sign in with Microsoft">
+                        <button class="sso-btn microsoft" id="microsoftSignIn" aria-label="Sign in with Microsoft">
                             <img src="https://img.icons8.com/color/48/000000/microsoft.png" alt="Microsoft" width="24" height="24">
                             <span>Microsoft</span>
                         </button>
-                        <button class="sso-btn apple" aria-label="Sign in with Apple">
+                        <button class="sso-btn apple" id="appleSignIn" aria-label="Sign in with Apple">
                             <i data-feather="apple"></i>
                             <span>Apple</span>
                         </button>
@@ -387,8 +422,8 @@
         </div>
     </div>
 
-    <!-- ===== 2FA MODAL ===== -->
-    <div class="modal-overlay" id="twoFactorModal">
+    <!-- ===== 2FA LOGIN MODAL ===== -->
+    <div class="modal-overlay" id="twoFactorModal" style="display:none;">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('twoFactorModal')">&times;</button>
             <div class="modal-header">
@@ -400,16 +435,16 @@
             </div>
             <div class="modal-body">
                 <div class="otp-input-group">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="0" autofocus>
-                    <input type="text" maxlength="1" class="otp-digit" data-index="1">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="2">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="3">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="4">
-                    <input type="text" maxlength="1" class="otp-digit" data-index="5">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="0" autofocus pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="1" pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="2" pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="3" pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="4" pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="5" pattern="[0-9]">
                 </div>
                 <div class="otp-actions">
-                    <button class="verify-otp btn-primary">Verify Code</button>
-                    <button class="resend-otp btn-secondary">Resend Code</button>
+                    <button class="verify-otp btn-primary" id="verifyOTP">Verify Code</button>
+                    <button class="resend-otp btn-secondary" id="resendOTP">Resend Code</button>
                 </div>
                 <div class="otp-help">
                     <span>Didn't receive code? <a href="#" onclick="resendOTP()">Resend</a></span>
@@ -418,8 +453,57 @@
         </div>
     </div>
 
+    <!-- ===== 2FA SETUP MODAL ===== -->
+    <div class="modal-overlay" id="twoFactorSetupModal" style="display:none;">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('twoFactorSetupModal')">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <i data-feather="shield"></i>
+                </div>
+                <h2 class="modal-title">🔐 Setup Two-Factor Authentication</h2>
+                <p class="modal-subtitle">Scan the QR code with your authenticator app</p>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center;">
+                    <!-- QR Code -->
+                    <div style="background: #fff; padding: 20px; border-radius: 12px; display: inline-block; margin-bottom: 15px;">
+                        <img id="qrCodeImage" src="" alt="QR Code" style="width: 200px; height: 200px;">
+                    </div>
+                    
+                    <!-- Secret Key -->
+                    <div style="margin: 15px 0;">
+                        <p style="font-size: 0.85rem; opacity: 0.7;">Or enter this code manually:</p>
+                        <div style="background: #f0f4f8; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 1.2rem; letter-spacing: 2px;">
+                            <code id="secretKey">XXXX XXXX XXXX XXXX</code>
+                        </div>
+                        <button onclick="copySecret()" style="margin-top: 8px; padding: 6px 16px; border: none; border-radius: 6px; background: #0A3D62; color: #fff; cursor: pointer; font-size: 0.85rem;">
+                            Copy Secret
+                        </button>
+                    </div>
+                    
+                    <!-- Verification -->
+                    <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                        <p style="font-size: 0.9rem;">Enter the 6-digit code from your authenticator app to verify:</p>
+                        <div style="display: flex; gap: 10px; justify-content: center; margin: 15px 0;">
+                            <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="0" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 1.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="1" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 1.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="2" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 1.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="3" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 1.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="4" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 1.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="5" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 1.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                        </div>
+                        <button onclick="verifyAndEnable2FA()" class="btn-primary" style="padding: 12px 40px; background: #0A3D62; color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1rem;">
+                            Verify & Enable 2FA
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== SESSION WARNING ===== -->
-    <div id="sessionWarning" class="session-warning">
+    <div id="sessionWarning" class="session-warning" style="display:none;">
         <div class="warning-content">
             <i data-feather="clock" class="warning-icon"></i>
             <span class="warning-text">
@@ -429,8 +513,7 @@
         </div>
     </div>
 
-    <!-- ===== EXTERNAL SCRIPTS ===== -->
-
+    <!-- ===== MAIN SECURITY SCRIPT ===== -->
     <script src="login-script.js"></script>
 </body>
 </html>
