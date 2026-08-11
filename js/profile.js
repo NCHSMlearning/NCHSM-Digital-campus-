@@ -325,109 +325,163 @@ class ProfileModule {
         }
     }
     
-    // ============================================================
-    // 📝 POPULATE PROFILE FORM
-    // ============================================================
+   // ============================================================
+// 📝 POPULATE PROFILE FORM - FIXED
+// ✅ Updates both display and input fields
+// ✅ Shows all data correctly
+// ============================================================
+
+populateProfileForm() {
+    if (!this.userProfile) return;
     
-    populateProfileForm() {
-        if (!this.userProfile) return;
-        
-        // Personal Information - EDITABLE
-        if (this.profileName) this.profileName.value = this.userProfile.full_name || '';
-        if (this.profileStudentId) this.profileStudentId.textContent = this.userProfile.student_id || this.userProfile.reg_no || '-';
-        if (this.profileEmail) this.profileEmail.textContent = this.userProfile.email || '-';
-        if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
-        if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';
-        
-        // Date of Birth
-        if (this.profileDob && this.userProfile.date_of_birth) {
-            const dob = new Date(this.userProfile.date_of_birth);
-            if (!isNaN(dob)) {
-                this.profileDob.value = dob.toISOString().split('T')[0];
-            }
-        } else if (this.profileDob) {
-            this.profileDob.value = '';
+    // ============================================
+    // 📊 UPDATE DISPLAY FIELDS (Header Section)
+    // ============================================
+    
+    // Profile Name (Display)
+    const nameDisplay = document.getElementById('profile-name');
+    if (nameDisplay) nameDisplay.textContent = this.userProfile.full_name || 'Loading...';
+    
+    // Student ID (Display)
+    const studentIdDisplay = document.getElementById('profile-student-id');
+    if (studentIdDisplay) studentIdDisplay.textContent = this.userProfile.student_id || this.userProfile.reg_no || '-';
+    
+    // Email (Display)
+    const emailDisplay = document.getElementById('profile-email');
+    if (emailDisplay) emailDisplay.textContent = this.userProfile.email || '-';
+    
+    // Phone (Display)
+    const phoneDisplay = document.getElementById('profile-phone');
+    if (phoneDisplay) phoneDisplay.textContent = this.userProfile.phone || this.userProfile.phone_number || '-';
+    
+    // Program (Display)
+    const programDisplay = document.getElementById('profile-program');
+    if (programDisplay) programDisplay.textContent = this.userProfile.program || '-';
+    
+    // ============================================
+    // 📝 FORM INPUTS (Editable fields)
+    // ============================================
+    
+    // Personal Information - EDITABLE
+    if (this.profileName) this.profileName.value = this.userProfile.full_name || '';
+    
+    // Student ID - Input (readonly)
+    if (this.profileStudentId) this.profileStudentId.value = this.userProfile.student_id || this.userProfile.reg_no || '';
+    
+    // Email - Input (readonly)
+    if (this.profileEmail) this.profileEmail.value = this.userProfile.email || '';
+    
+    // Phone - Input
+    if (this.profilePhone) this.profilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
+    if (this.profileAltPhone) this.profileAltPhone.value = this.userProfile.alt_phone || '';
+    
+    // Date of Birth
+    if (this.profileDob && this.userProfile.date_of_birth) {
+        const dob = new Date(this.userProfile.date_of_birth);
+        if (!isNaN(dob)) {
+            this.profileDob.value = dob.toISOString().split('T')[0];
         }
-        
-        // Gender
-        if (this.profileGender) {
-            this.profileGender.value = this.userProfile.gender || '';
-        }
-        
-        // National ID
-        if (this.profileNationalId) this.profileNationalId.value = this.userProfile.national_id || '';
-        
-        // Address
-        if (this.profileAddress) this.profileAddress.value = this.userProfile.address || '';
-        
-        // Guardian Information
-        if (this.profileGuardianName) this.profileGuardianName.value = this.userProfile.guardian_name || '';
-        if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';
-        
-        // Academic Information - READ ONLY
-        if (this.profileProgram) this.profileProgram.value = this.userProfile.program || '';
-        if (this.profileBlock) {
-            const isTVET = this.isTVETStudent();
-            const blockOrTerm = isTVET ? this.userProfile.term || this.userProfile.block : this.userProfile.block || this.userProfile.current_block;
-            this.profileBlock.value = blockOrTerm || 'Introductory';
-        }
-        if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
-        if (this.profileIntakeMonth) this.profileIntakeMonth.value = this.userProfile.intake_month || '';
-        
-        // Update quick stats
-        this.updateQuickStats();
+    } else if (this.profileDob) {
+        this.profileDob.value = '';
     }
     
+    // Gender
+    if (this.profileGender) {
+        this.profileGender.value = this.userProfile.gender || '';
+    }
+    
+    // National ID
+    if (this.profileNationalId) this.profileNationalId.value = this.userProfile.national_id || '';
+    
+    // Address
+    if (this.profileAddress) this.profileAddress.value = this.userProfile.address || '';
+    
+    // Guardian Information
+    if (this.profileGuardianName) this.profileGuardianName.value = this.userProfile.guardian_name || '';
+    if (this.profileGuardianPhone) this.profileGuardianPhone.value = this.userProfile.guardian_phone || '';
+    
+    // ============================================
+    // 📚 ACADEMIC INFORMATION (Read-only)
+    // ============================================
+    
+    if (this.profileProgram) this.profileProgram.value = this.userProfile.program || '';
+    if (this.profileIntakeYear) this.profileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
+    if (this.profileIntakeMonth) this.profileIntakeMonth.value = this.userProfile.intake_month || '';
+    
+    if (this.profileBlock) {
+        const isTVET = this.isTVETStudent();
+        const blockOrTerm = isTVET ? this.userProfile.term || this.userProfile.block : this.userProfile.block || this.userProfile.current_block;
+        this.profileBlock.value = blockOrTerm || 'Introductory';
+    }
+    
+    // ============================================
+    // 📊 UPDATE QUICK STATS
+    // ============================================
+    
+    this.updateQuickStats();
+    
+    console.log('✅ Profile form populated with:', {
+        name: this.userProfile.full_name,
+        student_id: this.userProfile.student_id,
+        email: this.userProfile.email,
+        phone: this.userProfile.phone,
+        program: this.userProfile.program,
+        block: this.userProfile.block,
+        intake_year: this.userProfile.intake_year,
+        intake_month: this.userProfile.intake_month
+    });
+}
     // ============================================================
     // 🖼️ LOAD PROFILE PHOTO - FIXED
     // ============================================================
     
-    async loadProfilePhoto() {
-        if (!this.userProfile) return;
-        
-        // ✅ Check both fields
-        let photoUrl = this.userProfile.profile_photo_url || this.userProfile.passport_url || null;
-        
-        let finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
-            encodeURIComponent(this.userProfile.full_name || 'Student') + 
-            '&background=4C1D95&color=fff&size=120';
-        
-        if (photoUrl) {
-            try {
-                // ✅ If it's already a full URL, use it directly
-                if (photoUrl.startsWith('http')) {
-                    finalPhotoSrc = photoUrl;
-                } else {
-                    // ✅ Construct full URL for 'user-documents' bucket
-                    const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
-                    // If path starts with 'profiles/', keep it as is
-                    let fullPath = photoUrl;
-                    if (!photoUrl.startsWith('profiles/')) {
-                        fullPath = `profiles/${this.userId}/${photoUrl}`;
-                    }
-                    finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/user-documents/${fullPath}?t=${new Date().getTime()}`;
+   // ============================================================
+// 🖼️ LOAD PROFILE PHOTO - FIXED
+// ============================================================
+
+async loadProfilePhoto() {
+    if (!this.userProfile) return;
+    
+    // Check both fields
+    let photoUrl = this.userProfile.profile_photo_url || this.userProfile.passport_url || null;
+    
+    let finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
+        encodeURIComponent(this.userProfile.full_name || 'Student') + 
+        '&background=4C1D95&color=fff&size=120';
+    
+    if (photoUrl) {
+        try {
+            if (photoUrl.startsWith('http')) {
+                finalPhotoSrc = photoUrl;
+            } else {
+                const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+                let fullPath = photoUrl;
+                if (!photoUrl.startsWith('profiles/')) {
+                    fullPath = `profiles/${this.userId}/${photoUrl}`;
                 }
-                
-                // Test if image loads
-                await new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = resolve;
-                    img.onerror = reject;
-                    img.src = finalPhotoSrc;
-                });
-            } catch (error) {
-                console.warn('Photo load error:', error);
-                finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
-                    encodeURIComponent(this.userProfile.full_name || 'Student') + 
-                    '&background=4C1D95&color=fff&size=120';
+                finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/user-documents/${fullPath}?t=${new Date().getTime()}`;
             }
-        }
-        
-        if (this.passportPreview) {
-            this.passportPreview.src = finalPhotoSrc;
-            this.passportPreview.alt = photoUrl ? 'Your passport photo' : 'Upload passport photo';
+            
+            // Test if image loads
+            await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = finalPhotoSrc;
+            });
+        } catch (error) {
+            console.warn('Photo load error:', error);
+            finalPhotoSrc = 'https://ui-avatars.com/api/?name=' + 
+                encodeURIComponent(this.userProfile.full_name || 'Student') + 
+                '&background=4C1D95&color=fff&size=120';
         }
     }
+    
+    if (this.passportPreview) {
+        this.passportPreview.src = finalPhotoSrc;
+        this.passportPreview.alt = photoUrl ? 'Your passport photo' : 'Upload passport photo';
+    }
+}
     
     // ============================================================
     // 📸 GET PHOTO URL - HELPER
@@ -767,20 +821,19 @@ class ProfileModule {
         this.updateCompletedBlocks(completedBlocksCount, isTVET);
     }
     
-    updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent) {
-        if (this.profileBlockNumber) {
-            const blockNum = currentBlockNumber || this.getCurrentBlockNumber();
-            this.profileBlockNumber.textContent = blockNum;
-        }
-        if (this.profileCompletedBlocks) {
-            const completed = completedBlocksCount !== undefined ? completedBlocksCount : this.getCompletedBlocksCount();
-            this.profileCompletedBlocks.textContent = completed;
-        }
-        if (this.profileProgress) {
-            const progress = progressPercent !== undefined ? progressPercent : this.getProgressPercent();
-            this.profileProgress.textContent = `${progress}%`;
-        }
-    }
+   // ============================================================
+// 📊 UPDATE QUICK STATS - FIXED
+// ============================================================
+
+updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent) {
+    const blockNum = currentBlockNumber || this.getCurrentBlockNumber();
+    const completed = completedBlocksCount !== undefined ? completedBlocksCount : this.getCompletedBlocksCount();
+    const progress = progressPercent !== undefined ? progressPercent : this.getProgressPercent();
+    
+    if (this.profileBlockNumber) this.profileBlockNumber.textContent = blockNum;
+    if (this.profileCompletedBlocks) this.profileCompletedBlocks.textContent = completed;
+    if (this.profileProgress) this.profileProgress.textContent = `${progress}%`;
+}
     
     updateBlockTimeline(currentBlock, isTVET) {
         if (!this.blockTimeline) return;
