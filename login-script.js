@@ -60,7 +60,7 @@ window.NCHSMLogin = {
             timeWindow: 60 * 1000
         },
         csrfProtection: true,
-        enforce2FA: true // ✅ 2FA ENFORCED
+        enforce2FA: true
     },
 
     // ============================================
@@ -117,72 +117,32 @@ window.NCHSMLogin = {
         console.log('🛡️ Ultimate Security Edition + 2FA');
         console.log('🔐 Authenticator App Support Enabled');
         
-        // Hide console from hackers
         this.disableDeveloperTools();
         
-        // Initialize Feather Icons
         if (typeof feather !== 'undefined') {
             feather.replace();
         }
         
-        // Generate CSRF token
         this.generateCSRFToken();
-        
-        // Check for trusted device
         this.checkTrustedDevice();
-        
-        // Initialize password toggle
         this.initPasswordToggle();
-        
-        // Initialize password strength meter
         this.initPasswordStrength();
-        
-        // Initialize login form
         this.initLoginForm();
-        
-        // Initialize modals
         this.initModals();
-        
-        // Focus management
         this.initFocusManagement();
-        
-        // Virtual keyboard handler
         this.initVirtualKeyboardHandler();
-        
-        // Initialize Supabase
         this.initSupabase();
-        
-        // Load staff records
         this.loadStaffRecords();
-        
-        // Clear URL parameters
         this.clearURLParameters();
-        
-        // Add honeypot
         this.addHoneypot();
-        
-        // Start session monitoring
         this.startSessionMonitoring();
-        
-        // Network status
         this.initNetworkStatus();
-        
-        // OTP input handling
         this.initOTPInputs();
-        
-        // Ripple effect on buttons
         this.initRippleEffect();
-        
-        // Hide skeleton loader
         this.hideSkeletonLoader();
-        
-        // Initialize theme toggle
         this.initThemeToggle();
-        
-        // ✅ INITIALIZE GOOGLE LOGIN
         this.initGoogleLogin();
         
-        // Load Brevo API key
         this.loadBrevoApiKey().then(success => {
             if (success) {
                 console.log('✅ Brevo integration ready');
@@ -191,12 +151,53 @@ window.NCHSMLogin = {
             }
         });
         
-        // Mark as initialized
+        // ✅ Update 2FA button status after login
+        setTimeout(() => {
+            this.update2FAButtonStatus();
+        }, 1000);
+        
         this.state.isInitialized = true;
         
         console.log('✅ NCHSMLogin v5.0 initialized');
         console.log('🔐 2FA enforcement: ENABLED');
         console.log(`🕐 ${new Date().toLocaleString()}`);
+    },
+
+    // ============================================
+    // UPDATE 2FA BUTTON STATUS - ✅ NEW
+    // ============================================
+    update2FAButtonStatus: async function() {
+        try {
+            const userProfile = JSON.parse(localStorage.getItem('userProfile'));
+            if (!userProfile) return;
+            
+            const { data, error } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('two_factor_enabled')
+                .eq('user_id', userProfile.user_id)
+                .single();
+            
+            if (error) return;
+            
+            const enableBtn = document.getElementById('enable2FABtn');
+            if (enableBtn) {
+                if (data?.two_factor_enabled) {
+                    enableBtn.innerHTML = '✅ 2FA Enabled';
+                    enableBtn.style.background = '#10b981';
+                    enableBtn.disabled = true;
+                    enableBtn.style.cursor = 'default';
+                    enableBtn.style.opacity = '0.8';
+                } else {
+                    enableBtn.innerHTML = '🔐 Enable Two-Factor Authentication';
+                    enableBtn.style.background = 'linear-gradient(135deg, #0A3D62, #1a5a7a)';
+                    enableBtn.disabled = false;
+                    enableBtn.style.cursor = 'pointer';
+                    enableBtn.style.opacity = '1';
+                }
+            }
+        } catch (e) {
+            console.log('⚠️ Could not update 2FA button status');
+        }
     },
 
     // ============================================
@@ -286,7 +287,7 @@ window.NCHSMLogin = {
         try {
             const { data, error } = await this.supabase
                 .from('consolidated_user_profiles_table')
-                .select('two_factor_enabled')
+                .select('two_factor_enabled, two_factor_secret')
                 .eq('user_id', userId)
                 .single();
             
@@ -295,7 +296,7 @@ window.NCHSMLogin = {
                 return false;
             }
             
-            return data?.two_factor_enabled || false;
+            return data?.two_factor_enabled && data?.two_factor_secret ? true : false;
         } catch (e) {
             return false;
         }
@@ -305,19 +306,26 @@ window.NCHSMLogin = {
     generate2FASecret: async function(userId) {
         try {
             if (typeof otplib === 'undefined') {
-                console.warn('OTPLib not loaded - using fallback');
-                // Generate a random base32 string
                 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
                 let secret = '';
                 for (let i = 0; i < 32; i++) {
                     secret += chars.charAt(Math.floor(Math.random() * chars.length));
                 }
+                
+                await this.supabase
+                    .from('consolidated_user_profiles_table')
+                    .update({
+                        two_factor_secret: secret,
+                        two_factor_enabled: false,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', userId);
+                
                 return secret;
             }
             
             const secret = otplib.authenticator.generateSecret();
             
-            // Save to database
             await this.supabase
                 .from('consolidated_user_profiles_table')
                 .update({
@@ -358,8 +366,6 @@ window.NCHSMLogin = {
                 return otplib.authenticator.check(token, secret);
             }
             
-            // Fallback: Simple verification for testing
-            // In production, you should use a proper TOTP library
             console.warn('OTPLib not available - using basic verification');
             return token.length === 6 && /^\d{6}$/.test(token);
         } catch (error) {
@@ -371,7 +377,6 @@ window.NCHSMLogin = {
     // Show 2FA setup modal with QR code
     show2FASetup: async function(userId, email) {
         try {
-            // Generate secret if not exists
             let result = await this.get2FASecret(userId);
             let secret = result?.two_factor_secret;
             
@@ -383,26 +388,21 @@ window.NCHSMLogin = {
                 }
             }
             
-            // Generate QR code URL
             const appName = 'NCHSM Portal';
             const otpauth = `otpauth://totp/${encodeURIComponent(appName)}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent(appName)}`;
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauth)}`;
             
-            // Update modal
             const qrImage = document.getElementById('qrCodeImage');
             const secretKey = document.getElementById('secretKey');
             
             if (qrImage) qrImage.src = qrUrl;
             if (secretKey) {
-                // Format secret in groups of 4
                 const formatted = secret.replace(/(.{4})/g, '$1 ').trim();
                 secretKey.textContent = formatted;
             }
             
-            // Show modal
             this.openModal('twoFactorSetupModal');
             
-            // Store secret for verification
             sessionStorage.setItem('2fa_setup_secret', secret);
             sessionStorage.setItem('2fa_setup_user', userId);
             
@@ -428,12 +428,20 @@ window.NCHSMLogin = {
                     .from('consolidated_user_profiles_table')
                     .update({
                         two_factor_enabled: true,
+                        two_factor_verified: true,
+                        two_factor_setup_date: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     })
                     .eq('user_id', userId);
                 
                 this.showSuccess('✅ Two-factor authentication enabled!');
                 this.closeModal('twoFactorSetupModal');
+                
+                // Update the button
+                setTimeout(() => {
+                    this.update2FAButtonStatus();
+                }, 500);
+                
                 return true;
             } else {
                 this.showError('Invalid verification code. Please try again.');
@@ -450,14 +458,12 @@ window.NCHSMLogin = {
     show2FAModal: function() {
         this.openModal('twoFactorModal');
         
-        // Clear OTP inputs
         document.querySelectorAll('#twoFactorModal .otp-digit').forEach(input => {
             input.value = '';
         });
         const firstInput = document.querySelector('#twoFactorModal .otp-digit');
         if (firstInput) firstInput.focus();
         
-        // Set up verification
         const verifyBtn = document.getElementById('verifyOTP');
         if (verifyBtn) {
             verifyBtn.onclick = () => this.handle2FAVerification();
@@ -588,7 +594,6 @@ window.NCHSMLogin = {
         try {
             let userIdForSession = profileData.user_id;
             
-            // Get correct UUID for staff
             if (isStaff && typeof profileData.user_id === 'string' && profileData.user_id.startsWith('STAFF')) {
                 try {
                     const { data: profile, error } = await this.supabase
@@ -603,12 +608,10 @@ window.NCHSMLogin = {
                 } catch (e) {}
             }
             
-            // Update last login (skip for staff)
             if (!isStaff) {
                 await this.updateLastLogin(profileData.user_id, profileData.email);
             }
             
-            // Track session
             await this.trackUserSession(
                 userIdForSession,
                 profileData.email,
@@ -617,7 +620,6 @@ window.NCHSMLogin = {
                 isStaff
             );
             
-            // Store profile
             const safeProfile = {
                 user_id: userIdForSession,
                 staff_id: profileData.staff_id || profileData.id,
@@ -629,7 +631,6 @@ window.NCHSMLogin = {
             };
             localStorage.setItem('userProfile', JSON.stringify(safeProfile));
             
-            // Store session expiry
             if (!isStaff && this.supabase) {
                 try {
                     const { data: { session } } = await this.supabase.auth.getSession();
@@ -639,15 +640,17 @@ window.NCHSMLogin = {
                 } catch (err) {}
             }
             
-            // Update UI
             this.updateLastLoginInfo();
             
-            // Send notification for students
             if (profileData.role === 'student' && !isStaff) {
                 this.sendLoginNotification(profileData).catch(() => {});
             }
             
-            // Redirect
+            // ✅ Update 2FA button after login
+            setTimeout(() => {
+                this.update2FAButtonStatus();
+            }, 500);
+            
             this.redirectToDashboard(profileData);
             
         } catch (error) {
@@ -729,7 +732,6 @@ window.NCHSMLogin = {
             
             const device = this.parseUserAgent(navigator.userAgent);
             
-            // Simple email - you can expand this
             const htmlContent = `
                 <h2>🔐 New Login Alert</h2>
                 <p>Hello ${studentData.full_name || 'Student'},</p>
@@ -802,132 +804,113 @@ window.NCHSMLogin = {
         });
     },
     
-  // ============================================
-// 2FA OTP INPUT - BEST PRACTICE VERSION
-// ============================================
-initOTPInputs: function() {
-    // Handle all OTP inputs (login and setup)
-    document.querySelectorAll('.otp-digit').forEach((input, index, inputs) => {
-        
-        // --- INPUT EVENT: Auto-advance & Auto-verify ---
-        input.addEventListener('input', function(e) {
-            // Only allow digits
-            this.value = this.value.replace(/[^0-9]/g, '');
+    // ============================================
+    // 2FA OTP INPUT - BEST PRACTICE VERSION
+    // ============================================
+    initOTPInputs: function() {
+        document.querySelectorAll('.otp-digit').forEach((input, index, inputs) => {
             
-            // Auto-advance to next field
-            if (this.value.length === 1 && index < inputs.length - 1) {
-                inputs[index + 1].focus();
-            }
-            
-            // ✅ AUTO-VERIFY when all 6 digits are entered
-            const allFilled = Array.from(inputs).every(inp => inp.value.length === 1);
-            
-            if (allFilled) {
-                // Get the code
-                let code = '';
-                inputs.forEach(inp => code += inp.value);
-                console.log('📱 2FA Code entered:', code);
+            input.addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^0-9]/g, '');
                 
-                // Find which modal this belongs to
-                const modal = this.closest('.modal-overlay');
+                if (this.value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
                 
-                if (modal) {
-                    // Find the verify button
-                    let verifyBtn = modal.querySelector('#verifyOTP');
-                    if (!verifyBtn) verifyBtn = modal.querySelector('.verify-otp');
-                    if (!verifyBtn) verifyBtn = modal.querySelector('.btn-primary');
+                const allFilled = Array.from(inputs).every(inp => inp.value.length === 1);
+                
+                if (allFilled) {
+                    let code = '';
+                    inputs.forEach(inp => code += inp.value);
+                    console.log('📱 2FA Code entered:', code);
                     
-                    if (verifyBtn) {
-                        // Show loading state on button
-                        const originalText = verifyBtn.textContent;
-                        verifyBtn.textContent = '⏳ Verifying...';
-                        verifyBtn.disabled = true;
+                    const modal = this.closest('.modal-overlay');
+                    
+                    if (modal) {
+                        let verifyBtn = modal.querySelector('#verifyOTP');
+                        if (!verifyBtn) verifyBtn = modal.querySelector('.verify-otp');
+                        if (!verifyBtn) verifyBtn = modal.querySelector('.btn-primary');
                         
-                        // Auto-click after short delay (shows user feedback)
-                        setTimeout(() => {
-                            verifyBtn.click();
+                        if (verifyBtn) {
+                            const originalText = verifyBtn.textContent;
+                            verifyBtn.textContent = '⏳ Verifying...';
+                            verifyBtn.disabled = true;
                             
-                            // Reset button after click (will be reset by the verification function)
                             setTimeout(() => {
-                                verifyBtn.textContent = originalText;
-                                verifyBtn.disabled = false;
-                            }, 2000);
-                        }, 400);
+                                verifyBtn.click();
+                                
+                                setTimeout(() => {
+                                    verifyBtn.textContent = originalText;
+                                    verifyBtn.disabled = false;
+                                }, 2000);
+                            }, 400);
+                        }
                     }
                 }
-            }
-        });
-        
-        // --- KEYBOARD EVENT: Backspace & Enter ---
-        input.addEventListener('keydown', function(e) {
-            // Backspace goes to previous field
-            if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
-                inputs[index - 1].focus();
-                inputs[index - 1].value = '';
-            }
+            });
             
-            // Enter key submits
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const modal = this.closest('.modal-overlay');
-                if (modal) {
-                    const verifyBtn = modal.querySelector('#verifyOTP, .verify-otp, .btn-primary');
-                    if (verifyBtn) verifyBtn.click();
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
+                    inputs[index - 1].focus();
+                    inputs[index - 1].value = '';
                 }
-            }
-            
-            // Arrow keys navigation
-            if (e.key === 'ArrowRight' && index < inputs.length - 1) {
-                inputs[index + 1].focus();
-            }
-            if (e.key === 'ArrowLeft' && index > 0) {
-                inputs[index - 1].focus();
-            }
-        });
-        
-        // --- PASTE EVENT: Handle copied codes ---
-        input.addEventListener('paste', function(e) {
-            const paste = (e.clipboardData || window.clipboardData).getData('text');
-            
-            if (paste && paste.length === 6 && /^\d+$/.test(paste)) {
-                e.preventDefault();
                 
-                // Fill all inputs
-                inputs.forEach((inp, i) => {
-                    inp.value = paste[i] || '';
-                });
-                
-                // Auto-verify after paste
-                const modal = this.closest('.modal-overlay');
-                if (modal) {
-                    const verifyBtn = modal.querySelector('#verifyOTP, .verify-otp, .btn-primary');
-                    if (verifyBtn) {
-                        // Show feedback
-                        verifyBtn.textContent = '⏳ Verifying...';
-                        verifyBtn.disabled = true;
-                        
-                        setTimeout(() => {
-                            verifyBtn.click();
-                            setTimeout(() => {
-                                verifyBtn.textContent = 'Verify Code';
-                                verifyBtn.disabled = false;
-                            }, 2000);
-                        }, 400);
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const modal = this.closest('.modal-overlay');
+                    if (modal) {
+                        const verifyBtn = modal.querySelector('#verifyOTP, .verify-otp, .btn-primary');
+                        if (verifyBtn) verifyBtn.click();
                     }
                 }
-            }
+                
+                if (e.key === 'ArrowRight' && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+                if (e.key === 'ArrowLeft' && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+            
+            input.addEventListener('paste', function(e) {
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                
+                if (paste && paste.length === 6 && /^\d+$/.test(paste)) {
+                    e.preventDefault();
+                    
+                    inputs.forEach((inp, i) => {
+                        inp.value = paste[i] || '';
+                    });
+                    
+                    const modal = this.closest('.modal-overlay');
+                    if (modal) {
+                        const verifyBtn = modal.querySelector('#verifyOTP, .verify-otp, .btn-primary');
+                        if (verifyBtn) {
+                            verifyBtn.textContent = '⏳ Verifying...';
+                            verifyBtn.disabled = true;
+                            
+                            setTimeout(() => {
+                                verifyBtn.click();
+                                setTimeout(() => {
+                                    verifyBtn.textContent = 'Verify Code';
+                                    verifyBtn.disabled = false;
+                                }, 2000);
+                            }, 400);
+                        }
+                    }
+                }
+            });
+            
+            input.addEventListener('focus', function() {
+                if (this.value.length > 0) {
+                    this.select();
+                }
+            });
         });
         
-        // --- FOCUS EVENT: Auto-select text ---
-        input.addEventListener('focus', function() {
-            if (this.value.length > 0) {
-                this.select();
-            }
-        });
-    });
-    
-    console.log('✅ 2FA OTP Inputs initialized (Best Practice)');
-},
+        console.log('✅ 2FA OTP Inputs initialized (Best Practice)');
+    },
+
     // ============================================
     // LOAD STAFF RECORDS
     // ============================================
@@ -969,7 +952,6 @@ initOTPInputs: function() {
             }
         });
         
-        // Secure console
         const originalConsoleLog = console.log;
         console.log = function() {
             const args = Array.from(arguments);
@@ -1243,7 +1225,6 @@ initOTPInputs: function() {
             if (/[0-9]/.test(password)) strength++;
             if (/[^A-Za-z0-9]/.test(password)) strength++;
             
-            // Check for common passwords
             const commonPasswords = ['password', '123456', '12345678', 'qwerty', 'admin', 'letmein', 'password123'];
             if (commonPasswords.some(p => password.toLowerCase().includes(p))) {
                 strength = Math.max(0, strength - 2);
@@ -1547,14 +1528,12 @@ initOTPInputs: function() {
                 return null;
             }
             
-            // Check password (base64 for now - upgrade to bcrypt later)
             const storedPassword = atob(staff.password_hash);
             if (storedPassword !== password) {
                 console.log('❌ Password mismatch for:', identifier);
                 return null;
             }
             
-            // Get UUID from consolidated_user_profiles_table
             let uuid = staff.id;
             try {
                 const { data: profile } = await this.supabase
@@ -1601,7 +1580,6 @@ initOTPInputs: function() {
         let profileData = null;
         let isStaff = false;
         
-        // STEP 1: Check staff login
         const staffProfile = await this.verifyStaffLogin(identifier, password);
         if (staffProfile) {
             console.log('✅ Staff login successful:', staffProfile.email);
@@ -1610,7 +1588,6 @@ initOTPInputs: function() {
             return { profileData, isStaff };
         }
         
-        // STEP 2: Student login
         console.log('🔐 Checking student login for:', identifier);
         
         try {
@@ -1637,7 +1614,6 @@ initOTPInputs: function() {
             
             console.log('✅ Supabase Auth successful for:', identifier);
             
-            // Get profile
             const { data: profile, error: profileError } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('*')
@@ -1740,17 +1716,14 @@ initOTPInputs: function() {
             
             this.resetFailedAttempts();
             
-            // ✅ CHECK FOR 2FA
             const has2FA = await this.check2FARequirement(result.profileData.user_id);
             
             if (has2FA) {
-                // Store login data temporarily
                 sessionStorage.setItem('pending_login_data', JSON.stringify({
                     profile: result.profileData,
                     isStaff: result.isStaff
                 }));
                 
-                // Show 2FA modal
                 this.show2FAModal();
                 loginButton.disabled = false;
                 buttonText.textContent = 'Sign In';
@@ -1758,7 +1731,6 @@ initOTPInputs: function() {
                 return;
             }
             
-            // No 2FA required - complete login
             const secureToken = this.generateSecureToken();
             await this.completeLogin(result.profileData, secureToken, result.isStaff);
             
@@ -1768,9 +1740,7 @@ initOTPInputs: function() {
             if (this.supabase && !error.message.includes('staff')) {
                 try {
                     await this.supabase.auth.signOut();
-                } catch (signOutError) {
-                    // Silent fail
-                }
+                } catch (signOutError) {}
             }
             
             if (error.message.includes('busy') || error.message.includes('timeout')) {
@@ -2230,7 +2200,6 @@ initOTPInputs: function() {
             const isStaff = profile.staff_id ? true : false;
             const userId = profile.user_id;
             
-            // ✅ CHECK 2FA FOR GOOGLE LOGIN
             const has2FA = await this.check2FARequirement(userId);
             
             if (has2FA) {
@@ -2256,7 +2225,6 @@ initOTPInputs: function() {
                 return;
             }
             
-            // No 2FA - complete login
             const sessionToken = this.generateSecureToken();
             await this.trackUserSession(
                 userId,
@@ -2282,6 +2250,11 @@ initOTPInputs: function() {
             
             this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
             this.updateLastLoginInfo();
+            
+            // ✅ Update 2FA button after Google login
+            setTimeout(() => {
+                this.update2FAButtonStatus();
+            }, 500);
             
             setTimeout(() => this.redirectToDashboard(safeProfile), 1000);
             
@@ -2338,34 +2311,207 @@ window.resendOTP = () => {
     setTimeout(() => window.NCHSMLogin.clearSuccess(), 3000);
 };
 
-window.copySecret = () => {
-    const secretElement = document.getElementById('secretKey');
-    if (secretElement) {
-        const text = secretElement.textContent.replace(/\s/g, '');
-        navigator.clipboard.writeText(text);
-        window.NCHSMLogin.showSuccess('✅ Secret copied to clipboard!');
-        setTimeout(() => window.NCHSMLogin.clearSuccess(), 3000);
+// ============================================
+// GLOBAL 2FA FUNCTIONS - ✅ ADDED
+// ============================================
+
+window.showQRCode = async function() {
+    try {
+        const userProfile = JSON.parse(localStorage.getItem('userProfile'));
+        
+        if (!userProfile) {
+            const statusEl = document.getElementById('twoFAStatus');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#dc2626';
+                statusEl.textContent = '⚠️ Please login first to enable 2FA';
+                setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+            }
+            return;
+        }
+        
+        const { data, error } = await window.NCHSMLogin.supabase
+            .from('consolidated_user_profiles_table')
+            .select('two_factor_secret, two_factor_enabled')
+            .eq('user_id', userProfile.user_id)
+            .single();
+        
+        if (error) {
+            console.error('Error getting secret:', error);
+            alert('Error loading 2FA settings');
+            return;
+        }
+        
+        if (data?.two_factor_enabled) {
+            const statusEl = document.getElementById('twoFAStatus');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#10b981';
+                statusEl.textContent = '✅ 2FA is already enabled for your account!';
+                setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+            }
+            return;
+        }
+        
+        let secret = data?.two_factor_secret;
+        
+        if (!secret) {
+            const newSecret = await window.NCHSMLogin.generate2FASecret(userProfile.user_id);
+            if (!newSecret) {
+                alert('Error generating 2FA secret. Please try again.');
+                return;
+            }
+            secret = newSecret;
+        }
+        
+        const appName = 'NCHSM Portal';
+        const email = userProfile.email;
+        const otpauth = `otpauth://totp/${encodeURIComponent(appName)}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent(appName)}`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(otpauth)}`;
+        
+        document.getElementById('qrCodeImage').src = qrUrl;
+        document.getElementById('secretKey').textContent = secret.replace(/(.{4})/g, '$1 ').trim();
+        document.getElementById('twoFactorSetupModal').style.display = 'flex';
+        
+        sessionStorage.setItem('2fa_setup_secret', secret);
+        sessionStorage.setItem('2fa_setup_user', userProfile.user_id);
+        
+    } catch (error) {
+        console.error('Error showing QR code:', error);
+        alert('Error loading QR code. Please try again.');
     }
 };
 
-window.verifyAndEnable2FA = async () => {
+window.copySecret = function() {
+    const secretElement = document.getElementById('secretKey');
+    if (secretElement) {
+        const text = secretElement.textContent.replace(/\s/g, '');
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.querySelector('button[onclick="copySecret()"]');
+            if (btn) {
+                btn.textContent = '✅ Copied!';
+                btn.style.background = '#10b981';
+                setTimeout(() => {
+                    btn.textContent = '📋 Copy Secret Key';
+                    btn.style.background = '#0A3D62';
+                }, 2000);
+            }
+        }).catch(() => {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('✅ Secret copied to clipboard!');
+        });
+    }
+};
+
+window.verifyAndEnable2FA = async function() {
     const digits = document.querySelectorAll('#twoFactorSetupModal .setup-otp');
     let code = '';
     digits.forEach(input => code += input.value);
     
     if (code.length !== 6) {
-        window.NCHSMLogin.showError('Please enter all 6 digits');
+        const statusEl = document.getElementById('setupStatus');
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.style.color = '#dc2626';
+            statusEl.textContent = '⚠️ Please enter all 6 digits';
+            setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+        }
         return;
     }
     
     const userProfile = JSON.parse(localStorage.getItem('userProfile'));
     if (!userProfile) {
-        window.NCHSMLogin.showError('Please login first');
+        alert('Please login first');
         return;
     }
     
-    const userId = userProfile.user_id;
-    await window.NCHSMLogin.enable2FA(userId, code);
+    let secret = sessionStorage.getItem('2fa_setup_secret');
+    if (!secret) {
+        const { data, error } = await window.NCHSMLogin.supabase
+            .from('consolidated_user_profiles_table')
+            .select('two_factor_secret')
+            .eq('user_id', userProfile.user_id)
+            .single();
+        
+        if (error || !data?.two_factor_secret) {
+            alert('No 2FA secret found. Please try again.');
+            return;
+        }
+        secret = data.two_factor_secret;
+    }
+    
+    const verifyBtn = document.querySelector('#twoFactorSetupModal .btn-primary');
+    if (verifyBtn) {
+        verifyBtn.textContent = '⏳ Verifying...';
+        verifyBtn.disabled = true;
+    }
+    
+    const isValid = window.NCHSMLogin.verifyTOTP(secret, code);
+    
+    if (isValid) {
+        const { error } = await window.NCHSMLogin.supabase
+            .from('consolidated_user_profiles_table')
+            .update({
+                two_factor_enabled: true,
+                two_factor_verified: true,
+                two_factor_setup_date: new Date().toISOString()
+            })
+            .eq('user_id', userProfile.user_id);
+        
+        if (error) {
+            alert('Error enabling 2FA. Please try again.');
+            console.error('Error enabling 2FA:', error);
+            return;
+        }
+        
+        window.NCHSMLogin.closeModal('twoFactorSetupModal');
+        
+        const statusEl = document.getElementById('twoFAStatus');
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.style.color = '#10b981';
+            statusEl.textContent = '✅ 2FA enabled successfully! 🎉';
+            setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
+        }
+        
+        sessionStorage.removeItem('2fa_setup_secret');
+        sessionStorage.removeItem('2fa_setup_user');
+        
+        const enableBtn = document.getElementById('enable2FABtn');
+        if (enableBtn) {
+            enableBtn.innerHTML = '✅ 2FA Enabled';
+            enableBtn.style.background = '#10b981';
+            enableBtn.disabled = true;
+            enableBtn.style.cursor = 'default';
+            enableBtn.style.opacity = '0.8';
+        }
+        
+        alert('✅ Two-Factor Authentication enabled successfully!');
+        
+    } else {
+        const statusEl = document.getElementById('setupStatus');
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.style.color = '#dc2626';
+            statusEl.textContent = '❌ Invalid code. Please try again.';
+            setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+        }
+        
+        document.querySelectorAll('#twoFactorSetupModal .setup-otp').forEach(input => {
+            input.value = '';
+        });
+        document.querySelector('#twoFactorSetupModal .setup-otp')?.focus();
+    }
+    
+    if (verifyBtn) {
+        verifyBtn.textContent = '🔐 Verify & Enable 2FA';
+        verifyBtn.disabled = false;
+    }
 };
 
 // ============================================
