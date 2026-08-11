@@ -7,6 +7,26 @@
 // ✅ Admin sees updated photos
 // ✅ FULL 2FA INTEGRATION
 // ✅ FIXED: Student ID, Email, Phone display in form
+// ✅ FIXED: SUPABASE_URL error
+// ✅ FIXED: Mobile fields populated
+// ============================================================
+
+// ============================================================
+// 🔧 SUPABASE URL FALLBACK
+// ============================================================
+
+if (typeof SUPABASE_URL === 'undefined') {
+    window.SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+}
+
+if (typeof APP_CONFIG === 'undefined') {
+    window.APP_CONFIG = {
+        SUPABASE_URL: 'https://lwhtjozfsmbyihenfunw.supabase.co'
+    };
+}
+
+// ============================================================
+// 📋 PROFILE MODULE CLASS
 // ============================================================
 
 class ProfileModule {
@@ -339,212 +359,170 @@ class ProfileModule {
         }
     }
     
- // ============================================================
-// 📝 POPULATE PROFILE FORM - COMPLETE FIX (Desktop + Mobile)
-// ============================================================
-
-populateProfileForm() {
-    if (!this.userProfile) return;
-    
-    // ============================================
-    // 📊 HEADER DISPLAY FIELDS
-    // ============================================
-    
-    const nameDisplay = document.getElementById('profile-name');
-    if (nameDisplay) nameDisplay.textContent = this.userProfile.full_name || 'Loading...';
-    
-    const studentIdDisplay = document.getElementById('profile-student-id');
-    if (studentIdDisplay) studentIdDisplay.textContent = this.userProfile.student_id || this.userProfile.reg_no || '-';
-    
-    const emailDisplay = document.getElementById('profile-email');
-    if (emailDisplay) emailDisplay.textContent = this.userProfile.email || '-';
-    
-    const phoneDisplay = document.getElementById('profile-phone');
-    if (phoneDisplay) phoneDisplay.textContent = this.userProfile.phone || this.userProfile.phone_number || '-';
-    
-    const programDisplay = document.getElementById('profile-program');
-    if (programDisplay) programDisplay.textContent = this.userProfile.program || '-';
-    
-    // ============================================
-    // 📝 DESKTOP FORM INPUTS
-    // ============================================
-    
-    // 🔥 FIX: Directly set all input values
-    if (this.profileName) this.profileName.value = this.userProfile.full_name || '';
-    
-    // Student ID - Input
-    const studentIdInput = document.getElementById('profile-student-id-input');
-    if (studentIdInput) {
-        studentIdInput.value = this.userProfile.student_id || this.userProfile.reg_no || '';
-    }
-    
-    // Email - Input
-    const emailInput = document.getElementById('profile-email-input');
-    if (emailInput) {
-        emailInput.value = this.userProfile.email || '';
-    }
-    
-    // Phone - Input
-    const phoneInput = document.getElementById('profile-phone-input');
-    if (phoneInput) {
-        phoneInput.value = this.userProfile.phone || this.userProfile.phone_number || '';
-    }
-    
-    // Alt Phone
-    const altPhoneInput = document.getElementById('profile-alt-phone-input');
-    if (altPhoneInput) {
-        altPhoneInput.value = this.userProfile.alt_phone || '';
-    }
-    
-    // National ID
-    const nationalIdInput = document.getElementById('profile-national-id-input');
-    if (nationalIdInput) {
-        nationalIdInput.value = this.userProfile.national_id || '';
-    }
-    
-    // Address
-    const addressInput = document.getElementById('profile-address-input');
-    if (addressInput) {
-        addressInput.value = this.userProfile.address || '';
-    }
-    
-    // Guardian Name
-    const guardianNameInput = document.getElementById('profile-guardian-name-input');
-    if (guardianNameInput) {
-        guardianNameInput.value = this.userProfile.guardian_name || '';
-    }
-    
-    // Guardian Phone
-    const guardianPhoneInput = document.getElementById('profile-guardian-phone-input');
-    if (guardianPhoneInput) {
-        guardianPhoneInput.value = this.userProfile.guardian_phone || '';
-    }
-    
-    // Program
-    const programInput = document.getElementById('profile-program-input');
-    if (programInput) {
-        programInput.value = this.userProfile.program || '';
-    }
-    
-    // Block
-    const blockInput = document.getElementById('profile-block-input');
-    if (blockInput) {
-        const isTVET = this.isTVETStudent();
-        const blockOrTerm = isTVET ? this.userProfile.term || this.userProfile.block : this.userProfile.block || this.userProfile.current_block;
-        blockInput.value = blockOrTerm || 'Introductory';
-    }
-    
-    // Intake Year
-    const intakeYearInput = document.getElementById('profile-intake-year-input');
-    if (intakeYearInput) {
-        intakeYearInput.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
-    }
-    
-    // Intake Month
-    const intakeMonthInput = document.getElementById('profile-intake-month-input');
-    if (intakeMonthInput) {
-        intakeMonthInput.value = this.userProfile.intake_month || '';
-    }
-    
-    // Date of Birth
-    if (this.profileDob && this.userProfile.date_of_birth) {
-        const dob = new Date(this.userProfile.date_of_birth);
-        if (!isNaN(dob)) {
-            this.profileDob.value = dob.toISOString().split('T')[0];
-        }
-    } else if (this.profileDob) {
-        this.profileDob.value = '';
-    }
-    
-    // Gender
-    if (this.profileGender) {
-        this.profileGender.value = this.userProfile.gender || '';
-    }
-    
-    // ============================================
-    // 📱 MOBILE FORM INPUTS - 🔥 ADDED FIX
-    // ============================================
-    
-    // Personal Information - Mobile
-    const mobileName = document.getElementById('profile-name-input-mobile');
-    if (mobileName) mobileName.value = this.userProfile.full_name || '';
-    
-    const mobileStudentId = document.getElementById('profile-student-id-input-mobile');
-    if (mobileStudentId) mobileStudentId.value = this.userProfile.student_id || this.userProfile.reg_no || '';
-    
-    const mobileEmail = document.getElementById('profile-email-input-mobile');
-    if (mobileEmail) mobileEmail.value = this.userProfile.email || '';
-    
-    const mobilePhone = document.getElementById('profile-phone-input-mobile');
-    if (mobilePhone) mobilePhone.value = this.userProfile.phone || this.userProfile.phone_number || '';
-    
-    const mobileAltPhone = document.getElementById('profile-alt-phone-input-mobile');
-    if (mobileAltPhone) mobileAltPhone.value = this.userProfile.alt_phone || '';
-    
-    const mobileNationalId = document.getElementById('profile-national-id-input-mobile');
-    if (mobileNationalId) mobileNationalId.value = this.userProfile.national_id || '';
-    
-    const mobileAddress = document.getElementById('profile-address-input-mobile');
-    if (mobileAddress) mobileAddress.value = this.userProfile.address || '';
-    
-    const mobileGuardianName = document.getElementById('profile-guardian-name-input-mobile');
-    if (mobileGuardianName) mobileGuardianName.value = this.userProfile.guardian_name || '';
-    
-    const mobileGuardianPhone = document.getElementById('profile-guardian-phone-input-mobile');
-    if (mobileGuardianPhone) mobileGuardianPhone.value = this.userProfile.guardian_phone || '';
-    
-    const mobileProgram = document.getElementById('profile-program-input-mobile');
-    if (mobileProgram) mobileProgram.value = this.userProfile.program || '';
-    
-    const mobileBlock = document.getElementById('profile-block-input-mobile');
-    if (mobileBlock) {
-        const isTVET = this.isTVETStudent();
-        const blockOrTerm = isTVET ? this.userProfile.term || this.userProfile.block : this.userProfile.block || this.userProfile.current_block;
-        mobileBlock.value = blockOrTerm || 'Introductory';
-    }
-    
-    const mobileIntakeYear = document.getElementById('profile-intake-year-input-mobile');
-    if (mobileIntakeYear) mobileIntakeYear.value = this.userProfile.intake_year || this.userProfile.year_of_intake || '';
-    
-    const mobileIntakeMonth = document.getElementById('profile-intake-month-input-mobile');
-    if (mobileIntakeMonth) mobileIntakeMonth.value = this.userProfile.intake_month || '';
-    
-    // Date of Birth - Mobile
-    const mobileDob = document.getElementById('profile-dob-input-mobile');
-    if (mobileDob && this.userProfile.date_of_birth) {
-        const dob = new Date(this.userProfile.date_of_birth);
-        if (!isNaN(dob)) {
-            mobileDob.value = dob.toISOString().split('T')[0];
-        }
-    } else if (mobileDob) {
-        mobileDob.value = '';
-    }
-    
-    // Gender - Mobile
-    const mobileGender = document.getElementById('profile-gender-input-mobile');
-    if (mobileGender) {
-        mobileGender.value = this.userProfile.gender || '';
-    }
-    
-    // ============================================
-    // 📊 UPDATE QUICK STATS
-    // ============================================
-    
-    this.updateQuickStats();
-    
-    console.log('✅ Profile form populated with all data (Desktop + Mobile):', {
-        name: this.userProfile.full_name,
-        student_id: this.userProfile.student_id,
-        email: this.userProfile.email,
-        phone: this.userProfile.phone,
-        program: this.userProfile.program,
-        block: this.userProfile.block,
-        intake_year: this.userProfile.intake_year,
-        intake_month: this.userProfile.intake_month
-    });
-}
     // ============================================================
-    // 🖼️ LOAD PROFILE PHOTO - FIXED
+    // 📝 POPULATE PROFILE FORM - COMPLETE FIX (Desktop + Mobile)
+    // ============================================================
+    
+    populateProfileForm() {
+        if (!this.userProfile) return;
+        
+        const p = this.userProfile;
+        
+        // ============================================
+        // 📊 HEADER DISPLAY FIELDS
+        // ============================================
+        
+        const nameDisplay = document.getElementById('profile-name');
+        if (nameDisplay) nameDisplay.textContent = p.full_name || 'Loading...';
+        
+        const studentIdDisplay = document.getElementById('profile-student-id');
+        if (studentIdDisplay) studentIdDisplay.textContent = p.student_id || p.reg_no || '-';
+        
+        const emailDisplay = document.getElementById('profile-email');
+        if (emailDisplay) emailDisplay.textContent = p.email || '-';
+        
+        const phoneDisplay = document.getElementById('profile-phone');
+        if (phoneDisplay) phoneDisplay.textContent = p.phone || p.phone_number || '-';
+        
+        const programDisplay = document.getElementById('profile-program');
+        if (programDisplay) programDisplay.textContent = p.program || '-';
+        
+        // ============================================
+        // 📝 DESKTOP FORM INPUTS
+        // ============================================
+        
+        if (this.profileName) this.profileName.value = p.full_name || '';
+        
+        const studentIdInput = document.getElementById('profile-student-id-input');
+        if (studentIdInput) studentIdInput.value = p.student_id || p.reg_no || '';
+        
+        const emailInput = document.getElementById('profile-email-input');
+        if (emailInput) emailInput.value = p.email || '';
+        
+        const phoneInput = document.getElementById('profile-phone-input');
+        if (phoneInput) phoneInput.value = p.phone || p.phone_number || '';
+        
+        const altPhoneInput = document.getElementById('profile-alt-phone-input');
+        if (altPhoneInput) altPhoneInput.value = p.alt_phone || '';
+        
+        const nationalIdInput = document.getElementById('profile-national-id-input');
+        if (nationalIdInput) nationalIdInput.value = p.national_id || '';
+        
+        const addressInput = document.getElementById('profile-address-input');
+        if (addressInput) addressInput.value = p.address || '';
+        
+        const guardianNameInput = document.getElementById('profile-guardian-name-input');
+        if (guardianNameInput) guardianNameInput.value = p.guardian_name || '';
+        
+        const guardianPhoneInput = document.getElementById('profile-guardian-phone-input');
+        if (guardianPhoneInput) guardianPhoneInput.value = p.guardian_phone || '';
+        
+        const programInput = document.getElementById('profile-program-input');
+        if (programInput) programInput.value = p.program || '';
+        
+        const isTVET = this.isTVETStudent();
+        const blockOrTerm = isTVET ? p.term || p.block : p.block || p.current_block;
+        
+        const blockInput = document.getElementById('profile-block-input');
+        if (blockInput) blockInput.value = blockOrTerm || 'Introductory';
+        
+        const intakeYearInput = document.getElementById('profile-intake-year-input');
+        if (intakeYearInput) intakeYearInput.value = p.intake_year || p.year_of_intake || '';
+        
+        const intakeMonthInput = document.getElementById('profile-intake-month-input');
+        if (intakeMonthInput) intakeMonthInput.value = p.intake_month || '';
+        
+        if (this.profileDob && p.date_of_birth) {
+            const dob = new Date(p.date_of_birth);
+            if (!isNaN(dob)) {
+                this.profileDob.value = dob.toISOString().split('T')[0];
+            }
+        } else if (this.profileDob) {
+            this.profileDob.value = '';
+        }
+        
+        if (this.profileGender) {
+            this.profileGender.value = p.gender || '';
+        }
+        
+        // ============================================
+        // 📱 MOBILE FORM INPUTS
+        // ============================================
+        
+        const mobileName = document.getElementById('profile-name-input-mobile');
+        if (mobileName) mobileName.value = p.full_name || '';
+        
+        const mobileStudentId = document.getElementById('profile-student-id-input-mobile');
+        if (mobileStudentId) mobileStudentId.value = p.student_id || p.reg_no || '';
+        
+        const mobileEmail = document.getElementById('profile-email-input-mobile');
+        if (mobileEmail) mobileEmail.value = p.email || '';
+        
+        const mobilePhone = document.getElementById('profile-phone-input-mobile');
+        if (mobilePhone) mobilePhone.value = p.phone || p.phone_number || '';
+        
+        const mobileAltPhone = document.getElementById('profile-alt-phone-input-mobile');
+        if (mobileAltPhone) mobileAltPhone.value = p.alt_phone || '';
+        
+        const mobileNationalId = document.getElementById('profile-national-id-input-mobile');
+        if (mobileNationalId) mobileNationalId.value = p.national_id || '';
+        
+        const mobileAddress = document.getElementById('profile-address-input-mobile');
+        if (mobileAddress) mobileAddress.value = p.address || '';
+        
+        const mobileGuardianName = document.getElementById('profile-guardian-name-input-mobile');
+        if (mobileGuardianName) mobileGuardianName.value = p.guardian_name || '';
+        
+        const mobileGuardianPhone = document.getElementById('profile-guardian-phone-input-mobile');
+        if (mobileGuardianPhone) mobileGuardianPhone.value = p.guardian_phone || '';
+        
+        const mobileProgram = document.getElementById('profile-program-input-mobile');
+        if (mobileProgram) mobileProgram.value = p.program || '';
+        
+        const mobileBlock = document.getElementById('profile-block-input-mobile');
+        if (mobileBlock) mobileBlock.value = blockOrTerm || 'Introductory';
+        
+        const mobileIntakeYear = document.getElementById('profile-intake-year-input-mobile');
+        if (mobileIntakeYear) mobileIntakeYear.value = p.intake_year || p.year_of_intake || '';
+        
+        const mobileIntakeMonth = document.getElementById('profile-intake-month-input-mobile');
+        if (mobileIntakeMonth) mobileIntakeMonth.value = p.intake_month || '';
+        
+        const mobileDob = document.getElementById('profile-dob-input-mobile');
+        if (mobileDob && p.date_of_birth) {
+            const dob = new Date(p.date_of_birth);
+            if (!isNaN(dob)) {
+                mobileDob.value = dob.toISOString().split('T')[0];
+            }
+        } else if (mobileDob) {
+            mobileDob.value = '';
+        }
+        
+        const mobileGender = document.getElementById('profile-gender-input-mobile');
+        if (mobileGender) {
+            mobileGender.value = p.gender || '';
+        }
+        
+        // ============================================
+        // 📊 UPDATE QUICK STATS
+        // ============================================
+        
+        this.updateQuickStats();
+        
+        console.log('✅ Profile form populated with all data (Desktop + Mobile):', {
+            name: p.full_name,
+            student_id: p.student_id,
+            email: p.email,
+            phone: p.phone,
+            program: p.program,
+            block: p.block,
+            intake_year: p.intake_year,
+            intake_month: p.intake_month
+        });
+    }
+    
+    // ============================================================
+    // 🖼️ LOAD PROFILE PHOTO - FIXED (SUPABASE_URL)
     // ============================================================
     
     async loadProfilePhoto() {
@@ -561,11 +539,16 @@ populateProfileForm() {
                 if (photoUrl.startsWith('http')) {
                     finalPhotoSrc = photoUrl;
                 } else {
-                    const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+                    // ✅ FIX: Get Supabase URL from multiple sources
+                    const supabaseUrl = window.SUPABASE_URL || 
+                                       window.APP_CONFIG?.SUPABASE_URL || 
+                                       'https://lwhtjozfsmbyihenfunw.supabase.co';
+                    
                     let fullPath = photoUrl;
-                    if (!photoUrl.startsWith('profiles/')) {
+                    if (!photoUrl.includes('profiles/') && !photoUrl.includes('user-documents')) {
                         fullPath = `profiles/${this.userId}/${photoUrl}`;
                     }
+                    
                     finalPhotoSrc = `${supabaseUrl}/storage/v1/object/public/user-documents/${fullPath}?t=${new Date().getTime()}`;
                 }
                 
@@ -603,7 +586,10 @@ populateProfileForm() {
             return photoPath;
         }
         
-        const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const supabaseUrl = window.SUPABASE_URL || 
+                           window.APP_CONFIG?.SUPABASE_URL || 
+                           'https://lwhtjozfsmbyihenfunw.supabase.co';
+        
         let fullPath = photoPath;
         if (!photoPath.startsWith('profiles/')) {
             fullPath = `profiles/${this.userId}/${photoPath}`;
@@ -2066,7 +2052,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-console.log('✅ ProfileModule loaded with editable name and phone fields');
+console.log('✅ ProfileModule loaded with all fixes');
 console.log('📸 Photo handling fixed - uses user-documents bucket');
 console.log('🔐 2FA fully integrated with profile');
+console.log('📱 Mobile fields now populated');
 console.log('🔄 Admin refresh available via refreshStudentProfile(userId)');
