@@ -5651,11 +5651,19 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
 }
 
 // ============================================
-// SHOW APPROVAL MODAL - FIXED WITH DYNAMIC PROGRAMS
+// SHOW APPROVAL MODAL - AUTO-POPULATE USER DATA
 // ============================================
 
 function showApprovalModal(user) {
     console.log('📋 Showing approval modal for:', user.full_name);
+    console.log('📚 User data:', {
+        program: user.program,
+        block: user.block,
+        intake_year: user.intake_year,
+        intake_month: user.intake_month,
+        role: user.role,
+        status: user.status
+    });
     
     const existingModal = document.getElementById('approvalModal');
     if (existingModal) existingModal.remove();
@@ -5663,10 +5671,9 @@ function showApprovalModal(user) {
     const programType = getProgramType(user.program);
     const isTVET = programType === 'TVET';
     
-    // ✅ FIXED: Build program options dynamically from MASTER_PROGRAMS
+    // ✅ Build program options dynamically from MASTER_PROGRAMS
     let programOptions = '';
     
-    // Group programs by display category
     const groups = {};
     for (const [code, info] of Object.entries(MASTER_PROGRAMS)) {
         const key = info.display || info.category || 'Other';
@@ -5674,7 +5681,6 @@ function showApprovalModal(user) {
         groups[key].push({ code, ...info });
     }
     
-    // Define the order of groups
     const groupOrder = [
         '🎓 KRCHN Nursing',
         '🎯 TVET Diploma Programs',
@@ -5683,11 +5689,11 @@ function showApprovalModal(user) {
         '📊 Other TVET Programs'
     ];
     
-    // Build HTML
     for (const groupName of groupOrder) {
         if (groups[groupName] && groups[groupName].length > 0) {
             programOptions += `<optgroup label="${groupName}">`;
             groups[groupName].forEach(p => {
+                // ✅ AUTO-SELECT the user's program
                 const selected = user.program === p.code ? 'selected' : '';
                 programOptions += `<option value="${p.code}" ${selected}>${p.name}</option>`;
             });
@@ -5695,7 +5701,6 @@ function showApprovalModal(user) {
         }
     }
     
-    // Add any remaining groups
     for (const [groupName, items] of Object.entries(groups)) {
         if (!groupOrder.includes(groupName)) {
             programOptions += `<optgroup label="${groupName}">`;
@@ -5707,14 +5712,24 @@ function showApprovalModal(user) {
         }
     }
     
-    // ✅ FIXED: Block options - use dynamic generation
+    // ✅ Block options based on program type
     const blockOptions = isTVET 
         ? ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
         : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
     
-    const blockSelectOptions = blockOptions.map(b => 
-        `<option value="${b}" ${user.block === b ? 'selected' : ''}>${b}</option>`
-    ).join('');
+    // ✅ AUTO-SELECT the user's block
+    const blockSelectOptions = blockOptions.map(b => {
+        const selected = (user.block === b || user.current_block === b || user.term === b) ? 'selected' : '';
+        return `<option value="${b}" ${selected}>${b}</option>`;
+    }).join('');
+    
+    // ✅ Month options with auto-selection
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthOptions = months.map(m => {
+        const selected = user.intake_month === m ? 'selected' : '';
+        return `<option value="${m}" ${selected}>${m}</option>`;
+    }).join('');
     
     const modal = document.createElement('div');
     modal.id = 'approvalModal';
@@ -5735,44 +5750,48 @@ function showApprovalModal(user) {
     `;
     
     modal.innerHTML = `
-        <div style="background: white; border-radius: 20px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;">
+        <div style="background: white; border-radius: 20px; max-width: 850px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
                 <div>
-                    <h2 style="margin: 0; color: #4C1D95;"><i class="fas fa-user-check"></i> Review & Edit User</h2>
-                    <p style="margin: 5px 0 0; color: #6b7280; font-size: 14px;">Edit fields below before approving</p>
+                    <h2 style="margin: 0; color: #4C1D95;"><i class="fas fa-user-check"></i> Review & Approve User</h2>
+                    <p style="margin: 5px 0 0; color: #6b7280; font-size: 14px;">
+                        <i class="fas fa-info-circle"></i> Review the user's details below. All fields are auto-populated.
+                    </p>
                 </div>
                 <button onclick="closeApprovalModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280; padding: 0 10px;">&times;</button>
             </div>
             
             <form id="approvalForm" onsubmit="event.preventDefault(); confirmApproveUser();">
+                <!-- Personal Information -->
                 <div style="margin-bottom: 20px;">
-                    <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-user"></i> Personal Information
+                        <span style="font-size: 10px; font-weight: 400; color: #94a3b8; text-transform: none;">(auto-populated from registration)</span>
                     </h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Full Name *</label>
                             <input type="text" id="edit_full_name" value="${escapeHtml(user.full_name || '')}" 
-                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Email *</label>
                             <input type="email" id="edit_email" value="${escapeHtml(user.email || '')}" 
-                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Student/Staff ID</label>
                             <input type="text" id="edit_student_id" value="${escapeHtml(user.student_id || '')}" 
-                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Phone</label>
                             <input type="text" id="edit_phone" value="${escapeHtml(user.phone || '')}" 
-                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Role</label>
-                            <select id="edit_role" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                            <select id="edit_role" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                                 <option value="student" ${user.role === 'student' ? 'selected' : ''}>Student</option>
                                 <option value="lecturer" ${user.role === 'lecturer' ? 'selected' : ''}>Lecturer</option>
                                 <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
@@ -5781,7 +5800,7 @@ function showApprovalModal(user) {
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Status</label>
-                            <select id="edit_status" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                            <select id="edit_status" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                                 <option value="pending" ${user.status === 'pending' ? 'selected' : ''}>Pending</option>
                                 <option value="approved" ${user.status === 'approved' ? 'selected' : ''}>Approved</option>
                                 <option value="blocked" ${user.status === 'blocked' ? 'selected' : ''}>Blocked</option>
@@ -5790,65 +5809,71 @@ function showApprovalModal(user) {
                     </div>
                 </div>
                 
+                <!-- Academic Information -->
                 <div style="margin-bottom: 20px;">
-                    <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-graduation-cap"></i> Academic Information
+                        <span style="font-size: 10px; font-weight: 400; color: #94a3b8; text-transform: none;">(auto-populated from registration)</span>
                     </h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
-                            <select id="edit_program" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                            <select id="edit_program" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                                 ${programOptions}
                             </select>
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Type</label>
                             <input type="text" id="edit_program_type" value="${isTVET ? 'TVET' : 'KRCHN'}" readonly
-                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f8f9fa; font-family:inherit;">
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f1f5f9; font-family:inherit; color:#475569;">
                         </div>
                         <div class="form-group">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year</label>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year *</label>
                             <input type="text" id="edit_intake_year" value="${escapeHtml(user.intake_year || '')}" 
-                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Month</label>
-                            <select id="edit_intake_month" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                            <select id="edit_intake_month" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                                 <option value="">-- Select Month --</option>
-                                <option value="January" ${user.intake_month === 'January' ? 'selected' : ''}>January</option>
-                                <option value="February" ${user.intake_month === 'February' ? 'selected' : ''}>February</option>
-                                <option value="March" ${user.intake_month === 'March' ? 'selected' : ''}>March</option>
-                                <option value="April" ${user.intake_month === 'April' ? 'selected' : ''}>April</option>
-                                <option value="May" ${user.intake_month === 'May' ? 'selected' : ''}>May</option>
-                                <option value="June" ${user.intake_month === 'June' ? 'selected' : ''}>June</option>
-                                <option value="July" ${user.intake_month === 'July' ? 'selected' : ''}>July</option>
-                                <option value="August" ${user.intake_month === 'August' ? 'selected' : ''}>August</option>
-                                <option value="September" ${user.intake_month === 'September' ? 'selected' : ''}>September</option>
-                                <option value="October" ${user.intake_month === 'October' ? 'selected' : ''}>October</option>
-                                <option value="November" ${user.intake_month === 'November' ? 'selected' : ''}>November</option>
-                                <option value="December" ${user.intake_month === 'December' ? 'selected' : ''}>December</option>
+                                ${monthOptions}
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Block / Term</label>
-                            <select id="edit_block" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit;">
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">${isTVET ? 'Term' : 'Block'} *</label>
+                            <select id="edit_block" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                                 ${blockSelectOptions}
                             </select>
+                            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                                <i class="fas fa-info-circle"></i> 
+                                ${isTVET ? 'TVET programs use "Terms" (e.g., Term 1, Term 2)' : 'KRCHN programs use "Blocks" (e.g., Block 1, Block 2)'}
+                            </div>
                         </div>
                     </div>
                 </div>
                 
+                <!-- System Information -->
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #4C1D95; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
                         <i class="fas fa-info-circle"></i> System Information
                     </h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; background: #f8f9fa; padding: 15px; border-radius: 10px;">
-                        <div><strong>User ID:</strong> <span style="font-family: monospace; font-size: 12px;">${escapeHtml(user.user_id || 'N/A')}</span></div>
-                        <div><strong>Created:</strong> ${user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}</div>
-                        <div><strong>Status:</strong> <span style="color: #f59e0b; font-weight: 600;">${escapeHtml(user.status || 'pending')}</span></div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e5e7eb;">
+                        <div style="font-size: 13px;">
+                            <strong style="color: #475569;">User ID:</strong> 
+                            <span style="font-family: monospace; font-size: 12px; color: #0A3D62;">${escapeHtml(user.user_id || 'N/A')}</span>
+                        </div>
+                        <div style="font-size: 13px;">
+                            <strong style="color: #475569;">Created:</strong> 
+                            <span style="color: #0A3D62;">${user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}</span>
+                        </div>
+                        <div style="font-size: 13px;">
+                            <strong style="color: #475569;">Current Status:</strong> 
+                            <span style="color: ${user.status === 'pending' ? '#f59e0b' : '#10b981'}; font-weight: 600;">${escapeHtml(user.status || 'pending')}</span>
+                        </div>
                     </div>
                 </div>
                 
+                <!-- Action Buttons -->
                 <div style="display: flex; gap: 12px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
                     <button type="submit" style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 14px 20px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
                         <i class="fas fa-check-circle"></i> Confirm & Approve
@@ -5858,10 +5883,12 @@ function showApprovalModal(user) {
                     </button>
                 </div>
                 
-                <div style="margin-top: 15px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                    <p style="margin: 0; font-size: 13px; color: #92400e;">
-                        <i class="fas fa-shield-alt"></i> 
-                        <strong>Approval Action:</strong> This will activate the user account with the edited details above.
+                <!-- Info Note -->
+                <div style="margin-top: 15px; padding: 12px; background: #dbeafe; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                    <p style="margin: 0; font-size: 13px; color: #1e40af;">
+                        <i class="fas fa-check-circle"></i> 
+                        <strong>All fields are auto-populated</strong> with the user's registration data. 
+                        Only make changes if something is incorrect. Click "Confirm & Approve" to activate the account.
                     </p>
                 </div>
             </form>
@@ -5870,6 +5897,12 @@ function showApprovalModal(user) {
     
     document.body.appendChild(modal);
     modal.dataset.userId = user.user_id;
+    
+    // ✅ Log for debugging
+    console.log('✅ Approval modal opened with auto-populated data');
+    console.log('📚 Program selected:', user.program);
+    console.log('📖 Block/Term selected:', user.block || user.current_block || user.term);
+    console.log('📅 Intake:', user.intake_year, user.intake_month);
 }
 function closeApprovalModal() {
     const modal = document.getElementById('approvalModal');
