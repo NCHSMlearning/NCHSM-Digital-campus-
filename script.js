@@ -4040,6 +4040,9 @@ async function loadDataVisualization() {
  * ✅ Edit User with ALL fields (Guardian, Parent, Photo)
  * ✅ Password reset via Edge Function
  * ✅ Student/Staff ID support
+ * ✅ INTAKE MONTH FIXED - Not hardcoded
+ * ✅ DOCUMENT STATUS FIXED - Read from profile directly
+ * ✅ PENDING STATS FIXED - Added updatePendingStats()
  *******************************************************/
 
 // ============================================
@@ -4185,7 +4188,7 @@ async function populateUserFilterDropdownsIfEmpty() {
 // 📧 SEND APPROVAL EMAIL - UPDATED
 // ============================================
 
-async function sendApprovalEmail(email, userName, role, program, intakeYear, block) {
+async function sendApprovalEmail(email, userName, role, program, intakeYear, intakeMonth, block) {
     console.log('📧 Sending approval email to:', email);
     
     const programDisplay = getProgramDisplayName(program) || program || 'N/A';
@@ -4193,7 +4196,9 @@ async function sendApprovalEmail(email, userName, role, program, intakeYear, blo
     const programLevel = getProgramLevel(program);
     const blockLabel = programType === 'TVET' ? 'Term' : 'Block';
     const blockDisplay = block || 'Not assigned';
-    const intakeDisplay = intakeYear ? getDisplayIntake(program, intakeYear) : 'N/A';
+    
+    // ✅ FIXED: Pass intake_month to getDisplayIntake
+    const intakeDisplay = intakeYear ? getDisplayIntake(program, intakeYear, intakeMonth) : 'N/A';
     
     if (typeof BREVO_CONFIG === 'undefined' || !BREVO_CONFIG.apiKey) {
         console.warn('⚠️ Brevo not configured. Using fallback email.');
@@ -4440,25 +4445,8 @@ async function loadAllUsers(page = 1, filters = {}) {
         USERS_STATE.total = count || 0;
         USERS_STATE.page = page;
         
-        const userIds = users.map(u => u.user_id).filter(id => id);
-        let docCache = {};
-        
-        if (userIds.length > 0) {
-            const { data: docs } = await supabase
-                .from('user_documents')
-                .select('user_id, document_type, status, file_path')
-                .in('user_id', userIds);
-            
-            docCache = {};
-            docs?.forEach(doc => {
-                if (!docCache[doc.user_id]) {
-                    docCache[doc.user_id] = {};
-                }
-                docCache[doc.user_id][doc.document_type] = doc.status;
-            });
-        }
-        
-        renderUsersTable(users, docCache);
+        // ✅ FIXED: No need to fetch documents separately - read from profile
+        renderUsersTable(users);
         renderUserPagination(count || 0, page);
         updateUserStats(users, count);
         
@@ -4485,11 +4473,12 @@ async function loadAllUsers(page = 1, filters = {}) {
 }
 
 // ============================================
-// 📊 RENDER USERS TABLE - 7 COLUMNS
-// WITH STUDENT/STAFF ID, NAME, EMAIL, ROLE COMBINED
+// 📊 RENDER USERS TABLE - FIXED
+// ✅ Reads doc_kcse and doc_id from profile directly
+// ✅ Passes intake_month to getDisplayIntake
 // ============================================
 
-function renderUsersTable(users, docCache = {}) {
+function renderUsersTable(users) {
     const tbody = document.getElementById('users-table-body');
     if (!tbody) {
         console.error('❌ users-table-body not found');
@@ -4535,8 +4524,8 @@ function renderUsersTable(users, docCache = {}) {
         const programBadgeColor = isTVET ? '#92400e' : '#1e40af';
         const programIcon = isTVET ? 'fa-tools' : 'fa-graduation-cap';
         
-        // Intake display
-        const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
+        // ✅ FIXED: Pass intake_month to getDisplayIntake
+        const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year, u.intake_month) : 'N/A';
         
         // Block/Term display
         const blockLabel = isTVET ? 'Term' : 'Block';
@@ -4568,6 +4557,10 @@ function renderUsersTable(users, docCache = {}) {
         const colorIndex = (u.full_name?.length || 0) % avatarColors.length;
         const avatarColor = avatarColors[colorIndex];
         const hasPhoto = u.profile_photo_url && u.profile_photo_url.startsWith('http');
+        
+        // ✅ Read document status directly from profile
+        const docKcseStatus = u.doc_kcse || 'pending';
+        const docIdStatus = u.doc_id || 'pending';
         
         html += `
             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" 
@@ -4913,7 +4906,10 @@ async function loadFilterOptions() {
 }
 
 // ============================================
-// 🔥 LOAD PENDING APPROVALS - OPTIMIZED
+// 🔥 LOAD PENDING APPROVALS - FIXED
+// ✅ Reads doc_kcse and doc_id from profile directly
+// ✅ Passes intake_month to getDisplayIntake
+// ✅ Updates stats with updatePendingStats()
 // ============================================
 
 async function loadPendingApprovals() {
@@ -4927,9 +4923,9 @@ async function loadPendingApprovals() {
 
     try {
         const supabase = getSb();
-        const { data: pending, error, count } = await supabase
+        const { data: pending, error } = await supabase
             .from(USER_PROFILE_TABLE)
-            .select('*', { count: 'exact' })
+            .select('*')
             .eq('status', 'pending')
             .order('created_at', { ascending: true })
             .limit(50);
@@ -4938,52 +4934,50 @@ async function loadPendingApprovals() {
 
         if (!pending || pending.length === 0) {
             tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px;">✅ No pending approvals</td></tr>';
+            // ✅ Update stats with empty array
+            updatePendingStats([]);
             return;
-        }
-
-        const userIds = pending.map(u => u.user_id).filter(id => id);
-        let docCache = {};
-        
-        if (userIds.length > 0) {
-            const { data: docs } = await supabase
-                .from('user_documents')
-                .select('user_id, document_type, status, file_path')
-                .in('user_id', userIds);
-            
-            docCache = {};
-            docs?.forEach(doc => {
-                if (!docCache[doc.user_id]) docCache[doc.user_id] = {};
-                docCache[doc.user_id][doc.document_type] = doc.status;
-            });
         }
 
         tbody.innerHTML = '';
 
         for (const u of pending) {
-            const userDocs = docCache[u.user_id] || {};
-            const kcseStatus = userDocs['kcse'] || 'pending';
-            const idStatus = userDocs['id'] || 'pending';
+            // ✅ READ DOCUMENT STATUS DIRECTLY FROM PROFILE
+            const kcseStatus = u.doc_kcse || 'pending';
+            const idStatus = u.doc_id || 'pending';
             
             const escapedName = escapeHtml(u.full_name);
             const escapedUserId = escapeHtml(u.user_id);
             const escapedStudentId = escapeHtml(u.student_id || '');
             const escapedEmail = escapeHtml(u.email || '');
             const escapedRole = escapeHtml(u.role || 'student');
-            const escapedProgram = escapeHtml(u.program || 'N/A');
             
             const programName = getProgramDisplayName(u.program);
             const programType = getProgramType(u.program);
             const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
             const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
             
-            const intakeDisplay = u.intake_year ? getDisplayIntake(u.program, u.intake_year) : 'N/A';
+            // ✅ FIXED: Pass intake_month to getDisplayIntake
+            const intakeDisplay = getDisplayIntake(u.program, u.intake_year, u.intake_month);
+            
+            // ✅ FIXED PHOTO DISPLAY
+            let photoHtml = '';
+            if (u.profile_photo_url) {
+                photoHtml = `<img src="${u.profile_photo_url}" 
+                                  alt="Photo" 
+                                  style="width:35px;height:35px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
+                                  onclick="viewDocument('${escapedUserId}','photo')"
+                                  onerror="this.style.display='none';">`;
+            } else {
+                photoHtml = `<span class="badge badge-secondary" style="font-size:11px;cursor:pointer;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`;
+            }
             
             tbody.innerHTML += `
                 <tr>
                     <td><strong>${escapedName}</strong></td>
                     <td>${escapedEmail}</td>
-                    <td>${escapedStudentId || 'N/A'}</td>
-                    <td>${escapedRole}</td>
+                    <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-size:12px;">${escapedStudentId || 'N/A'}</code></td>
+                    <td><span class="badge badge-info">${escapedRole}</span></td>
                     <td>
                         <div style="font-weight:500; font-size:13px;">${escapeHtml(programName)}</div>
                         <div class="program-badge ${programBadgeClass}" style="font-size:10px; margin-top:2px;">
@@ -5007,30 +5001,24 @@ async function loadPendingApprovals() {
                             <i class="fas fa-eye" style="font-size:9px;margin-left:3px;"></i>
                         </span>
                     </td>
-                    <td>
-                        ${u.profile_photo_url ? 
-                            `<img src="${SUPABASE_URL}/storage/v1/object/public/user-documents/${u.profile_photo_url}" 
-                                  alt="Photo" 
-                                  style="width:35px;height:35px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid #e5e7eb;" 
-                                  onclick="viewDocument('${escapedUserId}','photo')"
-                                  onerror="this.style.display='none';">` :
-                            `<span class="badge badge-secondary" style="font-size:11px;cursor:pointer;" onclick="viewDocument('${escapedUserId}','photo')">No photo</span>`
-                        }
-                    </td>
+                    <td>${photoHtml}</td>
                     <td>${new Date(u.created_at).toLocaleDateString()}</td>
                     <td>
                         <button class="btn-approve" 
-                                onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${escapedProgram}')">
+                                onclick="approveUser('${escapedUserId}', '${escapedName}', '${escapedStudentId}', '${escapedEmail}', '${escapedRole}', '${u.program}')">
                             <i class="fas fa-eye"></i> Review
                         </button>
                         <button class="btn-delete" 
                                 onclick="deleteProfile('${escapedUserId}', '${escapedName}', true)">
-                            Reject
+                            <i class="fas fa-times"></i> Reject
                         </button>
                     </td>
                 </tr>
             `;
         }
+        
+        // ✅ UPDATE STATS
+        updatePendingStats(pending);
         
         const pendingBadge = document.getElementById('pendingBadge');
         if (pendingBadge) pendingBadge.textContent = pending.length;
@@ -5042,7 +5030,38 @@ async function loadPendingApprovals() {
 }
 
 // ============================================
-// 👥 LOAD STUDENTS - OPTIMIZED
+// 📊 UPDATE PENDING STATS - NEW FUNCTION
+// ============================================
+
+function updatePendingStats(pending) {
+    if (!pending || pending.length === 0) {
+        const ids = ['pendingCount', 'pendingDocsCount', 'pendingTVETCount', 'pendingNursingCount'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '0';
+        });
+        return;
+    }
+
+    const total = pending.length;
+    const docsPending = pending.filter(u => u.doc_kcse === 'pending' || u.doc_id === 'pending').length;
+    const tvetCount = pending.filter(u => u.program && u.program !== 'KRCHN').length;
+    const nursingCount = pending.filter(u => u.program === 'KRCHN').length;
+
+    const countEl = document.getElementById('pendingCount');
+    const docsEl = document.getElementById('pendingDocsCount');
+    const tvetEl = document.getElementById('pendingTVETCount');
+    const nursingEl = document.getElementById('pendingNursingCount');
+    
+    if (countEl) countEl.textContent = total;
+    if (docsEl) docsEl.textContent = docsPending;
+    if (tvetEl) tvetEl.textContent = tvetCount;
+    if (nursingEl) nursingEl.textContent = nursingCount;
+}
+
+// ============================================
+// 👥 LOAD STUDENTS - FIXED
+// ✅ Passes intake_month to getDisplayIntake
 // ============================================
 
 async function loadStudents() {
@@ -5080,7 +5099,8 @@ async function loadStudents() {
             const programBadgeClass = programType === 'TVET' ? 'badge-tvet' : 'badge-krchn';
             const programIcon = programType === 'TVET' ? 'fa-tools' : 'fa-graduation-cap';
             
-            const intakeDisplay = student.intake_year ? getDisplayIntake(student.program, student.intake_year) : 'N/A';
+            // ✅ FIXED: Pass intake_month to getDisplayIntake
+            const intakeDisplay = student.intake_year ? getDisplayIntake(student.program, student.intake_year, student.intake_month) : 'N/A';
             const statusClass = student.status === 'approved' ? 'status-approved' : 'status-pending';
             
             const blockLabel = programType === 'TVET' ? 'Term' : 'Block';
@@ -5113,6 +5133,48 @@ async function loadStudents() {
         console.error('Error loading students:', error);
         tbody.innerHTML = `<tr><td colspan="9" style="color:red;">Error: ${error.message}</td></tr>`;
     }
+}
+
+// ============================================
+// 📅 GET DISPLAY INTAKE - FIXED (Not hardcoded)
+// ============================================
+
+function getDisplayIntake(program, year, month = null) {
+    if (!year) return 'N/A';
+    
+    const monthNames = {
+        // Numeric months
+        '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+        '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+        '09': 'September', '10': 'October', '11': 'November', '12': 'December',
+        // Three-letter months (from KRCHN)
+        'JAN': 'January', 'FEB': 'February', 'MAR': 'March', 'APR': 'April',
+        'MAY': 'May', 'JUN': 'June', 'JUL': 'July', 'AUG': 'August',
+        'SEP': 'September', 'OCT': 'October', 'NOV': 'November', 'DEC': 'December',
+        // Full month names (just in case)
+        'JANUARY': 'January', 'FEBRUARY': 'February', 'MARCH': 'March',
+        'APRIL': 'April', 'MAY': 'May', 'JUNE': 'June', 'JULY': 'July',
+        'AUGUST': 'August', 'SEPTEMBER': 'September', 'OCTOBER': 'October',
+        'NOVEMBER': 'November', 'DECEMBER': 'December'
+    };
+    
+    // KRCHN always uses March intake
+    if (program === 'KRCHN') {
+        return `March ${year}`;
+    }
+    
+    // TVET uses the selected month
+    if (month) {
+        const monthName = monthNames[String(month).toUpperCase()] || month;
+        if (monthName !== String(month).toUpperCase()) {
+            return `${monthName} ${year}`;
+        } else {
+            return `Intake ${year} (${month})`;
+        }
+    }
+    
+    // Fallback if no month provided
+    return `Intake ${year}`;
 }
 
 // ============================================
@@ -5770,6 +5832,7 @@ async function confirmApproveUser() {
     const role = document.getElementById('edit_role')?.value;
     const program = document.getElementById('edit_program')?.value;
     const intakeYear = document.getElementById('edit_intake_year')?.value?.trim();
+    const intakeMonth = document.getElementById('edit_intake_month')?.value?.trim() || null;
     const block = document.getElementById('edit_block')?.value;
     const status = document.getElementById('edit_status')?.value || 'approved';
     
@@ -5811,6 +5874,7 @@ async function confirmApproveUser() {
         if (studentId) updateData.student_id = studentId;
         if (phone) updateData.phone = phone;
         if (intakeYear) updateData.intake_year = intakeYear;
+        if (intakeMonth) updateData.intake_month = intakeMonth;
         
         const { error } = await supabase
             .from(USER_PROFILE_TABLE)
@@ -5820,7 +5884,7 @@ async function confirmApproveUser() {
         if (error) throw error;
         
         try {
-            await sendApprovalEmail(email, fullName, role, program, intakeYear, block);
+            await sendApprovalEmail(email, fullName, role, program, intakeYear, intakeMonth, block);
         } catch (e) {
             console.warn('⚠️ Email error:', e);
         }
@@ -5891,24 +5955,6 @@ async function updateUserRole(userId, newRole, fullName) {
     } catch (err) {
         console.error('❌ Unexpected error in updateUserRole:', err);
         showFeedback(`Unexpected error: ${err.message}`, 'error');
-    }
-}
-
-// ============================================
-// DISPLAY INTAKE FUNCTION - PRESERVED
-// ============================================
-
-function getDisplayIntake(program, year) {
-    if (!year) return 'N/A';
-    
-    if (typeof year === 'string' && year.includes(' ')) {
-        return year;
-    }
-    
-    if (program === 'KRCHN') {
-        return `March ${year}`;
-    } else {
-        return `March ${year} Intake`;
     }
 }
 
@@ -6301,6 +6347,7 @@ async function openEditUserModal(userId) {
         showFeedback(`Failed to load user: ${e.message}`, 'error');
     }
 }
+
 // ============================================
 // HANDLE EDIT USER - COMPLETE WITH ALL FIELDS
 // FIXED: Removed 'term' column (doesn't exist)
@@ -6642,7 +6689,6 @@ async function updateUserEmailFromModalDirect(userId, newEmail) {
     }
 }
 
-
 // ============================================================
 // 📧 UPDATE USER EMAIL - FIXED QUERY
 // ============================================================
@@ -6795,6 +6841,7 @@ async function updateUserEmailFromModal() {
         showNotification('❌ Failed to update email', 'error');
     }
 }
+
 // ============================================
 // CLEAR EMAIL STATUS
 // ============================================
@@ -6820,6 +6867,7 @@ window.closeModal = function(modalId) {
         originalCloseModal(modalId);
     }
 };
+
 // ============================================
 // ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
 // ============================================
@@ -6851,7 +6899,13 @@ window.uploadUserDocuments = uploadUserDocuments;
 window.viewDocument = viewDocument;
 window.updateUserEmailFromModal = updateUserEmailFromModal;
 window.clearEmailStatus = clearEmailStatus;
+window.updatePendingStats = updatePendingStats;
+
 console.log('✅ Users Management fully optimized and exposed to global scope!');
+console.log('✅ Fixed: Document status read from profile directly');
+console.log('✅ Fixed: Intake month passed to getDisplayIntake');
+console.log('✅ Fixed: updatePendingStats added');
+console.log('✅ Fixed: getDisplayIntake no longer hardcoded to March');
 /*******************************************************
  * SECTION 10: UNIT MANAGEMENT - COMPLETE TVET/KRCHN SUPPORT
  * Renamed from "Courses" to "Units" for accuracy
