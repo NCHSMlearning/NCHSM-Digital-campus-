@@ -762,18 +762,44 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
         ];
         console.log('KRCHN blocks loaded:', options.length);
     } else if (programType === 'TVET' || isTVETProgram(programCode)) {
-        // TVET uses Terms
-        options = [
-            { value: 'Introductory', text: 'Introductory Term' },
-            { value: 'Term1', text: 'Term 1' },
-            { value: 'Term2', text: 'Term 2' },
-            { value: 'Term3', text: 'Term 3' },
-            { value: 'Term4', text: 'Term 4' },
-            { value: 'Term5', text: 'Term 5' },
-            { value: 'Term6', text: 'Term 6' },
-            { value: 'Final', text: 'Final Term' }
-        ];
-        console.log('TVET terms loaded:', options.length);
+        // TVET Programs - Differentiate between Diploma and Certificate
+        const programLevel = getProgramLevel(programCode);
+        const isDiploma = programLevel === 'DIPLOMA';
+        const isCertificate = programLevel === 'CERTIFICATE';
+        
+        if (isDiploma) {
+            // DIPLOMA TVET: Year 1 Term 1 to Year 2 Term 3 (6 terms total)
+            options = [
+                { value: 'Y1T1', text: 'Year 1 Term 1' },
+                { value: 'Y1T2', text: 'Year 1 Term 2' },
+                { value: 'Y1T3', text: 'Year 1 Term 3' },
+                { value: 'Y2T1', text: 'Year 2 Term 1' },
+                { value: 'Y2T2', text: 'Year 2 Term 2' },
+                { value: 'Y2T3', text: 'Year 2 Term 3' }
+            ];
+            console.log('Diploma TVET terms loaded (Year 1-2):', options.length);
+        } else if (isCertificate) {
+            // CERTIFICATE TVET: One year only (Year 1 Term 1 to Term 3)
+            options = [
+                { value: 'Y1T1', text: 'Year 1 Term 1' },
+                { value: 'Y1T2', text: 'Year 1 Term 2' },
+                { value: 'Y1T3', text: 'Year 1 Term 3' }
+            ];
+            console.log('Certificate TVET terms loaded (One Year):', options.length);
+        } else {
+            // Other TVET programs (Artisan, Other) - use generic terms
+            options = [
+                { value: 'Introductory', text: 'Introductory Term' },
+                { value: 'Term1', text: 'Term 1' },
+                { value: 'Term2', text: 'Term 2' },
+                { value: 'Term3', text: 'Term 3' },
+                { value: 'Term4', text: 'Term 4' },
+                { value: 'Term5', text: 'Term 5' },
+                { value: 'Term6', text: 'Term 6' },
+                { value: 'Final', text: 'Final Term' }
+            ];
+            console.log('Generic TVET terms loaded:', options.length);
+        }
     } else {
         // Other programs - generic blocks
         options = [
@@ -812,7 +838,6 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
     
     console.log(`✅ Updated ${blockTermSelectId} with ${blockTermSelect.options.length} options for program: ${programCode} (${programType})`);
 }
-
 // ============================================================
 // INITIALIZE ALL PROGRAM DROPDOWNS - ASYNC VERSION
 // ============================================================
