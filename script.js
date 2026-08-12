@@ -6614,6 +6614,232 @@ async function openEditUserModal(userId) {
         showFeedback(`Failed to load user: ${e.message}`, 'error');
     }
 }
+// ============================================
+// HANDLE EDIT USER - COMPLETE WITH ALL FIELDS
+// FIXED: Removed 'term' column (doesn't exist)
+// ============================================
+
+async function handleEditUser(e) {
+    e.preventDefault();
+    const submitButton = e.submitter;
+    if (!submitButton) {
+        console.error("Form submitter button not found.");
+        return;
+    }
+
+    const originalText = submitButton.textContent;
+    setButtonLoading(submitButton, true, originalText);
+
+    try {
+        const supabase = getSb();
+        const userId = document.getElementById('edit_user_id').value;
+        if (!userId) throw new Error('User ID is missing.');
+
+        console.log('✏️ Saving user edit for ID:', userId);
+
+        // Get all form values
+        const fullName = document.getElementById('edit_user_name').value.trim();
+        const email = document.getElementById('edit_user_email').value.trim();
+        const phone = document.getElementById('edit_user_phone').value.trim() || null;
+        const altPhone = document.getElementById('edit_user_alt_phone').value.trim() || null;
+        const gender = document.getElementById('edit_user_gender').value || null;
+        const dob = document.getElementById('edit_user_dob').value || null;
+        const nationalId = document.getElementById('edit_user_national_id').value.trim() || null;
+        const address = document.getElementById('edit_user_address').value.trim() || null;
+        
+        const role = document.getElementById('edit_user_role').value;
+        const status = document.getElementById('edit_user_status').value;
+        
+        const studentId = document.getElementById('edit_user_student_id').value.trim() || null;
+        const intakeYear = document.getElementById('edit_user_intake_year').value.trim() || null;
+        const intakeMonth = document.getElementById('edit_user_intake_month').value || null;
+        
+        const guardianName = document.getElementById('edit_user_guardian_name').value.trim() || null;
+        const guardianPhone = document.getElementById('edit_user_guardian_phone').value.trim() || null;
+        const parentEmail = document.getElementById('edit_user_parent_email').value.trim() || null;
+        const parentAddress = document.getElementById('edit_user_parent_address').value.trim() || null;
+        
+        const program = document.getElementById('edit_user_program').value || null;
+        const blockValue = document.getElementById('edit_user_block').value || 'Introductory';
+        
+        const docKcse = document.getElementById('edit_user_doc_kcse').value || 'pending';
+        const docId = document.getElementById('edit_user_doc_id').value || 'pending';
+
+        const isTVET = isTVETProgram(program);
+
+        // Validate required fields
+        if (!fullName) {
+            showFeedback('❌ Full Name is required', 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return;
+        }
+        if (!email) {
+            showFeedback('❌ Email is required', 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return;
+        }
+        if (!program) {
+            showFeedback('❌ Program is required', 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return;
+        }
+
+        // Build update data - NO 'term' column!
+        const updatedData = {
+            full_name: fullName,
+            email: email,
+            phone: phone,
+            alt_phone: altPhone,
+            gender: gender,
+            date_of_birth: dob,
+            national_id: nationalId,
+            address: address,
+            role: role,
+            status: status,
+            student_id: studentId,
+            intake_year: intakeYear,
+            intake_month: intakeMonth,
+            guardian_name: guardianName,
+            guardian_phone: guardianPhone,
+            parent_email: parentEmail,
+            parent_address: parentAddress,
+            program: program,
+            block: blockValue,
+            current_block: blockValue,
+            // ✅ REMOVED: term: isTVET ? blockValue : null,
+            program_type: isTVET ? 'TVET' : 'KRCHN',
+            doc_kcse: docKcse,
+            doc_id: docId,
+            updated_at: new Date().toISOString()
+        };
+
+        // Remove null/undefined values
+        Object.keys(updatedData).forEach(key => {
+            if (updatedData[key] === null || updatedData[key] === undefined) {
+                delete updatedData[key];
+            }
+        });
+
+        console.log('📤 Update data:', updatedData);
+
+        // Handle profile photo upload
+        const photoInput = document.getElementById('edit_user_photo');
+        if (photoInput && photoInput.files && photoInput.files[0]) {
+            const file = photoInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${userId}_profile_${Date.now()}.${fileExt}`;
+            const filePath = `profile_photos/${userId}/${fileName}`;
+            
+            try {
+                const { error: uploadError } = await supabase
+                    .storage
+                    .from('user-documents')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: true
+                    });
+                
+                if (!uploadError) {
+                    const { data: urlData } = supabase
+                        .storage
+                        .from('user-documents')
+                        .getPublicUrl(filePath);
+                    updatedData.profile_photo_url = urlData.publicUrl;
+                    console.log('✅ Profile photo uploaded');
+                } else {
+                    console.warn('Photo upload failed:', uploadError);
+                }
+            } catch (err) {
+                console.warn('Photo upload error:', err);
+            }
+        }
+
+        // Update profile
+        const { error: profileError } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .update(updatedData)
+            .eq('user_id', userId);
+
+        if (profileError) {
+            console.error('❌ Profile update error:', profileError);
+            throw profileError;
+        }
+
+        console.log('✅ Profile updated successfully');
+
+        // Handle password change
+        const newPassword = document.getElementById('edit_user_new_password').value.trim();
+        const confirmPassword = document.getElementById('edit_user_confirm_password').value.trim();
+        
+        if (newPassword) {
+            if (newPassword !== confirmPassword) {
+                showFeedback('❌ Passwords do not match!', 'error');
+                setButtonLoading(submitButton, false, originalText);
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showFeedback('❌ Password must be at least 6 characters.', 'error');
+                setButtonLoading(submitButton, false, originalText);
+                return;
+            }
+
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    const response = await fetch(
+                        'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-reset-password',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${session.access_token}`
+                            },
+                            body: JSON.stringify({ 
+                                email: email, 
+                                newPassword: newPassword 
+                            })
+                        }
+                    );
+                    
+                    if (response.ok) {
+                        console.log('✅ Password updated via edge function');
+                    } else {
+                        const result = await response.json();
+                        console.warn('⚠️ Edge function password update failed:', result);
+                        showFeedback('⚠️ User profile saved, but password update failed.', 'warning');
+                    }
+                }
+            } catch (pwErr) {
+                console.warn('⚠️ Password update error:', pwErr);
+                showFeedback('⚠️ User profile saved, but password update failed.', 'warning');
+            }
+        }
+
+        await logAudit('USER_EDIT', `Edited profile for user ${fullName} (${updatedData.program_type || 'KRCHN'})`, userId, 'SUCCESS');
+        showFeedback(`✅ User profile updated successfully!`, 'success');
+
+        // Close modal
+        document.getElementById('userEditModal').style.display = 'none';
+        document.getElementById('edit_user_new_password').value = '';
+        document.getElementById('edit_user_confirm_password').value = '';
+        
+        // Refresh data
+        await loadAllUsers(1, USERS_STATE.filters);
+        await loadStudents();
+        await loadPendingApprovals();
+        await loadDashboardData();
+
+    } catch (err) {
+        console.error('❌ Error in handleEditUser:', err);
+        showFeedback(`❌ Failed to update user: ${err.message}`, 'error');
+        
+        await logAudit('USER_EDIT', `Failed to update user: ${err.message}`, null, 'FAILURE');
+        
+    } finally {
+        setButtonLoading(submitButton, false, originalText);
+    }
+}
 // ============================================================
 // 📄 LOAD USER DOCUMENTS FOR VIEWER
 // ============================================================
