@@ -7808,6 +7808,159 @@ window.closeModal = function(modalId) {
         originalCloseModal(modalId);
     }
 };
+// ============================================================
+// 📄 DOWNLOAD, VERIFY, REJECT CURRENT DOCUMENT
+// ============================================================
+
+/**
+ * Download the current document being viewed
+ */
+function downloadCurrentDocument() {
+    const filePath = document.getElementById('docViewerCurrentFilePath')?.value;
+    const fileName = document.getElementById('docViewerCurrentFileName')?.value || 'document.pdf';
+    
+    if (!filePath) {
+        showNotification('❌ No document to download', 'error');
+        return;
+    }
+    
+    const supabaseUrl = SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const fullUrl = `${supabaseUrl}/storage/v1/object/public/user-documents/${filePath}`;
+    
+    // Create download link
+    const link = document.createElement('a');
+    link.href = fullUrl;
+    link.download = fileName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('📥 Downloading document...', 'success');
+}
+
+/**
+ * Verify the current document
+ */
+async function verifyCurrentDocument() {
+    const userId = document.getElementById('docViewerCurrentUserId')?.value;
+    const docType = document.getElementById('docViewerCurrentDocType')?.value || 'kcse';
+    
+    if (!userId) {
+        showNotification('❌ No user selected', 'error');
+        return;
+    }
+    
+    if (!confirm(`✅ Verify ${docType.toUpperCase()} document for this user?`)) return;
+    
+    try {
+        const supabase = getSb();
+        
+        // Update profile document status
+        const updateField = docType === 'kcse' ? 'doc_kcse' : 
+                           docType === 'id' ? 'doc_id' : 'doc_status';
+        
+        const { error } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .update({ 
+                [updateField]: 'verified',
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+        
+        if (error) throw error;
+        
+        // Also update user_documents table
+        const { error: docError } = await supabase
+            .from('user_documents')
+            .update({ 
+                status: 'verified',
+                verified_at: new Date().toISOString(),
+                verified_by: 'admin'
+            })
+            .eq('user_id', userId)
+            .eq('document_type', docType);
+        
+        if (docError) console.warn('Document update error:', docError);
+        
+        showNotification(`✅ ${docType.toUpperCase()} document verified!`, 'success');
+        
+        // Refresh document viewer
+        await loadUserDocumentsForViewer(userId);
+        
+        // Refresh user list
+        if (typeof loadAllUsers === 'function') {
+            loadAllUsers(1, USERS_STATE?.filters || {});
+        }
+        
+    } catch (error) {
+        console.error('Verification error:', error);
+        showNotification(`❌ ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Reject the current document
+ */
+async function rejectCurrentDocument() {
+    const userId = document.getElementById('docViewerCurrentUserId')?.value;
+    const docType = document.getElementById('docViewerCurrentDocType')?.value || 'kcse';
+    
+    if (!userId) {
+        showNotification('❌ No user selected', 'error');
+        return;
+    }
+    
+    const reason = prompt(`❌ Reject ${docType.toUpperCase()} document?\n\nPlease enter reason for rejection:`);
+    if (!reason) return;
+    
+    if (!confirm(`Reject ${docType.toUpperCase()} document?\nReason: ${reason}`)) return;
+    
+    try {
+        const supabase = getSb();
+        
+        // Update profile document status
+        const updateField = docType === 'kcse' ? 'doc_kcse' : 
+                           docType === 'id' ? 'doc_id' : 'doc_status';
+        
+        const { error } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .update({ 
+                [updateField]: 'rejected',
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+        
+        if (error) throw error;
+        
+        // Also update user_documents table
+        const { error: docError } = await supabase
+            .from('user_documents')
+            .update({ 
+                status: 'rejected',
+                rejection_reason: reason,
+                rejected_at: new Date().toISOString()
+            })
+            .eq('user_id', userId)
+            .eq('document_type', docType);
+        
+        if (docError) console.warn('Document update error:', docError);
+        
+        showNotification(`❌ ${docType.toUpperCase()} document rejected.\nReason: ${reason}`, 'warning');
+        
+        // Refresh document viewer
+        await loadUserDocumentsForViewer(userId);
+        
+        // Refresh user list
+        if (typeof loadAllUsers === 'function') {
+            loadAllUsers(1, USERS_STATE?.filters || {});
+        }
+        
+    } catch (error) {
+        console.error('Rejection error:', error);
+        showNotification(`❌ ${error.message}`, 'error');
+    }
+}
 
 // ============================================
 // ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
