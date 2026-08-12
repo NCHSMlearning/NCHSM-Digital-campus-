@@ -5648,7 +5648,35 @@ async function handleMassPromotion(e) {
 }
 
 // ============================================
-// SHOW APPROVAL MODAL - WITH TVET DIPLOMA/CERTIFICATE SUPPORT
+// APPROVE USER - PRESERVED
+// ============================================
+
+async function approveUser(userId, fullName, studentId = '', email = '', role = 'student', program = 'N/A') {
+    console.log('🎯 Opening approval check for user:', { userId, fullName, studentId });
+    
+    try {
+        const supabase = getSb();
+        const { data: user, error } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+        
+        if (error || !user) {
+            showFeedback('❌ Error loading user details: ' + (error?.message || 'User not found'), 'error');
+            return;
+        }
+        
+        showApprovalModal(user);
+        
+    } catch (err) {
+        console.error('❌ Error in approveUser:', err);
+        showFeedback('❌ Error loading user details: ' + err.message, 'error');
+    }
+}
+
+// ============================================
+// SHOW APPROVAL MODAL - AUTO-POPULATE USER DATA
 // ============================================
 
 function showApprovalModal(user) {
@@ -5667,9 +5695,6 @@ function showApprovalModal(user) {
     
     const programType = getProgramType(user.program);
     const isTVET = programType === 'TVET';
-    const programLevel = getProgramLevel(user.program);
-    const isDiploma = programLevel === 'DIPLOMA';
-    const isCertificate = programLevel === 'CERTIFICATE';
     
     // ✅ Build program options dynamically from MASTER_PROGRAMS
     let programOptions = '';
@@ -5693,6 +5718,7 @@ function showApprovalModal(user) {
         if (groups[groupName] && groups[groupName].length > 0) {
             programOptions += `<optgroup label="${groupName}">`;
             groups[groupName].forEach(p => {
+                // ✅ AUTO-SELECT the user's program
                 const selected = user.program === p.code ? 'selected' : '';
                 programOptions += `<option value="${p.code}" ${selected}>${p.name}</option>`;
             });
@@ -5711,63 +5737,15 @@ function showApprovalModal(user) {
         }
     }
     
-    // ✅ Block options based on program type AND level
-    let blockOptions = [];
-    let blockLabel = 'Block';
-    
-    if (isTVET) {
-        blockLabel = 'Term';
-        if (isDiploma) {
-            // DIPLOMA TVET: Year 1 Term 1 to Year 2 Term 3
-            blockOptions = [
-                { value: 'Y1T1', label: 'Year 1 Term 1' },
-                { value: 'Y1T2', label: 'Year 1 Term 2' },
-                { value: 'Y1T3', label: 'Year 1 Term 3' },
-                { value: 'Y2T1', label: 'Year 2 Term 1' },
-                { value: 'Y2T2', label: 'Year 2 Term 2' },
-                { value: 'Y2T3', label: 'Year 2 Term 3' }
-            ];
-        } else if (isCertificate) {
-            // CERTIFICATE TVET: Year 1 Term 1 to Term 3
-            blockOptions = [
-                { value: 'Y1T1', label: 'Year 1 Term 1' },
-                { value: 'Y1T2', label: 'Year 1 Term 2' },
-                { value: 'Y1T3', label: 'Year 1 Term 3' }
-            ];
-        } else {
-            // Other TVET (Artisan, etc.)
-            blockOptions = [
-                { value: 'Introductory', label: 'Introductory Term' },
-                { value: 'Term1', label: 'Term 1' },
-                { value: 'Term2', label: 'Term 2' },
-                { value: 'Term3', label: 'Term 3' },
-                { value: 'Term4', label: 'Term 4' },
-                { value: 'Term5', label: 'Term 5' },
-                { value: 'Term6', label: 'Term 6' },
-                { value: 'Final', label: 'Final Term' }
-            ];
-        }
-    } else {
-        // KRCHN Blocks
-        blockLabel = 'Block';
-        blockOptions = [
-            { value: 'Introductory', label: 'Introductory Block' },
-            { value: 'Block 1', label: 'Block 1' },
-            { value: 'Block 2', label: 'Block 2' },
-            { value: 'Block 3', label: 'Block 3' },
-            { value: 'Block 4', label: 'Block 4' },
-            { value: 'Block 5', label: 'Block 5' },
-            { value: 'Block 6', label: 'Block 6' },
-            { value: 'Final', label: 'Final Block' }
-        ];
-    }
+    // ✅ Block options based on program type
+    const blockOptions = isTVET 
+        ? ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
+        : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
     
     // ✅ AUTO-SELECT the user's block
     const blockSelectOptions = blockOptions.map(b => {
-        // Check if user's block matches any of the possible field names
-        const userBlock = user.block || user.current_block || user.term || '';
-        const selected = userBlock === b.value ? 'selected' : '';
-        return `<option value="${b.value}" ${selected}>${b.label}</option>`;
+        const selected = (user.block === b || user.current_block === b || user.term === b) ? 'selected' : '';
+        return `<option value="${b}" ${selected}>${b}</option>`;
     }).join('');
     
     // ✅ Month options with auto-selection
@@ -5777,17 +5755,6 @@ function showApprovalModal(user) {
         const selected = user.intake_month === m ? 'selected' : '';
         return `<option value="${m}" ${selected}>${m}</option>`;
     }).join('');
-    
-    // ✅ Program type description for the info note
-    let programTypeDescription = isTVET ? 'TVET (Technical & Vocational Education Training)' : 'KRCHN (Nursing)';
-    let programLevelDescription = '';
-    if (isTVET) {
-        if (isDiploma) programLevelDescription = 'Diploma Level - 2 Years (6 Terms)';
-        else if (isCertificate) programLevelDescription = 'Certificate Level - 1 Year (3 Terms)';
-        else programLevelDescription = 'Other TVET Program';
-    } else {
-        programLevelDescription = 'Nursing Program - 3.5 Years (7 Blocks)';
-    }
     
     const modal = document.createElement('div');
     modal.id = 'approvalModal';
@@ -5882,12 +5849,7 @@ function showApprovalModal(user) {
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Type</label>
-                            <input type="text" id="edit_program_type" value="${programTypeDescription}" readonly
-                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f1f5f9; font-family:inherit; color:#475569;">
-                        </div>
-                        <div class="form-group">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Level</label>
-                            <input type="text" id="edit_program_level" value="${programLevelDescription}" readonly
+                            <input type="text" id="edit_program_type" value="${isTVET ? 'TVET' : 'KRCHN'}" readonly
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f1f5f9; font-family:inherit; color:#475569;">
                         </div>
                         <div class="form-group">
@@ -5903,15 +5865,13 @@ function showApprovalModal(user) {
                             </select>
                         </div>
                         <div class="form-group" style="grid-column: 1 / -1;">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569;">${blockLabel} *</label>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">${isTVET ? 'Term' : 'Block'} *</label>
                             <select id="edit_block" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                                 ${blockSelectOptions}
                             </select>
                             <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
                                 <i class="fas fa-info-circle"></i> 
-                                ${isTVET && isDiploma ? 'Diploma TVET: Year 1 Term 1 → Year 2 Term 3 (6 terms)' : 
-                                  isTVET && isCertificate ? 'Certificate TVET: Year 1 Term 1 → Year 1 Term 3 (3 terms)' :
-                                  isTVET ? 'TVET programs use "Terms"' : 'KRCHN programs use "Blocks"'}
+                                ${isTVET ? 'TVET programs use "Terms" (e.g., Term 1, Term 2)' : 'KRCHN programs use "Blocks" (e.g., Block 1, Block 2)'}
                             </div>
                         </div>
                     </div>
@@ -5956,17 +5916,6 @@ function showApprovalModal(user) {
                         Only make changes if something is incorrect. Click "Confirm & Approve" to activate the account.
                     </p>
                 </div>
-                
-                <!-- Program Duration Info -->
-                <div style="margin-top: 10px; padding: 10px 12px; background: ${isTVET ? '#fef3c7' : '#e0e7ff'}; border-radius: 8px; border-left: 4px solid ${isTVET ? '#f59e0b' : '#4C1D95'};">
-                    <p style="margin: 0; font-size: 12px; color: ${isTVET ? '#92400e' : '#1e40af'};">
-                        <i class="fas fa-info-circle"></i> 
-                        <strong>Program Duration:</strong> 
-                        ${isTVET && isDiploma ? '🎯 Diploma TVET - 2 Years (Year 1 Term 1 → Year 2 Term 3)' : 
-                          isTVET && isCertificate ? '📜 Certificate TVET - 1 Year (Year 1 Term 1 → Year 1 Term 3)' :
-                          isTVET ? '🔧 TVET Program' : '🎓 KRCHN Nursing - 3.5 Years (7 Blocks)'}
-                    </p>
-                </div>
             </form>
         </div>
     `;
@@ -5979,7 +5928,105 @@ function showApprovalModal(user) {
     console.log('📚 Program selected:', user.program);
     console.log('📖 Block/Term selected:', user.block || user.current_block || user.term);
     console.log('📅 Intake:', user.intake_year, user.intake_month);
-    console.log('📊 Program Level:', isDiploma ? 'Diploma' : isCertificate ? 'Certificate' : 'Other');
+}
+function closeApprovalModal() {
+    const modal = document.getElementById('approvalModal');
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+async function confirmApproveUser() {
+    console.log('✅ confirmApproveUser called');
+    
+    const modal = document.getElementById('approvalModal');
+    if (!modal) {
+        showFeedback('❌ Modal not found', 'error');
+        return;
+    }
+    
+    const userId = modal.dataset.userId;
+    
+    const fullName = document.getElementById('edit_full_name')?.value?.trim();
+    const email = document.getElementById('edit_email')?.value?.trim();
+    const studentId = document.getElementById('edit_student_id')?.value?.trim();
+    const phone = document.getElementById('edit_phone')?.value?.trim();
+    const role = document.getElementById('edit_role')?.value;
+    const program = document.getElementById('edit_program')?.value;
+    const intakeYear = document.getElementById('edit_intake_year')?.value?.trim();
+    const intakeMonth = document.getElementById('edit_intake_month')?.value?.trim() || null;
+    const block = document.getElementById('edit_block')?.value;
+    const status = document.getElementById('edit_status')?.value || 'approved';
+    
+    if (!fullName) {
+        showFeedback('❌ Full Name is required', 'error');
+        const nameInput = document.getElementById('edit_full_name');
+        if (nameInput) { nameInput.focus(); nameInput.style.borderColor = '#DC2626'; }
+        return;
+    }
+    if (!email) {
+        showFeedback('❌ Email is required', 'error');
+        const emailInput = document.getElementById('edit_email');
+        if (emailInput) { emailInput.focus(); emailInput.style.borderColor = '#DC2626'; }
+        return;
+    }
+    if (!program) {
+        showFeedback('❌ Program is required', 'error');
+        return;
+    }
+    
+    closeApprovalModal();
+    
+    if (!confirm(`⚠️ Approve User:\n\nName: ${fullName}\nEmail: ${email}\nProgram: ${program}\nBlock: ${block || 'Not set'}\nRole: ${role}\nStatus: ${status}\n\nProceed?`)) {
+        return;
+    }
+    
+    try {
+        const supabase = getSb();
+        const updateData = {
+            full_name: fullName,
+            email: email,
+            role: role,
+            program: program,
+            block: block || null,
+            status: status,
+            updated_at: new Date().toISOString()
+        };
+        
+        if (studentId) updateData.student_id = studentId;
+        if (phone) updateData.phone = phone;
+        if (intakeYear) updateData.intake_year = intakeYear;
+        if (intakeMonth) updateData.intake_month = intakeMonth;
+        
+        const { error } = await supabase
+            .from(USER_PROFILE_TABLE)
+            .update(updateData)
+            .eq('user_id', userId);
+        
+        if (error) throw error;
+        
+        try {
+            await sendApprovalEmail(email, fullName, role, program, intakeYear, intakeMonth, block);
+        } catch (e) {
+            console.warn('⚠️ Email error:', e);
+        }
+        
+        showFeedback(`✅ User ${fullName} approved successfully!`, 'success');
+        
+        await logAudit('USER_APPROVE', `User ${fullName} approved`, userId, 'SUCCESS');
+        
+        loadPendingApprovals();
+        loadAllUsers(1, USERS_STATE.filters);
+        loadStudents();
+        loadDashboardData();
+        
+    } catch (err) {
+        console.error('❌ Error:', err);
+        showFeedback(`❌ Failed: ${err.message}`, 'error');
+    }
 }
 
 // ============================================
@@ -6447,9 +6494,6 @@ async function openEditUserModal(userId) {
 // HANDLE EDIT USER - COMPLETE WITH ALL FIELDS
 // FIXED: Removed 'term' column (doesn't exist)
 // ============================================
-// ============================================
-// HANDLE EDIT USER - WITH TVET DIPLOMA/CERTIFICATE SUPPORT
-// ============================================
 
 async function handleEditUser(e) {
     e.preventDefault();
@@ -6498,9 +6542,6 @@ async function handleEditUser(e) {
         const docId = document.getElementById('edit_user_doc_id').value || 'pending';
 
         const isTVET = isTVETProgram(program);
-        const programLevel = getProgramLevel(program);
-        const isDiploma = programLevel === 'DIPLOMA';
-        const isCertificate = programLevel === 'CERTIFICATE';
 
         // Validate required fields
         if (!fullName) {
@@ -6519,15 +6560,7 @@ async function handleEditUser(e) {
             return;
         }
 
-        // ✅ Validate block value based on program type and level
-        const validBlock = validateBlockForProgram(blockValue, program);
-        if (!validBlock.valid) {
-            showFeedback(`❌ ${validBlock.message}`, 'error');
-            setButtonLoading(submitButton, false, originalText);
-            return;
-        }
-
-        // Build update data
+        // Build update data - NO 'term' column!
         const updatedData = {
             full_name: fullName,
             email: email,
@@ -6549,27 +6582,12 @@ async function handleEditUser(e) {
             program: program,
             block: blockValue,
             current_block: blockValue,
+            // ✅ REMOVED: term: isTVET ? blockValue : null,
             program_type: isTVET ? 'TVET' : 'KRCHN',
-            program_level: programLevel,
             doc_kcse: docKcse,
             doc_id: docId,
             updated_at: new Date().toISOString()
         };
-
-        // ✅ Add term field for TVET programs
-        if (isTVET) {
-            updatedData.term = blockValue;
-            updatedData.program_level = programLevel;
-        }
-
-        // ✅ Store program duration info
-        if (isDiploma) {
-            updatedData.program_duration = '2 Years (6 Terms)';
-            updatedData.total_terms = 6;
-        } else if (isCertificate) {
-            updatedData.program_duration = '1 Year (3 Terms)';
-            updatedData.total_terms = 3;
-        }
 
         // Remove null/undefined values
         Object.keys(updatedData).forEach(key => {
@@ -6674,12 +6692,7 @@ async function handleEditUser(e) {
             }
         }
 
-        // ✅ Log with program level info
-        const levelText = isDiploma ? 'Diploma' : isCertificate ? 'Certificate' : 'Other';
-        await logAudit('USER_EDIT', 
-            `Edited profile for user ${fullName} (${updatedData.program_type || 'KRCHN'} - ${levelText})`, 
-            userId, 'SUCCESS');
-        
+        await logAudit('USER_EDIT', `Edited profile for user ${fullName} (${updatedData.program_type || 'KRCHN'})`, userId, 'SUCCESS');
         showFeedback(`✅ User profile updated successfully!`, 'success');
 
         // Close modal
@@ -6702,63 +6715,6 @@ async function handleEditUser(e) {
     } finally {
         setButtonLoading(submitButton, false, originalText);
     }
-}
-
-// ============================================
-// HELPER: VALIDATE BLOCK FOR PROGRAM
-// ============================================
-
-function validateBlockForProgram(blockValue, program) {
-    const isTVET = isTVETProgram(program);
-    const programLevel = getProgramLevel(program);
-    const isDiploma = programLevel === 'DIPLOMA';
-    const isCertificate = programLevel === 'CERTIFICATE';
-    
-    if (!blockValue) {
-        return { valid: false, message: 'Block/Term is required' };
-    }
-    
-    if (isTVET) {
-        if (isDiploma) {
-            // Diploma TVET: Y1T1, Y1T2, Y1T3, Y2T1, Y2T2, Y2T3
-            const validTerms = ['Y1T1', 'Y1T2', 'Y1T3', 'Y2T1', 'Y2T2', 'Y2T3'];
-            if (!validTerms.includes(blockValue)) {
-                return { 
-                    valid: false, 
-                    message: 'Invalid term for Diploma TVET. Must be one of: Year 1 Term 1-3, Year 2 Term 1-3' 
-                };
-            }
-        } else if (isCertificate) {
-            // Certificate TVET: Y1T1, Y1T2, Y1T3
-            const validTerms = ['Y1T1', 'Y1T2', 'Y1T3'];
-            if (!validTerms.includes(blockValue)) {
-                return { 
-                    valid: false, 
-                    message: 'Invalid term for Certificate TVET. Must be one of: Year 1 Term 1-3' 
-                };
-            }
-        } else {
-            // Other TVET: Accept generic terms
-            const validTerms = ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final'];
-            if (!validTerms.includes(blockValue) && !blockValue.match(/^Y\dT\d$/)) {
-                return { 
-                    valid: false, 
-                    message: 'Invalid term for TVET program' 
-                };
-            }
-        }
-    } else {
-        // KRCHN: Accept valid blocks
-        const validBlocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'];
-        if (!validBlocks.includes(blockValue)) {
-            return { 
-                valid: false, 
-                message: 'Invalid block for KRCHN program' 
-            };
-        }
-    }
-    
-    return { valid: true };
 }
 // ============================================================
 // 📄 VIEW USER DOCUMENTS - COMPLETE
@@ -7846,67 +7802,15 @@ if (typeof getProgramType === 'undefined') {
         return program === 'KRCHN' ? 'KRCHN' : 'TVET';
     };
 }
-// Make sure this function is updated
+
 if (typeof updateBlockSelectOptions === 'undefined') {
     window.updateBlockSelectOptions = function(select, isTVET) {
         if (!select) return;
         
-        // Get the program level to determine if it's Diploma or Certificate
-        const programSelect = document.getElementById('new_unit_program') || document.getElementById('edit_unit_program');
-        const programCode = programSelect?.value || '';
-        const programLevel = getProgramLevel(programCode);
-        const isDiploma = programLevel === 'DIPLOMA';
-        const isCertificate = programLevel === 'CERTIFICATE';
-        
+        const options = isTVET ? getTermOptions() : getBlockOptions();
         const currentValue = select.value;
         
         select.innerHTML = '<option value="">-- Select --</option>';
-        
-        let options = [];
-        
-        if (isDiploma && isTVET) {
-            // Diploma TVET: Year 1 Term 1 to Year 2 Term 3
-            options = [
-                { value: 'Y1T1', label: 'Year 1 Term 1' },
-                { value: 'Y1T2', label: 'Year 1 Term 2' },
-                { value: 'Y1T3', label: 'Year 1 Term 3' },
-                { value: 'Y2T1', label: 'Year 2 Term 1' },
-                { value: 'Y2T2', label: 'Year 2 Term 2' },
-                { value: 'Y2T3', label: 'Year 2 Term 3' }
-            ];
-        } else if (isCertificate && isTVET) {
-            // Certificate TVET: Year 1 Term 1 to Term 3
-            options = [
-                { value: 'Y1T1', label: 'Year 1 Term 1' },
-                { value: 'Y1T2', label: 'Year 1 Term 2' },
-                { value: 'Y1T3', label: 'Year 1 Term 3' }
-            ];
-        } else if (isTVET) {
-            // Generic TVET
-            options = [
-                { value: 'Introductory', label: 'Introductory Term' },
-                { value: 'Term1', label: 'Term 1' },
-                { value: 'Term2', label: 'Term 2' },
-                { value: 'Term3', label: 'Term 3' },
-                { value: 'Term4', label: 'Term 4' },
-                { value: 'Term5', label: 'Term 5' },
-                { value: 'Term6', label: 'Term 6' },
-                { value: 'Final', label: 'Final Term' }
-            ];
-        } else {
-            // KRCHN Blocks
-            options = [
-                { value: 'Introductory', label: 'Introductory Block' },
-                { value: 'Block 1', label: 'Block 1' },
-                { value: 'Block 2', label: 'Block 2' },
-                { value: 'Block 3', label: 'Block 3' },
-                { value: 'Block 4', label: 'Block 4' },
-                { value: 'Block 5', label: 'Block 5' },
-                { value: 'Block 6', label: 'Block 6' },
-                { value: 'Final', label: 'Final Block' }
-            ];
-        }
-        
         options.forEach(opt => {
             const option = document.createElement('option');
             option.value = opt.value;
@@ -7914,10 +7818,8 @@ if (typeof updateBlockSelectOptions === 'undefined') {
             select.appendChild(option);
         });
         
-        // Restore previous value if it exists
         if (currentValue) {
-            const valueExists = Array.from(select.options).some(o => o.value === currentValue);
-            if (valueExists) select.value = currentValue;
+            select.value = currentValue;
         }
     };
 }
@@ -15511,7 +15413,8 @@ function updateVisualization() {
 // Add this at the end of your script.js, before the closing of the file
 // =====================================================
 // UNIT REGISTRATIONS & APPROVALS - COMPLETE SCRIPT
-// WITH TVET DIPLOMA/CERTIFICATE SUPPORT
+// WITH SUPPLEMENTARY REGISTRATION SUPPORT
+// FIXED: Student names now load correctly
 // =====================================================
 
 // =====================================================
@@ -15522,7 +15425,7 @@ if (typeof window.isTVETProgram === 'undefined') {
     window.isTVETProgram = function(program) {
         const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 
                               'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-                              'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'CCG', 'COMT'];
+                              'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
         return tvetPrograms.includes(program);
     };
 }
@@ -15532,28 +15435,6 @@ if (typeof window.getProgramType === 'undefined') {
         if (program === 'KRCHN') return 'KRCHN';
         if (window.isTVETProgram(program)) return 'TVET';
         return 'OTHER';
-    };
-}
-
-if (typeof window.getProgramLevel === 'undefined') {
-    window.getProgramLevel = function(program) {
-        if (!program) return 'KRCHN';
-        const code = String(program).toUpperCase().trim();
-        
-        if (typeof MASTER_PROGRAMS !== 'undefined' && MASTER_PROGRAMS[code]) {
-            const type = MASTER_PROGRAMS[code].type;
-            if (type === 'diploma') return 'DIPLOMA';
-            if (type === 'certificate') return 'CERTIFICATE';
-            if (type === 'artisan') return 'ARTISAN';
-            if (type === 'nursing') return 'KRCHN';
-            return 'OTHER';
-        }
-        
-        if (code.startsWith('D')) return 'DIPLOMA';
-        if (code.startsWith('C') && code !== 'CCA') return 'CERTIFICATE';
-        if (code.startsWith('A')) return 'ARTISAN';
-        if (code === 'CCA' || code === 'PTE') return 'OTHER';
-        return 'KRCHN';
     };
 }
 
@@ -15597,73 +15478,6 @@ if (typeof window.showFeedback === 'undefined') {
         }, 4000);
     };
 }
-
-// =====================================================
-// HELPER: FORMAT BLOCK/TERM FOR DISPLAY
-// =====================================================
-
-function formatBlockDisplay(blockValue, program) {
-    if (!blockValue) return 'N/A';
-    
-    const isTVET = window.isTVETProgram(program);
-    const programLevel = window.getProgramLevel(program);
-    const isDiploma = programLevel === 'DIPLOMA';
-    const isCertificate = programLevel === 'CERTIFICATE';
-    
-    if (isTVET) {
-        // Check if it's a Y1T1 format
-        const match = blockValue.match(/^Y(\d)T(\d)$/);
-        if (match) {
-            const year = match[1];
-            const term = match[2];
-            // Validate based on program level
-            if (isDiploma) {
-                // Diploma: Y1T1-Y2T3
-                const valid = ['Y1T1', 'Y1T2', 'Y1T3', 'Y2T1', 'Y2T2', 'Y2T3'];
-                if (valid.includes(blockValue)) {
-                    return `Year ${year} Term ${term}`;
-                }
-            } else if (isCertificate) {
-                // Certificate: Y1T1-Y1T3
-                const valid = ['Y1T1', 'Y1T2', 'Y1T3'];
-                if (valid.includes(blockValue)) {
-                    return `Year ${year} Term ${term}`;
-                }
-            }
-            return `Year ${year} Term ${term}`;
-        }
-        
-        // Check if it's a Term format
-        if (blockValue.startsWith('Term')) {
-            return blockValue;
-        }
-        
-        // Check if it's Introductory
-        if (blockValue === 'Introductory') {
-            return 'Introductory Term';
-        }
-        
-        if (blockValue === 'Final') {
-            return 'Final Term';
-        }
-        
-        return blockValue;
-    } else {
-        // KRCHN Blocks
-        if (blockValue === 'Introductory') {
-            return 'Introductory Block';
-        }
-        if (blockValue.startsWith('Block')) {
-            return blockValue;
-        }
-        if (blockValue === 'Final') {
-            return 'Final Block';
-        }
-        return blockValue;
-    }
-}
-
-window.formatBlockDisplay = formatBlockDisplay;
 
 // =====================================================
 // GLOBALS
@@ -15757,6 +15571,10 @@ async function loadUnitRegistrationStats() {
 }
 
 // =====================================================
+// FIXED: Get Student Name from Multiple Sources
+// =====================================================
+
+// =====================================================
 // GET STUDENT NAME - OPTIMIZED VERSION
 // =====================================================
 
@@ -15831,9 +15649,8 @@ async function getStudentName(studentId) {
         };
     }
 }
-
 // =====================================================
-// PENDING REGISTRATIONS WITH CORRECT STUDENT NAMES
+// FIXED: PENDING REGISTRATIONS WITH CORRECT STUDENT NAMES
 // =====================================================
 
 async function loadUnitPendingRegistrations() {
@@ -15864,6 +15681,7 @@ async function loadUnitPendingRegistrations() {
     `;
     
     try {
+        // Get pending registrations
         const { data: registrations, error } = await sb
             .from('student_unit_registrations')
             .select('*')
@@ -15959,6 +15777,7 @@ async function loadUnitPendingRegistrations() {
             });
         }
         
+        // Rest of the rendering code (same as before, but uses the corrected studentInfo)
         const sortedGroups = Object.values(groupedByStudent).sort((a, b) => a.name.localeCompare(b.name));
         
         // Build HTML with Supplementary support
@@ -16015,23 +15834,8 @@ async function loadUnitPendingRegistrations() {
                 '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">TVET</span>' :
                 '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">KRCHN</span>';
             
-            // ✅ ADD PROGRAM LEVEL BADGE
-            const programLevel = window.getProgramLevel(student.program);
-            const isDiploma = programLevel === 'DIPLOMA';
-            const isCertificate = programLevel === 'CERTIFICATE';
-            
-            let levelBadge = '';
-            if (isDiploma) {
-                levelBadge = '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; margin-left: 4px;">🎯 Diploma</span>';
-            } else if (isCertificate) {
-                levelBadge = '<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; margin-left: 4px;">📜 Certificate</span>';
-            }
-            
             const suppBadge = hasSupplementary ? 
                 '<span style="background: #B45309; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 4px;">🔄 Supplementary</span>' : '';
-            
-            // ✅ FORMAT BLOCK DISPLAY
-            const formattedBlock = formatBlockDisplay(student.block, student.program);
             
             html += `
                 <div class="student-group-card" style="
@@ -16058,7 +15862,6 @@ async function loadUnitPendingRegistrations() {
                                 <i class="fas fa-user-circle" style="color: #4C1D95;"></i> 
                                 ${window.escapeHtml(student.name)}
                                 ${programBadge}
-                                ${levelBadge}
                                 ${suppBadge}
                             </strong>
                             <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px;">
@@ -16069,7 +15872,7 @@ async function loadUnitPendingRegistrations() {
                                     <i class="fas fa-graduation-cap"></i> ${window.escapeHtml(student.program)}
                                 </span>
                                 <span style="font-size: 12px; color: #6b7280;">
-                                    <i class="fas fa-layer-group"></i> ${window.escapeHtml(formattedBlock)}
+                                    <i class="fas fa-layer-group"></i> ${window.escapeHtml(student.block)}
                                 </span>
                                 <span style="font-size: 12px; color: #6b7280;">
                                     <i class="fas fa-clock"></i> ${submittedDate}
@@ -16128,9 +15931,6 @@ async function loadUnitPendingRegistrations() {
                 const regBadge = isSupplementary ? 
                     `<span style="background: #B45309; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; margin-left: 4px;">${unit.reg_type}</span>` : '';
                 
-                // ✅ FORMAT BLOCK DISPLAY FOR UNIT
-                const unitFormattedBlock = formatBlockDisplay(unit.block, student.program);
-                
                 html += `
                     <div class="unit-item" style="
                         display: flex; 
@@ -16152,7 +15952,7 @@ async function loadUnitPendingRegistrations() {
                                 <span style="font-size: 12px; color: #374151; margin-left: 6px;">${window.escapeHtml(unit.unit_name)}</span>
                             </div>
                             <div style="font-size: 11px; color: #6b7280;">
-                                <i class="fas fa-layer-group"></i> ${window.escapeHtml(unitFormattedBlock)}
+                                <i class="fas fa-layer-group"></i> ${window.escapeHtml(unit.block)}
                             </div>
                         </div>
                         <div style="display: flex; gap: 4px; flex-shrink: 0;">
@@ -16490,9 +16290,6 @@ async function loadApprovedRegistrations() {
             const regTypeColor = isSupplementary ? '#B45309' : '#065f46';
             const regTypeBg = isSupplementary ? '#fef3c7' : '#d1fae5';
             
-            // ✅ FORMAT BLOCK DISPLAY
-            const formattedBlock = formatBlockDisplay(reg.block, reg.program);
-            
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
                     <td style="text-align: center;">
@@ -16502,11 +16299,7 @@ async function loadApprovedRegistrations() {
                     <td style="font-size: 12px; color: #6b7280;">${reg.student_id ? reg.student_id.substring(0, 8) : 'N/A'}...</td>
                     <td><span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.unit_code)}</span></td>
                     <td>${window.escapeHtml(reg.unit_name)}</td>
-                    <td style="text-align: center;">
-                        <span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                            ${window.escapeHtml(formattedBlock)}
-                        </span>
-                    </td>
+                    <td style="text-align: center;"><span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.block)}</span></td>
                     <td style="text-align: center;">
                         <span style="background: ${regTypeBg}; color: ${regTypeColor}; padding: 2px 10px; border-radius: 12px; font-weight: 500;">
                             ${window.escapeHtml(reg.reg_type || 'Normal')}
@@ -16642,6 +16435,7 @@ async function bulkDeapproveSelected() {
 // =====================================================
 // GROUPED REGISTRATIONS - WITH SUPPLEMENTARY SUPPORT
 // =====================================================
+
 
 async function loadGroupedRegistrations() {
     console.log('📋 Loading grouped registrations (FIXED)...');
@@ -16831,21 +16625,6 @@ function renderGroupedRegistrationsWithNames(groups) {
             '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">TVET</span>' :
             '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">KRCHN</span>';
         
-        // ✅ ADD PROGRAM LEVEL BADGE
-        const programLevel = window.getProgramLevel(student.program);
-        const isDiploma = programLevel === 'DIPLOMA';
-        const isCertificate = programLevel === 'CERTIFICATE';
-        
-        let levelBadge = '';
-        if (isDiploma) {
-            levelBadge = '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; margin-left: 4px;">🎯 Diploma</span>';
-        } else if (isCertificate) {
-            levelBadge = '<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; margin-left: 4px;">📜 Certificate</span>';
-        }
-        
-        // ✅ FORMAT BLOCK DISPLAY
-        const formattedBlock = formatBlockDisplay(student.block, student.program);
-        
         html += `
             <div class="student-group-card" data-student-id="${student.id}" data-program="${student.program}" data-block="${student.block}" data-has-supp="${hasSupplementary}" style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: white; transition: all 0.2s; ${hasSupplementary ? 'border-left: 4px solid #B45309;' : ''}">
                 
@@ -16863,13 +16642,12 @@ function renderGroupedRegistrationsWithNames(groups) {
                             <div style="font-weight: 600; color: #1e293b; font-size: 15px;">
                                 ${escapeHtml(student.name)}
                                 ${programBadge}
-                                ${levelBadge}
                                 ${suppBadge}
                             </div>
                             <div style="font-size: 12px; color: #94a3b8;">
                                 ${student.id && student.id !== 'unknown_student' && student.id !== 'null_student' ? student.id.substring(0, 8) : 'N/A'} 
                                 ${student.admission_number ? '• ' + escapeHtml(student.admission_number) : ''}
-                                • ${escapeHtml(student.program)} • ${escapeHtml(formattedBlock)}
+                                • ${escapeHtml(student.program)} • ${escapeHtml(student.block)}
                             </div>
                         </div>
                     </div>
@@ -16923,18 +16701,13 @@ function renderGroupedRegistrationsWithNames(groups) {
             const regTypeColor = isSupplementary ? '#B45309' : '#4C1D95';
             const regTypeBg = isSupplementary ? '#fef3c7' : '#e0e7ff';
             
-            // ✅ FORMAT BLOCK DISPLAY
-            const regFormattedBlock = formatBlockDisplay(reg.block, student.program);
-            
             html += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
                     <td style="padding: 8px 12px; font-weight: 500; color: #4C1D95;">${escapeHtml(reg.unit_code)}</td>
                     <td style="padding: 8px 12px;">${escapeHtml(reg.unit_name)}</td>
                     <td style="padding: 8px 12px; text-align: center;">
-                        <span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                            ${escapeHtml(regFormattedBlock || 'N/A')}
-                        </span>
+                        <span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${escapeHtml(reg.block || 'N/A')}</span>
                     </td>
                     <td style="padding: 8px 12px; text-align: center;">
                         <span style="background: ${regTypeBg}; color: ${regTypeColor}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
@@ -16975,7 +16748,6 @@ function renderGroupedRegistrationsWithNames(groups) {
     
     container.innerHTML = html;
 }
-
 // =====================================================
 // GROUP INTERACTIONS
 // =====================================================
@@ -17208,14 +16980,8 @@ function filterGroupedRegistrations() {
         filtered = filtered.filter(r => r.program === program);
     }
     
-    // ✅ Updated block filter to handle Diploma/Certificate terms
     if (block !== 'all') {
-        filtered = filtered.filter(r => {
-            // Check if the block matches (considering both raw and formatted)
-            const rawBlock = r.block || '';
-            const formattedBlock = formatBlockDisplay(rawBlock, r.program);
-            return rawBlock === block || formattedBlock === block;
-        });
+        filtered = filtered.filter(r => r.block === block);
     }
     
     if (status !== 'all') {
@@ -17237,9 +17003,7 @@ function filterGroupedRegistrations() {
 function exportGroupedRegistrations() {
     let csv = 'Student ID,Student Name,Program,Block,Unit Code,Unit Name,Registration Type,Status,Registration Date\n';
     window.registrationsData.forEach(reg => {
-        // ✅ FORMAT BLOCK FOR EXPORT
-        const formattedBlock = formatBlockDisplay(reg.block, reg.program);
-        csv += `${reg.student_id || 'N/A'},${reg.student_name || 'Unknown'},${reg.program || 'N/A'},${formattedBlock},${reg.unit_code || 'N/A'},${reg.unit_name || 'N/A'},${reg.reg_type || 'Normal'},${reg.status || 'N/A'},${reg.submitted_date || 'N/A'}\n`;
+        csv += `${reg.student_id || 'N/A'},${reg.student_name || 'Unknown'},${reg.program || 'N/A'},${reg.block || 'N/A'},${reg.unit_code || 'N/A'},${reg.unit_name || 'N/A'},${reg.reg_type || 'Normal'},${reg.status || 'N/A'},${reg.submitted_date || 'N/A'}\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -17309,12 +17073,11 @@ window.approveRegistration = approveRegistration;
 window.rejectRegistration = rejectRegistration;
 window.viewRegistrationDetails = viewRegistrationDetails;
 window.togglePendingList = togglePendingList;
-window.formatBlockDisplay = formatBlockDisplay;
 
 // Clear cache on page refresh
 window.studentNameCache = {};
 
-console.log('✅ Unit Registration Management module loaded with TVET Diploma/Certificate support!');
+console.log('✅ Unit Registration Management module loaded with Supplementary support and fixed student names!');
 // =====================================================
 // ADDITIONAL STYLING FOR TABLES
 // =====================================================
@@ -24988,33 +24751,8 @@ function renderECBlocks() {
     const container = document.getElementById('ec_blocks');
     if (!container) return;
     
-    // Get current program from selector
-    const programSelect = document.getElementById('ec_program_select') || document.getElementById('me_program_select');
-    const program = programSelect?.value || 'KRCHN';
-    const isTVET = isTVETProgram(program);
-    const programLevel = getProgramLevel(program);
-    const isDiploma = programLevel === 'DIPLOMA';
-    const isCertificate = programLevel === 'CERTIFICATE';
+    const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
     
-    let blocks = [];
-    
-    if (isTVET) {
-        if (isDiploma) {
-            // Diploma TVET: Year 1 Term 1 to Year 2 Term 3
-            blocks = ['Y1T1', 'Y1T2', 'Y1T3', 'Y2T1', 'Y2T2', 'Y2T3'];
-        } else if (isCertificate) {
-            // Certificate TVET: Year 1 Term 1 to Term 3
-            blocks = ['Y1T1', 'Y1T2', 'Y1T3'];
-        } else {
-            // Other TVET
-            blocks = ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final'];
-        }
-    } else {
-        // KRCHN Blocks
-        blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-    }
-    
-    // Render blocks with the dynamic list
     container.innerHTML = blocks.map(block => {
         const blockSubjects = ecSubjects.filter(s => s.block === block);
         const openCount = blockSubjects.filter(s => {
@@ -25024,17 +24762,10 @@ function renderECBlocks() {
         }).length;
         const totalCount = blockSubjects.length;
         
-        // Format display name
-        let displayName = block;
-        const match = block.match(/^Y(\d)T(\d)$/);
-        if (match) {
-            displayName = `Year ${match[1]} Term ${match[2]}`;
-        }
-        
         return `
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #6366f1;">
                 <div>
-                    <strong style="font-size: 15px;">📚 ${displayName}</strong>
+                    <strong style="font-size: 15px;">📚 ${block.replace('_', ' ')}</strong>
                     <span style="font-size: 12px; color: #64748b; margin-left: 10px;">
                         ${openCount}/${totalCount} subjects open
                     </span>
@@ -25055,18 +24786,11 @@ function populateECBlockFilter() {
     blocks.forEach(block => {
         const option = document.createElement('option');
         option.value = block;
-        
-        // Format display name
-        let displayName = block.replace('_', ' ');
-        const match = block.match(/^Y(\d)T(\d)$/);
-        if (match) {
-            displayName = `Year ${match[1]} Term ${match[2]}`;
-        }
-        
-        option.textContent = displayName;
+        option.textContent = block.replace('_', ' ');
         filter.appendChild(option);
     });
 }
+
 function renderECSubjects() {
     const container = document.getElementById('ec_subjects');
     if (!container) return;
@@ -26164,527 +25888,3 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('✅ Dashboard initialization complete');
 });
-// ============================================
-// 🔥 EXPOSE ALL CRITICAL FUNCTIONS TO GLOBAL SCOPE
-// ============================================
-
-(function exposeGlobals() {
-    console.log('🔥 Exposing functions to global scope...');
-    
-    // Core functions
-    window.sb = sb;
-    window.getSb = getSb;
-    window.escapeHtml = escapeHtml;
-    window.showFeedback = showFeedback;
-    window.logAudit = logAudit;
-    window.showTab = showTab;
-    window.logout = logout;
-    window.closeModal = closeModal;
-    window.closeGradeModal = closeGradeModal;
-    window.exportTableToCSV = exportTableToCSV;
-    window.filterTable = filterTable;
-    window.updateSelectedCount = updateSelectedCount;
-    window.debounce = debounce;
-    
-    // ====== USER MANAGEMENT ======
-    window.loadAllUsers = loadAllUsers;
-    window.loadPendingApprovals = loadPendingApprovals;
-    window.loadStudents = loadStudents;
-    window.initManageUsers = initManageUsers;
-    window.approveUser = approveUser;
-    window.showApprovalModal = showApprovalModal;
-    window.closeApprovalModal = closeApprovalModal;
-    window.confirmApproveUser = confirmApproveUser;
-    window.openEditUserModal = openEditUserModal;
-    window.handleEditUser = handleEditUser;
-    window.deleteProfile = deleteProfile;
-    window.updateUserRole = updateUserRole;
-    window.openDocumentUploadModal = openDocumentUploadModal;
-    window.previewDocument = previewDocument;
-    window.uploadUserDocuments = uploadUserDocuments;
-    window.viewDocument = viewDocument;
-    window.sendApprovalEmail = sendApprovalEmail;
-    window.getDisplayIntake = getDisplayIntake;
-    window.handleAddAccount = handleAddAccount;
-    window.handleMassPromotion = handleMassPromotion;
-    window.updateUserEmailFromModal = updateUserEmailFromModal;
-    window.clearEmailStatus = clearEmailStatus;
-    window.updatePendingStats = updatePendingStats;
-    window.openEmailChangeDialog = openEmailChangeDialog;
-    window.updateUserEmailFromModalDirect = updateUserEmailFromModalDirect;
-    window.loadAcademicHistory = loadAcademicHistory;
-    window.viewUserDocuments = viewUserDocuments;
-    
-    // ====== STAFF MANAGEMENT ======
-    window.loadAllStaff = loadAllStaff;
-    window.initStaffManagement = initStaffManagement;
-    window.openAddStaffModal = openAddStaffModal;
-    window.closeAddStaffModal = closeAddStaffModal;
-    window.saveStaff = saveStaff;
-    window.editStaff = editStaff;
-    window.updateStaff = updateStaff;
-    window.deleteStaff = deleteStaff;
-    window.filterStaffTable = filterStaffTable;
-    window.exportStaffToCSV = exportStaffToCSV;
-    window.importStaffFromCSV = importStaffFromCSV;
-    window.quickEditDepartment = quickEditDepartment;
-    window.viewStaffDocuments = viewStaffDocuments;
-    window.closeViewDocsModal = closeViewDocsModal;
-    window.toggleStaffPasswordField = toggleStaffPasswordField;
-    window.staffLogin = staffLogin;
-    window.resetStaffPassword = resetStaffPassword;
-    window.handleStaffDocumentUpload = handleStaffDocumentUpload;
-    window.removeStaffDocument = removeStaffDocument;
-    window.getStaffDocLabel = getStaffDocLabel;
-    
-    // ====== PROGRAMS ======
-    window.loadAllPrograms = loadAllPrograms;
-    window.createProgram = createProgram;
-    window.editProgram = editProgram;
-    window.updateProgram = updateProgram;
-    window.deleteProgram = deleteProgram;
-    window.filterPrograms = filterPrograms;
-    window.filterProgramsTable = filterProgramsTable;
-    window.exportProgramsToCSV = exportProgramsToCSV;
-    window.loadProgramIntakes = loadProgramIntakes;
-    window.loadIntakesForProgram = loadIntakesForProgram;
-    window.addProgramIntake = addProgramIntake;
-    window.deleteIntake = deleteIntake;
-    window.loadProgramBlocks = loadProgramBlocks;
-    window.loadBlocksForProgram = loadBlocksForProgram;
-    window.addProgramBlock = addProgramBlock;
-    window.deleteBlock = deleteBlock;
-    window.loadProgramMappings = loadProgramMappings;
-    window.addProgramCourseMapping = addProgramCourseMapping;
-    window.deleteMapping = deleteMapping;
-    window.populateCourseSelector = populateCourseSelector;
-    window.populateBlockSelector = populateBlockSelector;
-    window.showProgramIntakes = showProgramIntakes;
-    window.showProgramBlocks = showProgramBlocks;
-    window.loadProgramsSection = loadProgramsSection;
-    window.autoCreateBlocks = autoCreateBlocks;
-    
-    // ====== RESOURCES ======
-    window.loadAllResources = loadAllResources;
-    window.filterResourceType = filterResourceType;
-    window.filterResourcesTable = filterResourcesTable;
-    window.deleteResourceItem = deleteResourceItem;
-    window.editResource = editResource;
-    window.cancelEditResource = cancelEditResource;
-    window.handleResourceUpload = handleResourceUpload;
-    window.switchAdminProgram = switchAdminProgram;
-    window.exportResourcesToCSV = exportResourcesToCSV;
-    window.updateBlockOptions = updateBlockOptions;
-    window.updateFilterDropdown = updateFilterDropdown;
-    window.togglePastPaperFields = togglePastPaperFields;
-    window.initResourcesSection = initResourcesSection;
-    
-    // ====== EXAMS ======
-    window.loadExams = loadExams;
-    window.handleAddExam = handleAddExam;
-    window.saveEditedExam = saveEditedExam;
-    window.deleteExam = deleteExam;
-    window.openEditExamModal = openEditExamModal;
-    window.exportExamsToCSV = exportExamsToCSV;
-    window.showExamTab = showExamTab;
-    window.filterExamsTable = filterExamsTable;
-    window.closeExam = closeExam;
-    window.openGradeModal = openGradeModal;
-    window.closeGradeModal = closeGradeModal;
-    window.saveGrades = saveGrades;
-    window.filterGradeStudents = filterGradeStudents;
-    window.updateGradeTotal = updateGradeTotal;
-    window.loadAvailableClassesForExam = loadAvailableClassesForExam;
-    window.addCustomBlocks = addCustomBlocks;
-    window.addClass = addClass;
-    window.removeClass = removeClass;
-    window.closeEditModal = closeEditModal;
-    window.getSelectedClasses = getSelectedClasses;
-    window.populateProgramDropdowns = populateProgramDropdowns;
-    window.ExamCache = ExamCache;
-    window.initExams = initExams;
-    window.getExamTypeLabel = getExamTypeLabel;
-    window.populateExamCourseSelects = populateExamCourseSelects;
-    window.loadStudentsForNotification = loadStudentsForNotification;
-    window.searchStudentsForNotification = searchStudentsForNotification;
-    window.toggleStudentForNotification = toggleStudentForNotification;
-    window.updateSelectedStudentsDisplay = updateSelectedStudentsDisplay;
-    window.getNotificationRecipients = getNotificationRecipients;
-    window.sendExamNotificationEmail = sendExamNotificationEmail;
-    window.sendEmailWithBrevo = sendEmailWithBrevo;
-    window.sendEmailFallback = sendEmailFallback;
-    window.initCreateCourseDropdown = initCreateCourseDropdown;
-    window.loadCoursesForCreateDropdown = loadCoursesForCreateDropdown;
-    window.filterCreateCourseDropdown = filterCreateCourseDropdown;
-    window.selectCreateCourse = selectCreateCourse;
-    window.initEditCourseDropdown = initEditCourseDropdown;
-    window.selectEditCourse = selectEditCourse;
-    window.setEditCourseValue = setEditCourseValue;
-    window.updateCreateCourseDropdown = updateCreateCourseDropdown;
-    
-    // ====== UNITS (COURSES) ======
-    window.loadUnits = loadUnits;
-    window.loadAllUnits = loadAllUnits;
-    window.handleAddUnit = handleAddUnit;
-    window.handleEditUnit = handleEditUnit;
-    window.deleteUnit = deleteUnit;
-    window.openEditUnitModal = openEditUnitModal;
-    window.filterUnitsCatalog = filterUnitsCatalog;
-    window.filterUnitsByBlock = filterUnitsByBlock;
-    window.filterUnitsByBlockSelect = filterUnitsByBlock;
-    window.filterUnitsByProgramType = filterUnitsByProgramType;
-    window.resetUnitFilters = resetUnitFilters;
-    window.exportUnitsToCSV = exportUnitsToCSV;
-    window.updateUnitCount = updateUnitCount;
-    window.closeEditModal = closeEditModal;
-    window.setupUnitEventListeners = setupUnitEventListeners;
-    window.getBlockOptions = getBlockOptions;
-    window.getTermOptions = getTermOptions;
-    window.updateBlockSelectOptions = updateBlockSelectOptions;
-    window.addNewUnitRecord = addNewUnitRecord;
-    
-    // ====== UNIT REGISTRATIONS ======
-    window.loadUnitDashboard = loadUnitDashboard;
-    window.loadUnitRegistrationStats = loadUnitRegistrationStats;
-    window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
-    window.loadApprovedRegistrations = loadApprovedRegistrations;
-    window.loadGroupedRegistrations = loadGroupedRegistrations;
-    window.filterApprovedRegistrations = filterApprovedRegistrations;
-    window.exportApprovedRegistrations = exportApprovedRegistrations;
-    window.exportGroupedRegistrations = exportGroupedRegistrations;
-    window.deapproveSingleRegistration = deapproveSingleRegistration;
-    window.bulkDeapproveSelected = bulkDeapproveSelected;
-    window.toggleSelectAllApproved = toggleSelectAllApproved;
-    window.updateApprovedSelectedCount = updateApprovedSelectedCount;
-    window.selectAllPendingUnits = selectAllPendingUnits;
-    window.clearAllUnitSelections = clearAllUnitSelections;
-    window.updateSelectedUnitsCount = updateSelectedUnitsCount;
-    window.approveSingleUnitRecord = approveSingleUnitRecord;
-    window.rejectSingleUnitRecord = rejectSingleUnitRecord;
-    window.approveStudentAllUnits = approveStudentAllUnits;
-    window.rejectStudentAllUnits = rejectStudentAllUnits;
-    window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
-    window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
-    window.filterPendingByProgram = filterPendingByProgram;
-    window.renderFilteredPendingRegistrations = renderFilteredPendingRegistrations;
-    window.filterUnitRegistrations = filterUnitRegistrations;
-    window.filterGroupedRegistrations = filterGroupedRegistrations;
-    window.toggleGroup = toggleGroup;
-    window.expandAllGroups = expandAllGroups;
-    window.collapseAllGroups = collapseAllGroups;
-    window.updateGroupSelection = updateGroupSelection;
-    window.toggleSelectAllGroups = toggleSelectAllGroups;
-    window.approveSelectedGroups = approveSelectedGroups;
-    window.rejectSelectedGroups = rejectSelectedGroups;
-    window.approveRegistration = approveRegistration;
-    window.rejectRegistration = rejectRegistration;
-    window.viewRegistrationDetails = viewRegistrationDetails;
-    window.togglePendingList = togglePendingList;
-    window.formatBlockDisplay = formatBlockDisplay;
-    window.getStudentName = getStudentName;
-    
-    // ====== ATTENDANCE ======
-    window.toggleAttendanceFields = toggleAttendanceFields;
-    window.populateAttendanceSelects = populateAttendanceSelects;
-    window.approveAttendanceRecord = approveAttendanceRecord;
-    window.deleteAttendanceRecord = deleteAttendanceRecord;
-    window.showMap = showMap;
-    window.adminCheckIn = adminCheckIn;
-    window.handleManualAttendance = handleManualAttendance;
-    window.loadAttendance = loadAttendance;
-    window.filterAttendance = filterAttendance;
-    window.resetAttendanceFilters = resetAttendanceFilters;
-    window.refreshAttendance = refreshAttendance;
-    window.exportAllAttendance = exportAllAttendance;
-    window.updateAttendanceBlockOptions = updateAttendanceBlockOptions;
-    
-    // ====== SESSIONS ======
-    window.loadScheduledSessions = loadScheduledSessions;
-    window.populateSessionCourseSelects = populateSessionCourseSelects;
-    window.handleAddSession = handleAddSession;
-    window.deleteSession = deleteSession;
-    
-    // ====== CALENDAR / TIMETABLE ======
-    window.renderFullCalendar = renderFullCalendar;
-    window.refreshCalendarData = refreshCalendarData;
-    window.uploadTimetableExcel = uploadTimetableExcel;
-    window.addCalendarEvent = addCalendarEvent;
-    window.downloadTimetableTemplate = downloadTimetableTemplate;
-    window.uploadTimetableToSupabase = uploadTimetableToSupabase;
-    window.clearTimetableBlock = clearTimetableBlock;
-    window.previewTimetable = previewTimetable;
-    window.showUploadMethod = showUploadMethod;
-    window.addSingleEvent = addSingleEvent;
-    window.createWeeklySchedule = createWeeklySchedule;
-    window.uploadExcelTimetable = uploadExcelTimetable;
-    
-    // ====== SECURITY ======
-    window.sendPasswordResetEmail = sendPasswordResetEmail;
-    window.adminForceResetPassword = adminForceResetPassword;
-    window.handleSendResetEmail = handleSendResetEmail;
-    window.handleAdminForceReset = handleAdminForceReset;
-    window.handleGlobalPasswordReset = handleGlobalPasswordReset;
-    window.lookupUser = lookupUser;
-    window.autoFillResetForm = autoFillResetForm;
-    window.clearLookupResult = clearLookupResult;
-    window.loadSystemStatus = loadSystemStatus;
-    window.updateSystemStatus = updateSystemStatus;
-    window.saveSystemMessage = saveSystemMessage;
-    window.clearSystemMessage = clearSystemMessage;
-    window.applySystemStatus = applySystemStatus;
-    window.handleAccountDeactivation = handleAccountDeactivation;
-    window.loadSecurityActivity = loadSecurityActivity;
-    window.addSecurityActivity = addSecurityActivity;
-    window.renderSecurityActivity = renderSecurityActivity;
-    window.refreshSecuritySettings = refreshSecuritySettings;
-    window.exportSecurityAudit = exportSecurityAudit;
-    window.togglePasswordVisibility = togglePasswordVisibility;
-    window.loadActiveSessions = loadActiveSessions;
-    window.terminateSession = terminateSession;
-    window.terminateAllSessions = terminateAllSessions;
-    window.refreshSessions = refreshSessions;
-    window.exportSessionsToCSV = exportSessionsToCSV;
-    window.trackUserSession = trackUserSession;
-    window.updateSessionActivity = updateSessionActivity;
-    
-    // ====== AUDIT ======
-    window.loadAuditLogs = loadAuditLogs;
-    window.applyAuditFilters = applyAuditFilters;
-    window.resetAuditFilters = resetAuditFilters;
-    window.quickDateFilter = quickDateFilter;
-    window.changeAuditPage = changeAuditPage;
-    window.changeAuditEntriesPerPage = changeAuditEntriesPerPage;
-    window.sortAuditTable = sortAuditTable;
-    window.refreshAuditLogs = refreshAuditLogs;
-    window.exportAuditLogsToCSV = exportAuditLogsToCSV;
-    window.manualCleanAuditLogs = manualCleanAuditLogs;
-    
-    // ====== MESSAGES & ANNOUNCEMENTS ======
-    window.loadAdminMessages = loadAdminMessages;
-    window.editNotification = editNotification;
-    window.deleteNotification = deleteNotification;
-    window.saveOfficialAnnouncement = saveOfficialAnnouncement;
-    window.loadAnnouncementsList = loadAnnouncementsList;
-    window.toggleAnnouncementStatus = toggleAnnouncementStatus;
-    window.deleteAnnouncement = deleteAnnouncement;
-    window.handleSendMessage = handleSendMessage;
-    
-    // ====== SUPPORT TICKETS ======
-    window.loadAdminTickets = loadAdminTickets;
-    window.filterAdminTickets = filterAdminTickets;
-    window.filterAdminTicketsDebounced = filterAdminTicketsDebounced;
-    window.viewAdminTicket = viewAdminTicket;
-    window.sendAdminChatReply = sendAdminChatReply;
-    window.closeAdminTicketChatModal = closeAdminTicketChatModal;
-    window.refreshAdminConversation = refreshAdminConversation;
-    window.exportAdminTicketsToCSV = exportAdminTicketsToCSV;
-    window.checkForNewMessages = checkForNewMessages;
-    window.requestNotificationPermission = requestNotificationPermission;
-    window.testNotificationSystem = testNotificationSystem;
-    window.markTicketAsRead = markTicketAsRead;
-    window.getSupabaseClient = getSupabaseClient;
-    window.showAdminToast = showAdminToast;
-    
-    // ====== FEE ACCOUNTS ======
-    window.loadStudentAccounts = loadStudentAccounts;
-    window.recordPayment = recordPayment;
-    window.quickRecordPayment = quickRecordPayment;
-    window.viewPaymentHistory = viewPaymentHistory;
-    window.filterByBalanceStatus = filterByBalanceStatus;
-    window.searchStudentAccount = searchStudentAccount;
-    window.exportAccountsToCSV = exportAccountsToCSV;
-    window.showOutstandingPayments = showOutstandingPayments;
-    window.showTodayPayments = showTodayPayments;
-    window.showOverdueAccounts = showOverdueAccounts;
-    window.updateFeeStructure = updateFeeStructure;
-    window.loadFeeStructure = loadFeeStructure;
-    window.clearPaymentForm = clearPaymentForm;
-    window.generateReceipt = generateReceipt;
-    
-    // ====== DASHBOARD ======
-    window.loadDashboardData = loadDashboardData;
-    window.loadStudentStatistics = loadStudentStatistics;
-    window.loadStudentBirthdays = loadStudentBirthdays;
-    window.loadTotalDailyCheckIns = loadTotalDailyCheckIns;
-    window.loadTicketMetricsForDashboard = loadTicketMetricsForDashboard;
-    window.loadFeeSummaryForDashboard = loadFeeSummaryForDashboard;
-    window.loadPendingMessagesCount = loadPendingMessagesCount;
-    window.loadAdditionalDashboardMetrics = loadAdditionalDashboardMetrics;
-    window.loadStudentWelcomeMessage = loadStudentWelcomeMessage;
-    window.loadWelcomeMessageForEdit = loadWelcomeMessageForEdit;
-    window.handleSaveWelcomeMessage = handleSaveWelcomeMessage;
-    window.initDashboard = initDashboard;
-    window.startDashboardAutoRefresh = startDashboardAutoRefresh;
-    window.stopDashboardAutoRefresh = stopDashboardAutoRefresh;
-    window.loadChartData = loadChartData;
-    window.loadBirthdays = loadBirthdays;
-    
-    // ====== SYSTEM HEALTH ======
-    window.loadSystemHealth = loadSystemHealth;
-    window.runSystemCleanup = runSystemCleanup;
-    window.checkForLeaks = checkForLeaks;
-    window.refreshSystemHealth = refreshSystemHealth;
-    window.exportHealthReport = exportHealthReport;
-    window.startHealthAutoRefresh = startHealthAutoRefresh;
-    window.stopHealthAutoRefresh = stopHealthAutoRefresh;
-    window.runHealthCheck = runHealthCheck;
-    window.clearSystemCache = clearSystemCache;
-    window.checkForUpdates = checkForUpdates;
-    
-    // ====== BACKUPS ======
-    window.triggerBackup = triggerBackup;
-    window.loadBackupHistory = loadBackupHistory;
-    window.downloadBackup = downloadBackup;
-    window.deleteBackup = deleteBackup;
-    
-    // ====== ENTRY CONTROL ======
-    window.loadEntryControl = loadEntryControl;
-    window.renderECStats = renderECStats;
-    window.renderECGlobal = renderECGlobal;
-    window.renderECClassYears = renderECClassYears;
-    window.renderECBlocks = renderECBlocks;
-    window.renderECSubjects = renderECSubjects;
-    window.renderECLogs = renderECLogs;
-    window.populateECBlockFilter = populateECBlockFilter;
-    window.toggleGlobalEntry = toggleGlobalEntry;
-    window.toggleClassEntry = toggleClassEntry;
-    window.toggleSubjectEntry = toggleSubjectEntry;
-    window.openBlockSubjects = openBlockSubjects;
-    window.openAllSubjectsInBlock = openAllSubjectsInBlock;
-    window.closeAllSubjectsInBlock = closeAllSubjectsInBlock;
-    window.refreshEntryControl = refreshEntryControl;
-    window.exportECLogs = exportECLogs;
-    window.logEntryControlAction = logEntryControlAction;
-    
-    // ====== MARKS APPROVAL ======
-    window.loadMarksApprovals = loadMarksApprovals;
-    window.filterMarksApprovals = filterMarksApprovals;
-    window.approveMark = approveMark;
-    window.rejectMark = rejectMark;
-    window.approveByUnit = approveByUnit;
-    window.rejectByUnit = rejectByUnit;
-    window.approveAllPendingMarks = approveAllPendingMarks;
-    window.rejectAllPendingMarks = rejectAllPendingMarks;
-    window.toggleUnitDetails = toggleUnitDetails;
-    window.initMarksApproval = initMarksApproval;
-    window.exportMarksApprovalsToCSV = exportMarksApprovalsToCSV;
-    
-    // ====== APPROVAL SYSTEM ======
-    window.loadAdminActions = loadAdminActions;
-    window.viewActionDetail = viewActionDetail;
-    window.approveCurrentAction = approveCurrentAction;
-    window.rejectCurrentAction = rejectCurrentAction;
-    window.filterAdminActions = filterAdminActions;
-    window.exportAdminActionsToCSV = exportAdminActionsToCSV;
-    window.requestAdminAction = requestAdminAction;
-    window.initAdminApprovals = initAdminApprovals;
-    window.loadApprovalHistory = loadApprovalHistory;
-    
-    // ====== REVIEWS & NEWSLETTER ======
-    window.loadAllReviews = loadAllReviews;
-    window.loadSubscribers = loadSubscribers;
-    window.renderReviewsTable = renderReviewsTable;
-    window.renderSubscribers = renderSubscribers;
-    window.approveReview = approveReview;
-    window.rejectReview = rejectReview;
-    window.deleteReview = deleteReview;
-    window.filterReviewsTable = filterReviewsTable;
-    window.filterSubscribers = filterSubscribers;
-    window.exportReviewsToCSV = exportReviewsToCSV;
-    window.exportSubscribersToCSV = exportSubscribersToCSV;
-    window.sendNewsletter = sendNewsletter;
-    window.toggleSubscriber = toggleSubscriber;
-    window.showReviewsTab = showReviewsTab;
-    window.saveReviewSettings = saveReviewSettings;
-    window.initReviewsNewsletter = initReviewsNewsletter;
-    window.getStarHTML = getStarHTML;
-    
-    // ====== BULK OPERATIONS ======
-    window.selectAllUsers = selectAllUsers;
-    window.clearSelection = clearSelection;
-    window.executeBulkAction = executeBulkAction;
-    window.generateNewAPIKey = generateNewAPIKey;
-    window.regenerateKey = regenerateKey;
-    window.enable2FAForAll = enable2FAForAll;
-    window.filterErrors = filterErrors;
-    window.updateVisualization = updateVisualization;
-    window.quickAction = quickAction;
-    
-    // ====== REAL-TIME DASHBOARD ======
-    window.updateSidebarBadges = updateSidebarBadges;
-    window.refreshDashboardStats = refreshDashboardStats;
-    window.updateNotificationBell = updateNotificationBell;
-    window.updateActiveSessionsCount = updateActiveSessionsCount;
-    window.updateOnlineStatus = updateOnlineStatus;
-    window.initRealtimeDashboard = initRealtimeDashboard;
-    window.startAutoRefresh = startAutoRefresh;
-    window.startHeartbeat = startHeartbeat;
-    window.subscribeToRealtimeUpdates = subscribeToRealtimeUpdates;
-    window.injectRealtimeCSS = injectRealtimeCSS;
-    window.showToast = showToast;
-    
-    // ====== DOCUMENT VIEWER ======
-    window.downloadCurrentDocument = downloadCurrentDocument;
-    window.verifyCurrentDocument = verifyCurrentDocument;
-    window.rejectCurrentDocument = rejectCurrentDocument;
-    window.closeDocumentViewerModal = closeDocumentViewerModal;
-    window.openDocumentViewerModal = openDocumentViewerModal;
-    window.loadUserDocumentsForViewer = loadUserDocumentsForViewer;
-    window.getPhotoUrl = getPhotoUrl;
-    window.viewDocumentFile = viewDocumentFile;
-    window.downloadDocumentFile = downloadDocumentFile;
-    window.findDocument = findDocument;
-    
-    // ====== PROGRAM DROPDOWNS ======
-    window.updateProgramDropdown = updateProgramDropdown;
-    window.updateBlockTermOptions = updateBlockTermOptions;
-    window.initializeAllProgramDropdowns = initializeAllProgramDropdowns;
-    window.loadPrograms = loadPrograms;
-    window.seedPrograms = seedPrograms;
-    window.mergeWithMaster = mergeWithMaster;
-    window.getHardcodedPrograms = getHardcodedPrograms;
-    window.isTVETProgram = isTVETProgram;
-    window.getProgramType = getProgramType;
-    window.getProgramLevel = getProgramLevel;
-    window.getProgramDisplayName = getProgramDisplayName;
-    window.getCorrespondingBlockField = getCorrespondingBlockField;
-    window.MASTER_PROGRAMS = MASTER_PROGRAMS;
-    window.TVET_PROGRAMS = TVET_PROGRAMS;
-    window.PROGRAM_DISPLAY_NAMES = PROGRAM_DISPLAY_NAMES;
-    
-    // ====== SPINNER MANAGER ======
-    window.spinnerManager = spinnerManager;
-    
-    // ====== USER FILTERS ======
-    window.populateUserProgramFilter = populateUserProgramFilter;
-    window.populateUserBlockFilter = populateUserBlockFilter;
-    window.populateUserFilterDropdownsIfEmpty = populateUserFilterDropdownsIfEmpty;
-    window.loadFilterOptions = loadFilterOptions;
-    window.changeUserPage = changeUserPage;
-    window.changePerPage = changePerPage;
-    window.searchUsersDebounced = searchUsersDebounced;
-    window.filterUsers = filterUsers;
-    window.resetUserFilters = resetUserFilters;
-    window.toggleAllUserCheckboxes = toggleAllUserCheckboxes;
-    window.updateBulkSelectedCount = updateBulkSelectedCount;
-    window.updateUserStats = updateUserStats;
-    window.renderUserPagination = renderUserPagination;
-    
-    // ====== UTILITIES ======
-    window.safeSetText = safeSetText;
-    window.safeSetHTML = safeSetHTML;
-    window.setButtonLoading = setButtonLoading;
-    window.fetchData = fetchData;
-    window.populateSelect = populateSelect;
-    window.generateUUID = generateUUID;
-    window.getDeviceId = getDeviceId;
-    window.getIPAddress = getIPAddress;
-    window.getProfilePhotoUrl = getProfilePhotoUrl;
-    window.$ = $;
-    
-    // ====== VALIDATION ======
-    window.validateBlockForProgram = validateBlockForProgram;
-    
-    console.log('✅ All functions exposed to global scope successfully!');
-    console.log('📊 Total functions exposed:', Object.keys(window).filter(k => typeof window[k] === 'function').length);
-})();
