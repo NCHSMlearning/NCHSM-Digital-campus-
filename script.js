@@ -15511,8 +15511,7 @@ function updateVisualization() {
 // Add this at the end of your script.js, before the closing of the file
 // =====================================================
 // UNIT REGISTRATIONS & APPROVALS - COMPLETE SCRIPT
-// WITH SUPPLEMENTARY REGISTRATION SUPPORT
-// FIXED: Student names now load correctly
+// WITH TVET DIPLOMA/CERTIFICATE SUPPORT
 // =====================================================
 
 // =====================================================
@@ -15523,7 +15522,7 @@ if (typeof window.isTVETProgram === 'undefined') {
     window.isTVETProgram = function(program) {
         const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 
                               'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-                              'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+                              'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'CCG', 'COMT'];
         return tvetPrograms.includes(program);
     };
 }
@@ -15533,6 +15532,28 @@ if (typeof window.getProgramType === 'undefined') {
         if (program === 'KRCHN') return 'KRCHN';
         if (window.isTVETProgram(program)) return 'TVET';
         return 'OTHER';
+    };
+}
+
+if (typeof window.getProgramLevel === 'undefined') {
+    window.getProgramLevel = function(program) {
+        if (!program) return 'KRCHN';
+        const code = String(program).toUpperCase().trim();
+        
+        if (typeof MASTER_PROGRAMS !== 'undefined' && MASTER_PROGRAMS[code]) {
+            const type = MASTER_PROGRAMS[code].type;
+            if (type === 'diploma') return 'DIPLOMA';
+            if (type === 'certificate') return 'CERTIFICATE';
+            if (type === 'artisan') return 'ARTISAN';
+            if (type === 'nursing') return 'KRCHN';
+            return 'OTHER';
+        }
+        
+        if (code.startsWith('D')) return 'DIPLOMA';
+        if (code.startsWith('C') && code !== 'CCA') return 'CERTIFICATE';
+        if (code.startsWith('A')) return 'ARTISAN';
+        if (code === 'CCA' || code === 'PTE') return 'OTHER';
+        return 'KRCHN';
     };
 }
 
@@ -15576,6 +15597,73 @@ if (typeof window.showFeedback === 'undefined') {
         }, 4000);
     };
 }
+
+// =====================================================
+// HELPER: FORMAT BLOCK/TERM FOR DISPLAY
+// =====================================================
+
+function formatBlockDisplay(blockValue, program) {
+    if (!blockValue) return 'N/A';
+    
+    const isTVET = window.isTVETProgram(program);
+    const programLevel = window.getProgramLevel(program);
+    const isDiploma = programLevel === 'DIPLOMA';
+    const isCertificate = programLevel === 'CERTIFICATE';
+    
+    if (isTVET) {
+        // Check if it's a Y1T1 format
+        const match = blockValue.match(/^Y(\d)T(\d)$/);
+        if (match) {
+            const year = match[1];
+            const term = match[2];
+            // Validate based on program level
+            if (isDiploma) {
+                // Diploma: Y1T1-Y2T3
+                const valid = ['Y1T1', 'Y1T2', 'Y1T3', 'Y2T1', 'Y2T2', 'Y2T3'];
+                if (valid.includes(blockValue)) {
+                    return `Year ${year} Term ${term}`;
+                }
+            } else if (isCertificate) {
+                // Certificate: Y1T1-Y1T3
+                const valid = ['Y1T1', 'Y1T2', 'Y1T3'];
+                if (valid.includes(blockValue)) {
+                    return `Year ${year} Term ${term}`;
+                }
+            }
+            return `Year ${year} Term ${term}`;
+        }
+        
+        // Check if it's a Term format
+        if (blockValue.startsWith('Term')) {
+            return blockValue;
+        }
+        
+        // Check if it's Introductory
+        if (blockValue === 'Introductory') {
+            return 'Introductory Term';
+        }
+        
+        if (blockValue === 'Final') {
+            return 'Final Term';
+        }
+        
+        return blockValue;
+    } else {
+        // KRCHN Blocks
+        if (blockValue === 'Introductory') {
+            return 'Introductory Block';
+        }
+        if (blockValue.startsWith('Block')) {
+            return blockValue;
+        }
+        if (blockValue === 'Final') {
+            return 'Final Block';
+        }
+        return blockValue;
+    }
+}
+
+window.formatBlockDisplay = formatBlockDisplay;
 
 // =====================================================
 // GLOBALS
@@ -15669,10 +15757,6 @@ async function loadUnitRegistrationStats() {
 }
 
 // =====================================================
-// FIXED: Get Student Name from Multiple Sources
-// =====================================================
-
-// =====================================================
 // GET STUDENT NAME - OPTIMIZED VERSION
 // =====================================================
 
@@ -15747,8 +15831,9 @@ async function getStudentName(studentId) {
         };
     }
 }
+
 // =====================================================
-// FIXED: PENDING REGISTRATIONS WITH CORRECT STUDENT NAMES
+// PENDING REGISTRATIONS WITH CORRECT STUDENT NAMES
 // =====================================================
 
 async function loadUnitPendingRegistrations() {
@@ -15779,7 +15864,6 @@ async function loadUnitPendingRegistrations() {
     `;
     
     try {
-        // Get pending registrations
         const { data: registrations, error } = await sb
             .from('student_unit_registrations')
             .select('*')
@@ -15875,7 +15959,6 @@ async function loadUnitPendingRegistrations() {
             });
         }
         
-        // Rest of the rendering code (same as before, but uses the corrected studentInfo)
         const sortedGroups = Object.values(groupedByStudent).sort((a, b) => a.name.localeCompare(b.name));
         
         // Build HTML with Supplementary support
@@ -15932,8 +16015,23 @@ async function loadUnitPendingRegistrations() {
                 '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">TVET</span>' :
                 '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">KRCHN</span>';
             
+            // ✅ ADD PROGRAM LEVEL BADGE
+            const programLevel = window.getProgramLevel(student.program);
+            const isDiploma = programLevel === 'DIPLOMA';
+            const isCertificate = programLevel === 'CERTIFICATE';
+            
+            let levelBadge = '';
+            if (isDiploma) {
+                levelBadge = '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; margin-left: 4px;">🎯 Diploma</span>';
+            } else if (isCertificate) {
+                levelBadge = '<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; margin-left: 4px;">📜 Certificate</span>';
+            }
+            
             const suppBadge = hasSupplementary ? 
                 '<span style="background: #B45309; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 4px;">🔄 Supplementary</span>' : '';
+            
+            // ✅ FORMAT BLOCK DISPLAY
+            const formattedBlock = formatBlockDisplay(student.block, student.program);
             
             html += `
                 <div class="student-group-card" style="
@@ -15960,6 +16058,7 @@ async function loadUnitPendingRegistrations() {
                                 <i class="fas fa-user-circle" style="color: #4C1D95;"></i> 
                                 ${window.escapeHtml(student.name)}
                                 ${programBadge}
+                                ${levelBadge}
                                 ${suppBadge}
                             </strong>
                             <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px;">
@@ -15970,7 +16069,7 @@ async function loadUnitPendingRegistrations() {
                                     <i class="fas fa-graduation-cap"></i> ${window.escapeHtml(student.program)}
                                 </span>
                                 <span style="font-size: 12px; color: #6b7280;">
-                                    <i class="fas fa-layer-group"></i> ${window.escapeHtml(student.block)}
+                                    <i class="fas fa-layer-group"></i> ${window.escapeHtml(formattedBlock)}
                                 </span>
                                 <span style="font-size: 12px; color: #6b7280;">
                                     <i class="fas fa-clock"></i> ${submittedDate}
@@ -16029,6 +16128,9 @@ async function loadUnitPendingRegistrations() {
                 const regBadge = isSupplementary ? 
                     `<span style="background: #B45309; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; margin-left: 4px;">${unit.reg_type}</span>` : '';
                 
+                // ✅ FORMAT BLOCK DISPLAY FOR UNIT
+                const unitFormattedBlock = formatBlockDisplay(unit.block, student.program);
+                
                 html += `
                     <div class="unit-item" style="
                         display: flex; 
@@ -16050,7 +16152,7 @@ async function loadUnitPendingRegistrations() {
                                 <span style="font-size: 12px; color: #374151; margin-left: 6px;">${window.escapeHtml(unit.unit_name)}</span>
                             </div>
                             <div style="font-size: 11px; color: #6b7280;">
-                                <i class="fas fa-layer-group"></i> ${window.escapeHtml(unit.block)}
+                                <i class="fas fa-layer-group"></i> ${window.escapeHtml(unitFormattedBlock)}
                             </div>
                         </div>
                         <div style="display: flex; gap: 4px; flex-shrink: 0;">
@@ -16388,6 +16490,9 @@ async function loadApprovedRegistrations() {
             const regTypeColor = isSupplementary ? '#B45309' : '#065f46';
             const regTypeBg = isSupplementary ? '#fef3c7' : '#d1fae5';
             
+            // ✅ FORMAT BLOCK DISPLAY
+            const formattedBlock = formatBlockDisplay(reg.block, reg.program);
+            
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
                     <td style="text-align: center;">
@@ -16397,7 +16502,11 @@ async function loadApprovedRegistrations() {
                     <td style="font-size: 12px; color: #6b7280;">${reg.student_id ? reg.student_id.substring(0, 8) : 'N/A'}...</td>
                     <td><span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.unit_code)}</span></td>
                     <td>${window.escapeHtml(reg.unit_name)}</td>
-                    <td style="text-align: center;"><span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px;">${window.escapeHtml(reg.block)}</span></td>
+                    <td style="text-align: center;">
+                        <span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${window.escapeHtml(formattedBlock)}
+                        </span>
+                    </td>
                     <td style="text-align: center;">
                         <span style="background: ${regTypeBg}; color: ${regTypeColor}; padding: 2px 10px; border-radius: 12px; font-weight: 500;">
                             ${window.escapeHtml(reg.reg_type || 'Normal')}
@@ -16533,7 +16642,6 @@ async function bulkDeapproveSelected() {
 // =====================================================
 // GROUPED REGISTRATIONS - WITH SUPPLEMENTARY SUPPORT
 // =====================================================
-
 
 async function loadGroupedRegistrations() {
     console.log('📋 Loading grouped registrations (FIXED)...');
@@ -16723,6 +16831,21 @@ function renderGroupedRegistrationsWithNames(groups) {
             '<span style="background: #f59e0b; color: #78350f; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">TVET</span>' :
             '<span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;">KRCHN</span>';
         
+        // ✅ ADD PROGRAM LEVEL BADGE
+        const programLevel = window.getProgramLevel(student.program);
+        const isDiploma = programLevel === 'DIPLOMA';
+        const isCertificate = programLevel === 'CERTIFICATE';
+        
+        let levelBadge = '';
+        if (isDiploma) {
+            levelBadge = '<span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; margin-left: 4px;">🎯 Diploma</span>';
+        } else if (isCertificate) {
+            levelBadge = '<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600; margin-left: 4px;">📜 Certificate</span>';
+        }
+        
+        // ✅ FORMAT BLOCK DISPLAY
+        const formattedBlock = formatBlockDisplay(student.block, student.program);
+        
         html += `
             <div class="student-group-card" data-student-id="${student.id}" data-program="${student.program}" data-block="${student.block}" data-has-supp="${hasSupplementary}" style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: white; transition: all 0.2s; ${hasSupplementary ? 'border-left: 4px solid #B45309;' : ''}">
                 
@@ -16740,12 +16863,13 @@ function renderGroupedRegistrationsWithNames(groups) {
                             <div style="font-weight: 600; color: #1e293b; font-size: 15px;">
                                 ${escapeHtml(student.name)}
                                 ${programBadge}
+                                ${levelBadge}
                                 ${suppBadge}
                             </div>
                             <div style="font-size: 12px; color: #94a3b8;">
                                 ${student.id && student.id !== 'unknown_student' && student.id !== 'null_student' ? student.id.substring(0, 8) : 'N/A'} 
                                 ${student.admission_number ? '• ' + escapeHtml(student.admission_number) : ''}
-                                • ${escapeHtml(student.program)} • ${escapeHtml(student.block)}
+                                • ${escapeHtml(student.program)} • ${escapeHtml(formattedBlock)}
                             </div>
                         </div>
                     </div>
@@ -16799,13 +16923,18 @@ function renderGroupedRegistrationsWithNames(groups) {
             const regTypeColor = isSupplementary ? '#B45309' : '#4C1D95';
             const regTypeBg = isSupplementary ? '#fef3c7' : '#e0e7ff';
             
+            // ✅ FORMAT BLOCK DISPLAY
+            const regFormattedBlock = formatBlockDisplay(reg.block, student.program);
+            
             html += `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 8px 12px; text-align: center; color: #94a3b8;">${index + 1}</td>
                     <td style="padding: 8px 12px; font-weight: 500; color: #4C1D95;">${escapeHtml(reg.unit_code)}</td>
                     <td style="padding: 8px 12px;">${escapeHtml(reg.unit_name)}</td>
                     <td style="padding: 8px 12px; text-align: center;">
-                        <span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px; font-size: 11px;">${escapeHtml(reg.block || 'N/A')}</span>
+                        <span style="background: #f3f4f6; color: #374151; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${escapeHtml(regFormattedBlock || 'N/A')}
+                        </span>
                     </td>
                     <td style="padding: 8px 12px; text-align: center;">
                         <span style="background: ${regTypeBg}; color: ${regTypeColor}; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">
@@ -16846,6 +16975,7 @@ function renderGroupedRegistrationsWithNames(groups) {
     
     container.innerHTML = html;
 }
+
 // =====================================================
 // GROUP INTERACTIONS
 // =====================================================
@@ -17078,8 +17208,14 @@ function filterGroupedRegistrations() {
         filtered = filtered.filter(r => r.program === program);
     }
     
+    // ✅ Updated block filter to handle Diploma/Certificate terms
     if (block !== 'all') {
-        filtered = filtered.filter(r => r.block === block);
+        filtered = filtered.filter(r => {
+            // Check if the block matches (considering both raw and formatted)
+            const rawBlock = r.block || '';
+            const formattedBlock = formatBlockDisplay(rawBlock, r.program);
+            return rawBlock === block || formattedBlock === block;
+        });
     }
     
     if (status !== 'all') {
@@ -17101,7 +17237,9 @@ function filterGroupedRegistrations() {
 function exportGroupedRegistrations() {
     let csv = 'Student ID,Student Name,Program,Block,Unit Code,Unit Name,Registration Type,Status,Registration Date\n';
     window.registrationsData.forEach(reg => {
-        csv += `${reg.student_id || 'N/A'},${reg.student_name || 'Unknown'},${reg.program || 'N/A'},${reg.block || 'N/A'},${reg.unit_code || 'N/A'},${reg.unit_name || 'N/A'},${reg.reg_type || 'Normal'},${reg.status || 'N/A'},${reg.submitted_date || 'N/A'}\n`;
+        // ✅ FORMAT BLOCK FOR EXPORT
+        const formattedBlock = formatBlockDisplay(reg.block, reg.program);
+        csv += `${reg.student_id || 'N/A'},${reg.student_name || 'Unknown'},${reg.program || 'N/A'},${formattedBlock},${reg.unit_code || 'N/A'},${reg.unit_name || 'N/A'},${reg.reg_type || 'Normal'},${reg.status || 'N/A'},${reg.submitted_date || 'N/A'}\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -17171,11 +17309,12 @@ window.approveRegistration = approveRegistration;
 window.rejectRegistration = rejectRegistration;
 window.viewRegistrationDetails = viewRegistrationDetails;
 window.togglePendingList = togglePendingList;
+window.formatBlockDisplay = formatBlockDisplay;
 
 // Clear cache on page refresh
 window.studentNameCache = {};
 
-console.log('✅ Unit Registration Management module loaded with Supplementary support and fixed student names!');
+console.log('✅ Unit Registration Management module loaded with TVET Diploma/Certificate support!');
 // =====================================================
 // ADDITIONAL STYLING FOR TABLES
 // =====================================================
@@ -24849,8 +24988,33 @@ function renderECBlocks() {
     const container = document.getElementById('ec_blocks');
     if (!container) return;
     
-    const blocks = ['BLOCK_0', 'BLOCK_1', 'BLOCK_2', 'BLOCK_3', 'BLOCK_4', 'BLOCK_5'];
+    // Get current program from selector
+    const programSelect = document.getElementById('ec_program_select') || document.getElementById('me_program_select');
+    const program = programSelect?.value || 'KRCHN';
+    const isTVET = isTVETProgram(program);
+    const programLevel = getProgramLevel(program);
+    const isDiploma = programLevel === 'DIPLOMA';
+    const isCertificate = programLevel === 'CERTIFICATE';
     
+    let blocks = [];
+    
+    if (isTVET) {
+        if (isDiploma) {
+            // Diploma TVET: Year 1 Term 1 to Year 2 Term 3
+            blocks = ['Y1T1', 'Y1T2', 'Y1T3', 'Y2T1', 'Y2T2', 'Y2T3'];
+        } else if (isCertificate) {
+            // Certificate TVET: Year 1 Term 1 to Term 3
+            blocks = ['Y1T1', 'Y1T2', 'Y1T3'];
+        } else {
+            // Other TVET
+            blocks = ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final'];
+        }
+    } else {
+        // KRCHN Blocks
+        blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+    }
+    
+    // Render blocks with the dynamic list
     container.innerHTML = blocks.map(block => {
         const blockSubjects = ecSubjects.filter(s => s.block === block);
         const openCount = blockSubjects.filter(s => {
@@ -24860,10 +25024,17 @@ function renderECBlocks() {
         }).length;
         const totalCount = blockSubjects.length;
         
+        // Format display name
+        let displayName = block;
+        const match = block.match(/^Y(\d)T(\d)$/);
+        if (match) {
+            displayName = `Year ${match[1]} Term ${match[2]}`;
+        }
+        
         return `
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #6366f1;">
                 <div>
-                    <strong style="font-size: 15px;">📚 ${block.replace('_', ' ')}</strong>
+                    <strong style="font-size: 15px;">📚 ${displayName}</strong>
                     <span style="font-size: 12px; color: #64748b; margin-left: 10px;">
                         ${openCount}/${totalCount} subjects open
                     </span>
@@ -24884,11 +25055,18 @@ function populateECBlockFilter() {
     blocks.forEach(block => {
         const option = document.createElement('option');
         option.value = block;
-        option.textContent = block.replace('_', ' ');
+        
+        // Format display name
+        let displayName = block.replace('_', ' ');
+        const match = block.match(/^Y(\d)T(\d)$/);
+        if (match) {
+            displayName = `Year ${match[1]} Term ${match[2]}`;
+        }
+        
+        option.textContent = displayName;
         filter.appendChild(option);
     });
 }
-
 function renderECSubjects() {
     const container = document.getElementById('ec_subjects');
     if (!container) return;
