@@ -9448,6 +9448,7 @@ console.log('✅ Attendance Management module loaded with TVET/KRCHN support!');
  * ✅ Specific student selection working
  * ✅ filterExamsTable exposed globally
  * ✅ getSb() replaced with window.sb
+ * ✅ PROPER BLOCK FILTERING - Only shows students in selected block
  *******************************************************/
 
 // ============================================
@@ -9545,7 +9546,7 @@ document.addEventListener('DOMContentLoaded', function() {
         blockSelect.addEventListener('change', loadStudentsForNotification);
     }
     
-    // ✅ FIX: Load students on page load after a delay
+    // ✅ Load students on page load after a delay
     setTimeout(function() {
         const program = programSelect?.value;
         if (program) {
@@ -9554,10 +9555,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1000);
 });
 
-// Load students based on selected program and block
+// ============================================
+// 🔥 LOAD STUDENTS FOR NOTIFICATION - WITH BLOCK FILTER
+// ============================================
+
 async function loadStudentsForNotification() {
     const program = document.getElementById('exam_program')?.value;
     const block = document.getElementById('exam_block_term')?.value;
+    
+    // ✅ Debug logging
+    console.log('📋 Loading students for:', { program, block });
     
     if (!program) {
         allStudentsForProgram = [];
@@ -9577,8 +9584,12 @@ async function loadStudentsForNotification() {
             .eq('status', 'approved')
             .eq('program', program);
         
-        if (block && block !== '' && block !== '-- Select --') {
+        // ✅ FIX: Only filter by block if a specific block is selected
+        if (block && block !== '' && block !== '-- Select --' && block !== '-- Select Block/Term --') {
             query = query.eq('block', block);
+            console.log(`📋 Filtering by block: ${block}`);
+        } else {
+            console.log('📋 No block filter applied - showing all students in program');
         }
         
         const { data, error } = await query.limit(500);
@@ -9587,6 +9598,11 @@ async function loadStudentsForNotification() {
         
         allStudentsForProgram = data || [];
         console.log(`✅ Loaded ${allStudentsForProgram.length} students for notification`);
+        
+        // Show sample students
+        if (allStudentsForProgram.length > 0) {
+            console.log('📋 Sample students:', allStudentsForProgram.slice(0, 3).map(s => s.full_name));
+        }
         
         // Update count
         const countEl = document.getElementById('student_notify_count');
@@ -9605,7 +9621,10 @@ async function loadStudentsForNotification() {
     }
 }
 
-// Search students for specific selection
+// ============================================
+// SEARCH STUDENTS FOR NOTIFICATION
+// ============================================
+
 function searchStudentsForNotification() {
     const searchTerm = document.getElementById('exam_student_search')?.value?.toLowerCase() || '';
     const resultsContainer = document.getElementById('student_search_results');
@@ -9652,7 +9671,10 @@ function searchStudentsForNotification() {
     resultsContainer.style.display = 'block';
 }
 
-// Toggle student selection
+// ============================================
+// TOGGLE STUDENT FOR NOTIFICATION
+// ============================================
+
 function toggleStudentForNotification(studentId) {
     const student = allStudentsForProgram.find(s => s.user_id === studentId);
     if (!student) return;
@@ -9669,7 +9691,10 @@ function toggleStudentForNotification(studentId) {
     searchStudentsForNotification();
 }
 
-// Update selected students display
+// ============================================
+// UPDATE SELECTED STUDENTS DISPLAY
+// ============================================
+
 function updateSelectedStudentsDisplay() {
     const container = document.getElementById('selected_students_list');
     if (!container) return;
@@ -9692,7 +9717,10 @@ function updateSelectedStudentsDisplay() {
     container.innerHTML = html;
 }
 
-// Get recipients for email
+// ============================================
+// GET NOTIFICATION RECIPIENTS - WITH BLOCK FILTER
+// ============================================
+
 function getNotificationRecipients() {
     const target = document.getElementById('exam_notify_target')?.value || 'all';
     const program = document.getElementById('exam_program')?.value;
@@ -9700,23 +9728,43 @@ function getNotificationRecipients() {
     
     let recipients = [];
     
+    // ✅ Always filter by the selected block
     switch(target) {
         case 'all':
-            recipients = allStudentsForProgram.filter(s => s.block === block);
+            // All students in program + block
+            recipients = allStudentsForProgram.filter(s => {
+                if (block && block !== '' && block !== '-- Select --') {
+                    return s.block === block;
+                }
+                return true;
+            });
             break;
         case 'program':
+            // All students in program (regardless of block)
             recipients = allStudentsForProgram;
             break;
         case 'block':
-            recipients = allStudentsForProgram.filter(s => s.block === block);
+            // All students in specific block
+            recipients = allStudentsForProgram.filter(s => {
+                if (block && block !== '' && block !== '-- Select --') {
+                    return s.block === block;
+                }
+                return true;
+            });
             break;
         case 'specific':
             recipients = selectedStudentsForNotification;
             break;
         default:
-            recipients = allStudentsForProgram.filter(s => s.block === block);
+            recipients = allStudentsForProgram.filter(s => {
+                if (block && block !== '' && block !== '-- Select --') {
+                    return s.block === block;
+                }
+                return true;
+            });
     }
     
+    console.log(`📧 Recipients: ${recipients.length} students (target: ${target}, block: ${block})`);
     return recipients;
 }
 
@@ -10403,7 +10451,7 @@ function getSelectedClasses() {
 }
 
 // ============================================
-// CREATE EXAM WITH EMAIL NOTIFICATION
+// CREATE EXAM WITH EMAIL NOTIFICATION - WITH BLOCK FILTERING
 // ============================================
 async function handleAddExam(e) {
     e.preventDefault();
@@ -10448,7 +10496,7 @@ async function handleAddExam(e) {
     const notifyStudents = document.getElementById('exam_notify_students')?.checked || false;
     const notifyTarget = document.getElementById('exam_notify_target')?.value || 'all';
     
-    // Get recipients for notification
+    // Get recipients for notification - WITH BLOCK FILTER
     let recipients = [];
     if (notifyStudents) {
         const program = fields.program;
@@ -10467,15 +10515,18 @@ async function handleAddExam(e) {
                     .eq('status', 'approved')
                     .eq('program', program);
                 
+                // ✅ FIX: ALWAYS filter by block for 'all' and 'block' targets
                 if (notifyTarget === 'all' || notifyTarget === 'block') {
-                    if (block && block !== '') {
+                    if (block && block !== '' && block !== '-- Select --' && block !== '-- Select Block/Term --') {
                         query = query.eq('block', block);
+                        console.log(`📋 Loading students for block: ${block}`);
                     }
                 }
                 // 'program' target = all students in program (no block filter)
                 
                 const { data } = await query.limit(500);
                 recipients = data || [];
+                console.log(`📧 Found ${recipients.length} students for notification`);
             }
         }
     }
@@ -11002,7 +11053,7 @@ function exportExamsToCSV() {
 }
 
 // ============================================
-// SHOW EXAM TAB
+// SHOW EXAM TAB - WITH BLOCK CHANGE LISTENER
 // ============================================
 function showExamTab(tab) {
     document.querySelectorAll('.exam-tab-content').forEach(el => el.style.display = 'none');
@@ -11036,8 +11087,14 @@ function showExamTab(tab) {
             initCreateCourseDropdown(program);
         }
         
+        // ✅ Add program change listener
         if (programSelect) {
-            programSelect.addEventListener('change', function() {
+            // Remove old listeners to avoid duplicates
+            const newProgramSelect = programSelect.cloneNode(true);
+            programSelect.parentNode.replaceChild(newProgramSelect, programSelect);
+            const freshProgramSelect = document.getElementById('exam_program');
+            
+            freshProgramSelect.addEventListener('change', function() {
                 const program = this.value;
                 console.log('📋 Create Exam: Program changed to', program);
                 if (typeof updateCreateCourseDropdown === 'function') {
@@ -11048,10 +11105,16 @@ function showExamTab(tab) {
             });
         }
         
-        // ✅ Also load students when block changes
+        // ✅ Add block change listener
         const blockSelect = document.getElementById('exam_block_term');
         if (blockSelect) {
-            blockSelect.addEventListener('change', function() {
+            // Remove old listeners to avoid duplicates
+            const newBlockSelect = blockSelect.cloneNode(true);
+            blockSelect.parentNode.replaceChild(newBlockSelect, blockSelect);
+            const freshBlockSelect = document.getElementById('exam_block_term');
+            
+            freshBlockSelect.addEventListener('change', function() {
+                console.log('📋 Block changed to:', this.value);
                 loadStudentsForNotification();
             });
         }
@@ -11872,11 +11935,20 @@ function initExams() {
     
     // ✅ Load students for notification when program/block changes
     if (programSelect) {
-        programSelect.addEventListener('change', loadStudentsForNotification);
+        // Remove old listeners to avoid duplicates
+        const newProgramSelect = programSelect.cloneNode(true);
+        programSelect.parentNode.replaceChild(newProgramSelect, programSelect);
+        const freshProgramSelect = document.getElementById('exam_program');
+        freshProgramSelect.addEventListener('change', loadStudentsForNotification);
     }
+    
     const blockSelect = document.getElementById('exam_block_term');
     if (blockSelect) {
-        blockSelect.addEventListener('change', loadStudentsForNotification);
+        // Remove old listeners to avoid duplicates
+        const newBlockSelect = blockSelect.cloneNode(true);
+        blockSelect.parentNode.replaceChild(newBlockSelect, blockSelect);
+        const freshBlockSelect = document.getElementById('exam_block_term');
+        freshBlockSelect.addEventListener('change', loadStudentsForNotification);
     }
     
     // ✅ Set initial student count
@@ -11884,7 +11956,7 @@ function initExams() {
         loadStudentsForNotification();
     }, 500);
     
-    console.log('🚀 Exams/CATS Management initialized with email notifications!');
+    console.log('🚀 Exams/CATS Management initialized with email notifications and block filtering!');
 }
 
 // ============================================
@@ -11950,7 +12022,7 @@ window.updateGradeTotal = updateGradeTotal;
 window.getExamTypeLabel = getExamTypeLabel;
 window.populateExamCourseSelects = populateExamCourseSelects;
 
-console.log('✅ CATS/Exams loaded (complete fixed version with email notifications and searchable dropdowns)!');
+console.log('✅ CATS/Exams loaded (complete fixed version with email notifications, searchable dropdowns, and block filtering)!');
 
 /*******************************************************
  * 14. MESSAGES & ANNOUNCEMENTS
