@@ -4703,26 +4703,10 @@
             </optgroup>
         </select>
         
-        <select id="pm_block_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
-            <option value="all">All Blocks/Terms</option>
-            <optgroup label="📚 KRCHN Blocks">
-                <option value="Introductory">Introductory</option>
-                <option value="Block 1">Block 1</option>
-                <option value="Block 2">Block 2</option>
-                <option value="Block 3">Block 3</option>
-                <option value="Block 4">Block 4</option>
-                <option value="Block 5">Block 5</option>
-                <option value="Final">Final</option>
-            </optgroup>
-            <optgroup label="📖 TVET Terms">
-                <option value="Term 1">Term 1</option>
-                <option value="Term 2">Term 2</option>
-                <option value="Term 3">Term 3</option>
-                <option value="Term 4">Term 4</option>
-                <option value="Term 5">Term 5</option>
-                <option value="Term 6">Term 6</option>
-            </optgroup>
-        </select>
+<select id="pm_block_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
+    <option value="all">All Blocks/Terms</option>
+    <!-- Dynamically populated by JavaScript based on selected program -->
+</select>
         
         <select id="pm_status_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 120px;">
             <option value="all">All Status</option>
@@ -5211,23 +5195,11 @@
                 <select id="analytics_block_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
                     <option value="all">All Stages</option>
                     <optgroup label="🎓 KRCHN Nursing Blocks" id="krchnBlocks">
-                        <option value="Introductory">Introductory Block</option>
-                        <option value="Block 1">Block 1</option>
-                        <option value="Block 2">Block 2</option>
-                        <option value="Block 3">Block 3</option>
-                        <option value="Block 4">Block 4</option>
-                        <option value="Block 5">Block 5</option>
-                        <option value="Final">Final Block</option>
-                    </optgroup>
-                    <optgroup label="📚 TVET Terms" id="tvetTerms">
-                        <option value="Term 1">Term 1</option>
-                        <option value="Term 2">Term 2</option>
-                        <option value="Term 3">Term 3</option>
-                        <option value="Term 4">Term 4</option>
-                        <option value="Term 5">Term 5</option>
-                        <option value="Term 6">Term 6</option>
-                        <option value="Final">Final Term</option>
-                    </optgroup>
+    <!-- Dynamically populated by JavaScript -->
+</optgroup>
+<optgroup label="📚 TVET Terms" id="tvetTerms">
+    <!-- Dynamically populated by JavaScript based on selected program -->
+</optgroup>
                 </select>
             </div>
             <!-- Metric View -->
@@ -8022,43 +7994,10 @@
     </div>
 
     <!-- Block Filter Buttons -->
-    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
-        <button class="block-btn active" data-block="all" onclick="filterUnitsByBlock('all')" 
-                style="padding: 6px 14px; border-radius: 20px; border: 2px solid #4C1D95; background: #4C1D95; color: white; cursor: pointer; font-weight: 500; font-size: 12px;">
-            📚 All
-        </button>
-        <button class="block-btn" data-block="Introductory" onclick="filterUnitsByBlock('Introductory')" 
-                style="padding: 6px 14px; border-radius: 20px; border: 2px solid #e5e7eb; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
-            🌟 Introductory
-        </button>
-        <button class="block-btn" data-block="Block 1" onclick="filterUnitsByBlock('Block 1')" 
-                style="padding: 6px 14px; border-radius: 20px; border: 2px solid #e5e7eb; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
-            📘 Block 1
-        </button>
-        <button class="block-btn" data-block="Block 2" onclick="filterUnitsByBlock('Block 2')" 
-                style="padding: 6px 14px; border-radius: 20px; border: 2px solid #e5e7eb; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
-            📗 Block 2
-        </button>
-        <button class="block-btn" data-block="Block 3" onclick="filterUnitsByBlock('Block 3')" 
-                style="padding: 6px 14px; border-radius: 20px; border: 2px solid #e5e7eb; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
-            📒 Block 3
-        </button>
-        <button class="block-btn" data-block="Block 4" onclick="filterUnitsByBlock('Block 4')" 
-                style="padding: 6px 14px; border-radius: 20px; border: 2px solid #e5e7eb; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
-            📙 Block 4
-        </button>
-        <button class="block-btn" data-block="Block 5" onclick="filterUnitsByBlock('Block 5')" 
-                style="padding: 6px 14px; border-radius: 20px; border: 2px solid #e5e7eb; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
-            📕 Block 5
-        </button>
-        <button class="block-btn" data-block="Final" onclick="filterUnitsByBlock('Final')" 
-                style="padding: 6px 14px; border-radius: 20px; border: 2px solid #e5e7eb; background: #e5e7eb; color: #374151; cursor: pointer; font-weight: 500; font-size: 12px;">
-            🏆 Final
-        </button>
-        <span style="font-size: 12px; color: #6b7280; padding: 6px 10px; background: #f8fafc; border-radius: 20px; border: 1px solid #e5e7eb;">
-            <i class="fas fa-users"></i> <span id="unitCountDisplay">0</span> units
-        </span>
-    </div>
+   <!-- Dynamically populated by JavaScript -->
+<div id="unitBlockButtons" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+    <!-- Buttons generated by JavaScript -->
+</div>
 
     <!-- Units Table -->
     <div id="units-list-container" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 0; overflow: hidden; min-height: 200px;">
