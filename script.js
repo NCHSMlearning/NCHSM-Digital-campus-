@@ -9443,6 +9443,9 @@ console.log('✅ Attendance Management module loaded with TVET/KRCHN support!');
  * ✅ Grade management with modal
  * ✅ Assigned classes management
  * ✅ Email notifications with student selection
+ * ✅ Student count loads on page load
+ * ✅ Course search works properly
+ * ✅ Specific student selection working
  * ✅ filterExamsTable exposed globally
  * ✅ getSb() replaced with window.sb
  *******************************************************/
@@ -9541,6 +9544,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (blockSelect) {
         blockSelect.addEventListener('change', loadStudentsForNotification);
     }
+    
+    // ✅ FIX: Load students on page load after a delay
+    setTimeout(function() {
+        const program = programSelect?.value;
+        if (program) {
+            loadStudentsForNotification();
+        }
+    }, 1000);
 });
 
 // Load students based on selected program and block
@@ -9566,7 +9577,7 @@ async function loadStudentsForNotification() {
             .eq('status', 'approved')
             .eq('program', program);
         
-        if (block && block !== '') {
+        if (block && block !== '' && block !== '-- Select --') {
             query = query.eq('block', block);
         }
         
@@ -9582,6 +9593,9 @@ async function loadStudentsForNotification() {
         if (countEl) {
             countEl.textContent = `${allStudentsForProgram.length} students`;
         }
+        
+        // Update selected students display
+        updateSelectedStudentsDisplay();
         
     } catch (error) {
         console.error('Error loading students:', error);
@@ -9660,7 +9674,7 @@ function updateSelectedStudentsDisplay() {
     const container = document.getElementById('selected_students_list');
     if (!container) return;
     
-    if (selectedStudentsForNotification.length === 0) {
+    if (!selectedStudentsForNotification || selectedStudentsForNotification.length === 0) {
         container.innerHTML = '<span style="font-size: 12px; color: #94a3b8;"><i class="fas fa-info-circle"></i> No students selected</span>';
         return;
     }
@@ -10122,7 +10136,7 @@ function renderExamsTable(exams) {
             try {
                 const d = new Date(examDate);
                 if (!isNaN(d.getTime())) {
-                    formattedDate = d.toLocaleDateDate('en-KE', {
+                    formattedDate = d.toLocaleDateString('en-KE', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
@@ -11029,9 +11043,23 @@ function showExamTab(tab) {
                 if (typeof updateCreateCourseDropdown === 'function') {
                     updateCreateCourseDropdown();
                 }
+                // ✅ Load students when program changes
                 loadStudentsForNotification();
             });
         }
+        
+        // ✅ Also load students when block changes
+        const blockSelect = document.getElementById('exam_block_term');
+        if (blockSelect) {
+            blockSelect.addEventListener('change', function() {
+                loadStudentsForNotification();
+            });
+        }
+        
+        // ✅ Force load students when Create tab is shown
+        setTimeout(function() {
+            loadStudentsForNotification();
+        }, 800);
     }
 }
 
@@ -11842,7 +11870,7 @@ function initExams() {
     if (DOM.statusFilter) DOM.statusFilter.addEventListener('change', filterExamsTable);
     if (DOM.monthFilter) DOM.monthFilter.addEventListener('change', filterExamsTable);
     
-    // Load students for notification when program/block changes
+    // ✅ Load students for notification when program/block changes
     if (programSelect) {
         programSelect.addEventListener('change', loadStudentsForNotification);
     }
@@ -11851,8 +11879,10 @@ function initExams() {
         blockSelect.addEventListener('change', loadStudentsForNotification);
     }
     
-    // Set initial student count
-    setTimeout(loadStudentsForNotification, 500);
+    // ✅ Set initial student count
+    setTimeout(function() {
+        loadStudentsForNotification();
+    }, 500);
     
     console.log('🚀 Exams/CATS Management initialized with email notifications!');
 }
@@ -11921,7 +11951,6 @@ window.getExamTypeLabel = getExamTypeLabel;
 window.populateExamCourseSelects = populateExamCourseSelects;
 
 console.log('✅ CATS/Exams loaded (complete fixed version with email notifications and searchable dropdowns)!');
-
 
 /*******************************************************
  * 14. MESSAGES & ANNOUNCEMENTS
