@@ -136,10 +136,10 @@ window.cache = cache;
 
 // ========== SPA ROUTER - CLEAN URL NAVIGATION (USING / INSTEAD OF #) ==========
 const SPA_ROUTER = {
-    // ✅ Updated validTabs with Supplementary and all student tabs
+    // ✅ Updated validTabs with Supplementary, Enrollment and all student tabs
     validTabs: [
-        'dashboard', 'profile', 'calendar', 'learning-hub', 'attendance', 
-        'cats', 'resources', 'messages', 'support-tickets', 'nurseiq', 
+        'dashboard', 'profile', 'calendar', 'finance', 'enrollment', 'learning-hub',
+        'attendance', 'cats', 'resources', 'messages', 'support-tickets', 'nurseiq', 
         'exam-card', 'unit-registration', 'hub-courses', 'hub-register', 
         'hub-online-learning', 'hub-exam-card', 'hub-lecture-card', 
         'academic-reports', 'reviews', 'newsletter', 'supplementary'
@@ -304,6 +304,7 @@ const SPA_ROUTER = {
         
         console.log('✅ SPA Router initialized with clean / URLs');
         console.log(`📋 Valid tabs: ${this.validTabs.join(', ')}`);
+        console.log('📌 Enrollment tab support added!');
     }
 };
 
@@ -332,5 +333,71 @@ window.getCurrentTab = () => SPA_ROUTER.getCurrentTab();
 // Helper to check if tab is valid
 window.isValidTab = (tabId) => SPA_ROUTER.validTabs.includes(tabId);
 
+// ============================================================
+// 📌 ENROLLMENT HELPER FUNCTIONS
+// ============================================================
+
+// Check if user has any pending enrollment requests
+async function hasPendingEnrollment(studentId) {
+    try {
+        const sb = window.supabase || window.sb || (window.db && window.db.supabase);
+        if (!sb) return false;
+        
+        const { count, error } = await sb
+            .from('student_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('student_id', studentId)
+            .eq('status', 'pending');
+        
+        if (error) throw error;
+        return count > 0;
+    } catch (error) {
+        console.warn('Error checking pending enrollment:', error);
+        return false;
+    }
+}
+
+// Get enrollment request status summary
+async function getEnrollmentSummary(studentId) {
+    try {
+        const sb = window.supabase || window.sb || (window.db && window.db.supabase);
+        if (!sb) return null;
+        
+        const { data, error } = await sb
+            .from('student_requests')
+            .select('status, count')
+            .eq('student_id', studentId);
+        
+        if (error) throw error;
+        
+        const summary = {
+            total: 0,
+            pending: 0,
+            approved: 0,
+            rejected: 0,
+            processing: 0
+        };
+        
+        data.forEach(r => {
+            summary.total++;
+            if (r.status === 'pending') summary.pending++;
+            else if (r.status === 'approved') summary.approved++;
+            else if (r.status === 'rejected') summary.rejected++;
+            else if (r.status === 'processing') summary.processing++;
+        });
+        
+        return summary;
+    } catch (error) {
+        console.warn('Error getting enrollment summary:', error);
+        return null;
+    }
+}
+
+// Export enrollment helpers
+window.hasPendingEnrollment = hasPendingEnrollment;
+window.getEnrollmentSummary = getEnrollmentSummary;
+
 console.log('✅ utils.js loaded with SPA Router (clean / URLs)');
 console.log('📋 Supplementary tab support added!');
+console.log('📋 Enrollment tab support added!');
+console.log('📋 Enrollment helper functions available!');
