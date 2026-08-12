@@ -26164,3 +26164,527 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('✅ Dashboard initialization complete');
 });
+// ============================================
+// 🔥 EXPOSE ALL CRITICAL FUNCTIONS TO GLOBAL SCOPE
+// ============================================
+
+(function exposeGlobals() {
+    console.log('🔥 Exposing functions to global scope...');
+    
+    // Core functions
+    window.sb = sb;
+    window.getSb = getSb;
+    window.escapeHtml = escapeHtml;
+    window.showFeedback = showFeedback;
+    window.logAudit = logAudit;
+    window.showTab = showTab;
+    window.logout = logout;
+    window.closeModal = closeModal;
+    window.closeGradeModal = closeGradeModal;
+    window.exportTableToCSV = exportTableToCSV;
+    window.filterTable = filterTable;
+    window.updateSelectedCount = updateSelectedCount;
+    window.debounce = debounce;
+    
+    // ====== USER MANAGEMENT ======
+    window.loadAllUsers = loadAllUsers;
+    window.loadPendingApprovals = loadPendingApprovals;
+    window.loadStudents = loadStudents;
+    window.initManageUsers = initManageUsers;
+    window.approveUser = approveUser;
+    window.showApprovalModal = showApprovalModal;
+    window.closeApprovalModal = closeApprovalModal;
+    window.confirmApproveUser = confirmApproveUser;
+    window.openEditUserModal = openEditUserModal;
+    window.handleEditUser = handleEditUser;
+    window.deleteProfile = deleteProfile;
+    window.updateUserRole = updateUserRole;
+    window.openDocumentUploadModal = openDocumentUploadModal;
+    window.previewDocument = previewDocument;
+    window.uploadUserDocuments = uploadUserDocuments;
+    window.viewDocument = viewDocument;
+    window.sendApprovalEmail = sendApprovalEmail;
+    window.getDisplayIntake = getDisplayIntake;
+    window.handleAddAccount = handleAddAccount;
+    window.handleMassPromotion = handleMassPromotion;
+    window.updateUserEmailFromModal = updateUserEmailFromModal;
+    window.clearEmailStatus = clearEmailStatus;
+    window.updatePendingStats = updatePendingStats;
+    window.openEmailChangeDialog = openEmailChangeDialog;
+    window.updateUserEmailFromModalDirect = updateUserEmailFromModalDirect;
+    window.loadAcademicHistory = loadAcademicHistory;
+    window.viewUserDocuments = viewUserDocuments;
+    
+    // ====== STAFF MANAGEMENT ======
+    window.loadAllStaff = loadAllStaff;
+    window.initStaffManagement = initStaffManagement;
+    window.openAddStaffModal = openAddStaffModal;
+    window.closeAddStaffModal = closeAddStaffModal;
+    window.saveStaff = saveStaff;
+    window.editStaff = editStaff;
+    window.updateStaff = updateStaff;
+    window.deleteStaff = deleteStaff;
+    window.filterStaffTable = filterStaffTable;
+    window.exportStaffToCSV = exportStaffToCSV;
+    window.importStaffFromCSV = importStaffFromCSV;
+    window.quickEditDepartment = quickEditDepartment;
+    window.viewStaffDocuments = viewStaffDocuments;
+    window.closeViewDocsModal = closeViewDocsModal;
+    window.toggleStaffPasswordField = toggleStaffPasswordField;
+    window.staffLogin = staffLogin;
+    window.resetStaffPassword = resetStaffPassword;
+    window.handleStaffDocumentUpload = handleStaffDocumentUpload;
+    window.removeStaffDocument = removeStaffDocument;
+    window.getStaffDocLabel = getStaffDocLabel;
+    
+    // ====== PROGRAMS ======
+    window.loadAllPrograms = loadAllPrograms;
+    window.createProgram = createProgram;
+    window.editProgram = editProgram;
+    window.updateProgram = updateProgram;
+    window.deleteProgram = deleteProgram;
+    window.filterPrograms = filterPrograms;
+    window.filterProgramsTable = filterProgramsTable;
+    window.exportProgramsToCSV = exportProgramsToCSV;
+    window.loadProgramIntakes = loadProgramIntakes;
+    window.loadIntakesForProgram = loadIntakesForProgram;
+    window.addProgramIntake = addProgramIntake;
+    window.deleteIntake = deleteIntake;
+    window.loadProgramBlocks = loadProgramBlocks;
+    window.loadBlocksForProgram = loadBlocksForProgram;
+    window.addProgramBlock = addProgramBlock;
+    window.deleteBlock = deleteBlock;
+    window.loadProgramMappings = loadProgramMappings;
+    window.addProgramCourseMapping = addProgramCourseMapping;
+    window.deleteMapping = deleteMapping;
+    window.populateCourseSelector = populateCourseSelector;
+    window.populateBlockSelector = populateBlockSelector;
+    window.showProgramIntakes = showProgramIntakes;
+    window.showProgramBlocks = showProgramBlocks;
+    window.loadProgramsSection = loadProgramsSection;
+    window.autoCreateBlocks = autoCreateBlocks;
+    
+    // ====== RESOURCES ======
+    window.loadAllResources = loadAllResources;
+    window.filterResourceType = filterResourceType;
+    window.filterResourcesTable = filterResourcesTable;
+    window.deleteResourceItem = deleteResourceItem;
+    window.editResource = editResource;
+    window.cancelEditResource = cancelEditResource;
+    window.handleResourceUpload = handleResourceUpload;
+    window.switchAdminProgram = switchAdminProgram;
+    window.exportResourcesToCSV = exportResourcesToCSV;
+    window.updateBlockOptions = updateBlockOptions;
+    window.updateFilterDropdown = updateFilterDropdown;
+    window.togglePastPaperFields = togglePastPaperFields;
+    window.initResourcesSection = initResourcesSection;
+    
+    // ====== EXAMS ======
+    window.loadExams = loadExams;
+    window.handleAddExam = handleAddExam;
+    window.saveEditedExam = saveEditedExam;
+    window.deleteExam = deleteExam;
+    window.openEditExamModal = openEditExamModal;
+    window.exportExamsToCSV = exportExamsToCSV;
+    window.showExamTab = showExamTab;
+    window.filterExamsTable = filterExamsTable;
+    window.closeExam = closeExam;
+    window.openGradeModal = openGradeModal;
+    window.closeGradeModal = closeGradeModal;
+    window.saveGrades = saveGrades;
+    window.filterGradeStudents = filterGradeStudents;
+    window.updateGradeTotal = updateGradeTotal;
+    window.loadAvailableClassesForExam = loadAvailableClassesForExam;
+    window.addCustomBlocks = addCustomBlocks;
+    window.addClass = addClass;
+    window.removeClass = removeClass;
+    window.closeEditModal = closeEditModal;
+    window.getSelectedClasses = getSelectedClasses;
+    window.populateProgramDropdowns = populateProgramDropdowns;
+    window.ExamCache = ExamCache;
+    window.initExams = initExams;
+    window.getExamTypeLabel = getExamTypeLabel;
+    window.populateExamCourseSelects = populateExamCourseSelects;
+    window.loadStudentsForNotification = loadStudentsForNotification;
+    window.searchStudentsForNotification = searchStudentsForNotification;
+    window.toggleStudentForNotification = toggleStudentForNotification;
+    window.updateSelectedStudentsDisplay = updateSelectedStudentsDisplay;
+    window.getNotificationRecipients = getNotificationRecipients;
+    window.sendExamNotificationEmail = sendExamNotificationEmail;
+    window.sendEmailWithBrevo = sendEmailWithBrevo;
+    window.sendEmailFallback = sendEmailFallback;
+    window.initCreateCourseDropdown = initCreateCourseDropdown;
+    window.loadCoursesForCreateDropdown = loadCoursesForCreateDropdown;
+    window.filterCreateCourseDropdown = filterCreateCourseDropdown;
+    window.selectCreateCourse = selectCreateCourse;
+    window.initEditCourseDropdown = initEditCourseDropdown;
+    window.selectEditCourse = selectEditCourse;
+    window.setEditCourseValue = setEditCourseValue;
+    window.updateCreateCourseDropdown = updateCreateCourseDropdown;
+    
+    // ====== UNITS (COURSES) ======
+    window.loadUnits = loadUnits;
+    window.loadAllUnits = loadAllUnits;
+    window.handleAddUnit = handleAddUnit;
+    window.handleEditUnit = handleEditUnit;
+    window.deleteUnit = deleteUnit;
+    window.openEditUnitModal = openEditUnitModal;
+    window.filterUnitsCatalog = filterUnitsCatalog;
+    window.filterUnitsByBlock = filterUnitsByBlock;
+    window.filterUnitsByBlockSelect = filterUnitsByBlock;
+    window.filterUnitsByProgramType = filterUnitsByProgramType;
+    window.resetUnitFilters = resetUnitFilters;
+    window.exportUnitsToCSV = exportUnitsToCSV;
+    window.updateUnitCount = updateUnitCount;
+    window.closeEditModal = closeEditModal;
+    window.setupUnitEventListeners = setupUnitEventListeners;
+    window.getBlockOptions = getBlockOptions;
+    window.getTermOptions = getTermOptions;
+    window.updateBlockSelectOptions = updateBlockSelectOptions;
+    window.addNewUnitRecord = addNewUnitRecord;
+    
+    // ====== UNIT REGISTRATIONS ======
+    window.loadUnitDashboard = loadUnitDashboard;
+    window.loadUnitRegistrationStats = loadUnitRegistrationStats;
+    window.loadUnitPendingRegistrations = loadUnitPendingRegistrations;
+    window.loadApprovedRegistrations = loadApprovedRegistrations;
+    window.loadGroupedRegistrations = loadGroupedRegistrations;
+    window.filterApprovedRegistrations = filterApprovedRegistrations;
+    window.exportApprovedRegistrations = exportApprovedRegistrations;
+    window.exportGroupedRegistrations = exportGroupedRegistrations;
+    window.deapproveSingleRegistration = deapproveSingleRegistration;
+    window.bulkDeapproveSelected = bulkDeapproveSelected;
+    window.toggleSelectAllApproved = toggleSelectAllApproved;
+    window.updateApprovedSelectedCount = updateApprovedSelectedCount;
+    window.selectAllPendingUnits = selectAllPendingUnits;
+    window.clearAllUnitSelections = clearAllUnitSelections;
+    window.updateSelectedUnitsCount = updateSelectedUnitsCount;
+    window.approveSingleUnitRecord = approveSingleUnitRecord;
+    window.rejectSingleUnitRecord = rejectSingleUnitRecord;
+    window.approveStudentAllUnits = approveStudentAllUnits;
+    window.rejectStudentAllUnits = rejectStudentAllUnits;
+    window.bulkApproveSelectedUnits = bulkApproveSelectedUnits;
+    window.bulkRejectSelectedUnits = bulkRejectSelectedUnits;
+    window.filterPendingByProgram = filterPendingByProgram;
+    window.renderFilteredPendingRegistrations = renderFilteredPendingRegistrations;
+    window.filterUnitRegistrations = filterUnitRegistrations;
+    window.filterGroupedRegistrations = filterGroupedRegistrations;
+    window.toggleGroup = toggleGroup;
+    window.expandAllGroups = expandAllGroups;
+    window.collapseAllGroups = collapseAllGroups;
+    window.updateGroupSelection = updateGroupSelection;
+    window.toggleSelectAllGroups = toggleSelectAllGroups;
+    window.approveSelectedGroups = approveSelectedGroups;
+    window.rejectSelectedGroups = rejectSelectedGroups;
+    window.approveRegistration = approveRegistration;
+    window.rejectRegistration = rejectRegistration;
+    window.viewRegistrationDetails = viewRegistrationDetails;
+    window.togglePendingList = togglePendingList;
+    window.formatBlockDisplay = formatBlockDisplay;
+    window.getStudentName = getStudentName;
+    
+    // ====== ATTENDANCE ======
+    window.toggleAttendanceFields = toggleAttendanceFields;
+    window.populateAttendanceSelects = populateAttendanceSelects;
+    window.approveAttendanceRecord = approveAttendanceRecord;
+    window.deleteAttendanceRecord = deleteAttendanceRecord;
+    window.showMap = showMap;
+    window.adminCheckIn = adminCheckIn;
+    window.handleManualAttendance = handleManualAttendance;
+    window.loadAttendance = loadAttendance;
+    window.filterAttendance = filterAttendance;
+    window.resetAttendanceFilters = resetAttendanceFilters;
+    window.refreshAttendance = refreshAttendance;
+    window.exportAllAttendance = exportAllAttendance;
+    window.updateAttendanceBlockOptions = updateAttendanceBlockOptions;
+    
+    // ====== SESSIONS ======
+    window.loadScheduledSessions = loadScheduledSessions;
+    window.populateSessionCourseSelects = populateSessionCourseSelects;
+    window.handleAddSession = handleAddSession;
+    window.deleteSession = deleteSession;
+    
+    // ====== CALENDAR / TIMETABLE ======
+    window.renderFullCalendar = renderFullCalendar;
+    window.refreshCalendarData = refreshCalendarData;
+    window.uploadTimetableExcel = uploadTimetableExcel;
+    window.addCalendarEvent = addCalendarEvent;
+    window.downloadTimetableTemplate = downloadTimetableTemplate;
+    window.uploadTimetableToSupabase = uploadTimetableToSupabase;
+    window.clearTimetableBlock = clearTimetableBlock;
+    window.previewTimetable = previewTimetable;
+    window.showUploadMethod = showUploadMethod;
+    window.addSingleEvent = addSingleEvent;
+    window.createWeeklySchedule = createWeeklySchedule;
+    window.uploadExcelTimetable = uploadExcelTimetable;
+    
+    // ====== SECURITY ======
+    window.sendPasswordResetEmail = sendPasswordResetEmail;
+    window.adminForceResetPassword = adminForceResetPassword;
+    window.handleSendResetEmail = handleSendResetEmail;
+    window.handleAdminForceReset = handleAdminForceReset;
+    window.handleGlobalPasswordReset = handleGlobalPasswordReset;
+    window.lookupUser = lookupUser;
+    window.autoFillResetForm = autoFillResetForm;
+    window.clearLookupResult = clearLookupResult;
+    window.loadSystemStatus = loadSystemStatus;
+    window.updateSystemStatus = updateSystemStatus;
+    window.saveSystemMessage = saveSystemMessage;
+    window.clearSystemMessage = clearSystemMessage;
+    window.applySystemStatus = applySystemStatus;
+    window.handleAccountDeactivation = handleAccountDeactivation;
+    window.loadSecurityActivity = loadSecurityActivity;
+    window.addSecurityActivity = addSecurityActivity;
+    window.renderSecurityActivity = renderSecurityActivity;
+    window.refreshSecuritySettings = refreshSecuritySettings;
+    window.exportSecurityAudit = exportSecurityAudit;
+    window.togglePasswordVisibility = togglePasswordVisibility;
+    window.loadActiveSessions = loadActiveSessions;
+    window.terminateSession = terminateSession;
+    window.terminateAllSessions = terminateAllSessions;
+    window.refreshSessions = refreshSessions;
+    window.exportSessionsToCSV = exportSessionsToCSV;
+    window.trackUserSession = trackUserSession;
+    window.updateSessionActivity = updateSessionActivity;
+    
+    // ====== AUDIT ======
+    window.loadAuditLogs = loadAuditLogs;
+    window.applyAuditFilters = applyAuditFilters;
+    window.resetAuditFilters = resetAuditFilters;
+    window.quickDateFilter = quickDateFilter;
+    window.changeAuditPage = changeAuditPage;
+    window.changeAuditEntriesPerPage = changeAuditEntriesPerPage;
+    window.sortAuditTable = sortAuditTable;
+    window.refreshAuditLogs = refreshAuditLogs;
+    window.exportAuditLogsToCSV = exportAuditLogsToCSV;
+    window.manualCleanAuditLogs = manualCleanAuditLogs;
+    
+    // ====== MESSAGES & ANNOUNCEMENTS ======
+    window.loadAdminMessages = loadAdminMessages;
+    window.editNotification = editNotification;
+    window.deleteNotification = deleteNotification;
+    window.saveOfficialAnnouncement = saveOfficialAnnouncement;
+    window.loadAnnouncementsList = loadAnnouncementsList;
+    window.toggleAnnouncementStatus = toggleAnnouncementStatus;
+    window.deleteAnnouncement = deleteAnnouncement;
+    window.handleSendMessage = handleSendMessage;
+    
+    // ====== SUPPORT TICKETS ======
+    window.loadAdminTickets = loadAdminTickets;
+    window.filterAdminTickets = filterAdminTickets;
+    window.filterAdminTicketsDebounced = filterAdminTicketsDebounced;
+    window.viewAdminTicket = viewAdminTicket;
+    window.sendAdminChatReply = sendAdminChatReply;
+    window.closeAdminTicketChatModal = closeAdminTicketChatModal;
+    window.refreshAdminConversation = refreshAdminConversation;
+    window.exportAdminTicketsToCSV = exportAdminTicketsToCSV;
+    window.checkForNewMessages = checkForNewMessages;
+    window.requestNotificationPermission = requestNotificationPermission;
+    window.testNotificationSystem = testNotificationSystem;
+    window.markTicketAsRead = markTicketAsRead;
+    window.getSupabaseClient = getSupabaseClient;
+    window.showAdminToast = showAdminToast;
+    
+    // ====== FEE ACCOUNTS ======
+    window.loadStudentAccounts = loadStudentAccounts;
+    window.recordPayment = recordPayment;
+    window.quickRecordPayment = quickRecordPayment;
+    window.viewPaymentHistory = viewPaymentHistory;
+    window.filterByBalanceStatus = filterByBalanceStatus;
+    window.searchStudentAccount = searchStudentAccount;
+    window.exportAccountsToCSV = exportAccountsToCSV;
+    window.showOutstandingPayments = showOutstandingPayments;
+    window.showTodayPayments = showTodayPayments;
+    window.showOverdueAccounts = showOverdueAccounts;
+    window.updateFeeStructure = updateFeeStructure;
+    window.loadFeeStructure = loadFeeStructure;
+    window.clearPaymentForm = clearPaymentForm;
+    window.generateReceipt = generateReceipt;
+    
+    // ====== DASHBOARD ======
+    window.loadDashboardData = loadDashboardData;
+    window.loadStudentStatistics = loadStudentStatistics;
+    window.loadStudentBirthdays = loadStudentBirthdays;
+    window.loadTotalDailyCheckIns = loadTotalDailyCheckIns;
+    window.loadTicketMetricsForDashboard = loadTicketMetricsForDashboard;
+    window.loadFeeSummaryForDashboard = loadFeeSummaryForDashboard;
+    window.loadPendingMessagesCount = loadPendingMessagesCount;
+    window.loadAdditionalDashboardMetrics = loadAdditionalDashboardMetrics;
+    window.loadStudentWelcomeMessage = loadStudentWelcomeMessage;
+    window.loadWelcomeMessageForEdit = loadWelcomeMessageForEdit;
+    window.handleSaveWelcomeMessage = handleSaveWelcomeMessage;
+    window.initDashboard = initDashboard;
+    window.startDashboardAutoRefresh = startDashboardAutoRefresh;
+    window.stopDashboardAutoRefresh = stopDashboardAutoRefresh;
+    window.loadChartData = loadChartData;
+    window.loadBirthdays = loadBirthdays;
+    
+    // ====== SYSTEM HEALTH ======
+    window.loadSystemHealth = loadSystemHealth;
+    window.runSystemCleanup = runSystemCleanup;
+    window.checkForLeaks = checkForLeaks;
+    window.refreshSystemHealth = refreshSystemHealth;
+    window.exportHealthReport = exportHealthReport;
+    window.startHealthAutoRefresh = startHealthAutoRefresh;
+    window.stopHealthAutoRefresh = stopHealthAutoRefresh;
+    window.runHealthCheck = runHealthCheck;
+    window.clearSystemCache = clearSystemCache;
+    window.checkForUpdates = checkForUpdates;
+    
+    // ====== BACKUPS ======
+    window.triggerBackup = triggerBackup;
+    window.loadBackupHistory = loadBackupHistory;
+    window.downloadBackup = downloadBackup;
+    window.deleteBackup = deleteBackup;
+    
+    // ====== ENTRY CONTROL ======
+    window.loadEntryControl = loadEntryControl;
+    window.renderECStats = renderECStats;
+    window.renderECGlobal = renderECGlobal;
+    window.renderECClassYears = renderECClassYears;
+    window.renderECBlocks = renderECBlocks;
+    window.renderECSubjects = renderECSubjects;
+    window.renderECLogs = renderECLogs;
+    window.populateECBlockFilter = populateECBlockFilter;
+    window.toggleGlobalEntry = toggleGlobalEntry;
+    window.toggleClassEntry = toggleClassEntry;
+    window.toggleSubjectEntry = toggleSubjectEntry;
+    window.openBlockSubjects = openBlockSubjects;
+    window.openAllSubjectsInBlock = openAllSubjectsInBlock;
+    window.closeAllSubjectsInBlock = closeAllSubjectsInBlock;
+    window.refreshEntryControl = refreshEntryControl;
+    window.exportECLogs = exportECLogs;
+    window.logEntryControlAction = logEntryControlAction;
+    
+    // ====== MARKS APPROVAL ======
+    window.loadMarksApprovals = loadMarksApprovals;
+    window.filterMarksApprovals = filterMarksApprovals;
+    window.approveMark = approveMark;
+    window.rejectMark = rejectMark;
+    window.approveByUnit = approveByUnit;
+    window.rejectByUnit = rejectByUnit;
+    window.approveAllPendingMarks = approveAllPendingMarks;
+    window.rejectAllPendingMarks = rejectAllPendingMarks;
+    window.toggleUnitDetails = toggleUnitDetails;
+    window.initMarksApproval = initMarksApproval;
+    window.exportMarksApprovalsToCSV = exportMarksApprovalsToCSV;
+    
+    // ====== APPROVAL SYSTEM ======
+    window.loadAdminActions = loadAdminActions;
+    window.viewActionDetail = viewActionDetail;
+    window.approveCurrentAction = approveCurrentAction;
+    window.rejectCurrentAction = rejectCurrentAction;
+    window.filterAdminActions = filterAdminActions;
+    window.exportAdminActionsToCSV = exportAdminActionsToCSV;
+    window.requestAdminAction = requestAdminAction;
+    window.initAdminApprovals = initAdminApprovals;
+    window.loadApprovalHistory = loadApprovalHistory;
+    
+    // ====== REVIEWS & NEWSLETTER ======
+    window.loadAllReviews = loadAllReviews;
+    window.loadSubscribers = loadSubscribers;
+    window.renderReviewsTable = renderReviewsTable;
+    window.renderSubscribers = renderSubscribers;
+    window.approveReview = approveReview;
+    window.rejectReview = rejectReview;
+    window.deleteReview = deleteReview;
+    window.filterReviewsTable = filterReviewsTable;
+    window.filterSubscribers = filterSubscribers;
+    window.exportReviewsToCSV = exportReviewsToCSV;
+    window.exportSubscribersToCSV = exportSubscribersToCSV;
+    window.sendNewsletter = sendNewsletter;
+    window.toggleSubscriber = toggleSubscriber;
+    window.showReviewsTab = showReviewsTab;
+    window.saveReviewSettings = saveReviewSettings;
+    window.initReviewsNewsletter = initReviewsNewsletter;
+    window.getStarHTML = getStarHTML;
+    
+    // ====== BULK OPERATIONS ======
+    window.selectAllUsers = selectAllUsers;
+    window.clearSelection = clearSelection;
+    window.executeBulkAction = executeBulkAction;
+    window.generateNewAPIKey = generateNewAPIKey;
+    window.regenerateKey = regenerateKey;
+    window.enable2FAForAll = enable2FAForAll;
+    window.filterErrors = filterErrors;
+    window.updateVisualization = updateVisualization;
+    window.quickAction = quickAction;
+    
+    // ====== REAL-TIME DASHBOARD ======
+    window.updateSidebarBadges = updateSidebarBadges;
+    window.refreshDashboardStats = refreshDashboardStats;
+    window.updateNotificationBell = updateNotificationBell;
+    window.updateActiveSessionsCount = updateActiveSessionsCount;
+    window.updateOnlineStatus = updateOnlineStatus;
+    window.initRealtimeDashboard = initRealtimeDashboard;
+    window.startAutoRefresh = startAutoRefresh;
+    window.startHeartbeat = startHeartbeat;
+    window.subscribeToRealtimeUpdates = subscribeToRealtimeUpdates;
+    window.injectRealtimeCSS = injectRealtimeCSS;
+    window.showToast = showToast;
+    
+    // ====== DOCUMENT VIEWER ======
+    window.downloadCurrentDocument = downloadCurrentDocument;
+    window.verifyCurrentDocument = verifyCurrentDocument;
+    window.rejectCurrentDocument = rejectCurrentDocument;
+    window.closeDocumentViewerModal = closeDocumentViewerModal;
+    window.openDocumentViewerModal = openDocumentViewerModal;
+    window.loadUserDocumentsForViewer = loadUserDocumentsForViewer;
+    window.getPhotoUrl = getPhotoUrl;
+    window.viewDocumentFile = viewDocumentFile;
+    window.downloadDocumentFile = downloadDocumentFile;
+    window.findDocument = findDocument;
+    
+    // ====== PROGRAM DROPDOWNS ======
+    window.updateProgramDropdown = updateProgramDropdown;
+    window.updateBlockTermOptions = updateBlockTermOptions;
+    window.initializeAllProgramDropdowns = initializeAllProgramDropdowns;
+    window.loadPrograms = loadPrograms;
+    window.seedPrograms = seedPrograms;
+    window.mergeWithMaster = mergeWithMaster;
+    window.getHardcodedPrograms = getHardcodedPrograms;
+    window.isTVETProgram = isTVETProgram;
+    window.getProgramType = getProgramType;
+    window.getProgramLevel = getProgramLevel;
+    window.getProgramDisplayName = getProgramDisplayName;
+    window.getCorrespondingBlockField = getCorrespondingBlockField;
+    window.MASTER_PROGRAMS = MASTER_PROGRAMS;
+    window.TVET_PROGRAMS = TVET_PROGRAMS;
+    window.PROGRAM_DISPLAY_NAMES = PROGRAM_DISPLAY_NAMES;
+    
+    // ====== SPINNER MANAGER ======
+    window.spinnerManager = spinnerManager;
+    
+    // ====== USER FILTERS ======
+    window.populateUserProgramFilter = populateUserProgramFilter;
+    window.populateUserBlockFilter = populateUserBlockFilter;
+    window.populateUserFilterDropdownsIfEmpty = populateUserFilterDropdownsIfEmpty;
+    window.loadFilterOptions = loadFilterOptions;
+    window.changeUserPage = changeUserPage;
+    window.changePerPage = changePerPage;
+    window.searchUsersDebounced = searchUsersDebounced;
+    window.filterUsers = filterUsers;
+    window.resetUserFilters = resetUserFilters;
+    window.toggleAllUserCheckboxes = toggleAllUserCheckboxes;
+    window.updateBulkSelectedCount = updateBulkSelectedCount;
+    window.updateUserStats = updateUserStats;
+    window.renderUserPagination = renderUserPagination;
+    
+    // ====== UTILITIES ======
+    window.safeSetText = safeSetText;
+    window.safeSetHTML = safeSetHTML;
+    window.setButtonLoading = setButtonLoading;
+    window.fetchData = fetchData;
+    window.populateSelect = populateSelect;
+    window.generateUUID = generateUUID;
+    window.getDeviceId = getDeviceId;
+    window.getIPAddress = getIPAddress;
+    window.getProfilePhotoUrl = getProfilePhotoUrl;
+    window.$ = $;
+    
+    // ====== VALIDATION ======
+    window.validateBlockForProgram = validateBlockForProgram;
+    
+    console.log('✅ All functions exposed to global scope successfully!');
+    console.log('📊 Total functions exposed:', Object.keys(window).filter(k => typeof window[k] === 'function').length);
+})();
