@@ -5648,35 +5648,7 @@ async function handleMassPromotion(e) {
 }
 
 // ============================================
-// APPROVE USER - PRESERVED
-// ============================================
-
-async function approveUser(userId, fullName, studentId = '', email = '', role = 'student', program = 'N/A') {
-    console.log('🎯 Opening approval check for user:', { userId, fullName, studentId });
-    
-    try {
-        const supabase = getSb();
-        const { data: user, error } = await supabase
-            .from(USER_PROFILE_TABLE)
-            .select('*')
-            .eq('user_id', userId)
-            .single();
-        
-        if (error || !user) {
-            showFeedback('❌ Error loading user details: ' + (error?.message || 'User not found'), 'error');
-            return;
-        }
-        
-        showApprovalModal(user);
-        
-    } catch (err) {
-        console.error('❌ Error in approveUser:', err);
-        showFeedback('❌ Error loading user details: ' + err.message, 'error');
-    }
-}
-
-// ============================================
-// SHOW APPROVAL MODAL - AUTO-POPULATE USER DATA
+// SHOW APPROVAL MODAL - WITH TVET DIPLOMA/CERTIFICATE SUPPORT
 // ============================================
 
 function showApprovalModal(user) {
@@ -5695,6 +5667,9 @@ function showApprovalModal(user) {
     
     const programType = getProgramType(user.program);
     const isTVET = programType === 'TVET';
+    const programLevel = getProgramLevel(user.program);
+    const isDiploma = programLevel === 'DIPLOMA';
+    const isCertificate = programLevel === 'CERTIFICATE';
     
     // ✅ Build program options dynamically from MASTER_PROGRAMS
     let programOptions = '';
@@ -5718,7 +5693,6 @@ function showApprovalModal(user) {
         if (groups[groupName] && groups[groupName].length > 0) {
             programOptions += `<optgroup label="${groupName}">`;
             groups[groupName].forEach(p => {
-                // ✅ AUTO-SELECT the user's program
                 const selected = user.program === p.code ? 'selected' : '';
                 programOptions += `<option value="${p.code}" ${selected}>${p.name}</option>`;
             });
@@ -5737,15 +5711,63 @@ function showApprovalModal(user) {
         }
     }
     
-    // ✅ Block options based on program type
-    const blockOptions = isTVET 
-        ? ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
-        : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+    // ✅ Block options based on program type AND level
+    let blockOptions = [];
+    let blockLabel = 'Block';
+    
+    if (isTVET) {
+        blockLabel = 'Term';
+        if (isDiploma) {
+            // DIPLOMA TVET: Year 1 Term 1 to Year 2 Term 3
+            blockOptions = [
+                { value: 'Y1T1', label: 'Year 1 Term 1' },
+                { value: 'Y1T2', label: 'Year 1 Term 2' },
+                { value: 'Y1T3', label: 'Year 1 Term 3' },
+                { value: 'Y2T1', label: 'Year 2 Term 1' },
+                { value: 'Y2T2', label: 'Year 2 Term 2' },
+                { value: 'Y2T3', label: 'Year 2 Term 3' }
+            ];
+        } else if (isCertificate) {
+            // CERTIFICATE TVET: Year 1 Term 1 to Term 3
+            blockOptions = [
+                { value: 'Y1T1', label: 'Year 1 Term 1' },
+                { value: 'Y1T2', label: 'Year 1 Term 2' },
+                { value: 'Y1T3', label: 'Year 1 Term 3' }
+            ];
+        } else {
+            // Other TVET (Artisan, etc.)
+            blockOptions = [
+                { value: 'Introductory', label: 'Introductory Term' },
+                { value: 'Term1', label: 'Term 1' },
+                { value: 'Term2', label: 'Term 2' },
+                { value: 'Term3', label: 'Term 3' },
+                { value: 'Term4', label: 'Term 4' },
+                { value: 'Term5', label: 'Term 5' },
+                { value: 'Term6', label: 'Term 6' },
+                { value: 'Final', label: 'Final Term' }
+            ];
+        }
+    } else {
+        // KRCHN Blocks
+        blockLabel = 'Block';
+        blockOptions = [
+            { value: 'Introductory', label: 'Introductory Block' },
+            { value: 'Block 1', label: 'Block 1' },
+            { value: 'Block 2', label: 'Block 2' },
+            { value: 'Block 3', label: 'Block 3' },
+            { value: 'Block 4', label: 'Block 4' },
+            { value: 'Block 5', label: 'Block 5' },
+            { value: 'Block 6', label: 'Block 6' },
+            { value: 'Final', label: 'Final Block' }
+        ];
+    }
     
     // ✅ AUTO-SELECT the user's block
     const blockSelectOptions = blockOptions.map(b => {
-        const selected = (user.block === b || user.current_block === b || user.term === b) ? 'selected' : '';
-        return `<option value="${b}" ${selected}>${b}</option>`;
+        // Check if user's block matches any of the possible field names
+        const userBlock = user.block || user.current_block || user.term || '';
+        const selected = userBlock === b.value ? 'selected' : '';
+        return `<option value="${b.value}" ${selected}>${b.label}</option>`;
     }).join('');
     
     // ✅ Month options with auto-selection
@@ -5755,6 +5777,17 @@ function showApprovalModal(user) {
         const selected = user.intake_month === m ? 'selected' : '';
         return `<option value="${m}" ${selected}>${m}</option>`;
     }).join('');
+    
+    // ✅ Program type description for the info note
+    let programTypeDescription = isTVET ? 'TVET (Technical & Vocational Education Training)' : 'KRCHN (Nursing)';
+    let programLevelDescription = '';
+    if (isTVET) {
+        if (isDiploma) programLevelDescription = 'Diploma Level - 2 Years (6 Terms)';
+        else if (isCertificate) programLevelDescription = 'Certificate Level - 1 Year (3 Terms)';
+        else programLevelDescription = 'Other TVET Program';
+    } else {
+        programLevelDescription = 'Nursing Program - 3.5 Years (7 Blocks)';
+    }
     
     const modal = document.createElement('div');
     modal.id = 'approvalModal';
@@ -5849,7 +5882,12 @@ function showApprovalModal(user) {
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Type</label>
-                            <input type="text" id="edit_program_type" value="${isTVET ? 'TVET' : 'KRCHN'}" readonly
+                            <input type="text" id="edit_program_type" value="${programTypeDescription}" readonly
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f1f5f9; font-family:inherit; color:#475569;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Level</label>
+                            <input type="text" id="edit_program_level" value="${programLevelDescription}" readonly
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f1f5f9; font-family:inherit; color:#475569;">
                         </div>
                         <div class="form-group">
@@ -5865,13 +5903,15 @@ function showApprovalModal(user) {
                             </select>
                         </div>
                         <div class="form-group" style="grid-column: 1 / -1;">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569;">${isTVET ? 'Term' : 'Block'} *</label>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">${blockLabel} *</label>
                             <select id="edit_block" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                                 ${blockSelectOptions}
                             </select>
                             <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
                                 <i class="fas fa-info-circle"></i> 
-                                ${isTVET ? 'TVET programs use "Terms" (e.g., Term 1, Term 2)' : 'KRCHN programs use "Blocks" (e.g., Block 1, Block 2)'}
+                                ${isTVET && isDiploma ? 'Diploma TVET: Year 1 Term 1 → Year 2 Term 3 (6 terms)' : 
+                                  isTVET && isCertificate ? 'Certificate TVET: Year 1 Term 1 → Year 1 Term 3 (3 terms)' :
+                                  isTVET ? 'TVET programs use "Terms"' : 'KRCHN programs use "Blocks"'}
                             </div>
                         </div>
                     </div>
@@ -5916,6 +5956,17 @@ function showApprovalModal(user) {
                         Only make changes if something is incorrect. Click "Confirm & Approve" to activate the account.
                     </p>
                 </div>
+                
+                <!-- Program Duration Info -->
+                <div style="margin-top: 10px; padding: 10px 12px; background: ${isTVET ? '#fef3c7' : '#e0e7ff'}; border-radius: 8px; border-left: 4px solid ${isTVET ? '#f59e0b' : '#4C1D95'};">
+                    <p style="margin: 0; font-size: 12px; color: ${isTVET ? '#92400e' : '#1e40af'};">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Program Duration:</strong> 
+                        ${isTVET && isDiploma ? '🎯 Diploma TVET - 2 Years (Year 1 Term 1 → Year 2 Term 3)' : 
+                          isTVET && isCertificate ? '📜 Certificate TVET - 1 Year (Year 1 Term 1 → Year 1 Term 3)' :
+                          isTVET ? '🔧 TVET Program' : '🎓 KRCHN Nursing - 3.5 Years (7 Blocks)'}
+                    </p>
+                </div>
             </form>
         </div>
     `;
@@ -5928,105 +5979,7 @@ function showApprovalModal(user) {
     console.log('📚 Program selected:', user.program);
     console.log('📖 Block/Term selected:', user.block || user.current_block || user.term);
     console.log('📅 Intake:', user.intake_year, user.intake_month);
-}
-function closeApprovalModal() {
-    const modal = document.getElementById('approvalModal');
-    if (modal) {
-        modal.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => {
-            modal.remove();
-        }, 300);
-    }
-}
-
-async function confirmApproveUser() {
-    console.log('✅ confirmApproveUser called');
-    
-    const modal = document.getElementById('approvalModal');
-    if (!modal) {
-        showFeedback('❌ Modal not found', 'error');
-        return;
-    }
-    
-    const userId = modal.dataset.userId;
-    
-    const fullName = document.getElementById('edit_full_name')?.value?.trim();
-    const email = document.getElementById('edit_email')?.value?.trim();
-    const studentId = document.getElementById('edit_student_id')?.value?.trim();
-    const phone = document.getElementById('edit_phone')?.value?.trim();
-    const role = document.getElementById('edit_role')?.value;
-    const program = document.getElementById('edit_program')?.value;
-    const intakeYear = document.getElementById('edit_intake_year')?.value?.trim();
-    const intakeMonth = document.getElementById('edit_intake_month')?.value?.trim() || null;
-    const block = document.getElementById('edit_block')?.value;
-    const status = document.getElementById('edit_status')?.value || 'approved';
-    
-    if (!fullName) {
-        showFeedback('❌ Full Name is required', 'error');
-        const nameInput = document.getElementById('edit_full_name');
-        if (nameInput) { nameInput.focus(); nameInput.style.borderColor = '#DC2626'; }
-        return;
-    }
-    if (!email) {
-        showFeedback('❌ Email is required', 'error');
-        const emailInput = document.getElementById('edit_email');
-        if (emailInput) { emailInput.focus(); emailInput.style.borderColor = '#DC2626'; }
-        return;
-    }
-    if (!program) {
-        showFeedback('❌ Program is required', 'error');
-        return;
-    }
-    
-    closeApprovalModal();
-    
-    if (!confirm(`⚠️ Approve User:\n\nName: ${fullName}\nEmail: ${email}\nProgram: ${program}\nBlock: ${block || 'Not set'}\nRole: ${role}\nStatus: ${status}\n\nProceed?`)) {
-        return;
-    }
-    
-    try {
-        const supabase = getSb();
-        const updateData = {
-            full_name: fullName,
-            email: email,
-            role: role,
-            program: program,
-            block: block || null,
-            status: status,
-            updated_at: new Date().toISOString()
-        };
-        
-        if (studentId) updateData.student_id = studentId;
-        if (phone) updateData.phone = phone;
-        if (intakeYear) updateData.intake_year = intakeYear;
-        if (intakeMonth) updateData.intake_month = intakeMonth;
-        
-        const { error } = await supabase
-            .from(USER_PROFILE_TABLE)
-            .update(updateData)
-            .eq('user_id', userId);
-        
-        if (error) throw error;
-        
-        try {
-            await sendApprovalEmail(email, fullName, role, program, intakeYear, intakeMonth, block);
-        } catch (e) {
-            console.warn('⚠️ Email error:', e);
-        }
-        
-        showFeedback(`✅ User ${fullName} approved successfully!`, 'success');
-        
-        await logAudit('USER_APPROVE', `User ${fullName} approved`, userId, 'SUCCESS');
-        
-        loadPendingApprovals();
-        loadAllUsers(1, USERS_STATE.filters);
-        loadStudents();
-        loadDashboardData();
-        
-    } catch (err) {
-        console.error('❌ Error:', err);
-        showFeedback(`❌ Failed: ${err.message}`, 'error');
-    }
+    console.log('📊 Program Level:', isDiploma ? 'Diploma' : isCertificate ? 'Certificate' : 'Other');
 }
 
 // ============================================
@@ -6494,6 +6447,9 @@ async function openEditUserModal(userId) {
 // HANDLE EDIT USER - COMPLETE WITH ALL FIELDS
 // FIXED: Removed 'term' column (doesn't exist)
 // ============================================
+// ============================================
+// HANDLE EDIT USER - WITH TVET DIPLOMA/CERTIFICATE SUPPORT
+// ============================================
 
 async function handleEditUser(e) {
     e.preventDefault();
@@ -6542,6 +6498,9 @@ async function handleEditUser(e) {
         const docId = document.getElementById('edit_user_doc_id').value || 'pending';
 
         const isTVET = isTVETProgram(program);
+        const programLevel = getProgramLevel(program);
+        const isDiploma = programLevel === 'DIPLOMA';
+        const isCertificate = programLevel === 'CERTIFICATE';
 
         // Validate required fields
         if (!fullName) {
@@ -6560,7 +6519,15 @@ async function handleEditUser(e) {
             return;
         }
 
-        // Build update data - NO 'term' column!
+        // ✅ Validate block value based on program type and level
+        const validBlock = validateBlockForProgram(blockValue, program);
+        if (!validBlock.valid) {
+            showFeedback(`❌ ${validBlock.message}`, 'error');
+            setButtonLoading(submitButton, false, originalText);
+            return;
+        }
+
+        // Build update data
         const updatedData = {
             full_name: fullName,
             email: email,
@@ -6582,12 +6549,27 @@ async function handleEditUser(e) {
             program: program,
             block: blockValue,
             current_block: blockValue,
-            // ✅ REMOVED: term: isTVET ? blockValue : null,
             program_type: isTVET ? 'TVET' : 'KRCHN',
+            program_level: programLevel,
             doc_kcse: docKcse,
             doc_id: docId,
             updated_at: new Date().toISOString()
         };
+
+        // ✅ Add term field for TVET programs
+        if (isTVET) {
+            updatedData.term = blockValue;
+            updatedData.program_level = programLevel;
+        }
+
+        // ✅ Store program duration info
+        if (isDiploma) {
+            updatedData.program_duration = '2 Years (6 Terms)';
+            updatedData.total_terms = 6;
+        } else if (isCertificate) {
+            updatedData.program_duration = '1 Year (3 Terms)';
+            updatedData.total_terms = 3;
+        }
 
         // Remove null/undefined values
         Object.keys(updatedData).forEach(key => {
@@ -6692,7 +6674,12 @@ async function handleEditUser(e) {
             }
         }
 
-        await logAudit('USER_EDIT', `Edited profile for user ${fullName} (${updatedData.program_type || 'KRCHN'})`, userId, 'SUCCESS');
+        // ✅ Log with program level info
+        const levelText = isDiploma ? 'Diploma' : isCertificate ? 'Certificate' : 'Other';
+        await logAudit('USER_EDIT', 
+            `Edited profile for user ${fullName} (${updatedData.program_type || 'KRCHN'} - ${levelText})`, 
+            userId, 'SUCCESS');
+        
         showFeedback(`✅ User profile updated successfully!`, 'success');
 
         // Close modal
@@ -6715,6 +6702,63 @@ async function handleEditUser(e) {
     } finally {
         setButtonLoading(submitButton, false, originalText);
     }
+}
+
+// ============================================
+// HELPER: VALIDATE BLOCK FOR PROGRAM
+// ============================================
+
+function validateBlockForProgram(blockValue, program) {
+    const isTVET = isTVETProgram(program);
+    const programLevel = getProgramLevel(program);
+    const isDiploma = programLevel === 'DIPLOMA';
+    const isCertificate = programLevel === 'CERTIFICATE';
+    
+    if (!blockValue) {
+        return { valid: false, message: 'Block/Term is required' };
+    }
+    
+    if (isTVET) {
+        if (isDiploma) {
+            // Diploma TVET: Y1T1, Y1T2, Y1T3, Y2T1, Y2T2, Y2T3
+            const validTerms = ['Y1T1', 'Y1T2', 'Y1T3', 'Y2T1', 'Y2T2', 'Y2T3'];
+            if (!validTerms.includes(blockValue)) {
+                return { 
+                    valid: false, 
+                    message: 'Invalid term for Diploma TVET. Must be one of: Year 1 Term 1-3, Year 2 Term 1-3' 
+                };
+            }
+        } else if (isCertificate) {
+            // Certificate TVET: Y1T1, Y1T2, Y1T3
+            const validTerms = ['Y1T1', 'Y1T2', 'Y1T3'];
+            if (!validTerms.includes(blockValue)) {
+                return { 
+                    valid: false, 
+                    message: 'Invalid term for Certificate TVET. Must be one of: Year 1 Term 1-3' 
+                };
+            }
+        } else {
+            // Other TVET: Accept generic terms
+            const validTerms = ['Introductory', 'Term1', 'Term2', 'Term3', 'Term4', 'Term5', 'Term6', 'Final'];
+            if (!validTerms.includes(blockValue) && !blockValue.match(/^Y\dT\d$/)) {
+                return { 
+                    valid: false, 
+                    message: 'Invalid term for TVET program' 
+                };
+            }
+        }
+    } else {
+        // KRCHN: Accept valid blocks
+        const validBlocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'];
+        if (!validBlocks.includes(blockValue)) {
+            return { 
+                valid: false, 
+                message: 'Invalid block for KRCHN program' 
+            };
+        }
+    }
+    
+    return { valid: true };
 }
 // ============================================================
 // 📄 VIEW USER DOCUMENTS - COMPLETE
@@ -7802,15 +7846,67 @@ if (typeof getProgramType === 'undefined') {
         return program === 'KRCHN' ? 'KRCHN' : 'TVET';
     };
 }
-
+// Make sure this function is updated
 if (typeof updateBlockSelectOptions === 'undefined') {
     window.updateBlockSelectOptions = function(select, isTVET) {
         if (!select) return;
         
-        const options = isTVET ? getTermOptions() : getBlockOptions();
+        // Get the program level to determine if it's Diploma or Certificate
+        const programSelect = document.getElementById('new_unit_program') || document.getElementById('edit_unit_program');
+        const programCode = programSelect?.value || '';
+        const programLevel = getProgramLevel(programCode);
+        const isDiploma = programLevel === 'DIPLOMA';
+        const isCertificate = programLevel === 'CERTIFICATE';
+        
         const currentValue = select.value;
         
         select.innerHTML = '<option value="">-- Select --</option>';
+        
+        let options = [];
+        
+        if (isDiploma && isTVET) {
+            // Diploma TVET: Year 1 Term 1 to Year 2 Term 3
+            options = [
+                { value: 'Y1T1', label: 'Year 1 Term 1' },
+                { value: 'Y1T2', label: 'Year 1 Term 2' },
+                { value: 'Y1T3', label: 'Year 1 Term 3' },
+                { value: 'Y2T1', label: 'Year 2 Term 1' },
+                { value: 'Y2T2', label: 'Year 2 Term 2' },
+                { value: 'Y2T3', label: 'Year 2 Term 3' }
+            ];
+        } else if (isCertificate && isTVET) {
+            // Certificate TVET: Year 1 Term 1 to Term 3
+            options = [
+                { value: 'Y1T1', label: 'Year 1 Term 1' },
+                { value: 'Y1T2', label: 'Year 1 Term 2' },
+                { value: 'Y1T3', label: 'Year 1 Term 3' }
+            ];
+        } else if (isTVET) {
+            // Generic TVET
+            options = [
+                { value: 'Introductory', label: 'Introductory Term' },
+                { value: 'Term1', label: 'Term 1' },
+                { value: 'Term2', label: 'Term 2' },
+                { value: 'Term3', label: 'Term 3' },
+                { value: 'Term4', label: 'Term 4' },
+                { value: 'Term5', label: 'Term 5' },
+                { value: 'Term6', label: 'Term 6' },
+                { value: 'Final', label: 'Final Term' }
+            ];
+        } else {
+            // KRCHN Blocks
+            options = [
+                { value: 'Introductory', label: 'Introductory Block' },
+                { value: 'Block 1', label: 'Block 1' },
+                { value: 'Block 2', label: 'Block 2' },
+                { value: 'Block 3', label: 'Block 3' },
+                { value: 'Block 4', label: 'Block 4' },
+                { value: 'Block 5', label: 'Block 5' },
+                { value: 'Block 6', label: 'Block 6' },
+                { value: 'Final', label: 'Final Block' }
+            ];
+        }
+        
         options.forEach(opt => {
             const option = document.createElement('option');
             option.value = opt.value;
@@ -7818,8 +7914,10 @@ if (typeof updateBlockSelectOptions === 'undefined') {
             select.appendChild(option);
         });
         
+        // Restore previous value if it exists
         if (currentValue) {
-            select.value = currentValue;
+            const valueExists = Array.from(select.options).some(o => o.value === currentValue);
+            if (valueExists) select.value = currentValue;
         }
     };
 }
