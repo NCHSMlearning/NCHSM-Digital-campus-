@@ -1,6 +1,6 @@
 // ============================================================
 // SUPER ADMIN STUDENT MANAGEMENT MODULE
-// CHANGE OF PROGRAM & READMISSION
+// CHANGE OF PROGRAM & READMISSION - FIXED (No nested selects)
 // ============================================================
 
 // ============================================================
@@ -20,11 +20,6 @@ const SM_STATE = {
         readmission: 0,
         approved: 0,
         rejected: 0
-    },
-    filters: {
-        change: { search: '', status: 'all' },
-        readmission: { search: '', status: 'all' },
-        history: { type: 'all', status: 'all', dateFrom: '', dateTo: '' }
     }
 };
 
@@ -32,18 +27,9 @@ const SM_STATE = {
 // GET SUPABASE CLIENT
 // ============================================================
 function getSupabaseClient() {
-    // Try to get the global supabase client
-    if (typeof window.sb !== 'undefined' && window.sb) {
-        return window.sb;
-    }
-    if (typeof window.supabase !== 'undefined' && window.supabase) {
-        return window.supabase;
-    }
-    // Try to get from window
-    if (typeof window.__SUPABASE_CLIENT__ !== 'undefined' && window.__SUPABASE_CLIENT__) {
-        return window.__SUPABASE_CLIENT__;
-    }
-    console.warn('⚠️ Supabase client not found, attempting to use global');
+    if (typeof window.sb !== 'undefined' && window.sb) return window.sb;
+    if (typeof window.supabase !== 'undefined' && window.supabase) return window.supabase;
+    if (window.db && window.db.supabase) return window.db.supabase;
     return null;
 }
 
@@ -53,11 +39,12 @@ function getSupabaseClient() {
 function initStudentManagement() {
     console.log('🎓 Student Management Module initialized');
     
-    // Check if supabase is available
     const sb = getSupabaseClient();
     if (!sb) {
-        console.error('❌ Supabase client not available. Please check your connection.');
-        showNotification('Supabase client not available. Please refresh the page.', 'error');
+        console.error('❌ Supabase client not available');
+        if (typeof showNotification === 'function') {
+            showNotification('Supabase client not available. Please refresh the page.', 'error');
+        }
         return;
     }
     
@@ -71,14 +58,11 @@ function initStudentManagement() {
 }
 
 // ============================================================
-// LOAD STUDENTS FOR DROPDOWN (FROM consolidated_user_profiles_table)
+// LOAD STUDENTS FOR DROPDOWN
 // ============================================================
 async function loadStudentsForDropdown() {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     try {
         if (typeof showLoading === 'function') showLoading('Loading students...');
@@ -107,7 +91,6 @@ async function loadStudentsForDropdown() {
                 opt.textContent = `${student.full_name} (${student.student_id || 'N/A'}) - ${student.program || 'No Program'}`;
                 opt.dataset.program = student.program || '';
                 opt.dataset.block = student.block || '';
-                opt.dataset.studentId = student.student_id || '';
                 select.appendChild(opt);
             });
         }
@@ -126,16 +109,6 @@ async function loadStudentsForDropdown() {
                     }
                 }
             }
-            
-            const previousProgramSelect = document.getElementById('smPreviousProgram');
-            if (previousProgramSelect && program) {
-                for (let opt of previousProgramSelect.options) {
-                    if (opt.value === program) {
-                        previousProgramSelect.value = program;
-                        break;
-                    }
-                }
-            }
         };
 
         if (typeof hideLoading === 'function') hideLoading();
@@ -150,25 +123,20 @@ async function loadStudentsForDropdown() {
 }
 
 // ============================================================
-// LOAD CHANGE OF PROGRAM REQUESTS
+// LOAD CHANGE OF PROGRAM REQUESTS - FIXED (No nested select)
 // ============================================================
 async function loadChangeProgramRequests() {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     try {
         const search = document.getElementById('smChangeSearch')?.value?.toLowerCase() || '';
         const status = document.getElementById('smChangeStatusFilter')?.value || 'all';
         
+        // SIMPLE SELECT - NO NESTED RELATIONSHIP
         let query = sb
             .from('student_requests')
-            .select(`
-                *,
-                student:student_id (student_id, full_name, program, block)
-            `)
+            .select('*')
             .eq('request_type', 'change_program')
             .order('created_at', { ascending: false });
 
@@ -184,8 +152,8 @@ async function loadChangeProgramRequests() {
         let filtered = data || [];
         if (search) {
             filtered = filtered.filter(r => 
-                r.student?.full_name?.toLowerCase().includes(search) ||
-                r.student?.student_id?.toLowerCase().includes(search)
+                (r.student_name || '').toLowerCase().includes(search) ||
+                (r.student_id || '').toLowerCase().includes(search)
             );
         }
 
@@ -201,7 +169,7 @@ async function loadChangeProgramRequests() {
             tbody.innerHTML = `
                 <tr><td colspan="7" style="padding: 40px; text-align: center; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-                    Error loading requests: ${error.message}
+                    Error loading requests: ${error.message || 'Unknown error'}
                 </td></tr>
             `;
         }
@@ -233,8 +201,8 @@ function renderChangeProgramTable() {
         const statusClass = r.status || 'pending';
         const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
         const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
-        const studentName = r.student?.full_name || 'Unknown';
-        const studentId = r.student?.student_id || 'N/A';
+        const studentName = r.student_name || 'Unknown';
+        const studentId = r.student_id || 'N/A';
         const currentProgram = r.current_program || 'N/A';
         const requestedProgram = r.requested_program || 'N/A';
         
@@ -275,25 +243,20 @@ function renderChangeProgramTable() {
 }
 
 // ============================================================
-// LOAD READMISSION REQUESTS
+// LOAD READMISSION REQUESTS - FIXED (No nested select)
 // ============================================================
 async function loadReadmissionRequests() {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     try {
         const search = document.getElementById('smReadmissionSearch')?.value?.toLowerCase() || '';
         const status = document.getElementById('smReadmissionStatusFilter')?.value || 'all';
         
+        // SIMPLE SELECT - NO NESTED RELATIONSHIP
         let query = sb
             .from('student_requests')
-            .select(`
-                *,
-                student:student_id (student_id, full_name, program, block)
-            `)
+            .select('*')
             .eq('request_type', 'readmission')
             .order('created_at', { ascending: false });
 
@@ -309,8 +272,8 @@ async function loadReadmissionRequests() {
         let filtered = data || [];
         if (search) {
             filtered = filtered.filter(r => 
-                r.student?.full_name?.toLowerCase().includes(search) ||
-                r.student?.student_id?.toLowerCase().includes(search)
+                (r.student_name || '').toLowerCase().includes(search) ||
+                (r.student_id || '').toLowerCase().includes(search)
             );
         }
 
@@ -326,7 +289,7 @@ async function loadReadmissionRequests() {
             tbody.innerHTML = `
                 <tr><td colspan="7" style="padding: 40px; text-align: center; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-                    Error loading requests: ${error.message}
+                    Error loading requests: ${error.message || 'Unknown error'}
                 </td></tr>
             `;
         }
@@ -358,8 +321,8 @@ function renderReadmissionTable() {
         const statusClass = r.status || 'pending';
         const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
         const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
-        const studentName = r.student?.full_name || 'Unknown';
-        const studentId = r.student?.student_id || 'N/A';
+        const studentName = r.student_name || 'Unknown';
+        const studentId = r.student_id || 'N/A';
         const previousProgram = r.previous_program || 'N/A';
         const requestedProgram = r.requested_program || 'N/A';
         
@@ -400,14 +363,11 @@ function renderReadmissionTable() {
 }
 
 // ============================================================
-// LOAD HISTORY
+// LOAD HISTORY - FIXED (No nested select)
 // ============================================================
 async function loadSMHistory() {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     try {
         const type = document.getElementById('smHistoryType')?.value || 'all';
@@ -415,12 +375,10 @@ async function loadSMHistory() {
         const dateFrom = document.getElementById('smHistoryDateFrom')?.value || '';
         const dateTo = document.getElementById('smHistoryDateTo')?.value || '';
         
+        // SIMPLE SELECT - NO NESTED RELATIONSHIP
         let query = sb
             .from('student_requests')
-            .select(`
-                *,
-                student:student_id (student_id, full_name, program, block)
-            `)
+            .select('*')
             .in('status', ['approved', 'rejected'])
             .order('updated_at', { ascending: false });
 
@@ -454,7 +412,7 @@ async function loadSMHistory() {
             tbody.innerHTML = `
                 <tr><td colspan="6" style="padding: 40px; text-align: center; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-                    Error loading history: ${error.message}
+                    Error loading history: ${error.message || 'Unknown error'}
                 </td></tr>
             `;
         }
@@ -492,8 +450,8 @@ function renderHistoryTable() {
         const statusClass = r.status || 'approved';
         const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
         const date = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : 'N/A';
-        const studentName = r.student?.full_name || 'Unknown';
-        const studentId = r.student?.student_id || 'N/A';
+        const studentName = r.student_name || 'Unknown';
+        const studentId = r.student_id || 'N/A';
         const fromProgram = r.current_program || r.previous_program || 'N/A';
         const toProgram = r.requested_program || 'N/A';
         const approvedBy = r.approved_by || r.updated_by || 'System';
@@ -522,14 +480,11 @@ function renderHistoryTable() {
 }
 
 // ============================================================
-// VIEW REQUEST DETAILS
+// VIEW REQUEST DETAILS - FIXED (No nested select)
 // ============================================================
 async function viewSMRequest(requestId, type) {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     if (!requestId) {
         if (typeof showNotification === 'function') {
@@ -570,12 +525,10 @@ async function viewSMRequest(requestId, type) {
     document.getElementById('smModalActions').style.display = 'none';
     
     try {
+        // SIMPLE SELECT - NO NESTED RELATIONSHIP
         const { data, error } = await sb
             .from('student_requests')
-            .select(`
-                *,
-                student:student_id (student_id, full_name, program, block, intake_year, intake_month)
-            `)
+            .select('*')
             .eq('id', requestId)
             .single();
         
@@ -591,22 +544,18 @@ async function viewSMRequest(requestId, type) {
             return;
         }
         
-        const student = data.student || {};
-        const studentName = student.full_name || 'Unknown';
-        const studentId = student.student_id || 'N/A';
-        const program = student.program || 'N/A';
-        const block = student.block || 'N/A';
-        const intakeYear = student.intake_year || 'N/A';
-        const intakeMonth = student.intake_month || 'N/A';
-        const currentProgram = data.current_program || 'N/A';
-        const previousProgram = data.previous_program || 'N/A';
-        const requestedProgram = data.requested_program || 'N/A';
-        const reason = data.reason || 'No reason provided';
-        const status = data.status || 'pending';
+        const r = data;
+        const studentName = r.student_name || 'Unknown';
+        const studentId = r.student_id || 'N/A';
+        const currentProgram = r.current_program || 'N/A';
+        const previousProgram = r.previous_program || 'N/A';
+        const requestedProgram = r.requested_program || 'N/A';
+        const reason = r.reason || 'No reason provided';
+        const status = r.status || 'pending';
         const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
-        const createdAt = data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A';
-        const updatedAt = data.updated_at ? new Date(data.updated_at).toLocaleString() : 'N/A';
-        const requestType = data.request_type || 'change_program';
+        const createdAt = r.created_at ? new Date(r.created_at).toLocaleString() : 'N/A';
+        const updatedAt = r.updated_at ? new Date(r.updated_at).toLocaleString() : 'N/A';
+        const requestType = r.request_type || 'change_program';
         const typeLabel = requestType === 'change_program' ? 'Change of Program' : 'Readmission';
         
         let statusColor = '#f59e0b';
@@ -627,9 +576,6 @@ async function viewSMRequest(requestId, type) {
                     </div>
                     <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: #64748b;">
                         <span><i class="fas fa-id-card"></i> ${escapeHtml(studentId)}</span>
-                        <span><i class="fas fa-graduation-cap"></i> ${escapeHtml(program)}</span>
-                        <span><i class="fas fa-layer-group"></i> ${escapeHtml(block)}</span>
-                        <span><i class="fas fa-calendar"></i> ${escapeHtml(intakeMonth)} ${escapeHtml(intakeYear)}</span>
                     </div>
                 </div>
                 
@@ -693,7 +639,7 @@ async function viewSMRequest(requestId, type) {
         body.innerHTML = `
             <div style="text-align: center; padding: 40px; color: #dc2626;">
                 <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
-                Error loading request: ${error.message}
+                Error loading request: ${error.message || 'Unknown error'}
             </div>
         `;
         if (typeof showNotification === 'function') {
@@ -707,10 +653,7 @@ async function viewSMRequest(requestId, type) {
 // ============================================================
 async function approveSMRequest(requestId) {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     if (!requestId) {
         if (typeof showNotification === 'function') {
@@ -793,10 +736,7 @@ async function approveSMRequest(requestId) {
 // ============================================================
 async function rejectSMRequest(requestId) {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     if (!requestId) {
         if (typeof showNotification === 'function') {
@@ -846,14 +786,11 @@ async function rejectSMRequest(requestId) {
 }
 
 // ============================================================
-// QUICK APPROVE (from table)
+// QUICK APPROVE
 // ============================================================
 async function quickApproveSM(requestId, type) {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     if (!requestId) {
         if (typeof showNotification === 'function') {
@@ -867,7 +804,6 @@ async function quickApproveSM(requestId, type) {
     if (typeof showLoading === 'function') showLoading('Approving...');
     
     try {
-        // Get the request details first
         const { data: request, error: fetchError } = await sb
             .from('student_requests')
             .select('*')
@@ -880,7 +816,6 @@ async function quickApproveSM(requestId, type) {
             throw new Error('Request not found');
         }
         
-        // Update the request status
         const { error: updateError } = await sb
             .from('student_requests')
             .update({
@@ -893,19 +828,14 @@ async function quickApproveSM(requestId, type) {
         
         if (updateError) throw updateError;
         
-        // Update the student's program in consolidated_user_profiles_table
         if (request.student_id && request.requested_program) {
-            const { error: studentError } = await sb
+            await sb
                 .from('consolidated_user_profiles_table')
                 .update({
                     program: request.requested_program,
                     updated_at: new Date().toISOString()
                 })
                 .eq('student_id', request.student_id);
-            
-            if (studentError) {
-                console.warn('⚠️ Could not update student program:', studentError);
-            }
         }
         
         if (typeof hideLoading === 'function') hideLoading();
@@ -914,7 +844,6 @@ async function quickApproveSM(requestId, type) {
             showNotification('✅ Request approved!', 'success');
         }
         
-        // Refresh all data
         loadChangeProgramRequests();
         loadReadmissionRequests();
         loadSMHistory();
@@ -935,10 +864,7 @@ async function quickApproveSM(requestId, type) {
 // ============================================================
 async function bulkApproveSM(type) {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
     
@@ -961,7 +887,6 @@ async function bulkApproveSM(type) {
         
         for (const id of ids) {
             try {
-                // Get request details
                 const { data: request, error: fetchError } = await sb
                     .from('student_requests')
                     .select('*')
@@ -970,8 +895,7 @@ async function bulkApproveSM(type) {
                 
                 if (fetchError) throw fetchError;
                 
-                // Update request status
-                const { error: updateError } = await sb
+                await sb
                     .from('student_requests')
                     .update({
                         status: 'approved',
@@ -981,9 +905,6 @@ async function bulkApproveSM(type) {
                     })
                     .eq('id', id);
                 
-                if (updateError) throw updateError;
-                
-                // Update student program
                 if (request.student_id && request.requested_program) {
                     await sb
                         .from('consolidated_user_profiles_table')
@@ -1011,7 +932,6 @@ async function bulkApproveSM(type) {
             }
         }
         
-        // Refresh all data
         loadChangeProgramRequests();
         loadReadmissionRequests();
         loadSMHistory();
@@ -1032,10 +952,7 @@ async function bulkApproveSM(type) {
 // ============================================================
 async function bulkRejectSM(type) {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
     
@@ -1058,7 +975,7 @@ async function bulkRejectSM(type) {
         
         for (const id of ids) {
             try {
-                const { error } = await sb
+                await sb
                     .from('student_requests')
                     .update({
                         status: 'rejected',
@@ -1067,8 +984,6 @@ async function bulkRejectSM(type) {
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', id);
-                
-                if (error) throw error;
                 successCount++;
             } catch (err) {
                 console.error(`Error rejecting ${id}:`, err);
@@ -1086,7 +1001,6 @@ async function bulkRejectSM(type) {
             }
         }
         
-        // Refresh all data
         loadChangeProgramRequests();
         loadReadmissionRequests();
         loadSMHistory();
@@ -1107,10 +1021,7 @@ async function bulkRejectSM(type) {
 // ============================================================
 async function submitSMRequest() {
     const sb = getSupabaseClient();
-    if (!sb) {
-        console.error('❌ Supabase client not available');
-        return;
-    }
+    if (!sb) return;
     
     const studentSelect = document.getElementById('smStudentSelect');
     const typeRadio = document.querySelector('input[name="requestType"]:checked');
@@ -1120,7 +1031,6 @@ async function submitSMRequest() {
     const previousProgram = document.getElementById('smPreviousProgram');
     const docsInput = document.getElementById('smSupportingDocs');
     
-    // Validation
     if (!studentSelect || !studentSelect.value) {
         if (typeof showNotification === 'function') {
             showNotification('Please select a student', 'warning');
@@ -1173,16 +1083,15 @@ async function submitSMRequest() {
     if (typeof showLoading === 'function') showLoading('Submitting request...');
     
     try {
-        // Get student details from consolidated_user_profiles_table
+        // Get student details
         const { data: student, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, program, block, intake_year, intake_month')
+            .select('student_id, full_name, program, block')
             .eq('student_id', studentSelect.value)
             .single();
         
         if (studentError) throw studentError;
         
-        // Handle document uploads
         let documents = [];
         if (docsInput && docsInput.files && docsInput.files.length > 0) {
             for (const file of docsInput.files) {
@@ -1194,7 +1103,6 @@ async function submitSMRequest() {
             }
         }
         
-        // Create the request
         const requestData = {
             student_id: student.student_id,
             student_name: student.full_name,
@@ -1222,14 +1130,11 @@ async function submitSMRequest() {
             showNotification('✅ Request submitted successfully!', 'success');
         }
         
-        // Reset form
         document.getElementById('smRequestForm').reset();
         if (docsInput) docsInput.value = '';
         
-        // Switch to the pending tab
         showSMSubTab('change-program');
         
-        // Refresh data
         loadChangeProgramRequests();
         loadReadmissionRequests();
         updateSMStats();
@@ -1245,8 +1150,9 @@ async function submitSMRequest() {
 }
 
 // ============================================================
-// TOGGLE REQUEST FIELDS
+// UTILITY FUNCTIONS
 // ============================================================
+
 function toggleSMRequestFields() {
     const type = document.querySelector('input[name="requestType"]:checked');
     if (!type) return;
@@ -1275,9 +1181,6 @@ function toggleSMRequestFields() {
     }
 }
 
-// ============================================================
-// TOGGLE ALL CHECKBOXES
-// ============================================================
 function toggleAllSMCheckboxes(type) {
     const selectAll = document.getElementById(`smSelectAll${type.charAt(0).toUpperCase() + type.slice(1)}`);
     if (!selectAll) return;
@@ -1287,18 +1190,12 @@ function toggleAllSMCheckboxes(type) {
     updateSMCounter(type);
 }
 
-// ============================================================
-// UPDATE COUNTER
-// ============================================================
 function updateSMCounter(type) {
     const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
     const countEl = document.getElementById(`sm${type.charAt(0).toUpperCase() + type.slice(1)}SelectedCount`);
     if (countEl) countEl.textContent = checkboxes.length;
 }
 
-// ============================================================
-// FILTER REQUESTS
-// ============================================================
 function filterSMRequests(type) {
     if (type === 'change') {
         loadChangeProgramRequests();
@@ -1307,14 +1204,9 @@ function filterSMRequests(type) {
     }
 }
 
-// ============================================================
-// SHOW SUB TAB
-// ============================================================
 function showSMSubTab(tab) {
-    // Hide all tabs
     document.querySelectorAll('.sm-tab-content').forEach(el => el.style.display = 'none');
     
-    // Show selected tab
     const tabs = {
         'change-program': 'smChangeProgramTab',
         'readmission': 'smReadmissionTab',
@@ -1328,7 +1220,6 @@ function showSMSubTab(tab) {
         if (el) el.style.display = 'block';
     }
     
-    // Update tab buttons
     document.querySelectorAll('.sm-tab-btn').forEach(btn => {
         btn.style.background = 'transparent';
         btn.style.color = '#334155';
@@ -1352,16 +1243,12 @@ function showSMSubTab(tab) {
         }
     }
     
-    // Load data based on tab
     if (tab === 'change-program') loadChangeProgramRequests();
     else if (tab === 'readmission') loadReadmissionRequests();
     else if (tab === 'history') loadSMHistory();
     else if (tab === 'new-request') loadStudentsForDropdown();
 }
 
-// ============================================================
-// UPDATE STATS
-// ============================================================
 function updateSMStats() {
     const changePending = SM_STATE.changeRequests.filter(r => r.status === 'pending').length;
     const readmissionPending = SM_STATE.readmissionRequests.filter(r => r.status === 'pending').length;
@@ -1382,9 +1269,6 @@ function updateSMStats() {
     document.getElementById('smRejectedCount').textContent = rejectedCount;
 }
 
-// ============================================================
-// UPDATE BADGES
-// ============================================================
 function updateSMBadges() {
     const changePending = SM_STATE.changeRequests.filter(r => r.status === 'pending').length;
     const readmissionPending = SM_STATE.readmissionRequests.filter(r => r.status === 'pending').length;
@@ -1396,9 +1280,6 @@ function updateSMBadges() {
     if (readmissionBadge) readmissionBadge.textContent = readmissionPending;
 }
 
-// ============================================================
-// REFRESH
-// ============================================================
 function refreshStudentManagement() {
     loadChangeProgramRequests();
     loadReadmissionRequests();
@@ -1410,9 +1291,6 @@ function refreshStudentManagement() {
     }
 }
 
-// ============================================================
-// EXPORT
-// ============================================================
 function exportStudentRequests() {
     const allRequests = [...SM_STATE.changeRequests, ...SM_STATE.readmissionRequests];
     
@@ -1423,16 +1301,15 @@ function exportStudentRequests() {
         return;
     }
     
-    const headers = ['ID', 'Student', 'Type', 'From Program', 'To Program', 'Status', 'Date', 'Approved By'];
+    const headers = ['ID', 'Student Name', 'Student ID', 'Type', 'From Program', 'To Program', 'Status', 'Date', 'Approved By'];
     const rows = allRequests.map(r => {
-        const studentName = r.student?.full_name || r.student_name || 'Unknown';
         const type = r.request_type === 'change_program' ? 'Change of Program' : 'Readmission';
         const fromProgram = r.current_program || r.previous_program || 'N/A';
         const toProgram = r.requested_program || 'N/A';
         const status = r.status || 'pending';
         const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
         const approvedBy = r.approved_by || r.updated_by || 'System';
-        return [r.id, studentName, type, fromProgram, toProgram, status, date, approvedBy];
+        return [r.id, r.student_name || 'Unknown', r.student_id || 'N/A', type, fromProgram, toProgram, status, date, approvedBy];
     });
     
     let csv = headers.join(',') + '\n';
@@ -1446,9 +1323,6 @@ function exportStudentRequests() {
     }
 }
 
-// ============================================================
-// DOWNLOAD CSV
-// ============================================================
 function downloadCSV(csv, filename) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -1461,9 +1335,6 @@ function downloadCSV(csv, filename) {
     document.body.removeChild(link);
 }
 
-// ============================================================
-// ESCAPE HTML
-// ============================================================
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -1471,9 +1342,6 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-// ============================================================
-// CLOSE MODAL HELPER
-// ============================================================
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
