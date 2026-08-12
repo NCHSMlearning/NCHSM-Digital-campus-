@@ -2470,22 +2470,10 @@
             </select>
             
             <!-- BLOCK FILTER -->
-            <select id="groupedBlockFilter" onchange="filterGroupedRegistrations()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
-                <option value="all">📅 All Blocks/Terms</option>
-                <option value="Introductory">🌟 Introductory</option>
-                <option value="Block 1">📘 Block 1</option>
-                <option value="Block 2">📗 Block 2</option>
-                <option value="Block 3">📒 Block 3</option>
-                <option value="Block 4">📙 Block 4</option>
-                <option value="Block 5">📕 Block 5</option>
-                <option value="Final">🏆 Final Block</option>
-                <option value="Term 1">📘 Term 1</option>
-                <option value="Term 2">📗 Term 2</option>
-                <option value="Term 3">📒 Term 3</option>
-                <option value="Term 4">📙 Term 4</option>
-                <option value="Term 5">📕 Term 5</option>
-                <option value="Term 6">📚 Term 6</option>
-            </select>
+          <select id="groupedBlockFilter" onchange="filterGroupedRegistrations()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
+    <option value="all">📅 All Blocks/Terms</option>
+    <!-- Populated dynamically based on selected program -->
+</select>
             
             <!-- STATUS FILTER -->
             <select id="groupedStatusFilter" onchange="filterGroupedRegistrations()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px;">
@@ -8007,9 +7995,10 @@
                 <option value="2027">2027</option>
                 <option value="2028">2028</option>
             </select>
-            <select id="unit_filter_block" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
-                <option value="">📚 All Blocks/Terms</option>
-            </select>
+           <select id="unit_filter_block" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+    <option value="">📚 All Blocks/Terms</option>
+    <!-- These will be populated dynamically -->
+</select>
             <select id="unit_program_type_filter" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
                 <option value="all">🏫 All Types</option>
                 <option value="krchn">🎓 KRCHN Only</option>
