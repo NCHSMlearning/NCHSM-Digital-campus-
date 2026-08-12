@@ -2,7 +2,7 @@
 // All features working: Dashboard, Profile, Courses, Units, Exams, 
 // Finance, Attendance, Messages, Tickets, Reviews, Newsletter, NurseIQ,
 // Resources, Calendar, Academic Reports, Lecture Card, Exam Card,
-// Online Learning, Supplementary Registration, DR CYON
+// Online Learning, Supplementary Registration, Enrollment, DR CYON
 
 class UIModule {
     constructor() {
@@ -24,7 +24,7 @@ class UIModule {
         
         // ===== COMPLETE VALID TABS =====
         this.validTabs = [
-            'dashboard', 'profile', 'calendar', 'finance',
+            'dashboard', 'profile', 'calendar', 'finance', 'enrollment',
             'hub-register', 'hub-courses', 'hub-lecture-card', 'hub-exam-card',
             'hub-online-learning', 'cats', 'academic-reports',
             'nurseiq', 'resources', 'attendance', 'messages',
@@ -38,6 +38,7 @@ class UIModule {
             'profile': 'Profile',
             'calendar': 'Academic Calendar',
             'finance': 'My Finance',
+            'enrollment': 'Enrollment',
             'hub-register': 'Register Units',
             'hub-courses': 'My Units',
             'hub-lecture-card': 'Lecture Card',
@@ -195,6 +196,7 @@ class UIModule {
         console.log('📌 DR CYON Integration: Active');
         console.log('📌 Reviews & Newsletter: Active');
         console.log('📌 Finance Module: Active');
+        console.log('📌 Enrollment Module: Active');
     }
     
     // ============================================================
@@ -288,6 +290,14 @@ class UIModule {
             // Calendar
             if (window.calendarModule && typeof window.calendarModule.initialize === 'function') {
                 window.calendarModule.initialize();
+            }
+            
+            // ===== NEW: ENROLLMENT MODULE =====
+            if (window.initEnrollment && typeof window.initEnrollment === 'function') {
+                console.log('📋 Initializing Enrollment module...');
+                setTimeout(window.initEnrollment, 100);
+            } else if (window.enrollmentModule && typeof window.enrollmentModule.initialize === 'function') {
+                window.enrollmentModule.initialize();
             }
             
             console.log('✅ All modules initialized!');
@@ -480,6 +490,17 @@ class UIModule {
                         window.studentFinanceModule.loadFinance();
                     } else if (typeof loadStudentFinance === 'function') {
                         loadStudentFinance();
+                    }
+                    break;
+                    
+                case 'enrollment':
+                    console.log('📋 Loading Enrollment module...');
+                    if (window.initEnrollment && typeof window.initEnrollment === 'function') {
+                        window.initEnrollment();
+                    } else if (window.enrollmentModule && typeof window.enrollmentModule.loadEnrollment === 'function') {
+                        window.enrollmentModule.loadEnrollment();
+                    } else if (typeof initEnrollment === 'function') {
+                        initEnrollment();
                     }
                     break;
                     
@@ -1076,6 +1097,47 @@ class UIModule {
                 }
             } catch (nlError) {}
             
+            // ===== NEW: Enrollment badge =====
+            try {
+                const userId = window.currentUserId;
+                if (userId) {
+                    const { count: enrCount, error: enrError } = await supabase
+                        .from('student_requests')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('student_id', userId)
+                        .eq('status', 'pending');
+                    
+                    if (!enrError) {
+                        const enrBadge = document.getElementById('enrPendingBadge');
+                        if (enrBadge) {
+                            if (enrCount > 0) {
+                                enrBadge.textContent = enrCount > 99 ? '99+' : enrCount;
+                                enrBadge.style.display = 'inline-block';
+                                enrBadge.style.background = '#f59e0b';
+                                enrBadge.style.color = '#0A3D62';
+                                enrBadge.style.padding = '0 8px';
+                                enrBadge.style.borderRadius = '20px';
+                                enrBadge.style.fontSize = '10px';
+                                enrBadge.style.fontWeight = '600';
+                                enrBadge.style.marginLeft = '8px';
+                            } else {
+                                enrBadge.textContent = '0';
+                                enrBadge.style.display = 'inline-block';
+                                enrBadge.style.background = '#e5e7eb';
+                                enrBadge.style.color = '#6b7280';
+                                enrBadge.style.padding = '0 8px';
+                                enrBadge.style.borderRadius = '20px';
+                                enrBadge.style.fontSize = '10px';
+                                enrBadge.style.fontWeight = '600';
+                                enrBadge.style.marginLeft = '8px';
+                            }
+                        }
+                    }
+                }
+            } catch (enrError) {
+                console.warn('Could not update enrollment badge:', enrError);
+            }
+            
         } catch (error) {
             console.warn('Could not update badges:', error);
         }
@@ -1589,7 +1651,7 @@ class UIModule {
     exportData() { this.showToast('📤 Export feature coming soon', 'info'); }
     
     showSystemInfo() {
-        alert(`NCHSM Student Portal v3.0\n\nBrowser: ${navigator.userAgent}\nOnline: ${navigator.onLine ? 'Yes' : 'No'}\nCurrent Tab: ${this.currentTab}\nUser: ${window.currentUserProfile?.full_name || 'Not logged in'}\n\n🔗 DR CYON: Active\n⭐ Reviews: ${this.data?.reviews?.length || 0}\n📧 Newsletter: ${this.data?.newsletters?.length || 0}\n\n© 2026 Nakuru College of Health Sciences and Management`);
+        alert(`NCHSM Student Portal v3.0\n\nBrowser: ${navigator.userAgent}\nOnline: ${navigator.onLine ? 'Yes' : 'No'}\nCurrent Tab: ${this.currentTab}\nUser: ${window.currentUserProfile?.full_name || 'Not logged in'}\n\n🔗 DR CYON: Active\n⭐ Reviews: ${this.data?.reviews?.length || 0}\n📧 Newsletter: ${this.data?.newsletters?.length || 0}\n📋 Enrollment: ${this.data?.enrollment?.length || 0}\n\n© 2026 Nakuru College of Health Sciences and Management`);
     }
     
     forceShowTab(tabId) { this.showTab(tabId); }
@@ -1918,7 +1980,7 @@ document.addEventListener('appReady', () => {
 });
 
 console.log('✅ COMPLETE UI Module loaded successfully!');
-console.log('📌 All features: Dashboard, Profile, Finance, Attendance,');
+console.log('📌 All features: Dashboard, Profile, Finance, Enrollment, Attendance,');
 console.log('📌 Messages, Tickets, Reviews, Newsletter, NurseIQ,');
 console.log('📌 Resources, Calendar, Academic Reports, Lecture Card,');
 console.log('📌 Exam Card, Online Learning, Supplementary Registration');
