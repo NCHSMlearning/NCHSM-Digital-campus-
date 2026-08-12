@@ -6252,11 +6252,9 @@ async function deleteProfile(userId, fullName, isRejection = false) {
         showFeedback(`Unexpected error: ${err.message}`, 'error');
     }
 }
-
 // ============================================
 // OPEN EDIT USER MODAL - COMPLETE WITH ALL FIELDS
-// FIXED: Better error handling and data loading
-// FIXED: Profile photo URL construction
+// WITH TVET DIPLOMA/CERTIFICATE BLOCK SUPPORT
 // ============================================
 
 async function openEditUserModal(userId) {
@@ -6388,7 +6386,9 @@ async function openEditUserModal(userId) {
         const docIdField = document.getElementById('edit_user_doc_id');
         if (docIdField) docIdField.value = user.doc_id || 'pending';
 
-        // ====== SET PROGRAM AND BLOCK ======
+        // ============================================================
+        // ====== SET PROGRAM AND BLOCK - FIXED FOR TVET ======
+        // ============================================================
         const editUserProgram = document.getElementById('edit_user_program');
         const editUserBlock = document.getElementById('edit_user_block');
         const blockLabel = document.getElementById('edit_block_label');
@@ -6399,8 +6399,11 @@ async function openEditUserModal(userId) {
             editUserProgram.value = programValue;
             console.log('📚 Program set to:', programValue);
             
-            // Determine if TVET
+            // Determine if TVET and get program level
             const isTVET = programValue && programValue !== 'KRCHN';
+            const programLevel = getProgramLevel(programValue);
+            const isDiploma = programLevel === 'DIPLOMA';
+            const isCertificate = programLevel === 'CERTIFICATE';
             
             // Update block label
             if (blockLabel) {
@@ -6408,31 +6411,149 @@ async function openEditUserModal(userId) {
                 blockLabel.style.color = isTVET ? '#f59e0b' : '#4C1D95';
             }
             
-            // Populate block options
+            // Populate block options with TVET support
             if (editUserBlock) {
                 // Clear existing options
                 editUserBlock.innerHTML = '<option value="">-- Select --</option>';
                 
-                // Build options based on program type
+                // Build options based on program type and level
                 let options = [];
                 if (isTVET) {
-                    options = ['Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final'];
+                    if (isDiploma) {
+                        // DIPLOMA TVET: Year 1 Term 1 to Year 2 Term 3 (6 terms)
+                        options = [
+                            { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                            { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                            { value: 'Y1T3', text: '📒 Year 1 Term 3' },
+                            { value: 'Y2T1', text: '📙 Year 2 Term 1' },
+                            { value: 'Y2T2', text: '📕 Year 2 Term 2' },
+                            { value: 'Y2T3', text: '📚 Year 2 Term 3' }
+                        ];
+                    } else if (isCertificate) {
+                        // CERTIFICATE TVET: Year 1 Term 1 to Term 3 (3 terms)
+                        options = [
+                            { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                            { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                            { value: 'Y1T3', text: '📒 Year 1 Term 3' }
+                        ];
+                    } else {
+                        // Other TVET (Artisan, etc.)
+                        options = [
+                            { value: 'Introductory', text: '🌟 Introductory Term' },
+                            { value: 'Term1', text: '📘 Term 1' },
+                            { value: 'Term2', text: '📗 Term 2' },
+                            { value: 'Term3', text: '📒 Term 3' },
+                            { value: 'Term4', text: '📙 Term 4' },
+                            { value: 'Term5', text: '📕 Term 5' },
+                            { value: 'Term6', text: '📚 Term 6' },
+                            { value: 'Final', text: '🏆 Final Term' }
+                        ];
+                    }
                 } else {
-                    options = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+                    // KRCHN Blocks
+                    options = [
+                        { value: 'Introductory', text: '🌟 Introductory Block' },
+                        { value: 'Block 1', text: '📘 Block 1' },
+                        { value: 'Block 2', text: '📗 Block 2' },
+                        { value: 'Block 3', text: '📒 Block 3' },
+                        { value: 'Block 4', text: '📙 Block 4' },
+                        { value: 'Block 5', text: '📕 Block 5' },
+                        { value: 'Block 6', text: '📚 Block 6' },
+                        { value: 'Final', text: '🏆 Final Block' }
+                    ];
                 }
                 
-                // Add options
+                // Add options to dropdown
                 options.forEach(opt => {
                     const option = document.createElement('option');
-                    option.value = opt;
-                    option.textContent = opt;
+                    option.value = opt.value;
+                    option.textContent = opt.text;
                     editUserBlock.appendChild(option);
                 });
                 
-                // Set block value
+                // Set block value - check if it exists in options
                 const blockValue = user.block || user.current_block || user.term || 'Introductory';
-                editUserBlock.value = blockValue;
+                const valueExists = Array.from(editUserBlock.options).some(o => o.value === blockValue);
+                editUserBlock.value = valueExists ? blockValue : 'Introductory';
                 console.log('📖 Block/Term set to:', blockValue);
+            }
+            
+            // ====== ADD EVENT LISTENER FOR PROGRAM CHANGE ======
+            // Remove old listeners to avoid duplicates
+            const newProgram = editUserProgram.cloneNode(true);
+            editUserProgram.parentNode.replaceChild(newProgram, editUserProgram);
+            const freshProgram = document.getElementById('edit_user_program');
+            const freshBlock = document.getElementById('edit_user_block');
+            
+            if (freshProgram && freshBlock) {
+                freshProgram.addEventListener('change', function() {
+                    const program = this.value;
+                    const isTVET = program && program !== 'KRCHN';
+                    const programLevel = getProgramLevel(program);
+                    const isDiploma = programLevel === 'DIPLOMA';
+                    const isCertificate = programLevel === 'CERTIFICATE';
+                    
+                    // Update block label
+                    if (blockLabel) {
+                        blockLabel.textContent = isTVET ? '📚 Term *' : '📖 Block *';
+                        blockLabel.style.color = isTVET ? '#f59e0b' : '#4C1D95';
+                    }
+                    
+                    // Clear and repopulate block options
+                    freshBlock.innerHTML = '<option value="">-- Select --</option>';
+                    
+                    let options = [];
+                    if (isTVET) {
+                        if (isDiploma) {
+                            options = [
+                                { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                                { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                                { value: 'Y1T3', text: '📒 Year 1 Term 3' },
+                                { value: 'Y2T1', text: '📙 Year 2 Term 1' },
+                                { value: 'Y2T2', text: '📕 Year 2 Term 2' },
+                                { value: 'Y2T3', text: '📚 Year 2 Term 3' }
+                            ];
+                        } else if (isCertificate) {
+                            options = [
+                                { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                                { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                                { value: 'Y1T3', text: '📒 Year 1 Term 3' }
+                            ];
+                        } else {
+                            options = [
+                                { value: 'Introductory', text: '🌟 Introductory Term' },
+                                { value: 'Term1', text: '📘 Term 1' },
+                                { value: 'Term2', text: '📗 Term 2' },
+                                { value: 'Term3', text: '📒 Term 3' },
+                                { value: 'Term4', text: '📙 Term 4' },
+                                { value: 'Term5', text: '📕 Term 5' },
+                                { value: 'Term6', text: '📚 Term 6' },
+                                { value: 'Final', text: '🏆 Final Term' }
+                            ];
+                        }
+                    } else {
+                        options = [
+                            { value: 'Introductory', text: '🌟 Introductory Block' },
+                            { value: 'Block 1', text: '📘 Block 1' },
+                            { value: 'Block 2', text: '📗 Block 2' },
+                            { value: 'Block 3', text: '📒 Block 3' },
+                            { value: 'Block 4', text: '📙 Block 4' },
+                            { value: 'Block 5', text: '📕 Block 5' },
+                            { value: 'Block 6', text: '📚 Block 6' },
+                            { value: 'Final', text: '🏆 Final Block' }
+                        ];
+                    }
+                    
+                    options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt.value;
+                        option.textContent = opt.text;
+                        freshBlock.appendChild(option);
+                    });
+                    
+                    // Set default
+                    freshBlock.value = isTVET ? 'Y1T1' : 'Introductory';
+                });
             }
         }
 
@@ -6493,339 +6614,6 @@ async function openEditUserModal(userId) {
         showFeedback(`Failed to load user: ${e.message}`, 'error');
     }
 }
-// ============================================
-// HANDLE EDIT USER - COMPLETE WITH ALL FIELDS
-// FIXED: Removed 'term' column (doesn't exist)
-// ============================================
-
-async function handleEditUser(e) {
-    e.preventDefault();
-    const submitButton = e.submitter;
-    if (!submitButton) {
-        console.error("Form submitter button not found.");
-        return;
-    }
-
-    const originalText = submitButton.textContent;
-    setButtonLoading(submitButton, true, originalText);
-
-    try {
-        const supabase = getSb();
-        const userId = document.getElementById('edit_user_id').value;
-        if (!userId) throw new Error('User ID is missing.');
-
-        console.log('✏️ Saving user edit for ID:', userId);
-
-        // Get all form values
-        const fullName = document.getElementById('edit_user_name').value.trim();
-        const email = document.getElementById('edit_user_email').value.trim();
-        const phone = document.getElementById('edit_user_phone').value.trim() || null;
-        const altPhone = document.getElementById('edit_user_alt_phone').value.trim() || null;
-        const gender = document.getElementById('edit_user_gender').value || null;
-        const dob = document.getElementById('edit_user_dob').value || null;
-        const nationalId = document.getElementById('edit_user_national_id').value.trim() || null;
-        const address = document.getElementById('edit_user_address').value.trim() || null;
-        
-        const role = document.getElementById('edit_user_role').value;
-        const status = document.getElementById('edit_user_status').value;
-        
-        const studentId = document.getElementById('edit_user_student_id').value.trim() || null;
-        const intakeYear = document.getElementById('edit_user_intake_year').value.trim() || null;
-        const intakeMonth = document.getElementById('edit_user_intake_month').value || null;
-        
-        const guardianName = document.getElementById('edit_user_guardian_name').value.trim() || null;
-        const guardianPhone = document.getElementById('edit_user_guardian_phone').value.trim() || null;
-        const parentEmail = document.getElementById('edit_user_parent_email').value.trim() || null;
-        const parentAddress = document.getElementById('edit_user_parent_address').value.trim() || null;
-        
-        const program = document.getElementById('edit_user_program').value || null;
-        const blockValue = document.getElementById('edit_user_block').value || 'Introductory';
-        
-        const docKcse = document.getElementById('edit_user_doc_kcse').value || 'pending';
-        const docId = document.getElementById('edit_user_doc_id').value || 'pending';
-
-        const isTVET = isTVETProgram(program);
-
-        // Validate required fields
-        if (!fullName) {
-            showFeedback('❌ Full Name is required', 'error');
-            setButtonLoading(submitButton, false, originalText);
-            return;
-        }
-        if (!email) {
-            showFeedback('❌ Email is required', 'error');
-            setButtonLoading(submitButton, false, originalText);
-            return;
-        }
-        if (!program) {
-            showFeedback('❌ Program is required', 'error');
-            setButtonLoading(submitButton, false, originalText);
-            return;
-        }
-
-        // Build update data - NO 'term' column!
-        const updatedData = {
-            full_name: fullName,
-            email: email,
-            phone: phone,
-            alt_phone: altPhone,
-            gender: gender,
-            date_of_birth: dob,
-            national_id: nationalId,
-            address: address,
-            role: role,
-            status: status,
-            student_id: studentId,
-            intake_year: intakeYear,
-            intake_month: intakeMonth,
-            guardian_name: guardianName,
-            guardian_phone: guardianPhone,
-            parent_email: parentEmail,
-            parent_address: parentAddress,
-            program: program,
-            block: blockValue,
-            current_block: blockValue,
-            // ✅ REMOVED: term: isTVET ? blockValue : null,
-            program_type: isTVET ? 'TVET' : 'KRCHN',
-            doc_kcse: docKcse,
-            doc_id: docId,
-            updated_at: new Date().toISOString()
-        };
-
-        // Remove null/undefined values
-        Object.keys(updatedData).forEach(key => {
-            if (updatedData[key] === null || updatedData[key] === undefined) {
-                delete updatedData[key];
-            }
-        });
-
-        console.log('📤 Update data:', updatedData);
-
-        // Handle profile photo upload
-        const photoInput = document.getElementById('edit_user_photo');
-        if (photoInput && photoInput.files && photoInput.files[0]) {
-            const file = photoInput.files[0];
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${userId}_profile_${Date.now()}.${fileExt}`;
-            const filePath = `profile_photos/${userId}/${fileName}`;
-            
-            try {
-                const { error: uploadError } = await supabase
-                    .storage
-                    .from('user-documents')
-                    .upload(filePath, file, {
-                        cacheControl: '3600',
-                        upsert: true
-                    });
-                
-                if (!uploadError) {
-                    const { data: urlData } = supabase
-                        .storage
-                        .from('user-documents')
-                        .getPublicUrl(filePath);
-                    updatedData.profile_photo_url = urlData.publicUrl;
-                    console.log('✅ Profile photo uploaded');
-                } else {
-                    console.warn('Photo upload failed:', uploadError);
-                }
-            } catch (err) {
-                console.warn('Photo upload error:', err);
-            }
-        }
-
-        // Update profile
-        const { error: profileError } = await supabase
-            .from(USER_PROFILE_TABLE)
-            .update(updatedData)
-            .eq('user_id', userId);
-
-        if (profileError) {
-            console.error('❌ Profile update error:', profileError);
-            throw profileError;
-        }
-
-        console.log('✅ Profile updated successfully');
-
-        // Handle password change
-        const newPassword = document.getElementById('edit_user_new_password').value.trim();
-        const confirmPassword = document.getElementById('edit_user_confirm_password').value.trim();
-        
-        if (newPassword) {
-            if (newPassword !== confirmPassword) {
-                showFeedback('❌ Passwords do not match!', 'error');
-                setButtonLoading(submitButton, false, originalText);
-                return;
-            }
-
-            if (newPassword.length < 6) {
-                showFeedback('❌ Password must be at least 6 characters.', 'error');
-                setButtonLoading(submitButton, false, originalText);
-                return;
-            }
-
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    const response = await fetch(
-                        'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/admin-reset-password',
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${session.access_token}`
-                            },
-                            body: JSON.stringify({ 
-                                email: email, 
-                                newPassword: newPassword 
-                            })
-                        }
-                    );
-                    
-                    if (response.ok) {
-                        console.log('✅ Password updated via edge function');
-                    } else {
-                        const result = await response.json();
-                        console.warn('⚠️ Edge function password update failed:', result);
-                        showFeedback('⚠️ User profile saved, but password update failed.', 'warning');
-                    }
-                }
-            } catch (pwErr) {
-                console.warn('⚠️ Password update error:', pwErr);
-                showFeedback('⚠️ User profile saved, but password update failed.', 'warning');
-            }
-        }
-
-        await logAudit('USER_EDIT', `Edited profile for user ${fullName} (${updatedData.program_type || 'KRCHN'})`, userId, 'SUCCESS');
-        showFeedback(`✅ User profile updated successfully!`, 'success');
-
-        // Close modal
-        document.getElementById('userEditModal').style.display = 'none';
-        document.getElementById('edit_user_new_password').value = '';
-        document.getElementById('edit_user_confirm_password').value = '';
-        
-        // Refresh data
-        await loadAllUsers(1, USERS_STATE.filters);
-        await loadStudents();
-        await loadPendingApprovals();
-        await loadDashboardData();
-
-    } catch (err) {
-        console.error('❌ Error in handleEditUser:', err);
-        showFeedback(`❌ Failed to update user: ${err.message}`, 'error');
-        
-        await logAudit('USER_EDIT', `Failed to update user: ${err.message}`, null, 'FAILURE');
-        
-    } finally {
-        setButtonLoading(submitButton, false, originalText);
-    }
-}
-// ============================================================
-// 📄 VIEW USER DOCUMENTS - COMPLETE
-// ============================================================
-
-function viewUserDocuments(userId) {
-    if (!userId) {
-        showFeedback('❌ No user selected', 'error');
-        return;
-    }
-    
-    // Get user name for the modal title
-    const userName = document.getElementById('edit_user_name')?.value || 'User';
-    
-    // Open the document viewer modal
-    openDocumentViewerModal(userId, userName);
-}
-
-// ============================================================
-// 📄 OPEN DOCUMENT VIEWER MODAL
-// ============================================================
-
-async function openDocumentViewerModal(userId, userName) {
-    // Create modal if it doesn't exist
-    let modal = document.getElementById('documentViewerModal');
-    
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'documentViewerModal';
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(8px);
-            z-index: 100000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            animation: fadeIn 0.3s ease;
-        `;
-        
-        modal.innerHTML = `
-            <div style="background: white; border-radius: 20px; max-width: 900px; width: 95%; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;">
-                <!-- Header -->
-                <div style="padding: 16px 24px; border-bottom: 2px solid #4C1D95; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
-                    <div>
-                        <h3 style="margin: 0; color: #4C1D95;">
-                            <i class="fas fa-file-alt"></i> <span id="docViewerTitle">User Documents</span>
-                        </h3>
-                        <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
-                            <span id="docViewerUserName">Loading...</span>
-                        </p>
-                    </div>
-                    <button onclick="closeDocumentViewerModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280; padding: 0 10px;">&times;</button>
-                </div>
-                
-                <!-- Body -->
-                <div id="docViewerContent" style="padding: 24px; max-height: 60vh; overflow-y: auto;">
-                    <div style="text-align: center; padding: 40px; color: #94a3b8;">
-                        <i class="fas fa-spinner fa-spin" style="font-size: 32px; display: block; margin-bottom: 12px;"></i>
-                        Loading documents...
-                    </div>
-                </div>
-                
-                <!-- Footer -->
-                <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end; background: #f8fafc;">
-                    <button onclick="closeDocumentViewerModal()" style="padding: 8px 20px; background: #e5e7eb; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-                        Close
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Add styles for animations if not present
-        if (!document.getElementById('modalAnimations')) {
-            const style = document.createElement('style');
-            style.id = 'modalAnimations';
-            style.textContent = `
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                @keyframes slideIn {
-                    from { transform: translateY(30px) scale(0.95); opacity: 0; }
-                    to { transform: translateY(0) scale(1); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    }
-    
-    // Set title and user name
-    document.getElementById('docViewerTitle').textContent = '📄 User Documents';
-    document.getElementById('docViewerUserName').textContent = userName || 'User';
-    
-    // Show modal
-    modal.style.display = 'flex';
-    
-    // Load documents
-    await loadUserDocumentsForViewer(userId);
-}
-
 // ============================================================
 // 📄 LOAD USER DOCUMENTS FOR VIEWER
 // ============================================================
@@ -7715,11 +7503,41 @@ window.updateUserEmailFromModal = updateUserEmailFromModal;
 window.clearEmailStatus = clearEmailStatus;
 window.updatePendingStats = updatePendingStats;
 
+// ============================================================
+// 📄 DOCUMENT VIEWER FUNCTIONS - ADD THESE
+// ============================================================
+
+window.viewUserDocuments = viewUserDocuments;
+window.openDocumentViewerModal = openDocumentViewerModal;
+window.loadUserDocumentsForViewer = loadUserDocumentsForViewer;
+window.findDocument = findDocument;
+window.viewDocumentFile = viewDocumentFile;
+window.downloadDocumentFile = downloadDocumentFile;
+window.closeDocumentViewerModal = closeDocumentViewerModal;
+window.getPhotoUrl = getPhotoUrl;
+window.downloadCurrentDocument = downloadCurrentDocument;
+window.verifyCurrentDocument = verifyCurrentDocument;
+window.rejectCurrentDocument = rejectCurrentDocument;
+
+// ============================================================
+// 📚 ACADEMIC HISTORY - ADD THESE
+// ============================================================
+
+window.loadAcademicHistory = loadAcademicHistory;
+
+// ============================================================
+// 📧 EMAIL CHANGE - ADD THESE
+// ============================================================
+
+window.openEmailChangeDialog = openEmailChangeDialog;
+window.updateUserEmailFromModalDirect = updateUserEmailFromModalDirect;
+
 console.log('✅ Users Management fully optimized and exposed to global scope!');
 console.log('✅ Fixed: Document status read from profile directly');
 console.log('✅ Fixed: Intake month passed to getDisplayIntake');
 console.log('✅ Fixed: updatePendingStats added');
 console.log('✅ Fixed: getDisplayIntake no longer hardcoded to March');
+console.log('✅ Fixed: viewUserDocuments exposed globally');
 /*******************************************************
  * SECTION 10: UNIT MANAGEMENT - COMPLETE TVET/KRCHN SUPPORT
  * Renamed from "Courses" to "Units" for accuracy
