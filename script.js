@@ -726,6 +726,10 @@ async function updateProgramDropdown(selectElement) {
 // UPDATE BLOCK/TERM OPTIONS
 // ============================================================
 
+// ============================================================
+// UPDATE BLOCK/TERM OPTIONS - WITH FULL YEAR DISPLAY
+// ============================================================
+
 function updateBlockTermOptions(programSelectId, blockTermSelectId) {
     const programSelect = $(programSelectId);
     const blockTermSelect = $(blockTermSelectId);
@@ -750,72 +754,72 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
     let options = [];
     
     if (programType === 'KRCHN' || programCode === 'KRCHN') {
-        // KRCHN uses Blocks with NUMBERS
+        // KRCHN - unchanged
         options = [
-            { value: 'Introductory', text: 'Introductory Block' },
-            { value: 'Block 1', text: 'Block 1' },
-            { value: 'Block 2', text: 'Block 2' },
-            { value: 'Block 3', text: 'Block 3' },
-            { value: 'Block 4', text: 'Block 4' },
-            { value: 'Block 5', text: 'Block 5' },
-            { value: 'Block 6', text: 'Block 6' },
-            { value: 'Final', text: 'Final Block' }
+            { value: 'Introductory', text: '🌟 Introductory Block' },
+            { value: 'Block 1', text: '📘 Block 1' },
+            { value: 'Block 2', text: '📗 Block 2' },
+            { value: 'Block 3', text: '📒 Block 3' },
+            { value: 'Block 4', text: '📙 Block 4' },
+            { value: 'Block 5', text: '📕 Block 5' },
+            { value: 'Block 6', text: '📚 Block 6' },
+            { value: 'Final', text: '🏆 Final Block' }
         ];
         console.log('KRCHN blocks loaded:', options.length);
     } else if (programType === 'TVET' || isTVETProgram(programCode)) {
-        // TVET Programs - Differentiate between Diploma and Certificate
+        // TVET - Shows FULL "Year X Term Y" format
         const programLevel = getProgramLevel(programCode);
         const isDiploma = programLevel === 'DIPLOMA';
         const isCertificate = programLevel === 'CERTIFICATE';
         
         if (isDiploma) {
-            // DIPLOMA TVET: Year 1 Term 1 to Year 2 Term 3 (6 terms total)
+            // DIPLOMA TVET: Year 1 Term 1 to Year 2 Term 3
             options = [
-                { value: 'Y1T1', text: 'Year 1 Term 1' },
-                { value: 'Y1T2', text: 'Year 1 Term 2' },
-                { value: 'Y1T3', text: 'Year 1 Term 3' },
-                { value: 'Y2T1', text: 'Year 2 Term 1' },
-                { value: 'Y2T2', text: 'Year 2 Term 2' },
-                { value: 'Y2T3', text: 'Year 2 Term 3' }
+                { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                { value: 'Y1T3', text: '📒 Year 1 Term 3' },
+                { value: 'Y2T1', text: '📙 Year 2 Term 1' },
+                { value: 'Y2T2', text: '📕 Year 2 Term 2' },
+                { value: 'Y2T3', text: '📚 Year 2 Term 3' }
             ];
             console.log('Diploma TVET terms loaded (Year 1-2):', options.length);
         } else if (isCertificate) {
-            // CERTIFICATE TVET: One year only (Year 1 Term 1 to Term 3)
+            // CERTIFICATE TVET: Year 1 Term 1 to Term 3
             options = [
-                { value: 'Y1T1', text: 'Year 1 Term 1' },
-                { value: 'Y1T2', text: 'Year 1 Term 2' },
-                { value: 'Y1T3', text: 'Year 1 Term 3' }
+                { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                { value: 'Y1T3', text: '📒 Year 1 Term 3' }
             ];
-            console.log('Certificate TVET terms loaded (One Year):', options.length);
+            console.log('Certificate TVET terms loaded (Year 1):', options.length);
         } else {
-            // Other TVET programs (Artisan, Other) - use generic terms
+            // Other TVET (Artisan, etc.)
             options = [
-                { value: 'Introductory', text: 'Introductory Term' },
-                { value: 'Term1', text: 'Term 1' },
-                { value: 'Term2', text: 'Term 2' },
-                { value: 'Term3', text: 'Term 3' },
-                { value: 'Term4', text: 'Term 4' },
-                { value: 'Term5', text: 'Term 5' },
-                { value: 'Term6', text: 'Term 6' },
-                { value: 'Final', text: 'Final Term' }
+                { value: 'Introductory', text: '🌟 Introductory Term' },
+                { value: 'Term1', text: '📘 Term 1' },
+                { value: 'Term2', text: '📗 Term 2' },
+                { value: 'Term3', text: '📒 Term 3' },
+                { value: 'Term4', text: '📙 Term 4' },
+                { value: 'Term5', text: '📕 Term 5' },
+                { value: 'Term6', text: '📚 Term 6' },
+                { value: 'Final', text: '🏆 Final Term' }
             ];
             console.log('Generic TVET terms loaded:', options.length);
         }
     } else {
         // Other programs - generic blocks
         options = [
-            { value: 'Introductory', text: 'Introductory' },
-            { value: 'Block 1', text: 'Block 1' },
-            { value: 'Block 2', text: 'Block 2' },
-            { value: 'Block 3', text: 'Block 3' },
-            { value: 'Block 4', text: 'Block 4' },
-            { value: 'Final', text: 'Final' }
+            { value: 'Introductory', text: '🌟 Introductory' },
+            { value: 'Block 1', text: '📘 Block 1' },
+            { value: 'Block 2', text: '📗 Block 2' },
+            { value: 'Block 3', text: '📒 Block 3' },
+            { value: 'Block 4', text: '📙 Block 4' },
+            { value: 'Final', text: '🏆 Final' }
         ];
         console.log('Generic options loaded:', options.length);
     }
     
     // Add General option (always available)
-    options.push({ value: 'General', text: 'General' });
+    options.push({ value: 'General', text: '📋 General' });
     
     // Populate dropdown
     options.forEach(opt => {
@@ -827,11 +831,9 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
     
     // Restore previous value if it exists and is valid
     if (currentValue) {
-        // Check if the value exists in the new options
         const valueExists = Array.from(blockTermSelect.options).some(opt => opt.value === currentValue);
         if (valueExists) {
             blockTermSelect.value = currentValue;
-            console.log(`Restored previous block/term value: ${currentValue}`);
         } else {
             console.log(`Previous value "${currentValue}" not found in new options, keeping default`);
         }
@@ -6839,6 +6841,112 @@ async function handleEditUser(e) {
     } finally {
         setButtonLoading(submitButton, false, originalText);
     }
+}
+// ============================================================
+// 📄 VIEW USER DOCUMENTS - COMPLETE
+// ============================================================
+
+function viewUserDocuments(userId) {
+    if (!userId) {
+        showFeedback('❌ No user selected', 'error');
+        return;
+    }
+    
+    // Get user name for the modal title
+    const userName = document.getElementById('edit_user_name')?.value || 'User';
+    
+    // Open the document viewer modal
+    openDocumentViewerModal(userId, userName);
+}
+
+// ============================================================
+// 📄 OPEN DOCUMENT VIEWER MODAL
+// ============================================================
+
+async function openDocumentViewerModal(userId, userName) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('documentViewerModal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'documentViewerModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 100000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 20px; max-width: 900px; width: 95%; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;">
+                <!-- Header -->
+                <div style="padding: 16px 24px; border-bottom: 2px solid #4C1D95; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                    <div>
+                        <h3 style="margin: 0; color: #4C1D95;">
+                            <i class="fas fa-file-alt"></i> <span id="docViewerTitle">User Documents</span>
+                        </h3>
+                        <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
+                            <span id="docViewerUserName">Loading...</span>
+                        </p>
+                    </div>
+                    <button onclick="closeDocumentViewerModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280; padding: 0 10px;">&times;</button>
+                </div>
+                
+                <!-- Body -->
+                <div id="docViewerContent" style="padding: 24px; max-height: 60vh; overflow-y: auto;">
+                    <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 32px; display: block; margin-bottom: 12px;"></i>
+                        Loading documents...
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end; background: #f8fafc;">
+                    <button onclick="closeDocumentViewerModal()" style="padding: 8px 20px; background: #e5e7eb; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add styles for animations if not present
+        if (!document.getElementById('modalAnimations')) {
+            const style = document.createElement('style');
+            style.id = 'modalAnimations';
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes slideIn {
+                    from { transform: translateY(30px) scale(0.95); opacity: 0; }
+                    to { transform: translateY(0) scale(1); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+    
+    // Set title and user name
+    document.getElementById('docViewerTitle').textContent = '📄 User Documents';
+    document.getElementById('docViewerUserName').textContent = userName || 'User';
+    
+    // Show modal
+    modal.style.display = 'flex';
+    
+    // Load documents
+    await loadUserDocumentsForViewer(userId);
 }
 // ============================================================
 // 📄 LOAD USER DOCUMENTS FOR VIEWER
