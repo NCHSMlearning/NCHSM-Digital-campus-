@@ -9666,7 +9666,7 @@ const ExamCache = {
 };
 
 // ============================================
-// DOM CACHE
+// DOM CACHE - MUST BE DECLARED FIRST
 // ============================================
 const DOM = {};
 
@@ -10172,9 +10172,12 @@ function sendEmailFallback(to, subject, htmlContent) {
 async function loadExams(forceRefresh = false) {
     console.log('📝 Loading exams...');
     
+    // ✅ Call cacheDomElements FIRST to initialize DOM
+    cacheDomElements();
+    
     if (!DOM.examsTbody) {
-        cacheDomElements();
-        if (!DOM.examsTbody) return;
+        console.warn('⚠️ exams-table-body not found in DOM');
+        return;
     }
     
     // Check cache
@@ -12090,6 +12093,7 @@ async function populateExamCourseSelects(program, selected = '') {
 // INIT
 // ============================================
 function initExams() {
+    // ✅ Initialize DOM FIRST
     cacheDomElements();
     
     const dateInput = document.getElementById('exam_date');
@@ -12202,8 +12206,10 @@ window.updateGradeTotal = updateGradeTotal;
 window.getExamTypeLabel = getExamTypeLabel;
 window.populateExamCourseSelects = populateExamCourseSelects;
 
-console.log('✅ CATS/Exams loaded (complete fixed version with email notifications, searchable dropdowns, and block filtering)!');
+// 7. DOM is already global
+window.DOM = DOM;
 
+console.log('✅ CATS/Exams loaded (complete fixed version with email notifications, searchable dropdowns, and block filtering)!');
 /*******************************************************
  * 14. MESSAGES & ANNOUNCEMENTS
  *******************************************************/
