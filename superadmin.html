@@ -1358,6 +1358,31 @@
                         <span id="sidebarReviewsBadge" style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">0</span>
                     </a>
                 </li>
+                <!-- STUDENT MANAGEMENT -->
+<li style="margin-bottom: 2px;">
+    <a 
+        href="#" 
+        data-tab="student-management"
+        style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        "
+        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+        onmouseout="this.style.background='transparent'"
+    >
+        <i class="fas fa-user-graduate" style="width: 20px; text-align: center;"></i>
+        <span>Student Management</span>
+        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: #0A3D62; font-weight: 700;">NEW</span>
+    </a>
+</li>
                 <!-- SYSTEM TOOLS -->
                 <li class="nav-dropdown" style="margin-bottom: 2px;">
                     <a 
@@ -10856,6 +10881,488 @@
                     </div>
                 </div>
             </section>
+                        <!-- ============================================================ -->
+<!-- STUDENT MANAGEMENT MODULE - CHANGE OF PROGRAM & READMISSION  -->
+<!-- ============================================================ -->
+<section id="student-management" class="tab-content">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-user-graduate" style="color: #FDB913;"></i> Student Management
+            </h2>
+            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-exchange-alt"></i> Change of Program &nbsp;|&nbsp; <i class="fas fa-undo-alt"></i> Readmission
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="refreshStudentManagement()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="exportStudentRequests()" class="btn-action" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-download"></i> Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div class="card" style="border-top: 4px solid #4C1D95; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Total Requests</span>
+                <i class="fas fa-clipboard-list" style="color: #4C1D95; opacity: 0.5;"></i>
+            </div>
+            <div style="font-size: 28px; font-weight: 800; color: #4C1D95; margin-top: 4px;" id="smTotalRequests">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">All requests</div>
+        </div>
+        <div class="card" style="border-top: 4px solid #f59e0b; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Change of Program</span>
+                <i class="fas fa-exchange-alt" style="color: #f59e0b; opacity: 0.5;"></i>
+            </div>
+            <div style="font-size: 28px; font-weight: 800; color: #f59e0b; margin-top: 4px;" id="smChangeProgramCount">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Pending reviews</div>
+        </div>
+        <div class="card" style="border-top: 4px solid #10b981; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Readmissions</span>
+                <i class="fas fa-undo-alt" style="color: #10b981; opacity: 0.5;"></i>
+            </div>
+            <div style="font-size: 28px; font-weight: 800; color: #10b981; margin-top: 4px;" id="smReadmissionCount">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Pending reviews</div>
+        </div>
+        <div class="card" style="border-top: 4px solid #3b82f6; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Approved Today</span>
+                <i class="fas fa-check-circle" style="color: #3b82f6; opacity: 0.5;"></i>
+            </div>
+            <div style="font-size: 28px; font-weight: 800; color: #3b82f6; margin-top: 4px;" id="smApprovedToday">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Processed</div>
+        </div>
+        <div class="card" style="border-top: 4px solid #ef4444; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Rejected</span>
+                <i class="fas fa-times-circle" style="color: #ef4444; opacity: 0.5;"></i>
+            </div>
+            <div style="font-size: 28px; font-weight: 800; color: #ef4444; margin-top: 4px;" id="smRejectedCount">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">This month</div>
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div style="display: flex; gap: 6px; margin-bottom: 20px; background: white; padding: 6px 10px; border-radius: 60px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); flex-wrap: wrap;">
+        <button onclick="showSMSubTab('change-program')" id="smTabChangeProgram" class="sm-tab-btn active" 
+                style="padding: 10px 28px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; border: none; border-radius: 40px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s; box-shadow: 0 4px 16px rgba(76,29,149,0.25); display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-exchange-alt"></i> Change of Program
+            <span id="smChangePendingBadge" style="background: rgba(255,255,255,0.2); padding: 0 10px; border-radius: 20px; font-size: 11px;">0</span>
+        </button>
+        <button onclick="showSMSubTab('readmission')" id="smTabReadmission" class="sm-tab-btn" 
+                style="padding: 10px 28px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-undo-alt"></i> Readmission
+            <span id="smReadmissionBadge" style="background: #fef3c7; padding: 0 10px; border-radius: 20px; font-size: 11px; color: #92400e;">0</span>
+        </button>
+        <button onclick="showSMSubTab('history')" id="smTabHistory" class="sm-tab-btn" 
+                style="padding: 10px 28px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-history"></i> History
+        </button>
+        <button onclick="showSMSubTab('new-request')" id="smTabNewRequest" class="sm-tab-btn" 
+                style="padding: 10px 28px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-plus-circle"></i> New Request
+        </button>
+    </div>
+
+    <!-- TAB 1: CHANGE OF PROGRAM -->
+    <div id="smChangeProgramTab" class="sm-tab-content">
+        <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <div style="position: relative; flex: 1; min-width: 160px;">
+                <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                <input type="text" id="smChangeSearch" placeholder="Search by name or ID..." onkeyup="filterSMRequests('change')" 
+                       style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+            </div>
+            <select id="smChangeStatusFilter" onchange="filterSMRequests('change')" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                <option value="all">All Status</option>
+                <option value="pending">⏳ Pending</option>
+                <option value="approved">✅ Approved</option>
+                <option value="rejected">❌ Rejected</option>
+                <option value="processing">🔄 Processing</option>
+            </select>
+            <button onclick="loadChangeProgramRequests()" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+        </div>
+
+        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 12px 16px; text-align: center; width: 40px;">
+                                <input type="checkbox" id="smSelectAllChange" onchange="toggleAllSMCheckboxes('change')">
+                            </th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Student</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Current Program</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Requested Program</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Date Requested</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="smChangeProgramBody">
+                        <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+                            <p>Loading change of program requests...</p>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <span style="font-size: 12px; color: #94a3b8;">Selected: <strong id="smChangeSelectedCount">0</strong></span>
+                <button onclick="bulkApproveSM('change')" class="btn-action" style="background: #10b981; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-check"></i> Approve Selected
+                </button>
+                <button onclick="bulkRejectSM('change')" class="btn-action" style="background: #dc2626; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-times"></i> Reject Selected
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: READMISSION -->
+    <div id="smReadmissionTab" class="sm-tab-content" style="display: none;">
+        <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <div style="position: relative; flex: 1; min-width: 160px;">
+                <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                <input type="text" id="smReadmissionSearch" placeholder="Search by name or ID..." onkeyup="filterSMRequests('readmission')" 
+                       style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+            </div>
+            <select id="smReadmissionStatusFilter" onchange="filterSMRequests('readmission')" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                <option value="all">All Status</option>
+                <option value="pending">⏳ Pending</option>
+                <option value="approved">✅ Approved</option>
+                <option value="rejected">❌ Rejected</option>
+                <option value="processing">🔄 Processing</option>
+            </select>
+            <button onclick="loadReadmissionRequests()" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+        </div>
+
+        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 12px 16px; text-align: center; width: 40px;">
+                                <input type="checkbox" id="smSelectAllReadmission" onchange="toggleAllSMCheckboxes('readmission')">
+                            </th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Student</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Previous Program</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Requested Program</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Date Requested</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="smReadmissionBody">
+                        <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+                            <p>Loading readmission requests...</p>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <span style="font-size: 12px; color: #94a3b8;">Selected: <strong id="smReadmissionSelectedCount">0</strong></span>
+                <button onclick="bulkApproveSM('readmission')" class="btn-action" style="background: #10b981; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-check"></i> Approve Selected
+                </button>
+                <button onclick="bulkRejectSM('readmission')" class="btn-action" style="background: #dc2626; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-times"></i> Reject Selected
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: HISTORY -->
+    <div id="smHistoryTab" class="sm-tab-content" style="display: none;">
+        <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+            <select id="smHistoryType" onchange="loadSMHistory()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                <option value="all">All Types</option>
+                <option value="change-program">Change of Program</option>
+                <option value="readmission">Readmission</option>
+            </select>
+            <select id="smHistoryStatus" onchange="loadSMHistory()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                <option value="all">All Status</option>
+                <option value="approved">✅ Approved</option>
+                <option value="rejected">❌ Rejected</option>
+            </select>
+            <input type="date" id="smHistoryDateFrom" onchange="loadSMHistory()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+            <span style="color: #94a3b8;">to</span>
+            <input type="date" id="smHistoryDateTo" onchange="loadSMHistory()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+            <button onclick="loadSMHistory()" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </div>
+
+        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Student</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Type</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">From → To</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Date</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Approved By</th>
+                        </tr>
+                    </thead>
+                    <tbody id="smHistoryBody">
+                        <tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+                            <p>Loading history...</p>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: NEW REQUEST -->
+    <div id="smNewRequestTab" class="sm-tab-content" style="display: none;">
+        <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; max-width: 700px; margin: 0 auto; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="margin: 0 0 20px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-plus-circle" style="color: #4C1D95;"></i> Submit New Request
+            </h3>
+
+            <form id="smRequestForm" onsubmit="event.preventDefault(); submitSMRequest();">
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-user"></i> Student *
+                    </label>
+                    <select id="smStudentSelect" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                        <option value="">-- Select Student --</option>
+                        <option value="1">John Doe (STU-2026-001) - KRCHN</option>
+                        <option value="2">Jane Smith (STU-2026-002) - DPOTT</option>
+                        <option value="3">Michael Kimani (STU-2026-003) - DCH</option>
+                        <option value="4">Sarah Wanjiru (STU-2026-004) - KRCHN</option>
+                        <option value="5">David Ochieng (STU-2026-005) - DHRIT</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-tag"></i> Request Type *
+                    </label>
+                    <div style="display: flex; gap: 20px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="requestType" value="change-program" checked onchange="toggleSMRequestFields()"> Change of Program
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" name="requestType" value="readmission" onchange="toggleSMRequestFields()"> Readmission
+                        </label>
+                    </div>
+                </div>
+
+                <div id="smCurrentProgramSection" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-graduation-cap"></i> Current Program *
+                    </label>
+                    <select id="smCurrentProgram" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                        <option value="">-- Select Current Program --</option>
+                        <option value="KRCHN">🎓 KRCHN Nursing</option>
+                        <optgroup label="🎯 TVET Diploma Programs">
+                            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                            <option value="DCH">Diploma in Community Health</option>
+                            <option value="DHRIT">Diploma in Health Records and IT</option>
+                            <option value="DSL">Diploma in Science Lab</option>
+                            <option value="DSW">Diploma in Social Work</option>
+                            <option value="DCJS">Diploma in Criminal Justice</option>
+                            <option value="DHSS">Diploma in Health Support Services</option>
+                            <option value="DICT">Diploma in ICT</option>
+                            <option value="DME">Diploma in Medical Engineering</option>
+                        </optgroup>
+                        <optgroup label="📜 TVET Certificate Programs">
+                            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                            <option value="CCH">Certificate in Community Health</option>
+                            <option value="CHRIT">Certificate in Health Records and IT</option>
+                            <option value="CPC">Certificate in Patient Care</option>
+                            <option value="CSL">Certificate in Science Lab</option>
+                            <option value="CSW">Certificate in Social Work</option>
+                            <option value="CCJS">Certificate in Criminal Justice</option>
+                            <option value="CAG">Certificate in Agriculture</option>
+                            <option value="CHSS">Certificate in Health Support Services</option>
+                            <option value="CICT">Certificate in ICT</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div id="smPreviousProgramSection" style="display: none; margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-history"></i> Previous Program *
+                    </label>
+                    <select id="smPreviousProgram" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                        <option value="">-- Select Previous Program --</option>
+                        <option value="KRCHN">🎓 KRCHN Nursing</option>
+                        <optgroup label="🎯 TVET Diploma Programs">
+                            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                            <option value="DCH">Diploma in Community Health</option>
+                            <option value="DHRIT">Diploma in Health Records and IT</option>
+                            <option value="DSL">Diploma in Science Lab</option>
+                            <option value="DSW">Diploma in Social Work</option>
+                            <option value="DCJS">Diploma in Criminal Justice</option>
+                            <option value="DHSS">Diploma in Health Support Services</option>
+                            <option value="DICT">Diploma in ICT</option>
+                            <option value="DME">Diploma in Medical Engineering</option>
+                        </optgroup>
+                        <optgroup label="📜 TVET Certificate Programs">
+                            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                            <option value="CCH">Certificate in Community Health</option>
+                            <option value="CHRIT">Certificate in Health Records and IT</option>
+                            <option value="CPC">Certificate in Patient Care</option>
+                            <option value="CSL">Certificate in Science Lab</option>
+                            <option value="CSW">Certificate in Social Work</option>
+                            <option value="CCJS">Certificate in Criminal Justice</option>
+                            <option value="CAG">Certificate in Agriculture</option>
+                            <option value="CHSS">Certificate in Health Support Services</option>
+                            <option value="CICT">Certificate in ICT</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-graduation-cap"></i> Requested Program *
+                    </label>
+                    <select id="smRequestedProgram" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                        <option value="">-- Select Requested Program --</option>
+                        <option value="KRCHN">🎓 KRCHN Nursing</option>
+                        <optgroup label="🎯 TVET Diploma Programs">
+                            <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                            <option value="DCH">Diploma in Community Health</option>
+                            <option value="DHRIT">Diploma in Health Records and IT</option>
+                            <option value="DSL">Diploma in Science Lab</option>
+                            <option value="DSW">Diploma in Social Work</option>
+                            <option value="DCJS">Diploma in Criminal Justice</option>
+                            <option value="DHSS">Diploma in Health Support Services</option>
+                            <option value="DICT">Diploma in ICT</option>
+                            <option value="DME">Diploma in Medical Engineering</option>
+                        </optgroup>
+                        <optgroup label="📜 TVET Certificate Programs">
+                            <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                            <option value="CCH">Certificate in Community Health</option>
+                            <option value="CHRIT">Certificate in Health Records and IT</option>
+                            <option value="CPC">Certificate in Patient Care</option>
+                            <option value="CSL">Certificate in Science Lab</option>
+                            <option value="CSW">Certificate in Social Work</option>
+                            <option value="CCJS">Certificate in Criminal Justice</option>
+                            <option value="CAG">Certificate in Agriculture</option>
+                            <option value="CHSS">Certificate in Health Support Services</option>
+                            <option value="CICT">Certificate in ICT</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-comment"></i> Reason / Justification *
+                    </label>
+                    <textarea id="smReason" rows="4" required placeholder="Please provide detailed reason for the request..." 
+                              style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                        <i class="fas fa-paperclip"></i> Supporting Documents (Optional)
+                    </label>
+                    <input type="file" id="smSupportingDocs" multiple accept=".pdf,.jpg,.png,.jpeg" 
+                           style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                    <small style="color: #94a3b8; font-size: 11px;">PDF, JPG, PNG (Max 5MB per file)</small>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button type="submit" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px;">
+                        <i class="fas fa-paper-plane"></i> Submit Request
+                    </button>
+                    <button type="reset" style="padding: 12px 24px; background: #e5e7eb; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- STUDENT MANAGEMENT MODAL                                      -->
+<!-- ============================================================ -->
+<div id="smRequestModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 10000; padding: 20px; align-items: center; justify-content: center;">
+    <div class="modal-content" style="max-width: 700px; width: 95%; background: white; border-radius: 16px; padding: 30px; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px;">
+            <h3 style="margin: 0; color: #4C1D95;">
+                <i class="fas fa-file-alt"></i> <span id="smModalTitle">Request Details</span>
+            </h3>
+            <button onclick="closeModal('smRequestModal')" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        
+        <div id="smModalBody">
+            <div style="text-align: center; padding: 20px;">
+                <div class="loading-spinner"></div>
+                <p style="margin-top: 10px; color: #94a3b8;">Loading request details...</p>
+            </div>
+        </div>
+        
+        <div id="smModalActions" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="approveSMRequest()" id="smApproveBtn" style="padding: 10px 24px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-check"></i> Approve
+            </button>
+            <button onclick="rejectSMRequest()" id="smRejectBtn" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-times"></i> Reject
+            </button>
+            <button onclick="closeModal('smRequestModal')" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- STUDENT MANAGEMENT STYLES                                     -->
+<!-- ============================================================ -->
+<style>
+    .sm-tab-btn {
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .sm-tab-btn:hover {
+        transform: translateY(-1px);
+    }
+    .sm-tab-btn.active:hover {
+        transform: translateY(-1px);
+    }
+    .sm-tab-content {
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    #smChangeProgramBody tr:hover, #smReadmissionBody tr:hover, #smHistoryBody tr:hover {
+        background: #f8fafc;
+    }
+    .sm-status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .sm-status-badge.pending { background: #fef3c7; color: #92400e; }
+    .sm-status-badge.approved { background: #d1fae5; color: #065f46; }
+    .sm-status-badge.rejected { background: #fee2e2; color: #991b1b; }
+    .sm-status-badge.processing { background: #dbeafe; color: #1e40af; }
+    .sm-status-badge.completed { background: #d1fae5; color: #065f46; }
+</style>
+
         </main>
     </div>
 
@@ -11494,7 +12001,7 @@
         </div>
     </div>
             <button onclick="verifyCurrent
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
@@ -11776,6 +12283,7 @@
 <!-- 🔥🔥🔥 NEW MODULES 🔥🔥🔥                    -->
 <!-- ============================================ -->
 <script src="./js/superadmin-scheduledTasks.js"></script>
+
 <!-- 1. SUPER ADMIN ANALYTICS MODULE -->
 <script src="./js/superadmin-analytics.js"></script>
 
@@ -11785,15 +12293,21 @@
 <!-- 3. SUPER ADMIN MARKS ENTRY MODULE -->
 <script src="./js/superadmin-marks-entry.js"></script>
 
-<!-- 4. ✅ PUBLISHED MARKS MODULE - TVET & Nursing Compatible -->
+<!-- 4. PUBLISHED MARKS MODULE - TVET & Nursing Compatible -->
 <script src="./js/superadmin-published-marks.js"></script>
+
+<!-- 5. NCK XY Forms & Assessment System -->
+<script src="./js/superadmin-nck-system.js"></script>
+
+<!-- 6. ✅ STUDENT MANAGEMENT MODULE - NEW -->
+<script src="./js/superadmin-student-management.js"></script>
+
 <!-- ============================================ -->
-<!-- ✅ DROPDOWN FIX - ADD THIS LINE              -->
+<!-- ✅ DROPDOWN FIX                              -->
 <!-- ============================================ -->
 <script src="js/dropdown-fix.js"></script>
+
 <!-- ============================================ -->
-<!-- NCK XY Forms & Assessment System -->
-<script src="./js/superadmin-nck-system.js"></script>
 <!-- INITIALIZATION - AFTER ALL MODULES LOADED    -->
 <!-- ============================================ -->
 <script>
@@ -11895,7 +12409,7 @@
         }
         
         // ============================================
-        // 4. ✅ INITIALIZE PUBLISHED MARKS
+        // 4. INITIALIZE PUBLISHED MARKS
         // ============================================
         if (typeof window.loadPublishedMarks === 'function') {
             console.log('📊 Setting up Published Marks module...');
@@ -11917,7 +12431,6 @@
             const publishTab = document.querySelector('[data-tab="publish-marks"]');
             if (publishTab) {
                 publishTab.addEventListener('click', function(e) {
-                    // Check if the tab is being activated
                     setTimeout(window.loadPublishedMarks, 300);
                 });
             }
@@ -11930,7 +12443,32 @@
             
             console.log('✅ Published Marks module initialized');
         } else {
-            console.warn('⚠️ Published Marks module not loaded - check if superadmin-published-marks.js exists');
+            console.warn('⚠️ Published Marks module not loaded');
+        }
+        
+        // ============================================
+        // 5. ✅ INITIALIZE STUDENT MANAGEMENT
+        // ============================================
+        if (typeof window.initStudentManagement === 'function') {
+            console.log('🎓 Setting up Student Management module...');
+            
+            // Check if student management tab is active
+            const smTab = document.querySelector('[data-tab="student-management"]');
+            if (smTab) {
+                smTab.addEventListener('click', function() {
+                    setTimeout(window.initStudentManagement, 300);
+                });
+            }
+            
+            // Check if it's already the active tab
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab && activeTab.id === 'student-management') {
+                setTimeout(window.initStudentManagement, 500);
+            }
+            
+            console.log('✅ Student Management module initialized');
+        } else {
+            console.warn('⚠️ Student Management module not loaded - check if superadmin-student-management.js exists');
         }
         
         console.log('✅ All modules initialized!');
