@@ -18,6 +18,11 @@ window.sb = sb;
 
 //  FIX: Create alias for loadUnits to use
 window.supabase = window.sb;
+
+// ============================================================
+// 📊 GLOBAL DOM CACHE - ADD THIS HERE
+// ============================================================
+const DOM = {};
 // ============================================
 // 📸 HELPER: Get full photo URL from profile
 // ============================================
@@ -9668,8 +9673,6 @@ const ExamCache = {
 // ============================================
 // DOM CACHE - MUST BE DECLARED FIRST
 // ============================================
-const DOM = {};
-
 function cacheDomElements() {
     DOM.examsTbody = document.getElementById('exams-table-body');
     DOM.studentExams = document.getElementById('student-exams');
