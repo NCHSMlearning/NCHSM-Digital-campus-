@@ -29,10 +29,38 @@ const SM_STATE = {
 };
 
 // ============================================================
+// GET SUPABASE CLIENT
+// ============================================================
+function getSupabaseClient() {
+    // Try to get the global supabase client
+    if (typeof window.sb !== 'undefined' && window.sb) {
+        return window.sb;
+    }
+    if (typeof window.supabase !== 'undefined' && window.supabase) {
+        return window.supabase;
+    }
+    // Try to get from window
+    if (typeof window.__SUPABASE_CLIENT__ !== 'undefined' && window.__SUPABASE_CLIENT__) {
+        return window.__SUPABASE_CLIENT__;
+    }
+    console.warn('⚠️ Supabase client not found, attempting to use global');
+    return null;
+}
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 function initStudentManagement() {
     console.log('🎓 Student Management Module initialized');
+    
+    // Check if supabase is available
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available. Please check your connection.');
+        showNotification('Supabase client not available. Please refresh the page.', 'error');
+        return;
+    }
+    
     loadStudentsForDropdown();
     loadChangeProgramRequests();
     loadReadmissionRequests();
@@ -46,10 +74,16 @@ function initStudentManagement() {
 // LOAD STUDENTS FOR DROPDOWN (FROM consolidated_user_profiles_table)
 // ============================================================
 async function loadStudentsForDropdown() {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     try {
         if (typeof showLoading === 'function') showLoading('Loading students...');
         
-        const { data, error } = await supabase
+        const { data, error } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, program, block, intake_year, intake_month')
             .eq('role', 'student')
@@ -119,11 +153,17 @@ async function loadStudentsForDropdown() {
 // LOAD CHANGE OF PROGRAM REQUESTS
 // ============================================================
 async function loadChangeProgramRequests() {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     try {
         const search = document.getElementById('smChangeSearch')?.value?.toLowerCase() || '';
         const status = document.getElementById('smChangeStatusFilter')?.value || 'all';
         
-        let query = supabase
+        let query = sb
             .from('student_requests')
             .select(`
                 *,
@@ -238,11 +278,17 @@ function renderChangeProgramTable() {
 // LOAD READMISSION REQUESTS
 // ============================================================
 async function loadReadmissionRequests() {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     try {
         const search = document.getElementById('smReadmissionSearch')?.value?.toLowerCase() || '';
         const status = document.getElementById('smReadmissionStatusFilter')?.value || 'all';
         
-        let query = supabase
+        let query = sb
             .from('student_requests')
             .select(`
                 *,
@@ -357,13 +403,19 @@ function renderReadmissionTable() {
 // LOAD HISTORY
 // ============================================================
 async function loadSMHistory() {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     try {
         const type = document.getElementById('smHistoryType')?.value || 'all';
         const status = document.getElementById('smHistoryStatus')?.value || 'all';
         const dateFrom = document.getElementById('smHistoryDateFrom')?.value || '';
         const dateTo = document.getElementById('smHistoryDateTo')?.value || '';
         
-        let query = supabase
+        let query = sb
             .from('student_requests')
             .select(`
                 *,
@@ -473,6 +525,12 @@ function renderHistoryTable() {
 // VIEW REQUEST DETAILS
 // ============================================================
 async function viewSMRequest(requestId, type) {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     if (!requestId) {
         if (typeof showNotification === 'function') {
             showNotification('Invalid request ID', 'error');
@@ -512,7 +570,7 @@ async function viewSMRequest(requestId, type) {
     document.getElementById('smModalActions').style.display = 'none';
     
     try {
-        const { data, error } = await supabase
+        const { data, error } = await sb
             .from('student_requests')
             .select(`
                 *,
@@ -608,19 +666,6 @@ async function viewSMRequest(requestId, type) {
                     <div><i class="fas fa-clock"></i> Requested: ${createdAt}</div>
                     <div><i class="fas fa-edit"></i> Last Updated: ${updatedAt}</div>
                 </div>
-                
-                ${data.documents && data.documents.length > 0 ? `
-                <div style="grid-column: 1 / -1; background: #f0fdf4; padding: 12px 16px; border-radius: 8px; border: 1px solid #86efac;">
-                    <span style="font-weight: 600; color: #065f46;"><i class="fas fa-paperclip"></i> Supporting Documents:</span>
-                    <div style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">
-                        ${data.documents.map(doc => `
-                            <a href="${doc.url}" target="_blank" style="background: white; padding: 4px 12px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 12px; text-decoration: none; color: #4C1D95;">
-                                <i class="fas fa-file-alt"></i> ${doc.name || 'Document'}
-                            </a>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : ''}
             </div>
         `;
         
@@ -635,7 +680,6 @@ async function viewSMRequest(requestId, type) {
             document.getElementById('smModalActions').style.display = 'flex';
             document.getElementById('smApproveBtn').style.display = 'none';
             document.getElementById('smRejectBtn').style.display = 'none';
-            // Add a close button alternative
             const actions = document.getElementById('smModalActions');
             actions.innerHTML = `
                 <button onclick="closeModal('smRequestModal')" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
@@ -662,6 +706,12 @@ async function viewSMRequest(requestId, type) {
 // APPROVE REQUEST
 // ============================================================
 async function approveSMRequest(requestId) {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     if (!requestId) {
         if (typeof showNotification === 'function') {
             showNotification('Invalid request ID', 'error');
@@ -675,7 +725,7 @@ async function approveSMRequest(requestId) {
     
     try {
         // Get the request details first
-        const { data: request, error: fetchError } = await supabase
+        const { data: request, error: fetchError } = await sb
             .from('student_requests')
             .select('*')
             .eq('id', requestId)
@@ -688,7 +738,7 @@ async function approveSMRequest(requestId) {
         }
         
         // Update the request status
-        const { error: updateError } = await supabase
+        const { error: updateError } = await sb
             .from('student_requests')
             .update({
                 status: 'approved',
@@ -702,7 +752,7 @@ async function approveSMRequest(requestId) {
         
         // Update the student's program in consolidated_user_profiles_table
         if (request.student_id && request.requested_program) {
-            const { error: studentError } = await supabase
+            const { error: studentError } = await sb
                 .from('consolidated_user_profiles_table')
                 .update({
                     program: request.requested_program,
@@ -712,7 +762,6 @@ async function approveSMRequest(requestId) {
             
             if (studentError) {
                 console.warn('⚠️ Could not update student program:', studentError);
-                // Don't throw - the request is approved, we just log the warning
             }
         }
         
@@ -743,6 +792,12 @@ async function approveSMRequest(requestId) {
 // REJECT REQUEST
 // ============================================================
 async function rejectSMRequest(requestId) {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     if (!requestId) {
         if (typeof showNotification === 'function') {
             showNotification('Invalid request ID', 'error');
@@ -755,7 +810,7 @@ async function rejectSMRequest(requestId) {
     if (typeof showLoading === 'function') showLoading('Rejecting request...');
     
     try {
-        const { error } = await supabase
+        const { error } = await sb
             .from('student_requests')
             .update({
                 status: 'rejected',
@@ -794,6 +849,12 @@ async function rejectSMRequest(requestId) {
 // QUICK APPROVE (from table)
 // ============================================================
 async function quickApproveSM(requestId, type) {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     if (!requestId) {
         if (typeof showNotification === 'function') {
             showNotification('Invalid request ID', 'warning');
@@ -807,7 +868,7 @@ async function quickApproveSM(requestId, type) {
     
     try {
         // Get the request details first
-        const { data: request, error: fetchError } = await supabase
+        const { data: request, error: fetchError } = await sb
             .from('student_requests')
             .select('*')
             .eq('id', requestId)
@@ -820,7 +881,7 @@ async function quickApproveSM(requestId, type) {
         }
         
         // Update the request status
-        const { error: updateError } = await supabase
+        const { error: updateError } = await sb
             .from('student_requests')
             .update({
                 status: 'approved',
@@ -834,7 +895,7 @@ async function quickApproveSM(requestId, type) {
         
         // Update the student's program in consolidated_user_profiles_table
         if (request.student_id && request.requested_program) {
-            const { error: studentError } = await supabase
+            const { error: studentError } = await sb
                 .from('consolidated_user_profiles_table')
                 .update({
                     program: request.requested_program,
@@ -873,6 +934,12 @@ async function quickApproveSM(requestId, type) {
 // BULK APPROVE
 // ============================================================
 async function bulkApproveSM(type) {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
     
     if (checkboxes.length === 0) {
@@ -895,7 +962,7 @@ async function bulkApproveSM(type) {
         for (const id of ids) {
             try {
                 // Get request details
-                const { data: request, error: fetchError } = await supabase
+                const { data: request, error: fetchError } = await sb
                     .from('student_requests')
                     .select('*')
                     .eq('id', id)
@@ -904,7 +971,7 @@ async function bulkApproveSM(type) {
                 if (fetchError) throw fetchError;
                 
                 // Update request status
-                const { error: updateError } = await supabase
+                const { error: updateError } = await sb
                     .from('student_requests')
                     .update({
                         status: 'approved',
@@ -918,7 +985,7 @@ async function bulkApproveSM(type) {
                 
                 // Update student program
                 if (request.student_id && request.requested_program) {
-                    await supabase
+                    await sb
                         .from('consolidated_user_profiles_table')
                         .update({
                             program: request.requested_program,
@@ -964,6 +1031,12 @@ async function bulkApproveSM(type) {
 // BULK REJECT
 // ============================================================
 async function bulkRejectSM(type) {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
     
     if (checkboxes.length === 0) {
@@ -985,7 +1058,7 @@ async function bulkRejectSM(type) {
         
         for (const id of ids) {
             try {
-                const { error } = await supabase
+                const { error } = await sb
                     .from('student_requests')
                     .update({
                         status: 'rejected',
@@ -1033,6 +1106,12 @@ async function bulkRejectSM(type) {
 // SUBMIT NEW REQUEST
 // ============================================================
 async function submitSMRequest() {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        return;
+    }
+    
     const studentSelect = document.getElementById('smStudentSelect');
     const typeRadio = document.querySelector('input[name="requestType"]:checked');
     const reason = document.getElementById('smReason');
@@ -1095,7 +1174,7 @@ async function submitSMRequest() {
     
     try {
         // Get student details from consolidated_user_profiles_table
-        const { data: student, error: studentError } = await supabase
+        const { data: student, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, program, block, intake_year, intake_month')
             .eq('student_id', studentSelect.value)
@@ -1106,8 +1185,6 @@ async function submitSMRequest() {
         // Handle document uploads
         let documents = [];
         if (docsInput && docsInput.files && docsInput.files.length > 0) {
-            // Upload documents (you'll need to implement this based on your storage setup)
-            // For now, we'll just store the file names
             for (const file of docsInput.files) {
                 documents.push({
                     name: file.name,
@@ -1132,7 +1209,7 @@ async function submitSMRequest() {
             updated_at: new Date().toISOString()
         };
         
-        const { data, error } = await supabase
+        const { data, error } = await sb
             .from('student_requests')
             .insert(requestData)
             .select();
@@ -1290,7 +1367,6 @@ function updateSMStats() {
     const readmissionPending = SM_STATE.readmissionRequests.filter(r => r.status === 'pending').length;
     const totalRequests = SM_STATE.changeRequests.length + SM_STATE.readmissionRequests.length;
     
-    // Get today's approved count
     const today = new Date().toISOString().split('T')[0];
     const allRequests = [...SM_STATE.changeRequests, ...SM_STATE.readmissionRequests];
     const approvedToday = allRequests.filter(r => 
