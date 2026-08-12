@@ -593,7 +593,8 @@ function getProgramDisplayName(programCode) {
     const code = String(programCode).toUpperCase().trim();
     
     // Check master list first (includes CCG, COMT)
-    if (typeof MASTER_PROGRAMS !== 'undefined' && MASTER_PROGRAMS[code]) {
+    if (typeof MASTER_PROGRAMS !== 'undefined' && MASTER_PROGRAMS[code]) 
+    {
         return MASTER_PROGRAMS[code].name;
     }
     
@@ -838,6 +839,8 @@ function updateBlockTermOptions(programSelectId, blockTermSelectId) {
     
     console.log(`✅ Updated ${blockTermSelectId} with ${blockTermSelect.options.length} options for program: ${programCode} (${programType})`);
 }
+window.updateBlockTermOptions = updateBlockTermOptions;
+
 // ============================================================
 // INITIALIZE ALL PROGRAM DROPDOWNS - ASYNC VERSION
 // ============================================================
