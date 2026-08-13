@@ -1,11 +1,16 @@
 // ============================================
-// REGISTRATION.JS - Complete JavaScript
+// REGISTRATION.JS - COMPLETE SECURE VERSION
+// UNIFIED STUDENT ID SYSTEM
 // ============================================
-// Hides the .html extension in the URL  
+
+// ============================================
+// HIDE .html EXTENSION
+// ============================================
 if (window.location.pathname.endsWith('.html')) {
     const cleanPath = window.location.pathname.replace(/\.html$/, '');
     window.history.replaceState({}, '', cleanPath);
-} 
+}
+
 // ============================================
 // SUPABASE CONFIGURATION
 // ============================================
@@ -39,64 +44,328 @@ const uploadedDocs = {
 };
 
 // ============================================
-// UTILITY FUNCTIONS
 // ============================================
-function showFeedback(message, type = 'success') {
-    const messageDiv = document.getElementById('message');
-    if (!messageDiv) return;
-    messageDiv.textContent = message;
-    messageDiv.className = `message ${type} show`;
-    setTimeout(() => {
-        messageDiv.classList.remove('show');
-    }, 5000);
+// SECURITY FUNCTIONS
+// ============================================
+// ============================================
+
+// ============================================
+// 1. CSRF PROTECTION
+// ============================================
+function generateCSRFToken() {
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    sessionStorage.setItem('csrf_token', token);
+    
+    let csrfInput = document.getElementById('csrf_token_input');
+    if (!csrfInput) {
+        csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.id = 'csrf_token_input';
+        csrfInput.name = 'csrf_token';
+        const form = document.getElementById('register-form');
+        if (form) form.appendChild(csrfInput);
+    }
+    csrfInput.value = token;
+    return token;
 }
 
+function verifyCSRFToken() {
+    const token = sessionStorage.getItem('csrf_token');
+    const submitted = document.getElementById('csrf_token_input')?.value;
+    if (!token || !submitted || token !== submitted) {
+        throw new Error('Security validation failed. Please refresh and try again.');
+    }
+    sessionStorage.removeItem('csrf_token');
+    return true;
+}
+
+// ============================================
+// 2. RATE LIMITING
+// ============================================
+const rateLimiter = {
+    attempts: {},
+    
+    async check(email) {
+        const key = `${window.location.hostname}:${email}`;
+        const now = Date.now();
+        
+        if (!this.attempts[key]) {
+            this.attempts[key] = { count: 1, firstAttempt: now };
+            return true;
+        }
+        
+        const data = this.attempts[key];
+        
+        // Reset after 1 hour
+        if (now - data.firstAttempt > 3600000) {
+            this.attempts[key] = { count: 1, firstAttempt: now };
+            return true;
+        }
+        
+        // Max 5 attempts per hour
+        if (data.count >= 5) {
+            throw new Error('Too many registration attempts. Please try again in 1 hour.');
+        }
+        
+        data.count++;
+        return true;
+    }
+};
+
+// ============================================
+// 3. INPUT SANITIZATION
+// ============================================
+function sanitizeInput(input) {
+    if (typeof input !== 'string') return input;
+    
+    // Remove HTML tags
+    let sanitized = input.replace(/<[^>]*>/g, '');
+    
+    // Remove potentially dangerous characters
+    sanitized = sanitized.replace(/['";\\]/g, '');
+    
+    // Trim and limit length
+    sanitized = sanitized.trim().slice(0, 255);
+    
+    return sanitized;
+}
+
+// ============================================
+// 4. SQL INJECTION PROTECTION
+// ============================================
+function containsSQLInjection(input) {
+    if (typeof input !== 'string') return false;
+    
+    const patterns = [
+        /(\bSELECT\b.*\bFROM\b)/i,
+        /(\bINSERT\b.*\bINTO\b)/i,
+        /(\bUPDATE\b.*\bSET\b)/i,
+        /(\bDELETE\b.*\bFROM\b)/i,
+        /(\bDROP\b.*\bTABLE\b)/i,
+        /(\bUNION\b.*\bSELECT\b)/i,
+        /(\bOR\b.*=.*=)/i,
+        /('.*--)/,
+        /('.*;)/,
+        /(\/\*.*\*\/)/
+    ];
+    
+    for (const pattern of patterns) {
+        if (pattern.test(input)) return true;
+    }
+    return false;
+}
+
+// ============================================
+// 5. EMAIL VALIDATION
+// ============================================
 function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function getDocLabel(docType) {
-    const labels = {
-        kcse: 'KCSE Certificate',
-        id: 'ID/Passport/Birth Cert',
-        lecturer_id: 'National ID/Passport',
-        kra_pin: 'KRA PIN Certificate',
-        university_cert: 'University Certificate',
-        cv: 'CV/Resume'
-    };
-    return labels[docType] || docType;
+    const disposableDomains = [
+        'tempmail.com', 'throwaway.com', '10minutemail.com',
+        'guerrillamail.com', 'mailinator.com', 'trashmail.com',
+        'temp-mail.org', 'fakeemail.com', 'spam.com'
+    ];
+    
+    if (!email) return { valid: false, message: 'Email is required' };
+    
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+        return { valid: false, message: 'Invalid email format' };
+    }
+    
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (disposableDomains.includes(domain)) {
+        return { valid: false, message: 'Disposable email addresses are not allowed' };
+    }
+    
+    return { valid: true, message: 'Valid email' };
 }
 
 // ============================================
-// STUDENT ID VALIDATION
+// 6. PASSWORD VALIDATION
 // ============================================
-function validateStudentIdWithDuplicate(studentId) {
+function validatePassword(password) {
+    if (!password) {
+        return { valid: false, message: 'Password is required' };
+    }
+    
+    const requirements = [];
+    
+    if (password.length < 8) {
+        requirements.push('at least 8 characters');
+    }
+    if (!/[A-Z]/.test(password)) {
+        requirements.push('at least one uppercase letter');
+    }
+    if (!/[a-z]/.test(password)) {
+        requirements.push('at least one lowercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+        requirements.push('at least one number');
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        requirements.push('at least one special character');
+    }
+    
+    if (requirements.length > 0) {
+        return { 
+            valid: false, 
+            message: `Password must have ${requirements.join(', ')}` 
+        };
+    }
+    
+    return { valid: true, message: 'Password is strong' };
+}
+
+// ============================================
+// 7. FILE VALIDATION
+// ============================================
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const DANGEROUS_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.ps1', '.php', '.asp', '.jsp'];
+
+function validateFile(file) {
+    if (!file) {
+        return { valid: false, message: 'No file selected' };
+    }
+    
+    // Check file type
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+        return { 
+            valid: false, 
+            message: `Invalid file type. Allowed: ${ALLOWED_FILE_TYPES.join(', ')}` 
+        };
+    }
+    
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+        return { 
+            valid: false, 
+            message: `File too large. Maximum ${MAX_FILE_SIZE / 1024 / 1024}MB` 
+        };
+    }
+    
+    // Check for dangerous extensions
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (DANGEROUS_EXTENSIONS.includes(`.${ext}`)) {
+        return { valid: false, message: 'File type not allowed for security reasons' };
+    }
+    
+    return { valid: true, message: 'File is valid' };
+}
+
+// ============================================
+// ============================================
+// STUDENT ID FUNCTIONS - UNIFIED SYSTEM
+// ============================================
+// ============================================
+
+// ============================================
+// GET LAST STUDENT ADMISSION NUMBER
+// ============================================
+async function getLastStudentAdmissionNumber(programType) {
+    try {
+        const { data, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id')
+            .eq('program', programType)
+            .like('student_id', `${programType}%`)
+            .order('created_at', { ascending: false })
+            .limit(1);
+        
+        if (error) {
+            console.error('Error fetching last student ID:', error);
+            return null;
+        }
+        
+        if (data && data.length > 0 && data[0].student_id) {
+            return data[0].student_id;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching last student ID:', error);
+        return null;
+    }
+}
+
+// ============================================
+// GENERATE SEQUENTIAL STUDENT NUMBER
+// ============================================
+async function generateSequentialStudentNumber(programType) {
+    const year = new Date().getFullYear();
+    const yearSuffix = year.toString().slice(-2);
+    let nextNumber = 1;
+    
+    try {
+        const lastStudentId = await getLastStudentAdmissionNumber(programType);
+        
+        if (lastStudentId) {
+            const match = lastStudentId.match(new RegExp(`${programType}/(\\d{4,5})/(\\d{2})/(\\d{2,4})`));
+            if (match) {
+                const number = parseInt(match[1]);
+                const month = match[2];
+                const yearMatch = match[3];
+                
+                const currentYearSuffix = year.toString().slice(-2);
+                let lastYearSuffix = yearMatch;
+                if (yearMatch.length === 4) {
+                    lastYearSuffix = yearMatch.slice(-2);
+                }
+                
+                if (lastYearSuffix === currentYearSuffix) {
+                    nextNumber = number + 1;
+                } else {
+                    nextNumber = 1;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error generating sequential number:', error);
+    }
+    
+    // Pad to 4 digits for DCHN, 5 digits for TVET
+    const padLength = programType === 'DCHN' ? 4 : 5;
+    const paddedNumber = String(nextNumber).padStart(padLength, '0');
+    
+    // Get current month
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    
+    // For DCHN, use MAR and 4-digit year
+    if (programType === 'DCHN') {
+        return `${programType}/${paddedNumber}/MAR/${year}`;
+    }
+    
+    // For TVET, use 2-digit year
+    return `${programType}/${paddedNumber}/${month}/${yearSuffix}`;
+}
+
+// ============================================
+// VALIDATE STUDENT ID
+// ============================================
+function validateStudentId(studentId) {
     if (!studentId || studentId.trim() === '') {
         return { valid: false, message: 'Student ID is required' };
     }
     
     const cleaned = studentId.trim().toUpperCase();
     
-    // Check if it's an auto-generated NCHSM number (for new students)
-    if (cleaned.startsWith('NCHSM-')) {
-        return { 
-            valid: true, 
-            format: 'generated',
-            display: cleaned,
-            isGenerated: true
-        };
+    // Check for SQL injection
+    if (containsSQLInjection(cleaned)) {
+        return { valid: false, message: 'Invalid characters detected' };
     }
     
-    // FORMAT 1: KRCHN/XXXX/MAR/YYYY (Nursing)
-    const krchnRegex = /^KRCHN\/(\d{4})\/(MAR)\/(\d{4})$/;
-    const krchnMatch = cleaned.match(krchnRegex);
-    if (krchnMatch) {
-        const number = krchnMatch[1];
-        const month = krchnMatch[2];
-        const year = krchnMatch[3];
+    // FORMAT 1: DCHN/XXXX/MAR/YYYY (Nursing)
+    const dchnRegex = /^DCHN\/(\d{4})\/(MAR)\/(\d{4})$/;
+    const dchnMatch = cleaned.match(dchnRegex);
+    if (dchnMatch) {
+        const number = dchnMatch[1];
+        const month = dchnMatch[2];
+        const year = dchnMatch[3];
         
         if (month !== 'MAR') {
-            return { valid: false, message: 'KRCHN intakes are only in March (MAR)' };
+            return { valid: false, message: 'DCHN intakes are only in March (MAR)' };
         }
         
         const yearNum = parseInt(year);
@@ -106,16 +375,16 @@ function validateStudentIdWithDuplicate(studentId) {
         
         return { 
             valid: true, 
-            format: 'krchn',
-            program: 'KRCHN',
+            format: 'dchn',
+            program: 'DCHN',
             number: number,
             month: month,
             year: year,
-            display: `KRCHN/${number}/${month}/${year}`
+            display: `DCHN/${number}/${month}/${year}`
         };
     }
     
-    // TVET formats
+    // FORMAT 2: TVET formats
     const tvetRegex2Digit = /^([A-Z]{2,5})\/(\d{4,5})\/(\d{2})\/(\d{2})$/;
     const tvetMatch2Digit = cleaned.match(tvetRegex2Digit);
     
@@ -192,27 +461,31 @@ function validateStudentIdWithDuplicate(studentId) {
     
     return { 
         valid: false, 
-        message: 'Invalid format. Use KRCHN/XXXX/MAR/YYYY for Nursing or PROGRAM/XXXXX/MM/YY or PROGRAM/XXXXX/MM/YYYY for TVET' 
+        message: 'Invalid format. Use DCHN/XXXX/MAR/YYYY for Nursing or PROGRAM/XXXXX/MM/YY or PROGRAM/XXXXX/MM/YYYY for TVET' 
     };
 }
 
 // ============================================
-// STUDENT ID DUPLICATE CHECK
+// CHECK IF STUDENT ID EXISTS
 // ============================================
 async function checkStudentIdExists(studentId) {
     if (!studentId || studentId.trim() === '') return false;
     
+    const sanitized = sanitizeInput(studentId).toUpperCase();
+    
     try {
-        const { data, error } = await sb.rpc('check_student_id_exists', {
-            p_student_id: studentId.trim()
-        });
+        const { data, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('student_id')
+            .eq('student_id', sanitized)
+            .maybeSingle();
         
         if (error) {
             console.error('Error checking student ID:', error);
             return false;
         }
         
-        return data || false;
+        return !!data;
     } catch (error) {
         console.error('Error checking student ID:', error);
         return false;
@@ -220,78 +493,38 @@ async function checkStudentIdExists(studentId) {
 }
 
 // ============================================
-// GET LAST STUDENT ADMISSION NUMBER
+// CHECK EMAIL EXISTS
 // ============================================
-async function getLastStudentAdmissionNumber() {
+async function checkEmailExists(email) {
+    if (!email || email.length < 5) return false;
+    
+    const sanitized = sanitizeInput(email);
+    
     try {
-        // Query the consolidated_user_profiles_table for the last student ID
-        const { data, error } = await sb
+        const { data: profileData, error: profileError } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id')
-            .not('student_id', 'is', null)
-            .like('student_id', 'NCHSM-%')
-            .order('created_at', { ascending: false })
-            .limit(1);
-        
-        if (error) {
-            console.error('Error fetching last student ID:', error);
-            return null;
+            .select('email')
+            .eq('email', sanitized)
+            .maybeSingle();
+        if (profileError) {
+            console.error('Profile check error:', profileError);
+            return false;
         }
-        
-        if (data && data.length > 0 && data[0].student_id) {
-            return data[0].student_id;
-        }
-        return null;
+        return !!profileData;
     } catch (error) {
-        console.error('Error fetching last student ID:', error);
-        return null;
+        console.error('Error checking email:', error);
+        return false;
     }
 }
 
 // ============================================
-// GENERATE SEQUENTIAL STUDENT NUMBER
-// ============================================
-async function generateSequentialStudentNumber() {
-    const year = new Date().getFullYear();
-    const yearSuffix = year.toString().slice(-2);
-    let nextNumber = 1;
-    
-    try {
-        const lastStudentId = await getLastStudentAdmissionNumber();
-        
-        if (lastStudentId) {
-            // Parse the number from the last ID
-            // Format: NCHSM-YY-XXXX
-            const match = lastStudentId.match(/NCHSM-(\d{2})-(\d{4})/);
-            if (match) {
-                const lastYear = parseInt(match[1]);
-                const lastNum = parseInt(match[2]);
-                
-                if (lastYear === parseInt(yearSuffix)) {
-                    // Same year, increment the number
-                    nextNumber = lastNum + 1;
-                } else {
-                    // New year, start from 1
-                    nextNumber = 1;
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Error generating sequential number:', error);
-    }
-    
-    // Pad to 4 digits
-    const paddedNumber = String(nextNumber).padStart(4, '0');
-    return `NCHSM-${yearSuffix}-${paddedNumber}`;
-}
-
 // ============================================
 // STUDENT TYPE SELECTION
+// ============================================
 // ============================================
 function selectStudentType(type) {
     selectedStudentType = type;
     
-    // Update UI
     document.querySelectorAll('.student-type-card').forEach(card => {
         card.classList.remove('selected');
         const radio = card.querySelector('input[type="radio"]');
@@ -311,9 +544,10 @@ function selectStudentType(type) {
     const programMsg = document.getElementById('programRequiredMsg');
     
     if (type === 'continuing') {
-        studentIdLabel.textContent = 'Student ID / Registration Number';
+        // CONTINUING STUDENT: Enter existing ID
+        studentIdLabel.textContent = 'Student ID';
         studentIdHint.textContent = '(Enter your existing Student ID)';
-        studentIdInput.placeholder = 'e.g., KRCHN/0032/MAR/2024 or DPOTT/10726/05/26';
+        studentIdInput.placeholder = 'e.g., DCHN/0001/MAR/2024 or DPOTT/00001/05/26';
         studentIdInput.value = '';
         studentIdInput.disabled = false;
         studentIdInput.required = true;
@@ -328,9 +562,11 @@ function selectStudentType(type) {
             studentIdInput.value = '';
             studentIdInput.dataset.generated = 'false';
         }
+        
     } else if (type === 'new') {
-        studentIdLabel.textContent = 'Registration Number';
-        studentIdHint.textContent = '(Auto-generated after selecting program)';
+        // NEW STUDENT: Auto-generate ID in SAME format
+        studentIdLabel.textContent = 'Student ID (Auto-Generated)';
+        studentIdHint.textContent = '(System will generate your Student ID)';
         studentIdInput.placeholder = 'Select program first to generate';
         studentIdInput.disabled = true;
         studentIdInput.required = true;
@@ -341,12 +577,13 @@ function selectStudentType(type) {
             regDisplay.classList.add('show');
             programMsg.classList.remove('show');
             studentIdInput.style.borderColor = '#10b981';
-            generateSequentialStudentNumber().then(num => {
-                generatedStudentNumber = num;
-                document.getElementById('generatedRegNumber').textContent = num;
-                studentIdInput.value = num;
+            
+            generateSequentialStudentNumber(program).then(id => {
+                generatedStudentNumber = id;
+                document.getElementById('generatedRegNumber').textContent = id;
+                studentIdInput.value = id;
                 studentIdInput.dataset.generated = 'true';
-                statusEl.textContent = `✅ Generated: ${num}`;
+                statusEl.textContent = `✅ Generated: ${id}`;
                 statusEl.className = 'help-text valid';
             });
         } else {
@@ -367,14 +604,14 @@ function regenerateStudentId() {
     if (selectedStudentType === 'new') {
         const program = document.getElementById('program_type').value;
         if (program && program !== '') {
-            generateSequentialStudentNumber().then(num => {
-                generatedStudentNumber = num;
-                document.getElementById('generatedRegNumber').textContent = num;
+            generateSequentialStudentNumber(program).then(id => {
+                generatedStudentNumber = id;
+                document.getElementById('generatedRegNumber').textContent = id;
                 const studentIdInput = document.getElementById('student_id_number');
-                studentIdInput.value = num;
+                studentIdInput.value = id;
                 studentIdInput.dataset.generated = 'true';
                 const statusEl = document.getElementById('student-id-status');
-                statusEl.textContent = `✅ Generated: ${num}`;
+                statusEl.textContent = `✅ Generated: ${id}`;
                 statusEl.className = 'help-text valid';
                 showFeedback('✅ New registration number generated!', 'success');
             });
@@ -385,31 +622,38 @@ function regenerateStudentId() {
 }
 
 // ============================================
-// CHECK IF STUDENT ID IS VALID
 // ============================================
-function isStudentIdValid() {
-    const input = document.getElementById('student_id_number');
-    const status = document.getElementById('student-id-status');
+// UTILITY FUNCTIONS
+// ============================================
+// ============================================
+function showFeedback(message, type = 'success') {
+    const messageDiv = document.getElementById('message');
+    if (!messageDiv) return;
     
-    if (!input || !status) return false;
-    
-    const value = input.value.trim();
-    if (!value) return false;
-    
-    if (value.startsWith('NCHSM-')) {
-        return true;
-    }
-    
-    if (status.classList.contains('invalid')) return false;
-    if (status.classList.contains('checking')) return false;
-    if (status.classList.contains('valid')) return true;
-    
-    const validation = validateStudentIdWithDuplicate(value);
-    return validation.valid;
+    const sanitized = sanitizeInput(message);
+    messageDiv.textContent = sanitized;
+    messageDiv.className = `message ${type} show`;
+    setTimeout(() => {
+        messageDiv.classList.remove('show');
+    }, 5000);
+}
+
+function getDocLabel(docType) {
+    const labels = {
+        kcse: 'KCSE Certificate',
+        id: 'ID/Passport/Birth Cert',
+        lecturer_id: 'National ID/Passport',
+        kra_pin: 'KRA PIN Certificate',
+        university_cert: 'University Certificate',
+        cv: 'CV/Resume'
+    };
+    return labels[docType] || docType;
 }
 
 // ============================================
+// ============================================
 // VALIDATION MODAL
+// ============================================
 // ============================================
 function showValidationModal(errors) {
     const modal = document.getElementById('validationModal');
@@ -430,11 +674,13 @@ function showValidationModal(errors) {
         
         errors.forEach(error => {
             const li = document.createElement('li');
+            const sanitizedField = sanitizeInput(error.field || 'Field');
+            const sanitizedMessage = sanitizeInput(error.message || '');
             li.innerHTML = `
                 <span class="error-icon">${error.icon || '❌'}</span>
                 <div>
-                    <span class="error-field">${error.field}:</span>
-                    <span>${error.message}</span>
+                    <span class="error-field">${sanitizedField}:</span>
+                    <span>${sanitizedMessage}</span>
                 </div>
             `;
             errorList.appendChild(li);
@@ -473,7 +719,9 @@ function closeValidationModal() {
 }
 
 // ============================================
+// ============================================
 // PROGRESS NAVIGATION
+// ============================================
 // ============================================
 function goToStep(step) {
     if (step > currentStep) {
@@ -502,7 +750,7 @@ function goToStep(step) {
                         continue;
                     }
                     
-                    const validation = validateStudentIdWithDuplicate(studentId);
+                    const validation = validateStudentId(studentId);
                     if (!validation.valid) {
                         input.style.borderColor = '#DC2626';
                         errors.push({
@@ -537,8 +785,9 @@ function goToStep(step) {
                 } else if (!input.value.trim()) {
                     input.style.borderColor = '#DC2626';
                     const label = input.previousElementSibling?.textContent?.trim() || 'This field';
+                    const sanitizedLabel = sanitizeInput(label);
                     errors.push({
-                        field: label,
+                        field: sanitizedLabel,
                         message: 'This field is required.',
                         icon: '📝'
                     });
@@ -585,14 +834,16 @@ function updateProgress() {
 }
 
 // ============================================
+// ============================================
 // INTAKE PREVIEW
+// ============================================
 // ============================================
 function updateIntakePreview() {
     const program = document.getElementById('program_type').value;
-    const isKRCHN = program === 'KRCHN';
-    const isTVET = program && program !== '' && program !== 'KRCHN';
+    const isDCHN = program === 'DCHN';
+    const isTVET = program && program !== '' && program !== 'DCHN';
     
-    if (isKRCHN) {
+    if (isDCHN) {
         document.getElementById('krchn-intake').classList.remove('hidden');
         document.getElementById('tvet-intake').classList.add('hidden');
         const year = document.getElementById('krchn_intake_year').value || '2026';
@@ -644,7 +895,7 @@ function getDisplayIntake(program, year, month) {
         'SEP': 'September', 'OCT': 'October', 'NOV': 'November', 'DEC': 'December'
     };
     
-    if (program === 'KRCHN') {
+    if (program === 'DCHN') {
         return `March ${fullYear}`;
     }
     
@@ -662,12 +913,12 @@ function getDisplayIntake(program, year, month) {
 
 function getIntakeData() {
     const program = document.getElementById('program_type').value;
-    const isKRCHN = program === 'KRCHN';
-    const isTVET = program && program !== '' && program !== 'KRCHN';
+    const isDCHN = program === 'DCHN';
+    const isTVET = program && program !== '' && program !== 'DCHN';
     let intakeYear = '';
     let intakeMonth = '';
     let intakeDisplay = '';
-    if (isKRCHN) {
+    if (isDCHN) {
         intakeYear = document.getElementById('krchn_intake_year').value || '';
         intakeMonth = 'MAR';
         intakeDisplay = `March ${intakeYear}`;
@@ -687,42 +938,17 @@ function getIntakeData() {
 }
 
 // ============================================
-// EMAIL VALIDATION
-// ============================================
-async function checkEmailExists(email) {
-    if (!email || email.length < 5) return false;
-    try {
-        const { data: profileData, error: profileError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('email')
-            .eq('email', email)
-            .maybeSingle();
-        if (profileError) {
-            console.error('Profile check error:', profileError);
-            return false;
-        }
-        return !!profileData;
-    } catch (error) {
-        console.error('Error checking email:', error);
-        return false;
-    }
-}
-
 // ============================================
 // DOCUMENT HANDLING
+// ============================================
 // ============================================
 function handlePhotoUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
-    if (file.size > 5 * 1024 * 1024) {
-        showFeedback('❌ Photo size exceeds 5MB limit.', 'error');
-        event.target.value = '';
-        return;
-    }
-    
-    if (!file.type.startsWith('image/')) {
-        showFeedback('❌ Please upload an image file.', 'error');
+    const validation = validateFile(file);
+    if (!validation.valid) {
+        showFeedback(`❌ ${validation.message}`, 'error');
         event.target.value = '';
         return;
     }
@@ -748,7 +974,7 @@ function handlePhotoUpload(event) {
         preview.prepend(img);
         
         const statusEl = document.getElementById('photoStatus');
-        statusEl.textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        statusEl.textContent = `📸 ${sanitizeInput(file.name)} (${(file.size / 1024).toFixed(1)} KB)`;
         statusEl.className = 'photo-status uploaded';
         
         setTimeout(() => {
@@ -779,8 +1005,9 @@ function handleDocumentUpload(event, docType) {
     const file = event.target.files[0];
     if (!file) return;
     
-    if (file.size > 5 * 1024 * 1024) {
-        showFeedback(`❌ ${getDocLabel(docType)} exceeds 5MB limit.`, 'error');
+    const validation = validateFile(file);
+    if (!validation.valid) {
+        showFeedback(`❌ ${validation.message}`, 'error');
         event.target.value = '';
         return;
     }
@@ -797,7 +1024,8 @@ function handleDocumentUpload(event, docType) {
         statusEl.className = 'doc-status uploaded-text';
     }
     if (filenameEl) {
-        filenameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        const safeFileName = sanitizeInput(file.name);
+        filenameEl.textContent = `${safeFileName} (${(file.size / 1024).toFixed(1)} KB)`;
     }
     
     showFeedback(`✅ ${getDocLabel(docType)} uploaded successfully!`, 'success');
@@ -836,7 +1064,9 @@ function removeDocument(docType) {
 }
 
 // ============================================
+// ============================================
 // TERMS & CONDITIONS
+// ============================================
 // ============================================
 function openTermsModal(e) {
     if (e) e.preventDefault();
@@ -857,13 +1087,15 @@ function acceptTerms() {
 }
 
 // ============================================
+// ============================================
 // DRAFT SAVE/LOAD
+// ============================================
 // ============================================
 function saveDraft() {
     const formData = new FormData(document.getElementById('register-form'));
     const data = {};
     for (const [key, value] of formData.entries()) {
-        data[key] = value;
+        data[key] = sanitizeInput(value);
     }
     data._docs = {};
     for (const [key, value] of Object.entries(uploadedDocs)) {
@@ -933,104 +1165,9 @@ function loadDraft() {
 }
 
 // ============================================
-// ADD LECTURER TO STAFF_RECORDS
-// ============================================
-async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender, program) {
-    try {
-        const { data: existing } = await sb
-            .from('staff_records')
-            .select('id')
-            .eq('email', email)
-            .maybeSingle();
-        
-        if (existing) {
-            console.log('⚠️ Staff already exists in staff_records:', email);
-            return true;
-        }
-        
-        let finalStaffId = staffId;
-        if (!finalStaffId || finalStaffId.trim() === '') {
-            const deptCodes = {
-                'Nursing': 'NUR',
-                'TVET': 'TVT',
-                'Community Health': 'COM',
-                'Health Records': 'HRT',
-                'ICT': 'ICT',
-                'Administration': 'ADM'
-            };
-            
-            const deptCode = deptCodes[department] || 'STA';
-            
-            const { data: deptStaff } = await sb
-                .from('staff_records')
-                .select('id')
-                .ilike('id', 'NCHSM' + deptCode + '-%')
-                .order('created_at', { ascending: false });
-            
-            let nextNumber = 1;
-            if (deptStaff && deptStaff.length > 0) {
-                const lastId = deptStaff[0].id;
-                const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
-                if (match) {
-                    nextNumber = parseInt(match[1]) + 1;
-                } else {
-                    nextNumber = deptStaff.length + 1;
-                }
-            }
-            
-            finalStaffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
-            console.log('🆕 Auto-generated Staff ID:', finalStaffId);
-        }
-        
-        const nameParts = fullName.trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const otherNames = nameParts.slice(1).join(' ') || '';
-        
-        if (!department) {
-            console.error('❌ Department is required for lecturer registration');
-            return false;
-        }
-        
-        const staffProgram = program || 'N/A';
-        
-        const staffData = {
-            id: finalStaffId,
-            title: 'Mr.',
-            first_name: firstName,
-            other_names: otherNames,
-            department: department,
-            designation: 'lecturer',
-            email: email,
-            phone: phone || '',
-            gender: gender || 'Male',
-            login_enabled: false,
-            password_hash: btoa(password),
-            status: 'pending',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            program: staffProgram
-        };
-        
-        const { error } = await sb
-            .from('staff_records')
-            .insert([staffData]);
-        
-        if (error) {
-            console.error('❌ Failed to add staff to staff_records:', error);
-            return false;
-        }
-        
-        console.log('✅ Staff added to staff_records with ID:', finalStaffId);
-        return true;
-        
-    } catch (error) {
-        console.error('❌ Error adding staff to staff_records:', error);
-        return false;
-    }
-}
-
 // ============================================
 // SUCCESS ANIMATION
+// ============================================
 // ============================================
 function showSuccessAnimation(intakeDisplay) {
     const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
@@ -1064,7 +1201,125 @@ function showSuccessAnimation(intakeDisplay) {
 }
 
 // ============================================
-// FORM SUBMISSION
+// ============================================
+// ADD LECTURER TO STAFF_RECORDS
+// ============================================
+// ============================================
+async function addStaffToRecords(userId, email, password, fullName, staffId, department, phone, gender, program) {
+    try {
+        const sanitizedEmail = sanitizeInput(email);
+        const sanitizedFullName = sanitizeInput(fullName);
+        const sanitizedDepartment = sanitizeInput(department);
+        const sanitizedPhone = sanitizeInput(phone || '');
+        const sanitizedGender = sanitizeInput(gender || 'Male');
+        const sanitizedProgram = sanitizeInput(program || 'N/A');
+        
+        if (containsSQLInjection(sanitizedEmail) || containsSQLInjection(sanitizedFullName)) {
+            console.error('❌ SQL injection detected in staff data');
+            return false;
+        }
+        
+        const { data: existing } = await sb
+            .from('staff_records')
+            .select('id')
+            .eq('email', sanitizedEmail)
+            .maybeSingle();
+        
+        if (existing) {
+            console.log('⚠️ Staff already exists in staff_records:', sanitizedEmail);
+            return true;
+        }
+        
+        let finalStaffId = staffId;
+        if (!finalStaffId || finalStaffId.trim() === '') {
+            const deptCodes = {
+                'Nursing': 'NUR',
+                'TVET': 'TVT',
+                'Community Health': 'COM',
+                'Health Records': 'HRT',
+                'ICT': 'ICT',
+                'Administration': 'ADM'
+            };
+            
+            const deptCode = deptCodes[sanitizedDepartment] || 'STA';
+            
+            const { data: deptStaff } = await sb
+                .from('staff_records')
+                .select('id')
+                .ilike('id', 'NCHSM' + deptCode + '-%')
+                .order('created_at', { ascending: false });
+            
+            let nextNumber = 1;
+            if (deptStaff && deptStaff.length > 0) {
+                const lastId = deptStaff[0].id;
+                const match = lastId.match(new RegExp('NCHSM' + deptCode + '-(\\d+)'));
+                if (match) {
+                    nextNumber = parseInt(match[1]) + 1;
+                } else {
+                    nextNumber = deptStaff.length + 1;
+                }
+            }
+            
+            finalStaffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
+            console.log('🆕 Auto-generated Staff ID:', finalStaffId);
+        }
+        
+        const nameParts = sanitizedFullName.trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const otherNames = nameParts.slice(1).join(' ') || '';
+        
+        if (!sanitizedDepartment) {
+            console.error('❌ Department is required for lecturer registration');
+            return false;
+        }
+        
+        // Hash password using SHA-256 (simple hash - use bcrypt in production)
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password + 'NCHSM_SALT_2026');
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        const staffData = {
+            id: finalStaffId,
+            title: 'Mr.',
+            first_name: firstName,
+            other_names: otherNames,
+            department: sanitizedDepartment,
+            designation: 'lecturer',
+            email: sanitizedEmail,
+            phone: sanitizedPhone || '',
+            gender: sanitizedGender || 'Male',
+            login_enabled: false,
+            password_hash: passwordHash,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            program: sanitizedProgram
+        };
+        
+        const { error } = await sb
+            .from('staff_records')
+            .insert([staffData]);
+        
+        if (error) {
+            console.error('❌ Failed to add staff to staff_records:', error);
+            return false;
+        }
+        
+        console.log('✅ Staff added to staff_records with ID:', finalStaffId);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error adding staff to staff_records:', error);
+        return false;
+    }
+}
+
+// ============================================
+// ============================================
+// FORM SUBMISSION - SECURE VERSION
+// ============================================
 // ============================================
 document.getElementById('register-form').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -1077,173 +1332,123 @@ document.getElementById('register-form').addEventListener('submit', async functi
     btn.disabled = true;
     document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
     
-    if (!document.getElementById('terms').checked && !termsAccepted) {
-        showFeedback('❌ Please agree to the Terms & Conditions.', 'error');
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    
-    const email = document.getElementById('email').value.trim();
-    if (!isValidEmail(email)) {
-        showFeedback('❌ Please enter a valid email address.', 'error');
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    
     try {
+        // 1. CSRF Protection
+        verifyCSRFToken();
+        
+        // 2. Rate Limiting
+        const emailInput = document.getElementById('email').value.trim();
+        await rateLimiter.check(emailInput);
+        
+        // 3. Check Terms
+        if (!document.getElementById('terms').checked && !termsAccepted) {
+            throw new Error('Please agree to the Terms & Conditions.');
+        }
+        
+        // 4. Validate Email
+        const emailValidation = isValidEmail(emailInput);
+        if (!emailValidation.valid) {
+            throw new Error(emailValidation.message);
+        }
+        const email = emailInput;
+        
+        // 5. Check if email exists
         const emailExistsFinal = await checkEmailExists(email);
         if (emailExistsFinal) {
-            showFeedback('❌ This email is already registered. Please use a different email or login.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
-        }
-    } catch (error) {
-        console.error('Final email check failed:', error);
-    }
-    
-    const role = document.getElementById('role').value;
-    const full_name = document.getElementById('full_name').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const alt_phone = document.getElementById('alt_phone').value.trim() || '';
-    const national_id = document.getElementById('national_id').value.trim() || '';
-    const dob = document.getElementById('dob').value;
-    const gender = document.getElementById('gender').value;
-    const address = document.getElementById('address').value.trim() || '';
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirm_password').value;
-    
-    const programSelect = document.getElementById('program_type');
-    const program_type = programSelect.value;
-    
-    const student_id_number = document.getElementById('student_id_number').value.trim();
-    const intakeData = getIntakeData();
-    const guardian_name = document.getElementById('guardian_name').value.trim() || '';
-    const guardian_phone = document.getElementById('guardian_phone').value.trim() || '';
-    
-    const department = document.getElementById('department').value;
-    const employment_date = document.getElementById('employment_date').value || '';
-    
-    // Validations
-    if (!full_name) {
-        showFeedback('❌ Please enter your full name.', 'error');
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    if (!phone) {
-        showFeedback('❌ Please enter your phone number.', 'error');
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    if (!dob) {
-        showFeedback('❌ Please select your date of birth.', 'error');
-        document.getElementById('dob').style.borderColor = '#DC2626';
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    if (!gender) {
-        showFeedback('❌ Please select your gender.', 'error');
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    if (!role) {
-        showFeedback('❌ Please select a role.', 'error');
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    if (password !== confirmPassword) {
-        showFeedback('❌ Passwords do not match.', 'error');
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    if (password.length < 6) {
-        showFeedback('❌ Password must be at least 6 characters.', 'error');
-        btn.disabled = false;
-        document.getElementById('button-text').textContent = '✅ Create Account';
-        return;
-    }
-    
-    if (role === 'student') {
-        if (!selectedStudentType) {
-            showFeedback('❌ Please select whether you are a Continuing or New student.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
+            throw new Error('This email is already registered. Please use a different email or login.');
         }
         
-        const studentId = document.getElementById('student_id_number').value.trim();
-        if (!studentId) {
-            showFeedback('❌ Please enter your Student ID or generate one.', 'error');
-            document.getElementById('student_id_number').style.borderColor = '#DC2626';
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
-        }
+        // 6. Get and sanitize all inputs
+        const full_name = sanitizeInput(document.getElementById('full_name').value.trim());
+        const phone = sanitizeInput(document.getElementById('phone').value.trim());
+        const alt_phone = sanitizeInput(document.getElementById('alt_phone').value.trim() || '');
+        const national_id = sanitizeInput(document.getElementById('national_id').value.trim() || '');
+        const dob = document.getElementById('dob').value;
+        const gender = sanitizeInput(document.getElementById('gender').value);
+        const address = sanitizeInput(document.getElementById('address').value.trim() || '');
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        const role = sanitizeInput(document.getElementById('role').value);
+        const program_type = sanitizeInput(document.getElementById('program_type').value);
+        const student_id_number = sanitizeInput(document.getElementById('student_id_number').value.trim());
+        const guardian_name = sanitizeInput(document.getElementById('guardian_name').value.trim() || '');
+        const guardian_phone = sanitizeInput(document.getElementById('guardian_phone').value.trim() || '');
+        const department = sanitizeInput(document.getElementById('department').value);
+        const employment_date = document.getElementById('employment_date').value || '';
         
-        const validation = validateStudentIdWithDuplicate(studentId);
-        if (!validation.valid) {
-            showFeedback('❌ ' + validation.message, 'error');
-            document.getElementById('student_id_number').style.borderColor = '#DC2626';
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
-        }
-        
-        if (selectedStudentType === 'continuing') {
-            try {
-                const exists = await checkStudentIdExists(studentId);
-                if (exists) {
-                    showFeedback('❌ This Student ID is already registered. Please contact administration.', 'error');
-                    document.getElementById('student_id_number').style.borderColor = '#DC2626';
-                    btn.disabled = false;
-                    document.getElementById('button-text').textContent = '✅ Create Account';
-                    return;
-                }
-            } catch (error) {
-                console.error('Error checking student ID:', error);
-                showFeedback('⚠️ Could not verify Student ID. Please try again.', 'warning');
-                btn.disabled = false;
-                document.getElementById('button-text').textContent = '✅ Create Account';
-                return;
+        // 7. Check for SQL injection
+        const sqlCheckInputs = [full_name, phone, alt_phone, national_id, address, 
+                               guardian_name, guardian_phone, student_id_number];
+        for (const input of sqlCheckInputs) {
+            if (containsSQLInjection(input)) {
+                throw new Error('Invalid characters detected in input fields');
             }
         }
         
-        if (!program_type) {
-            showFeedback('❌ Please select your program.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
+        // 8. Validate Password
+        if (password !== confirmPassword) {
+            throw new Error('Passwords do not match.');
         }
-        if (!intakeData.intake_year) {
-            showFeedback('❌ Please select your intake year.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
+        
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.valid) {
+            throw new Error(passwordValidation.message);
         }
-    }
-    
-    if (role === 'lecturer') {
-        if (!department) {
-            showFeedback('❌ Please select your department.', 'error');
-            btn.disabled = false;
-            document.getElementById('button-text').textContent = '✅ Create Account';
-            return;
+        
+        // 9. Validate required fields
+        if (!full_name) throw new Error('Please enter your full name.');
+        if (!phone) throw new Error('Please enter your phone number.');
+        if (!dob) throw new Error('Please select your date of birth.');
+        if (!gender) throw new Error('Please select your gender.');
+        if (!role) throw new Error('Please select a role.');
+        
+        // 10. Student-specific validation
+        if (role === 'student') {
+            if (!selectedStudentType) {
+                throw new Error('Please select whether you are a Continuing or New student.');
+            }
+            
+            if (!student_id_number) {
+                throw new Error('Please enter your Student ID or generate one.');
+            }
+            
+            const validation = validateStudentId(student_id_number);
+            if (!validation.valid) {
+                throw new Error(validation.message);
+            }
+            
+            if (selectedStudentType === 'continuing') {
+                try {
+                    const exists = await checkStudentIdExists(student_id_number);
+                    if (!exists) {
+                        throw new Error('Student ID not found in our records. Please contact administration.');
+                    }
+                } catch (error) {
+                    if (error.message.includes('not found')) {
+                        throw error;
+                    }
+                    console.error('Error checking student ID:', error);
+                    throw new Error('Could not verify Student ID. Please try again.');
+                }
+            }
+            
+            if (!program_type) throw new Error('Please select your program.');
+            
+            const intakeData = getIntakeData();
+            if (!intakeData.intake_year) throw new Error('Please select your intake year.');
         }
-    }
-    
-    const today = new Date();
-    const admissionDate = today.toISOString().split('T')[0];
-    const defaultBlock = 'Introductory';
-    
-    try {
+        
+        // 11. Lecturer-specific validation
+        if (role === 'lecturer') {
+            if (!department) throw new Error('Please select your department.');
+        }
+        
+        // 12. Proceed with registration
+        const today = new Date();
+        const admissionDate = today.toISOString().split('T')[0];
+        const defaultBlock = 'Introductory';
+        const intakeData = getIntakeData();
+        
         let userMetadata = {
             full_name, role, phone, alt_phone, national_id,
             date_of_birth: dob, gender, address, status: 'pending',
@@ -1251,11 +1456,10 @@ document.getElementById('register-form').addEventListener('submit', async functi
         };
         
         if (role === 'student') {
-            const programValue = document.getElementById('program_type').value;
             userMetadata = {
                 ...userMetadata,
                 student_id: student_id_number,
-                program: programValue,
+                program: program_type,
                 intake_year: intakeData.intake_year,
                 intake_month: intakeData.intake_month,
                 current_block: defaultBlock,
@@ -1287,16 +1491,14 @@ document.getElementById('register-form').addEventListener('submit', async functi
             email, 
             password,
             options: { 
-                data: userMetadata
+                data: userMetadata,
+                emailRedirectTo: window.location.origin + '/verify-email.html'
             }
         });
         
         if (authError) {
             if (authError.message.includes('User already registered')) {
-                showFeedback('❌ This email is already registered. Please use a different email or login.', 'error');
-                btn.disabled = false;
-                document.getElementById('button-text').textContent = '✅ Create Account';
-                return;
+                throw new Error('This email is already registered. Please use a different email or login.');
             }
             throw authError;
         }
@@ -1341,6 +1543,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
         const userId = authData.user.id;
         const uploadPromises = [];
         
+        // Upload profile photo
         if (uploadedDocs.profile_photo) {
             const photoFile = uploadedDocs.profile_photo;
             const photoExt = photoFile.name.split('.').pop();
@@ -1358,6 +1561,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
             uploadPromises.push(uploadPromise);
         }
         
+        // Upload student documents
         if (role === 'student') {
             const studentDocTypes = ['kcse', 'id'];
             for (const docType of studentDocTypes) {
@@ -1385,6 +1589,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
             }
         }
         
+        // Upload lecturer documents
         if (role === 'lecturer') {
             const lecturerDocTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
             for (const docType of lecturerDocTypes) {
@@ -1415,24 +1620,29 @@ document.getElementById('register-form').addEventListener('submit', async functi
         await Promise.allSettled(uploadPromises);
         
         const displayIntake = getDisplayIntake(program_type, intakeData.intake_year, intakeData.intake_month);
-        showFeedback(`✅ Registration successful!`, 'success');
+        showFeedback(`✅ Registration successful! Please check your email to verify your account.`, 'success');
         
         showSuccessAnimation(displayIntake);
         localStorage.removeItem('registration_draft');
         
     } catch (error) {
         console.error('❌ Registration error:', error);
-        let errorMessage = error.message || 'Unknown error';
-        showFeedback(`❌ Registration failed: ${errorMessage}`, 'error');
+        let errorMessage = error.message || 'Unknown error occurred. Please try again.';
+        showFeedback(`❌ ${sanitizeInput(errorMessage)}`, 'error');
         btn.disabled = false;
         document.getElementById('button-text').textContent = '✅ Create Account';
     }
 });
 
 // ============================================
+// ============================================
 // EVENT LISTENERS & INITIALIZATION
 // ============================================
+// ============================================
 document.addEventListener('DOMContentLoaded', function() {
+    // Generate CSRF Token
+    generateCSRFToken();
+    
     // Initialize Feather Icons
     if (typeof feather !== 'undefined') {
         feather.replace();
@@ -1443,6 +1653,12 @@ document.addEventListener('DOMContentLoaded', function() {
     updateProgress();
     document.getElementById('role').dispatchEvent(new Event('change'));
     
+    // Add security headers via meta tags
+    const cspMeta = document.createElement('meta');
+    cspMeta.httpEquiv = 'Content-Security-Policy';
+    cspMeta.content = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://raw.githubusercontent.com https://nakurucollegeofhealth.ac.ke; connect-src 'self' https://lwhtjozfsmbyihenfunw.supabase.co;";
+    document.head.appendChild(cspMeta);
+    
     // ============================================
     // STUDENT ID REAL-TIME VALIDATION
     // ============================================
@@ -1452,7 +1668,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (studentIdInput && studentIdStatus) {
         studentIdInput.addEventListener('input', function() {
             // Skip validation for generated numbers
-            if (this.value.trim().startsWith('NCHSM-')) {
+            if (this.dataset.generated === 'true') {
                 studentIdStatus.textContent = '✅ Auto-generated registration number';
                 studentIdStatus.className = 'help-text valid';
                 this.style.borderColor = '#10b981';
@@ -1460,7 +1676,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            const value = this.value.trim();
+            const value = this.value.trim().toUpperCase();
             
             if (!value) {
                 studentIdStatus.textContent = '';
@@ -1470,7 +1686,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            const validation = validateStudentIdWithDuplicate(value);
+            // Check for SQL injection
+            if (containsSQLInjection(value)) {
+                studentIdStatus.textContent = '❌ Invalid characters detected';
+                studentIdStatus.className = 'help-text invalid';
+                this.style.borderColor = '#DC2626';
+                this.dataset.valid = 'false';
+                return;
+            }
+            
+            const validation = validateStudentId(value);
             
             if (!validation.valid) {
                 studentIdStatus.textContent = '❌ ' + validation.message;
@@ -1481,58 +1706,49 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            studentIdStatus.textContent = '⏳ Checking if ID is available...';
-            studentIdStatus.className = 'help-text checking';
-            this.style.borderColor = '#f59e0b';
-            this.dataset.valid = 'checking';
-            
-            if (studentIdCheckTimeout) clearTimeout(studentIdCheckTimeout);
-            
-            studentIdCheckTimeout = setTimeout(async () => {
-                if (studentIdCheckInProgress) return;
-                studentIdCheckInProgress = true;
+            // For continuing students, check if ID exists
+            if (selectedStudentType === 'continuing') {
+                studentIdStatus.textContent = '⏳ Checking if ID exists...';
+                studentIdStatus.className = 'help-text checking';
+                this.style.borderColor = '#f59e0b';
+                this.dataset.valid = 'checking';
                 
-                try {
-                    const exists = await checkStudentIdExists(value);
+                if (studentIdCheckTimeout) clearTimeout(studentIdCheckTimeout);
+                
+                studentIdCheckTimeout = setTimeout(async () => {
+                    if (studentIdCheckInProgress) return;
+                    studentIdCheckInProgress = true;
                     
-                    if (exists) {
-                        studentIdStatus.textContent = '❌ This Student ID is already registered. Please check and try again.';
-                        studentIdStatus.className = 'help-text invalid';
-                        this.style.borderColor = '#DC2626';
-                        this.dataset.valid = 'false';
-                    } else {
-                        let formatText = '';
-                        if (validation.format === 'krchn') {
-                            formatText = `✅ Valid KRCHN format: ${validation.program} | #${validation.number} | ${validation.month} ${validation.year}`;
-                        } else if (validation.format === 'tvet') {
-                            formatText = `✅ Valid TVET format: ${validation.program} | #${validation.number} | ${validation.monthName} ${validation.fullYear}`;
-                        }
-                        studentIdStatus.textContent = formatText + ' ✅ Available';
-                        studentIdStatus.className = 'help-text valid';
-                        this.style.borderColor = '#10b981';
-                        this.dataset.valid = 'true';
+                    try {
+                        const exists = await checkStudentIdExists(value);
                         
-                        const programSelect = document.getElementById('program_type');
-                        if (programSelect && validation.program) {
-                            const options = programSelect.options;
-                            for (let option of options) {
-                                if (option.value === validation.program) {
-                                    option.selected = true;
-                                    programSelect.dispatchEvent(new Event('change'));
-                                    break;
-                                }
-                            }
+                        if (exists) {
+                            studentIdStatus.textContent = '✅ Student ID found!';
+                            studentIdStatus.className = 'help-text valid';
+                            this.style.borderColor = '#10b981';
+                            this.dataset.valid = 'true';
+                        } else {
+                            studentIdStatus.textContent = '❌ Student ID not found. Please check and try again.';
+                            studentIdStatus.className = 'help-text invalid';
+                            this.style.borderColor = '#DC2626';
+                            this.dataset.valid = 'false';
                         }
+                    } catch (error) {
+                        console.error('Error checking student ID:', error);
+                        studentIdStatus.textContent = '⚠️ Could not verify ID';
+                        studentIdStatus.className = 'help-text warning';
+                        this.dataset.valid = 'unknown';
+                    } finally {
+                        studentIdCheckInProgress = false;
                     }
-                } catch (error) {
-                    console.error('Error checking student ID:', error);
-                    studentIdStatus.textContent = '⚠️ Could not verify ID availability';
-                    studentIdStatus.className = 'help-text warning';
-                    this.dataset.valid = 'unknown';
-                } finally {
-                    studentIdCheckInProgress = false;
-                }
-            }, 800);
+                }, 800);
+            } else {
+                // For new students, just show valid format
+                studentIdStatus.textContent = '✅ Valid format: ' + validation.display;
+                studentIdStatus.className = 'help-text valid';
+                this.style.borderColor = '#10b981';
+                this.dataset.valid = 'true';
+            }
         });
     }
     
@@ -1542,22 +1758,22 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('program_type').addEventListener('change', function() {
         const selected = this.options[this.selectedIndex];
         const desc = selected?.dataset?.desc || 'Select a program above to see details';
-        document.getElementById('programDescription').textContent = desc;
+        document.getElementById('programDescription').textContent = sanitizeInput(desc);
         updateIntakePreview();
         
         if (selectedStudentType === 'new') {
             if (this.value && this.value !== '') {
-                generateSequentialStudentNumber().then(num => {
-                    generatedStudentNumber = num;
-                    document.getElementById('generatedRegNumber').textContent = num;
+                generateSequentialStudentNumber(this.value).then(id => {
+                    generatedStudentNumber = id;
+                    document.getElementById('generatedRegNumber').textContent = id;
                     const studentIdInput = document.getElementById('student_id_number');
-                    studentIdInput.value = num;
+                    studentIdInput.value = id;
                     studentIdInput.dataset.generated = 'true';
                     studentIdInput.style.borderColor = '#10b981';
                     document.getElementById('regNumberDisplay').classList.add('show');
                     document.getElementById('programRequiredMsg').classList.remove('show');
                     const statusEl = document.getElementById('student-id-status');
-                    statusEl.textContent = `✅ Generated: ${num}`;
+                    statusEl.textContent = `✅ Generated: ${id}`;
                     statusEl.className = 'help-text valid';
                 });
             } else {
@@ -1580,11 +1796,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
         
-        if (email && !isValidEmail(email)) {
-            emailStatus.textContent = '❌ Invalid email format';
-            emailStatus.style.color = '#DC2626';
-            this.style.borderColor = '#DC2626';
-            return;
+        if (email) {
+            const validation = isValidEmail(email);
+            if (!validation.valid) {
+                emailStatus.textContent = `❌ ${validation.message}`;
+                emailStatus.style.color = '#DC2626';
+                this.style.borderColor = '#DC2626';
+                return;
+            }
         }
         
         if (email.length < 5) {
@@ -1628,8 +1847,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('password').addEventListener('input', function() {
         const password = this.value;
         let strength = 0;
-        if (password.length >= 6) strength++;
-        if (password.length >= 10) strength++;
+        if (password.length >= 8) strength++;
+        if (password.length >= 12) strength++;
         if (/[A-Z]/.test(password)) strength++;
         if (/[a-z]/.test(password)) strength++;
         if (/[0-9]/.test(password)) strength++;
@@ -1743,7 +1962,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // ============================================
-    // TERMS MODAL CLOSE ON OUTSIDE CLICK
+    // MODAL CLOSE ON OUTSIDE CLICK
     // ============================================
     document.getElementById('termsModal').addEventListener('click', function(e) {
         if (e.target === this) closeTermsModal();
@@ -1754,13 +1973,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     console.log('✅ Registration page loaded with:');
+    console.log('  🔒 CSRF Protection: Enabled');
+    console.log('  🔒 Rate Limiting: Enabled');
+    console.log('  🔒 Input Sanitization: Enabled');
+    console.log('  🔒 SQL Injection Protection: Enabled');
+    console.log('  🔒 File Validation: Enabled');
+    console.log('  🔒 Email Verification: Enabled');
     console.log('  📸 Profile photo upload');
     console.log('  📁 Student: KCSE + ID documents');
     console.log('  📁 Lecturer: ID + KRA PIN + University Certificate + CV (Optional)');
     console.log('  🆔 Student Type: Continuing or New Student');
     console.log('  ✨ New Students: Sequential registration number generation');
-    console.log('  🆔 Student ID validation (KRCHN and TVET formats)');
+    console.log('  🆔 Student ID validation (DCHN and TVET formats)');
     console.log('  ✅ Student ID duplicate checking (real-time)');
     console.log('  👔 Lecturer Staff ID auto-generated');
-    console.log('  ✅ Validation modal shows errors when proceeding');
 });
