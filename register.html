@@ -179,7 +179,7 @@
                     </label>
                     
                     <input type="text" id="student_id_number" name="student_id_number" 
-                           placeholder="e.g., KRCHN/0032/MAR/2024 or DPOTT/10726/05/26" required>
+                           placeholder="e.g., KRCHN/0032/MAR/2024 or DCHN/0001/MAR/2026 or DPOTT/00001/05/26" required>
                     
                     <div id="student-id-status" class="help-text" style="font-weight: 600; margin-top: 4px; min-height: 20px;"></div>
                     
@@ -192,7 +192,7 @@
                 <!-- Auto-generated Registration Number Display -->
                 <div class="reg-number-display" id="regNumberDisplay">
                     <div class="reg-label">📋 Your New Registration Number</div>
-                    <div class="reg-value" id="generatedRegNumber">NCHSM-2026-0001</div>
+                    <div class="reg-value" id="generatedRegNumber">DCHN/0001/MAR/2026</div>
                     <div class="reg-hint">This number will be assigned to you as a new student. Please save it.</div>
                     <button type="button" class="regenerate-btn" onclick="regenerateStudentId()" style="margin-top:8px;padding:8px 16px;font-size:0.75rem;width:auto;background:#6b7280;color:white;border:none;border-radius:40px;cursor:pointer;">
                         🔄 Generate New Number
@@ -204,8 +204,9 @@
                     <label><i data-feather="book"></i> Program <span style="color: red;">*</span></label>
                     <select id="program_type" name="program_type" required>
                         <option value="">-- Select Your Program --</option>
-                        <optgroup label="KRCHN Programs">
-                            <option value="KRCHN" data-desc="Kenya Registered Community Health Nursing - 3.5 years program">KRCHN Nursing</option>
+                        <optgroup label="🎓 Nursing Programs">
+                            <option value="KRCHN" data-desc="Kenya Registered Community Health Nursing - 3.5 years program (Continuing Students)">KRCHN Nursing (Continuing)</option>
+                            <option value="DCHN" data-desc="Diploma in Community Health Nursing - 3.5 years program (New Students)">DCHN Nursing (NEW)</option>
                         </optgroup>
                         <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
                             <option value="DPOTT" data-desc="Diploma in Perioperative Theatre Technology - 2 years">Diploma in Perioperative Theatre Technology</option>
@@ -248,10 +249,11 @@
                 </div>
                 
                 <div id="intake-container">
-                    <div id="krchn-intake" class="intake-section">
+                    <!-- Nursing Intake (For both KRCHN and DCHN) -->
+                    <div id="nursing-intake" class="intake-section">
                         <div class="form-group">
                             <label><i data-feather="calendar"></i> Intake Year</label>
-                            <select id="krchn_intake_year" name="krchn_intake_year">
+                            <select id="nursing_intake_year" name="nursing_intake_year">
                                 <option value="">-- Select Intake Year --</option>
                                 <option value="2024">2024</option>
                                 <option value="2025">2025</option>
@@ -259,8 +261,8 @@
                                 <option value="2027">2027</option>
                                 <option value="2028">2028</option>
                             </select>
-                            <div class="help-text">KRCHN Nursing intake (March intake each year)</div>
-                            <div class="intake-preview">📅 Will display as: <strong id="krchnDisplay">March 2026</strong></div>
+                            <div class="help-text">Nursing intake (March intake each year)</div>
+                            <div class="intake-preview">📅 Will display as: <strong id="nursingDisplay">March 2026</strong></div>
                         </div>
                     </div>
 
@@ -319,11 +321,21 @@
                 <div style="margin-top: 12px; padding: 14px 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 13px;">
                     
                     <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #e2e8f0;">
-                        <span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 11px; white-space: nowrap;">🎓 NURSING</span>
+                        <span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 11px; white-space: nowrap;">🎓 NURSING (CONTINUING)</span>
                         <div>
                             <code style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">KRCHN/XXXX/MAR/YYYY</code>
                             <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
                                 Example: <span style="color: #0A3D62; font-weight: 500;">KRCHN/0032/MAR/2024</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #e2e8f0;">
+                        <span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 11px; white-space: nowrap;">🎓 NURSING (NEW)</span>
+                        <div>
+                            <code style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">DCHN/XXXX/MAR/YYYY</code>
+                            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                                Example: <span style="color: #0A3D62; font-weight: 500;">DCHN/0001/MAR/2026</span>
                             </div>
                         </div>
                     </div>
@@ -337,7 +349,7 @@
                                 <code style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">PROGRAM/XXXXX/MM/YYYY</code>
                             </div>
                             <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
-                                Example: <span style="color: #0A3D62; font-weight: 500;">DPOTT/10726/05/26</span>
+                                Example: <span style="color: #0A3D62; font-weight: 500;">DPOTT/00001/05/26</span>
                             </div>
                         </div>
                     </div>
@@ -382,8 +394,10 @@
                             <div>
                                 <strong>Quick Tips:</strong>
                                 <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 11px;">
+                                    <li><strong>KRCHN</strong> = Continuing Nursing students (keep existing ID)</li>
+                                    <li><strong>DCHN</strong> = New Nursing students (starts from 0001)</li>
                                     <li>Program code must be in <strong>UPPERCASE</strong></li>
-                                    <li>Student ID number can be <strong>4-5 digits</strong></li>
+                                    <li>Student ID number: <strong>4 digits</strong> for Nursing, <strong>5 digits</strong> for TVET</li>
                                     <li>Month must be <strong>01-12</strong></li>
                                     <li>Year can be <strong>2-digit (21-30)</strong> or <strong>4-digit (2021-2030)</strong></li>
                                 </ul>
