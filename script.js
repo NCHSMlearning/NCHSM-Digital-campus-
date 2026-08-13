@@ -9865,6 +9865,9 @@ console.log('✅ Attendance Management module loaded with TVET/KRCHN support!');
  * ✅ filterExamsTable exposed globally
  * ✅ getSb() replaced with window.sb
  * ✅ PROPER BLOCK FILTERING - Only shows students in selected block
+ * ✅ sendEmailWithBrevo function defined
+ * ✅ Edge Function email sending
+ * ✅ Fallback email support
  *******************************************************/
 
 // ============================================
@@ -9927,6 +9930,265 @@ function debounce(fn, delay = 300) {
     };
 }
 window.debounce = debounce;
+
+// ============================================
+// 📧 SEND EMAIL VIA EDGE FUNCTION
+// ============================================
+
+async function sendEmailWithBrevo(to, subject, htmlContent) {
+    try {
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            console.error('❌ Supabase client not available');
+            return { success: false, error: 'Supabase not available' };
+        }
+        
+        // Get session token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+            console.error('❌ No session:', sessionError);
+            // Try with anon key fallback
+            return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
+        }
+        
+        console.log(`📧 Sending email via Edge Function to: ${to}`);
+        
+        const response = await fetch(
+            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    to: to,
+                    subject: subject,
+                    html: htmlContent,
+                    from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>'
+                })
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            console.log(`✅ Email sent to ${to}`);
+            return { success: true, data };
+        } else {
+            console.error('❌ Email failed:', data.error || 'Unknown error');
+            return { success: false, error: data.error || 'Unknown error' };
+        }
+        
+    } catch (error) {
+        console.error('❌ Email error:', error);
+        // Try fallback
+        return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
+    }
+}
+
+// ============================================
+// 📧 FALLBACK: Edge Function with Anon Key
+// ============================================
+
+async function sendEmailWithEdgeFunctionFallback(to, subject, htmlContent) {
+    try {
+        console.log(`📧 Sending email via Edge Function (fallback) to: ${to}`);
+        
+        const response = await fetch(
+            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    to: to,
+                    subject: subject,
+                    html: htmlContent,
+                    from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>'
+                })
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            console.log(`✅ Email sent to ${to} (fallback)`);
+            return { success: true, data };
+        } else {
+            console.error('❌ Email failed (fallback):', data);
+            return { success: false, error: data.error || 'Unknown error' };
+        }
+        
+    } catch (error) {
+        console.error('❌ Email error (fallback):', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================
+// 📧 EXAM NOTIFICATION FUNCTIONS
+// ============================================
+
+async function sendExamNotificationEmail(examData, recipients) {
+    if (!recipients || recipients.length === 0) {
+        console.log('📧 No recipients to notify');
+        return { sent: 0, total: 0, failed: 0 };
+    }
+    
+    console.log(`📧 Sending exam notification to ${recipients.length} students...`);
+    
+    // Prepare email content
+    const examDate = examData.exam_date ? new Date(examData.exam_date).toLocaleDateString('en-KE', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    }) : 'TBD';
+    
+    const examTime = examData.exam_start_time || 'TBD';
+    const examLink = examData.online_link || examData.exam_link || '#';
+    const examTitle = examData.title || examData.exam_name || 'New Exam';
+    const examType = examData.exam_type || 'EXAM';
+    const examTypeLabel = getExamTypeLabel(examType);
+    
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Exam Posted</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background: #f0f4f8; }
+        .container { max-width: 580px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px; text-align: center; color: white; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header p { margin: 4px 0 0; opacity: 0.8; }
+        .body { padding: 30px 35px; }
+        .greeting { background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #10b981; }
+        .greeting p { margin: 0; font-size: 16px; color: #0A3D62; }
+        .details { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+        .details h4 { margin: 0 0 12px 0; color: #1e293b; }
+        .details table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .details td { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+        .details .label { color: #64748B; font-weight: 500; }
+        .details .value { color: #0A3D62; font-weight: 600; text-align: right; }
+        .details tr:last-child td { border-bottom: none; }
+        .btn { display: inline-block; background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; }
+        .footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>📝 ${examTypeLabel} Posted!</h1>
+                <p>Nakuru College of Health Sciences and Management</p>
+            </div>
+            
+            <div class="body">
+                <div class="greeting">
+                    <p>👋 <strong>Dear Student,</strong></p>
+                    <p style="margin: 8px 0 0; color: #1e293b;">
+                        A new exam has been posted for your program. Please review the details below.
+                    </p>
+                </div>
+                
+                <div class="details">
+                    <h4>📋 Exam Details</h4>
+                    <table>
+                        <tr><td class="label">📝 Exam Title</td><td class="value"><strong>${escapeHtml(examTitle)}</strong></td></tr>
+                        <tr><td class="label">🎓 Program</td><td class="value">${escapeHtml(examData.target_program || examData.program_type || 'N/A')}</td></tr>
+                        <tr><td class="label">📚 Block/Term</td><td class="value">${escapeHtml(examData.block || 'N/A')}</td></tr>
+                        <tr><td class="label">📅 Date</td><td class="value">${examDate}</td></tr>
+                        <tr><td class="label">⏰ Time</td><td class="value">${examTime}</td></tr>
+                        <tr><td class="label">⏱️ Duration</td><td class="value">${examData.duration_minutes || 'N/A'} minutes</td></tr>
+                        <tr><td class="label">📊 Total Marks</td><td class="value">${examData.marks_out_of || examData.total_marks || 100}</td></tr>
+                        <tr><td class="label">✅ Pass Mark</td><td class="value">${examData.pass_mark || 50}%</td></tr>
+                        ${examLink && examLink !== '#' ? `<tr><td class="label">🔗 Exam Link</td><td class="value"><a href="${escapeHtml(examLink)}" target="_blank">Click Here</a></td></tr>` : ''}
+                    </table>
+                </div>
+                
+                ${examLink && examLink !== '#' ? `
+                <div style="text-align: center; margin: 20px 0;">
+                    <a href="${escapeHtml(examLink)}" target="_blank" class="btn">🚪 Take Exam</a>
+                </div>` : ''}
+                
+                <div style="background: #fef3c7; border-radius: 12px; padding: 12px 16px; border-left: 4px solid #f59e0b; margin-top: 16px;">
+                    <p style="margin: 0; font-size: 13px; color: #78350F;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Important:</strong> Please ensure you have a stable internet connection before starting the exam.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
+                <p style="font-size:0.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+    
+    // Send emails
+    let sentCount = 0;
+    let failedCount = 0;
+    
+    for (const student of recipients) {
+        if (!student.email) {
+            failedCount++;
+            continue;
+        }
+        
+        try {
+            const result = await sendEmailWithBrevo(
+                student.email,
+                `📝 ${examTypeLabel}: ${examTitle}`,
+                emailHtml
+            );
+            
+            if (result.success) {
+                sentCount++;
+            } else {
+                failedCount++;
+                console.error(`Failed to send to ${student.email}:`, result.error);
+            }
+            
+            // Small delay to avoid rate limiting
+            await new Promise(r => setTimeout(r, 200));
+            
+        } catch (error) {
+            console.error(`Failed to send to ${student.email}:`, error);
+            failedCount++;
+        }
+    }
+    
+    console.log(`✅ Exam notifications sent: ${sentCount} sent, ${failedCount} failed`);
+    
+    // Save notification record
+    try {
+        const supabase = window.sb || window.supabase;
+        if (supabase) {
+            await supabase.from('exam_notifications').insert([{
+                exam_id: examData.id,
+                recipients: recipients.length,
+                sent_count: sentCount,
+                failed_count: failedCount,
+                sent_at: new Date().toISOString()
+            }]);
+        }
+    } catch (error) {
+        console.warn('Could not save notification record:', error);
+    }
+    
+    return { sent: sentCount, failed: failedCount, total: recipients.length };
+}
 
 // ============================================
 // 📧 STUDENT SELECTION FOR EMAIL NOTIFICATIONS
@@ -10182,290 +10444,6 @@ function getNotificationRecipients() {
     return recipients;
 }
 
-// ============================================
-// 📧 SEND EXAM NOTIFICATION EMAIL - USING EDGE FUNCTION
-// ============================================
-
-async function sendExamNotificationEmail(examData, recipients) {
-    if (!recipients || recipients.length === 0) {
-        console.log('📧 No recipients to notify');
-        return { sent: 0, total: 0, failed: 0 };
-    }
-    
-    console.log(`📧 Sending exam notification to ${recipients.length} students...`);
-    
-    // Prepare email content
-    const examDate = examData.exam_date ? new Date(examData.exam_date).toLocaleDateString('en-KE', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    }) : 'TBD';
-    
-    const examTime = examData.exam_start_time || 'TBD';
-    const examLink = examData.online_link || examData.exam_link || '#';
-    const examTitle = examData.title || examData.exam_name || 'New Exam';
-    
-    const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Exam Posted</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background: #f0f4f8; }
-        .container { max-width: 580px; margin: 0 auto; padding: 20px; }
-        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px; text-align: center; color: white; }
-        .header h1 { margin: 0; font-size: 24px; }
-        .header p { margin: 4px 0 0; opacity: 0.8; }
-        .body { padding: 30px 35px; }
-        .greeting { background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #10b981; }
-        .greeting p { margin: 0; font-size: 16px; color: #0A3D62; }
-        .details { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
-        .details h4 { margin: 0 0 12px 0; color: #1e293b; }
-        .details table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        .details td { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
-        .details .label { color: #64748B; font-weight: 500; }
-        .details .value { color: #0A3D62; font-weight: 600; text-align: right; }
-        .details tr:last-child td { border-bottom: none; }
-        .btn { display: inline-block; background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; }
-        .footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="card">
-            <div class="header">
-                <h1>📝 New Exam Posted!</h1>
-                <p>Nakuru College of Health Sciences and Management</p>
-            </div>
-            
-            <div class="body">
-                <div class="greeting">
-                    <p>👋 <strong>Dear Student,</strong></p>
-                    <p style="margin: 8px 0 0; color: #1e293b;">
-                        A new exam has been posted for your program. Please review the details below.
-                    </p>
-                </div>
-                
-                <div class="details">
-                    <h4>📋 Exam Details</h4>
-                    <table>
-                        <tr><td class="label">📝 Exam Title</td><td class="value"><strong>${escapeHtml(examTitle)}</strong></td></tr>
-                        <tr><td class="label">🎓 Program</td><td class="value">${escapeHtml(examData.target_program || examData.program_type || 'N/A')}</td></tr>
-                        <tr><td class="label">📚 Block/Term</td><td class="value">${escapeHtml(examData.block || 'N/A')}</td></tr>
-                        <tr><td class="label">📅 Date</td><td class="value">${examDate}</td></tr>
-                        <tr><td class="label">⏰ Time</td><td class="value">${examTime}</td></tr>
-                        <tr><td class="label">⏱️ Duration</td><td class="value">${examData.duration_minutes || 'N/A'} minutes</td></tr>
-                        <tr><td class="label">📊 Total Marks</td><td class="value">${examData.marks_out_of || examData.total_marks || 100}</td></tr>
-                        <tr><td class="label">✅ Pass Mark</td><td class="value">${examData.pass_mark || 50}%</td></tr>
-                        ${examData.online_link || examData.exam_link ? `<tr><td class="label">🔗 Exam Link</td><td class="value"><a href="${examData.online_link || examData.exam_link}" target="_blank">Click Here</a></td></tr>` : ''}
-                    </table>
-                </div>
-                
-                ${examData.online_link || examData.exam_link ? `
-                <div style="text-align: center; margin: 20px 0;">
-                    <a href="${examData.online_link || examData.exam_link}" target="_blank" class="btn">🚪 Take Exam</a>
-                </div>` : ''}
-                
-                <div style="background: #fef3c7; border-radius: 12px; padding: 12px 16px; border-left: 4px solid #f59e0b; margin-top: 16px;">
-                    <p style="margin: 0; font-size: 13px; color: #78350F;">
-                        <i class="fas fa-info-circle"></i> 
-                        <strong>Important:</strong> Please ensure you have a stable internet connection before starting the exam.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="footer">
-                <p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
-                <p style="font-size:0.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p>
-            </div>
-        </div>
-    </div>
-</body>
-</html>`;
-    
-    // ✅ Send emails using Edge Function (same as Admin Dashboard)
-    let sentCount = 0;
-    let failedCount = 0;
-    
-    for (const student of recipients) {
-        if (!student.email) {
-            failedCount++;
-            continue;
-        }
-        
-        try {
-            // ✅ Use Edge Function - SAME as Admin Dashboard
-            const result = await sendEmailWithEdgeFunction(
-                student.email,
-                `📝 New Exam: ${examTitle}`,
-                emailHtml
-            );
-            
-            if (result.success) {
-                sentCount++;
-            } else {
-                failedCount++;
-                console.error(`Failed to send to ${student.email}:`, result.error);
-            }
-            
-            // Small delay to avoid rate limiting
-            await new Promise(r => setTimeout(r, 200));
-            
-        } catch (error) {
-            console.error(`Failed to send to ${student.email}:`, error);
-            failedCount++;
-        }
-    }
-    
-    console.log(`✅ Exam notifications sent: ${sentCount} sent, ${failedCount} failed`);
-    
-    // Save notification record
-    try {
-        const supabase = window.sb || window.supabase;
-        if (supabase) {
-            await supabase.from('exam_notifications').insert([{
-                exam_id: examData.id,
-                recipients: recipients.length,
-                sent_count: sentCount,
-                failed_count: failedCount,
-                sent_at: new Date().toISOString()
-            }]);
-        }
-    } catch (error) {
-        console.warn('Could not save notification record:', error);
-    }
-    
-    return { sent: sentCount, failed: failedCount, total: recipients.length };
-}
-
-// ============================================
-// 📧 SEND EMAIL VIA EDGE FUNCTION (More Secure)
-// ============================================
-
-async function sendEmailWithEdgeFunction(to, subject, htmlContent) {
-    try {
-        const supabase = window.sb || window.supabase;
-        if (!supabase) {
-            console.error('❌ Supabase client not available');
-            return { success: false, error: 'Supabase not available' };
-        }
-        
-        // Get session token
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session) {
-            console.error('❌ No session:', sessionError);
-            // Try with anon key fallback
-            return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
-        }
-        
-        console.log(`📧 Sending email via Edge Function to: ${to}`);
-        
-        const response = await fetch(
-            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email',
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    to: to,
-                    subject: subject,
-                    html: htmlContent,
-                    from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>'
-                })
-            }
-        );
-        
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-            console.log(`✅ Email sent to ${to}`);
-            return { success: true, data };
-        } else {
-            console.error('❌ Email failed:', data.error || 'Unknown error');
-            return { success: false, error: data.error || 'Unknown error' };
-        }
-        
-    } catch (error) {
-        console.error('❌ Email error:', error);
-        // Try fallback
-        return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
-    }
-}
-
-// ============================================
-// 📧 FALLBACK: Edge Function with Anon Key
-// ============================================
-
-async function sendEmailWithEdgeFunctionFallback(to, subject, htmlContent) {
-    try {
-        console.log(`📧 Sending email via Edge Function (fallback) to: ${to}`);
-        
-        const response = await fetch(
-            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email',
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    to: to,
-                    subject: subject,
-                    html: htmlContent,
-                    from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>'
-                })
-            }
-        );
-        
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-            console.log(`✅ Email sent to ${to} (fallback)`);
-            return { success: true, data };
-        } else {
-            console.error('❌ Email failed (fallback):', data);
-            return { success: false, error: data.error || 'Unknown error' };
-        }
-        
-    } catch (error) {
-        console.error('❌ Email error (fallback):', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// ============================================
-// 📧 FALLBACK EMAIL (Image Tracking) - Kept for compatibility
-// ============================================
-
-function sendEmailFallback(to, subject, htmlContent) {
-    return new Promise((resolve) => {
-        const scriptUrl = 'https://script.google.com/macros/s/AKfycbwo0Z-oQ_p5-dIe4XYiaRTv6ZdxlmfxP5LIpQT4T1cGihvlimVJg3AvdUNrDeZ0cEkJ3g/exec';
-        
-        const params = new URLSearchParams({
-            to: to,
-            subject: subject,
-            htmlContent: htmlContent,
-            emailType: 'exam_notification'
-        });
-        
-        const img = new Image();
-        img.src = scriptUrl + '?' + params.toString();
-        img.style.display = 'none';
-        document.body.appendChild(img);
-        
-        setTimeout(() => {
-            img.remove();
-            resolve({ success: true });
-        }, 1000);
-    });
-}
 // ============================================
 // LOAD EXAMS - FIXED (Properly attaches course data)
 // ============================================
@@ -10962,6 +10940,7 @@ async function loadAvailableClassesForExam() {
         </div>
     `;
 }
+
 function addCustomBlocks() {
     const input = document.getElementById('customBlocksInput');
     if (!input?.value.trim()) return;
@@ -12445,6 +12424,7 @@ async function populateExamCourseSelects(program, selected = '') {
         console.error('Error loading courses:', error);
     }
 }
+
 // ============================================
 // INIT
 // ============================================
@@ -12515,6 +12495,7 @@ function initExams() {
     
     console.log('🚀 Exams/CATS Management initialized with email notifications and block filtering!');
 }
+
 // ============================================
 // 🔧 EXPOSE GLOBALLY - FIX ALL REFERENCES
 // ============================================
@@ -12533,14 +12514,14 @@ window.selectEditCourse = selectEditCourse;
 window.setEditCourseValue = setEditCourseValue;
 
 // 3. Email notification functions
+window.sendEmailWithBrevo = sendEmailWithBrevo;
+window.sendEmailWithEdgeFunctionFallback = sendEmailWithEdgeFunctionFallback;
+window.sendExamNotificationEmail = sendExamNotificationEmail;
 window.loadStudentsForNotification = loadStudentsForNotification;
 window.searchStudentsForNotification = searchStudentsForNotification;
 window.toggleStudentForNotification = toggleStudentForNotification;
 window.updateSelectedStudentsDisplay = updateSelectedStudentsDisplay;
 window.getNotificationRecipients = getNotificationRecipients;
-window.sendExamNotificationEmail = sendExamNotificationEmail;
-window.sendEmailWithBrevo = sendEmailWithBrevo;
-window.sendEmailFallback = sendEmailFallback;
 
 // 4. Make sure debounce is global
 window.debounce = debounce;
@@ -12577,7 +12558,6 @@ window.filterGradeStudents = filterGradeStudents;
 window.updateGradeTotal = updateGradeTotal;
 window.getExamTypeLabel = getExamTypeLabel;
 window.populateExamCourseSelects = populateExamCourseSelects;
-// In your global exposure section
 window.updateBlockTermOptions = updateBlockTermOptions;
 
 // 7. DOM is already global
