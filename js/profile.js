@@ -1,5 +1,5 @@
 // ============================================================
-// 📋 PROFILE MODULE - COMPLETE WITH 2FA
+// 📋 PROFILE MODULE - COMPLETE WITH 2FA & DYNAMIC LABELS
 // ✅ Photos stored in user-documents bucket
 // ✅ profile_photo_url and passport_url both updated
 // ✅ Works with admin approvals
@@ -9,6 +9,7 @@
 // ✅ FIXED: Student ID, Email, Phone display in form
 // ✅ FIXED: SUPABASE_URL error
 // ✅ FIXED: Mobile fields populated
+// ✅ FIXED: Dynamic labels for TVET (Terms) vs Nursing (Blocks)
 // ============================================================
 
 // ============================================================
@@ -119,6 +120,13 @@ class ProfileModule {
         this.completedBlocksContainer = document.getElementById('completed-blocks');
         this.blockTimeline = document.getElementById('block-timeline-profile');
         
+        // Mobile Progress elements
+        this.blockProgressFillMobile = document.getElementById('block-progress-fill-mobile');
+        this.blockProgressTextMobile = document.getElementById('block-progress-text-mobile');
+        this.currentBlockStatusMobile = document.getElementById('current-block-status-mobile');
+        this.completedBlocksContainerMobile = document.getElementById('completed-blocks-mobile');
+        this.blockTimelineMobile = document.getElementById('block-timeline-profile-mobile');
+        
         // Document Upload Elements
         this.docKcseInput = document.getElementById('doc-kcse-input');
         this.docIdInput = document.getElementById('doc-id-input');
@@ -127,12 +135,27 @@ class ProfileModule {
         this.docKcseBadge = document.getElementById('doc-kcse-badge');
         this.docIdBadge = document.getElementById('doc-id-badge');
         
+        // Mobile Document Elements
+        this.docKcseInputMobile = document.getElementById('doc-kcse-input-mobile');
+        this.docIdInputMobile = document.getElementById('doc-id-input-mobile');
+        this.docKcseFilenameMobile = document.getElementById('doc-kcse-filename-mobile');
+        this.docIdFilenameMobile = document.getElementById('doc-id-filename-mobile');
+        this.docKcseBadgeMobile = document.getElementById('doc-kcse-badge-mobile');
+        this.docIdBadgeMobile = document.getElementById('doc-id-badge-mobile');
+        
         // Password Reset Elements
         this.currentPassword = document.getElementById('current-password');
         this.newPassword = document.getElementById('new-password');
         this.confirmPassword = document.getElementById('confirm-password');
         this.changePasswordBtn = document.getElementById('change-password-btn');
         this.passwordFeedback = document.getElementById('password-feedback');
+        
+        // Mobile Password Elements
+        this.currentPasswordMobile = document.getElementById('current-password-mobile');
+        this.newPasswordMobile = document.getElementById('new-password-mobile');
+        this.confirmPasswordMobile = document.getElementById('confirm-password-mobile');
+        this.changePasswordBtnMobile = document.getElementById('change-password-btn-mobile');
+        this.passwordFeedbackMobile = document.getElementById('password-feedback-mobile');
         
         // Action Buttons
         this.editProfileButton = document.getElementById('edit-profile-button');
@@ -236,6 +259,12 @@ class ProfileModule {
         if (this.docIdInput) {
             this.docIdInput.addEventListener('change', (e) => this.handleDocumentUpload(e, 'id'));
         }
+        if (this.docKcseInputMobile) {
+            this.docKcseInputMobile.addEventListener('change', (e) => this.handleDocumentUpload(e, 'kcse', 'mobile'));
+        }
+        if (this.docIdInputMobile) {
+            this.docIdInputMobile.addEventListener('change', (e) => this.handleDocumentUpload(e, 'id', 'mobile'));
+        }
     }
     
     // ============================================================
@@ -243,11 +272,12 @@ class ProfileModule {
     // ============================================================
     
     setupPasswordResetListeners() {
-        if (!this.newPassword) return;
-        
-        this.newPassword.addEventListener('input', () => {
-            this.validatePasswordRequirements(this.newPassword.value);
-        });
+        // Desktop password listeners
+        if (this.newPassword) {
+            this.newPassword.addEventListener('input', () => {
+                this.validatePasswordRequirements(this.newPassword.value);
+            });
+        }
         
         if (this.confirmPassword) {
             this.confirmPassword.addEventListener('input', () => {
@@ -259,6 +289,26 @@ class ProfileModule {
             this.changePasswordBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.changeUserPassword();
+            });
+        }
+        
+        // Mobile password listeners
+        if (this.newPasswordMobile) {
+            this.newPasswordMobile.addEventListener('input', () => {
+                this.validatePasswordRequirementsMobile(this.newPasswordMobile.value);
+            });
+        }
+        
+        if (this.confirmPasswordMobile) {
+            this.confirmPasswordMobile.addEventListener('input', () => {
+                this.validateConfirmPasswordMobile();
+            });
+        }
+        
+        if (this.changePasswordBtnMobile) {
+            this.changePasswordBtnMobile.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.changeUserPasswordMobile();
             });
         }
     }
@@ -506,8 +556,12 @@ class ProfileModule {
         // ============================================
         // 📊 UPDATE QUICK STATS
         // ============================================
-        
         this.updateQuickStats();
+        
+        // ============================================
+        // 🏷️ UPDATE DYNAMIC LABELS (TVET vs Nursing)
+        // ============================================
+        this.updateDynamicLabels();
         
         console.log('✅ Profile form populated with all data (Desktop + Mobile):', {
             name: p.full_name,
@@ -519,6 +573,76 @@ class ProfileModule {
             intake_year: p.intake_year,
             intake_month: p.intake_month
         });
+    }
+    
+    // ============================================================
+    // 🏷️ UPDATE DYNAMIC LABELS (TVET vs Nursing)
+    // ============================================================
+    
+    updateDynamicLabels() {
+        const isTVET = this.isTVETStudent();
+        
+        // ============================================
+        // 📊 DESKTOP LABELS
+        // ============================================
+        const desktopLabels = {
+            'block-label': isTVET ? 'Term' : 'Block',
+            'current-block-label': isTVET ? 'Current Term' : 'Current Block',
+            'completed-label': isTVET ? 'Terms Done' : 'Blocks Done',
+            'completed-label-2': isTVET ? 'Terms' : 'Blocks'
+        };
+        
+        Object.entries(desktopLabels).forEach(([id, text]) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = text;
+            }
+        });
+        
+        // Update "Current Block" status text
+        const currentStatusEl = document.getElementById('current-block-status');
+        if (currentStatusEl) {
+            const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Term 1' : 'Introductory');
+            currentStatusEl.textContent = `Current: ${currentBlock}`;
+        }
+        
+        // Update progress text
+        const progressTextEl = document.getElementById('block-progress-text');
+        if (progressTextEl) {
+            const progress = this.getProgressPercent();
+            progressTextEl.textContent = `${progress}% Complete`;
+        }
+        
+        // ============================================
+        // 📱 MOBILE LABELS
+        // ============================================
+        const mobileLabels = {
+            'current-block-label-mobile': isTVET ? 'Current Term' : 'Current Block',
+            'completed-label-mobile-2': isTVET ? 'Terms' : 'Blocks'
+        };
+        
+        Object.entries(mobileLabels).forEach(([id, text]) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = text;
+            }
+        });
+        
+        // Update mobile "Current Block" status text
+        const currentStatusMobileEl = document.getElementById('current-block-status-mobile');
+        if (currentStatusMobileEl) {
+            const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Term 1' : 'Introductory');
+            currentStatusMobileEl.textContent = `Current: ${currentBlock}`;
+        }
+        
+        // Update mobile progress text
+        const progressTextMobileEl = document.getElementById('block-progress-text-mobile');
+        if (progressTextMobileEl) {
+            const progress = this.getProgressPercent();
+            progressTextMobileEl.textContent = `${progress}% Complete`;
+        }
+        
+        console.log(`🏷️ Labels updated: ${isTVET ? 'TVET (Terms)' : 'Nursing (Blocks)'}`);
     }
     
     // ============================================================
@@ -539,7 +663,6 @@ class ProfileModule {
                 if (photoUrl.startsWith('http')) {
                     finalPhotoSrc = photoUrl;
                 } else {
-                    // ✅ FIX: Get Supabase URL from multiple sources
                     const supabaseUrl = window.SUPABASE_URL || 
                                        window.APP_CONFIG?.SUPABASE_URL || 
                                        'https://lwhtjozfsmbyihenfunw.supabase.co';
@@ -601,7 +724,7 @@ class ProfileModule {
     // 📄 DOCUMENT UPLOAD HANDLERS
     // ============================================================
     
-    async handleDocumentUpload(event, docType) {
+    async handleDocumentUpload(event, docType, variant = 'desktop') {
         const file = event.target.files[0];
         if (!file) return;
         
@@ -618,8 +741,9 @@ class ProfileModule {
             return;
         }
         
-        const filenameEl = document.getElementById(`doc-${docType}-filename`);
-        const badgeEl = document.getElementById(`doc-${docType}-badge`);
+        const suffix = variant === 'mobile' ? '-mobile' : '';
+        const filenameEl = document.getElementById(`doc-${docType}-filename${suffix}`);
+        const badgeEl = document.getElementById(`doc-${docType}-badge${suffix}`);
         
         if (filenameEl) filenameEl.textContent = file.name;
         if (badgeEl) {
@@ -808,6 +932,7 @@ class ProfileModule {
     updateDocumentStatus() {
         if (!this.userProfile) return;
         
+        // Desktop badges
         if (this.docKcseBadge) {
             const status = this.userProfile.doc_kcse || 'pending';
             this.docKcseBadge.textContent = this.getDocumentStatusText(status);
@@ -820,11 +945,35 @@ class ProfileModule {
             this.docIdBadge.style.background = this.getStatusColor(status);
             this.docIdBadge.style.color = 'white';
         }
+        
+        // Mobile badges
+        if (this.docKcseBadgeMobile) {
+            const status = this.userProfile.doc_kcse || 'pending';
+            this.docKcseBadgeMobile.textContent = this.getDocumentStatusText(status);
+            this.docKcseBadgeMobile.style.background = this.getStatusColor(status);
+            this.docKcseBadgeMobile.style.color = 'white';
+        }
+        if (this.docIdBadgeMobile) {
+            const status = this.userProfile.doc_id || 'pending';
+            this.docIdBadgeMobile.textContent = this.getDocumentStatusText(status);
+            this.docIdBadgeMobile.style.background = this.getStatusColor(status);
+            this.docIdBadgeMobile.style.color = 'white';
+        }
+        
+        // Desktop filenames
         if (this.docKcseFilename && this.userProfile.doc_kcse === 'uploaded') {
             this.docKcseFilename.textContent = '✅ Document uploaded';
         }
         if (this.docIdFilename && this.userProfile.doc_id === 'uploaded') {
             this.docIdFilename.textContent = '✅ Document uploaded';
+        }
+        
+        // Mobile filenames
+        if (this.docKcseFilenameMobile && this.userProfile.doc_kcse === 'uploaded') {
+            this.docKcseFilenameMobile.textContent = '✅ Document uploaded';
+        }
+        if (this.docIdFilenameMobile && this.userProfile.doc_id === 'uploaded') {
+            this.docIdFilenameMobile.textContent = '✅ Document uploaded';
         }
     }
     
@@ -891,6 +1040,7 @@ class ProfileModule {
         const completedBlocksCount = currentBlockNumber - 1;
         const progressPercent = Math.round((completedBlocksCount / totalBlocks) * 100);
         
+        // Desktop progress
         if (this.blockProgressFill) {
             this.blockProgressFill.style.width = `${progressPercent}%`;
         }
@@ -899,6 +1049,17 @@ class ProfileModule {
         }
         if (this.currentBlockStatus) {
             this.currentBlockStatus.textContent = `Current: ${currentBlock}`;
+        }
+        
+        // Mobile progress
+        if (this.blockProgressFillMobile) {
+            this.blockProgressFillMobile.style.width = `${progressPercent}%`;
+        }
+        if (this.blockProgressTextMobile) {
+            this.blockProgressTextMobile.textContent = `${progressPercent}% Complete`;
+        }
+        if (this.currentBlockStatusMobile) {
+            this.currentBlockStatusMobile.textContent = `Current: ${currentBlock}`;
         }
         
         this.updateQuickStats(currentBlockNumber, completedBlocksCount, progressPercent);
@@ -917,8 +1078,18 @@ class ProfileModule {
     }
     
     updateBlockTimeline(currentBlock, isTVET) {
-        if (!this.blockTimeline) return;
+        // Desktop timeline
+        if (this.blockTimeline) {
+            this.blockTimeline.innerHTML = this.buildTimelineHTML(currentBlock, isTVET);
+        }
         
+        // Mobile timeline
+        if (this.blockTimelineMobile) {
+            this.blockTimelineMobile.innerHTML = this.buildTimelineHTML(currentBlock, isTVET);
+        }
+    }
+    
+    buildTimelineHTML(currentBlock, isTVET) {
         let blocks;
         if (isTVET) {
             blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Final'];
@@ -952,12 +1123,22 @@ class ProfileModule {
                     style="color: ${index < currentIndex ? '#10b981' : '#d1d5db'}; font-size: 12px;">➜</span>`;
             }
         });
-        this.blockTimeline.innerHTML = html;
+        return html;
     }
     
     updateCompletedBlocks(completedCount, isTVET) {
-        if (!this.completedBlocksContainer) return;
+        // Desktop
+        if (this.completedBlocksContainer) {
+            this.completedBlocksContainer.innerHTML = this.buildCompletedBlocksHTML(completedCount, isTVET);
+        }
         
+        // Mobile
+        if (this.completedBlocksContainerMobile) {
+            this.completedBlocksContainerMobile.innerHTML = this.buildCompletedBlocksHTML(completedCount, isTVET);
+        }
+    }
+    
+    buildCompletedBlocksHTML(completedCount, isTVET) {
         let blocks;
         if (isTVET) {
             blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5'];
@@ -968,8 +1149,7 @@ class ProfileModule {
         const completedBlocksList = blocks.slice(0, completedCount);
         
         if (completedBlocksList.length === 0) {
-            this.completedBlocksContainer.innerHTML = '<span style="background: #e2e8f0; color: #64748b; padding: 4px 12px; border-radius: 12px; font-size: 12px;">None yet</span>';
-            return;
+            return '<span style="background: #e2e8f0; color: #64748b; padding: 4px 12px; border-radius: 12px; font-size: 12px;">None yet</span>';
         }
         
         let html = '';
@@ -978,7 +1158,7 @@ class ProfileModule {
                 ✅ ${block}
             </span>`;
         });
-        this.completedBlocksContainer.innerHTML = html;
+        return html;
     }
     
     // ============================================================
@@ -993,22 +1173,136 @@ class ProfileModule {
             number: /[0-9]/.test(password),
             special: /[!@#$%^&*]/.test(password)
         };
-        return Object.values(requirements).every(v => v === true);
+        const allValid = Object.values(requirements).every(v => v === true);
+        
+        // Update feedback for desktop
+        const feedback = this.passwordFeedback;
+        if (feedback) {
+            if (password.length > 0) {
+                const messages = [];
+                if (!requirements.length) messages.push('at least 8 characters');
+                if (!requirements.uppercase) messages.push('uppercase');
+                if (!requirements.lowercase) messages.push('lowercase');
+                if (!requirements.number) messages.push('number');
+                if (!requirements.special) messages.push('special character');
+                
+                if (messages.length > 0) {
+                    feedback.textContent = `⚠️ Needs: ${messages.join(', ')}`;
+                    feedback.style.background = '#fef3c7';
+                    feedback.style.color = '#92400e';
+                    feedback.style.border = '1px solid #f59e0b';
+                    feedback.style.display = 'block';
+                } else {
+                    feedback.textContent = '✅ Strong password!';
+                    feedback.style.background = '#d1fae5';
+                    feedback.style.color = '#065f46';
+                    feedback.style.border = '1px solid #10b981';
+                    feedback.style.display = 'block';
+                }
+            } else {
+                feedback.style.display = 'none';
+            }
+        }
+        
+        return allValid;
+    }
+    
+    validatePasswordRequirementsMobile(password) {
+        const requirements = {
+            length: password.length >= 8,
+            uppercase: /[A-Z]/.test(password),
+            lowercase: /[a-z]/.test(password),
+            number: /[0-9]/.test(password),
+            special: /[!@#$%^&*]/.test(password)
+        };
+        const allValid = Object.values(requirements).every(v => v === true);
+        
+        const feedback = this.passwordFeedbackMobile;
+        if (feedback) {
+            if (password.length > 0) {
+                const messages = [];
+                if (!requirements.length) messages.push('at least 8 characters');
+                if (!requirements.uppercase) messages.push('uppercase');
+                if (!requirements.lowercase) messages.push('lowercase');
+                if (!requirements.number) messages.push('number');
+                if (!requirements.special) messages.push('special character');
+                
+                if (messages.length > 0) {
+                    feedback.textContent = `⚠️ Needs: ${messages.join(', ')}`;
+                    feedback.style.background = '#fef3c7';
+                    feedback.style.color = '#92400e';
+                    feedback.style.border = '1px solid #f59e0b';
+                    feedback.style.display = 'block';
+                } else {
+                    feedback.textContent = '✅ Strong password!';
+                    feedback.style.background = '#d1fae5';
+                    feedback.style.color = '#065f46';
+                    feedback.style.border = '1px solid #10b981';
+                    feedback.style.display = 'block';
+                }
+            } else {
+                feedback.style.display = 'none';
+            }
+        }
+        
+        return allValid;
     }
     
     validateConfirmPassword() {
         const newPassword = this.newPassword?.value || '';
         const confirmPassword = this.confirmPassword?.value || '';
         
-        if (confirmPassword && newPassword !== confirmPassword) {
-            this.showPasswordFeedback('❌ Passwords do not match!', 'error');
-            return false;
-        } else if (confirmPassword && newPassword === confirmPassword) {
-            this.showPasswordFeedback('✅ Passwords match!', 'success');
-            setTimeout(() => this.clearPasswordFeedback(), 2000);
-            return true;
+        const feedback = this.passwordFeedback;
+        if (feedback) {
+            if (confirmPassword && newPassword !== confirmPassword) {
+                feedback.textContent = '❌ Passwords do not match!';
+                feedback.style.background = '#fee2e2';
+                feedback.style.color = '#991b1b';
+                feedback.style.border = '1px solid #dc2626';
+                feedback.style.display = 'block';
+                return false;
+            } else if (confirmPassword && newPassword === confirmPassword) {
+                feedback.textContent = '✅ Passwords match!';
+                feedback.style.background = '#d1fae5';
+                feedback.style.color = '#065f46';
+                feedback.style.border = '1px solid #10b981';
+                feedback.style.display = 'block';
+                setTimeout(() => {
+                    if (feedback) feedback.style.display = 'none';
+                }, 2000);
+                return true;
+            }
+            feedback.style.display = 'none';
         }
-        this.clearPasswordFeedback();
+        return false;
+    }
+    
+    validateConfirmPasswordMobile() {
+        const newPassword = this.newPasswordMobile?.value || '';
+        const confirmPassword = this.confirmPasswordMobile?.value || '';
+        
+        const feedback = this.passwordFeedbackMobile;
+        if (feedback) {
+            if (confirmPassword && newPassword !== confirmPassword) {
+                feedback.textContent = '❌ Passwords do not match!';
+                feedback.style.background = '#fee2e2';
+                feedback.style.color = '#991b1b';
+                feedback.style.border = '1px solid #dc2626';
+                feedback.style.display = 'block';
+                return false;
+            } else if (confirmPassword && newPassword === confirmPassword) {
+                feedback.textContent = '✅ Passwords match!';
+                feedback.style.background = '#d1fae5';
+                feedback.style.color = '#065f46';
+                feedback.style.border = '1px solid #10b981';
+                feedback.style.display = 'block';
+                setTimeout(() => {
+                    if (feedback) feedback.style.display = 'none';
+                }, 2000);
+                return true;
+            }
+            feedback.style.display = 'none';
+        }
         return false;
     }
     
@@ -1088,6 +1382,11 @@ class ProfileModule {
             if (this.newPassword) this.newPassword.value = '';
             if (this.confirmPassword) this.confirmPassword.value = '';
             
+            // Clear mobile fields too
+            if (this.currentPasswordMobile) this.currentPasswordMobile.value = '';
+            if (this.newPasswordMobile) this.newPasswordMobile.value = '';
+            if (this.confirmPasswordMobile) this.confirmPasswordMobile.value = '';
+            
             await this.logAudit('PASSWORD_CHANGE', 'User changed their password', null, 'SUCCESS');
             
             setTimeout(() => {
@@ -1107,6 +1406,20 @@ class ProfileModule {
                 this.changePasswordBtn.innerHTML = '<i class="fas fa-key"></i> Change Password';
             }
         }
+    }
+    
+    async changeUserPasswordMobile() {
+        // Use desktop password change with mobile fields
+        const currentPassword = this.currentPasswordMobile?.value;
+        const newPassword = this.newPasswordMobile?.value;
+        const confirmPassword = this.confirmPasswordMobile?.value;
+        
+        // Temporarily set desktop fields to mobile values
+        if (this.currentPassword) this.currentPassword.value = currentPassword || '';
+        if (this.newPassword) this.newPassword.value = newPassword || '';
+        if (this.confirmPassword) this.confirmPassword.value = confirmPassword || '';
+        
+        await this.changeUserPassword();
     }
     
     // ============================================================
@@ -1483,6 +1796,7 @@ class ProfileModule {
     async update2FAUI() {
         const status = await this.check2FAStatus();
         
+        // Desktop 2FA elements
         const badge = document.getElementById('profile2FABadge');
         const btn = document.getElementById('profileEnable2FA');
         const btnText = document.getElementById('profile2FABtnText');
@@ -1490,13 +1804,24 @@ class ProfileModule {
         const recoverySection = document.getElementById('profileRecoveryCodes');
         const statusMsg = document.getElementById('profile2FAStatusMsg');
         
+        // Mobile 2FA elements
+        const badgeMobile = document.getElementById('profile2FABadgeMobile');
+        const btnMobile = document.getElementById('profileEnable2FAMobile');
+        const btnTextMobile = document.getElementById('profile2FABtnTextMobile');
+        const msgMobile = document.getElementById('profile2FAMessageMobile');
+        const recoverySectionMobile = document.getElementById('profileRecoveryCodesMobile');
+        const statusMsgMobile = document.getElementById('profile2FAStatusMsgMobile');
+        
         if (!badge && !btn) {
             this.create2FAElements();
             setTimeout(() => this.update2FAUI(), 300);
             return;
         }
         
-        if (status && status.two_factor_enabled && status.two_factor_secret) {
+        const isEnabled = status && status.two_factor_enabled && status.two_factor_secret;
+        
+        // Update Desktop
+        if (isEnabled) {
             if (badge) {
                 badge.style.background = '#d1fae5';
                 badge.style.color = '#065f46';
@@ -1540,6 +1865,52 @@ class ProfileModule {
                 statusMsg.textContent = '⚠️ 2FA is not enabled - click "Enable 2FA" to secure your account';
             }
             if (recoverySection) recoverySection.style.display = 'none';
+        }
+        
+        // Update Mobile
+        if (isEnabled) {
+            if (badgeMobile) {
+                badgeMobile.style.background = '#d1fae5';
+                badgeMobile.style.color = '#065f46';
+                badgeMobile.innerHTML = '<i class="fas fa-check-circle" style="font-size: 9px;"></i> Enabled';
+            }
+            if (btnMobile) {
+                btnMobile.style.background = '#10b981';
+                btnMobile.style.cursor = 'default';
+                btnMobile.disabled = true;
+                btnMobile.style.opacity = '0.8';
+            }
+            if (btnTextMobile) btnTextMobile.textContent = '✅ Active';
+            if (msgMobile) msgMobile.textContent = '✅ Secured with 2FA';
+            if (statusMsgMobile) {
+                statusMsgMobile.style.display = 'block';
+                statusMsgMobile.style.color = '#059669';
+                statusMsgMobile.textContent = '🔐 2FA active';
+            }
+            if (recoverySectionMobile) {
+                recoverySectionMobile.style.display = 'block';
+                this.loadRecoveryCodesCountMobile();
+            }
+        } else {
+            if (badgeMobile) {
+                badgeMobile.style.background = '#fef3c7';
+                badgeMobile.style.color = '#92400e';
+                badgeMobile.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size: 9px;"></i> Not Enabled';
+            }
+            if (btnMobile) {
+                btnMobile.style.background = 'linear-gradient(135deg, #4C1D95, #7c3aed)';
+                btnMobile.disabled = false;
+                btnMobile.style.opacity = '1';
+                btnMobile.style.cursor = 'pointer';
+            }
+            if (btnTextMobile) btnTextMobile.textContent = 'Enable 2FA';
+            if (msgMobile) msgMobile.textContent = 'Secure your account with 2FA';
+            if (statusMsgMobile) {
+                statusMsgMobile.style.display = 'block';
+                statusMsgMobile.style.color = '#92400e';
+                statusMsgMobile.textContent = '⚠️ 2FA not enabled';
+            }
+            if (recoverySectionMobile) recoverySectionMobile.style.display = 'none';
         }
     }
     
@@ -1671,9 +2042,16 @@ class ProfileModule {
             const countEl = document.getElementById('profileRecoveryCount');
             if (countEl) countEl.textContent = data?.length || 0;
             
+            const countElMobile = document.getElementById('profileRecoveryCountMobile');
+            if (countElMobile) countElMobile.textContent = data?.length || 0;
+            
         } catch (error) {
             console.error('Error loading recovery codes:', error);
         }
+    }
+    
+    async loadRecoveryCodesCountMobile() {
+        await this.loadRecoveryCodesCount();
     }
     
     async generateRecoveryCodes() {
@@ -1691,6 +2069,12 @@ class ProfileModule {
                 const code = Math.random().toString(36).substring(2, 10).toUpperCase();
                 codes.push(code);
             }
+            
+            // Delete old codes
+            await supabase
+                .from('two_factor_recovery_codes')
+                .delete()
+                .eq('user_id', this.userId);
             
             for (const code of codes) {
                 const hashed = await this.hashToken(code);
@@ -2056,4 +2440,5 @@ console.log('✅ ProfileModule loaded with all fixes');
 console.log('📸 Photo handling fixed - uses user-documents bucket');
 console.log('🔐 2FA fully integrated with profile');
 console.log('📱 Mobile fields now populated');
+console.log('🏷️ Dynamic labels for TVET (Terms) vs Nursing (Blocks)');
 console.log('🔄 Admin refresh available via refreshStudentProfile(userId)');
