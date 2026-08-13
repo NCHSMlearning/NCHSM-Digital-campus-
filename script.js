@@ -5686,7 +5686,7 @@ async function approveUser(userId, fullName, studentId = '', email = '', role = 
 }
 
 // ============================================
-// SHOW APPROVAL MODAL - AUTO-POPULATE USER DATA
+// SHOW APPROVAL MODAL - WITH TVET DIPLOMA/CERTIFICATE SUPPORT
 // ============================================
 
 function showApprovalModal(user) {
@@ -5705,6 +5705,9 @@ function showApprovalModal(user) {
     
     const programType = getProgramType(user.program);
     const isTVET = programType === 'TVET';
+    const programLevel = getProgramLevel(user.program);
+    const isDiploma = programLevel === 'DIPLOMA';
+    const isCertificate = programLevel === 'CERTIFICATE';
     
     // ✅ Build program options dynamically from MASTER_PROGRAMS
     let programOptions = '';
@@ -5728,7 +5731,6 @@ function showApprovalModal(user) {
         if (groups[groupName] && groups[groupName].length > 0) {
             programOptions += `<optgroup label="${groupName}">`;
             groups[groupName].forEach(p => {
-                // ✅ AUTO-SELECT the user's program
                 const selected = user.program === p.code ? 'selected' : '';
                 programOptions += `<option value="${p.code}" ${selected}>${p.name}</option>`;
             });
@@ -5747,15 +5749,62 @@ function showApprovalModal(user) {
         }
     }
     
-    // ✅ Block options based on program type
-    const blockOptions = isTVET 
-        ? ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
-        : ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+    // ✅ Block options based on program type AND level
+    let blockOptions = [];
+    let blockLabel = 'Block';
+    
+    if (isTVET) {
+        blockLabel = 'Term';
+        if (isDiploma) {
+            // DIPLOMA TVET: Year 1 Term 1 to Year 2 Term 3
+            blockOptions = [
+                { value: 'Y1T1', label: '📘 Year 1 Term 1' },
+                { value: 'Y1T2', label: '📗 Year 1 Term 2' },
+                { value: 'Y1T3', label: '📒 Year 1 Term 3' },
+                { value: 'Y2T1', label: '📙 Year 2 Term 1' },
+                { value: 'Y2T2', label: '📕 Year 2 Term 2' },
+                { value: 'Y2T3', label: '📚 Year 2 Term 3' }
+            ];
+        } else if (isCertificate) {
+            // CERTIFICATE TVET: Year 1 Term 1 to Term 3
+            blockOptions = [
+                { value: 'Y1T1', label: '📘 Year 1 Term 1' },
+                { value: 'Y1T2', label: '📗 Year 1 Term 2' },
+                { value: 'Y1T3', label: '📒 Year 1 Term 3' }
+            ];
+        } else {
+            // Other TVET (Artisan, etc.)
+            blockOptions = [
+                { value: 'Introductory', label: '🌟 Introductory Term' },
+                { value: 'Term1', label: '📘 Term 1' },
+                { value: 'Term2', label: '📗 Term 2' },
+                { value: 'Term3', label: '📒 Term 3' },
+                { value: 'Term4', label: '📙 Term 4' },
+                { value: 'Term5', label: '📕 Term 5' },
+                { value: 'Term6', label: '📚 Term 6' },
+                { value: 'Final', label: '🏆 Final Term' }
+            ];
+        }
+    } else {
+        // KRCHN Blocks
+        blockLabel = 'Block';
+        blockOptions = [
+            { value: 'Introductory', label: '🌟 Introductory Block' },
+            { value: 'Block 1', label: '📘 Block 1' },
+            { value: 'Block 2', label: '📗 Block 2' },
+            { value: 'Block 3', label: '📒 Block 3' },
+            { value: 'Block 4', label: '📙 Block 4' },
+            { value: 'Block 5', label: '📕 Block 5' },
+            { value: 'Block 6', label: '📚 Block 6' },
+            { value: 'Final', label: '🏆 Final Block' }
+        ];
+    }
     
     // ✅ AUTO-SELECT the user's block
     const blockSelectOptions = blockOptions.map(b => {
-        const selected = (user.block === b || user.current_block === b || user.term === b) ? 'selected' : '';
-        return `<option value="${b}" ${selected}>${b}</option>`;
+        const userBlock = user.block || user.current_block || user.term || '';
+        const selected = userBlock === b.value ? 'selected' : '';
+        return `<option value="${b.value}" ${selected}>${b.label}</option>`;
     }).join('');
     
     // ✅ Month options with auto-selection
@@ -5765,6 +5814,17 @@ function showApprovalModal(user) {
         const selected = user.intake_month === m ? 'selected' : '';
         return `<option value="${m}" ${selected}>${m}</option>`;
     }).join('');
+    
+    // ✅ Program type description
+    let programTypeDescription = isTVET ? 'TVET (Technical & Vocational Education Training)' : 'KRCHN (Nursing)';
+    let programLevelDescription = '';
+    if (isTVET) {
+        if (isDiploma) programLevelDescription = 'Diploma Level - 2 Years (6 Terms)';
+        else if (isCertificate) programLevelDescription = 'Certificate Level - 1 Year (3 Terms)';
+        else programLevelDescription = 'Other TVET Program';
+    } else {
+        programLevelDescription = 'Nursing Program - 3.5 Years (7 Blocks)';
+    }
     
     const modal = document.createElement('div');
     modal.id = 'approvalModal';
@@ -5859,7 +5919,12 @@ function showApprovalModal(user) {
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Type</label>
-                            <input type="text" id="edit_program_type" value="${isTVET ? 'TVET' : 'KRCHN'}" readonly
+                            <input type="text" id="edit_program_type" value="${programTypeDescription}" readonly
+                                   style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f1f5f9; font-family:inherit; color:#475569;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">Program Level</label>
+                            <input type="text" id="edit_program_level" value="${programLevelDescription}" readonly
                                    style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; background:#f1f5f9; font-family:inherit; color:#475569;">
                         </div>
                         <div class="form-group">
@@ -5875,13 +5940,15 @@ function showApprovalModal(user) {
                             </select>
                         </div>
                         <div class="form-group" style="grid-column: 1 / -1;">
-                            <label style="font-weight: 600; font-size: 13px; color: #475569;">${isTVET ? 'Term' : 'Block'} *</label>
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">${blockLabel} *</label>
                             <select id="edit_block" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:10px; font-family:inherit; background: #f8fafc;">
                                 ${blockSelectOptions}
                             </select>
                             <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
                                 <i class="fas fa-info-circle"></i> 
-                                ${isTVET ? 'TVET programs use "Terms" (e.g., Term 1, Term 2)' : 'KRCHN programs use "Blocks" (e.g., Block 1, Block 2)'}
+                                ${isTVET && isDiploma ? 'Diploma TVET: Year 1 Term 1 → Year 2 Term 3 (6 terms)' : 
+                                  isTVET && isCertificate ? 'Certificate TVET: Year 1 Term 1 → Year 1 Term 3 (3 terms)' :
+                                  isTVET ? 'TVET programs use "Terms"' : 'KRCHN programs use "Blocks"'}
                             </div>
                         </div>
                     </div>
@@ -5926,6 +5993,17 @@ function showApprovalModal(user) {
                         Only make changes if something is incorrect. Click "Confirm & Approve" to activate the account.
                     </p>
                 </div>
+                
+                <!-- Program Duration Info -->
+                <div style="margin-top: 10px; padding: 10px 12px; background: ${isTVET ? '#fef3c7' : '#e0e7ff'}; border-radius: 8px; border-left: 4px solid ${isTVET ? '#f59e0b' : '#4C1D95'};">
+                    <p style="margin: 0; font-size: 12px; color: ${isTVET ? '#92400e' : '#1e40af'};">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Program Duration:</strong> 
+                        ${isTVET && isDiploma ? '🎯 Diploma TVET - 2 Years (Year 1 Term 1 → Year 2 Term 3)' : 
+                          isTVET && isCertificate ? '📜 Certificate TVET - 1 Year (Year 1 Term 1 → Year 1 Term 3)' :
+                          isTVET ? '🔧 TVET Program' : '🎓 KRCHN Nursing - 3.5 Years (7 Blocks)'}
+                    </p>
+                </div>
             </form>
         </div>
     `;
@@ -5933,11 +6011,11 @@ function showApprovalModal(user) {
     document.body.appendChild(modal);
     modal.dataset.userId = user.user_id;
     
-    // ✅ Log for debugging
     console.log('✅ Approval modal opened with auto-populated data');
     console.log('📚 Program selected:', user.program);
     console.log('📖 Block/Term selected:', user.block || user.current_block || user.term);
     console.log('📅 Intake:', user.intake_year, user.intake_month);
+    console.log('📊 Program Level:', isDiploma ? 'Diploma' : isCertificate ? 'Certificate' : 'Other');
 }
 function closeApprovalModal() {
     const modal = document.getElementById('approvalModal');
@@ -10800,25 +10878,83 @@ function populateProgramDropdowns() {
 }
 
 // ============================================
-// LOAD CLASSES FOR EXAM
+// LOAD CLASSES FOR EXAM - WITH TVET SUPPORT
 // ============================================
 async function loadAvailableClassesForExam() {
     if (!DOM.classSelector) return;
     
+    // Get current program from the exam form
+    const programSelect = document.getElementById('exam_program');
+    const program = programSelect?.value || 'KRCHN';
+    const isTVET = isTVETProgram(program);
+    const programLevel = getProgramLevel(program);
+    const isDiploma = programLevel === 'DIPLOMA';
+    const isCertificate = programLevel === 'CERTIFICATE';
+    
+    // Build options based on program type
+    let options = [];
+    let blockLabel = 'Block';
+    
+    if (isTVET) {
+        blockLabel = 'Term';
+        if (isDiploma) {
+            // Diploma TVET: Year 1 Term 1 to Year 2 Term 3
+            options = [
+                { value: 'Y1T1', label: 'Year 1 Term 1' },
+                { value: 'Y1T2', label: 'Year 1 Term 2' },
+                { value: 'Y1T3', label: 'Year 1 Term 3' },
+                { value: 'Y2T1', label: 'Year 2 Term 1' },
+                { value: 'Y2T2', label: 'Year 2 Term 2' },
+                { value: 'Y2T3', label: 'Year 2 Term 3' }
+            ];
+        } else if (isCertificate) {
+            // Certificate TVET: Year 1 Term 1 to Term 3
+            options = [
+                { value: 'Y1T1', label: 'Year 1 Term 1' },
+                { value: 'Y1T2', label: 'Year 1 Term 2' },
+                { value: 'Y1T3', label: 'Year 1 Term 3' }
+            ];
+        } else {
+            // Other TVET
+            options = [
+                { value: 'Introductory', label: 'Introductory Term' },
+                { value: 'Term1', label: 'Term 1' },
+                { value: 'Term2', label: 'Term 2' },
+                { value: 'Term3', label: 'Term 3' },
+                { value: 'Term4', label: 'Term 4' },
+                { value: 'Term5', label: 'Term 5' },
+                { value: 'Term6', label: 'Term 6' },
+                { value: 'Final', label: 'Final Term' }
+            ];
+        }
+    } else {
+        // KRCHN Blocks
+        options = [
+            { value: 'Introductory', label: 'Introductory Block' },
+            { value: 'Block 1', label: 'Block 1' },
+            { value: 'Block 2', label: 'Block 2' },
+            { value: 'Block 3', label: 'Block 3' },
+            { value: 'Block 4', label: 'Block 4' },
+            { value: 'Block 5', label: 'Block 5' },
+            { value: 'Block 6', label: 'Block 6' },
+            { value: 'Final', label: 'Final Block' }
+        ];
+    }
+    
     DOM.classSelector.innerHTML = `
         <p style="color:#6b7280;font-size:12px;margin:0 0 8px 0;grid-column:1/-1;">
-            <i class="fas fa-info-circle"></i> Select blocks:
+            <i class="fas fa-info-circle"></i> Select ${blockLabel}s:
         </p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;grid-column:1/-1;">
-            ${['Introductory','Block 1','Block 2','Block 3','Block 4','Block 5','Final'].map(b => `
+            ${options.map(opt => `
                 <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;">
-                    <input type="checkbox" class="exam-class-checkbox" value="${b}">
-                    <span>${b}</span>
+                    <input type="checkbox" class="exam-class-checkbox" value="${opt.value}">
+                    <span>${opt.label}</span>
                 </label>
             `).join('')}
         </div>
         <div style="display:flex;gap:6px;grid-column:1/-1;margin-top:4px;">
-            <input type="text" id="customBlocksInput" placeholder="Custom blocks (comma)" 
+            <input type="text" id="customBlocksInput" placeholder="Custom ${blockLabel}s (comma)" 
                    style="flex:1;padding:6px 12px;border-radius:6px;border:1px solid #ddd;font-size:12px;">
             <button onclick="addCustomBlocks()" style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">
                 Add
@@ -10826,7 +10962,6 @@ async function loadAvailableClassesForExam() {
         </div>
     `;
 }
-
 function addCustomBlocks() {
     const input = document.getElementById('customBlocksInput');
     if (!input?.value.trim()) return;
@@ -12310,7 +12445,6 @@ async function populateExamCourseSelects(program, selected = '') {
         console.error('Error loading courses:', error);
     }
 }
-
 // ============================================
 // INIT
 // ============================================
@@ -12329,7 +12463,9 @@ function initExams() {
     loadAvailableClassesForExam();
     
     const programSelect = document.getElementById('exam_program');
+    const blockSelect = document.getElementById('exam_block_term');
     const program = programSelect?.value || '';
+    
     if (typeof initCreateCourseDropdown === 'function') {
         initCreateCourseDropdown(program);
     }
@@ -12345,10 +12481,21 @@ function initExams() {
         const newProgramSelect = programSelect.cloneNode(true);
         programSelect.parentNode.replaceChild(newProgramSelect, programSelect);
         const freshProgramSelect = document.getElementById('exam_program');
-        freshProgramSelect.addEventListener('change', loadStudentsForNotification);
+        
+        freshProgramSelect.addEventListener('change', function() {
+            // Update block dropdown
+            updateBlockTermOptions('exam_program', 'exam_block_term');
+            // Update class checkboxes
+            loadAvailableClassesForExam();
+            // Load students for notification
+            loadStudentsForNotification();
+            // Update course dropdown
+            if (typeof updateCreateCourseDropdown === 'function') {
+                updateCreateCourseDropdown();
+            }
+        });
     }
     
-    const blockSelect = document.getElementById('exam_block_term');
     if (blockSelect) {
         // Remove old listeners to avoid duplicates
         const newBlockSelect = blockSelect.cloneNode(true);
@@ -12357,14 +12504,17 @@ function initExams() {
         freshBlockSelect.addEventListener('change', loadStudentsForNotification);
     }
     
-    // ✅ Set initial student count
+    // ✅ Set initial block dropdown and class checkboxes
     setTimeout(function() {
+        if (programSelect?.value) {
+            updateBlockTermOptions('exam_program', 'exam_block_term');
+            loadAvailableClassesForExam();
+        }
         loadStudentsForNotification();
     }, 500);
     
     console.log('🚀 Exams/CATS Management initialized with email notifications and block filtering!');
 }
-
 // ============================================
 // 🔧 EXPOSE GLOBALLY - FIX ALL REFERENCES
 // ============================================
@@ -12427,6 +12577,8 @@ window.filterGradeStudents = filterGradeStudents;
 window.updateGradeTotal = updateGradeTotal;
 window.getExamTypeLabel = getExamTypeLabel;
 window.populateExamCourseSelects = populateExamCourseSelects;
+// In your global exposure section
+window.updateBlockTermOptions = updateBlockTermOptions;
 
 // 7. DOM is already global
 window.DOM = DOM;
