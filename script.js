@@ -10105,13 +10105,13 @@ function getNotificationRecipients() {
 }
 
 // ============================================
-// 📧 SEND EXAM NOTIFICATION EMAIL
+// 📧 SEND EXAM NOTIFICATION EMAIL - USING EDGE FUNCTION
 // ============================================
 
 async function sendExamNotificationEmail(examData, recipients) {
     if (!recipients || recipients.length === 0) {
         console.log('📧 No recipients to notify');
-        return { sent: 0, total: 0 };
+        return { sent: 0, total: 0, failed: 0 };
     }
     
     console.log(`📧 Sending exam notification to ${recipients.length} students...`);
@@ -10126,6 +10126,7 @@ async function sendExamNotificationEmail(examData, recipients) {
     
     const examTime = examData.exam_start_time || 'TBD';
     const examLink = examData.online_link || examData.exam_link || '#';
+    const examTitle = examData.title || examData.exam_name || 'New Exam';
     
     const emailHtml = `
 <!DOCTYPE html>
@@ -10174,9 +10175,9 @@ async function sendExamNotificationEmail(examData, recipients) {
                 <div class="details">
                     <h4>📋 Exam Details</h4>
                     <table>
-                        <tr><td class="label">📝 Exam Title</td><td class="value"><strong>${escapeHtml(examData.title)}</strong></td></tr>
-                        <tr><td class="label">🎓 Program</td><td class="value">${escapeHtml(examData.target_program || examData.program_type)}</td></tr>
-                        <tr><td class="label">📚 Block/Term</td><td class="value">${escapeHtml(examData.block)}</td></tr>
+                        <tr><td class="label">📝 Exam Title</td><td class="value"><strong>${escapeHtml(examTitle)}</strong></td></tr>
+                        <tr><td class="label">🎓 Program</td><td class="value">${escapeHtml(examData.target_program || examData.program_type || 'N/A')}</td></tr>
+                        <tr><td class="label">📚 Block/Term</td><td class="value">${escapeHtml(examData.block || 'N/A')}</td></tr>
                         <tr><td class="label">📅 Date</td><td class="value">${examDate}</td></tr>
                         <tr><td class="label">⏰ Time</td><td class="value">${examTime}</td></tr>
                         <tr><td class="label">⏱️ Duration</td><td class="value">${examData.duration_minutes || 'N/A'} minutes</td></tr>
@@ -10208,7 +10209,7 @@ async function sendExamNotificationEmail(examData, recipients) {
 </body>
 </html>`;
     
-    // Send emails
+    // ✅ Send emails using Edge Function (same as Admin Dashboard)
     let sentCount = 0;
     let failedCount = 0;
     
@@ -10219,15 +10220,23 @@ async function sendExamNotificationEmail(examData, recipients) {
         }
         
         try {
-            // Try Brevo first
-            const result = await sendEmailWithBrevo(student.email, `📝 New Exam: ${examData.title}`, emailHtml);
+            // ✅ Use Edge Function - SAME as Admin Dashboard
+            const result = await sendEmailWithEdgeFunction(
+                student.email,
+                `📝 New Exam: ${examTitle}`,
+                emailHtml
+            );
+            
             if (result.success) {
                 sentCount++;
             } else {
-                // Fallback to image tracking
-                await sendEmailFallback(student.email, examData.title, emailHtml);
-                sentCount++;
+                failedCount++;
+                console.error(`Failed to send to ${student.email}:`, result.error);
             }
+            
+            // Small delay to avoid rate limiting
+            await new Promise(r => setTimeout(r, 200));
+            
         } catch (error) {
             console.error(`Failed to send to ${student.email}:`, error);
             failedCount++;
@@ -10256,47 +10265,105 @@ async function sendExamNotificationEmail(examData, recipients) {
 }
 
 // ============================================
-// 📧 SEND EMAIL WITH BREVO
+// 📧 SEND EMAIL VIA EDGE FUNCTION (More Secure)
 // ============================================
 
-async function sendEmailWithBrevo(to, subject, htmlContent) {
+async function sendEmailWithEdgeFunction(to, subject, htmlContent) {
     try {
-        // Check if Brevo is configured
-        if (typeof BREVO_CONFIG === 'undefined' || !BREVO_CONFIG.apiKey) {
-            return { success: false, error: 'Brevo not configured' };
+        const supabase = window.sb || window.supabase;
+        if (!supabase) {
+            console.error('❌ Supabase client not available');
+            return { success: false, error: 'Supabase not available' };
         }
         
-        const response = await fetch(BREVO_CONFIG.apiUrl, {
-            method: 'POST',
-            headers: {
-                'api-key': BREVO_CONFIG.apiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: {
-                    email: 'noreply@nakurucollegeofhealthelearning.site',
-                    name: 'NCHSM Portal'
+        // Get session token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+            console.error('❌ No session:', sessionError);
+            // Try with anon key fallback
+            return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
+        }
+        
+        console.log(`📧 Sending email via Edge Function to: ${to}`);
+        
+        const response = await fetch(
+            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
                 },
-                to: [{ email: to }],
-                subject: subject,
-                htmlContent: htmlContent
-            })
-        });
+                body: JSON.stringify({
+                    to: to,
+                    subject: subject,
+                    html: htmlContent,
+                    from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>'
+                })
+            }
+        );
         
         const data = await response.json();
         
-        if (response.ok) {
+        if (response.ok && data.success) {
+            console.log(`✅ Email sent to ${to}`);
             return { success: true, data };
         } else {
-            return { success: false, error: data };
+            console.error('❌ Email failed:', data.error || 'Unknown error');
+            return { success: false, error: data.error || 'Unknown error' };
         }
+        
     } catch (error) {
+        console.error('❌ Email error:', error);
+        // Try fallback
+        return await sendEmailWithEdgeFunctionFallback(to, subject, htmlContent);
+    }
+}
+
+// ============================================
+// 📧 FALLBACK: Edge Function with Anon Key
+// ============================================
+
+async function sendEmailWithEdgeFunctionFallback(to, subject, htmlContent) {
+    try {
+        console.log(`📧 Sending email via Edge Function (fallback) to: ${to}`);
+        
+        const response = await fetch(
+            'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    to: to,
+                    subject: subject,
+                    html: htmlContent,
+                    from: 'NCHSM Exam Office <noreply@nakurucollegeofhealthelearning.site>'
+                })
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            console.log(`✅ Email sent to ${to} (fallback)`);
+            return { success: true, data };
+        } else {
+            console.error('❌ Email failed (fallback):', data);
+            return { success: false, error: data.error || 'Unknown error' };
+        }
+        
+    } catch (error) {
+        console.error('❌ Email error (fallback):', error);
         return { success: false, error: error.message };
     }
 }
 
 // ============================================
-// 📧 FALLBACK EMAIL (Image Tracking)
+// 📧 FALLBACK EMAIL (Image Tracking) - Kept for compatibility
 // ============================================
 
 function sendEmailFallback(to, subject, htmlContent) {
@@ -10321,7 +10388,6 @@ function sendEmailFallback(to, subject, htmlContent) {
         }, 1000);
     });
 }
-
 // ============================================
 // LOAD EXAMS - FIXED (Properly attaches course data)
 // ============================================
