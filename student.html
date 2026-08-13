@@ -997,11 +997,13 @@
             <div style="display: flex; gap: 20px; flex-shrink: 0; padding-left: 20px; border-left: 2px solid #e5e7eb;">
                 <div style="text-align: center; min-width: 50px;">
                     <div style="font-size: clamp(18px, 2vw, 22px); font-weight: 800; color: #4C1D95;" id="profile-block-number">0</div>
-                    <div style="font-size: 11px; color: #94a3b8;">Block</div>
+                    <!-- ✅ FIXED: Dynamic label -->
+                    <div style="font-size: 11px; color: #94a3b8;" id="profile-block-label">Block</div>
                 </div>
                 <div style="text-align: center; min-width: 50px;">
                     <div style="font-size: clamp(18px, 2vw, 22px); font-weight: 800; color: #10b981;" id="profile-completed-blocks">0</div>
-                    <div style="font-size: 11px; color: #94a3b8;">Done</div>
+                    <!-- ✅ FIXED: Dynamic label -->
+                    <div style="font-size: 11px; color: #94a3b8;" id="profile-completed-label">Done</div>
                 </div>
                 <div style="text-align: center; min-width: 50px;">
                     <div style="font-size: clamp(18px, 2vw, 22px); font-weight: 800; color: #f59e0b;" id="profile-progress">0%</div>
@@ -1010,7 +1012,7 @@
             </div>
         </div>
 
-        <!-- ===== TWO COLUMN LAYOUT (DESKTOP) ===== -->
+        <!-- ===== TWO COLUMN LAYOUT ===== -->
         <div class="desktop-layout" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
 
             <!-- ======================================== -->
@@ -1104,7 +1106,8 @@
                             <input type="text" id="profile-intake-month-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
                         </div>
                         <div>
-                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Current Block</label>
+                            <!-- ✅ FIXED: Dynamic label -->
+                            <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;" id="profile-block-label-text">Current Block</label>
                             <input type="text" id="profile-block-input" readonly style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: #f8fafc; color: #1e293b;">
                         </div>
                     </div>
@@ -1127,6 +1130,7 @@
                             </div>
                             <div style="display: flex; justify-content: space-between; margin-top: 5px;">
                                 <span id="block-progress-text" style="font-size: clamp(12px, 1vw, 13px); color: #475569; font-weight: 600;">0% Complete</span>
+                                <!-- ✅ FIXED: Dynamic label -->
                                 <span id="current-block-status" style="font-size: clamp(12px, 1vw, 13px); color: #64748b;">Current: Not Set</span>
                             </div>
                         </div>
@@ -1182,14 +1186,13 @@
                     </div>
                 </div>
 
-                <!-- ===== SECURITY SETTINGS - WITH 2FA ===== -->
-                <div style="background: #f8fafc; border-radius: 8px; padding: 16px; border: 1px solid #e2e8f0;" class="profile-security-section">
+                <!-- ===== SECURITY SETTINGS ===== -->
+                <div style="background: #f8fafc; border-radius: 8px; padding: 16px; border: 1px solid #e2e8f0;">
                     <h4 style="color: #0A3D62; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; font-size: clamp(14px, 1.2vw, 15px); border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">
                         <i class="fas fa-lock" style="color: #FDB913;"></i> Security Settings
                     </h4>
                     
-                    <!-- ===== PASSWORD CHANGE ===== -->
-                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
                         <div>
                             <label style="font-weight: 600; font-size: clamp(12px, 1vw, 13px); color: #475569; display: block; margin-bottom: 4px;">Current Password</label>
                             <input type="password" id="current-password" placeholder="Enter current password" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: clamp(13px, 1vw, 14px); background: white; transition: all 0.3s ease;" onfocus="this.style.borderColor='#4C1D95'; this.style.boxShadow='0 0 0 3px rgba(76,29,149,0.1)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
@@ -1207,72 +1210,14 @@
                         </button>
                         <div id="password-feedback" style="display: none; padding: 8px 12px; border-radius: 6px; font-size: clamp(12px, 1vw, 13px);"></div>
                     </div>
-                    
-                    <!-- ===== DIVIDER ===== -->
-                    <div style="border-top: 2px dashed #e5e7eb; margin: 12px 0 16px 0;"></div>
-                    
-                    <!-- ===== TWO-FACTOR AUTHENTICATION ===== -->
-                    <div>
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <i class="fas fa-shield-alt" style="color: #4C1D95; font-size: clamp(16px, 1.2vw, 18px);"></i>
-                                <div>
-                                    <h5 style="margin: 0; color: #0A3D62; font-size: clamp(13px, 1vw, 14px); font-weight: 600;">Two-Factor Authentication</h5>
-                                    <p style="margin: 0; font-size: clamp(11px, 0.9vw, 12px); color: #64748B;">Add an extra layer of security to your account</p>
-                                </div>
-                            </div>
-                            <div id="profile2FAStatus">
-                                <span id="profile2FABadge" style="padding: 4px 14px; border-radius: 20px; font-size: clamp(11px, 0.9vw, 12px); font-weight: 600; background: #fef3c7; color: #92400e; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-exclamation-triangle" style="font-size: 11px;"></i> Not Enabled
-                                </span>
-                            </div>
-                        </div>
-                        
-                        <div id="profile2FADetails" style="background: #f1f5f9; border-radius: 8px; padding: 12px 16px; margin-top: 6px;">
-                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                                <div style="flex: 1;">
-                                    <span style="font-size: clamp(12px, 1vw, 13px); color: #475569;">
-                                        <i class="fas fa-info-circle" style="color: #4C1D95;"></i> 
-                                        <span id="profile2FAMessage">Secure your account with 2FA using Google Authenticator</span>
-                                    </span>
-                                </div>
-                                <button id="profileEnable2FA" 
-                                        onclick="window.openProfile2FASetup()" 
-                                        style="padding: 8px 20px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: clamp(12px, 1vw, 13px); transition: all 0.3s ease; white-space: nowrap; display: flex; align-items: center; gap: 6px;"
-                                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" 
-                                        onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                                    <i class="fas fa-shield-alt"></i> 
-                                    <span id="profile2FABtnText">Enable 2FA</span>
-                                </button>
-                            </div>
-                            <div id="profile2FAStatusMsg" style="margin-top: 6px; font-size: clamp(11px, 0.9vw, 12px); color: #94a3b8; display: none;"></div>
-                            
-                            <!-- Recovery Codes Section (shown when 2FA is enabled) -->
-                            <div id="profileRecoveryCodes" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
-                                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                    <i class="fas fa-key" style="color: #f59e0b;"></i>
-                                    <span style="font-size: clamp(12px, 1vw, 13px); color: #475569;">
-                                        <strong>Recovery Codes:</strong> 
-                                        <span id="profileRecoveryCount">0</span> codes remaining
-                                    </span>
-                                    <button onclick="window.generateProfileRecoveryCodes()" style="padding: 4px 14px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: clamp(11px, 0.9vw, 12px); transition: all 0.3s ease;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f1f5f9'">
-                                        <i class="fas fa-redo-alt"></i> Generate New
-                                    </button>
-                                    <button onclick="window.disableProfile2FA()" style="padding: 4px 14px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer; font-size: clamp(11px, 0.9vw, 12px); transition: all 0.3s ease;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                                        <i class="fas fa-times-circle"></i> Disable 2FA
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ===== MOBILE ACCORDION LAYOUT (Hidden on Desktop) ===== -->
+        <!-- ===== MOBILE ACCORDION LAYOUT ===== -->
         <div class="mobile-layout" style="display: none;">
 
-            <!-- Personal Information - Accordion -->
+            <!-- Personal Information -->
             <details open style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-user-circle" style="color: #FDB913;"></i> Personal Information
@@ -1301,7 +1246,7 @@
                             <input type="tel" id="profile-alt-phone-input-mobile" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
                         </div>
                         <div>
-                            <label style="font-size: 11px; color: #475569; font-weight: 600;">Date of Birth</label>
+                            <label style="font-size: 11px; color: #475569; font-weight: 600;">DOB</label>
                             <input type="date" id="profile-dob-input-mobile" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
                         </div>
                         <div>
@@ -1324,27 +1269,31 @@
                 </div>
             </details>
 
-            <!-- Guardian Information - Accordion -->
-            <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-                <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-users" style="color: #FDB913;"></i> Guardian Information
-                    <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">▼</span>
-                </summary>
-                <div style="padding: 12px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <div style="grid-column: 1 / -1;">
-                            <label style="font-size: 11px; color: #475569; font-weight: 600;">Guardian Name</label>
-                            <input type="text" id="profile-guardian-name-input-mobile" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
-                        </div>
-                        <div style="grid-column: 1 / -1;">
-                            <label style="font-size: 11px; color: #475569; font-weight: 600;">Guardian Phone</label>
-                            <input type="tel" id="profile-guardian-phone-input-mobile" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
-                        </div>
-                    </div>
-                </div>
-            </details>
+         <!-- Parent / Guardian Information - Mobile Accordion -->
+<details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+    <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-users" style="color: #FDB913;"></i> Parent / Guardian Information
+        <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">▼</span>
+    </summary>
+    <div style="padding: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div style="grid-column: 1 / -1;">
+                <label style="font-size: 11px; color: #475569; font-weight: 600;">Parent/Guardian Name</label>
+                <input type="text" id="profile-guardian-name-input-mobile" readonly placeholder="Enter parent or guardian name" style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+            </div>
+            <div style="grid-column: 1 / -1;">
+                <label style="font-size: 11px; color: #475569; font-weight: 600;">Parent/Guardian Phone</label>
+                <input type="tel" id="profile-guardian-phone-input-mobile" readonly placeholder="Enter parent or guardian phone number" style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+            </div>
+            <div style="grid-column: 1 / -1;">
+                <label style="font-size: 11px; color: #475569; font-weight: 600;">Parent/Guardian Email</label>
+                <input type="email" id="profile-guardian-email-input-mobile" readonly placeholder="Enter parent or guardian email" style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
+            </div>
+        </div>
+    </div>
+</details>
 
-            <!-- Academic Information - Accordion -->
+            <!-- Academic Information -->
             <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-graduation-cap" style="color: #FDB913;"></i> Academic Information
@@ -1365,14 +1314,15 @@
                             <input type="text" id="profile-intake-month-input-mobile" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
                         </div>
                         <div>
-                            <label style="font-size: 11px; color: #475569; font-weight: 600;">Current Block</label>
+                            <!-- ✅ FIXED: Dynamic label for mobile -->
+                            <label style="font-size: 11px; color: #475569; font-weight: 600;" id="profile-block-label-mobile">Current Block</label>
                             <input type="text" id="profile-block-input-mobile" readonly style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #f8fafc;">
                         </div>
                     </div>
                 </div>
             </details>
 
-            <!-- Academic Progress - Accordion -->
+            <!-- Academic Progress -->
             <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-chart-line" style="color: #FDB913;"></i> Academic Progress
@@ -1395,7 +1345,7 @@
                             </div>
                         </div>
                         <div style="margin-top: 8px;">
-                            <label style="font-size: 11px; color: #475569; font-weight: 600;">Completed Blocks</label>
+                            <label style="font-size: 11px; color: #475569; font-weight: 600;">Completed</label>
                             <div id="completed-blocks-mobile" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
                                 <span style="background: #e2e8f0; color: #64748b; padding: 2px 10px; border-radius: 12px; font-size: 10px;">None yet</span>
                             </div>
@@ -1404,7 +1354,7 @@
                 </div>
             </details>
 
-            <!-- Documents - Accordion -->
+            <!-- Documents -->
             <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-file-upload" style="color: #FDB913;"></i> Upload Documents
@@ -1440,15 +1390,14 @@
                 </div>
             </details>
 
-            <!-- Security - Accordion -->
+            <!-- Security -->
             <details style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <summary style="padding: 10px 14px; background: #f8fafc; cursor: pointer; font-weight: 600; color: #0A3D62; font-size: 14px; list-style: none; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-lock" style="color: #FDB913;"></i> Security Settings
                     <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">▼</span>
                 </summary>
                 <div style="padding: 12px;">
-                    <!-- Password Change -->
-                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
                         <div>
                             <label style="font-size: 11px; color: #475569; font-weight: 600;">Current Password</label>
                             <input type="password" id="current-password-mobile" placeholder="Enter current password" style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white;">
@@ -1465,60 +1414,6 @@
                             <i class="fas fa-key"></i> Change Password
                         </button>
                         <div id="password-feedback-mobile" style="display: none; padding: 6px 10px; border-radius: 6px; font-size: 12px;"></div>
-                    </div>
-
-                    <div style="border-top: 2px dashed #e5e7eb; margin: 10px 0;"></div>
-
-                    <!-- 2FA -->
-                    <div>
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <i class="fas fa-shield-alt" style="color: #4C1D95; font-size: 16px;"></i>
-                                <div>
-                                    <h5 style="margin: 0; color: #0A3D62; font-size: 13px; font-weight: 600;">Two-Factor Authentication</h5>
-                                    <p style="margin: 0; font-size: 10px; color: #64748B;">Add extra security</p>
-                                </div>
-                            </div>
-                            <div id="profile2FAStatusMobile">
-                                <span id="profile2FABadgeMobile" style="padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #fef3c7; color: #92400e; display: inline-flex; align-items: center; gap: 4px;">
-                                    <i class="fas fa-exclamation-triangle" style="font-size: 9px;"></i> Not Enabled
-                                </span>
-                            </div>
-                        </div>
-                        
-                        <div id="profile2FADetailsMobile" style="background: #f1f5f9; border-radius: 6px; padding: 8px 12px; margin-top: 4px;">
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <span style="font-size: 12px; color: #475569;">
-                                    <i class="fas fa-info-circle" style="color: #4C1D95;"></i> 
-                                    <span id="profile2FAMessageMobile">Secure your account with 2FA using Google Authenticator</span>
-                                </span>
-                                <button id="profileEnable2FAMobile" 
-                                        onclick="window.openProfile2FASetup()" 
-                                        style="padding: 6px 12px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                                    <i class="fas fa-shield-alt"></i> 
-                                    <span id="profile2FABtnTextMobile">Enable 2FA</span>
-                                </button>
-                            </div>
-                            <div id="profile2FAStatusMsgMobile" style="margin-top: 4px; font-size: 11px; color: #94a3b8; display: none;"></div>
-                            
-                            <div id="profileRecoveryCodesMobile" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <span style="font-size: 12px; color: #475569;">
-                                        <i class="fas fa-key" style="color: #f59e0b;"></i>
-                                        <strong>Recovery Codes:</strong> 
-                                        <span id="profileRecoveryCountMobile">0</span> remaining
-                                    </span>
-                                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                                        <button onclick="window.generateProfileRecoveryCodes()" style="padding: 4px 10px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 4px; cursor: pointer; font-size: 10px;">
-                                            <i class="fas fa-redo-alt"></i> Generate
-                                        </button>
-                                        <button onclick="window.disableProfile2FA()" style="padding: 4px 10px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
-                                            <i class="fas fa-times-circle"></i> Disable
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </details>
@@ -1548,7 +1443,7 @@
 <!-- END PROFILE -->
 
 <!-- ============================================================
-     📱 MOBILE RESPONSIVE CSS - HIDE/SHOW LAYOUTS
+     📱 MOBILE RESPONSIVE CSS
      ============================================================ -->
 <style>
     /* ===== DESKTOP: Show desktop layout, hide mobile ===== */
@@ -1570,7 +1465,6 @@
             display: block !important;
         }
         
-        /* Mobile-specific styles */
         #profile {
             padding: 10px !important;
         }
