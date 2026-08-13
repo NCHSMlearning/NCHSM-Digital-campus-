@@ -1,7 +1,11 @@
 // ============================================
 // REGISTRATION.JS - Complete JavaScript
 // ============================================
-
+// Hides the .html extension in the URL  
+if (window.location.pathname.endsWith('.html')) {
+    const cleanPath = window.location.pathname.replace(/\.html$/, '');
+    window.history.replaceState({}, '', cleanPath);
+} 
 // ============================================
 // SUPABASE CONFIGURATION
 // ============================================
