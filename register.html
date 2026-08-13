@@ -1133,26 +1133,111 @@
         <!-- ============================================ -->
         <div class="form-section" data-section="2" style="display: none;">
 
-            <!-- STUDENT FIELDS -->
-            <div id="student-fields" class="role-fields">
-                <div class="form-group">
-                    <label>
-                        <i data-feather="id"></i> Admission / Student ID 
-                        <span style="color:red;">*</span>
-                        <span style="font-weight:400;color:#64748B;font-size:0.7rem;">
-                            (Will be checked for duplicates)
-                        </span>
-                    </label>
-                    <input type="text" id="student_id_number" name="student_id_number" 
-                           placeholder="KRCHN/0032/MAR/2024 or DPOTT/10726/05/26" required>
-                    <div id="student-id-status" class="help-text" style="font-weight: 600; margin-top: 4px; min-height: 20px;"></div>
-                                   <div class="help-text">
-                    <strong>Nursing (KRCHN):</strong> KRCHN/XXXX/MAR/YYYY (e.g., KRCHN/0032/MAR/2024)
-                    <br><strong>TVET:</strong> PROGRAM/XXXXX/MM/YY (e.g., DPOTT/10726/05/26) or PROGRAM/XXXXX/MM/YYYY (e.g., DPOTT/10726/05/2026)
-                    <br>Valid TVET Programs: DPOTT, DCH, DHRIT, DSL, DSW, DCJS, DHSS, DICT, DME, CPOTT, CCH, CHRIT, CPC, CSL, CSW, CCJS, CAG, CHSS, CICT, CCG, COMT, ACH, AAG, ASW, CCA, PTE
+           <!-- STUDENT FIELDS -->
+<div id="student-fields" class="role-fields">
+    <div class="form-group">
+        <label>
+            <i data-feather="id"></i> Admission / Student ID 
+            <span style="color:red;">*</span>
+            <span style="font-weight:400;color:#64748B;font-size:0.7rem;">
+                (Will be checked for duplicates)
+            </span>
+        </label>
+        
+        <input type="text" id="student_id_number" name="student_id_number" 
+               placeholder="e.g., KRCHN/0032/MAR/2024 or DPOTT/10726/05/26" required>
+        
+        <div id="student-id-status" class="help-text" style="font-weight: 600; margin-top: 4px; min-height: 20px;"></div>
+        
+        <!-- ====== FORMAT INSTRUCTIONS ====== -->
+        <div style="margin-top: 12px; padding: 14px 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 13px;">
+            
+            <!-- NURSING (KRCHN) -->
+            <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #e2e8f0;">
+                <span style="background: #dbeafe; color: #1e40af; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 11px; white-space: nowrap;">🎓 NURSING</span>
+                <div>
+                    <code style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">KRCHN/XXXX/MAR/YYYY</code>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                        Example: <span style="color: #0A3D62; font-weight: 500;">KRCHN/0032/MAR/2024</span>
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                        <i class="fas fa-info-circle"></i> XXXX = 4-digit number • MAR = March intake • YYYY = Year (2021-2030)
+                    </div>
                 </div>
+            </div>
+            
+            <!-- TVET -->
+            <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #e2e8f0;">
+                <span style="background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: 11px; white-space: nowrap;">🔧 TVET</span>
+                <div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                        <code style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">PROGRAM/XXXXX/MM/YY</code>
+                        <span style="color: #94a3b8; font-size: 11px;">OR</span>
+                        <code style="background: #e5e7eb; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">PROGRAM/XXXXX/MM/YYYY</code>
+                    </div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                        Example: <span style="color: #0A3D62; font-weight: 500;">DPOTT/10726/05/26</span> or <span style="color: #0A3D62; font-weight: 500;">DPOTT/10726/05/2026</span>
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                        <i class="fas fa-info-circle"></i> XXXXX = 4-5 digit number • MM = Month (01-12) • YY/YYYY = Year (21-30 / 2021-2030)
+                    </div>
                 </div>
-                
+            </div>
+            
+            <!-- VALID TVET PROGRAMS -->
+            <div>
+                <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px;">
+                    <i class="fas fa-check-circle" style="color: #10b981;"></i> Valid TVET Programs:
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">DPOTT</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">DCH</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">DHRIT</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">DSL</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">DSW</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">DCJS</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">DHSS</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">DICT</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">DME</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CPOTT</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CCH</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CHRIT</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CPC</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CSL</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CSW</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CCJS</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CAG</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CHSS</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CICT</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CCG</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">COMT</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">ACH</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">AAG</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">ASW</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">CCA</span>
+                    <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #1e293b;">PTE</span>
+                </div>
+            </div>
+            
+            <!-- QUICK TIPS -->
+            <div style="margin-top: 10px; padding: 10px 12px; background: #fef3c7; border-radius: 6px; border-left: 3px solid #f59e0b;">
+                <div style="font-size: 11px; color: #92400e; display: flex; align-items: flex-start; gap: 8px;">
+                    <span style="font-size: 14px;">💡</span>
+                    <div>
+                        <strong>Quick Tips:</strong>
+                        <ul style="margin: 4px 0 0 0; padding-left: 18px; font-size: 11px;">
+                            <li>Program code must be in <strong>UPPERCASE</strong> (e.g., <strong>CPOTT</strong> not cpott)</li>
+                            <li>Student ID number can be <strong>4-5 digits</strong> (e.g., 1033 or 10726)</li>
+                            <li>Month must be <strong>01-12</strong> (e.g., 05 for May)</li>
+                            <li>Year can be <strong>2-digit (21-30)</strong> or <strong>4-digit (2021-2030)</strong></li>
+                            <li><strong>KRCHN</strong> intakes are always in <strong>March (MAR)</strong></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                 <div class="form-group">
                     <label><i data-feather="book"></i> Program <span style="color: red;">*</span></label>
                     <select id="program_type" name="program_type" required>
@@ -1701,8 +1786,9 @@ if (window.location.pathname.endsWith('.html')) {
         }
     }
 
-   // Enhanced Student ID validation with duplicate check
+// Enhanced Student ID validation with duplicate check
 // ✅ Supports both MM/YY and MM/YYYY for TVET
+// ✅ Supports 4-5 digit student numbers
 function validateStudentIdWithDuplicate(studentId) {
     if (!studentId || studentId.trim() === '') {
         return { valid: false, message: 'Student ID is required' };
@@ -1723,8 +1809,8 @@ function validateStudentIdWithDuplicate(studentId) {
         }
         
         const yearNum = parseInt(year);
-        if (yearNum < 2020 || yearNum > 2030) {
-            return { valid: false, message: 'Year must be between 2020 and 2030' };
+        if (yearNum < 2021 || yearNum > 2030) {
+            return { valid: false, message: 'Year must be between 2021 and 2030' };
         }
         
         return { 
@@ -1739,11 +1825,13 @@ function validateStudentIdWithDuplicate(studentId) {
     }
     
     // ✅ FORMAT 2: PROGRAM/XXXXX/MM/YY (TVET - 2-digit year)
-    const tvetRegex2Digit = /^([A-Z]{2,5})\/(\d{5})\/(\d{2})\/(\d{2})$/;
+    // ✅ UPDATED: Accept 4-5 digits for student number
+    const tvetRegex2Digit = /^([A-Z]{2,5})\/(\d{4,5})\/(\d{2})\/(\d{2})$/;
     const tvetMatch2Digit = cleaned.match(tvetRegex2Digit);
     
     // ✅ FORMAT 3: PROGRAM/XXXXX/MM/YYYY (TVET - 4-digit year)
-    const tvetRegex4Digit = /^([A-Z]{2,5})\/(\d{5})\/(\d{2})\/(\d{4})$/;
+    // ✅ UPDATED: Accept 4-5 digits for student number
+    const tvetRegex4Digit = /^([A-Z]{2,5})\/(\d{4,5})\/(\d{2})\/(\d{4})$/;
     const tvetMatch4Digit = cleaned.match(tvetRegex4Digit);
     
     // Try 2-digit format first, then 4-digit
@@ -1787,14 +1875,14 @@ function validateStudentIdWithDuplicate(studentId) {
         
         // If 2-digit year, convert to 4-digit
         if (is2DigitYear) {
-            if (yearNum < 20 || yearNum > 30) {
-                return { valid: false, message: 'Year must be 20-30 (2020-2030)' };
+            if (yearNum < 21 || yearNum > 30) {
+                return { valid: false, message: 'Year must be 21-30 (2021-2030)' };
             }
             fullYear = '20' + year;
         } else {
             // 4-digit year validation
-            if (yearNum < 2020 || yearNum > 2030) {
-                return { valid: false, message: 'Year must be between 2020 and 2030' };
+            if (yearNum < 2021 || yearNum > 2030) {
+                return { valid: false, message: 'Year must be between 2021 and 2030' };
             }
         }
         
@@ -1804,16 +1892,20 @@ function validateStudentIdWithDuplicate(studentId) {
             '09': 'SEP', '10': 'OCT', '11': 'NOV', '12': 'DEC'
         };
         
+        // ✅ Pad number to 5 digits for display
+        const paddedNumber = number.padStart(5, '0');
+        
         return { 
             valid: true, 
             format: 'tvet',
             program: program,
             number: number,
+            paddedNumber: paddedNumber,
             month: month,
             monthName: monthNames[month] || month,
             year: year,
             fullYear: fullYear,
-            display: `${program}/${number}/${month}/${year}`,
+            display: `${program}/${paddedNumber}/${month}/${year}`,
             is2DigitYear: is2DigitYear
         };
     }
@@ -1823,7 +1915,6 @@ function validateStudentIdWithDuplicate(studentId) {
         message: 'Invalid format. Use KRCHN/XXXX/MAR/YYYY for Nursing or PROGRAM/XXXXX/MM/YY or PROGRAM/XXXXX/MM/YYYY for TVET' 
     };
 }
-
     // ============================================
     // CHECK IF STUDENT ID IS VALID (For Navigation)
     // ============================================
