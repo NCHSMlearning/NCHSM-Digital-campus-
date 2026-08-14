@@ -1218,7 +1218,7 @@ window.NCHSMLogin = {
             const password = this.value;
             let strength = 0;
             
-            if (password.length >= 8) strength++;
+            if (password.length >= 6) strength++;
             if (password.length >= 12) strength++;
             if (/[A-Z]/.test(password)) strength++;
             if (/[a-z]/.test(password)) strength++;
