@@ -419,7 +419,7 @@
             cursor: pointer;
             transition: var(--transition);
             position: relative;
-            min-height: 180px;
+            min-height: 200px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -514,6 +514,8 @@
             text-align: left;
             width: 100%;
             display: none;
+            max-height: 200px;
+            overflow-y: auto;
         }
         .ocr-result-box.show {
             display: block;
@@ -546,7 +548,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.95);
             border-radius: var(--radius-sm);
             display: none;
             align-items: center;
@@ -597,12 +599,6 @@
         .criteria-box .criteria-item .requirement {
             font-weight: 600;
             color: var(--gray-800);
-        }
-        .criteria-box .criteria-item .met {
-            color: var(--success);
-        }
-        .criteria-box .criteria-item .not-met {
-            color: var(--danger);
         }
         .eligibility-badge {
             display: inline-flex;
@@ -657,17 +653,6 @@
             width: 0%;
             transition: width 0.3s ease;
             border-radius: 10px;
-        }
-        .eligibility-check {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            padding: 8px 0;
-        }
-        .eligibility-check .status-text {
-            font-weight: 600;
-            font-size: 0.85rem;
         }
         .student-type-card {
             border: 2px solid var(--gray-200);
@@ -928,7 +913,7 @@
             </div>
             <div>
                 <h1>NCHSM <span>Admission</span></h1>
-                <span class="sub">Smart OCR Admission System v4.0</span>
+                <span class="sub">Smart OCR Admission System v4.1</span>
             </div>
         </div>
         <div class="header-right">
@@ -1191,7 +1176,7 @@
         <!-- ===== STEP 3: DOCUMENTS with OCR ===== -->
         <div class="form-section" data-section="3">
             <div class="section-title"><i class="fas fa-file-upload"></i> Document Upload &amp; Scanning</div>
-            <div class="section-desc">Upload your KCSE certificate and ID. The system will automatically scan and extract data.</div>
+            <div class="section-desc">Upload your KCSE certificate and ID. The system will automatically scan and extract data. Supports JPG, PNG, and PDF.</div>
 
             <div class="documents-grid">
                 <!-- KCSE Certificate - Primary document for scanning -->
@@ -1317,7 +1302,7 @@
     </form>
 
     <div style="text-align:center;margin-top:1.8rem;font-size:0.8rem;color:var(--gray-400);border-top:1px solid var(--gray-100);padding-top:1.2rem;">
-        <i class="fas fa-shield-alt" style="color:var(--primary-light);"></i> Secured by NCHSM ICT · v4.0 · <span id="currentYear"></span>
+        <i class="fas fa-shield-alt" style="color:var(--primary-light);"></i> Secured by NCHSM ICT · v4.1 · <span id="currentYear"></span>
     </div>
 </div>
 
@@ -1360,7 +1345,11 @@
     // ============================================================
     // COMPLETE ADMISSION SYSTEM WITH OCR DOCUMENT SCANNING
     // ============================================================
-
+// Hides the .html extension in the URL  
+if (window.location.pathname.endsWith('.html')) {
+    const cleanPath = window.location.pathname.replace(/\.html$/, '');
+    window.history.replaceState({}, '', cleanPath);
+} 
     // -------- STATE --------
     let currentStep = 1;
     let uploadedDocs = {};
@@ -1428,8 +1417,9 @@
             if (confirm) loadDraft();
         }
 
-        // Initialize Tesseract
-        console.log('✅ Tesseract.js loaded for OCR scanning');
+        // Initialize PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        console.log('✅ Tesseract.js & PDF.js loaded for OCR scanning');
     });
 
     // -------- EMAIL VALIDATION --------
@@ -1452,8 +1442,8 @@
         statusEl.className = 'email-status checking';
         setTimeout(() => {
             const domain = email.split('@')[1];
-            const validDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke', 'yandex.com', 'protonmail.com'];
-            if (validDomains.includes(domain) || domain.endsWith('.ac.ke') || domain.endsWith('.co.ke')) {
+            const validDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke', 'yandex.com', 'protonmail.com', 'icloud.com'];
+            if (validDomains.includes(domain) || domain.endsWith('.ac.ke') || domain.endsWith('.co.ke') || domain.endsWith('.ke')) {
                 statusEl.textContent = '✅ Valid email address';
                 statusEl.className = 'email-status valid';
                 emailValid = true;
@@ -1515,7 +1505,6 @@
             }
         }
         if (from === 3 && to > 3) {
-            // Check if KCSE was uploaded and validated
             if (!uploadedDocs['kcse']) {
                 showValidation('Please upload your KCSE certificate for scanning and validation.');
                 return false;
@@ -1630,7 +1619,7 @@
     }
 
     // ============================================================
-    // OCR DOCUMENT SCANNING - KCSE CERTIFICATE
+    // OCR DOCUMENT SCANNING - KCSE CERTIFICATE (with PDF support)
     // ============================================================
     async function handleKCSEDocument(event) {
         const file = event.target.files[0];
@@ -1651,17 +1640,33 @@
 
         // Show scanning overlay
         overlay.classList.add('active');
-        ocrStatus.textContent = '⏳ Scanning...';
+        ocrStatus.textContent = '⏳ Processing...';
         ocrStatus.className = 'ocr-status pending';
         resultBox.classList.remove('show');
 
         try {
-            // Convert image to text using Tesseract.js
-            const imageUrl = URL.createObjectURL(file);
+            let imageUrl = URL.createObjectURL(file);
+
+            // If PDF, convert to image first
+            if (file.type === 'application/pdf') {
+                ocrStatus.textContent = '⏳ Converting PDF to image...';
+                const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 2.0 });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const context = canvas.getContext('2d');
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                imageUrl = canvas.toDataURL('image/png');
+            }
+
+            // Perform OCR on the image
+            ocrStatus.textContent = '⏳ Scanning document with OCR...';
             const result = await Tesseract.recognize(imageUrl, 'eng', {
                 logger: m => {
                     if (m.status === 'recognizing text') {
-                        // Update progress
+                        // Update progress if needed
                     }
                 }
             });
@@ -1691,11 +1696,16 @@
             resultBox.classList.add('show');
             kcseValidated = true;
 
+            // Clean up URL object
+            if (file.type !== 'application/pdf') {
+                URL.revokeObjectURL(imageUrl);
+            }
+
         } catch (error) {
             console.error('OCR Error:', error);
             ocrStatus.textContent = '❌ OCR Failed';
             ocrStatus.className = 'ocr-status fail';
-            alert('Document scanning failed. Please ensure the image is clear and try again.');
+            alert('Document scanning failed. Please ensure the document is clear and try again. Supported formats: JPG, PNG, PDF.');
         } finally {
             overlay.classList.remove('active');
         }
@@ -1713,27 +1723,40 @@
             overallGrade: ''
         };
 
+        // Clean text for better parsing
+        const cleanText = text.replace(/\s+/g, ' ').trim();
+
         // Try to find name - look for common patterns
-        const nameMatch = text.match(/Name:\s*([^\n]+)/i) || text.match(/Candidate:\s*([^\n]+)/i) || text.match(/([A-Z]{2,}\s+[A-Z]{2,}\s+[A-Z]{2,})/);
+        const nameMatch = cleanText.match(/Name:\s*([A-Za-z\s.]+)/i) || 
+                         cleanText.match(/Candidate:\s*([A-Za-z\s.]+)/i) ||
+                         cleanText.match(/Student:\s*([A-Za-z\s.]+)/i) ||
+                         cleanText.match(/([A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+)/);
         if (nameMatch) data.name = nameMatch[1].trim();
 
         // Try to find index number
-        const indexMatch = text.match(/Index\s*(?:Number|No):?\s*([0-9]{8,12})/i) || text.match(/([0-9]{8,12})/);
+        const indexMatch = cleanText.match(/Index\s*(?:Number|No):?\s*([0-9]{8,12})/i) || 
+                          cleanText.match(/([0-9]{8,12})/);
         if (indexMatch) data.indexNumber = indexMatch[1].trim();
 
         // Try to find year
-        const yearMatch = text.match(/20[0-9]{2}/);
+        const yearMatch = cleanText.match(/20[0-9]{2}/);
         if (yearMatch) data.year = yearMatch[0];
 
         // Try to find subjects and grades - look for patterns like "English B+"
         const subjectPattern = /([A-Za-z\s]+)\s+([A-E][+-]?)/g;
         let match;
-        while ((match = subjectPattern.exec(text)) !== null) {
+        while ((match = subjectPattern.exec(cleanText)) !== null) {
             const subject = match[1].trim();
             const grade = match[2].trim();
+            // Only include valid subjects (common KCSE subjects)
+            const validSubjects = ['English', 'Mathematics', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 
+                                 'Kiswahili', 'Business', 'Computer', 'Agriculture', 'Home Science', 'Art', 'Music', 
+                                 'French', 'German', 'Arabic', 'Sign Language', 'Religious Education', 'CRE', 'IRE', 'HRE'];
+            
             if (subject.length > 1 && subject.length < 30 && grade.length <= 2) {
-                // Skip common false positives
-                if (!['Name', 'Index', 'Gender', 'School', 'Grade'].includes(subject)) {
+                // Check if subject is in valid list or looks like a subject
+                const isSubject = validSubjects.some(v => subject.includes(v) || v.includes(subject));
+                if (isSubject || subject.length < 15) {
                     data.subjects.push(subject);
                     data.grades[subject] = grade;
                 }
@@ -1741,7 +1764,9 @@
         }
 
         // Try to find overall grade
-        const overallMatch = text.match(/Overall\s*Grade:\s*([A-E][+-]?)/i) || text.match(/Mean\s*Grade:\s*([A-E][+-]?)/i);
+        const overallMatch = cleanText.match(/Overall\s*Grade:\s*([A-E][+-]?)/i) || 
+                            cleanText.match(/Mean\s*Grade:\s*([A-E][+-]?)/i) ||
+                            cleanText.match(/Total\s*Grade:\s*([A-E][+-]?)/i);
         if (overallMatch) data.overallGrade = overallMatch[1].trim();
 
         // If no overall grade found, try to calculate from subject grades
@@ -1751,14 +1776,15 @@
             const avg = points.reduce((a, b) => a + b, 0) / points.length;
             // Map average to grade
             if (avg >= 11) data.overallGrade = 'A';
-            else if (avg >= 9) data.overallGrade = 'B+';
-            else if (avg >= 8) data.overallGrade = 'B';
-            else if (avg >= 7) data.overallGrade = 'B-';
-            else if (avg >= 6) data.overallGrade = 'C+';
-            else if (avg >= 5) data.overallGrade = 'C';
-            else if (avg >= 4) data.overallGrade = 'C-';
-            else if (avg >= 3) data.overallGrade = 'D+';
-            else if (avg >= 2) data.overallGrade = 'D';
+            else if (avg >= 9.5) data.overallGrade = 'A-';
+            else if (avg >= 8.5) data.overallGrade = 'B+';
+            else if (avg >= 7.5) data.overallGrade = 'B';
+            else if (avg >= 6.5) data.overallGrade = 'B-';
+            else if (avg >= 5.5) data.overallGrade = 'C+';
+            else if (avg >= 4.5) data.overallGrade = 'C';
+            else if (avg >= 3.5) data.overallGrade = 'C-';
+            else if (avg >= 2.5) data.overallGrade = 'D+';
+            else if (avg >= 1.5) data.overallGrade = 'D';
             else data.overallGrade = 'E';
         }
 
@@ -1821,16 +1847,27 @@
             const minSubjectGrades = criteria.minSubjectGrades || {};
 
             requiredSubjects.forEach(subject => {
-                const studentGrade_subj = data.grades[subject] || data.grades[subject.toLowerCase()] || data.grades[subject.toUpperCase()];
+                // Try to find subject in extracted data (case insensitive)
+                let foundSubject = null;
+                let foundGrade = null;
+                
+                for (const [key, value] of Object.entries(data.grades)) {
+                    if (key.toLowerCase().includes(subject.toLowerCase()) || subject.toLowerCase().includes(key.toLowerCase())) {
+                        foundSubject = key;
+                        foundGrade = value;
+                        break;
+                    }
+                }
+
                 const requiredGrade = minSubjectGrades[subject] || 'D';
 
-                if (studentGrade_subj) {
-                    const studentPoints_subj = gradePoints[studentGrade_subj] || 0;
+                if (foundGrade) {
+                    const studentPoints_subj = gradePoints[foundGrade] || 0;
                     const requiredPoints = gradePoints[requiredGrade] || 0;
                     if (studentPoints_subj >= requiredPoints) {
-                        messages.push(`✅ ${subject}: ${studentGrade_subj} meets requirement (${requiredGrade})`);
+                        messages.push(`✅ ${subject}: ${foundGrade} meets requirement (${requiredGrade})`);
                     } else {
-                        messages.push(`❌ ${subject}: ${studentGrade_subj} is below requirement (${requiredGrade})`);
+                        messages.push(`❌ ${subject}: ${foundGrade} is below requirement (${requiredGrade})`);
                         allPass = false;
                     }
                 } else {
@@ -1874,7 +1911,7 @@
     }
 
     // ============================================================
-    // ID DOCUMENT SCANNING
+    // ID DOCUMENT SCANNING (with PDF support)
     // ============================================================
     async function handleIDDocument(event) {
         const file = event.target.files[0];
@@ -1894,12 +1931,29 @@
         }
 
         overlay.classList.add('active');
-        ocrStatus.textContent = '⏳ Scanning...';
+        ocrStatus.textContent = '⏳ Processing...';
         ocrStatus.className = 'ocr-status pending';
         resultBox.classList.remove('show');
 
         try {
-            const imageUrl = URL.createObjectURL(file);
+            let imageUrl = URL.createObjectURL(file);
+
+            // If PDF, convert to image first
+            if (file.type === 'application/pdf') {
+                ocrStatus.textContent = '⏳ Converting PDF to image...';
+                const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 2.0 });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const context = canvas.getContext('2d');
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                imageUrl = canvas.toDataURL('image/png');
+            }
+
+            // Perform OCR
+            ocrStatus.textContent = '⏳ Scanning ID with OCR...';
             const result = await Tesseract.recognize(imageUrl, 'eng');
             const text = result.data.text;
             console.log('ID OCR Text:', text);
@@ -1929,10 +1983,15 @@
                 document.getElementById('fullName').value = idData.name;
             }
 
+            if (file.type !== 'application/pdf') {
+                URL.revokeObjectURL(imageUrl);
+            }
+
         } catch (error) {
             console.error('ID OCR Error:', error);
             ocrStatus.textContent = '❌ OCR Failed';
             ocrStatus.className = 'ocr-status fail';
+            alert('ID scanning failed. Please ensure the document is clear.');
         } finally {
             overlay.classList.remove('active');
         }
@@ -1943,16 +2002,23 @@
     function parseIDData(text) {
         const data = { name: '', idNumber: '', dob: '' };
 
+        // Clean text
+        const cleanText = text.replace(/\s+/g, ' ').trim();
+
         // Try to find name
-        const nameMatch = text.match(/Name:\s*([^\n]+)/i) || text.match(/Full\s*Name:\s*([^\n]+)/i) || text.match(/([A-Z]{2,}\s+[A-Z]{2,}\s+[A-Z]{2,})/);
+        const nameMatch = cleanText.match(/Name:\s*([A-Za-z\s.]+)/i) || 
+                         cleanText.match(/Full\s*Name:\s*([A-Za-z\s.]+)/i) ||
+                         cleanText.match(/([A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+)/);
         if (nameMatch) data.name = nameMatch[1].trim();
 
         // Try to find ID number
-        const idMatch = text.match(/ID\s*(?:Number|No):?\s*([0-9]{7,9})/i) || text.match(/([0-9]{7,9})/);
+        const idMatch = cleanText.match(/ID\s*(?:Number|No):?\s*([0-9]{7,9})/i) || 
+                        cleanText.match(/([0-9]{7,9})/);
         if (idMatch) data.idNumber = idMatch[1].trim();
 
         // Try to find DOB
-        const dobMatch = text.match(/DOB:\s*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i) || text.match(/Birth:\s*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i);
+        const dobMatch = cleanText.match(/DOB:\s*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i) || 
+                         cleanText.match(/Birth:\s*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i);
         if (dobMatch) data.dob = dobMatch[1].trim();
 
         return data;
@@ -2177,8 +2243,8 @@
     updateProgramDesc();
     updateIntakePreview();
     updateSummary();
-    console.log('✅ NCHSM Smart Admission System with OCR loaded (v4.0)');
-    console.log('📌 Features: Tesseract.js OCR, KCSE scanning, ID scanning, eligibility validation');
+    console.log('✅ NCHSM Smart Admission System with OCR loaded (v4.1)');
+    console.log('📌 Features: PDF support, Tesseract.js OCR, KCSE scanning, ID scanning, eligibility validation');
     console.log('🏫 Logo loaded from NCHSM repository');
 </script>
 
