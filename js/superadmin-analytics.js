@@ -47,7 +47,8 @@
     }, 200);
 })();
 
-const supabase = (typeof sb !== 'undefined') ? sb : window.sb;
+// ✅ REMOVE THIS LINE - IT'S CAUSING THE DUPLICATE ERROR
+// const supabase = (typeof sb !== 'undefined') ? sb : window.sb;
 
 // ============================================================
 // SUPER ADMIN ANALYTICS MODULE - COMPLETE
@@ -307,7 +308,7 @@ window.loadAnalyticsData = async function() {
     
     window.showAnalyticsLoading(true);
     
-    const client = supabase || window.sb;
+const client = window.sb || window.supabase;
     if (!client) {
         console.error('❌ Supabase client not available');
         window.showAnalyticsLoading(false);
