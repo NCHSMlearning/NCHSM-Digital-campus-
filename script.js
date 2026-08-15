@@ -3581,7 +3581,63 @@ console.log('   - loadWeeklyTrends()');
 console.log('   - loadSystemStatusIndicators()');
 console.log('   - updateCharts()');
 console.log('   - exportDashboardPDF/CSV/PNG()');
+// ============================================================
+// 📊 FALLBACK: loadDashboardData - In case it's not defined
+// ============================================================
 
+if (typeof window.loadDashboardData === 'undefined') {
+    window.loadDashboardData = async function() {
+        console.log('📊 Loading dashboard data (fallback)...');
+        
+        try {
+            const client = window.sb || window.supabase;
+            if (!client) {
+                console.error('❌ Supabase client not available');
+                return;
+            }
+            
+            // Total users
+            const { count: allUsersCount, error: u1 } = await client
+                .from('consolidated_user_profiles_table')
+                .select('*', { count: 'exact', head: true });
+            if (!u1) {
+                const el = document.getElementById('totalUsers');
+                if (el) el.textContent = allUsersCount || 0;
+            }
+            
+            // Pending approvals
+            const { count: pendingCount, error: u2 } = await client
+                .from('consolidated_user_profiles_table')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
+            if (!u2) {
+                const el = document.getElementById('pendingApprovals');
+                if (el) el.textContent = pendingCount || 0;
+            }
+            
+            // Total students
+            const { count: studentsCount, error: u3 } = await client
+                .from('consolidated_user_profiles_table')
+                .select('*', { count: 'exact', head: true })
+                .eq('role', 'student');
+            if (!u3) {
+                const el = document.getElementById('totalStudents');
+                if (el) el.textContent = studentsCount || 0;
+            }
+            
+            // Update timestamp
+            const timestampEl = document.getElementById('liveTimestamp');
+            if (timestampEl) {
+                timestampEl.textContent = new Date().toLocaleTimeString();
+            }
+            
+            console.log('✅ Dashboard data loaded (fallback)');
+            
+        } catch (error) {
+            console.error('❌ Error loading dashboard data:', error);
+        }
+    };
+}
 // ============================================================
 // SYSTEM HEALTH MONITORING - ULTRA MODERN REAL-TIME VERSION
 // ============================================================
