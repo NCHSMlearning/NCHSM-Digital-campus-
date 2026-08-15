@@ -2102,7 +2102,26 @@ function exportTableToCSV(tableId, filename) {
  * ✅ Ultra-modern UI integration
  * ✅ All functions wrapped with safe checks
  * ✅ ALL functions exposed to global scope
+ * ✅ NO duplicate variable declarations
+ * ✅ Uses window.sb instead of sb
+ * ✅ Uses window.escapeHtml with safe fallback
  *******************************************************/
+
+// ============================================
+// 📊 SAFE GLOBAL DECLARATIONS
+// ============================================
+
+// Only declare if not already defined
+if (typeof window.SETTINGS_TABLE === 'undefined') {
+    window.SETTINGS_TABLE = 'settings';
+}
+if (typeof window.MESSAGE_KEY === 'undefined') {
+    window.MESSAGE_KEY = 'student_welcome_message';
+}
+
+// Local references - use these inside functions
+const SETTINGS_TABLE = window.SETTINGS_TABLE;
+const MESSAGE_KEY = window.MESSAGE_KEY;
 
 // ============================================
 // 📊 HELPER FUNCTIONS - SAFE UPDATES
@@ -2111,40 +2130,46 @@ function exportTableToCSV(tableId, filename) {
 /**
  * Safely set textContent on an element if it exists
  */
-function safeSetText(id, value, defaultValue = '0') {
-    const el = document.getElementById(id);
-    if (el) {
-        el.textContent = value ?? defaultValue;
-        return true;
-    }
-    return false;
+if (typeof window.safeSetText === 'undefined') {
+    window.safeSetText = function(id, value, defaultValue = '0') {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = value ?? defaultValue;
+            return true;
+        }
+        return false;
+    };
 }
 
 /**
  * Safely set innerHTML on an element if it exists
  */
-function safeSetHTML(id, html) {
-    const el = document.getElementById(id);
-    if (el) {
-        el.innerHTML = html;
-        return true;
-    }
-    return false;
+if (typeof window.safeSetHTML === 'undefined') {
+    window.safeSetHTML = function(id, html) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerHTML = html;
+            return true;
+        }
+        return false;
+    };
 }
 
 /**
  * Safely set innerHTML with loading state
  */
-function safeSetLoading(id, message = 'Loading...') {
-    const el = document.getElementById(id);
-    if (el) {
-        el.innerHTML = `<div style="text-align: center; padding: 20px; color: #94a3b8;">
-            <div class="loading-spinner" style="width: 24px; height: 24px; border: 2px solid #e5e7eb; border-top: 2px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
-            ${message}
-        </div>`;
-        return true;
-    }
-    return false;
+if (typeof window.safeSetLoading === 'undefined') {
+    window.safeSetLoading = function(id, message = 'Loading...') {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerHTML = `<div style="text-align: center; padding: 20px; color: #94a3b8;">
+                <div class="loading-spinner" style="width: 24px; height: 24px; border: 2px solid #e5e7eb; border-top: 2px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
+                ${message}
+            </div>`;
+            return true;
+        }
+        return false;
+    };
 }
 
 // ============================================
@@ -2211,748 +2236,836 @@ if (typeof window.getProgramType === 'undefined') {
 }
 
 // ============================================
+// 🔥 SAFE escapeHtml - CHECK IF ALREADY DEFINED
+// ============================================
+
+if (typeof window.escapeHtml === 'undefined') {
+    window.escapeHtml = function(s, isAttribute = false) {
+        let str = String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if (isAttribute) {
+            str = str.replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+        } else {
+            str = str.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+        return str;
+    };
+}
+
+// Local reference for escapeHtml
+const escapeHtml = window.escapeHtml;
+
+// ============================================
 // 📊 DASHBOARD METRICS - ALL FUNCTIONS
 // ============================================
 
 /**
  * Load ticket metrics for dashboard
  */
-async function loadTicketMetricsForDashboard() {
-    try {
-        // Get all open tickets
-        const { data: openTickets, error: openError } = await sb
-            .from('support_tickets')
-            .select('id, priority')
-            .eq('status', 'open');
-        
-        if (!openError && openTickets) {
-            safeSetText('dashboardOpenTickets', openTickets.length);
-            const urgentCount = openTickets.filter(t => t.priority === 'urgent').length;
-            safeSetText('dashboardUrgentTickets', urgentCount);
+if (typeof window.loadTicketMetricsForDashboard === 'undefined') {
+    window.loadTicketMetricsForDashboard = async function() {
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) {
+                console.error('❌ Supabase client not available');
+                return;
+            }
+            
+            // Get all open tickets
+            const { data: openTickets, error: openError } = await supabase
+                .from('support_tickets')
+                .select('id, priority')
+                .eq('status', 'open');
+            
+            if (!openError && openTickets) {
+                window.safeSetText('dashboardOpenTickets', openTickets.length);
+                const urgentCount = openTickets.filter(t => t.priority === 'urgent').length;
+                window.safeSetText('dashboardUrgentTickets', urgentCount);
+            }
+            
+            // Get total units for dashboard
+            const { data: units, error: unitsError } = await supabase
+                .from('units_catalog')
+                .select('id', { count: 'exact' });
+            
+            if (!unitsError && units) {
+                window.safeSetText('dashboardTotalUnits', units.length || 0);
+            }
+            
+            // Get pending unit registrations
+            const { data: pendingReg, error: pendingError } = await supabase
+                .from('student_unit_registrations')
+                .select('id', { count: 'exact' })
+                .eq('status', 'pending');
+            
+            if (!pendingError) {
+                window.safeSetText('dashboardPendingUnitReg', pendingReg?.length || 0);
+            }
+            
+            // Get upcoming exams (next 7 days)
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            const nextWeekStr = nextWeek.toISOString().split('T')[0];
+            
+            const { data: upcomingExams, error: examsError } = await supabase
+                .from('exams')
+                .select('id')
+                .eq('status', 'Upcoming')
+                .lte('exam_date', nextWeekStr);
+            
+            if (!examsError) {
+                window.safeSetText('dashboardUpcomingExams', upcomingExams?.length || 0);
+            }
+            
+        } catch (error) {
+            console.error('Error loading ticket metrics:', error);
         }
-        
-        // Get total units for dashboard
-        const { data: units, error: unitsError } = await sb
-            .from('units_catalog')
-            .select('id', { count: 'exact' });
-        
-        if (!unitsError && units) {
-            safeSetText('dashboardTotalUnits', units.length || 0);
-        }
-        
-        // Get pending unit registrations
-        const { data: pendingReg, error: pendingError } = await sb
-            .from('student_unit_registrations')
-            .select('id', { count: 'exact' })
-            .eq('status', 'pending');
-        
-        if (!pendingError) {
-            safeSetText('dashboardPendingUnitReg', pendingReg?.length || 0);
-        }
-        
-        // Get upcoming exams (next 7 days)
-        const nextWeek = new Date();
-        nextWeek.setDate(nextWeek.getDate() + 7);
-        const nextWeekStr = nextWeek.toISOString().split('T')[0];
-        
-        const { data: upcomingExams, error: examsError } = await sb
-            .from('exams')
-            .select('id')
-            .eq('status', 'Upcoming')
-            .lte('exam_date', nextWeekStr);
-        
-        if (!examsError) {
-            safeSetText('dashboardUpcomingExams', upcomingExams?.length || 0);
-        }
-        
-    } catch (error) {
-        console.error('Error loading ticket metrics:', error);
-    }
+    };
 }
 
 /**
  * Load total daily check-ins
  */
-async function loadTotalDailyCheckIns() {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+if (typeof window.loadTotalDailyCheckIns === 'undefined') {
+    window.loadTotalDailyCheckIns = async function() {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
-    const checkInsElement = document.getElementById('totalDailyCheckIns');
-    if (!checkInsElement) return;
+        const checkInsElement = document.getElementById('totalDailyCheckIns');
+        if (!checkInsElement) return;
 
-    try {
-        const { count, error } = await sb
-            .from('geo_attendance_logs')
-            .select('*', { count: 'exact', head: true })
-            .gte('check_in_time', todayStr)
-            .lt('check_in_time', tomorrowStr);
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) {
+                console.error('❌ Supabase client not available');
+                checkInsElement.textContent = '0';
+                return;
+            }
+            
+            const { count, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*', { count: 'exact', head: true })
+                .gte('check_in_time', todayStr)
+                .lt('check_in_time', tomorrowStr);
 
-        if (error) {
-            console.error('Error counting daily check-ins:', error.message);
+            if (error) {
+                console.error('Error counting daily check-ins:', error.message);
+                checkInsElement.textContent = '0';
+            } else {
+                checkInsElement.textContent = count || 0;
+            }
+        } catch (e) {
             checkInsElement.textContent = '0';
-        } else {
-            checkInsElement.textContent = count || 0;
         }
-    } catch (e) {
-        checkInsElement.textContent = '0';
-    }
+    };
 }
 
 /**
  * Load pending messages count
  */
-async function loadPendingMessagesCount() {
-    try {
-        const { count, error } = await sb
-            .from('notifications')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_read', false);
-        
-        if (!error) {
-            safeSetText('dashboardPendingMessages', count || 0);
+if (typeof window.loadPendingMessagesCount === 'undefined') {
+    window.loadPendingMessagesCount = async function() {
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) return;
+            
+            const { count, error } = await supabase
+                .from('notifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_read', false);
+            
+            if (!error) {
+                window.safeSetText('dashboardPendingMessages', count || 0);
+            }
+        } catch (error) {
+            console.error('Error loading pending messages:', error);
         }
-    } catch (error) {
-        console.error('Error loading pending messages:', error);
-    }
+    };
 }
 
 /**
  * Load student statistics - KRCHN vs TVET - WITH NULL CHECKS
  */
-async function loadStudentStatistics() {
-    console.log('📊 Loading student statistics...');
-    
-    try {
-        const { data: students, error } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, program, gender, role, status, intake_year, block')
-            .eq('role', 'student')
-            .eq('status', 'approved');
+if (typeof window.loadStudentStatistics === 'undefined') {
+    window.loadStudentStatistics = async function() {
+        console.log('📊 Loading student statistics...');
         
-        if (error) throw error;
-        
-        if (!students || students.length === 0) {
-            safeSetText('statsTotalStudents', '0');
-            safeSetText('statsKrchnCount', '0');
-            safeSetText('statsTvetCount', '0');
-            safeSetText('statsProgramCount', '0');
-            safeSetText('statsMaleTotal', '0');
-            safeSetText('statsFemaleTotal', '0');
-            safeSetText('statsMalePercent', '0%');
-            safeSetText('statsFemalePercent', '0%');
-            safeSetHTML('statsProgramBreakdown', 
-                '<tr><td colspan="7" style="padding: 30px; text-align: center; color: #6b7280;">No students found</td></tr>'
-            );
-            return;
-        }
-        
-        const totalStudents = students.length;
-        const krchnCount = students.filter(s => s.program === 'KRCHN').length;
-        const tvetCount = students.filter(s => isTVETProgram(s.program)).length;
-        const maleCount = students.filter(s => s.gender === 'M' || s.gender === 'Male').length;
-        const femaleCount = students.filter(s => s.gender === 'F' || s.gender === 'Female').length;
-        const malePercent = totalStudents > 0 ? Math.round((maleCount / totalStudents) * 100) : 0;
-        const femalePercent = totalStudents > 0 ? Math.round((femaleCount / totalStudents) * 100) : 0;
-        const programCount = [...new Set(students.map(s => s.program).filter(p => p))].length;
-        
-        safeSetText('statsTotalStudents', totalStudents);
-        safeSetText('statsKrchnCount', krchnCount);
-        safeSetText('statsTvetCount', tvetCount);
-        safeSetText('statsProgramCount', programCount);
-        safeSetText('statsMaleTotal', maleCount);
-        safeSetText('statsFemaleTotal', femaleCount);
-        safeSetText('statsMalePercent', malePercent + '%');
-        safeSetText('statsFemalePercent', femalePercent + '%');
-        
-        // Build program breakdown
-        let html = '';
-        const programData = [];
-        
-        for (const programCode of [...new Set(students.map(s => s.program).filter(p => p))]) {
-            const progStudents = students.filter(s => s.program === programCode);
-            const progTotal = progStudents.length;
-            const progMale = progStudents.filter(s => s.gender === 'M' || s.gender === 'Male').length;
-            const progFemale = progStudents.filter(s => s.gender === 'F' || s.gender === 'Female').length;
-            const progType = getProgramType(programCode);
-            const progName = getProgramDisplayName(programCode);
-            const progPercent = totalStudents > 0 ? ((progTotal / totalStudents) * 100).toFixed(1) : 0;
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) {
+                console.error('❌ Supabase client not available');
+                return;
+            }
             
-            const ratio = progFemale > 0 ? (progMale / progFemale).toFixed(2) : (progMale > 0 ? '∞' : '0');
-            const ratioDisplay = ratio === '∞' ? 'All M' : (ratio === '0' ? 'All F' : `${ratio}:1`);
+            const { data: students, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name, program, gender, role, status, intake_year, block')
+                .eq('role', 'student')
+                .eq('status', 'approved');
             
-            programData.push({
-                name: progName,
-                type: progType,
-                total: progTotal,
-                male: progMale,
-                female: progFemale,
-                percent: progPercent,
-                ratio: ratioDisplay
-            });
-        }
-        
-        programData.sort((a, b) => b.total - a.total);
-        
-        for (const prog of programData) {
-            const badge = prog.type === 'KRCHN' 
-                ? '<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🎓 KRCHN</span>'
-                : '<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🔧 TVET</span>';
+            if (error) throw error;
             
-            html += `
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 14px;"><strong>${escapeHtml(prog.name)}</strong></td>
-                    <td style="padding: 10px 14px; text-align: center;">${badge}</td>
-                    <td style="padding: 10px 14px; text-align: center;"><strong>${prog.total}</strong></td>
-                    <td style="padding: 10px 14px; text-align: center;">👨 ${prog.male}</td>
-                    <td style="padding: 10px 14px; text-align: center;">👩 ${prog.female}</td>
-                    <td style="padding: 10px 14px; text-align: center; font-size: 13px;">${prog.ratio}</td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="flex: 1; height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
-                                <div style="width: ${prog.percent}%; height: 100%; background: linear-gradient(90deg, #4C1D95, #6d28d9); border-radius: 4px;"></div>
+            if (!students || students.length === 0) {
+                window.safeSetText('statsTotalStudents', '0');
+                window.safeSetText('statsKrchnCount', '0');
+                window.safeSetText('statsTvetCount', '0');
+                window.safeSetText('statsProgramCount', '0');
+                window.safeSetText('statsMaleTotal', '0');
+                window.safeSetText('statsFemaleTotal', '0');
+                window.safeSetText('statsMalePercent', '0%');
+                window.safeSetText('statsFemalePercent', '0%');
+                window.safeSetHTML('statsProgramBreakdown', 
+                    '<tr><td colspan="7" style="padding: 30px; text-align: center; color: #6b7280;">No students found</td></tr>'
+                );
+                return;
+            }
+            
+            const totalStudents = students.length;
+            const krchnCount = students.filter(s => s.program === 'KRCHN').length;
+            const tvetCount = students.filter(s => window.isTVETProgram(s.program)).length;
+            const maleCount = students.filter(s => s.gender === 'M' || s.gender === 'Male').length;
+            const femaleCount = students.filter(s => s.gender === 'F' || s.gender === 'Female').length;
+            const malePercent = totalStudents > 0 ? Math.round((maleCount / totalStudents) * 100) : 0;
+            const femalePercent = totalStudents > 0 ? Math.round((femaleCount / totalStudents) * 100) : 0;
+            const programCount = [...new Set(students.map(s => s.program).filter(p => p))].length;
+            
+            window.safeSetText('statsTotalStudents', totalStudents);
+            window.safeSetText('statsKrchnCount', krchnCount);
+            window.safeSetText('statsTvetCount', tvetCount);
+            window.safeSetText('statsProgramCount', programCount);
+            window.safeSetText('statsMaleTotal', maleCount);
+            window.safeSetText('statsFemaleTotal', femaleCount);
+            window.safeSetText('statsMalePercent', malePercent + '%');
+            window.safeSetText('statsFemalePercent', femalePercent + '%');
+            
+            // Build program breakdown
+            let html = '';
+            const programData = [];
+            
+            for (const programCode of [...new Set(students.map(s => s.program).filter(p => p))]) {
+                const progStudents = students.filter(s => s.program === programCode);
+                const progTotal = progStudents.length;
+                const progMale = progStudents.filter(s => s.gender === 'M' || s.gender === 'Male').length;
+                const progFemale = progStudents.filter(s => s.gender === 'F' || s.gender === 'Female').length;
+                const progType = window.getProgramType(programCode);
+                const progName = window.getProgramDisplayName(programCode);
+                const progPercent = totalStudents > 0 ? ((progTotal / totalStudents) * 100).toFixed(1) : 0;
+                
+                const ratio = progFemale > 0 ? (progMale / progFemale).toFixed(2) : (progMale > 0 ? '∞' : '0');
+                const ratioDisplay = ratio === '∞' ? 'All M' : (ratio === '0' ? 'All F' : `${ratio}:1`);
+                
+                programData.push({
+                    name: progName,
+                    type: progType,
+                    total: progTotal,
+                    male: progMale,
+                    female: progFemale,
+                    percent: progPercent,
+                    ratio: ratioDisplay
+                });
+            }
+            
+            programData.sort((a, b) => b.total - a.total);
+            
+            for (const prog of programData) {
+                const badge = prog.type === 'KRCHN' 
+                    ? '<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🎓 KRCHN</span>'
+                    : '<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🔧 TVET</span>';
+                
+                html += `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 14px;"><strong>${escapeHtml(prog.name)}</strong></td>
+                        <td style="padding: 10px 14px; text-align: center;">${badge}</td>
+                        <td style="padding: 10px 14px; text-align: center;"><strong>${prog.total}</strong></td>
+                        <td style="padding: 10px 14px; text-align: center;">👨 ${prog.male}</td>
+                        <td style="padding: 10px 14px; text-align: center;">👩 ${prog.female}</td>
+                        <td style="padding: 10px 14px; text-align: center; font-size: 13px;">${prog.ratio}</td>
+                        <td style="padding: 10px 14px; text-align: center;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="flex: 1; height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${prog.percent}%; height: 100%; background: linear-gradient(90deg, #4C1D95, #6d28d9); border-radius: 4px;"></div>
+                                </div>
+                                <span style="font-size: 12px; font-weight: 600; min-width: 40px;">${prog.percent}%</span>
                             </div>
-                            <span style="font-size: 12px; font-weight: 600; min-width: 40px;">${prog.percent}%</span>
-                        </div>
-                    </td>
-                </tr>
-            `;
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            window.safeSetHTML('statsProgramBreakdown', html);
+            window.safeSetText('statsLastUpdated', new Date().toLocaleTimeString());
+            
+            console.log('✅ Student statistics loaded:', { totalStudents, krchnCount, tvetCount, maleCount, femaleCount, programCount });
+            
+        } catch (error) {
+            console.error('Error loading student statistics:', error);
+            window.safeSetHTML('statsProgramBreakdown', 
+                `<tr><td colspan="7" style="padding: 30px; text-align: center; color: #dc2626;">❌ Error: ${error.message}</td></tr>`
+            );
         }
-        
-        safeSetHTML('statsProgramBreakdown', html);
-        safeSetText('statsLastUpdated', new Date().toLocaleTimeString());
-        
-        console.log('✅ Student statistics loaded:', { totalStudents, krchnCount, tvetCount, maleCount, femaleCount, programCount });
-        
-    } catch (error) {
-        console.error('Error loading student statistics:', error);
-        safeSetHTML('statsProgramBreakdown', 
-            `<tr><td colspan="7" style="padding: 30px; text-align: center; color: #dc2626;">❌ Error: ${error.message}</td></tr>`
-        );
-    }
+    };
 }
 
 /**
  * Load additional dashboard metrics - WITH NULL CHECKS
  */
-async function loadAdditionalDashboardMetrics() {
-    try {
-        // Load Lecturers Count
-        const { count: lecturersCount, error: lecturersError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id', { count: 'exact' })
-            .eq('role', 'lecturer');
-        
-        if (!lecturersError) {
-            safeSetText('dashboardLecturersCount', lecturersCount || 0);
+if (typeof window.loadAdditionalDashboardMetrics === 'undefined') {
+    window.loadAdditionalDashboardMetrics = async function() {
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) {
+                console.error('❌ Supabase client not available');
+                return;
+            }
+            
+            // Load Lecturers Count
+            const { count: lecturersCount, error: lecturersError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id', { count: 'exact' })
+                .eq('role', 'lecturer');
+            
+            if (!lecturersError) {
+                window.safeSetText('dashboardLecturersCount', lecturersCount || 0);
+            }
+            
+            // Load Pending Marks - use correct table name
+            const { count: pendingMarks, error: pendingMarksError } = await supabase
+                .from('exam_grades')
+                .select('id', { count: 'exact' })
+                .eq('status', 'pending');
+            
+            if (!pendingMarksError) {
+                window.safeSetText('dashboardPendingMarks', pendingMarks || 0);
+            }
+            
+            // Load Published Marks
+            const { count: publishedMarks, error: publishedMarksError } = await supabase
+                .from('exam_grades')
+                .select('id', { count: 'exact' })
+                .eq('status', 'published');
+            
+            if (!publishedMarksError) {
+                window.safeSetText('dashboardPublishedMarks', publishedMarks || 0);
+            }
+            
+            // Load Pending Reviews
+            const { count: pendingReviews, error: pendingReviewsError } = await supabase
+                .from('student_reviews')
+                .select('id', { count: 'exact' })
+                .eq('status', 'pending');
+            
+            if (!pendingReviewsError) {
+                window.safeSetText('dashboardPendingReviews', pendingReviews || 0);
+            }
+            
+            // Load Total Programs
+            const { count: totalPrograms, error: totalProgramsError } = await supabase
+                .from('programs')
+                .select('id', { count: 'exact' })
+                .eq('status', 'active');
+            
+            if (!totalProgramsError) {
+                window.safeSetText('dashboardTotalPrograms', totalPrograms || 0);
+            }
+            
+            // Load Total Sessions (this week)
+            const startOfWeek = new Date();
+            startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+            startOfWeek.setHours(0, 0, 0, 0);
+            const startOfWeekStr = startOfWeek.toISOString();
+            
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(endOfWeek.getDate() + 7);
+            const endOfWeekStr = endOfWeek.toISOString();
+            
+            const { count: totalSessions, error: totalSessionsError } = await supabase
+                .from('scheduled_sessions')
+                .select('id', { count: 'exact' })
+                .gte('session_date', startOfWeekStr)
+                .lt('session_date', endOfWeekStr);
+            
+            if (!totalSessionsError) {
+                window.safeSetText('dashboardTotalSessions', totalSessions || 0);
+            }
+            
+            // Load System Alerts
+            const { count: systemAlerts, error: systemAlertsError } = await supabase
+                .from('system_alerts')
+                .select('id', { count: 'exact' })
+                .eq('resolved', false);
+            
+            if (!systemAlertsError) {
+                window.safeSetText('dashboardSystemAlerts', systemAlerts || 0);
+            }
+            
+            // Load Attendance Today (percentage)
+            const todayStr = new Date().toISOString().split('T')[0];
+            const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+            
+            const { count: totalStudents, error: totalStudentsError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id', { count: 'exact' })
+                .eq('role', 'student')
+                .eq('status', 'approved');
+            
+            const { count: presentToday, error: presentTodayError } = await supabase
+                .from('geo_attendance_logs')
+                .select('user_id', { count: 'exact' })
+                .gte('check_in_time', todayStr)
+                .lt('check_in_time', tomorrowStr);
+            
+            if (!totalStudentsError && !presentTodayError && totalStudents > 0) {
+                const attendancePercent = Math.round((presentToday / totalStudents) * 100);
+                window.safeSetText('dashboardAttendanceToday', attendancePercent + '%');
+            }
+            
+            // Load Data Integrity Score
+            let integrityScore = 98.5;
+            let issues = 0;
+            
+            // Check for users without profiles
+            const { count: orphanedUsers, error: orphanedError } = await supabase
+                .from('users')
+                .select('id', { count: 'exact' })
+                .not('id', 'in', '(select user_id from consolidated_user_profiles_table)');
+            
+            if (!orphanedError && orphanedUsers > 0) {
+                issues += orphanedUsers * 0.5;
+            }
+            
+            // Check for marks without students
+            const { count: orphanedMarks, error: marksError } = await supabase
+                .from('exam_grades')
+                .select('id', { count: 'exact' })
+                .not('student_id', 'in', '(select user_id from consolidated_user_profiles_table)');
+            
+            if (!marksError && orphanedMarks > 0) {
+                issues += orphanedMarks * 0.3;
+            }
+            
+            integrityScore = Math.max(70, Math.min(100, integrityScore - issues));
+            window.safeSetText('dataIntegrityScore', integrityScore.toFixed(1) + '%');
+            
+        } catch (error) {
+            console.error('Error loading additional dashboard metrics:', error);
         }
-        
-        // Load Pending Marks - use correct table name
-        const { count: pendingMarks, error: pendingMarksError } = await sb
-            .from('exam_grades')
-            .select('id', { count: 'exact' })
-            .eq('status', 'pending');
-        
-        if (!pendingMarksError) {
-            safeSetText('dashboardPendingMarks', pendingMarks || 0);
-        }
-        
-        // Load Published Marks
-        const { count: publishedMarks, error: publishedMarksError } = await sb
-            .from('exam_grades')
-            .select('id', { count: 'exact' })
-            .eq('status', 'published');
-        
-        if (!publishedMarksError) {
-            safeSetText('dashboardPublishedMarks', publishedMarks || 0);
-        }
-        
-        // Load Pending Reviews
-        const { count: pendingReviews, error: pendingReviewsError } = await sb
-            .from('student_reviews')
-            .select('id', { count: 'exact' })
-            .eq('status', 'pending');
-        
-        if (!pendingReviewsError) {
-            safeSetText('dashboardPendingReviews', pendingReviews || 0);
-        }
-        
-        // Load Total Programs
-        const { count: totalPrograms, error: totalProgramsError } = await sb
-            .from('programs')
-            .select('id', { count: 'exact' })
-            .eq('status', 'active');
-        
-        if (!totalProgramsError) {
-            safeSetText('dashboardTotalPrograms', totalPrograms || 0);
-        }
-        
-        // Load Total Sessions (this week)
-        const startOfWeek = new Date();
-        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-        const startOfWeekStr = startOfWeek.toISOString();
-        
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(endOfWeek.getDate() + 7);
-        const endOfWeekStr = endOfWeek.toISOString();
-        
-        const { count: totalSessions, error: totalSessionsError } = await sb
-            .from('scheduled_sessions')
-            .select('id', { count: 'exact' })
-            .gte('session_date', startOfWeekStr)
-            .lt('session_date', endOfWeekStr);
-        
-        if (!totalSessionsError) {
-            safeSetText('dashboardTotalSessions', totalSessions || 0);
-        }
-        
-        // Load System Alerts
-        const { count: systemAlerts, error: systemAlertsError } = await sb
-            .from('system_alerts')
-            .select('id', { count: 'exact' })
-            .eq('resolved', false);
-        
-        if (!systemAlertsError) {
-            safeSetText('dashboardSystemAlerts', systemAlerts || 0);
-        }
-        
-        // Load Attendance Today (percentage)
-        const todayStr = new Date().toISOString().split('T')[0];
-        const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-        
-        const { count: totalStudents, error: totalStudentsError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id', { count: 'exact' })
-            .eq('role', 'student')
-            .eq('status', 'approved');
-        
-        const { count: presentToday, error: presentTodayError } = await sb
-            .from('geo_attendance_logs')
-            .select('user_id', { count: 'exact' })
-            .gte('check_in_time', todayStr)
-            .lt('check_in_time', tomorrowStr);
-        
-        if (!totalStudentsError && !presentTodayError && totalStudents > 0) {
-            const attendancePercent = Math.round((presentToday / totalStudents) * 100);
-            safeSetText('dashboardAttendanceToday', attendancePercent + '%');
-        }
-        
-        // Load Data Integrity Score
-        let integrityScore = 98.5;
-        let issues = 0;
-        
-        // Check for users without profiles
-        const { count: orphanedUsers, error: orphanedError } = await sb
-            .from('users')
-            .select('id', { count: 'exact' })
-            .not('id', 'in', '(select user_id from consolidated_user_profiles_table)');
-        
-        if (!orphanedError && orphanedUsers > 0) {
-            issues += orphanedUsers * 0.5;
-        }
-        
-        // Check for marks without students
-        const { count: orphanedMarks, error: marksError } = await sb
-            .from('exam_grades')
-            .select('id', { count: 'exact' })
-            .not('student_id', 'in', '(select user_id from consolidated_user_profiles_table)');
-        
-        if (!marksError && orphanedMarks > 0) {
-            issues += orphanedMarks * 0.3;
-        }
-        
-        integrityScore = Math.max(70, Math.min(100, integrityScore - issues));
-        safeSetText('dataIntegrityScore', integrityScore.toFixed(1) + '%');
-        
-    } catch (error) {
-        console.error('Error loading additional dashboard metrics:', error);
-    }
+    };
 }
 
 // ============================================
 // 🚀 MAIN DASHBOARD LOAD FUNCTION - WITH NULL CHECKS
 // ============================================
 
-async function loadDashboardData() {
-    console.log('📊 Loading dashboard data...');
-    
-    try {
-        // Show loading states
-        const loadingElements = document.querySelectorAll('.data');
-        loadingElements.forEach(el => {
-            if (!el.dataset.originalText) {
-                el.dataset.originalText = el.textContent;
+if (typeof window.loadDashboardData === 'undefined') {
+    window.loadDashboardData = async function() {
+        console.log('📊 Loading dashboard data...');
+        
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) {
+                console.error('❌ Supabase client not available');
+                return;
             }
-        });
-        
-        // Total users
-        const { count: allUsersCount } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id', { count: 'exact' });
-        safeSetText('totalUsers', allUsersCount || 0);
-        
-        // Total Daily Check-ins
-        await loadTotalDailyCheckIns(); 
-
-        // Pending approvals
-        const { count: pendingCount, error } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id', { count: 'exact', head: true })
-            .eq('status', 'pending');
-
-        if (error) {
-            console.error('Error counting pending approvals:', error.message);
-            safeSetText('pendingApprovals', '0');
-        } else {
-            safeSetText('pendingApprovals', pendingCount || 0);
-        }
-
-        // Total students
-        const { count: studentsCount } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id', { count: 'exact' })
-            .eq('role', 'student');
-        safeSetText('totalStudents', studentsCount || 0);
-
-        // Overall check-in count
-        const { count: overallCheckIns } = await sb
-            .from('geo_attendance_logs')
-            .select('*', { count: 'exact', head: true });
-        safeSetText('overallCheckInCount', overallCheckIns || 0);
-
-        // Total courses count
-        const { count: coursesCount } = await sb
-            .from('courses')
-            .select('*', { count: 'exact', head: true });
-        safeSetText('totalCourses', coursesCount || 0);
-
-        // Total resources count (this month)
-        const firstDayOfMonth = new Date();
-        firstDayOfMonth.setDate(1);
-        firstDayOfMonth.setHours(0, 0, 0, 0);
-        const { count: resourcesCount } = await sb
-            .from('resources')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', firstDayOfMonth.toISOString());
-        safeSetText('totalResources', resourcesCount || 0);
-
-        // KRCHN vs TVET Counts
-        const { count: krchnCount } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id', { count: 'exact' })
-            .eq('role', 'student')
-            .eq('status', 'approved')
-            .eq('program', 'KRCHN');
-        safeSetText('krchnCountDisplay', krchnCount || 0);
-        
-        const { count: tvetCount } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id', { count: 'exact' })
-            .eq('role', 'student')
-            .eq('status', 'approved')
-            .neq('program', 'KRCHN');
-        safeSetText('tvetCountDisplay', tvetCount || 0);
-        
-        // Staff count
-        const { count: staffCount } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id', { count: 'exact' })
-            .in('role', ['lecturer', 'admin', 'superadmin']);
-        safeSetText('totalStaffCountDisplay', staffCount || 0);
-        safeSetText('totalStaffCount', staffCount || 0);
-        
-        // Resources total
-        const { count: totalResourcesAll } = await sb
-            .from('resources')
-            .select('*', { count: 'exact', head: true });
-        safeSetText('totalResourcesDisplay', totalResourcesAll || 0);
-
-        // Active sessions
-        const activeSessionsEl = document.getElementById('activeSessions');
-        if (activeSessionsEl) {
-            try {
-                const { data: sessions } = await sb.auth.admin.listUsers();
-                const activeCount = sessions?.users?.filter(u => u.last_sign_in_at)?.length || 0;
-                activeSessionsEl.textContent = activeCount;
-            } catch (e) {
-                activeSessionsEl.textContent = '0';
-            }
-        }
-
-        // System Uptime
-        const uptimeEl = document.getElementById('systemUptime');
-        if (uptimeEl) {
-            const { data: logs, error: logsError } = await sb
-                .from('system_logs')
-                .select('created_at, event_type')
-                .eq('event_type', 'system_start')
-                .order('created_at', { ascending: false })
-                .limit(1);
             
-            if (!logsError && logs && logs.length > 0) {
-                const lastStart = new Date(logs[0].created_at);
-                const now = new Date();
-                const daysUp = (now - lastStart) / (1000 * 60 * 60 * 24);
-                if (daysUp > 30) {
-                    uptimeEl.textContent = '99.8%';
-                } else if (daysUp > 7) {
-                    uptimeEl.textContent = '99.5%';
-                } else {
-                    uptimeEl.textContent = '100%';
+            // Show loading states
+            const loadingElements = document.querySelectorAll('.data');
+            loadingElements.forEach(el => {
+                if (!el.dataset.originalText) {
+                    el.dataset.originalText = el.textContent;
                 }
+            });
+            
+            // Total users
+            const { count: allUsersCount } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id', { count: 'exact' });
+            window.safeSetText('totalUsers', allUsersCount || 0);
+            
+            // Total Daily Check-ins
+            await window.loadTotalDailyCheckIns(); 
+
+            // Pending approvals
+            const { count: pendingCount, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id', { count: 'exact', head: true })
+                .eq('status', 'pending');
+
+            if (error) {
+                console.error('Error counting pending approvals:', error.message);
+                window.safeSetText('pendingApprovals', '0');
             } else {
-                uptimeEl.textContent = '99.8%';
+                window.safeSetText('pendingApprovals', pendingCount || 0);
             }
-        }
 
-        // Header stats
-        const headerLoad = document.getElementById('headerServerLoad');
-        if (headerLoad) {
-            const load = (Math.random() * 30 + 10).toFixed(1);
-            headerLoad.textContent = load + '%';
-        }
-        
-        const headerMemory = document.getElementById('headerMemory');
-        if (headerMemory) {
-            const mem = (Math.random() * 4 + 1).toFixed(1);
-            headerMemory.textContent = mem + ' GB';
-        }
-        
-        const headerStorage = document.getElementById('headerStorage');
-        if (headerStorage) {
-            const storage = (Math.random() * 40 + 20).toFixed(0);
-            headerStorage.textContent = storage + '%';
-        }
+            // Total students
+            const { count: studentsCount } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id', { count: 'exact' })
+                .eq('role', 'student');
+            window.safeSetText('totalStudents', studentsCount || 0);
 
-        // Load all other metrics
-        await loadTicketMetricsForDashboard();
-        await loadPendingMessagesCount();
-        await loadAdditionalDashboardMetrics();
-        
-        // Only call if elements exist
-        const statsExists = document.getElementById('statsTotalStudents') !== null;
-        if (statsExists) {
-            await loadStudentStatistics();
+            // Overall check-in count
+            const { count: overallCheckIns } = await supabase
+                .from('geo_attendance_logs')
+                .select('*', { count: 'exact', head: true });
+            window.safeSetText('overallCheckInCount', overallCheckIns || 0);
+
+            // Total courses count
+            const { count: coursesCount } = await supabase
+                .from('courses')
+                .select('*', { count: 'exact', head: true });
+            window.safeSetText('totalCourses', coursesCount || 0);
+
+            // Total resources count (this month)
+            const firstDayOfMonth = new Date();
+            firstDayOfMonth.setDate(1);
+            firstDayOfMonth.setHours(0, 0, 0, 0);
+            const { count: resourcesCount } = await supabase
+                .from('resources')
+                .select('*', { count: 'exact', head: true })
+                .gte('created_at', firstDayOfMonth.toISOString());
+            window.safeSetText('totalResources', resourcesCount || 0);
+
+            // KRCHN vs TVET Counts
+            const { count: krchnCount } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id', { count: 'exact' })
+                .eq('role', 'student')
+                .eq('status', 'approved')
+                .eq('program', 'KRCHN');
+            window.safeSetText('krchnCountDisplay', krchnCount || 0);
+            
+            const { count: tvetCount } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id', { count: 'exact' })
+                .eq('role', 'student')
+                .eq('status', 'approved')
+                .neq('program', 'KRCHN');
+            window.safeSetText('tvetCountDisplay', tvetCount || 0);
+            
+            // Staff count
+            const { count: staffCount } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id', { count: 'exact' })
+                .in('role', ['lecturer', 'admin', 'superadmin']);
+            window.safeSetText('totalStaffCountDisplay', staffCount || 0);
+            window.safeSetText('totalStaffCount', staffCount || 0);
+            
+            // Resources total
+            const { count: totalResourcesAll } = await supabase
+                .from('resources')
+                .select('*', { count: 'exact', head: true });
+            window.safeSetText('totalResourcesDisplay', totalResourcesAll || 0);
+
+            // Active sessions
+            const activeSessionsEl = document.getElementById('activeSessions');
+            if (activeSessionsEl) {
+                try {
+                    const { data: sessions } = await supabase.auth.admin.listUsers();
+                    const activeCount = sessions?.users?.filter(u => u.last_sign_in_at)?.length || 0;
+                    activeSessionsEl.textContent = activeCount;
+                } catch (e) {
+                    activeSessionsEl.textContent = '0';
+                }
+            }
+
+            // System Uptime
+            const uptimeEl = document.getElementById('systemUptime');
+            if (uptimeEl) {
+                const { data: logs, error: logsError } = await supabase
+                    .from('system_logs')
+                    .select('created_at, event_type')
+                    .eq('event_type', 'system_start')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                
+                if (!logsError && logs && logs.length > 0) {
+                    const lastStart = new Date(logs[0].created_at);
+                    const now = new Date();
+                    const daysUp = (now - lastStart) / (1000 * 60 * 60 * 24);
+                    if (daysUp > 30) {
+                        uptimeEl.textContent = '99.8%';
+                    } else if (daysUp > 7) {
+                        uptimeEl.textContent = '99.5%';
+                    } else {
+                        uptimeEl.textContent = '100%';
+                    }
+                } else {
+                    uptimeEl.textContent = '99.8%';
+                }
+            }
+
+            // Header stats
+            const headerLoad = document.getElementById('headerServerLoad');
+            if (headerLoad) {
+                const load = (Math.random() * 30 + 10).toFixed(1);
+                headerLoad.textContent = load + '%';
+            }
+            
+            const headerMemory = document.getElementById('headerMemory');
+            if (headerMemory) {
+                const mem = (Math.random() * 4 + 1).toFixed(1);
+                headerMemory.textContent = mem + ' GB';
+            }
+            
+            const headerStorage = document.getElementById('headerStorage');
+            if (headerStorage) {
+                const storage = (Math.random() * 40 + 20).toFixed(0);
+                headerStorage.textContent = storage + '%';
+            }
+
+            // Load all other metrics
+            await window.loadTicketMetricsForDashboard();
+            await window.loadPendingMessagesCount();
+            await window.loadAdditionalDashboardMetrics();
+            
+            // Only call if elements exist
+            const statsExists = document.getElementById('statsTotalStudents') !== null;
+            if (statsExists) {
+                await window.loadStudentStatistics();
+            }
+            
+            // Load Welcome Message
+            window.loadStudentWelcomeMessage();
+            
+            // Update live timestamp
+            const timestampEl = document.getElementById('liveTimestamp');
+            if (timestampEl) {
+                timestampEl.textContent = new Date().toLocaleTimeString();
+            }
+            
+            console.log('✅ Dashboard data loaded successfully');
+            
+        } catch (error) {
+            console.error('❌ Error loading dashboard data:', error);
         }
-        
-        // Load Welcome Message
-        loadStudentWelcomeMessage();
-        
-        // Update live timestamp
-        const timestampEl = document.getElementById('liveTimestamp');
-        if (timestampEl) {
-            timestampEl.textContent = new Date().toLocaleTimeString();
-        }
-        
-        console.log('✅ Dashboard data loaded successfully');
-        
-    } catch (error) {
-        console.error('❌ Error loading dashboard data:', error);
-    }
+    };
 }
 
 // ============================================
 // 📝 WELCOME MESSAGE FUNCTIONS
 // ============================================
 
-const SETTINGS_TABLE = 'settings';
-const MESSAGE_KEY = 'student_welcome_message';
+if (typeof window.loadStudentWelcomeMessage === 'undefined') {
+    window.loadStudentWelcomeMessage = async function() {
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) return;
+            
+            const { data, error } = await supabase
+                .from(SETTINGS_TABLE)
+                .select('*')
+                .eq('key', MESSAGE_KEY)
+                .single();
+            
+            const messageDiv = document.getElementById('student-welcome-message');
+            if (!messageDiv) return;
 
-async function loadStudentWelcomeMessage() {
-    try {
-        const { data, error } = await sb
-            .from(SETTINGS_TABLE)
-            .select('*')
-            .eq('key', MESSAGE_KEY)
-            .single();
-        
-        const messageDiv = document.getElementById('student-welcome-message');
-        if (!messageDiv) return;
-
-        if (data && data.value) {
-            const welcomeText = document.getElementById('welcomeMessageText');
-            if (welcomeText) {
-                welcomeText.innerHTML = data.value;
+            if (data && data.value) {
+                const welcomeText = document.getElementById('welcomeMessageText');
+                if (welcomeText) {
+                    welcomeText.innerHTML = data.value;
+                } else {
+                    messageDiv.innerHTML = data.value;
+                }
             } else {
-                messageDiv.innerHTML = data.value;
+                const welcomeText = document.getElementById('welcomeMessageText');
+                if (welcomeText) {
+                    welcomeText.innerHTML = 'Welcome to NCHSM! Please check in for attendance.';
+                } else {
+                    messageDiv.innerHTML = '<p>Welcome to NCHSM! Please check in for attendance.</p>';
+                }
             }
-        } else {
-            const welcomeText = document.getElementById('welcomeMessageText');
-            if (welcomeText) {
-                welcomeText.innerHTML = 'Welcome to NCHSM! Please check in for attendance.';
-            } else {
+            
+            // Update timestamp
+            const timestampEl = document.getElementById('welcomeTimestamp');
+            if (timestampEl) {
+                timestampEl.textContent = new Date().toLocaleTimeString();
+            }
+            
+        } catch (error) {
+            console.error('Error loading welcome message:', error);
+            const messageDiv = document.getElementById('student-welcome-message');
+            if (messageDiv) {
                 messageDiv.innerHTML = '<p>Welcome to NCHSM! Please check in for attendance.</p>';
             }
         }
-        
-        // Update timestamp
-        const timestampEl = document.getElementById('welcomeTimestamp');
-        if (timestampEl) {
-            timestampEl.textContent = new Date().toLocaleTimeString();
-        }
-        
-    } catch (error) {
-        console.error('Error loading welcome message:', error);
-        const messageDiv = document.getElementById('student-welcome-message');
-        if (messageDiv) {
-            messageDiv.innerHTML = '<p>Welcome to NCHSM! Please check in for attendance.</p>';
-        }
-    }
+    };
 }
 
-async function loadWelcomeMessageForEdit() {
-    try {
-        const { data, error } = await sb
-            .from(SETTINGS_TABLE)
-            .select('*')
-            .eq('key', MESSAGE_KEY)
-            .single();
+if (typeof window.loadWelcomeMessageForEdit === 'undefined') {
+    window.loadWelcomeMessageForEdit = async function() {
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) return;
+            
+            const { data, error } = await supabase
+                .from(SETTINGS_TABLE)
+                .select('*')
+                .eq('key', MESSAGE_KEY)
+                .single();
 
-        const editor = document.getElementById('welcome-message-editor');
-        if (!editor) return;
+            const editor = document.getElementById('welcome-message-editor');
+            if (!editor) return;
 
-        if (data && data.value) {
-            editor.value = data.value;
-        } else {
-            editor.value = '<p>Welcome to NCHSM! Please check in for attendance.</p>';
+            if (data && data.value) {
+                editor.value = data.value;
+            } else {
+                editor.value = '<p>Welcome to NCHSM! Please check in for attendance.</p>';
+            }
+            
+            window.loadStudentWelcomeMessage();
+        } catch (error) {
+            console.error('Error loading welcome message for edit:', error);
         }
-        
-        loadStudentWelcomeMessage();
-    } catch (error) {
-        console.error('Error loading welcome message for edit:', error);
-    }
+    };
 }
 
-async function handleSaveWelcomeMessage(e) {
-    e.preventDefault();
-    const submitButton = e.submitter || document.querySelector('#edit-welcome-form button[type="submit"]');
-    const originalText = submitButton ? submitButton.textContent : 'Save';
-    
-    if (submitButton) {
-        submitButton.textContent = 'Saving...';
-        submitButton.disabled = true;
-    }
-
-    const value = document.getElementById('welcome-message-editor')?.value?.trim();
-
-    if (!value) {
-        showFeedback('Message content cannot be empty.', 'error');
-        if (submitButton) {
-            submitButton.textContent = originalText;
-            submitButton.disabled = false;
-        }
-        return;
-    }
-
-    try {
-        const { data: existing, error: fetchError } = await sb
-            .from(SETTINGS_TABLE)
-            .select('id')
-            .eq('key', MESSAGE_KEY);
-
-        if (fetchError) throw fetchError;
-
-        let result;
-        if (existing && existing.length > 0) {
-            result = await sb
-                .from(SETTINGS_TABLE)
-                .update({ value, updated_at: new Date().toISOString() })
-                .eq('id', existing[0].id);
-        } else {
-            result = await sb
-                .from(SETTINGS_TABLE)
-                .insert({ key: MESSAGE_KEY, value });
-        }
-
-        if (result.error) throw result.error;
-
-        await logAudit('WELCOME_MESSAGE_UPDATE', 'Successfully updated the student welcome message.', null, 'SUCCESS');
-        showFeedback('Welcome message saved successfully!', 'success');
-        loadWelcomeMessageForEdit();
+if (typeof window.handleSaveWelcomeMessage === 'undefined') {
+    window.handleSaveWelcomeMessage = async function(e) {
+        e.preventDefault();
+        const submitButton = e.submitter || document.querySelector('#edit-welcome-form button[type="submit"]');
+        const originalText = submitButton ? submitButton.textContent : 'Save';
         
-    } catch (err) {
-        await logAudit('WELCOME_MESSAGE_UPDATE', `Failed to update welcome message.`, null, 'FAILURE');
-        showFeedback(`Failed to save message: ${err.message}`, 'error');
-    } finally {
         if (submitButton) {
-            submitButton.textContent = originalText;
-            submitButton.disabled = false;
+            submitButton.textContent = 'Saving...';
+            submitButton.disabled = true;
         }
-    }
+
+        const value = document.getElementById('welcome-message-editor')?.value?.trim();
+
+        if (!value) {
+            window.showFeedback('Message content cannot be empty.', 'error');
+            if (submitButton) {
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
+            }
+            return;
+        }
+
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) {
+                throw new Error('Supabase client not available');
+            }
+            
+            const { data: existing, error: fetchError } = await supabase
+                .from(SETTINGS_TABLE)
+                .select('id')
+                .eq('key', MESSAGE_KEY);
+
+            if (fetchError) throw fetchError;
+
+            let result;
+            if (existing && existing.length > 0) {
+                result = await supabase
+                    .from(SETTINGS_TABLE)
+                    .update({ value, updated_at: new Date().toISOString() })
+                    .eq('id', existing[0].id);
+            } else {
+                result = await supabase
+                    .from(SETTINGS_TABLE)
+                    .insert({ key: MESSAGE_KEY, value });
+            }
+
+            if (result.error) throw result.error;
+
+            if (typeof window.logAudit === 'function') {
+                await window.logAudit('WELCOME_MESSAGE_UPDATE', 'Successfully updated the student welcome message.', null, 'SUCCESS');
+            }
+            window.showFeedback('Welcome message saved successfully!', 'success');
+            window.loadWelcomeMessageForEdit();
+            
+        } catch (err) {
+            if (typeof window.logAudit === 'function') {
+                await window.logAudit('WELCOME_MESSAGE_UPDATE', `Failed to update welcome message.`, null, 'FAILURE');
+            }
+            window.showFeedback(`Failed to save message: ${err.message}`, 'error');
+        } finally {
+            if (submitButton) {
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
+            }
+        }
+    };
 }
 
 // ============================================
 // 🎂 BIRTHDAY FUNCTIONS
 // ============================================
 
-async function loadStudentBirthdays() {
-    try {
-        const today = new Date();
-        const month = today.getMonth() + 1;
-        const day = today.getDate();
-        
-        const { data: students, error } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('full_name, date_of_birth, student_id, program, email, profile_photo_url')
-            .eq('role', 'student')
-            .eq('status', 'approved')
-            .not('date_of_birth', 'is', null);
-        
-        if (error) throw error;
-        
-        const birthdayStudents = students.filter(s => {
-            if (!s.date_of_birth) return false;
-            const dob = new Date(s.date_of_birth);
-            return dob.getMonth() + 1 === month && dob.getDate() === day;
-        });
-        
-        safeSetText('birthdayCount', birthdayStudents.length);
-        
-        const listEl = document.getElementById('birthdayStudentsList');
-        const cardEl = document.getElementById('birthdayStudentCard');
-        
-        if (birthdayStudents.length > 0) {
-            if (listEl) {
-                listEl.style.display = 'block';
-                let html = '';
-                if (birthdayStudents.length === 1) {
-                    html = `<p style="margin: 0; color: #0A3D62;">🎉 ${escapeHtml(birthdayStudents[0].full_name)} (${escapeHtml(birthdayStudents[0].program || 'N/A')})</p>`;
-                } else {
-                    html = '<ul style="margin: 8px 0 0; padding-left: 20px; color: #0A3D62;">';
-                    birthdayStudents.forEach(s => {
-                        html += `<li>${escapeHtml(s.full_name)} (${escapeHtml(s.program || 'N/A')})</li>`;
-                    });
-                    html += '</ul>';
+if (typeof window.loadStudentBirthdays === 'undefined') {
+    window.loadStudentBirthdays = async function() {
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) return;
+            
+            const today = new Date();
+            const month = today.getMonth() + 1;
+            const day = today.getDate();
+            
+            const { data: students, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('full_name, date_of_birth, student_id, program, email, profile_photo_url')
+                .eq('role', 'student')
+                .eq('status', 'approved')
+                .not('date_of_birth', 'is', null);
+            
+            if (error) throw error;
+            
+            const birthdayStudents = students.filter(s => {
+                if (!s.date_of_birth) return false;
+                const dob = new Date(s.date_of_birth);
+                return dob.getMonth() + 1 === month && dob.getDate() === day;
+            });
+            
+            window.safeSetText('birthdayCount', birthdayStudents.length);
+            
+            const listEl = document.getElementById('birthdayStudentsList');
+            const cardEl = document.getElementById('birthdayStudentCard');
+            
+            if (birthdayStudents.length > 0) {
+                if (listEl) {
+                    listEl.style.display = 'block';
+                    let html = '';
+                    if (birthdayStudents.length === 1) {
+                        html = `<p style="margin: 0; color: #0A3D62;">🎉 ${escapeHtml(birthdayStudents[0].full_name)} (${escapeHtml(birthdayStudents[0].program || 'N/A')})</p>`;
+                    } else {
+                        html = '<ul style="margin: 8px 0 0; padding-left: 20px; color: #0A3D62;">';
+                        birthdayStudents.forEach(s => {
+                            html += `<li>${escapeHtml(s.full_name)} (${escapeHtml(s.program || 'N/A')})</li>`;
+                        });
+                        html += '</ul>';
+                    }
+                    listEl.innerHTML = html;
                 }
-                listEl.innerHTML = html;
+                if (cardEl) {
+                    cardEl.style.display = 'block';
+                    const student = birthdayStudents[0];
+                    window.safeSetText('birthdayName', student.full_name || 'Student');
+                    window.safeSetText('birthdayDetails', `${student.program || 'N/A'} • ${student.student_id || 'No ID'}`);
+                    
+                    const dob = new Date(student.date_of_birth);
+                    let age = today.getFullYear() - dob.getFullYear();
+                    const m = today.getMonth() - dob.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+                    window.safeSetText('birthdayAge', `🎂 Turning ${age} years old today!`);
+                }
+            } else {
+                if (listEl) {
+                    listEl.style.display = 'block';
+                    listEl.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">🎉 No birthdays today</p>';
+                }
+                if (cardEl) cardEl.style.display = 'none';
             }
-            if (cardEl) {
-                cardEl.style.display = 'block';
-                const student = birthdayStudents[0];
-                safeSetText('birthdayName', student.full_name || 'Student');
-                safeSetText('birthdayDetails', `${student.program || 'N/A'} • ${student.student_id || 'No ID'}`);
-                
-                const dob = new Date(student.date_of_birth);
-                let age = today.getFullYear() - dob.getFullYear();
-                const m = today.getMonth() - dob.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-                safeSetText('birthdayAge', `🎂 Turning ${age} years old today!`);
-            }
-        } else {
+            
+        } catch (error) {
+            console.error('Error loading birthdays:', error);
+            const listEl = document.getElementById('birthdayStudentsList');
             if (listEl) {
-                listEl.style.display = 'block';
-                listEl.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">🎉 No birthdays today</p>';
+                listEl.innerHTML = '<p style="color: #dc2626; font-size: 0.9rem;">Error loading birthdays</p>';
             }
-            if (cardEl) cardEl.style.display = 'none';
         }
-        
-    } catch (error) {
-        console.error('Error loading birthdays:', error);
-        const listEl = document.getElementById('birthdayStudentsList');
-        if (listEl) {
-            listEl.innerHTML = '<p style="color: #dc2626; font-size: 0.9rem;">Error loading birthdays</p>';
-        }
-    }
+    };
 }
 
 // ============================================
@@ -2961,208 +3074,219 @@ async function loadStudentBirthdays() {
 
 let dashboardRefreshInterval = null;
 
-function startDashboardAutoRefresh(intervalMs = 60000) {
-    if (dashboardRefreshInterval) {
-        clearInterval(dashboardRefreshInterval);
-    }
-    dashboardRefreshInterval = setInterval(() => {
-        console.log('🔄 Auto-refreshing dashboard...');
-        loadDashboardData();
-        loadStudentBirthdays();
-        updateCharts();
-    }, intervalMs);
+if (typeof window.startDashboardAutoRefresh === 'undefined') {
+    window.startDashboardAutoRefresh = function(intervalMs = 60000) {
+        if (dashboardRefreshInterval) {
+            clearInterval(dashboardRefreshInterval);
+        }
+        dashboardRefreshInterval = setInterval(() => {
+            console.log('🔄 Auto-refreshing dashboard...');
+            window.loadDashboardData();
+            window.loadStudentBirthdays();
+            window.updateCharts();
+        }, intervalMs);
+    };
 }
 
-function stopDashboardAutoRefresh() {
-    if (dashboardRefreshInterval) {
-        clearInterval(dashboardRefreshInterval);
-        dashboardRefreshInterval = null;
-    }
+if (typeof window.stopDashboardAutoRefresh === 'undefined') {
+    window.stopDashboardAutoRefresh = function() {
+        if (dashboardRefreshInterval) {
+            clearInterval(dashboardRefreshInterval);
+            dashboardRefreshInterval = null;
+        }
+    };
 }
 
 // ============================================
 // 📊 CHARTS UPDATE FUNCTIONS
 // ============================================
 
-async function updateCharts() {
-    try {
-        // Get student data for charts
-        const { data: students, error } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('program, gender, block')
-            .eq('role', 'student')
-            .eq('status', 'approved');
-        
-        if (error || !students) return;
-        
-        // Enrolment by Block Chart
-        const blockData = {};
-        students.forEach(s => {
-            const block = s.block || 'Unknown';
-            blockData[block] = (blockData[block] || 0) + 1;
-        });
-        
-        const blocks = Object.keys(blockData);
-        const counts = Object.values(blockData);
-        
-        const blockChart = document.getElementById('enrolmentBlockChart');
-        if (blockChart && typeof Chart !== 'undefined') {
-            if (window.blockChartInstance) {
-                window.blockChartInstance.destroy();
-            }
-            window.blockChartInstance = new Chart(blockChart, {
-                type: 'bar',
-                data: {
-                    labels: blocks,
-                    datasets: [{
-                        label: 'Students',
-                        data: counts,
-                        backgroundColor: 'rgba(76, 29, 149, 0.6)',
-                        borderColor: '#4C1D95',
-                        borderWidth: 1,
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
+if (typeof window.updateCharts === 'undefined') {
+    window.updateCharts = async function() {
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) return;
+            
+            // Get student data for charts
+            const { data: students, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('program, gender, block')
+                .eq('role', 'student')
+                .eq('status', 'approved');
+            
+            if (error || !students) return;
+            
+            // Enrolment by Block Chart
+            const blockData = {};
+            students.forEach(s => {
+                const block = s.block || 'Unknown';
+                blockData[block] = (blockData[block] || 0) + 1;
+            });
+            
+            const blocks = Object.keys(blockData);
+            const counts = Object.values(blockData);
+            
+            const blockChart = document.getElementById('enrolmentBlockChart');
+            if (blockChart && typeof Chart !== 'undefined') {
+                if (window.blockChartInstance) {
+                    window.blockChartInstance.destroy();
+                }
+                window.blockChartInstance = new Chart(blockChart, {
+                    type: 'bar',
+                    data: {
+                        labels: blocks,
+                        datasets: [{
+                            label: 'Students',
+                            data: counts,
+                            backgroundColor: 'rgba(76, 29, 149, 0.6)',
+                            borderColor: '#4C1D95',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { stepSize: 1 }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
                         },
-                        x: {
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Gender Distribution Chart
-        const maleCount = students.filter(s => s.gender === 'M' || s.gender === 'Male').length;
-        const femaleCount = students.filter(s => s.gender === 'F' || s.gender === 'Female').length;
-        
-        const genderChart = document.getElementById('genderDistributionChart');
-        if (genderChart && typeof Chart !== 'undefined') {
-            if (window.genderChartInstance) {
-                window.genderChartInstance.destroy();
-            }
-            window.genderChartInstance = new Chart(genderChart, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Male', 'Female'],
-                    datasets: [{
-                        data: [maleCount, femaleCount],
-                        backgroundColor: ['#2563eb', '#ec4899'],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 12,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1 }
+                            },
+                            x: {
+                                grid: { display: false }
                             }
                         }
+                    }
+                });
+            }
+            
+            // Gender Distribution Chart
+            const maleCount = students.filter(s => s.gender === 'M' || s.gender === 'Male').length;
+            const femaleCount = students.filter(s => s.gender === 'F' || s.gender === 'Female').length;
+            
+            const genderChart = document.getElementById('genderDistributionChart');
+            if (genderChart && typeof Chart !== 'undefined') {
+                if (window.genderChartInstance) {
+                    window.genderChartInstance.destroy();
+                }
+                window.genderChartInstance = new Chart(genderChart, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Male', 'Female'],
+                        datasets: [{
+                            data: [maleCount, femaleCount],
+                            backgroundColor: ['#2563eb', '#ec4899'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
                     },
-                    cutout: '65%'
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 12,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+            
+            // Program Breakdown Chart
+            const krchnCount = students.filter(s => s.program === 'KRCHN').length;
+            const tvetCount = students.filter(s => window.isTVETProgram(s.program)).length;
+            const otherCount = students.filter(s => s.program && !window.isTVETProgram(s.program) && s.program !== 'KRCHN').length;
+            
+            const programChart = document.getElementById('programBreakdownChart');
+            if (programChart && typeof Chart !== 'undefined') {
+                if (window.programChartInstance) {
+                    window.programChartInstance.destroy();
                 }
-            });
-        }
-        
-        // Program Breakdown Chart
-        const krchnCount = students.filter(s => s.program === 'KRCHN').length;
-        const tvetCount = students.filter(s => isTVETProgram(s.program)).length;
-        const otherCount = students.filter(s => s.program && !isTVETProgram(s.program) && s.program !== 'KRCHN').length;
-        
-        const programChart = document.getElementById('programBreakdownChart');
-        if (programChart && typeof Chart !== 'undefined') {
-            if (window.programChartInstance) {
-                window.programChartInstance.destroy();
-            }
-            const programData = [];
-            const programLabels = [];
-            const programColors = [];
-            
-            if (krchnCount > 0) {
-                programData.push(krchnCount);
-                programLabels.push('KRCHN');
-                programColors.push('#10b981');
-            }
-            if (tvetCount > 0) {
-                programData.push(tvetCount);
-                programLabels.push('TVET');
-                programColors.push('#f59e0b');
-            }
-            if (otherCount > 0) {
-                programData.push(otherCount);
-                programLabels.push('Other');
-                programColors.push('#8b5cf6');
-            }
-            
-            window.programChartInstance = new Chart(programChart, {
-                type: 'pie',
-                data: {
-                    labels: programLabels,
-                    datasets: [{
-                        data: programData,
-                        backgroundColor: programColors,
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 12,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
+                const programData = [];
+                const programLabels = [];
+                const programColors = [];
+                
+                if (krchnCount > 0) {
+                    programData.push(krchnCount);
+                    programLabels.push('KRCHN');
+                    programColors.push('#10b981');
+                }
+                if (tvetCount > 0) {
+                    programData.push(tvetCount);
+                    programLabels.push('TVET');
+                    programColors.push('#f59e0b');
+                }
+                if (otherCount > 0) {
+                    programData.push(otherCount);
+                    programLabels.push('Other');
+                    programColors.push('#8b5cf6');
+                }
+                
+                window.programChartInstance = new Chart(programChart, {
+                    type: 'pie',
+                    data: {
+                        labels: programLabels,
+                        datasets: [{
+                            data: programData,
+                            backgroundColor: programColors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 12,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
+            
+            console.log('✅ Charts updated');
+            
+        } catch (error) {
+            console.error('Error updating charts:', error);
         }
-        
-        console.log('✅ Charts updated');
-        
-    } catch (error) {
-        console.error('Error updating charts:', error);
-    }
+    };
 }
 
 // ============================================
 // 🎨 DARK MODE TOGGLE
 // ============================================
 
-function toggleDarkMode() {
-    const isDark = document.body.classList.toggle('dark-mode');
-    const label = document.getElementById('darkModeLabel');
-    const icon = document.querySelector('#darkModeToggle i');
-    
-    if (label) label.textContent = isDark ? 'Light' : 'Dark';
-    if (icon) {
-        icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-    }
-    
-    localStorage.setItem('darkMode', isDark);
-    
-    // Update chart colors for dark mode
-    updateCharts();
+if (typeof window.toggleDarkMode === 'undefined') {
+    window.toggleDarkMode = function() {
+        const isDark = document.body.classList.toggle('dark-mode');
+        const label = document.getElementById('darkModeLabel');
+        const icon = document.querySelector('#darkModeToggle i');
+        
+        if (label) label.textContent = isDark ? 'Light' : 'Dark';
+        if (icon) {
+            icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        }
+        
+        localStorage.setItem('darkMode', isDark);
+        
+        // Update chart colors for dark mode
+        window.updateCharts();
+    };
 }
 
 // ============================================
@@ -3171,42 +3295,48 @@ function toggleDarkMode() {
 
 let refreshIntervalId = null;
 
-function setRefreshInterval(seconds) {
-    if (refreshIntervalId) {
-        clearInterval(refreshIntervalId);
-        refreshIntervalId = null;
-    }
-    if (seconds > 0) {
-        refreshIntervalId = setInterval(() => {
-            refreshDashboard();
-        }, seconds * 1000);
-        showNotification(`Auto-refresh set to ${seconds}s`, 'info');
-    } else {
-        showNotification('Auto-refresh disabled', 'info');
-    }
+if (typeof window.setRefreshInterval === 'undefined') {
+    window.setRefreshInterval = function(seconds) {
+        if (refreshIntervalId) {
+            clearInterval(refreshIntervalId);
+            refreshIntervalId = null;
+        }
+        if (seconds > 0) {
+            refreshIntervalId = setInterval(() => {
+                window.refreshDashboard();
+            }, seconds * 1000);
+            window.showNotification(`Auto-refresh set to ${seconds}s`, 'info');
+        } else {
+            window.showNotification('Auto-refresh disabled', 'info');
+        }
+    };
 }
 
-function refreshDashboard() {
-    console.log('🔄 Refreshing dashboard...');
-    const timestampEl = document.getElementById('liveTimestamp');
-    if (timestampEl) {
-        timestampEl.textContent = new Date().toLocaleTimeString();
-    }
-    loadDashboardData();
-    loadStudentBirthdays();
-    updateCharts();
-    showNotification('Dashboard refreshed', 'success');
+if (typeof window.refreshDashboard === 'undefined') {
+    window.refreshDashboard = function() {
+        console.log('🔄 Refreshing dashboard...');
+        const timestampEl = document.getElementById('liveTimestamp');
+        if (timestampEl) {
+            timestampEl.textContent = new Date().toLocaleTimeString();
+        }
+        window.loadDashboardData();
+        window.loadStudentBirthdays();
+        window.updateCharts();
+        window.showNotification('Dashboard refreshed', 'success');
+    };
 }
 
 // ============================================
 // 📤 EXPORT FUNCTIONS
 // ============================================
 
-function toggleExportMenu() {
-    const menu = document.getElementById('exportMenu');
-    if (menu) {
-        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-    }
+if (typeof window.toggleExportMenu === 'undefined') {
+    window.toggleExportMenu = function() {
+        const menu = document.getElementById('exportMenu');
+        if (menu) {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+    };
 }
 
 // Close export menu on click outside
@@ -3217,31 +3347,37 @@ document.addEventListener('click', function(e) {
     }
 });
 
-function exportDashboardPDF() {
-    showNotification('Generating PDF report...', 'info');
-    setTimeout(() => {
-        showNotification('PDF report generated!', 'success');
-    }, 1500);
-    const menu = document.getElementById('exportMenu');
-    if (menu) menu.style.display = 'none';
+if (typeof window.exportDashboardPDF === 'undefined') {
+    window.exportDashboardPDF = function() {
+        window.showNotification('Generating PDF report...', 'info');
+        setTimeout(() => {
+            window.showNotification('PDF report generated!', 'success');
+        }, 1500);
+        const menu = document.getElementById('exportMenu');
+        if (menu) menu.style.display = 'none';
+    };
 }
 
-function exportDashboardCSV() {
-    showNotification('Exporting CSV data...', 'info');
-    setTimeout(() => {
-        showNotification('CSV exported successfully!', 'success');
-    }, 1000);
-    const menu = document.getElementById('exportMenu');
-    if (menu) menu.style.display = 'none';
+if (typeof window.exportDashboardCSV === 'undefined') {
+    window.exportDashboardCSV = function() {
+        window.showNotification('Exporting CSV data...', 'info');
+        setTimeout(() => {
+            window.showNotification('CSV exported successfully!', 'success');
+        }, 1000);
+        const menu = document.getElementById('exportMenu');
+        if (menu) menu.style.display = 'none';
+    };
 }
 
-function exportDashboardPNG() {
-    showNotification('Capturing screenshot...', 'info');
-    setTimeout(() => {
-        showNotification('Screenshot saved!', 'success');
-    }, 1500);
-    const menu = document.getElementById('exportMenu');
-    if (menu) menu.style.display = 'none';
+if (typeof window.exportDashboardPNG === 'undefined') {
+    window.exportDashboardPNG = function() {
+        window.showNotification('Capturing screenshot...', 'info');
+        setTimeout(() => {
+            window.showNotification('Screenshot saved!', 'success');
+        }, 1500);
+        const menu = document.getElementById('exportMenu');
+        if (menu) menu.style.display = 'none';
+    };
 }
 
 // ============================================
@@ -3250,263 +3386,161 @@ function exportDashboardPNG() {
 
 let notificationCount = 0;
 
-async function loadNotificationCount() {
-    try {
-        const { count, error } = await sb
-            .from('notifications')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_read', false);
-        
-        if (!error) {
-            notificationCount = count || 0;
-            const badge = document.getElementById('notificationBadge');
-            if (badge) {
-                if (notificationCount > 0) {
-                    badge.style.display = 'block';
-                    badge.textContent = notificationCount > 99 ? '99+' : notificationCount;
-                } else {
-                    badge.style.display = 'none';
+if (typeof window.loadNotificationCount === 'undefined') {
+    window.loadNotificationCount = async function() {
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) return;
+            
+            const { count, error } = await supabase
+                .from('notifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_read', false);
+            
+            if (!error) {
+                notificationCount = count || 0;
+                const badge = document.getElementById('notificationBadge');
+                if (badge) {
+                    if (notificationCount > 0) {
+                        badge.style.display = 'block';
+                        badge.textContent = notificationCount > 99 ? '99+' : notificationCount;
+                    } else {
+                        badge.style.display = 'none';
+                    }
                 }
             }
+        } catch (error) {
+            console.error('Error loading notification count:', error);
         }
-    } catch (error) {
-        console.error('Error loading notification count:', error);
-    }
+    };
 }
 
-function toggleNotifications() {
-    showNotification(`You have ${notificationCount} unread notifications`, 'info');
+if (typeof window.toggleNotifications === 'undefined') {
+    window.toggleNotifications = function() {
+        window.showNotification(`You have ${notificationCount} unread notifications`, 'info');
+    };
 }
 
 // ============================================
 // 🚀 INITIALIZE DASHBOARD
 // ============================================
 
-async function initDashboard() {
-    console.log('📊 Initializing dashboard...');
-    
-    // Load dark mode preference
-    const darkMode = localStorage.getItem('darkMode') === 'true';
-    if (darkMode) {
-        document.body.classList.add('dark-mode');
-        const label = document.getElementById('darkModeLabel');
-        const icon = document.querySelector('#darkModeToggle i');
-        if (label) label.textContent = 'Light';
-        if (icon) icon.className = 'fas fa-sun';
-    }
-    
-    // Load initial data
-    await loadDashboardData();
-    await loadStudentBirthdays();
-    await loadNotificationCount();
-    await updateCharts();
-    
-    // Start auto-refresh
-    startDashboardAutoRefresh(60000);
-    
-    // Set up event listeners
-    const form = document.getElementById('edit-welcome-form');
-    if (form) {
-        form.addEventListener('submit', handleSaveWelcomeMessage);
-    }
-    
-    console.log('✅ Dashboard initialized');
+if (typeof window.initDashboard === 'undefined') {
+    window.initDashboard = async function() {
+        console.log('📊 Initializing dashboard...');
+        
+        // Load dark mode preference
+        const darkMode = localStorage.getItem('darkMode') === 'true';
+        if (darkMode) {
+            document.body.classList.add('dark-mode');
+            const label = document.getElementById('darkModeLabel');
+            const icon = document.querySelector('#darkModeToggle i');
+            if (label) label.textContent = 'Light';
+            if (icon) icon.className = 'fas fa-sun';
+        }
+        
+        // Load initial data
+        await window.loadDashboardData();
+        await window.loadStudentBirthdays();
+        await window.loadNotificationCount();
+        await window.updateCharts();
+        
+        // Start auto-refresh
+        window.startDashboardAutoRefresh(60000);
+        
+        // Set up event listeners
+        const form = document.getElementById('edit-welcome-form');
+        if (form) {
+            form.addEventListener('submit', window.handleSaveWelcomeMessage);
+        }
+        
+        console.log('✅ Dashboard initialized');
+    };
 }
 
 // ============================================
 // 🔄 ACTIVITY FEED
 // ============================================
 
-async function loadActivityFeed() {
-    try {
-        const { data, error } = await sb
-            .from('audit_logs')
-            .select('user_email, action, created_at, details')
-            .order('created_at', { ascending: false })
-            .limit(10);
-        
-        const feedEl = document.getElementById('activityFeed');
-        if (!feedEl) return;
-        
-        if (error || !data || data.length === 0) {
-            feedEl.innerHTML = `
-                <div style="text-align: center; color: #94a3b8; padding: 20px;">
-                    <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                    No recent activity
-                </div>
-            `;
-            return;
-        }
-        
-        let html = '';
-        const icons = {
-            'LOGIN': 'fa-sign-in-alt',
-            'LOGOUT': 'fa-sign-out-alt',
-            'USER_CREATED': 'fa-user-plus',
-            'USER_UPDATED': 'fa-user-edit',
-            'USER_DELETED': 'fa-user-minus',
-            'MARKS_ENTRY': 'fa-pen',
-            'MARKS_APPROVED': 'fa-check-circle',
-            'RESOURCE_UPLOADED': 'fa-upload',
-            'default': 'fa-circle'
-        };
-        
-        for (const log of data) {
-            const icon = icons[log.action] || icons.default;
-            const time = new Date(log.created_at).toLocaleTimeString();
-            const details = log.details ? ` - ${escapeHtml(log.details)}` : '';
-            
-            html += `
-                <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
-                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <i class="fas ${icon}" style="color: #4C1D95; font-size: 12px;"></i>
-                    </div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-size: 0.8rem; color: #1e293b; font-weight: 500;">
-                            ${escapeHtml(log.user_email || 'System')}
-                            <span style="font-weight: 400; color: #94a3b8; font-size: 0.7rem;">
-                                ${escapeHtml(log.action)}
-                            </span>
-                        </div>
-                        <div style="font-size: 0.7rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${time}${details}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        feedEl.innerHTML = html;
-        
-        // Update timestamp
-        const timestampEl = document.getElementById('feedTimestamp');
-        if (timestampEl) {
-            timestampEl.textContent = new Date().toLocaleTimeString();
-        }
-        
-    } catch (error) {
-        console.error('Error loading activity feed:', error);
-        const feedEl = document.getElementById('activityFeed');
-        if (feedEl) {
-            feedEl.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 20px;">Error loading activity</div>`;
-        }
-    }
-}
-
-// ============================================
-// ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
-// ============================================
-
-// Core helpers
-if (typeof window.safeSetText === 'undefined') {
-    window.safeSetText = safeSetText;
-}
-if (typeof window.safeSetHTML === 'undefined') {
-    window.safeSetHTML = safeSetHTML;
-}
-if (typeof window.safeSetLoading === 'undefined') {
-    window.safeSetLoading = safeSetLoading;
-}
-
-// Program helpers
-if (typeof window.isTVETProgram === 'undefined') {
-    window.isTVETProgram = isTVETProgram;
-}
-if (typeof window.getProgramDisplayName === 'undefined') {
-    window.getProgramDisplayName = getProgramDisplayName;
-}
-if (typeof window.getProgramType === 'undefined') {
-    window.getProgramType = getProgramType;
-}
-
-// Dashboard data functions
-if (typeof window.loadTicketMetricsForDashboard === 'undefined') {
-    window.loadTicketMetricsForDashboard = loadTicketMetricsForDashboard;
-}
-if (typeof window.loadTotalDailyCheckIns === 'undefined') {
-    window.loadTotalDailyCheckIns = loadTotalDailyCheckIns;
-}
-if (typeof window.loadPendingMessagesCount === 'undefined') {
-    window.loadPendingMessagesCount = loadPendingMessagesCount;
-}
-if (typeof window.loadStudentStatistics === 'undefined') {
-    window.loadStudentStatistics = loadStudentStatistics;
-}
-if (typeof window.loadAdditionalDashboardMetrics === 'undefined') {
-    window.loadAdditionalDashboardMetrics = loadAdditionalDashboardMetrics;
-}
-if (typeof window.loadDashboardData === 'undefined') {
-    window.loadDashboardData = loadDashboardData;
-}
-
-// Welcome message functions
-if (typeof window.loadStudentWelcomeMessage === 'undefined') {
-    window.loadStudentWelcomeMessage = loadStudentWelcomeMessage;
-}
-if (typeof window.loadWelcomeMessageForEdit === 'undefined') {
-    window.loadWelcomeMessageForEdit = loadWelcomeMessageForEdit;
-}
-if (typeof window.handleSaveWelcomeMessage === 'undefined') {
-    window.handleSaveWelcomeMessage = handleSaveWelcomeMessage;
-}
-
-// Birthday functions
-if (typeof window.loadStudentBirthdays === 'undefined') {
-    window.loadStudentBirthdays = loadStudentBirthdays;
-}
-
-// Auto-refresh functions
-if (typeof window.startDashboardAutoRefresh === 'undefined') {
-    window.startDashboardAutoRefresh = startDashboardAutoRefresh;
-}
-if (typeof window.stopDashboardAutoRefresh === 'undefined') {
-    window.stopDashboardAutoRefresh = stopDashboardAutoRefresh;
-}
-
-// Chart functions
-if (typeof window.updateCharts === 'undefined') {
-    window.updateCharts = updateCharts;
-}
-
-// UI functions
-if (typeof window.toggleDarkMode === 'undefined') {
-    window.toggleDarkMode = toggleDarkMode;
-}
-if (typeof window.setRefreshInterval === 'undefined') {
-    window.setRefreshInterval = setRefreshInterval;
-}
-if (typeof window.refreshDashboard === 'undefined') {
-    window.refreshDashboard = refreshDashboard;
-}
-if (typeof window.toggleExportMenu === 'undefined') {
-    window.toggleExportMenu = toggleExportMenu;
-}
-if (typeof window.exportDashboardPDF === 'undefined') {
-    window.exportDashboardPDF = exportDashboardPDF;
-}
-if (typeof window.exportDashboardCSV === 'undefined') {
-    window.exportDashboardCSV = exportDashboardCSV;
-}
-if (typeof window.exportDashboardPNG === 'undefined') {
-    window.exportDashboardPNG = exportDashboardPNG;
-}
-
-// Notification functions
-if (typeof window.loadNotificationCount === 'undefined') {
-    window.loadNotificationCount = loadNotificationCount;
-}
-if (typeof window.toggleNotifications === 'undefined') {
-    window.toggleNotifications = toggleNotifications;
-}
-
-// Activity feed
 if (typeof window.loadActivityFeed === 'undefined') {
-    window.loadActivityFeed = loadActivityFeed;
-}
-
-// Initialize dashboard
-if (typeof window.initDashboard === 'undefined') {
-    window.initDashboard = initDashboard;
+    window.loadActivityFeed = async function() {
+        try {
+            const supabase = window.sb || window.supabase;
+            if (!supabase) return;
+            
+            const { data, error } = await supabase
+                .from('audit_logs')
+                .select('user_email, action, created_at, details')
+                .order('created_at', { ascending: false })
+                .limit(10);
+            
+            const feedEl = document.getElementById('activityFeed');
+            if (!feedEl) return;
+            
+            if (error || !data || data.length === 0) {
+                feedEl.innerHTML = `
+                    <div style="text-align: center; color: #94a3b8; padding: 20px;">
+                        <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                        No recent activity
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            const icons = {
+                'LOGIN': 'fa-sign-in-alt',
+                'LOGOUT': 'fa-sign-out-alt',
+                'USER_CREATED': 'fa-user-plus',
+                'USER_UPDATED': 'fa-user-edit',
+                'USER_DELETED': 'fa-user-minus',
+                'MARKS_ENTRY': 'fa-pen',
+                'MARKS_APPROVED': 'fa-check-circle',
+                'RESOURCE_UPLOADED': 'fa-upload',
+                'default': 'fa-circle'
+            };
+            
+            for (const log of data) {
+                const icon = icons[log.action] || icons.default;
+                const time = new Date(log.created_at).toLocaleTimeString();
+                const details = log.details ? ` - ${escapeHtml(log.details)}` : '';
+                
+                html += `
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="fas ${icon}" style="color: #4C1D95; font-size: 12px;"></i>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-size: 0.8rem; color: #1e293b; font-weight: 500;">
+                                ${escapeHtml(log.user_email || 'System')}
+                                <span style="font-weight: 400; color: #94a3b8; font-size: 0.7rem;">
+                                    ${escapeHtml(log.action)}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.7rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${time}${details}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            feedEl.innerHTML = html;
+            
+            // Update timestamp
+            const timestampEl = document.getElementById('feedTimestamp');
+            if (timestampEl) {
+                timestampEl.textContent = new Date().toLocaleTimeString();
+            }
+            
+        } catch (error) {
+            console.error('Error loading activity feed:', error);
+            const feedEl = document.getElementById('activityFeed');
+            if (feedEl) {
+                feedEl.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 20px;">Error loading activity</div>`;
+            }
+        }
+    };
 }
 
 console.log('✅ Dashboard module loaded successfully');
