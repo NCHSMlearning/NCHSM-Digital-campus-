@@ -2119,9 +2119,6 @@ if (typeof window.MESSAGE_KEY === 'undefined') {
     window.MESSAGE_KEY = 'student_welcome_message';
 }
 
-// Local references - use these inside functions
-const MESSAGE_KEY = window.MESSAGE_KEY;
-
 // ============================================
 // 📊 HELPER FUNCTIONS - SAFE UPDATES
 // ============================================
