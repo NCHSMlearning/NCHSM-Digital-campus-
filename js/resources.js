@@ -1,12 +1,13 @@
 // ============================================================
-// RESOURCES MODULE - COMPLETE FIXED VERSION
+// RESOURCES MODULE - COMPLETE ENHANCED VERSION
 // ✅ Read Now - Opens resource (NO auto-play)
-// ✅ Listen - Plays audio ONLY on click
+// ✅ Listen - Dual-voice podcast style (Male + Female)
 // ✅ AI Summary - Generates summary
 // ✅ All buttons VISIBLE
 // ✅ Full PDF text extraction
 // ✅ Full document audio reading
 // ✅ Mobile responsive
+// ✅ NotebookLM-style dual-voice podcast audio
 // ============================================================
 
 class ResourcesModule {
@@ -54,6 +55,7 @@ class ResourcesModule {
         this.audioProgressBar = document.getElementById('audio-progress-bar');
         this.audioCloseBtn = document.getElementById('audio-close-btn');
         this.audioWave = document.getElementById('audio-wave');
+        this.audioSpeakerIndicator = document.getElementById('audio-speaker-indicator');
         
         // AI Summary Modal
         this.summaryModal = document.getElementById('ai-summary-modal');
@@ -90,10 +92,24 @@ class ResourcesModule {
         this.audioContext = null;
         this.audioSynth = null;
         this.isPlaying = false;
+        this.isAudioPaused = false;
         this.currentAudioText = '';
         this.audioTimeout = null;
         this.currentAudioResource = null;
         this.audioStartTime = null;
+        this.audioProgressInterval = null;
+        this.audioVoicesLoaded = false;
+        
+        // ===== Dual-Voice Podcast State =====
+        this.dualVoiceEnabled = true;
+        this.maleVoice = null;
+        this.femaleVoice = null;
+        this.currentDialogueIndex = 0;
+        this.dialogueLines = [];
+        this.audioDialogueSpeed = 0.85;
+        this.waveAnimationId = null;
+        this.audioWaveCanvas = null;
+        this.audioWaveCtx = null;
         
         // ===== TVET Program Codes =====
         this.TVET_PROGRAMS = [
@@ -158,7 +174,7 @@ class ResourcesModule {
     // INITIALIZATION
     // ============================================================
     initializeElements() {
-        console.log('📁 Initializing Student Resources Module...');
+        console.log('📁 Initializing Student Resources Module with Dual-Voice Audio...');
         
         this.setupEventListeners();
         this.setupMobileReaderEvents();
@@ -166,6 +182,7 @@ class ResourcesModule {
         this.setupSummaryEvents();
         this.detectUserProgram();
         this.loadResources();
+        this.initWaveformCanvas();
     }
     
     setupEventListeners() {
@@ -321,11 +338,12 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 🎧 AUDIO PLAYER (Text-to-Speech)
+    // 🎙️ DUAL-VOICE AUDIO ENGINE (NotebookLM Style)
     // ============================================================
+    
     setupAudioEvents() {
         if (this.audioPlayBtn) {
-            this.audioPlayBtn.addEventListener('click', () => this.playAudio());
+            this.audioPlayBtn.addEventListener('click', () => this.resumeAudio());
         }
         if (this.audioPauseBtn) {
             this.audioPauseBtn.addEventListener('click', () => this.pauseAudio());
@@ -338,205 +356,344 @@ class ResourcesModule {
         }
         if (this.audioSpeed) {
             this.audioSpeed.addEventListener('change', () => {
+                this.audioDialogueSpeed = parseFloat(this.audioSpeed.value);
                 if (this.audioSynth) {
-                    this.audioSynth.rate = parseFloat(this.audioSpeed.value);
+                    this.audioSynth.rate = this.audioDialogueSpeed;
                 }
             });
+            // Set default
+            this.audioSpeed.value = '0.85';
         }
         if (this.audioProgressBar) {
             this.audioProgressBar.addEventListener('click', (e) => {
-                if (!this.audioSynth) return;
-                const rect = this.audioProgressBar.getBoundingClientRect();
-                const percent = (e.clientX - rect.left) / rect.width;
-                const duration = this.audioSynth.duration || 0;
-                const time = percent * duration;
-                this.audioSynth.currentTime = time;
+                // Seek not supported with speech synthesis
+                this.showToast('Seeking is not supported in podcast mode', 'info');
             });
         }
     }
     
     // ============================================================
-    // 🎧 PLAY AUDIO - ONLY ON CLICK
+    // 🎙️ VOICE LOADING
     // ============================================================
     
-    playAudio() {
-        if (!this.currentAudioText) {
-            this.showToast('No text to read. Click "Listen" on a resource first.', 'warning');
+    async initAudioWithVoices() {
+        return new Promise((resolve) => {
+            if (this.audioVoicesLoaded) {
+                resolve(true);
+                return;
+            }
+            
+            let voices = window.speechSynthesis.getVoices();
+            if (voices && voices.length > 0) {
+                this.audioVoicesLoaded = true;
+                resolve(true);
+                return;
+            }
+            
+            window.speechSynthesis.onvoiceschanged = () => {
+                voices = window.speechSynthesis.getVoices();
+                if (voices && voices.length > 0) {
+                    this.audioVoicesLoaded = true;
+                    resolve(true);
+                }
+            };
+            
+            setTimeout(() => {
+                if (!this.audioVoicesLoaded) {
+                    voices = window.speechSynthesis.getVoices();
+                    if (voices && voices.length > 0) {
+                        this.audioVoicesLoaded = true;
+                    }
+                    resolve(this.audioVoicesLoaded);
+                }
+            }, 3000);
+        });
+    }
+    
+    // ============================================================
+    // 🎙️ GET MALE AND FEMALE VOICES
+    // ============================================================
+    
+    getMaleVoice() {
+        const voices = window.speechSynthesis.getVoices();
+        
+        const malePatterns = [
+            'Google UK English Male',
+            'Google US English Male',
+            'Microsoft David',
+            'Daniel',
+            'en-US Male',
+            'en-GB Male',
+            'Google UK',
+            'Google US'
+        ];
+        
+        for (const pattern of malePatterns) {
+            const found = voices.find(v => 
+                v.name.includes(pattern) && v.lang.startsWith('en')
+            );
+            if (found) return found;
+        }
+        
+        // Fallback: any English voice with lower pitch
+        const fallback = voices.find(v => v.lang.startsWith('en'));
+        return fallback;
+    }
+    
+    getFemaleVoice() {
+        const voices = window.speechSynthesis.getVoices();
+        
+        const femalePatterns = [
+            'Google UK English Female',
+            'Google US English Female',
+            'Microsoft Zira',
+            'Samantha',
+            'Karen',
+            'en-US Female',
+            'en-GB Female'
+        ];
+        
+        for (const pattern of femalePatterns) {
+            const found = voices.find(v => 
+                v.name.includes(pattern) && v.lang.startsWith('en')
+            );
+            if (found) return found;
+        }
+        
+        // Fallback: any English voice with higher pitch
+        const fallback = voices.find(v => v.lang.startsWith('en'));
+        return fallback;
+    }
+    
+    // ============================================================
+    // 🎙️ GENERATE DIALOGUE SCRIPT
+    // ============================================================
+    
+    generateDialogueScript(text, title = '') {
+        const lines = [];
+        
+        // Clean and split text
+        const cleanText = text.replace(/\s+/g, ' ').trim();
+        const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
+        
+        // Generate podcast-style introduction
+        if (title) {
+            lines.push({
+                speaker: 'host1',
+                text: `Welcome to this deep dive. We're exploring "${title}".`,
+                pauseAfter: 0.8
+            });
+            lines.push({
+                speaker: 'host2',
+                text: `This is a fascinating topic. Let's break it down together.`,
+                pauseAfter: 0.6
+            });
+            lines.push({
+                speaker: 'host1',
+                text: `Let's start with the key concepts.`,
+                pauseAfter: 0.5
+            });
+        }
+        
+        // Distribute sentences between speakers
+        let speakerToggle = 'host1';
+        let paragraphCount = 0;
+        let currentParagraph = '';
+        
+        for (let i = 0; i < sentences.length; i++) {
+            const sentence = sentences[i].trim();
+            if (!sentence) continue;
+            
+            currentParagraph += sentence + ' ';
+            paragraphCount++;
+            
+            if (paragraphCount >= 2 + Math.floor(Math.random() * 2)) {
+                let cleanParagraph = currentParagraph.trim();
+                
+                // Add conversational filler
+                if (i > 0 && i < sentences.length - 1 && Math.random() > 0.5) {
+                    const fillers = [
+                        'So, ', 'Now, ', 'You know, ',
+                        'Here\'s the thing: ', 'Essentially, ',
+                        'What\'s interesting is that ', 'The key point is that '
+                    ];
+                    cleanParagraph = fillers[Math.floor(Math.random() * fillers.length)] + 
+                                    cleanParagraph.charAt(0).toLowerCase() + cleanParagraph.slice(1);
+                }
+                
+                lines.push({
+                    speaker: speakerToggle,
+                    text: cleanParagraph,
+                    pauseAfter: 0.3 + Math.random() * 0.4
+                });
+                
+                speakerToggle = speakerToggle === 'host1' ? 'host2' : 'host1';
+                currentParagraph = '';
+                paragraphCount = 0;
+            }
+        }
+        
+        if (currentParagraph) {
+            lines.push({
+                speaker: speakerToggle,
+                text: currentParagraph.trim(),
+                pauseAfter: 0.5
+            });
+        }
+        
+        // Conclusion
+        lines.push({
+            speaker: 'host2',
+            text: `That's the key takeaway from this topic.`,
+            pauseAfter: 0.5
+        });
+        lines.push({
+            speaker: 'host1',
+            text: `Thanks for listening to this deep dive! Stay curious, and we'll see you next time.`,
+            pauseAfter: 0.0
+        });
+        
+        return lines;
+    }
+    
+    // ============================================================
+    // 🎙️ PLAY DUAL-VOICE DIALOGUE
+    // ============================================================
+    
+    async playDualVoiceDialogue(lines) {
+        if (!lines || lines.length === 0) {
+            this.showToast('No dialogue to play', 'warning');
             return;
         }
         
-        // Split into chunks for very long texts
-        const maxChunkLength = 3000;
-        const textChunks = this.splitTextIntoChunks(this.currentAudioText, maxChunkLength);
+        window.speechSynthesis.cancel();
+        await this.initAudioWithVoices();
         
-        if (this.isPlaying) {
-            this.audioSynth?.resume();
-            this.updateAudioUI('playing');
+        this.maleVoice = this.getMaleVoice();
+        this.femaleVoice = this.getFemaleVoice();
+        
+        if (!this.maleVoice || !this.femaleVoice) {
+            this.showToast('Using best available voices', 'info');
+        }
+        
+        this.dialogueLines = lines;
+        this.currentDialogueIndex = 0;
+        this.isPlaying = true;
+        this.isAudioPaused = false;
+        this.updateAudioUI('playing');
+        this.startWaveformAnimation();
+        this.updateDialogueProgress();
+        
+        if (this.audioStatus) {
+            this.audioStatus.textContent = `🎙️ Podcast - 0/${lines.length}`;
+        }
+        
+        this.playDialogueLine();
+    }
+    
+    playDialogueLine() {
+        if (this.currentDialogueIndex >= this.dialogueLines.length) {
+            this.isPlaying = false;
+            this.updateAudioUI('stopped');
+            this.stopWaveformAnimation();
+            this.resetAudioProgress();
+            if (this.audioStatus) {
+                this.audioStatus.textContent = '✅ Podcast complete!';
+            }
+            this.showToast('✅ Podcast complete!', 'success');
             return;
         }
         
-        try {
-            if (!window.speechSynthesis) {
-                this.showToast('Text-to-speech not supported in this browser', 'error');
-                return;
-            }
-            
-            window.speechSynthesis.cancel();
-            this.audioStartTime = Date.now();
-            
-            if (textChunks.length > 1) {
-                this.playAudioChunks(textChunks);
-                return;
-            }
-            
-            const utterance = new SpeechSynthesisUtterance(this.currentAudioText);
-            utterance.rate = parseFloat(this.audioSpeed?.value || 1);
-            utterance.pitch = 1;
-            utterance.volume = 1;
-            
-            const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
-            if (preferredVoice) utterance.voice = preferredVoice;
-            
-            utterance.onstart = () => {
-                this.isPlaying = true;
-                this.updateAudioUI('playing');
-                if (this.audioContainer) {
-                    this.audioContainer.classList.add('audio-playing');
-                    this.audioContainer.classList.remove('audio-paused');
-                }
-            };
-            
-            utterance.onend = () => {
-                this.isPlaying = false;
-                this.updateAudioUI('stopped');
-                if (this.audioContainer) {
-                    this.audioContainer.classList.remove('audio-playing', 'audio-paused');
-                }
-                if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
-                if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
-            };
-            
-            utterance.onerror = (e) => {
-                console.error('Speech error:', e);
-                this.isPlaying = false;
-                this.updateAudioUI('stopped');
-                if (this.audioContainer) {
-                    this.audioContainer.classList.remove('audio-playing', 'audio-paused');
-                }
-            };
-            
-            this.audioSynth = utterance;
-            window.speechSynthesis.speak(utterance);
-            this.updateAudioProgress();
-            
-        } catch (error) {
-            console.error('Audio error:', error);
-            this.showToast('Failed to play audio: ' + error.message, 'error');
+        const line = this.dialogueLines[this.currentDialogueIndex];
+        const isMale = line.speaker === 'host1';
+        const voice = isMale ? this.maleVoice : this.femaleVoice;
+        const speakerLabel = isMale ? '🎙️ Host 1' : '🎙️ Host 2';
+        const total = this.dialogueLines.length;
+        const current = this.currentDialogueIndex + 1;
+        
+        if (this.audioStatus) {
+            this.audioStatus.textContent = `${speakerLabel} ${current}/${total}`;
         }
-    }
-    
-    splitTextIntoChunks(text, maxLength = 3000) {
-        if (text.length <= maxLength) return [text];
-        
-        const chunks = [];
-        let currentChunk = '';
-        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-        
-        for (const sentence of sentences) {
-            if (currentChunk.length + sentence.length <= maxLength) {
-                currentChunk += sentence;
-            } else {
-                if (currentChunk) chunks.push(currentChunk.trim());
-                currentChunk = sentence;
-            }
+        if (this.audioSpeakerIndicator) {
+            this.audioSpeakerIndicator.textContent = isMale ? '👨 Host speaking...' : '👩 Co-host speaking...';
+            this.audioSpeakerIndicator.style.color = isMale ? '#4a90d9' : '#e84393';
         }
-        if (currentChunk) chunks.push(currentChunk.trim());
         
-        return chunks;
-    }
-    
-    playAudioChunks(chunks) {
-        let currentChunkIndex = 0;
+        this.updateDialogueProgress();
         
-        const playNextChunk = () => {
-            if (currentChunkIndex >= chunks.length) {
-                this.isPlaying = false;
-                this.updateAudioUI('stopped');
-                if (this.audioContainer) {
-                    this.audioContainer.classList.remove('audio-playing', 'audio-paused');
-                }
-                this.showToast('✅ Full document read!', 'success');
-                return;
-            }
-            
-            const chunk = chunks[currentChunkIndex];
-            const utterance = new SpeechSynthesisUtterance(chunk);
-            utterance.rate = parseFloat(this.audioSpeed?.value || 1);
-            utterance.pitch = 1;
-            utterance.volume = 1;
-            
-            const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
-            if (preferredVoice) utterance.voice = preferredVoice;
-            
-            const progress = ((currentChunkIndex + 1) / chunks.length * 100);
-            this.showToast(`📖 Reading ${currentChunkIndex + 1}/${chunks.length} (${Math.round(progress)}%)`, 'info');
-            
-            utterance.onend = () => {
-                currentChunkIndex++;
-                setTimeout(playNextChunk, 300);
-            };
-            
-            utterance.onerror = () => {
-                currentChunkIndex++;
-                setTimeout(playNextChunk, 300);
-            };
-            
-            window.speechSynthesis.speak(utterance);
+        const utterance = new SpeechSynthesisUtterance(line.text);
+        if (voice) utterance.voice = voice;
+        utterance.rate = this.audioDialogueSpeed;
+        utterance.pitch = isMale ? 0.85 : 1.15;
+        utterance.volume = 1;
+        
+        this.audioSynth = utterance;
+        
+        utterance.onstart = () => {
             this.isPlaying = true;
             this.updateAudioUI('playing');
         };
         
-        this.audioStartTime = Date.now();
-        playNextChunk();
+        utterance.onend = () => {
+            this.currentDialogueIndex++;
+            const pause = line.pauseAfter || 0.4;
+            setTimeout(() => {
+                if (!this.isAudioPaused) {
+                    this.playDialogueLine();
+                }
+            }, pause * 1000);
+        };
+        
+        utterance.onerror = (e) => {
+            console.warn('Dialogue line error:', e);
+            this.currentDialogueIndex++;
+            setTimeout(() => {
+                if (!this.isAudioPaused) {
+                    this.playDialogueLine();
+                }
+            }, 500);
+        };
+        
+        window.speechSynthesis.speak(utterance);
     }
     
-    updateAudioProgress() {
-        if (!this.isPlaying || !this.audioSynth) return;
-        
-        const totalWords = this.currentAudioText.split(/\s+/).length;
-        const estimatedDuration = totalWords * 0.3;
-        const elapsed = (Date.now() - this.audioStartTime) / 1000;
-        const progress = Math.min(elapsed / estimatedDuration, 1);
-        
+    updateDialogueProgress() {
+        if (this.dialogueLines.length === 0) return;
+        const progress = (this.currentDialogueIndex / this.dialogueLines.length) * 100;
         if (this.audioProgressFill) {
-            this.audioProgressFill.style.width = (progress * 100) + '%';
+            this.audioProgressFill.style.width = Math.min(progress, 100) + '%';
         }
-        if (this.audioCurrentTime) {
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = Math.floor(elapsed % 60);
-            this.audioCurrentTime.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
-        if (this.audioDuration) {
-            const minutes = Math.floor(estimatedDuration / 60);
-            const seconds = Math.floor(estimatedDuration % 60);
-            this.audioDuration.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
-        
-        if (this.isPlaying) {
-            setTimeout(() => this.updateAudioProgress(), 200);
+    }
+    
+    // ============================================================
+    // 🎙️ AUDIO CONTROLS
+    // ============================================================
+    
+    resumeAudio() {
+        if (this.isAudioPaused) {
+            window.speechSynthesis.resume();
+            this.isPlaying = true;
+            this.isAudioPaused = false;
+            this.updateAudioUI('playing');
+            this.startWaveformAnimation();
+            // Resume dialogue
+            this.playDialogueLine();
+        } else if (!this.isPlaying && this.dialogueLines.length > 0) {
+            // Restart from beginning
+            this.currentDialogueIndex = 0;
+            this.playDialogueLine();
         }
     }
     
     pauseAudio() {
-        if (this.audioSynth) {
+        if (this.isPlaying) {
             window.speechSynthesis.pause();
             this.isPlaying = false;
+            this.isAudioPaused = true;
             this.updateAudioUI('paused');
-            if (this.audioContainer) {
-                this.audioContainer.classList.add('audio-paused');
-                this.audioContainer.classList.remove('audio-playing');
+            this.stopWaveformAnimation();
+            if (this.audioSpeakerIndicator) {
+                this.audioSpeakerIndicator.textContent = '⏸️ Paused';
             }
         }
     }
@@ -544,13 +701,36 @@ class ResourcesModule {
     stopAudio() {
         window.speechSynthesis.cancel();
         this.isPlaying = false;
+        this.isAudioPaused = false;
         this.audioSynth = null;
+        this.currentDialogueIndex = 0;
+        this.dialogueLines = [];
         this.updateAudioUI('stopped');
+        this.stopWaveformAnimation();
+        this.resetAudioProgress();
+        if (this.audioSpeakerIndicator) {
+            this.audioSpeakerIndicator.textContent = '🎧 Ready';
+            this.audioSpeakerIndicator.style.color = '#94a3b8';
+        }
         if (this.audioContainer) {
             this.audioContainer.classList.remove('audio-playing', 'audio-paused');
         }
-        if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
-        if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
+    }
+    
+    resetAudioProgress() {
+        if (this.audioProgressInterval) {
+            clearInterval(this.audioProgressInterval);
+            this.audioProgressInterval = null;
+        }
+        if (this.audioProgressFill) {
+            this.audioProgressFill.style.width = '0%';
+        }
+        if (this.audioCurrentTime) {
+            this.audioCurrentTime.textContent = '0:00';
+        }
+        if (this.audioStatus) {
+            this.audioStatus.textContent = '🎧 Ready';
+        }
     }
     
     updateAudioUI(state) {
@@ -559,15 +739,24 @@ class ResourcesModule {
         if (state === 'playing') {
             this.audioPlayBtn.style.display = 'none';
             this.audioPauseBtn.style.display = 'flex';
-            if (this.audioStatus) this.audioStatus.textContent = '🔊 Playing';
+            if (this.audioContainer) {
+                this.audioContainer.classList.add('audio-playing');
+                this.audioContainer.classList.remove('audio-paused');
+            }
         } else if (state === 'paused') {
             this.audioPlayBtn.style.display = 'flex';
             this.audioPauseBtn.style.display = 'none';
             if (this.audioStatus) this.audioStatus.textContent = '⏸️ Paused';
+            if (this.audioContainer) {
+                this.audioContainer.classList.add('audio-paused');
+                this.audioContainer.classList.remove('audio-playing');
+            }
         } else {
             this.audioPlayBtn.style.display = 'flex';
             this.audioPauseBtn.style.display = 'none';
-            if (this.audioStatus) this.audioStatus.textContent = '🎧 Ready';
+            if (this.audioContainer) {
+                this.audioContainer.classList.remove('audio-playing', 'audio-paused');
+            }
         }
     }
     
@@ -582,8 +771,10 @@ class ResourcesModule {
         if (!text || !this.audioContainer) return;
         
         this.currentAudioText = text;
-        if (this.audioTitle) this.audioTitle.textContent = title || 'Reading text...';
-        if (this.audioStatus) this.audioStatus.textContent = '🎧 Ready';
+        if (this.audioTitle) {
+            this.audioTitle.textContent = `🎙️ ${title || 'Podcast'}`;
+        }
+        if (this.audioStatus) this.audioStatus.textContent = '🎙️ Generating podcast...';
         
         const wordCount = text.split(/\s+/).length;
         if (this.audioWordCount) {
@@ -592,20 +783,103 @@ class ResourcesModule {
         
         this.audioContainer.style.display = 'block';
         this.audioContainer.classList.remove('audio-hidden');
+        this.audioContainer.classList.add('audio-podcast-mode');
         
         if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
         if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
-        
-        const estimatedDuration = wordCount * 0.3;
-        const minutes = Math.floor(estimatedDuration / 60);
-        const seconds = Math.floor(estimatedDuration % 60);
         if (this.audioDuration) {
+            const estimatedDuration = wordCount * 0.2;
+            const minutes = Math.floor(estimatedDuration / 60);
+            const seconds = Math.floor(estimatedDuration % 60);
             this.audioDuration.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
     }
     
     // ============================================================
-    // 🎧 READ ALOUD - ONLY ON CLICK
+    // 🎙️ WAVEFORM VISUALIZATION
+    // ============================================================
+    
+    initWaveformCanvas() {
+        if (!this.audioWave) return;
+        
+        // Clear existing content
+        this.audioWave.innerHTML = '';
+        
+        this.audioWaveCanvas = document.createElement('canvas');
+        this.audioWaveCanvas.style.width = '100%';
+        this.audioWaveCanvas.style.height = '100%';
+        this.audioWaveCanvas.style.display = 'block';
+        this.audioWaveCanvas.style.borderRadius = '4px';
+        this.audioWave.appendChild(this.audioWaveCanvas);
+        
+        this.resizeWaveCanvas();
+    }
+    
+    resizeWaveCanvas() {
+        if (!this.audioWaveCanvas) return;
+        
+        const rect = this.audioWave.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        this.audioWaveCanvas.width = (rect.width || 300) * dpr;
+        this.audioWaveCanvas.height = (rect.height || 40) * dpr;
+        this.audioWaveCanvas.style.width = (rect.width || 300) + 'px';
+        this.audioWaveCanvas.style.height = (rect.height || 40) + 'px';
+        this.audioWaveCtx = this.audioWaveCanvas.getContext('2d');
+        this.audioWaveCtx.scale(dpr, dpr);
+    }
+    
+    startWaveformAnimation() {
+        if (this.waveAnimationId) return;
+        this.resizeWaveCanvas();
+        this.animateWaveform();
+    }
+    
+    animateWaveform() {
+        const canvas = this.audioWaveCanvas;
+        const ctx = this.audioWaveCtx;
+        if (!canvas || !ctx) return;
+        
+        const width = canvas.width / (window.devicePixelRatio || 1);
+        const height = canvas.height / (window.devicePixelRatio || 1);
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        const barCount = Math.floor(width / 5);
+        const barWidth = Math.max(2, width / barCount - 1);
+        const time = Date.now() / 400;
+        
+        for (let i = 0; i < barCount; i++) {
+            const seed = (i / barCount) * Math.PI * 6;
+            const heightFactor = 0.2 + 0.8 * Math.abs(Math.sin(seed + time + Math.sin(i * 0.3 + time * 0.7)));
+            const barHeight = height * 0.1 + height * 0.7 * heightFactor;
+            
+            const x = i * (barWidth + 1);
+            const y = (height - barHeight) / 2;
+            
+            const hue = 220 + 30 * heightFactor;
+            const lightness = 50 + 30 * heightFactor;
+            ctx.fillStyle = `hsl(${hue}, 80%, ${lightness}%)`;
+            ctx.fillRect(x, y, barWidth, barHeight);
+        }
+        
+        this.waveAnimationId = requestAnimationFrame(() => this.animateWaveform());
+    }
+    
+    stopWaveformAnimation() {
+        if (this.waveAnimationId) {
+            cancelAnimationFrame(this.waveAnimationId);
+            this.waveAnimationId = null;
+        }
+        
+        if (this.audioWaveCanvas && this.audioWaveCtx) {
+            const width = this.audioWaveCanvas.width / (window.devicePixelRatio || 1);
+            const height = this.audioWaveCanvas.height / (window.devicePixelRatio || 1);
+            this.audioWaveCtx.clearRect(0, 0, width, height);
+        }
+    }
+    
+    // ============================================================
+    // 🎙️ READ ALOUD WITH DUAL VOICES (Main Method)
     // ============================================================
     
     async readAloud(resourceId) {
@@ -615,7 +889,7 @@ class ResourcesModule {
             return;
         }
         
-        this.showToast('📄 Extracting document content...', 'info');
+        this.showToast('🎙️ Generating podcast-style audio...', 'info');
         
         try {
             let fullText = '';
@@ -649,7 +923,6 @@ class ResourcesModule {
                         }
                     } catch (e) {
                         console.warn('Could not extract PDF text:', e);
-                        this.showToast('⚠️ Could not extract PDF content, reading available text', 'warning');
                     }
                 } else if (fileType === 'text' || fileType === 'file') {
                     try {
@@ -674,20 +947,68 @@ class ResourcesModule {
             
             fullText = fullText.replace(/\s+/g, ' ').trim();
             
+            // Generate dialogue script
+            const dialogueScript = this.generateDialogueScript(fullText, resource.title);
+            
+            // Show audio player
             this.showAudioPlayer(fullText, resource.title);
-            this.playAudio();
+            
+            // Play with dual voices
+            await this.playDualVoiceDialogue(dialogueScript);
             
         } catch (error) {
-            console.error('Read aloud error:', error);
-            this.showToast('Failed to read document: ' + error.message, 'error');
+            console.error('Dual-voice error:', error);
+            this.showToast('Failed to generate podcast: ' + error.message, 'error');
             
+            // Fallback to regular TTS
             let fallbackText = `Document: ${resource.title}. `;
             if (resource.description) {
                 fallbackText += resource.description;
             }
             this.showAudioPlayer(fallbackText, resource.title);
-            this.playAudio();
+            this.playFallbackAudio();
         }
+    }
+    
+    playFallbackAudio() {
+        if (!this.currentAudioText) {
+            this.showToast('No text to read', 'warning');
+            return;
+        }
+        
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(this.currentAudioText);
+        utterance.rate = parseFloat(this.audioSpeed?.value || 1);
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.lang.startsWith('en'));
+        if (preferredVoice) utterance.voice = preferredVoice;
+        
+        utterance.onstart = () => {
+            this.isPlaying = true;
+            this.updateAudioUI('playing');
+            this.startWaveformAnimation();
+        };
+        
+        utterance.onend = () => {
+            this.isPlaying = false;
+            this.updateAudioUI('stopped');
+            this.stopWaveformAnimation();
+            this.resetAudioProgress();
+        };
+        
+        utterance.onerror = (e) => {
+            console.error('Speech error:', e);
+            this.isPlaying = false;
+            this.updateAudioUI('stopped');
+            this.stopWaveformAnimation();
+        };
+        
+        this.audioSynth = utterance;
+        window.speechSynthesis.speak(utterance);
     }
     
     // ============================================================
@@ -719,9 +1040,6 @@ class ResourcesModule {
                     if (pageText) {
                         fullText += pageText + '\n\n';
                     }
-                    if (i % 5 === 0 || i === maxPages) {
-                        this.showToast(`📄 Extracting page ${i}/${maxPages}...`, 'info');
-                    }
                 } catch (pageError) {
                     console.warn(`Could not extract page ${i}:`, pageError);
                 }
@@ -735,10 +1053,6 @@ class ResourcesModule {
             throw error;
         }
     }
-    
-    // ============================================================
-    // 📄 EXTRACT TEXT FILE CONTENT
-    // ============================================================
     
     async extractTextFileContent(url) {
         try {
@@ -1012,7 +1326,7 @@ class ResourcesModule {
         const text = this.summaryContent.textContent || '';
         if (text) {
             this.showAudioPlayer(text, 'AI Summary');
-            this.playAudio();
+            this.readAloud(this.currentResource?.id);
         }
     }
     
@@ -1556,9 +1870,9 @@ class ResourcesModule {
                             z-index: 10 !important;
                             color: white !important;
                             margin: 0 !important;
-                            background: #10b981 !important;
-                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                            <i class="fas fa-volume-up"></i> Listen
+                            background: linear-gradient(135deg, #4a90d9, #e84393) !important;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,144,217,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <i class="fas fa-podcast"></i> Podcast
                         </button>
                         
                         <button onclick="window.resourcesModule?.summarizeResource(${resource.id})" style="
@@ -1594,7 +1908,6 @@ class ResourcesModule {
         this.resourcesGrid.innerHTML = html;
         this.updateResourceCount();
         
-        // Apply fade-in animation
         const cards = this.resourcesGrid.querySelectorAll('.resource-card');
         cards.forEach((card, index) => {
             card.style.animation = `fadeInUp 0.4s ease forwards ${index * 0.05}s`;
@@ -2522,7 +2835,7 @@ class ResourcesModule {
     // INITIALIZATION
     // ============================================================
     async initialize() {
-        console.log('📁 Initializing Student Resources Module...');
+        console.log('📁 Initializing Student Resources Module with Podcast Audio...');
         this.detectUserProgram();
         await this.getUserProfile();
         
@@ -2628,4 +2941,4 @@ document.addEventListener('appReady', () => {
     setTimeout(() => initResourcesModule(), 300);
 });
 
-console.log('✅ Resources module loaded (COMPLETE VERSION)');
+console.log('✅ Resources module loaded with NotebookLM-style Podcast Audio!');
