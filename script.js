@@ -2120,7 +2120,6 @@ if (typeof window.MESSAGE_KEY === 'undefined') {
 }
 
 // Local references - use these inside functions
-const SETTINGS_TABLE = window.SETTINGS_TABLE;
 const MESSAGE_KEY = window.MESSAGE_KEY;
 
 // ============================================
