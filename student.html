@@ -4074,7 +4074,7 @@
         </span>
     </div>
 
-    <!-- ========== THREE TABS - FIXED ========== -->
+    <!-- ========== THREE TABS ========== -->
     <div style="background: white; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
             <span style="font-weight: 600; color: #475569; font-size: 13px; margin-right: 4px;">
@@ -4184,68 +4184,66 @@
 </section>
 
 <!-- ============================================================
-     🎧 AUDIO PLAYER - FLOATING BOTTOM PLAYER
+     🎧 AUDIO PLAYER - FLOATING BOTTOM PLAYER (ENHANCED)
      ============================================================ -->
-<div id="audio-player-container" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 99999; background: #0f0f1a; padding: 10px 20px; box-shadow: 0 -4px 30px rgba(0,0,0,0.8); border-top: 3px solid #4C1D95; backdrop-filter: blur(12px); transition: transform 0.3s ease;">
-    <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+<div id="audio-player-container" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 99999; background: #0f0f1a; padding: 12px 20px; box-shadow: 0 -4px 30px rgba(0,0,0,0.8); border-top: 3px solid #4C1D95; backdrop-filter: blur(12px); transition: transform 0.3s ease;">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px;">
         
-        <!-- Audio Info -->
-        <div style="display: flex; align-items: center; gap: 10px; min-width: 160px; flex: 1;">
-            <div style="width: 36px; height: 36px; border-radius: 50%; background: #4C1D95; display: flex; align-items: center; justify-content: center; flex-shrink: 0; animation: pulse-glow 2s infinite;">
-                <i class="fas fa-headphones" style="color: white; font-size: 16px;"></i>
-            </div>
-            <div style="flex: 1; min-width: 0;">
-                <div id="audio-title" style="color: white; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Select a resource to listen</div>
-                <div style="color: #94a3b8; font-size: 11px; display: flex; align-items: center; gap: 8px;">
-                    <span id="audio-status">🎧 Ready</span>
-                    <span style="opacity: 0.3;">|</span>
-                    <span id="audio-word-count">0 words</span>
+        <!-- Waveform (Canvas) - NEW -->
+        <div id="audio-wave" style="height: 36px; width: 100%; background: #1a1a2e; border-radius: 8px; overflow: hidden; margin: 0;"></div>
+        
+        <!-- Main Controls Row -->
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            
+            <!-- Audio Info -->
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 160px; flex: 1;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #4a90d9, #e84393); display: flex; align-items: center; justify-content: center; flex-shrink: 0; animation: pulse-glow 2s infinite;">
+                    <i class="fas fa-podcast" style="color: white; font-size: 16px;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div id="audio-title" style="color: white; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">🎙️ Select a resource</div>
+                    <div id="audio-speaker-indicator" style="color: #94a3b8; font-size: 11px; font-weight: 400;">
+                        <span id="audio-speaker-text">🎧 Ready to listen</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Audio Controls -->
-        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-            <button id="audio-play-btn" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #4C1D95; color: white; font-size: 16px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-play"></i>
-            </button>
-            <button id="audio-pause-btn" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #374151; color: white; font-size: 16px; cursor: pointer; transition: all 0.2s; display: none; align-items: center; justify-content: center;">
-                <i class="fas fa-pause"></i>
-            </button>
-            <button id="audio-stop-btn" style="width: 34px; height: 34px; border-radius: 50%; border: none; background: #ef4444; color: white; font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-stop"></i>
-            </button>
-            <select id="audio-speed" style="background: #1a1a2e; color: white; border: 1px solid #374151; border-radius: 20px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: 'Inter', sans-serif; outline: none;">
-                <option value="0.5">0.5x</option>
-                <option value="0.75">0.75x</option>
-                <option value="1" selected>1x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-                <option value="2">2x</option>
-            </select>
-            <div style="flex: 1; min-width: 80px; max-width: 250px; display: flex; align-items: center; gap: 6px;">
-                <span id="audio-current-time" style="color: #94a3b8; font-size: 11px; min-width: 32px;">0:00</span>
-                <div style="flex: 1; height: 4px; background: #2d2d3a; border-radius: 4px; cursor: pointer; position: relative;" id="audio-progress-bar">
-                    <div id="audio-progress-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #4C1D95, #7c3aed); border-radius: 4px; transition: width 0.1s;"></div>
+            
+            <!-- Controls -->
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <button id="audio-play-btn" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #4a90d9, #e84393); color: white; font-size: 16px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button id="audio-pause-btn" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #374151; color: white; font-size: 16px; cursor: pointer; transition: all 0.2s; display: none; align-items: center; justify-content: center;">
+                    <i class="fas fa-pause"></i>
+                </button>
+                <button id="audio-stop-btn" style="width: 34px; height: 34px; border-radius: 50%; border: none; background: #ef4444; color: white; font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-stop"></i>
+                </button>
+                <select id="audio-speed" style="background: #1a1a2e; color: white; border: 1px solid #374151; border-radius: 20px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-family: 'Inter', sans-serif; outline: none;">
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="0.85" selected>0.85x</option>
+                    <option value="1">1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2x</option>
+                </select>
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 100px; flex: 1;">
+                    <span id="audio-current-time" style="color: #94a3b8; font-size: 11px; min-width: 32px;">0:00</span>
+                    <div style="flex: 1; height: 4px; background: #2d2d3a; border-radius: 4px; cursor: pointer; position: relative; min-width: 60px;" id="audio-progress-bar">
+                        <div id="audio-progress-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #4a90d9, #e84393); border-radius: 4px; transition: width 0.1s;"></div>
+                    </div>
+                    <span id="audio-duration" style="color: #94a3b8; font-size: 11px; min-width: 32px;">0:00</span>
                 </div>
-                <span id="audio-duration" style="color: #94a3b8; font-size: 11px; min-width: 32px;">0:00</span>
+                <button id="audio-close-btn" style="width: 30px; height: 30px; border-radius: 50%; border: none; background: transparent; color: #64748b; font-size: 16px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#64748b'">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <button id="audio-close-btn" style="width: 30px; height: 30px; border-radius: 50%; border: none; background: transparent; color: #64748b; font-size: 16px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-times"></i>
-            </button>
+            
+            <!-- Status -->
+            <div id="audio-status" style="color: #94a3b8; font-size: 11px; min-width: 100px; text-align: right; display: none;">🎙️ Ready</div>
+            
         </div>
-        
-        <!-- Wave Animation -->
-        <div id="audio-wave" style="display: flex; align-items: center; gap: 3px; height: 28px;">
-            <span style="width: 3px; height: 8px; background: #4C1D95; border-radius: 2px; display: inline-block; animation: wave 0.8s ease-in-out infinite;"></span>
-            <span style="width: 3px; height: 14px; background: #4C1D95; border-radius: 2px; display: inline-block; animation: wave 0.7s ease-in-out infinite 0.1s;"></span>
-            <span style="width: 3px; height: 20px; background: #4C1D95; border-radius: 2px; display: inline-block; animation: wave 0.9s ease-in-out infinite 0.2s;"></span>
-            <span style="width: 3px; height: 26px; background: #4C1D95; border-radius: 2px; display: inline-block; animation: wave 0.6s ease-in-out infinite 0.3s;"></span>
-            <span style="width: 3px; height: 20px; background: #4C1D95; border-radius: 2px; display: inline-block; animation: wave 0.8s ease-in-out infinite 0.4s;"></span>
-            <span style="width: 3px; height: 14px; background: #4C1D95; border-radius: 2px; display: inline-block; animation: wave 0.7s ease-in-out infinite 0.5s;"></span>
-            <span style="width: 3px; height: 8px; background: #4C1D95; border-radius: 2px; display: inline-block; animation: wave 0.9s ease-in-out infinite 0.6s;"></span>
-        </div>
-        
     </div>
 </div>
 
@@ -4317,6 +4315,12 @@
         to { transform: rotate(360deg); }
     }
     
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
     #audio-player-container {
         transform: translateY(0);
         transition: transform 0.3s ease;
@@ -4324,71 +4328,111 @@
     #audio-player-container.audio-hidden {
         transform: translateY(100%);
     }
-    #audio-player-container.audio-playing #audio-wave span {
-        background: #10b981 !important;
+    #audio-player-container.audio-playing #audio-wave {
+        border: 1px solid rgba(16, 185, 129, 0.3);
     }
-    #audio-player-container.audio-paused #audio-wave span {
-        background: #f59e0b !important;
+    #audio-player-container.audio-paused #audio-wave {
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    #audio-player-container .fa-podcast {
+        animation: pulse-glow 2s infinite;
     }
     
-    /* Audio Button */
-    .audio-btn {
-        background: #4C1D95;
-        color: white;
-        border: none;
-        border-radius: 40px;
-        padding: 10px 16px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 13px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        transition: all 0.2s;
-        font-family: 'Inter', sans-serif;
+    /* Podcast Button - Gradient Animation */
+    .podcast-btn {
+        background: linear-gradient(135deg, #4a90d9, #e84393) !important;
+        background-size: 200% 200% !important;
+        animation: gradientShift 3s ease infinite !important;
     }
-    .audio-btn:hover { background: #3b0f7a; transform: scale(1.02); }
-    .audio-btn:active { transform: scale(0.98); }
-    .audio-btn.listening { background: #10b981; animation: pulse-audio 1.5s infinite; }
+    .podcast-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 20px rgba(232, 67, 147, 0.4) !important;
+    }
+    
+    /* Resource Card Actions */
+    .resource-actions {
+        display: flex !important;
+        gap: 8px !important;
+        flex-wrap: wrap !important;
+        padding: 12px 16px 16px !important;
+        border-top: 1px solid #f1f5f9 !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        min-height: 50px !important;
+        margin-top: auto !important;
+        background: white !important;
+    }
+    .resource-actions button {
+        flex: 1 !important;
+        min-width: 80px !important;
+        padding: 10px 16px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        border: none !important;
+        transition: all 0.2s ease !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        z-index: 10 !important;
+        color: white !important;
+        margin: 0 !important;
+    }
+    
+    /* Read Now Button */
+    .read-btn {
+        background: #4C1D95 !important;
+    }
+    .read-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(76, 29, 149, 0.3) !important;
+    }
+    
+    /* Podcast Button - matches NotebookLM style */
+    .podcast-btn {
+        background: linear-gradient(135deg, #4a90d9, #e84393) !important;
+        background-size: 200% 200% !important;
+        animation: gradientShift 3s ease infinite !important;
+    }
+    .podcast-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 20px rgba(232, 67, 147, 0.4) !important;
+    }
     
     /* AI Summary Button */
-    .ai-summary-btn {
-        background: #7c3aed;
-        color: white;
+    .summary-btn {
+        background: #7c3aed !important;
+    }
+    .summary-btn:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3) !important;
+    }
+    
+    /* Audio Controls */
+    .audio-control-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
         border: none;
-        border-radius: 40px;
-        padding: 10px 16px;
+        color: white;
+        font-size: 16px;
         cursor: pointer;
-        font-weight: 600;
-        font-size: 13px;
+        transition: all 0.2s;
         display: flex;
         align-items: center;
-        gap: 6px;
-        transition: all 0.2s;
-        font-family: 'Inter', sans-serif;
-    }
-    .ai-summary-btn:hover { background: #6d28d9; transform: scale(1.02); }
-    .ai-summary-btn:active { transform: scale(0.98); }
-    
-    @keyframes pulse-audio {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-        50% { box-shadow: 0 0 20px 5px rgba(16, 185, 129, 0.2); }
-    }
-    
-    /* Resource Actions */
-    .resource-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        padding: 12px 20px 20px;
-        border-top: 1px solid #f1f5f9;
-    }
-    .resource-actions .action-btn,
-    .resource-actions .audio-btn,
-    .resource-actions .ai-summary-btn {
-        flex: 1;
-        min-width: 70px;
         justify-content: center;
+    }
+    .audio-control-btn:hover {
+        transform: scale(1.05);
+    }
+    .audio-control-btn:active {
+        transform: scale(0.95);
     }
     
     /* Resource Card */
@@ -4399,7 +4443,8 @@
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         overflow: hidden;
         transition: all 0.3s ease;
-        cursor: pointer;
+        display: flex;
+        flex-direction: column;
     }
     .resource-card:hover {
         transform: translateY(-4px);
@@ -4409,137 +4454,29 @@
     /* Mobile */
     @media (max-width: 768px) {
         #audio-player-container { padding: 8px 12px; }
-        #audio-player-container > div { gap: 8px; }
+        #audio-player-container > div { gap: 6px; }
         #audio-title { font-size: 12px; }
+        #audio-wave { height: 24px; }
         #audio-play-btn, #audio-pause-btn { width: 34px; height: 34px; font-size: 14px; }
         #audio-stop-btn { width: 30px; height: 30px; font-size: 12px; }
-        #audio-wave { height: 20px; }
-        #audio-wave span { width: 2px; }
-        .audio-btn, .ai-summary-btn { padding: 6px 12px; font-size: 12px; }
-        #ai-summary-modal > div { max-width: 95%; }
+        #audio-speed { font-size: 11px; padding: 2px 8px; }
+        #audio-current-time, #audio-duration { font-size: 10px; min-width: 28px; }
         .resource-actions { flex-direction: column; }
-        .resource-actions .action-btn,
-        .resource-actions .audio-btn,
-        .resource-actions .ai-summary-btn { flex: none; width: 100%; }
-        
+        .resource-actions button { width: 100% !important; }
         #student-resources-grid {
             grid-template-columns: 1fr !important;
         }
+        #audio-speaker-indicator { font-size: 10px; }
+        #audio-status { display: none !important; }
+    }
+    
+    @media (max-width: 480px) {
+        #audio-player-container { padding: 6px 10px; }
+        #audio-wave { height: 20px; }
+        #audio-title { font-size: 11px; }
+        .resource-actions button { font-size: 12px !important; padding: 8px 12px !important; }
     }
 </style>
-
-<!-- ============================================================
-     🟢 SAMPLE RESOURCE CARDS (FOR DEMO - REMOVE IN PRODUCTION)
-     ============================================================ -->
-<div style="display: none;" id="demo-resources">
-    <div class="resource-card" data-type="material" data-id="1">
-        <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: start;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 40px; height: 40px; border-radius: 8px; background: #3B82F615; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <i class="fas fa-file-pdf" style="color: #EF4444; font-size: 18px;"></i>
-                </div>
-                <div>
-                    <h4 style="margin: 0; color: #0A3D62; font-size: 14px; font-weight: 600; line-height: 1.3;">Introduction to Computer Science</h4>
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
-                        <span style="background: #3B82F620; color: #1D4ED8; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 600;">📚 Material</span>
-                        <span style="background: #e2e8f0; color: #475569; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 500;">CS101</span>
-                        <span style="background: #e2e8f0; color: #475569; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 500;">2026</span>
-                    </div>
-                </div>
-            </div>
-            <span style="font-size: 11px; color: #94a3b8; white-space: nowrap; padding-top: 4px;">Jan 15, 2026</span>
-        </div>
-        <div style="padding: 16px 20px;">
-            <p style="color: #64748b; font-size: 13px; margin: 0 0 12px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
-                Comprehensive introduction to computer science fundamentals including algorithms, data structures, and programming concepts.
-            </p>
-            <span style="background: #f1f5f9; color: #475569; font-size: 11px; padding: 2px 12px; border-radius: 12px; display: inline-block;">Block A</span>
-            <span style="background: #f1f5f9; color: #475569; font-size: 11px; padding: 2px 12px; border-radius: 12px; display: inline-block; margin-left: 4px;">
-                <i class="fas fa-file"></i> 2.4 MB
-            </span>
-        </div>
-        <div class="resource-actions">
-            <button class="action-btn" onclick="event.stopPropagation(); alert('📖 Opening reader for: Introduction to Computer Science')" style="flex: 1; padding: 8px 16px; border-radius: 8px; border: 1px solid #0A3D62; background: transparent; color: #0A3D62; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;" onmouseover="this.style.background='#0A3D62'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='#0A3D62'">
-                <i class="fas fa-book-open"></i> Read Now
-            </button>
-            <button class="ai-summary-btn" onclick="event.stopPropagation(); alert('🤖 Generating AI summary...')" style="flex: 1; padding: 8px 16px; border-radius: 8px; border: none; background: #7c3aed; color: white; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;" onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#7c3aed'">
-                <i class="fas fa-robot"></i> AI Summary
-            </button>
-        </div>
-    </div>
-
-    <div class="resource-card" data-type="pastpaper" data-id="2">
-        <div style="padding: 16px 20px; background: #fef3c7; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: start;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 40px; height: 40px; border-radius: 8px; background: #EF444415; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <i class="fas fa-file-pdf" style="color: #EF4444; font-size: 18px;"></i>
-                </div>
-                <div>
-                    <h4 style="margin: 0; color: #0A3D62; font-size: 14px; font-weight: 600; line-height: 1.3;">Mathematics Exam 2025</h4>
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
-                        <span style="background: #f59e0b20; color: #b45309; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 600;">📄 Past Paper</span>
-                        <span style="background: #e2e8f0; color: #475569; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 500;">MATH201</span>
-                        <span style="background: #e2e8f0; color: #475569; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 500;">2025</span>
-                    </div>
-                </div>
-            </div>
-            <span style="font-size: 11px; color: #94a3b8; white-space: nowrap; padding-top: 4px;">Dec 10, 2025</span>
-        </div>
-        <div style="padding: 16px 20px;">
-            <p style="color: #64748b; font-size: 13px; margin: 0 0 12px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
-                Past examination paper for Mathematics 201 covering calculus, algebra, and statistics topics.
-            </p>
-            <span style="background: #f1f5f9; color: #475569; font-size: 11px; padding: 2px 12px; border-radius: 12px; display: inline-block;">Block B</span>
-            <span style="background: #f1f5f9; color: #475569; font-size: 11px; padding: 2px 12px; border-radius: 12px; display: inline-block; margin-left: 4px;">
-                <i class="fas fa-file"></i> 1.8 MB
-            </span>
-        </div>
-        <div class="resource-actions">
-            <button class="action-btn" onclick="event.stopPropagation(); alert('📖 Opening reader for: Mathematics Exam 2025')" style="flex: 1; padding: 8px 16px; border-radius: 8px; border: 1px solid #0A3D62; background: transparent; color: #0A3D62; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;" onmouseover="this.style.background='#0A3D62'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='#0A3D62'">
-                <i class="fas fa-book-open"></i> Read Now
-            </button>
-            <button class="ai-summary-btn" onclick="event.stopPropagation(); alert('🤖 Generating AI summary...')" style="flex: 1; padding: 8px 16px; border-radius: 8px; border: none; background: #7c3aed; color: white; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;" onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#7c3aed'">
-                <i class="fas fa-robot"></i> AI Summary
-            </button>
-        </div>
-    </div>
-
-    <div class="resource-card" data-type="material" data-id="3">
-        <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: start;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 40px; height: 40px; border-radius: 8px; background: #EC489915; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <i class="fas fa-file-video" style="color: #EC4899; font-size: 18px;"></i>
-                </div>
-                <div>
-                    <h4 style="margin: 0; color: #0A3D62; font-size: 14px; font-weight: 600; line-height: 1.3;">Physics Lecture Series</h4>
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
-                        <span style="background: #3B82F620; color: #1D4ED8; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 600;">📚 Material</span>
-                        <span style="background: #e2e8f0; color: #475569; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 500;">PHY101</span>
-                        <span style="background: #e2e8f0; color: #475569; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 500;">2026</span>
-                    </div>
-                </div>
-            </div>
-            <span style="font-size: 11px; color: #94a3b8; white-space: nowrap; padding-top: 4px;">Feb 1, 2026</span>
-        </div>
-        <div style="padding: 16px 20px;">
-            <p style="color: #64748b; font-size: 13px; margin: 0 0 12px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
-                Comprehensive video lecture series covering mechanics, thermodynamics, and wave physics.
-            </p>
-            <span style="background: #f1f5f9; color: #475569; font-size: 11px; padding: 2px 12px; border-radius: 12px; display: inline-block;">Block A</span>
-            <span style="background: #f1f5f9; color: #475569; font-size: 11px; padding: 2px 12px; border-radius: 12px; display: inline-block; margin-left: 4px;">
-                <i class="fas fa-file"></i> 45.2 MB
-            </span>
-        </div>
-        <div class="resource-actions">
-            <button class="action-btn" onclick="event.stopPropagation(); alert('📖 Opening reader for: Physics Lecture Series')" style="flex: 1; padding: 8px 16px; border-radius: 8px; border: 1px solid #0A3D62; background: transparent; color: #0A3D62; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;" onmouseover="this.style.background='#0A3D62'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='#0A3D62'">
-                <i class="fas fa-book-open"></i> Read Now
-            </button>
-            <button class="ai-summary-btn" onclick="event.stopPropagation(); alert('🤖 Generating AI summary...')" style="flex: 1; padding: 8px 16px; border-radius: 8px; border: none; background: #7c3aed; color: white; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;" onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#7c3aed'">
-                <i class="fas fa-robot"></i> AI Summary
-            </button>
-        </div>
-    </div>
-</div>
           <!-- ==================== MESSAGES TAB (OPTIMIZED) ==================== -->
 <section id="messages" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
