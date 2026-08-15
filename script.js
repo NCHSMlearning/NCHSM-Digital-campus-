@@ -2246,10 +2246,6 @@ if (typeof window.escapeHtml === 'undefined') {
         return str;
     };
 }
-
-// Local reference for escapeHtml
-const escapeHtml = window.escapeHtml;
-
 // ============================================
 // 📊 DASHBOARD METRICS - ALL FUNCTIONS
 // ============================================
