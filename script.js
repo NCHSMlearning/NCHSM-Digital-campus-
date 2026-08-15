@@ -2092,7 +2092,6 @@ function exportTableToCSV(tableId, filename) {
     link.click();
     document.body.removeChild(link);
 }
-
 /*******************************************************
  * 7. DASHBOARD & WELCOME EDITOR - COMPLETE
  * ✅ All dashboard metrics
@@ -2101,6 +2100,8 @@ function exportTableToCSV(tableId, filename) {
  * ✅ Real-time updates
  * ✅ SAFE - All null checks added
  * ✅ Ultra-modern UI integration
+ * ✅ All functions wrapped with safe checks
+ * ✅ ALL functions exposed to global scope
  *******************************************************/
 
 // ============================================
@@ -2146,59 +2147,67 @@ function safeSetLoading(id, message = 'Loading...') {
     return false;
 }
 
-
+// ============================================
+// 🔥 SAFE FUNCTION DECLARATIONS - CHECK IF ALREADY DEFINED
+// ============================================
 
 /**
  * Check if program is TVET
  */
-function isTVETProgram(program) {
-    if (!program) return false;
-    const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 
-                          'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-                          'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
-    return tvetPrograms.includes(program);
+if (typeof window.isTVETProgram === 'undefined') {
+    window.isTVETProgram = function(program) {
+        if (!program) return false;
+        const tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME', 
+                              'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+                              'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+        return tvetPrograms.includes(program);
+    };
 }
 
 /**
  * Get program display name
  */
-function getProgramDisplayName(code) {
-    const names = {
-        'KRCHN': 'KRCHN Nursing',
-        'DPOTT': 'Diploma in Perioperative Theatre Technology',
-        'DCH': 'Diploma in Community Health',
-        'DHRIT': 'Diploma in Health Records and IT',
-        'DSL': 'Diploma in Science Lab',
-        'DSW': 'Diploma in Social Work',
-        'DCJS': 'Diploma in Criminal Justice',
-        'DHSS': 'Diploma in Health Support Services',
-        'DICT': 'Diploma in ICT',
-        'DME': 'Diploma in Medical Engineering',
-        'CPOTT': 'Certificate in Perioperative Theatre Technology',
-        'CCH': 'Certificate in Community Health',
-        'CHRIT': 'Certificate in Health Records and IT',
-        'CPC': 'Certificate in Patient Care',
-        'CSL': 'Certificate in Science Lab',
-        'CSW': 'Certificate in Social Work',
-        'CCJS': 'Certificate in Criminal Justice',
-        'CAG': 'Certificate in Agriculture',
-        'CHSS': 'Certificate in Health Support Services',
-        'CICT': 'Certificate in ICT',
-        'ACH': 'Artisan in Community Health',
-        'AAG': 'Artisan in Agriculture',
-        'ASW': 'Artisan in Social Work',
-        'CCA': 'Certificate in Computer Applications',
-        'PTE': 'TVET/CDACC (PTE)'
+if (typeof window.getProgramDisplayName === 'undefined') {
+    window.getProgramDisplayName = function(code) {
+        const names = {
+            'KRCHN': 'KRCHN Nursing',
+            'DPOTT': 'Diploma in Perioperative Theatre Technology',
+            'DCH': 'Diploma in Community Health',
+            'DHRIT': 'Diploma in Health Records and IT',
+            'DSL': 'Diploma in Science Lab',
+            'DSW': 'Diploma in Social Work',
+            'DCJS': 'Diploma in Criminal Justice',
+            'DHSS': 'Diploma in Health Support Services',
+            'DICT': 'Diploma in ICT',
+            'DME': 'Diploma in Medical Engineering',
+            'CPOTT': 'Certificate in Perioperative Theatre Technology',
+            'CCH': 'Certificate in Community Health',
+            'CHRIT': 'Certificate in Health Records and IT',
+            'CPC': 'Certificate in Patient Care',
+            'CSL': 'Certificate in Science Lab',
+            'CSW': 'Certificate in Social Work',
+            'CCJS': 'Certificate in Criminal Justice',
+            'CAG': 'Certificate in Agriculture',
+            'CHSS': 'Certificate in Health Support Services',
+            'CICT': 'Certificate in ICT',
+            'ACH': 'Artisan in Community Health',
+            'AAG': 'Artisan in Agriculture',
+            'ASW': 'Artisan in Social Work',
+            'CCA': 'Certificate in Computer Applications',
+            'PTE': 'TVET/CDACC (PTE)'
+        };
+        return names[code] || code || 'Unknown';
     };
-    return names[code] || code || 'Unknown';
 }
 
 /**
  * Get program type
  */
-function getProgramType(code) {
-    if (code === 'KRCHN') return 'KRCHN';
-    return 'TVET';
+if (typeof window.getProgramType === 'undefined') {
+    window.getProgramType = function(code) {
+        if (code === 'KRCHN') return 'KRCHN';
+        return 'TVET';
+    };
 }
 
 // ============================================
@@ -2529,7 +2538,6 @@ async function loadAdditionalDashboardMetrics() {
         }
         
         // Load Data Integrity Score
-        // Check for orphaned records, missing relationships, etc.
         let integrityScore = 98.5;
         let issues = 0;
         
@@ -2671,10 +2679,9 @@ async function loadDashboardData() {
             }
         }
 
-        // System Uptime (simulated with actual data)
+        // System Uptime
         const uptimeEl = document.getElementById('systemUptime');
         if (uptimeEl) {
-            // Calculate uptime from system logs
             const { data: logs, error: logsError } = await sb
                 .from('system_logs')
                 .select('created_at, event_type')
@@ -2722,7 +2729,7 @@ async function loadDashboardData() {
         await loadPendingMessagesCount();
         await loadAdditionalDashboardMetrics();
         
-        // ✅ Only call if elements exist
+        // Only call if elements exist
         const statsExists = document.getElementById('statsTotalStudents') !== null;
         if (statsExists) {
             await loadStudentStatistics();
@@ -3025,7 +3032,7 @@ async function updateCharts() {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: { color: 'rgba(0,0,0,0.05)' }
+                            ticks: { stepSize: 1 }
                         },
                         x: {
                             grid: { display: false }
@@ -3387,32 +3394,120 @@ async function loadActivityFeed() {
 }
 
 // ============================================
-// ✅ EXPOSE FUNCTIONS TO GLOBAL SCOPE
+// ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
 // ============================================
 
-window.loadDashboardData = loadDashboardData;
-window.loadStudentStatistics = loadStudentStatistics;
-window.loadStudentBirthdays = loadStudentBirthdays;
-window.loadTotalDailyCheckIns = loadTotalDailyCheckIns;
-window.loadTicketMetricsForDashboard = loadTicketMetricsForDashboard;
-window.loadPendingMessagesCount = loadPendingMessagesCount;
-window.loadAdditionalDashboardMetrics = loadAdditionalDashboardMetrics;
-window.loadStudentWelcomeMessage = loadStudentWelcomeMessage;
-window.loadWelcomeMessageForEdit = loadWelcomeMessageForEdit;
-window.handleSaveWelcomeMessage = handleSaveWelcomeMessage;
-window.initDashboard = initDashboard;
-window.startDashboardAutoRefresh = startDashboardAutoRefresh;
-window.stopDashboardAutoRefresh = stopDashboardAutoRefresh;
-window.refreshDashboard = refreshDashboard;
-window.setRefreshInterval = setRefreshInterval;
-window.toggleDarkMode = toggleDarkMode;
-window.toggleExportMenu = toggleExportMenu;
-window.exportDashboardPDF = exportDashboardPDF;
-window.exportDashboardCSV = exportDashboardCSV;
-window.exportDashboardPNG = exportDashboardPNG;
-window.toggleNotifications = toggleNotifications;
-window.loadActivityFeed = loadActivityFeed;
-window.updateCharts = updateCharts;
+// Core helpers
+if (typeof window.safeSetText === 'undefined') {
+    window.safeSetText = safeSetText;
+}
+if (typeof window.safeSetHTML === 'undefined') {
+    window.safeSetHTML = safeSetHTML;
+}
+if (typeof window.safeSetLoading === 'undefined') {
+    window.safeSetLoading = safeSetLoading;
+}
+
+// Program helpers
+if (typeof window.isTVETProgram === 'undefined') {
+    window.isTVETProgram = isTVETProgram;
+}
+if (typeof window.getProgramDisplayName === 'undefined') {
+    window.getProgramDisplayName = getProgramDisplayName;
+}
+if (typeof window.getProgramType === 'undefined') {
+    window.getProgramType = getProgramType;
+}
+
+// Dashboard data functions
+if (typeof window.loadTicketMetricsForDashboard === 'undefined') {
+    window.loadTicketMetricsForDashboard = loadTicketMetricsForDashboard;
+}
+if (typeof window.loadTotalDailyCheckIns === 'undefined') {
+    window.loadTotalDailyCheckIns = loadTotalDailyCheckIns;
+}
+if (typeof window.loadPendingMessagesCount === 'undefined') {
+    window.loadPendingMessagesCount = loadPendingMessagesCount;
+}
+if (typeof window.loadStudentStatistics === 'undefined') {
+    window.loadStudentStatistics = loadStudentStatistics;
+}
+if (typeof window.loadAdditionalDashboardMetrics === 'undefined') {
+    window.loadAdditionalDashboardMetrics = loadAdditionalDashboardMetrics;
+}
+if (typeof window.loadDashboardData === 'undefined') {
+    window.loadDashboardData = loadDashboardData;
+}
+
+// Welcome message functions
+if (typeof window.loadStudentWelcomeMessage === 'undefined') {
+    window.loadStudentWelcomeMessage = loadStudentWelcomeMessage;
+}
+if (typeof window.loadWelcomeMessageForEdit === 'undefined') {
+    window.loadWelcomeMessageForEdit = loadWelcomeMessageForEdit;
+}
+if (typeof window.handleSaveWelcomeMessage === 'undefined') {
+    window.handleSaveWelcomeMessage = handleSaveWelcomeMessage;
+}
+
+// Birthday functions
+if (typeof window.loadStudentBirthdays === 'undefined') {
+    window.loadStudentBirthdays = loadStudentBirthdays;
+}
+
+// Auto-refresh functions
+if (typeof window.startDashboardAutoRefresh === 'undefined') {
+    window.startDashboardAutoRefresh = startDashboardAutoRefresh;
+}
+if (typeof window.stopDashboardAutoRefresh === 'undefined') {
+    window.stopDashboardAutoRefresh = stopDashboardAutoRefresh;
+}
+
+// Chart functions
+if (typeof window.updateCharts === 'undefined') {
+    window.updateCharts = updateCharts;
+}
+
+// UI functions
+if (typeof window.toggleDarkMode === 'undefined') {
+    window.toggleDarkMode = toggleDarkMode;
+}
+if (typeof window.setRefreshInterval === 'undefined') {
+    window.setRefreshInterval = setRefreshInterval;
+}
+if (typeof window.refreshDashboard === 'undefined') {
+    window.refreshDashboard = refreshDashboard;
+}
+if (typeof window.toggleExportMenu === 'undefined') {
+    window.toggleExportMenu = toggleExportMenu;
+}
+if (typeof window.exportDashboardPDF === 'undefined') {
+    window.exportDashboardPDF = exportDashboardPDF;
+}
+if (typeof window.exportDashboardCSV === 'undefined') {
+    window.exportDashboardCSV = exportDashboardCSV;
+}
+if (typeof window.exportDashboardPNG === 'undefined') {
+    window.exportDashboardPNG = exportDashboardPNG;
+}
+
+// Notification functions
+if (typeof window.loadNotificationCount === 'undefined') {
+    window.loadNotificationCount = loadNotificationCount;
+}
+if (typeof window.toggleNotifications === 'undefined') {
+    window.toggleNotifications = toggleNotifications;
+}
+
+// Activity feed
+if (typeof window.loadActivityFeed === 'undefined') {
+    window.loadActivityFeed = loadActivityFeed;
+}
+
+// Initialize dashboard
+if (typeof window.initDashboard === 'undefined') {
+    window.initDashboard = initDashboard;
+}
 
 console.log('✅ Dashboard module loaded successfully');
 console.log('📊 Available functions:');
