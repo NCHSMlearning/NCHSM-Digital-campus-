@@ -1172,71 +1172,82 @@ class ResourcesModule {
         }
     }
     
-    async generateSummary(resource) {
-        if (!this.summaryModal) return;
+   // ============================================================
+// 🤖 AI SUMMARY - FIXED to accept resource ID
+// ============================================================
+
+async generateSummary(resourceId) {
+    // Find resource by ID
+    const resource = this.allResources.find(r => r.id == resourceId);
+    if (!resource) {
+        this.showToast('Resource not found', 'error');
+        return;
+    }
+    
+    if (!this.summaryModal) return;
+    
+    this.currentResource = resource;
+    this.summaryModal.style.display = 'flex';
+    
+    if (this.summaryTitle) {
+        this.summaryTitle.textContent = resource.title || 'Resource';
+    }
+    
+    if (this.summaryLoading) this.summaryLoading.style.display = 'flex';
+    if (this.summaryContent) this.summaryContent.style.display = 'none';
+    if (this.summaryActions) this.summaryActions.style.display = 'none';
+    
+    try {
+        let content = '';
         
-        this.currentResource = resource;
-        this.summaryModal.style.display = 'flex';
-        
-        if (this.summaryTitle) {
-            this.summaryTitle.textContent = resource.title || 'Resource';
+        if (resource.description) {
+            content = resource.description;
         }
         
-        if (this.summaryLoading) this.summaryLoading.style.display = 'flex';
-        if (this.summaryContent) this.summaryContent.style.display = 'none';
-        if (this.summaryActions) this.summaryActions.style.display = 'none';
+        if (resource.file_path && resource.file_url) {
+            const fileType = this.getFileType(resource.file_path);
+            if (fileType === 'pdf') {
+                try {
+                    content = await this.extractPDFText(resource.file_url);
+                } catch (e) {
+                    console.warn('Could not extract PDF text:', e);
+                }
+            }
+        }
         
-        try {
-            let content = '';
-            
+        if (!content || content.length < 50) {
+            content = `Resource: ${resource.title || 'Untitled'}\n`;
+            content += `Course: ${resource.course_name || 'General'}\n`;
+            content += `Type: ${resource.resource_type || 'Material'}\n`;
+            content += `Block/Term: ${resource.block || resource.term || 'General'}\n`;
             if (resource.description) {
-                content = resource.description;
+                content += `\nDescription: ${resource.description}`;
             }
-            
-            if (resource.file_path && resource.file_url) {
-                const fileType = this.getFileType(resource.file_path);
-                if (fileType === 'pdf') {
-                    try {
-                        content = await this.extractPDFText(resource.file_url);
-                    } catch (e) {
-                        console.warn('Could not extract PDF text:', e);
-                    }
-                }
-            }
-            
-            if (!content || content.length < 50) {
-                content = `Resource: ${resource.title || 'Untitled'}\n`;
-                content += `Course: ${resource.course_name || 'General'}\n`;
-                content += `Type: ${resource.resource_type || 'Material'}\n`;
-                content += `Block/Term: ${resource.block || resource.term || 'General'}\n`;
-                if (resource.description) {
-                    content += `\nDescription: ${resource.description}`;
-                }
-            }
-            
-            const summary = this.generateSimpleSummary(content);
-            
-            if (this.summaryLoading) this.summaryLoading.style.display = 'none';
-            if (this.summaryContent) {
-                this.summaryContent.style.display = 'block';
-                this.summaryContent.innerHTML = summary;
-            }
-            if (this.summaryActions) this.summaryActions.style.display = 'flex';
-            
-        } catch (error) {
-            console.error('Summary error:', error);
-            if (this.summaryLoading) this.summaryLoading.style.display = 'none';
-            if (this.summaryContent) {
-                this.summaryContent.style.display = 'block';
-                this.summaryContent.innerHTML = `
-                    <div style="color:#ef4444;text-align:center;padding:20px;">
-                        <i class="fas fa-exclamation-triangle" style="font-size:32px;display:block;margin-bottom:12px;"></i>
-                        <p>Unable to generate summary: ${error.message}</p>
-                    </div>
-                `;
-            }
+        }
+        
+        const summary = this.generateSimpleSummary(content);
+        
+        if (this.summaryLoading) this.summaryLoading.style.display = 'none';
+        if (this.summaryContent) {
+            this.summaryContent.style.display = 'block';
+            this.summaryContent.innerHTML = summary;
+        }
+        if (this.summaryActions) this.summaryActions.style.display = 'flex';
+        
+    } catch (error) {
+        console.error('Summary error:', error);
+        if (this.summaryLoading) this.summaryLoading.style.display = 'none';
+        if (this.summaryContent) {
+            this.summaryContent.style.display = 'block';
+            this.summaryContent.innerHTML = `
+                <div style="color:#ef4444;text-align:center;padding:20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:32px;display:block;margin-bottom:12px;"></i>
+                    <p>Unable to generate summary: ${error.message}</p>
+                </div>
+            `;
         }
     }
+}
     
     generateSimpleSummary(text) {
         if (!text || text.length < 10) {
@@ -1875,7 +1886,7 @@ class ResourcesModule {
                             <i class="fas fa-podcast"></i> Podcast
                         </button>
                         
-                        <button onclick="window.resourcesModule?.summarizeResource(${resource.id})" style="
+<button onclick="window.resourcesModule?.generateSummary(${resource.id})" style="...">
                             flex: 1 !important;
                             min-width: 80px !important;
                             padding: 10px 16px !important;
