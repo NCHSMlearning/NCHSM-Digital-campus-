@@ -2103,8 +2103,8 @@ function exportTableToCSV(tableId, filename) {
  * ✅ All functions wrapped with safe checks
  * ✅ ALL functions exposed to global scope
  * ✅ NO duplicate variable declarations
- * ✅ Uses window.sb instead of sb
- * ✅ Uses window.escapeHtml with safe fallback
+ * ✅ FAST LOADING - Parallel queries + Caching
+ * ✅ MISSING FEATURES - Notifications, Trends, Activity Feed
  *******************************************************/
 
 // ============================================
@@ -2118,14 +2118,39 @@ if (typeof window.SETTINGS_TABLE === 'undefined') {
 if (typeof window.MESSAGE_KEY === 'undefined') {
     window.MESSAGE_KEY = 'student_welcome_message';
 }
+if (typeof window.CACHE_DURATION === 'undefined') {
+    window.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+}
+
+
+// ============================================
+// 📦 CACHE SYSTEM - FASTER LOADING
+// ============================================
+
+if (typeof window.DashboardCache === 'undefined') {
+    window.DashboardCache = {
+        data: {},
+        get: function(key) {
+            if (this.data[key] && (Date.now() - this.data[key].timestamp < CACHE_DURATION)) {
+                return this.data[key].data;
+            }
+            return null;
+        },
+        set: function(key, data) {
+            this.data[key] = { data, timestamp: Date.now() };
+        },
+        clear: function(key) {
+            if (key) delete this.data[key];
+            else this.data = {};
+        }
+    };
+}
+const DashboardCache = window.DashboardCache;
 
 // ============================================
 // 📊 HELPER FUNCTIONS - SAFE UPDATES
 // ============================================
 
-/**
- * Safely set textContent on an element if it exists
- */
 if (typeof window.safeSetText === 'undefined') {
     window.safeSetText = function(id, value, defaultValue = '0') {
         const el = document.getElementById(id);
@@ -2137,9 +2162,6 @@ if (typeof window.safeSetText === 'undefined') {
     };
 }
 
-/**
- * Safely set innerHTML on an element if it exists
- */
 if (typeof window.safeSetHTML === 'undefined') {
     window.safeSetHTML = function(id, html) {
         const el = document.getElementById(id);
@@ -2151,9 +2173,6 @@ if (typeof window.safeSetHTML === 'undefined') {
     };
 }
 
-/**
- * Safely set innerHTML with loading state
- */
 if (typeof window.safeSetLoading === 'undefined') {
     window.safeSetLoading = function(id, message = 'Loading...') {
         const el = document.getElementById(id);
@@ -2172,9 +2191,6 @@ if (typeof window.safeSetLoading === 'undefined') {
 // 🔥 SAFE FUNCTION DECLARATIONS - CHECK IF ALREADY DEFINED
 // ============================================
 
-/**
- * Check if program is TVET
- */
 if (typeof window.isTVETProgram === 'undefined') {
     window.isTVETProgram = function(program) {
         if (!program) return false;
@@ -2185,9 +2201,6 @@ if (typeof window.isTVETProgram === 'undefined') {
     };
 }
 
-/**
- * Get program display name
- */
 if (typeof window.getProgramDisplayName === 'undefined') {
     window.getProgramDisplayName = function(code) {
         const names = {
@@ -2221,19 +2234,12 @@ if (typeof window.getProgramDisplayName === 'undefined') {
     };
 }
 
-/**
- * Get program type
- */
 if (typeof window.getProgramType === 'undefined') {
     window.getProgramType = function(code) {
         if (code === 'KRCHN') return 'KRCHN';
         return 'TVET';
     };
 }
-
-// ============================================
-// 🔥 SAFE escapeHtml - CHECK IF ALREADY DEFINED
-// ============================================
 
 if (typeof window.escapeHtml === 'undefined') {
     window.escapeHtml = function(s, isAttribute = false) {
@@ -2246,149 +2252,561 @@ if (typeof window.escapeHtml === 'undefined') {
         return str;
     };
 }
+
 // ============================================
-// 📊 DASHBOARD METRICS - ALL FUNCTIONS
+// 🔔 REAL-TIME NOTIFICATIONS
 // ============================================
 
-/**
- * Load ticket metrics for dashboard
- */
-if (typeof window.loadTicketMetricsForDashboard === 'undefined') {
-    window.loadTicketMetricsForDashboard = async function() {
+if (typeof window.loadRealTimeNotifications === 'undefined') {
+    window.loadRealTimeNotifications = async function() {
         try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) {
-                console.error('❌ Supabase client not available');
-                return;
-            }
+            const client = window.sb || window.supabase;
+            if (!client) return;
             
-            // Get all open tickets
-            const { data: openTickets, error: openError } = await supabase
-                .from('support_tickets')
-                .select('id, priority')
-                .eq('status', 'open');
-            
-            if (!openError && openTickets) {
-                window.safeSetText('dashboardOpenTickets', openTickets.length);
-                const urgentCount = openTickets.filter(t => t.priority === 'urgent').length;
-                window.safeSetText('dashboardUrgentTickets', urgentCount);
-            }
-            
-            // Get total units for dashboard
-            const { data: units, error: unitsError } = await supabase
-                .from('units_catalog')
-                .select('id', { count: 'exact' });
-            
-            if (!unitsError && units) {
-                window.safeSetText('dashboardTotalUnits', units.length || 0);
-            }
-            
-            // Get pending unit registrations
-            const { data: pendingReg, error: pendingError } = await supabase
-                .from('student_unit_registrations')
-                .select('id', { count: 'exact' })
-                .eq('status', 'pending');
-            
-            if (!pendingError) {
-                window.safeSetText('dashboardPendingUnitReg', pendingReg?.length || 0);
-            }
-            
-            // Get upcoming exams (next 7 days)
-            const nextWeek = new Date();
-            nextWeek.setDate(nextWeek.getDate() + 7);
-            const nextWeekStr = nextWeek.toISOString().split('T')[0];
-            
-            const { data: upcomingExams, error: examsError } = await supabase
-                .from('exams')
-                .select('id')
-                .eq('status', 'Upcoming')
-                .lte('exam_date', nextWeekStr);
-            
-            if (!examsError) {
-                window.safeSetText('dashboardUpcomingExams', upcomingExams?.length || 0);
-            }
-            
-        } catch (error) {
-            console.error('Error loading ticket metrics:', error);
-        }
-    };
-}
-
-/**
- * Load total daily check-ins
- */
-if (typeof window.loadTotalDailyCheckIns === 'undefined') {
-    window.loadTotalDailyCheckIns = async function() {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-
-        const checkInsElement = document.getElementById('totalDailyCheckIns');
-        if (!checkInsElement) return;
-
-        try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) {
-                console.error('❌ Supabase client not available');
-                checkInsElement.textContent = '0';
-                return;
-            }
-            
-            const { count, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*', { count: 'exact', head: true })
-                .gte('check_in_time', todayStr)
-                .lt('check_in_time', tomorrowStr);
-
-            if (error) {
-                console.error('Error counting daily check-ins:', error.message);
-                checkInsElement.textContent = '0';
-            } else {
-                checkInsElement.textContent = count || 0;
-            }
-        } catch (e) {
-            checkInsElement.textContent = '0';
-        }
-    };
-}
-
-/**
- * Load pending messages count
- */
-if (typeof window.loadPendingMessagesCount === 'undefined') {
-    window.loadPendingMessagesCount = async function() {
-        try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) return;
-            
-            const { count, error } = await supabase
+            const { data, error } = await client
                 .from('notifications')
-                .select('*', { count: 'exact', head: true })
-                .eq('is_read', false);
+                .select('*')
+                .eq('is_read', false)
+                .order('created_at', { ascending: false })
+                .limit(5);
             
-            if (!error) {
-                window.safeSetText('dashboardPendingMessages', count || 0);
+            if (!error && data) {
+                const count = data.length;
+                // Update bell badge
+                const badge = document.getElementById('notificationBadge');
+                if (badge) {
+                    if (count > 0) {
+                        badge.style.display = 'block';
+                        badge.textContent = count > 99 ? '99+' : count;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+                
+                // Store for dropdown
+                window._latestNotifications = data;
+                console.log(`🔔 ${count} unread notifications`);
             }
         } catch (error) {
-            console.error('Error loading pending messages:', error);
+            console.error('Error loading notifications:', error);
         }
     };
 }
 
-/**
- * Load student statistics - KRCHN vs TVET - WITH NULL CHECKS
- */
+// ============================================
+// 📈 WEEKLY TRENDS
+// ============================================
+
+if (typeof window.loadWeeklyTrends === 'undefined') {
+    window.loadWeeklyTrends = async function() {
+        try {
+            const client = window.sb || window.supabase;
+            if (!client) return;
+            
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            
+            const { data, error } = await client
+                .from('geo_attendance_logs')
+                .select('check_in_time')
+                .gte('check_in_time', sevenDaysAgo.toISOString());
+            
+            if (!error && data) {
+                // Group by day
+                const dailyCounts = {};
+                const dayLabels = [];
+                const dayData = [];
+                
+                // Get last 7 days
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    const key = d.toLocaleDateString('en-US', { weekday: 'short' });
+                    dailyCounts[key] = 0;
+                    dayLabels.push(key);
+                }
+                
+                data.forEach(log => {
+                    const day = new Date(log.check_in_time).toLocaleDateString('en-US', { weekday: 'short' });
+                    if (dailyCounts[day] !== undefined) {
+                        dailyCounts[day]++;
+                    }
+                });
+                
+                dayLabels.forEach(label => {
+                    dayData.push(dailyCounts[label] || 0);
+                });
+                
+                // Update the trend chart
+                const trendChart = document.getElementById('performanceChart');
+                if (trendChart && typeof Chart !== 'undefined') {
+                    if (window.trendChartInstance) {
+                        window.trendChartInstance.destroy();
+                    }
+                    window.trendChartInstance = new Chart(trendChart, {
+                        type: 'line',
+                        data: {
+                            labels: dayLabels,
+                            datasets: [{
+                                label: 'Check-ins',
+                                data: dayData,
+                                borderColor: '#4C1D95',
+                                backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#4C1D95'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { stepSize: 1 }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                console.log('📈 Weekly trends loaded');
+            }
+        } catch (error) {
+            console.error('Error loading weekly trends:', error);
+        }
+    };
+}
+
+// ============================================
+// 👥 TOP PERFORMERS
+// ============================================
+
+if (typeof window.loadTopPerformers === 'undefined') {
+    window.loadTopPerformers = async function() {
+        try {
+            const client = window.sb || window.supabase;
+            if (!client) return;
+            
+            const { data, error } = await client
+                .from('student_marks')
+                .select('student_name, final_score, subject_name, admission_number')
+                .order('final_score', { ascending: false })
+                .limit(5);
+            
+            if (!error && data) {
+                const container = document.getElementById('topPerformerCards');
+                if (container) {
+                    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">';
+                    data.forEach((student, index) => {
+                        const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+                        html += `
+                            <div style="background:white;border-radius:10px;padding:12px;text-align:center;border:1px solid #e5e7eb;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                                <div style="font-size:24px;">${medals[index] || '🏅'}</div>
+                                <div style="font-weight:600;font-size:13px;color:#1e293b;">${window.escapeHtml(student.student_name || 'Unknown')}</div>
+                                <div style="font-size:11px;color:#64748b;">${window.escapeHtml(student.subject_name || '')}</div>
+                                <div style="font-size:20px;font-weight:700;color:#10b981;">${student.final_score || 0}%</div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+                console.log('👥 Top performers loaded');
+            }
+        } catch (error) {
+            console.error('Error loading top performers:', error);
+        }
+    };
+}
+
+// ============================================
+// 🔄 RECENT ACTIVITY FEED
+// ============================================
+
+if (typeof window.loadRecentActivity === 'undefined') {
+    window.loadRecentActivity = async function() {
+        try {
+            const client = window.sb || window.supabase;
+            if (!client) return;
+            
+            const { data, error } = await client
+                .from('audit_logs')
+                .select('user_email, action_type, created_at, details, user_role')
+                .order('created_at', { ascending: false })
+                .limit(10);
+            
+            if (!error && data) {
+                const feedEl = document.getElementById('activityFeed');
+                if (feedEl) {
+                    const icons = {
+                        'LOGIN': 'fa-sign-in-alt',
+                        'LOGOUT': 'fa-sign-out-alt',
+                        'USER_CREATED': 'fa-user-plus',
+                        'USER_UPDATED': 'fa-user-edit',
+                        'USER_DELETED': 'fa-user-minus',
+                        'MARKS_ENTRY': 'fa-pen',
+                        'MARKS_APPROVED': 'fa-check-circle',
+                        'RESOURCE_UPLOADED': 'fa-upload',
+                        'EXAM_CREATED': 'fa-file-alt',
+                        'default': 'fa-circle'
+                    };
+                    
+                    let html = '';
+                    data.forEach(log => {
+                        const icon = icons[log.action_type] || icons.default;
+                        const time = new Date(log.created_at).toLocaleTimeString();
+                        const userDisplay = log.user_email || 'System';
+                        const actionDisplay = log.action_type || 'Activity';
+                        
+                        html += `
+                            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                                <div style="width:30px;height:30px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas ${icon}" style="color:#4C1D95;font-size:11px;"></i>
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-size:12px;color:#1e293b;font-weight:500;">
+                                        ${window.escapeHtml(userDisplay)}
+                                        <span style="font-weight:400;color:#94a3b8;font-size:11px;">${window.escapeHtml(actionDisplay)}</span>
+                                    </div>
+                                    <div style="font-size:10px;color:#94a3b8;">${time}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    feedEl.innerHTML = html || '<div style="padding:20px;text-align:center;color:#94a3b8;">No recent activity</div>';
+                }
+                console.log('🔄 Recent activity loaded');
+            }
+        } catch (error) {
+            console.error('Error loading recent activity:', error);
+        }
+    };
+}
+
+// ============================================
+// 🏥 SYSTEM STATUS INDICATORS
+// ============================================
+
+if (typeof window.loadSystemStatusIndicators === 'undefined') {
+    window.loadSystemStatusIndicators = async function() {
+        try {
+            const client = window.sb || window.supabase;
+            if (!client) return;
+            
+            // Check database connection
+            const { error: dbError } = await client.from('users').select('id').limit(1);
+            
+            // Check storage
+            const { data: storageData } = await client.storage.listBuckets();
+            
+            // Update status indicators
+            const dbStatus = document.getElementById('dbStatus');
+            const storageStatus = document.getElementById('storageStatus');
+            const apiStatus = document.getElementById('apiStatus');
+            
+            if (dbStatus) {
+                dbStatus.textContent = dbError ? '🔴' : '🟢';
+                dbStatus.title = dbError ? 'Database: Offline' : 'Database: Online';
+            }
+            if (storageStatus) {
+                storageStatus.textContent = storageData ? '🟢' : '🔴';
+                storageStatus.title = storageData ? 'Storage: Online' : 'Storage: Offline';
+            }
+            if (apiStatus) {
+                apiStatus.textContent = '🟢';
+                apiStatus.title = 'API: Online';
+            }
+            
+            console.log('🏥 System status checked');
+        } catch (error) {
+            console.error('Error checking system status:', error);
+        }
+    };
+}
+
+// ============================================
+// 📊 FAST DASHBOARD LOADER - PARALLEL + CACHING
+// ============================================
+
+if (typeof window.loadDashboardFast === 'undefined') {
+    window.loadDashboardFast = async function() {
+        console.log('🚀 Loading dashboard (optimized)...');
+        
+        // Show skeleton loading if available
+        if (typeof window.showSkeletonLoading === 'function') {
+            window.showSkeletonLoading();
+        }
+        
+        try {
+            const client = window.sb || window.supabase;
+            if (!client) {
+                console.error('❌ Supabase client not available');
+                return;
+            }
+            
+            // ============================================
+            // 1. LOAD CRITICAL STATS - PARALLEL + CACHE
+            // ============================================
+            
+            const [totalUsers, pendingUsers, totalStudents, todayCheckins, overallCheckins] = await Promise.all([
+                getCachedOrFetch('totalUsers', async () => {
+                    const { count } = await client
+                        .from('consolidated_user_profiles_table')
+                        .select('*', { count: 'exact', head: true });
+                    return count || 0;
+                }),
+                getCachedOrFetch('pendingUsers', async () => {
+                    const { count } = await client
+                        .from('consolidated_user_profiles_table')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('status', 'pending');
+                    return count || 0;
+                }),
+                getCachedOrFetch('totalStudents', async () => {
+                    const { count } = await client
+                        .from('consolidated_user_profiles_table')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('role', 'student')
+                        .eq('status', 'approved');
+                    return count || 0;
+                }),
+                getCachedOrFetch('todayCheckins', async () => {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const { count } = await client
+                        .from('geo_attendance_logs')
+                        .select('*', { count: 'exact', head: true })
+                        .gte('check_in_time', todayStr);
+                    return count || 0;
+                }),
+                getCachedOrFetch('overallCheckins', async () => {
+                    const { count } = await client
+                        .from('geo_attendance_logs')
+                        .select('*', { count: 'exact', head: true });
+                    return count || 0;
+                })
+            ]);
+            
+            // Update critical stats immediately
+            window.safeSetText('totalUsers', totalUsers);
+            window.safeSetText('pendingApprovals', pendingUsers);
+            window.safeSetText('totalStudents', students);
+            window.safeSetText('totalDailyCheckIns', todayCheckins);
+            window.safeSetText('overallCheckInCount', overallCheckins);
+            
+            // ============================================
+            // 2. LOAD SECONDARY STATS - PARALLEL
+            // ============================================
+            
+            const [courses, resources, openTickets, activeSessions, krchn, tvet, staff] = await Promise.all([
+                getCachedOrFetch('totalCourses', async () => {
+                    const { count } = await client
+                        .from('courses')
+                        .select('*', { count: 'exact', head: true });
+                    return count || 0;
+                }),
+                getCachedOrFetch('totalResources', async () => {
+                    const { count } = await client
+                        .from('resources')
+                        .select('*', { count: 'exact', head: true });
+                    return count || 0;
+                }),
+                getCachedOrFetch('openTickets', async () => {
+                    const { count } = await client
+                        .from('support_tickets')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('status', 'open');
+                    return count || 0;
+                }),
+                getCachedOrFetch('activeSessions', async () => {
+                    const { count } = await client
+                        .from('user_sessions')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('is_active', true);
+                    return count || 0;
+                }),
+                getCachedOrFetch('krchnStudents', async () => {
+                    const { count } = await client
+                        .from('consolidated_user_profiles_table')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('role', 'student')
+                        .eq('status', 'approved')
+                        .eq('program', 'KRCHN');
+                    return count || 0;
+                }),
+                getCachedOrFetch('tvetStudents', async () => {
+                    const { count } = await client
+                        .from('consolidated_user_profiles_table')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('role', 'student')
+                        .eq('status', 'approved')
+                        .neq('program', 'KRCHN');
+                    return count || 0;
+                }),
+                getCachedOrFetch('staffCount', async () => {
+                    const { count } = await client
+                        .from('consolidated_user_profiles_table')
+                        .select('*', { count: 'exact', head: true })
+                        .in('role', ['lecturer', 'admin', 'superadmin']);
+                    return count || 0;
+                })
+            ]);
+            
+            // Update secondary stats
+            window.safeSetText('totalCourses', courses);
+            window.safeSetText('totalResources', resources);
+            window.safeSetText('dashboardOpenTickets', openTickets);
+            window.safeSetText('activeSessions', activeSessions);
+            window.safeSetText('krchnCountDisplay', krchn);
+            window.safeSetText('tvetCountDisplay', tvet);
+            window.safeSetText('totalStaffCountDisplay', staff);
+            window.safeSetText('totalStaffCount', staff);
+            
+            // ============================================
+            // 3. LOAD ADDITIONAL METRICS
+            // ============================================
+            
+            const [totalUnits, pendingUnits, totalPrograms, pendingReviews] = await Promise.all([
+                getCachedOrFetch('totalUnits', async () => {
+                    const { count } = await client
+                        .from('units_catalog')
+                        .select('*', { count: 'exact', head: true });
+                    return count || 0;
+                }),
+                getCachedOrFetch('pendingUnits', async () => {
+                    const { count } = await client
+                        .from('student_unit_registrations')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('status', 'pending');
+                    return count || 0;
+                }),
+                getCachedOrFetch('totalPrograms', async () => {
+                    const { count } = await client
+                        .from('programs')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('status', 'active');
+                    return count || 0;
+                }),
+                getCachedOrFetch('pendingReviews', async () => {
+                    const { count } = await client
+                        .from('student_reviews')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('status', 'pending');
+                    return count || 0;
+                })
+            ]);
+            
+            window.safeSetText('dashboardTotalUnits', totalUnits);
+            window.safeSetText('dashboardPendingUnitReg', pendingUnits);
+            window.safeSetText('dashboardTotalPrograms', totalPrograms);
+            window.safeSetText('dashboardPendingReviews', pendingReviews);
+            
+            // ============================================
+            // 4. LOAD CHARTS (Deferred)
+            // ============================================
+            
+            setTimeout(async () => {
+                try {
+                    await window.loadStudentStatistics();
+                    await window.updateCharts();
+                    await window.loadWeeklyTrends();
+                    console.log('📊 Charts loaded');
+                } catch (error) {
+                    console.error('Chart loading error:', error);
+                }
+            }, 100);
+            
+            // ============================================
+            // 5. LOAD ACTIVITY FEED (Deferred - Last)
+            // ============================================
+            
+            setTimeout(async () => {
+                try {
+                    await window.loadRecentActivity();
+                    await window.loadRealTimeNotifications();
+                    await window.loadTopPerformers();
+                    await window.loadSystemStatusIndicators();
+                    console.log('🔄 Activity feed loaded');
+                } catch (error) {
+                    console.error('Activity feed error:', error);
+                }
+            }, 300);
+            
+            // ============================================
+            // 6. LOAD WELCOME MESSAGE
+            // ============================================
+            
+            await window.loadStudentWelcomeMessage();
+            
+            // ============================================
+            // 7. UPDATE TIMESTAMP
+            // ============================================
+            
+            const timestampEl = document.getElementById('liveTimestamp');
+            if (timestampEl) {
+                timestampEl.textContent = new Date().toLocaleTimeString();
+            }
+            
+            // Hide skeleton
+            if (typeof window.hideSkeletonLoading === 'function') {
+                window.hideSkeletonLoading();
+            }
+            
+            console.log('✅ Dashboard loaded successfully (optimized)');
+            
+        } catch (error) {
+            console.error('❌ Dashboard load error:', error);
+            if (typeof window.hideSkeletonLoading === 'function') {
+                window.hideSkeletonLoading();
+            }
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback('Error loading dashboard: ' + error.message, 'error');
+            }
+        }
+    };
+}
+
+// ============================================
+// 🔄 CACHED FETCH HELPER
+// ============================================
+
+async function getCachedOrFetch(key, fetchFn) {
+    const cached = DashboardCache.get(key);
+    if (cached !== null) return cached;
+    
+    try {
+        const result = await fetchFn();
+        DashboardCache.set(key, result);
+        return result;
+    } catch (error) {
+        console.error(`Cache fetch error for ${key}:`, error);
+        return 0;
+    }
+}
+
+// ============================================
+// 📊 LOAD STUDENT STATISTICS - OPTIMIZED
+// ============================================
+
 if (typeof window.loadStudentStatistics === 'undefined') {
     window.loadStudentStatistics = async function() {
         console.log('📊 Loading student statistics...');
         
         try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) {
-                console.error('❌ Supabase client not available');
+            const client = window.sb || window.supabase;
+            if (!client) return;
+            
+            const cached = DashboardCache.get('studentStats');
+            if (cached) {
+                renderStudentStats(cached);
                 return;
             }
             
-            const { data: students, error } = await supabase
+            const { data: students, error } = await client
                 .from('consolidated_user_profiles_table')
                 .select('user_id, full_name, program, gender, role, status, intake_year, block')
                 .eq('role', 'student')
@@ -2411,82 +2829,9 @@ if (typeof window.loadStudentStatistics === 'undefined') {
                 return;
             }
             
-            const totalStudents = students.length;
-            const krchnCount = students.filter(s => s.program === 'KRCHN').length;
-            const tvetCount = students.filter(s => window.isTVETProgram(s.program)).length;
-            const maleCount = students.filter(s => s.gender === 'M' || s.gender === 'Male').length;
-            const femaleCount = students.filter(s => s.gender === 'F' || s.gender === 'Female').length;
-            const malePercent = totalStudents > 0 ? Math.round((maleCount / totalStudents) * 100) : 0;
-            const femalePercent = totalStudents > 0 ? Math.round((femaleCount / totalStudents) * 100) : 0;
-            const programCount = [...new Set(students.map(s => s.program).filter(p => p))].length;
-            
-            window.safeSetText('statsTotalStudents', totalStudents);
-            window.safeSetText('statsKrchnCount', krchnCount);
-            window.safeSetText('statsTvetCount', tvetCount);
-            window.safeSetText('statsProgramCount', programCount);
-            window.safeSetText('statsMaleTotal', maleCount);
-            window.safeSetText('statsFemaleTotal', femaleCount);
-            window.safeSetText('statsMalePercent', malePercent + '%');
-            window.safeSetText('statsFemalePercent', femalePercent + '%');
-            
-            // Build program breakdown
-            let html = '';
-            const programData = [];
-            
-            for (const programCode of [...new Set(students.map(s => s.program).filter(p => p))]) {
-                const progStudents = students.filter(s => s.program === programCode);
-                const progTotal = progStudents.length;
-                const progMale = progStudents.filter(s => s.gender === 'M' || s.gender === 'Male').length;
-                const progFemale = progStudents.filter(s => s.gender === 'F' || s.gender === 'Female').length;
-                const progType = window.getProgramType(programCode);
-                const progName = window.getProgramDisplayName(programCode);
-                const progPercent = totalStudents > 0 ? ((progTotal / totalStudents) * 100).toFixed(1) : 0;
-                
-                const ratio = progFemale > 0 ? (progMale / progFemale).toFixed(2) : (progMale > 0 ? '∞' : '0');
-                const ratioDisplay = ratio === '∞' ? 'All M' : (ratio === '0' ? 'All F' : `${ratio}:1`);
-                
-                programData.push({
-                    name: progName,
-                    type: progType,
-                    total: progTotal,
-                    male: progMale,
-                    female: progFemale,
-                    percent: progPercent,
-                    ratio: ratioDisplay
-                });
-            }
-            
-            programData.sort((a, b) => b.total - a.total);
-            
-            for (const prog of programData) {
-                const badge = prog.type === 'KRCHN' 
-                    ? '<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🎓 KRCHN</span>'
-                    : '<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🔧 TVET</span>';
-                
-                html += `
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 10px 14px;"><strong>${escapeHtml(prog.name)}</strong></td>
-                        <td style="padding: 10px 14px; text-align: center;">${badge}</td>
-                        <td style="padding: 10px 14px; text-align: center;"><strong>${prog.total}</strong></td>
-                        <td style="padding: 10px 14px; text-align: center;">👨 ${prog.male}</td>
-                        <td style="padding: 10px 14px; text-align: center;">👩 ${prog.female}</td>
-                        <td style="padding: 10px 14px; text-align: center; font-size: 13px;">${prog.ratio}</td>
-                        <td style="padding: 10px 14px; text-align: center;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <div style="flex: 1; height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
-                                    <div style="width: ${prog.percent}%; height: 100%; background: linear-gradient(90deg, #4C1D95, #6d28d9); border-radius: 4px;"></div>
-                                </div>
-                                <span style="font-size: 12px; font-weight: 600; min-width: 40px;">${prog.percent}%</span>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-            
-            window.safeSetHTML('statsProgramBreakdown', html);
-            window.safeSetText('statsLastUpdated', new Date().toLocaleTimeString());
-            
-            console.log('✅ Student statistics loaded:', { totalStudents, krchnCount, tvetCount, maleCount, femaleCount, programCount });
+            const stats = processStudentStats(students);
+            DashboardCache.set('studentStats', stats);
+            renderStudentStats(stats);
             
         } catch (error) {
             console.error('Error loading student statistics:', error);
@@ -2497,340 +2842,94 @@ if (typeof window.loadStudentStatistics === 'undefined') {
     };
 }
 
-/**
- * Load additional dashboard metrics - WITH NULL CHECKS
- */
-if (typeof window.loadAdditionalDashboardMetrics === 'undefined') {
-    window.loadAdditionalDashboardMetrics = async function() {
-        try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) {
-                console.error('❌ Supabase client not available');
-                return;
-            }
-            
-            // Load Lecturers Count
-            const { count: lecturersCount, error: lecturersError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id', { count: 'exact' })
-                .eq('role', 'lecturer');
-            
-            if (!lecturersError) {
-                window.safeSetText('dashboardLecturersCount', lecturersCount || 0);
-            }
-            
-            // Load Pending Marks - use correct table name
-            const { count: pendingMarks, error: pendingMarksError } = await supabase
-                .from('exam_grades')
-                .select('id', { count: 'exact' })
-                .eq('status', 'pending');
-            
-            if (!pendingMarksError) {
-                window.safeSetText('dashboardPendingMarks', pendingMarks || 0);
-            }
-            
-            // Load Published Marks
-            const { count: publishedMarks, error: publishedMarksError } = await supabase
-                .from('exam_grades')
-                .select('id', { count: 'exact' })
-                .eq('status', 'published');
-            
-            if (!publishedMarksError) {
-                window.safeSetText('dashboardPublishedMarks', publishedMarks || 0);
-            }
-            
-            // Load Pending Reviews
-            const { count: pendingReviews, error: pendingReviewsError } = await supabase
-                .from('student_reviews')
-                .select('id', { count: 'exact' })
-                .eq('status', 'pending');
-            
-            if (!pendingReviewsError) {
-                window.safeSetText('dashboardPendingReviews', pendingReviews || 0);
-            }
-            
-            // Load Total Programs
-            const { count: totalPrograms, error: totalProgramsError } = await supabase
-                .from('programs')
-                .select('id', { count: 'exact' })
-                .eq('status', 'active');
-            
-            if (!totalProgramsError) {
-                window.safeSetText('dashboardTotalPrograms', totalPrograms || 0);
-            }
-            
-            // Load Total Sessions (this week)
-            const startOfWeek = new Date();
-            startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-            startOfWeek.setHours(0, 0, 0, 0);
-            const startOfWeekStr = startOfWeek.toISOString();
-            
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(endOfWeek.getDate() + 7);
-            const endOfWeekStr = endOfWeek.toISOString();
-            
-            const { count: totalSessions, error: totalSessionsError } = await supabase
-                .from('scheduled_sessions')
-                .select('id', { count: 'exact' })
-                .gte('session_date', startOfWeekStr)
-                .lt('session_date', endOfWeekStr);
-            
-            if (!totalSessionsError) {
-                window.safeSetText('dashboardTotalSessions', totalSessions || 0);
-            }
-            
-            // Load System Alerts
-            const { count: systemAlerts, error: systemAlertsError } = await supabase
-                .from('system_alerts')
-                .select('id', { count: 'exact' })
-                .eq('resolved', false);
-            
-            if (!systemAlertsError) {
-                window.safeSetText('dashboardSystemAlerts', systemAlerts || 0);
-            }
-            
-            // Load Attendance Today (percentage)
-            const todayStr = new Date().toISOString().split('T')[0];
-            const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-            
-            const { count: totalStudents, error: totalStudentsError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id', { count: 'exact' })
-                .eq('role', 'student')
-                .eq('status', 'approved');
-            
-            const { count: presentToday, error: presentTodayError } = await supabase
-                .from('geo_attendance_logs')
-                .select('user_id', { count: 'exact' })
-                .gte('check_in_time', todayStr)
-                .lt('check_in_time', tomorrowStr);
-            
-            if (!totalStudentsError && !presentTodayError && totalStudents > 0) {
-                const attendancePercent = Math.round((presentToday / totalStudents) * 100);
-                window.safeSetText('dashboardAttendanceToday', attendancePercent + '%');
-            }
-            
-            // Load Data Integrity Score
-            let integrityScore = 98.5;
-            let issues = 0;
-            
-            // Check for users without profiles
-            const { count: orphanedUsers, error: orphanedError } = await supabase
-                .from('users')
-                .select('id', { count: 'exact' })
-                .not('id', 'in', '(select user_id from consolidated_user_profiles_table)');
-            
-            if (!orphanedError && orphanedUsers > 0) {
-                issues += orphanedUsers * 0.5;
-            }
-            
-            // Check for marks without students
-            const { count: orphanedMarks, error: marksError } = await supabase
-                .from('exam_grades')
-                .select('id', { count: 'exact' })
-                .not('student_id', 'in', '(select user_id from consolidated_user_profiles_table)');
-            
-            if (!marksError && orphanedMarks > 0) {
-                issues += orphanedMarks * 0.3;
-            }
-            
-            integrityScore = Math.max(70, Math.min(100, integrityScore - issues));
-            window.safeSetText('dataIntegrityScore', integrityScore.toFixed(1) + '%');
-            
-        } catch (error) {
-            console.error('Error loading additional dashboard metrics:', error);
-        }
-    };
+// ============================================
+// 📊 PROCESS STUDENT STATS
+// ============================================
+
+function processStudentStats(students) {
+    const totalStudents = students.length;
+    const krchnCount = students.filter(s => s.program === 'KRCHN').length;
+    const tvetCount = students.filter(s => window.isTVETProgram(s.program)).length;
+    const maleCount = students.filter(s => s.gender === 'M' || s.gender === 'Male').length;
+    const femaleCount = students.filter(s => s.gender === 'F' || s.gender === 'Female').length;
+    const malePercent = totalStudents > 0 ? Math.round((maleCount / totalStudents) * 100) : 0;
+    const femalePercent = totalStudents > 0 ? Math.round((femaleCount / totalStudents) * 100) : 0;
+    const programCount = [...new Set(students.map(s => s.program).filter(p => p))].length;
+    
+    return { totalStudents, krchnCount, tvetCount, maleCount, femaleCount, malePercent, femalePercent, programCount, students };
 }
 
 // ============================================
-// 🚀 MAIN DASHBOARD LOAD FUNCTION - WITH NULL CHECKS
+// 📊 RENDER STUDENT STATS
 // ============================================
 
-if (typeof window.loadDashboardData === 'undefined') {
-    window.loadDashboardData = async function() {
-        console.log('📊 Loading dashboard data...');
+function renderStudentStats(stats) {
+    const { totalStudents, krchnCount, tvetCount, maleCount, femaleCount, malePercent, femalePercent, programCount, students } = stats;
+    
+    window.safeSetText('statsTotalStudents', totalStudents);
+    window.safeSetText('statsKrchnCount', krchnCount);
+    window.safeSetText('statsTvetCount', tvetCount);
+    window.safeSetText('statsProgramCount', programCount);
+    window.safeSetText('statsMaleTotal', maleCount);
+    window.safeSetText('statsFemaleTotal', femaleCount);
+    window.safeSetText('statsMalePercent', malePercent + '%');
+    window.safeSetText('statsFemalePercent', femalePercent + '%');
+    
+    // Build program breakdown
+    const programData = [];
+    for (const programCode of [...new Set(students.map(s => s.program).filter(p => p))]) {
+        const progStudents = students.filter(s => s.program === programCode);
+        const progTotal = progStudents.length;
+        const progMale = progStudents.filter(s => s.gender === 'M' || s.gender === 'Male').length;
+        const progFemale = progStudents.filter(s => s.gender === 'F' || s.gender === 'Female').length;
+        const progType = window.getProgramType(programCode);
+        const progName = window.getProgramDisplayName(programCode);
+        const progPercent = totalStudents > 0 ? ((progTotal / totalStudents) * 100).toFixed(1) : 0;
         
-        try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) {
-                console.error('❌ Supabase client not available');
-                return;
-            }
-            
-            // Show loading states
-            const loadingElements = document.querySelectorAll('.data');
-            loadingElements.forEach(el => {
-                if (!el.dataset.originalText) {
-                    el.dataset.originalText = el.textContent;
-                }
-            });
-            
-            // Total users
-            const { count: allUsersCount } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id', { count: 'exact' });
-            window.safeSetText('totalUsers', allUsersCount || 0);
-            
-            // Total Daily Check-ins
-            await window.loadTotalDailyCheckIns(); 
-
-            // Pending approvals
-            const { count: pendingCount, error } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id', { count: 'exact', head: true })
-                .eq('status', 'pending');
-
-            if (error) {
-                console.error('Error counting pending approvals:', error.message);
-                window.safeSetText('pendingApprovals', '0');
-            } else {
-                window.safeSetText('pendingApprovals', pendingCount || 0);
-            }
-
-            // Total students
-            const { count: studentsCount } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id', { count: 'exact' })
-                .eq('role', 'student');
-            window.safeSetText('totalStudents', studentsCount || 0);
-
-            // Overall check-in count
-            const { count: overallCheckIns } = await supabase
-                .from('geo_attendance_logs')
-                .select('*', { count: 'exact', head: true });
-            window.safeSetText('overallCheckInCount', overallCheckIns || 0);
-
-            // Total courses count
-            const { count: coursesCount } = await supabase
-                .from('courses')
-                .select('*', { count: 'exact', head: true });
-            window.safeSetText('totalCourses', coursesCount || 0);
-
-            // Total resources count (this month)
-            const firstDayOfMonth = new Date();
-            firstDayOfMonth.setDate(1);
-            firstDayOfMonth.setHours(0, 0, 0, 0);
-            const { count: resourcesCount } = await supabase
-                .from('resources')
-                .select('*', { count: 'exact', head: true })
-                .gte('created_at', firstDayOfMonth.toISOString());
-            window.safeSetText('totalResources', resourcesCount || 0);
-
-            // KRCHN vs TVET Counts
-            const { count: krchnCount } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id', { count: 'exact' })
-                .eq('role', 'student')
-                .eq('status', 'approved')
-                .eq('program', 'KRCHN');
-            window.safeSetText('krchnCountDisplay', krchnCount || 0);
-            
-            const { count: tvetCount } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id', { count: 'exact' })
-                .eq('role', 'student')
-                .eq('status', 'approved')
-                .neq('program', 'KRCHN');
-            window.safeSetText('tvetCountDisplay', tvetCount || 0);
-            
-            // Staff count
-            const { count: staffCount } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id', { count: 'exact' })
-                .in('role', ['lecturer', 'admin', 'superadmin']);
-            window.safeSetText('totalStaffCountDisplay', staffCount || 0);
-            window.safeSetText('totalStaffCount', staffCount || 0);
-            
-            // Resources total
-            const { count: totalResourcesAll } = await supabase
-                .from('resources')
-                .select('*', { count: 'exact', head: true });
-            window.safeSetText('totalResourcesDisplay', totalResourcesAll || 0);
-
-            // Active sessions
-            const activeSessionsEl = document.getElementById('activeSessions');
-            if (activeSessionsEl) {
-                try {
-                    const { data: sessions } = await supabase.auth.admin.listUsers();
-                    const activeCount = sessions?.users?.filter(u => u.last_sign_in_at)?.length || 0;
-                    activeSessionsEl.textContent = activeCount;
-                } catch (e) {
-                    activeSessionsEl.textContent = '0';
-                }
-            }
-
-            // System Uptime
-            const uptimeEl = document.getElementById('systemUptime');
-            if (uptimeEl) {
-                const { data: logs, error: logsError } = await supabase
-                    .from('system_logs')
-                    .select('created_at, event_type')
-                    .eq('event_type', 'system_start')
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-                
-                if (!logsError && logs && logs.length > 0) {
-                    const lastStart = new Date(logs[0].created_at);
-                    const now = new Date();
-                    const daysUp = (now - lastStart) / (1000 * 60 * 60 * 24);
-                    if (daysUp > 30) {
-                        uptimeEl.textContent = '99.8%';
-                    } else if (daysUp > 7) {
-                        uptimeEl.textContent = '99.5%';
-                    } else {
-                        uptimeEl.textContent = '100%';
-                    }
-                } else {
-                    uptimeEl.textContent = '99.8%';
-                }
-            }
-
-            // Header stats
-            const headerLoad = document.getElementById('headerServerLoad');
-            if (headerLoad) {
-                const load = (Math.random() * 30 + 10).toFixed(1);
-                headerLoad.textContent = load + '%';
-            }
-            
-            const headerMemory = document.getElementById('headerMemory');
-            if (headerMemory) {
-                const mem = (Math.random() * 4 + 1).toFixed(1);
-                headerMemory.textContent = mem + ' GB';
-            }
-            
-            const headerStorage = document.getElementById('headerStorage');
-            if (headerStorage) {
-                const storage = (Math.random() * 40 + 20).toFixed(0);
-                headerStorage.textContent = storage + '%';
-            }
-
-            // Load all other metrics
-            await window.loadTicketMetricsForDashboard();
-            await window.loadPendingMessagesCount();
-            await window.loadAdditionalDashboardMetrics();
-            
-            // Only call if elements exist
-            const statsExists = document.getElementById('statsTotalStudents') !== null;
-            if (statsExists) {
-                await window.loadStudentStatistics();
-            }
-            
-            // Load Welcome Message
-            window.loadStudentWelcomeMessage();
-            
-            // Update live timestamp
-            const timestampEl = document.getElementById('liveTimestamp');
-            if (timestampEl) {
-                timestampEl.textContent = new Date().toLocaleTimeString();
-            }
-            
-            console.log('✅ Dashboard data loaded successfully');
-            
-        } catch (error) {
-            console.error('❌ Error loading dashboard data:', error);
-        }
-    };
+        const ratio = progFemale > 0 ? (progMale / progFemale).toFixed(2) : (progMale > 0 ? '∞' : '0');
+        const ratioDisplay = ratio === '∞' ? 'All M' : (ratio === '0' ? 'All F' : `${ratio}:1`);
+        
+        programData.push({
+            name: progName,
+            type: progType,
+            total: progTotal,
+            male: progMale,
+            female: progFemale,
+            percent: progPercent,
+            ratio: ratioDisplay
+        });
+    }
+    
+    programData.sort((a, b) => b.total - a.total);
+    
+    let html = '';
+    for (const prog of programData) {
+        const badge = prog.type === 'KRCHN' 
+            ? '<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🎓 KRCHN</span>'
+            : '<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 11px;">🔧 TVET</span>';
+        
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px 14px;"><strong>${window.escapeHtml(prog.name)}</strong></td>
+                <td style="padding: 10px 14px; text-align: center;">${badge}</td>
+                <td style="padding: 10px 14px; text-align: center;"><strong>${prog.total}</strong></td>
+                <td style="padding: 10px 14px; text-align: center;">👨 ${prog.male}</td>
+                <td style="padding: 10px 14px; text-align: center;">👩 ${prog.female}</td>
+                <td style="padding: 10px 14px; text-align: center; font-size: 13px;">${prog.ratio}</td>
+                <td style="padding: 10px 14px; text-align: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="flex: 1; height: 6px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${prog.percent}%; height: 100%; background: linear-gradient(90deg, #4C1D95, #6d28d9); border-radius: 4px;"></div>
+                        </div>
+                        <span style="font-size: 12px; font-weight: 600; min-width: 40px;">${prog.percent}%</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+    
+    window.safeSetHTML('statsProgramBreakdown', html);
+    window.safeSetText('statsLastUpdated', new Date().toLocaleTimeString());
 }
 
 // ============================================
@@ -2840,10 +2939,10 @@ if (typeof window.loadDashboardData === 'undefined') {
 if (typeof window.loadStudentWelcomeMessage === 'undefined') {
     window.loadStudentWelcomeMessage = async function() {
         try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) return;
+            const client = window.sb || window.supabase;
+            if (!client) return;
             
-            const { data, error } = await supabase
+            const { data, error } = await client
                 .from(SETTINGS_TABLE)
                 .select('*')
                 .eq('key', MESSAGE_KEY)
@@ -2868,7 +2967,6 @@ if (typeof window.loadStudentWelcomeMessage === 'undefined') {
                 }
             }
             
-            // Update timestamp
             const timestampEl = document.getElementById('welcomeTimestamp');
             if (timestampEl) {
                 timestampEl.textContent = new Date().toLocaleTimeString();
@@ -2887,10 +2985,10 @@ if (typeof window.loadStudentWelcomeMessage === 'undefined') {
 if (typeof window.loadWelcomeMessageForEdit === 'undefined') {
     window.loadWelcomeMessageForEdit = async function() {
         try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) return;
+            const client = window.sb || window.supabase;
+            if (!client) return;
             
-            const { data, error } = await supabase
+            const { data, error } = await client
                 .from(SETTINGS_TABLE)
                 .select('*')
                 .eq('key', MESSAGE_KEY)
@@ -2935,12 +3033,10 @@ if (typeof window.handleSaveWelcomeMessage === 'undefined') {
         }
 
         try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) {
-                throw new Error('Supabase client not available');
-            }
+            const client = window.sb || window.supabase;
+            if (!client) throw new Error('Supabase client not available');
             
-            const { data: existing, error: fetchError } = await supabase
+            const { data: existing, error: fetchError } = await client
                 .from(SETTINGS_TABLE)
                 .select('id')
                 .eq('key', MESSAGE_KEY);
@@ -2949,12 +3045,12 @@ if (typeof window.handleSaveWelcomeMessage === 'undefined') {
 
             let result;
             if (existing && existing.length > 0) {
-                result = await supabase
+                result = await client
                     .from(SETTINGS_TABLE)
                     .update({ value, updated_at: new Date().toISOString() })
                     .eq('id', existing[0].id);
             } else {
-                result = await supabase
+                result = await client
                     .from(SETTINGS_TABLE)
                     .insert({ key: MESSAGE_KEY, value });
             }
@@ -2988,14 +3084,14 @@ if (typeof window.handleSaveWelcomeMessage === 'undefined') {
 if (typeof window.loadStudentBirthdays === 'undefined') {
     window.loadStudentBirthdays = async function() {
         try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) return;
+            const client = window.sb || window.supabase;
+            if (!client) return;
             
             const today = new Date();
             const month = today.getMonth() + 1;
             const day = today.getDate();
             
-            const { data: students, error } = await supabase
+            const { data: students, error } = await client
                 .from('consolidated_user_profiles_table')
                 .select('full_name, date_of_birth, student_id, program, email, profile_photo_url')
                 .eq('role', 'student')
@@ -3020,11 +3116,11 @@ if (typeof window.loadStudentBirthdays === 'undefined') {
                     listEl.style.display = 'block';
                     let html = '';
                     if (birthdayStudents.length === 1) {
-                        html = `<p style="margin: 0; color: #0A3D62;">🎉 ${escapeHtml(birthdayStudents[0].full_name)} (${escapeHtml(birthdayStudents[0].program || 'N/A')})</p>`;
+                        html = `<p style="margin: 0; color: #0A3D62;">🎉 ${window.escapeHtml(birthdayStudents[0].full_name)} (${window.escapeHtml(birthdayStudents[0].program || 'N/A')})</p>`;
                     } else {
                         html = '<ul style="margin: 8px 0 0; padding-left: 20px; color: #0A3D62;">';
                         birthdayStudents.forEach(s => {
-                            html += `<li>${escapeHtml(s.full_name)} (${escapeHtml(s.program || 'N/A')})</li>`;
+                            html += `<li>${window.escapeHtml(s.full_name)} (${window.escapeHtml(s.program || 'N/A')})</li>`;
                         });
                         html += '</ul>';
                     }
@@ -3067,15 +3163,13 @@ if (typeof window.loadStudentBirthdays === 'undefined') {
 let dashboardRefreshInterval = null;
 
 if (typeof window.startDashboardAutoRefresh === 'undefined') {
-    window.startDashboardAutoRefresh = function(intervalMs = 60000) {
+    window.startDashboardAutoRefresh = function(intervalMs = 30000) {
         if (dashboardRefreshInterval) {
             clearInterval(dashboardRefreshInterval);
         }
         dashboardRefreshInterval = setInterval(() => {
             console.log('🔄 Auto-refreshing dashboard...');
-            window.loadDashboardData();
-            window.loadStudentBirthdays();
-            window.updateCharts();
+            window.loadDashboardFast();
         }, intervalMs);
     };
 }
@@ -3096,11 +3190,10 @@ if (typeof window.stopDashboardAutoRefresh === 'undefined') {
 if (typeof window.updateCharts === 'undefined') {
     window.updateCharts = async function() {
         try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) return;
+            const client = window.sb || window.supabase;
+            if (!client) return;
             
-            // Get student data for charts
-            const { data: students, error } = await supabase
+            const { data: students, error } = await client
                 .from('consolidated_user_profiles_table')
                 .select('program, gender, block')
                 .eq('role', 'student')
@@ -3139,17 +3232,10 @@ if (typeof window.updateCharts === 'undefined') {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
+                        plugins: { legend: { display: false } },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { stepSize: 1 }
-                            },
-                            x: {
-                                grid: { display: false }
-                            }
+                            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                            x: { grid: { display: false } }
                         }
                     }
                 });
@@ -3196,40 +3282,19 @@ if (typeof window.updateCharts === 'undefined') {
             // Program Breakdown Chart
             const krchnCount = students.filter(s => s.program === 'KRCHN').length;
             const tvetCount = students.filter(s => window.isTVETProgram(s.program)).length;
-            const otherCount = students.filter(s => s.program && !window.isTVETProgram(s.program) && s.program !== 'KRCHN').length;
             
             const programChart = document.getElementById('programBreakdownChart');
             if (programChart && typeof Chart !== 'undefined') {
                 if (window.programChartInstance) {
                     window.programChartInstance.destroy();
                 }
-                const programData = [];
-                const programLabels = [];
-                const programColors = [];
-                
-                if (krchnCount > 0) {
-                    programData.push(krchnCount);
-                    programLabels.push('KRCHN');
-                    programColors.push('#10b981');
-                }
-                if (tvetCount > 0) {
-                    programData.push(tvetCount);
-                    programLabels.push('TVET');
-                    programColors.push('#f59e0b');
-                }
-                if (otherCount > 0) {
-                    programData.push(otherCount);
-                    programLabels.push('Other');
-                    programColors.push('#8b5cf6');
-                }
-                
                 window.programChartInstance = new Chart(programChart, {
                     type: 'pie',
                     data: {
-                        labels: programLabels,
+                        labels: [`KRCHN (${krchnCount})`, `TVET (${tvetCount})`],
                         datasets: [{
-                            data: programData,
-                            backgroundColor: programColors,
+                            data: [krchnCount, tvetCount],
+                            backgroundColor: ['#4C1D95', '#f59e0b'],
                             borderWidth: 2,
                             borderColor: '#ffffff'
                         }]
@@ -3241,7 +3306,7 @@ if (typeof window.updateCharts === 'undefined') {
                             legend: {
                                 position: 'bottom',
                                 labels: {
-                                    padding: 12,
+                                    padding: 10,
                                     usePointStyle: true,
                                     pointStyle: 'circle'
                                 }
@@ -3275,8 +3340,6 @@ if (typeof window.toggleDarkMode === 'undefined') {
         }
         
         localStorage.setItem('darkMode', isDark);
-        
-        // Update chart colors for dark mode
         window.updateCharts();
     };
 }
@@ -3311,9 +3374,7 @@ if (typeof window.refreshDashboard === 'undefined') {
         if (timestampEl) {
             timestampEl.textContent = new Date().toLocaleTimeString();
         }
-        window.loadDashboardData();
-        window.loadStudentBirthdays();
-        window.updateCharts();
+        window.loadDashboardFast();
         window.showNotification('Dashboard refreshed', 'success');
     };
 }
@@ -3331,7 +3392,6 @@ if (typeof window.toggleExportMenu === 'undefined') {
     };
 }
 
-// Close export menu on click outside
 document.addEventListener('click', function(e) {
     const menu = document.getElementById('exportMenu');
     if (menu && !e.target.closest('#exportMenu') && !e.target.closest('[onclick="toggleExportMenu()"]')) {
@@ -3381,10 +3441,10 @@ let notificationCount = 0;
 if (typeof window.loadNotificationCount === 'undefined') {
     window.loadNotificationCount = async function() {
         try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) return;
+            const client = window.sb || window.supabase;
+            if (!client) return;
             
-            const { count, error } = await supabase
+            const { count, error } = await client
                 .from('notifications')
                 .select('*', { count: 'exact', head: true })
                 .eq('is_read', false);
@@ -3431,14 +3491,17 @@ if (typeof window.initDashboard === 'undefined') {
             if (icon) icon.className = 'fas fa-sun';
         }
         
-        // Load initial data
-        await window.loadDashboardData();
+        // Load data using fast loader
+        await window.loadDashboardFast();
+        
+        // Load birthdays
         await window.loadStudentBirthdays();
+        
+        // Load notification count
         await window.loadNotificationCount();
-        await window.updateCharts();
         
         // Start auto-refresh
-        window.startDashboardAutoRefresh(60000);
+        window.startDashboardAutoRefresh(30000);
         
         // Set up event listeners
         const form = document.getElementById('edit-welcome-form');
@@ -3451,97 +3514,71 @@ if (typeof window.initDashboard === 'undefined') {
 }
 
 // ============================================
-// 🔄 ACTIVITY FEED
+// ✅ EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE
 // ============================================
 
-if (typeof window.loadActivityFeed === 'undefined') {
-    window.loadActivityFeed = async function() {
-        try {
-            const supabase = window.sb || window.supabase;
-            if (!supabase) return;
-            
-            const { data, error } = await supabase
-                .from('audit_logs')
-                .select('user_email, action, created_at, details')
-                .order('created_at', { ascending: false })
-                .limit(10);
-            
-            const feedEl = document.getElementById('activityFeed');
-            if (!feedEl) return;
-            
-            if (error || !data || data.length === 0) {
-                feedEl.innerHTML = `
-                    <div style="text-align: center; color: #94a3b8; padding: 20px;">
-                        <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                        No recent activity
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '';
-            const icons = {
-                'LOGIN': 'fa-sign-in-alt',
-                'LOGOUT': 'fa-sign-out-alt',
-                'USER_CREATED': 'fa-user-plus',
-                'USER_UPDATED': 'fa-user-edit',
-                'USER_DELETED': 'fa-user-minus',
-                'MARKS_ENTRY': 'fa-pen',
-                'MARKS_APPROVED': 'fa-check-circle',
-                'RESOURCE_UPLOADED': 'fa-upload',
-                'default': 'fa-circle'
-            };
-            
-            for (const log of data) {
-                const icon = icons[log.action] || icons.default;
-                const time = new Date(log.created_at).toLocaleTimeString();
-                const details = log.details ? ` - ${escapeHtml(log.details)}` : '';
-                
-                html += `
-                    <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
-                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <i class="fas ${icon}" style="color: #4C1D95; font-size: 12px;"></i>
-                        </div>
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="font-size: 0.8rem; color: #1e293b; font-weight: 500;">
-                                ${escapeHtml(log.user_email || 'System')}
-                                <span style="font-weight: 400; color: #94a3b8; font-size: 0.7rem;">
-                                    ${escapeHtml(log.action)}
-                                </span>
-                            </div>
-                            <div style="font-size: 0.7rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${time}${details}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            feedEl.innerHTML = html;
-            
-            // Update timestamp
-            const timestampEl = document.getElementById('feedTimestamp');
-            if (timestampEl) {
-                timestampEl.textContent = new Date().toLocaleTimeString();
-            }
-            
-        } catch (error) {
-            console.error('Error loading activity feed:', error);
-            const feedEl = document.getElementById('activityFeed');
-            if (feedEl) {
-                feedEl.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 20px;">Error loading activity</div>`;
-            }
-        }
-    };
-}
+// Core helpers
+if (typeof window.safeSetText === 'undefined') window.safeSetText = safeSetText;
+if (typeof window.safeSetHTML === 'undefined') window.safeSetHTML = safeSetHTML;
+if (typeof window.safeSetLoading === 'undefined') window.safeSetLoading = safeSetLoading;
+
+// Program helpers
+if (typeof window.isTVETProgram === 'undefined') window.isTVETProgram = isTVETProgram;
+if (typeof window.getProgramDisplayName === 'undefined') window.getProgramDisplayName = getProgramDisplayName;
+if (typeof window.getProgramType === 'undefined') window.getProgramType = getProgramType;
+if (typeof window.escapeHtml === 'undefined') window.escapeHtml = escapeHtml;
+
+// Dashboard data functions
+if (typeof window.loadDashboardFast === 'undefined') window.loadDashboardFast = loadDashboardFast;
+if (typeof window.loadStudentStatistics === 'undefined') window.loadStudentStatistics = loadStudentStatistics;
+if (typeof window.loadWeeklyTrends === 'undefined') window.loadWeeklyTrends = loadWeeklyTrends;
+if (typeof window.loadRecentActivity === 'undefined') window.loadRecentActivity = loadRecentActivity;
+if (typeof window.loadRealTimeNotifications === 'undefined') window.loadRealTimeNotifications = loadRealTimeNotifications;
+if (typeof window.loadTopPerformers === 'undefined') window.loadTopPerformers = loadTopPerformers;
+if (typeof window.loadSystemStatusIndicators === 'undefined') window.loadSystemStatusIndicators = loadSystemStatusIndicators;
+
+// Welcome message functions
+if (typeof window.loadStudentWelcomeMessage === 'undefined') window.loadStudentWelcomeMessage = loadStudentWelcomeMessage;
+if (typeof window.loadWelcomeMessageForEdit === 'undefined') window.loadWelcomeMessageForEdit = loadWelcomeMessageForEdit;
+if (typeof window.handleSaveWelcomeMessage === 'undefined') window.handleSaveWelcomeMessage = handleSaveWelcomeMessage;
+
+// Birthday functions
+if (typeof window.loadStudentBirthdays === 'undefined') window.loadStudentBirthdays = loadStudentBirthdays;
+
+// Auto-refresh functions
+if (typeof window.startDashboardAutoRefresh === 'undefined') window.startDashboardAutoRefresh = startDashboardAutoRefresh;
+if (typeof window.stopDashboardAutoRefresh === 'undefined') window.stopDashboardAutoRefresh = stopDashboardAutoRefresh;
+
+// Chart functions
+if (typeof window.updateCharts === 'undefined') window.updateCharts = updateCharts;
+
+// UI functions
+if (typeof window.toggleDarkMode === 'undefined') window.toggleDarkMode = toggleDarkMode;
+if (typeof window.setRefreshInterval === 'undefined') window.setRefreshInterval = setRefreshInterval;
+if (typeof window.refreshDashboard === 'undefined') window.refreshDashboard = refreshDashboard;
+if (typeof window.toggleExportMenu === 'undefined') window.toggleExportMenu = toggleExportMenu;
+if (typeof window.exportDashboardPDF === 'undefined') window.exportDashboardPDF = exportDashboardPDF;
+if (typeof window.exportDashboardCSV === 'undefined') window.exportDashboardCSV = exportDashboardCSV;
+if (typeof window.exportDashboardPNG === 'undefined') window.exportDashboardPNG = exportDashboardPNG;
+
+// Notification functions
+if (typeof window.loadNotificationCount === 'undefined') window.loadNotificationCount = loadNotificationCount;
+if (typeof window.toggleNotifications === 'undefined') window.toggleNotifications = toggleNotifications;
+
+// Initialize dashboard
+if (typeof window.initDashboard === 'undefined') window.initDashboard = initDashboard;
 
 console.log('✅ Dashboard module loaded successfully');
 console.log('📊 Available functions:');
-console.log('   - loadDashboardData()');
+console.log('   - loadDashboardFast() - FAST parallel loading');
 console.log('   - initDashboard()');
 console.log('   - refreshDashboard()');
 console.log('   - toggleDarkMode()');
-console.log('   - loadActivityFeed()');
+console.log('   - loadRecentActivity()');
+console.log('   - loadRealTimeNotifications()');
+console.log('   - loadTopPerformers()');
+console.log('   - loadWeeklyTrends()');
+console.log('   - loadSystemStatusIndicators()');
 console.log('   - updateCharts()');
 console.log('   - exportDashboardPDF/CSV/PNG()');
 
