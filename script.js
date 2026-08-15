@@ -2122,6 +2122,10 @@ if (typeof window.CACHE_DURATION === 'undefined') {
     window.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 }
 
+// Local references for faster access
+const SETTINGS_TABLE = window.SETTINGS_TABLE;
+const MESSAGE_KEY = window.MESSAGE_KEY;
+const CACHE_DURATION = window.CACHE_DURATION;
 
 // ============================================
 // 📦 CACHE SYSTEM - FASTER LOADING
@@ -2131,7 +2135,8 @@ if (typeof window.DashboardCache === 'undefined') {
     window.DashboardCache = {
         data: {},
         get: function(key) {
-            if (this.data[key] && (Date.now() - this.data[key].timestamp < CACHE_DURATION)) {
+            // ✅ FIXED: Use window.CACHE_DURATION
+            if (this.data[key] && (Date.now() - this.data[key].timestamp < window.CACHE_DURATION)) {
                 return this.data[key].data;
             }
             return null;
