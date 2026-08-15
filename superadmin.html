@@ -505,7 +505,7 @@
         </button>
 
         <!-- ============================================ -->
-        <!-- SIDEBAR - RESTRUCTURED WITH SEARCH           -->
+        <!-- SIDEBAR - COMPLETE WITH DYNAMIC BADGES      -->
         <!-- ============================================ -->
         <aside 
             class="sidebar" 
@@ -513,7 +513,7 @@
             style="
                 width: 280px;
                 height: 100vh;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, #0c1445, #1a237e);
                 color: white;
                 position: fixed;
                 left: 0;
@@ -521,7 +521,7 @@
                 padding: 24px 16px;
                 display: flex;
                 flex-direction: column;
-                box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+                box-shadow: 4px 0 20px rgba(0,0,0,0.2);
                 z-index: 999;
                 overflow-y: auto;
                 transition: all 0.3s ease;
@@ -535,7 +535,7 @@
                     align-items: center;
                     gap: 14px;
                     padding: 0 12px 24px 12px;
-                    border-bottom: 1px solid rgba(255,255,255,0.2);
+                    border-bottom: 1px solid rgba(255,255,255,0.15);
                     margin-bottom: 20px;
                 "
             >
@@ -554,8 +554,53 @@
                 >
                 <div>
                     <h2 style="font-size: 18px; font-weight: 700; margin: 0; color: white;">Super Admin</h2>
-                    <span style="font-size: 11px; opacity: 0.8; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px;">Administrator</span>
+                    <span style="font-size: 11px; opacity: 0.8; background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 20px; display: inline-block; margin-top: 2px;">Administrator</span>
                 </div>
+            </div>
+
+            <!-- ===== COLOR THEME PICKER ===== -->
+            <div style="
+                padding: 6px 12px 12px 12px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                margin-bottom: 14px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            ">
+                <span style="font-size: 10px; opacity: 0.5;">🎨</span>
+                <button onclick="changeSidebarColor('linear-gradient(135deg, #0c1445, #1a237e)')" 
+                        class="color-btn"
+                        style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; background: linear-gradient(135deg, #0c1445, #1a237e); padding: 0;" 
+                        title="Midnight Blue"></button>
+                <button onclick="changeSidebarColor('linear-gradient(135deg, #1e3a5f, #2d5a87)')" 
+                        class="color-btn"
+                        style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; background: linear-gradient(135deg, #1e3a5f, #2d5a87); padding: 0;" 
+                        title="Professional Blue"></button>
+                <button onclick="changeSidebarColor('linear-gradient(135deg, #4C1D95, #7c3aed)')" 
+                        class="color-btn"
+                        style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; background: linear-gradient(135deg, #4C1D95, #7c3aed); padding: 0;" 
+                        title="Royal Purple"></button>
+                <button onclick="changeSidebarColor('linear-gradient(135deg, #0f172a, #1e293b)')" 
+                        class="color-btn"
+                        style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; background: linear-gradient(135deg, #0f172a, #1e293b); padding: 0;" 
+                        title="Dark Navy"></button>
+                <button onclick="changeSidebarColor('linear-gradient(135deg, #065f46, #059669)')" 
+                        class="color-btn"
+                        style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; background: linear-gradient(135deg, #065f46, #059669); padding: 0;" 
+                        title="Emerald Green"></button>
+                <button onclick="changeSidebarColor('linear-gradient(135deg, #78350f, #d97706)')" 
+                        class="color-btn"
+                        style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; background: linear-gradient(135deg, #78350f, #d97706); padding: 0;" 
+                        title="Warm Gold"></button>
+                <button onclick="changeSidebarColor('linear-gradient(135deg, #0d9488, #14b8a6)')" 
+                        class="color-btn"
+                        style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; background: linear-gradient(135deg, #0d9488, #14b8a6); padding: 0;" 
+                        title="Teal"></button>
+                <button onclick="resetSidebarColor()" 
+                        style="font-size: 9px; background: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.15); padding: 1px 8px; border-radius: 10px; cursor: pointer;">
+                    Reset
+                </button>
             </div>
 
             <!-- ===== SEARCH BAR ===== -->
@@ -563,7 +608,7 @@
                 class="search-container"
                 style="
                     padding: 0 12px 16px 12px;
-                    border-bottom: 1px solid rgba(255,255,255,0.15);
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
                     margin-bottom: 16px;
                     position: relative;
                 "
@@ -574,19 +619,19 @@
                         position: relative;
                         display: flex;
                         align-items: center;
-                        background: rgba(255,255,255,0.12);
+                        background: rgba(255,255,255,0.08);
                         border-radius: 10px;
                         padding: 0 12px;
                         transition: all 0.3s ease;
-                        border: 1px solid rgba(255,255,255,0.1);
+                        border: 1px solid rgba(255,255,255,0.05);
                     "
-                    onfocus="this.style.background='rgba(255,255,255,0.2)'; this.style.borderColor='rgba(255,255,255,0.3)'"
-                    onblur="this.style.background='rgba(255,255,255,0.12)'; this.style.borderColor='rgba(255,255,255,0.1)'"
+                    onfocus="this.style.background='rgba(255,255,255,0.15)'; this.style.borderColor='rgba(255,255,255,0.2)'"
+                    onblur="this.style.background='rgba(255,255,255,0.08)'; this.style.borderColor='rgba(255,255,255,0.05)'"
                 >
                     <i 
                         class="fas fa-search" 
                         style="
-                            color: rgba(255,255,255,0.6);
+                            color: rgba(255,255,255,0.5);
                             font-size: 14px;
                             margin-right: 10px;
                             flex-shrink: 0;
@@ -611,11 +656,11 @@
                     >
                     <kbd 
                         style="
-                            background: rgba(255,255,255,0.15);
+                            background: rgba(255,255,255,0.08);
                             padding: 2px 8px;
                             border-radius: 4px;
                             font-size: 10px;
-                            color: rgba(255,255,255,0.6);
+                            color: rgba(255,255,255,0.5);
                             font-family: inherit;
                             letter-spacing: 0.5px;
                             flex-shrink: 0;
@@ -684,7 +729,7 @@
                     >
                         <i class="fas fa-tachometer-alt" style="width: 20px; text-align: center;"></i>
                         <span>Dashboard</span>
-                        <span style="margin-left: auto; background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 11px;">3</span>
+                        <span id="sidebarDashboardBadge" style="margin-left: auto; background: rgba(255,255,255,0.2); padding: 0 8px; border-radius: 20px; font-size: 11px;">0</span>
                     </a>
                 </li>
 
@@ -732,14 +777,14 @@
                             <a href="#" data-tab="users" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-users" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>Manage Users</span>
-                                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">5</span>
+                                <span id="sidebarUsersBadge" style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">0</span>
                             </a>
                         </li>
                         <li>
                             <a href="#" data-tab="pending" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-clock" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>Pending Approvals</span>
-                                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">12</span>
+                                <span id="sidebarPendingBadge" style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white; display: none;">0</span>
                             </a>
                         </li>
                         <li>
@@ -1103,21 +1148,21 @@
                             <a href="#" data-tab="messages" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-inbox" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>Inbox</span>
-                                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">8</span>
+                                <span id="sidebarInboxBadge" style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white; display: none;">0</span>
                             </a>
                         </li>
                         <li>
                             <a href="#" data-tab="support-tickets" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-ticket-alt" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>Support Tickets</span>
-                                <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">3</span>
+                                <span id="sidebarTicketsBadge" style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white; display: none;">0</span>
                             </a>
                         </li>
                         <li>
                             <a href="#" data-tab="notification-center" style="display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 8px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='rgba(255,255,255,0.8)'">
                                 <i class="fas fa-bell" style="width: 18px; text-align: center; font-size: 12px;"></i>
                                 <span>Notifications</span>
-                                <span style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white;">15</span>
+                                <span id="sidebarNotificationsBadge" style="margin-left: auto; background: #ef4444; padding: 0 8px; border-radius: 20px; font-size: 10px; color: white; display: none;">0</span>
                             </a>
                         </li>
                     </ul>
@@ -1408,1576 +1453,28 @@
                         <span class="header-status" style="display: flex; align-items: center; gap: 6px; font-size: 14px; color: #22c55e;">
                             <span class="status-dot online" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #22c55e;"></span> Online
                         </span>
-                        <span style="position: relative; margin-left: 10px;">
-                            <i class="fas fa-bell" style="font-size: 20px; color: #4C1D95; cursor: pointer;"></i>
+                        <!-- Notification Bell -->
+                        <span style="position: relative; margin-left: 10px; cursor: pointer;" onclick="toggleNotifications()">
+                            <i class="fas fa-bell" style="font-size: 20px; color: #4C1D95; transition: all 0.3s ease;" onmouseover="this.style.color='#FDB913'" onmouseout="this.style.color='#4C1D95'"></i>
+                            <span id="headerNotificationBadge" style="
+                                position: absolute;
+                                top: -6px;
+                                right: -8px;
+                                background: #ef4444;
+                                color: white;
+                                border-radius: 50%;
+                                padding: 2px 6px;
+                                font-size: 9px;
+                                font-weight: 700;
+                                min-width: 18px;
+                                text-align: center;
+                                display: none;
+                                box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+                            ">0</span>
                         </span>
                     </div>
                 </div>
             </header>
-<!-- ============================================================ -->
-<!-- 🚀 ULTRA MODERN DASHBOARD - COMPLETE WITH ALL FEATURES        -->
-<!-- ============================================================ -->
-<section id="dashboard" class="tab-content active" style="padding: 0 4px;">
-    
-    <!-- ====== TOP BANNER WITH ALL CONTROLS ====== -->
-    <div style="
-        background: linear-gradient(135deg, rgba(10,61,98,0.95), rgba(26,90,122,0.9));
-        backdrop-filter: blur(20px);
-        border-radius: 24px;
-        padding: 22px 28px;
-        margin-bottom: 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 14px;
-        box-shadow: 0 8px 40px rgba(10,61,98,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.08);
-        position: relative;
-        overflow: hidden;
-    ">
-        <!-- Animated gradient background -->
-        <div style="
-            position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 60%;
-            height: 200%;
-            background: radial-gradient(ellipse, rgba(253,185,19,0.08), transparent 70%);
-            animation: floatBg 20s ease-in-out infinite;
-        "></div>
-        
-        <div style="position: relative; z-index: 2; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-            <div>
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
-                    <span style="
-                        background: linear-gradient(135deg, #FDB913, #f59e0b);
-                        padding: 3px 12px;
-                        border-radius: 100px;
-                        font-size: 0.6rem;
-                        font-weight: 700;
-                        color: #0A3D62;
-                        letter-spacing: 0.5px;
-                        text-transform: uppercase;
-                        box-shadow: 0 2px 12px rgba(253,185,19,0.3);
-                    ">
-                        <i class="fas fa-circle" style="font-size: 5px; margin-right: 6px; color: #0A3D62;"></i>
-                        Live
-                    </span>
-                    <h3 style="color: white; margin: 0; font-size: 1.1rem; font-weight: 600; letter-spacing: -0.3px;">
-                        <i class="fas fa-database" style="color: #FDB913; margin-right: 8px;"></i>
-                        Command Center
-                    </h3>
-                </div>
-                <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 0.8rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <span><i class="fas fa-sync-alt fa-spin" style="color: #FDB913;"></i> Live data from NCHSM</span>
-                    <span style="color: rgba(255,255,255,0.15);">|</span>
-                    <span id="liveUpdateTime" style="font-size: 0.7rem; opacity: 0.7;">
-                        <i class="far fa-clock"></i> <span id="liveTimestamp">--:--:--</span>
-                    </span>
-                </p>
-            </div>
-            
-            <!-- Quick Stats in Header -->
-            <div style="display: flex; gap: 16px; align-items: center; background: rgba(255,255,255,0.05); padding: 6px 16px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="text-align: center;">
-                    <div style="font-size: 0.55rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px;">Server</div>
-                    <div style="font-size: 0.8rem; font-weight: 600; color: #34d399;" id="headerServerLoad">0%</div>
-                </div>
-                <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.1);"></div>
-                <div style="text-align: center;">
-                    <div style="font-size: 0.55rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px;">Memory</div>
-                    <div style="font-size: 0.8rem; font-weight: 600; color: #60a5fa;" id="headerMemory">0 MB</div>
-                </div>
-                <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.1);"></div>
-                <div style="text-align: center;">
-                    <div style="font-size: 0.55rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px;">Storage</div>
-                    <div style="font-size: 0.8rem; font-weight: 600; color: #fbbf24;" id="headerStorage">0%</div>
-                </div>
-            </div>
-        </div>
-        
-        <div style="position: relative; z-index: 2; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <!-- Status Indicator -->
-            <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.06); padding: 6px 14px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.06);">
-                <span style="display: inline-block; width: 7px; height: 7px; background: #34d399; border-radius: 50%; animation: pulse-dot 1.5s infinite;"></span>
-                <span style="color: rgba(255,255,255,0.6); font-size: 0.7rem; font-weight: 500;">Online</span>
-            </div>
-            
-            <!-- Auto-Refresh Control -->
-            <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.06); padding: 4px 12px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.06);">
-                <span style="color: rgba(255,255,255,0.5); font-size: 0.6rem;">Auto</span>
-                <select id="refreshInterval" onchange="setRefreshInterval(this.value)" style="
-                    background: transparent;
-                    border: none;
-                    color: rgba(255,255,255,0.8);
-                    font-size: 0.7rem;
-                    padding: 4px 0;
-                    cursor: pointer;
-                    outline: none;
-                ">
-                    <option value="0" style="color: #0A3D62;">Off</option>
-                    <option value="15" style="color: #0A3D62;">15s</option>
-                    <option value="30" style="color: #0A3D62;">30s</option>
-                    <option value="60" selected style="color: #0A3D62;">1m</option>
-                    <option value="120" style="color: #0A3D62;">2m</option>
-                    <option value="300" style="color: #0A3D62;">5m</option>
-                </select>
-            </div>
-            
-            <!-- Dark Mode Toggle -->
-            <button onclick="toggleDarkMode()" style="
-                background: rgba(255,255,255,0.08);
-                border: 1px solid rgba(255,255,255,0.1);
-                color: white;
-                padding: 6px 14px;
-                border-radius: 100px;
-                cursor: pointer;
-                font-size: 0.75rem;
-                transition: all 0.3s ease;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            " onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'" id="darkModeToggle">
-                <i class="fas fa-moon"></i> <span id="darkModeLabel">Dark</span>
-            </button>
-            
-            <!-- Refresh Button -->
-            <button onclick="refreshDashboard()" style="
-                background: rgba(255,255,255,0.08);
-                border: 1px solid rgba(255,255,255,0.1);
-                color: white;
-                padding: 6px 16px;
-                border-radius: 100px;
-                cursor: pointer;
-                font-size: 0.75rem;
-                transition: all 0.3s ease;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            " onmouseover="this.style.background='rgba(255,255,255,0.15)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-            
-            <!-- Export Dropdown -->
-            <div style="position: relative; display: inline-block;">
-                <button onclick="toggleExportMenu()" style="
-                    background: linear-gradient(135deg, #FDB913, #f59e0b);
-                    border: none;
-                    color: #0A3D62;
-                    padding: 6px 16px;
-                    border-radius: 100px;
-                    cursor: pointer;
-                    font-size: 0.75rem;
-                    font-weight: 600;
-                    transition: all 0.3s ease;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    box-shadow: 0 4px 16px rgba(253,185,19,0.2);
-                " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 24px rgba(253,185,19,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(253,185,19,0.2)'">
-                    <i class="fas fa-download"></i> Export
-                    <i class="fas fa-chevron-down" style="font-size: 0.6rem;"></i>
-                </button>
-                <div id="exportMenu" style="
-                    display: none;
-                    position: absolute;
-                    top: 100%;
-                    right: 0;
-                    margin-top: 6px;
-                    background: white;
-                    border-radius: 12px;
-                    padding: 8px 0;
-                    min-width: 160px;
-                    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-                    border: 1px solid #e5e7eb;
-                    z-index: 100;
-                ">
-                    <button onclick="exportDashboardPDF()" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
-                        padding: 8px 18px;
-                        background: none;
-                        border: none;
-                        width: 100%;
-                        text-align: left;
-                        cursor: pointer;
-                        font-size: 0.8rem;
-                        color: #1e293b;
-                        transition: background 0.2s;
-                    " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
-                        <i class="fas fa-file-pdf" style="color: #dc2626;"></i> PDF Report
-                    </button>
-                    <button onclick="exportDashboardCSV()" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
-                        padding: 8px 18px;
-                        background: none;
-                        border: none;
-                        width: 100%;
-                        text-align: left;
-                        cursor: pointer;
-                        font-size: 0.8rem;
-                        color: #1e293b;
-                        transition: background 0.2s;
-                    " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
-                        <i class="fas fa-file-csv" style="color: #059669;"></i> CSV Data
-                    </button>
-                    <button onclick="exportDashboardPNG()" style="
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
-                        padding: 8px 18px;
-                        background: none;
-                        border: none;
-                        width: 100%;
-                        text-align: left;
-                        cursor: pointer;
-                        font-size: 0.8rem;
-                        color: #1e293b;
-                        transition: background 0.2s;
-                    " onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
-                        <i class="fas fa-image" style="color: #8b5cf6;"></i> PNG Screenshot
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== WELCOME MESSAGE ====== -->
-    <div id="student-welcome-message" style="
-        background: linear-gradient(135deg, rgba(240,247,255,0.9), rgba(230,240,250,0.7));
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 16px 22px;
-        margin-bottom: 24px;
-        border-left: 4px solid #FDB913;
-        border: 1px solid rgba(253,185,19,0.15);
-        box-shadow: 0 2px 12px rgba(0,0,0,0.03);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 10px;
-    ">
-        <p style="margin: 0; color: #0A3D62; font-weight: 500; font-size: 0.95rem;" id="welcomeMessageText">
-            <i class="fas fa-hand-wave" style="color: #FDB913; margin-right: 10px;"></i>
-            Loading NCHSM Welcome Message...
-        </p>
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <span style="font-size: 0.7rem; color: #94a3b8;">
-                <i class="fas fa-clock"></i> <span id="welcomeTimestamp">--</span>
-            </span>
-            <button onclick="editWelcomeMessage()" style="
-                background: rgba(10,61,98,0.08);
-                border: none;
-                padding: 4px 12px;
-                border-radius: 100px;
-                cursor: pointer;
-                font-size: 0.7rem;
-                color: #0A3D62;
-                transition: all 0.2s;
-            " onmouseover="this.style.background='rgba(10,61,98,0.15)'" onmouseout="this.style.background='rgba(10,61,98,0.08)'">
-                <i class="fas fa-edit"></i> Edit
-            </button>
-        </div>
-    </div>
-
-    <!-- ====== PRIMARY METRICS ROW 1 - GLASS CARDS ====== -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 18px;">
-        
-        <!-- Total Users -->
-        <div onclick="showTab('users')" class="dashboard-card" style="
-            background: linear-gradient(135deg, #ffffff, #f8fafc);
-            border-radius: 18px;
-            padding: 20px 22px;
-            border-top: 4px solid #0A3D62;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(10,61,98,0.12)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                        <h3 style="color: #0A3D62; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; opacity: 0.6;">Total Users</h3>
-                        <span style="font-size: 0.55rem; color: #10b981; background: #d1fae5; padding: 1px 8px; border-radius: 100px;">
-                            <i class="fas fa-arrow-up"></i> +<span id="userGrowth">0</span>%
-                        </span>
-                    </div>
-                    <p class="data" id="totalUsers" style="color: #0A3D62; font-size: 30px; font-weight: 800; margin: 0;">0</p>
-                    <p class="minor-data" style="font-size: 0.65rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-users" style="margin-right: 4px;"></i> All system users
-                    </p>
-                    <!-- Sparkline -->
-                    <div style="margin-top: 6px; height: 22px;">
-                        <canvas id="sparklineUsers" style="width: 100%; height: 22px;"></canvas>
-                    </div>
-                </div>
-                <div style="background: rgba(10,61,98,0.08); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-users" style="color: #0A3D62; font-size: 16px;"></i>
-                </div>
-            </div>
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #0A3D62, transparent); opacity: 0.1;"></div>
-        </div>
-        
-        <!-- Pending Approvals -->
-        <div onclick="showTab('pending')" class="dashboard-card" style="
-            background: linear-gradient(135deg, #ffffff, #fffbeb);
-            border-radius: 18px;
-            padding: 20px 22px;
-            border-top: 4px solid #FDB913;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(253,185,19,0.12)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                        <h3 style="color: #d97706; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; opacity: 0.6;">Pending Approvals</h3>
-                        <span style="font-size: 0.55rem; color: #f59e0b; background: #fef3c7; padding: 1px 8px; border-radius: 100px;">
-                            <i class="fas fa-clock"></i> <span id="pendingGrowth">0</span>
-                        </span>
-                    </div>
-                    <p class="data" id="pendingApprovals" style="color: #d97706; font-size: 30px; font-weight: 800; margin: 0;">0</p>
-                    <p class="minor-data" style="font-size: 0.65rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-clock" style="margin-right: 4px;"></i> Waiting for approval
-                    </p>
-                </div>
-                <div style="background: rgba(253,185,19,0.12); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-user-check" style="color: #d97706; font-size: 16px;"></i>
-                </div>
-            </div>
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #FDB913, transparent); opacity: 0.1;"></div>
-        </div>
-        
-        <!-- Total Students -->
-        <div onclick="showTab('enroll')" class="dashboard-card" style="
-            background: linear-gradient(135deg, #ffffff, #ecfdf5);
-            border-radius: 18px;
-            padding: 20px 22px;
-            border-top: 4px solid #10b981;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(16,185,129,0.12)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                        <h3 style="color: #059669; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; opacity: 0.6;">Total Students</h3>
-                        <span style="font-size: 0.55rem; color: #10b981; background: #d1fae5; padding: 1px 8px; border-radius: 100px;">
-                            <i class="fas fa-arrow-up"></i> <span id="studentGrowth">0</span>%
-                        </span>
-                    </div>
-                    <p class="data" id="totalStudents" style="color: #059669; font-size: 30px; font-weight: 800; margin: 0;">0</p>
-                    <p class="minor-data" style="font-size: 0.65rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-graduation-cap" style="margin-right: 4px;"></i> Active students
-                    </p>
-                </div>
-                <div style="background: rgba(16,185,129,0.12); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-user-graduate" style="color: #059669; font-size: 16px;"></i>
-                </div>
-            </div>
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #10b981, transparent); opacity: 0.1;"></div>
-        </div>
-        
-        <!-- Support Tickets -->
-        <div onclick="showTab('support-tickets')" class="dashboard-card" style="
-            background: linear-gradient(135deg, #ffffff, #f5f3ff);
-            border-radius: 18px;
-            padding: 20px 22px;
-            border-top: 4px solid #8b5cf6;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(139,92,246,0.12)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                        <h3 style="color: #6d28d9; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; opacity: 0.6;">
-                            <i class="fas fa-ticket-alt" style="margin-right: 4px;"></i> Support Tickets
-                        </h3>
-                        <span style="font-size: 0.55rem; color: #8b5cf6; background: #ede9fe; padding: 1px 8px; border-radius: 100px;">
-                            <i class="fas fa-exclamation-circle"></i> <span id="ticketGrowth">0</span>
-                        </span>
-                    </div>
-                    <p class="data" id="dashboardOpenTickets" style="color: #6d28d9; font-size: 30px; font-weight: 800; margin: 0;">0</p>
-                    <p class="minor-data" style="font-size: 0.65rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-exclamation-circle" style="margin-right: 4px;"></i> Open awaiting response
-                    </p>
-                </div>
-                <div style="background: rgba(139,92,246,0.12); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-headset" style="color: #6d28d9; font-size: 16px;"></i>
-                </div>
-            </div>
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #8b5cf6, transparent); opacity: 0.1;"></div>
-        </div>
-    </div>
-
-    <!-- ====== PRIMARY METRICS ROW 2 ====== -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 18px;">
-        
-        <!-- Today's Check-ins -->
-        <div onclick="showTab('attendance')" class="dashboard-card" style="
-            background: linear-gradient(135deg, #ffffff, #eff6ff);
-            border-radius: 18px;
-            padding: 20px 22px;
-            border-top: 4px solid #2563eb;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(37,99,235,0.12)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #1d4ed8; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">Today's Check-ins</h3>
-                    <p class="data" id="totalDailyCheckIns" style="color: #1d4ed8; font-size: 30px; font-weight: 800; margin: 0;">0</p>
-                    <p class="minor-data" style="font-size: 0.65rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-calendar-day" style="margin-right: 4px;"></i> Check-ins today
-                    </p>
-                </div>
-                <div style="background: rgba(37,99,235,0.12); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-fingerprint" style="color: #1d4ed8; font-size: 16px;"></i>
-                </div>
-            </div>
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #2563eb, transparent); opacity: 0.1;"></div>
-        </div>
-        
-        <!-- Check-in Records -->
-        <div onclick="showTab('attendance')" class="dashboard-card" style="
-            background: linear-gradient(135deg, #ffffff, #f5f3ff);
-            border-radius: 18px;
-            padding: 20px 22px;
-            border-top: 4px solid #8b5cf6;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(139,92,246,0.12)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #6d28d9; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">Check-in Records</h3>
-                    <p class="data" id="overallCheckInCount" style="color: #6d28d9; font-size: 30px; font-weight: 800; margin: 0;">0</p>
-                    <p class="minor-data" style="font-size: 0.65rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-history" style="margin-right: 4px;"></i> All-time records
-                    </p>
-                </div>
-                <div style="background: rgba(139,92,246,0.12); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-clipboard-list" style="color: #6d28d9; font-size: 16px;"></i>
-                </div>
-            </div>
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #8b5cf6, transparent); opacity: 0.1;"></div>
-        </div>
-        
-        <!-- Urgent Tickets -->
-        <div onclick="showTab('support-tickets')" class="dashboard-card" style="
-            background: linear-gradient(135deg, #ffffff, #fef2f2);
-            border-radius: 18px;
-            padding: 20px 22px;
-            border-top: 4px solid #ef4444;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(239,68,68,0.12)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #dc2626; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">
-                        <i class="fas fa-exclamation-triangle" style="margin-right: 4px;"></i> Urgent Tickets
-                    </h3>
-                    <p class="data" id="dashboardUrgentTickets" style="color: #dc2626; font-size: 30px; font-weight: 800; margin: 0;">0</p>
-                    <p class="minor-data" style="font-size: 0.65rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-flag" style="margin-right: 4px;"></i> High priority
-                    </p>
-                </div>
-                <div style="background: rgba(239,68,68,0.12); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-bell" style="color: #dc2626; font-size: 16px;"></i>
-                </div>
-            </div>
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #ef4444, transparent); opacity: 0.1;"></div>
-        </div>
-        
-        <!-- Active Sessions -->
-        <div onclick="showTab('session-management')" class="dashboard-card" style="
-            background: linear-gradient(135deg, #ffffff, #f0fdf4);
-            border-radius: 18px;
-            padding: 20px 22px;
-            border-top: 4px solid #10b981;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            position: relative;
-            overflow: hidden;
-        " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 40px rgba(16,185,129,0.12)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #059669; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">
-                        <i class="fas fa-user-clock" style="margin-right: 4px;"></i> Active Sessions
-                    </h3>
-                    <p class="data" id="activeSessions" style="color: #059669; font-size: 30px; font-weight: 800; margin: 0;">0</p>
-                    <p class="minor-data" style="font-size: 0.65rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-circle" style="color: #10b981; font-size: 6px; margin-right: 4px;"></i> Currently online
-                    </p>
-                </div>
-                <div style="background: rgba(16,185,129,0.12); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-users" style="color: #059669; font-size: 16px;"></i>
-                </div>
-            </div>
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #10b981, transparent); opacity: 0.1;"></div>
-        </div>
-    </div>
-
-    <!-- ====== SECONDARY METRICS ROW 3 ====== -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 18px;">
-        
-        <!-- System Uptime -->
-        <div onclick="showTab('system-health')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 18px 20px;
-            border-top: 4px solid #0A3D62;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #0A3D62; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">System Uptime</h3>
-                    <p style="color: #0A3D62; font-size: 26px; font-weight: 800; margin: 0;" id="systemUptime">99.8%</p>
-                    <p style="font-size: 0.6rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-check-circle" style="color: #10b981;"></i> Last 30 days
-                    </p>
-                </div>
-                <div style="background: rgba(10,61,98,0.06); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-server" style="color: #0A3D62; font-size: 14px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Total Courses -->
-        <div onclick="showTab('programs')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 18px 20px;
-            border-top: 4px solid #10b981;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #059669; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">Total Courses</h3>
-                    <p class="data" id="totalCourses" style="color: #059669; font-size: 26px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.6rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-book-open" style="margin-right: 4px;"></i> Across all programs
-                    </p>
-                </div>
-                <div style="background: rgba(16,185,129,0.08); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-book" style="color: #059669; font-size: 14px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Resources Uploaded -->
-        <div onclick="showTab('resources')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 18px 20px;
-            border-top: 4px solid #FDB913;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #d97706; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">Resources Uploaded</h3>
-                    <p class="data" id="totalResources" style="color: #d97706; font-size: 26px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.6rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-upload" style="margin-right: 4px;"></i> Total available
-                    </p>
-                </div>
-                <div style="background: rgba(253,185,19,0.08); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-folder-open" style="color: #d97706; font-size: 14px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Total Programs -->
-        <div onclick="showTab('programs')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 18px 20px;
-            border-top: 4px solid #667eea;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #4f46e5; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">Total Programs</h3>
-                    <p class="data" id="dashboardTotalPrograms" style="color: #4f46e5; font-size: 26px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.6rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-sitemap" style="margin-right: 4px;"></i> Active programs
-                    </p>
-                </div>
-                <div style="background: rgba(102,126,234,0.08); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-layer-group" style="color: #4f46e5; font-size: 14px;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== ADDITIONAL METRICS ROW 4 ====== -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 18px;">
-        
-        <!-- Total Units -->
-        <div onclick="showTab('unit-management')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 18px 20px;
-            border-top: 4px solid #0A3D62;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #0A3D62; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">
-                        <i class="fas fa-book" style="margin-right: 4px;"></i> Total Units
-                    </h3>
-                    <p class="data" id="dashboardTotalUnits" style="color: #0A3D62; font-size: 26px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.6rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-check-circle" style="color: #10b981;"></i> Available for registration
-                    </p>
-                </div>
-                <div style="background: rgba(10,61,98,0.06); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-book-open" style="color: #0A3D62; font-size: 14px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Pending Unit Registrations -->
-        <div onclick="showTab('unit-management')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 18px 20px;
-            border-top: 4px solid #FDB913;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #d97706; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">
-                        <i class="fas fa-clock" style="margin-right: 4px;"></i> Pending Unit Reg
-                    </h3>
-                    <p class="data" id="dashboardPendingUnitReg" style="color: #d97706; font-size: 26px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.6rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-hourglass-half" style="margin-right: 4px;"></i> Awaiting approval
-                    </p>
-                </div>
-                <div style="background: rgba(253,185,19,0.08); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-clipboard-list" style="color: #d97706; font-size: 14px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Upcoming Exams -->
-        <div onclick="showTab('cats')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 18px 20px;
-            border-top: 4px solid #ef4444;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #dc2626; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">
-                        <i class="fas fa-file-alt" style="margin-right: 4px;"></i> Upcoming Exams
-                    </h3>
-                    <p class="data" id="dashboardUpcomingExams" style="color: #dc2626; font-size: 26px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.6rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-calendar" style="margin-right: 4px;"></i> Next 7 days
-                    </p>
-                </div>
-                <div style="background: rgba(239,68,68,0.08); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-pencil-alt" style="color: #dc2626; font-size: 14px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Pending Messages -->
-        <div onclick="showTab('messages')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 18px 20px;
-            border-top: 4px solid #2563eb;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 style="color: #1d4ed8; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0; opacity: 0.6;">
-                        <i class="fas fa-envelope" style="margin-right: 4px;"></i> Pending Replies
-                    </h3>
-                    <p class="data" id="dashboardPendingMessages" style="color: #1d4ed8; font-size: 26px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.6rem; color: #94a3b8; margin: 2px 0 0 0;">
-                        <i class="fas fa-inbox" style="margin-right: 4px;"></i> Unread messages
-                    </p>
-                </div>
-                <div style="background: rgba(37,99,235,0.08); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-envelope-open" style="color: #1d4ed8; font-size: 14px;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== DATA INTEGRITY + QUICK STATS ROW 5 ====== -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px;">
-        
-        <!-- Data Integrity Score -->
-        <div onclick="showTab('system-health')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 16px 18px;
-            border-top: 4px solid #8b5cf6;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            text-align: center;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <h3 style="color: #6d28d9; font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0; opacity: 0.6;">Data Integrity</h3>
-            <p class="data" id="dataIntegrityScore" style="color: #6d28d9; font-size: 24px; font-weight: 800; margin: 0;">--%</p>
-            <p style="font-size: 0.55rem; color: #94a3b8; margin: 2px 0 0 0;">System health status</p>
-        </div>
-        
-        <!-- KRCHN Students -->
-        <div style="
-            background: linear-gradient(135deg, #10b981, #059669);
-            border-radius: 16px;
-            padding: 16px 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 16px rgba(16,185,129,0.2);
-            text-align: center;
-            color: white;
-            border: none;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 32px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(16,185,129,0.2)'" onclick="showTab('users')">
-            <h3 style="color: rgba(255,255,255,0.8); font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0;">🎓 KRCHN</h3>
-            <p class="data" id="krchnCountDisplay" style="color: white; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-            <p style="color: rgba(255,255,255,0.6); font-size: 0.55rem; margin: 2px 0 0 0;">Nursing Students</p>
-        </div>
-        
-        <!-- TVET Students -->
-        <div style="
-            background: linear-gradient(135deg, #FDB913, #f59e0b);
-            border-radius: 16px;
-            padding: 16px 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 16px rgba(253,185,19,0.2);
-            text-align: center;
-            color: #0A3D62;
-            border: none;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 32px rgba(253,185,19,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(253,185,19,0.2)'" onclick="showTab('users')">
-            <h3 style="color: rgba(10,61,98,0.7); font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0;">🔧 TVET</h3>
-            <p class="data" id="tvetCountDisplay" style="color: #0A3D62; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-            <p style="color: rgba(10,61,98,0.6); font-size: 0.55rem; margin: 2px 0 0 0;">TVET Students</p>
-        </div>
-        
-        <!-- Staff -->
-        <div style="
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-            border-radius: 16px;
-            padding: 16px 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 16px rgba(139,92,246,0.2);
-            text-align: center;
-            color: white;
-            border: none;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 32px rgba(139,92,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(139,92,246,0.2)'" onclick="showTab('staff-management')">
-            <h3 style="color: rgba(255,255,255,0.8); font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0;">👨‍🏫 Staff</h3>
-            <p class="data" id="totalStaffCountDisplay" style="color: white; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-            <p style="color: rgba(255,255,255,0.6); font-size: 0.55rem; margin: 2px 0 0 0;">Total Staff</p>
-        </div>
-        
-        <!-- Resources (replacing duplicate) -->
-        <div style="
-            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
-            border-radius: 16px;
-            padding: 16px 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 16px rgba(10,61,98,0.2);
-            text-align: center;
-            color: white;
-            border: none;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 32px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(10,61,98,0.2)'" onclick="showTab('resources')">
-            <h3 style="color: rgba(255,255,255,0.8); font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0;">📁 Resources</h3>
-            <p class="data" id="totalResourcesDisplay" style="color: white; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-            <p style="color: rgba(255,255,255,0.6); font-size: 0.55rem; margin: 2px 0 0 0;">Available</p>
-        </div>
-    </div>
-
-    <!-- ====== NEW METRICS ROW 6 ====== -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 18px;">
-        
-        <!-- Lecturers -->
-        <div onclick="showTab('staff-management')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 16px 18px;
-            border-top: 4px solid #8b5cf6;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="color: #6d28d9; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0; opacity: 0.6;">
-                        <i class="fas fa-chalkboard-user" style="margin-right: 4px;"></i> Lecturers
-                    </h3>
-                    <p class="data" id="dashboardLecturersCount" style="color: #6d28d9; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.55rem; color: #94a3b8; margin: 2px 0 0 0;">Active teaching staff</p>
-                </div>
-                <div style="background: rgba(139,92,246,0.08); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-user-tie" style="color: #6d28d9; font-size: 12px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Pending Marks -->
-        <div onclick="showTab('marks-approval')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 16px 18px;
-            border-top: 4px solid #f59e0b;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="color: #d97706; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0; opacity: 0.6;">
-                        <i class="fas fa-check-double" style="margin-right: 4px;"></i> Pending Marks
-                    </h3>
-                    <p class="data" id="dashboardPendingMarks" style="color: #d97706; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.55rem; color: #94a3b8; margin: 2px 0 0 0;">Awaiting approval</p>
-                </div>
-                <div style="background: rgba(245,158,11,0.08); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-pen-fancy" style="color: #d97706; font-size: 12px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Published Marks -->
-        <div onclick="showTab('publish-marks')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 16px 18px;
-            border-top: 4px solid #10b981;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="color: #059669; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0; opacity: 0.6;">
-                        <i class="fas fa-share-alt" style="margin-right: 4px;"></i> Published Marks
-                    </h3>
-                    <p class="data" id="dashboardPublishedMarks" style="color: #059669; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.55rem; color: #94a3b8; margin: 2px 0 0 0;">Released to students</p>
-                </div>
-                <div style="background: rgba(16,185,129,0.08); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-upload" style="color: #059669; font-size: 12px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Pending Reviews -->
-        <div onclick="showTab('reviews-newsletter')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 16px 18px;
-            border-top: 4px solid #ec4899;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="color: #db2777; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0; opacity: 0.6;">
-                        <i class="fas fa-star" style="margin-right: 4px;"></i> Pending Reviews
-                    </h3>
-                    <p class="data" id="dashboardPendingReviews" style="color: #db2777; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.55rem; color: #94a3b8; margin: 2px 0 0 0;">Awaiting moderation</p>
-                </div>
-                <div style="background: rgba(236,72,153,0.08); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-star-half-alt" style="color: #db2777; font-size: 12px;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== NEW METRICS ROW 7 ====== -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 18px;">
-        
-        <!-- Attendance Today -->
-        <div onclick="showTab('attendance')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 16px 18px;
-            border-top: 4px solid #0A3D62;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="color: #0A3D62; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0; opacity: 0.6;">
-                        <i class="fas fa-user-check" style="margin-right: 4px;"></i> Attendance Today
-                    </h3>
-                    <p class="data" id="dashboardAttendanceToday" style="color: #0A3D62; font-size: 24px; font-weight: 800; margin: 0;">0%</p>
-                    <p style="font-size: 0.55rem; color: #94a3b8; margin: 2px 0 0 0;">Present / Total</p>
-                </div>
-                <div style="background: rgba(10,61,98,0.06); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-clipboard-check" style="color: #0A3D62; font-size: 12px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Total Sessions -->
-        <div onclick="showTab('sessions')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 16px 18px;
-            border-top: 4px solid #22c55e;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="color: #16a34a; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0; opacity: 0.6;">
-                        <i class="fas fa-calendar-alt" style="margin-right: 4px;"></i> Total Sessions
-                    </h3>
-                    <p class="data" id="dashboardTotalSessions" style="color: #16a34a; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.55rem; color: #94a3b8; margin: 2px 0 0 0;">This week</p>
-                </div>
-                <div style="background: rgba(34,197,94,0.08); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-calendar-check" style="color: #16a34a; font-size: 12px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- System Alerts -->
-        <div onclick="showTab('system-health')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 16px 18px;
-            border-top: 4px solid #ef4444;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="color: #dc2626; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0; opacity: 0.6;">
-                        <i class="fas fa-exclamation-circle" style="margin-right: 4px;"></i> System Alerts
-                    </h3>
-                    <p class="data" id="dashboardSystemAlerts" style="color: #dc2626; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.55rem; color: #94a3b8; margin: 2px 0 0 0;">Requiring attention</p>
-                </div>
-                <div style="background: rgba(239,68,68,0.08); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-bell" style="color: #dc2626; font-size: 12px;"></i>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Staff Total -->
-        <div onclick="showTab('staff-management')" class="dashboard-card" style="
-            background: white;
-            border-radius: 16px;
-            padding: 16px 18px;
-            border-top: 4px solid #8b5cf6;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="color: #6d28d9; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 3px 0; opacity: 0.6;">
-                        <i class="fas fa-users" style="margin-right: 4px;"></i> Staff Total
-                    </h3>
-                    <p class="data" id="totalStaffCount" style="color: #6d28d9; font-size: 24px; font-weight: 800; margin: 0;">0</p>
-                    <p style="font-size: 0.55rem; color: #94a3b8; margin: 2px 0 0 0;">All departments</p>
-                </div>
-                <div style="background: rgba(139,92,246,0.08); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-user-shield" style="color: #6d28d9; font-size: 12px;"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== LIVE ACTIVITY FEED ====== -->
-    <div style="
-        background: white;
-        border-radius: 18px;
-        padding: 20px 24px;
-        border: 1px solid #e5e7eb;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-        transition: all 0.3s ease;
-    " onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.04)'">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-            <h4 style="margin: 0; color: #0A3D62; font-size: 0.95rem; font-weight: 600;">
-                <i class="fas fa-rss" style="color: #FDB913;"></i> Live Activity Feed
-                <span style="font-size: 0.6rem; color: #10b981; margin-left: 10px; background: #d1fae5; padding: 2px 10px; border-radius: 100px;">
-                    <i class="fas fa-circle" style="font-size: 5px;"></i> LIVE
-                </span>
-            </h4>
-            <span style="font-size: 0.65rem; color: #94a3b8;">
-                <i class="far fa-clock"></i> <span id="feedTimestamp">--</span>
-            </span>
-        </div>
-        <div id="activityFeed" style="max-height: 200px; overflow-y: auto; padding-right: 4px;">
-            <div style="text-align: center; color: #94a3b8; padding: 20px;">
-                <i class="fas fa-spinner fa-spin"></i> Loading activity...
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== STUDENT STATISTICS SECTION ====== -->
-    <div style="background: white; border-radius: 18px; padding: 22px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); border: 1px solid #e5e7eb; margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h4 style="margin: 0; color: #0A3D62; font-size: 0.95rem; font-weight: 600;">
-                <i class="fas fa-chart-pie" style="color: #FDB913;"></i> Student Statistics
-                <span style="font-size: 0.6rem; font-weight: 400; color: #94a3b8; margin-left: 8px;">
-                    <i class="fas fa-database"></i> Real-time data
-                </span>
-            </h4>
-            <span style="font-size: 0.65rem; color: #94a3b8; background: #f8fafc; padding: 3px 12px; border-radius: 100px;">
-                <i class="far fa-clock"></i> Updated: <span id="statsLastUpdated">-</span>
-            </span>
-        </div>
-        
-        <!-- Summary Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 14px;">
-            <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #e5e7eb;">
-                <div style="font-size: 0.55rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px; font-weight: 600;">Total Students</div>
-                <div style="font-size: 22px; font-weight: 700; color: #0A3D62;" id="statsTotalStudents">0</div>
-            </div>
-            <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #93c5fd;">
-                <div style="font-size: 0.55rem; text-transform: uppercase; color: #1e40af; letter-spacing: 0.5px; font-weight: 600;">🎓 KRCHN</div>
-                <div style="font-size: 22px; font-weight: 700; color: #1e40af;" id="statsKrchnCount">0</div>
-            </div>
-            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #f59e0b;">
-                <div style="font-size: 0.55rem; text-transform: uppercase; color: #92400e; letter-spacing: 0.5px; font-weight: 600;">🔧 TVET</div>
-                <div style="font-size: 22px; font-weight: 700; color: #92400e;" id="statsTvetCount">0</div>
-            </div>
-            <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #d8b4fe;">
-                <div style="font-size: 0.55rem; text-transform: uppercase; color: #6d28d9; letter-spacing: 0.5px; font-weight: 600;">📚 Programs</div>
-                <div style="font-size: 22px; font-weight: 700; color: #6d28d9;" id="statsProgramCount">0</div>
-            </div>
-        </div>
-        
-        <!-- Gender Stats -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin-bottom: 14px;">
-            <div style="background: #eff6ff; padding: 10px; border-radius: 10px; text-align: center; border: 1px solid #bfdbfe;">
-                <div style="font-size: 0.55rem; color: #1d4ed8; font-weight: 600;">👨 Male</div>
-                <div style="font-size: 20px; font-weight: 700; color: #1d4ed8;" id="statsMaleTotal">0</div>
-            </div>
-            <div style="background: #fce7f3; padding: 10px; border-radius: 10px; text-align: center; border: 1px solid #fbcfe8;">
-                <div style="font-size: 0.55rem; color: #be185d; font-weight: 600;">👩 Female</div>
-                <div style="font-size: 20px; font-weight: 700; color: #be185d;" id="statsFemaleTotal">0</div>
-            </div>
-            <div style="background: #f0fdf4; padding: 10px; border-radius: 10px; text-align: center; border: 1px solid #bbf7d0;">
-                <div style="font-size: 0.55rem; color: #166534; font-weight: 600;">👨 %</div>
-                <div style="font-size: 20px; font-weight: 700; color: #166534;" id="statsMalePercent">0%</div>
-            </div>
-            <div style="background: #fdf2f8; padding: 10px; border-radius: 10px; text-align: center; border: 1px solid #fbcfe8;">
-                <div style="font-size: 0.55rem; color: #9d174d; font-weight: 600;">👩 %</div>
-                <div style="font-size: 20px; font-weight: 700; color: #9d174d;" id="statsFemalePercent">0%</div>
-            </div>
-        </div>
-        
-        <!-- Program Breakdown Table -->
-        <div style="overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 12px;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
-                <thead>
-                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 8px 12px; text-align: left; font-weight: 600; color: #475569;">Program</th>
-                        <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Type</th>
-                        <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Total</th>
-                        <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Male</th>
-                        <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Female</th>
-                        <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">Ratio</th>
-                        <th style="padding: 8px 12px; text-align: center; font-weight: 600; color: #475569;">%</th>
-                    </tr>
-                </thead>
-                <tbody id="statsProgramBreakdown">
-                    <tr>
-                        <td colspan="7" style="padding: 20px; text-align: center; color: #94a3b8;">
-                            <div class="loading-spinner" style="width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top: 2px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 6px;"></div>
-                            Loading...
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- ====== QUICK ACTIONS - GLASS BUTTONS ====== -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 18px 0 22px;">
-        <button onclick="showTab('enroll')" style="
-            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
-            color: white;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 16px rgba(10,61,98,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(10,61,98,0.2)'">
-            <i class="fas fa-user-plus"></i> Enroll
-        </button>
-        <button onclick="showTab('pending')" style="
-            background: linear-gradient(135deg, #FDB913, #f59e0b);
-            color: #0A3D62;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 16px rgba(253,185,19,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(253,185,19,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(253,185,19,0.2)'">
-            <i class="fas fa-check-double"></i> Approve
-        </button>
-        <button onclick="showTab('attendance')" style="
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 16px rgba(16,185,129,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(16,185,129,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(16,185,129,0.2)'">
-            <i class="fas fa-clipboard-check"></i> Attendance
-        </button>
-        <button onclick="showTab('messages')" style="
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 16px rgba(59,130,246,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(59,130,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(59,130,246,0.2)'">
-            <i class="fas fa-envelope"></i> Messages
-        </button>
-        <button onclick="showTab('calendar')" style="
-            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-            color: white;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 16px rgba(139,92,246,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(139,92,246,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(139,92,246,0.2)'">
-            <i class="fas fa-calendar"></i> Schedule
-        </button>
-        <button onclick="showTab('marks-approval')" style="
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: #0A3D62;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 16px rgba(245,158,11,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 30px rgba(245,158,11,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 16px rgba(245,158,11,0.2)'">
-            <i class="fas fa-check-double"></i> Approve Marks
-        </button>
-    </div>
-
-    <!-- ====== BIRTHDAY CARD ====== -->
-    <div style="
-        background: white;
-        border-radius: 18px;
-        padding: 18px 22px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-        border: 1px solid #e5e7eb;
-        margin-bottom: 20px;
-        background: linear-gradient(135deg, #ffffff, #fffbeb);
-        border-left: 4px solid #FDB913;
-        transition: all 0.3s ease;
-    " onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.04)'">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h4 style="margin: 0; color: #0A3D62; font-size: 0.9rem; font-weight: 600;">
-                <i class="fas fa-birthday-cake" style="color: #FDB913;"></i> Student Birthdays Today
-            </h4>
-            <span id="birthdayCount" style="
-                background: linear-gradient(135deg, #FDB913, #f59e0b);
-                color: #0A3D62;
-                padding: 2px 12px;
-                border-radius: 100px;
-                font-size: 0.7rem;
-                font-weight: 700;
-                box-shadow: 0 2px 8px rgba(253,185,19,0.2);
-            ">0</span>
-        </div>
-        <div id="birthdayStudentsList">
-            <p style="color: #6b7280; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-spinner fa-spin" style="color: #FDB913;"></i>
-                Loading birthdays...
-            </p>
-        </div>
-        <div id="birthdayStudentCard" style="display: none; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; padding: 14px 18px; border-left: 4px solid #f59e0b; margin-top: 10px;">
-            <div style="display: flex; align-items: center; gap: 14px;">
-                <div style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div>
-                    <h4 id="birthdayName" style="margin: 0; font-size: 0.9rem; color: #0A3D62; font-weight: 600;">Loading...</h4>
-                    <p id="birthdayDetails" style="margin: 2px 0 0; font-size: 0.75rem; color: #6b7280;">-</p>
-                    <p id="birthdayAge" style="margin: 2px 0 0; font-size: 0.65rem; color: #92400e; font-weight: 500;">-</p>
-                </div>
-                <button style="
-                    margin-left: auto;
-                    background: linear-gradient(135deg, #0A3D62, #1a5a7a);
-                    color: white;
-                    border: none;
-                    padding: 6px 16px;
-                    border-radius: 100px;
-                    cursor: pointer;
-                    font-weight: 500;
-                    font-size: 0.7rem;
-                    transition: all 0.3s ease;
-                    box-shadow: 0 2px 8px rgba(10,61,98,0.15);
-                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(10,61,98,0.25)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(10,61,98,0.15)'">
-                    <i class="fas fa-paper-plane"></i> Send
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== CHARTS SECTION - ULTRA MODERN ====== -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; margin-bottom: 20px;">
-        
-        <!-- Enrolment by Block Chart -->
-        <div style="
-            background: white;
-            border-radius: 18px;
-            padding: 20px 22px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-            border: 1px solid #e5e7eb;
-            transition: all 0.3s ease;
-        " onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                <h4 style="margin: 0; color: #0A3D62; font-size: 0.85rem; font-weight: 600;">
-                    <i class="fas fa-chart-bar" style="color: #FDB913;"></i> Enrolment by Block
-                </h4>
-                <span style="font-size: 0.6rem; color: #94a3b8; background: #f8fafc; padding: 2px 10px; border-radius: 100px;">Current Year</span>
-            </div>
-            <div style="height: 220px; position: relative;">
-                <canvas id="enrolmentBlockChart"></canvas>
-            </div>
-        </div>
-        
-        <!-- Gender Distribution Chart -->
-        <div style="
-            background: white;
-            border-radius: 18px;
-            padding: 20px 22px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-            border: 1px solid #e5e7eb;
-            transition: all 0.3s ease;
-        " onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                <h4 style="margin: 0; color: #0A3D62; font-size: 0.85rem; font-weight: 600;">
-                    <i class="fas fa-venus-mars" style="color: #FDB913;"></i> Gender Distribution
-                </h4>
-                <span style="font-size: 0.6rem; color: #94a3b8; background: #f8fafc; padding: 2px 10px; border-radius: 100px;">All Students</span>
-            </div>
-            <div style="height: 220px; position: relative;">
-                <canvas id="genderDistributionChart"></canvas>
-            </div>
-        </div>
-        
-        <!-- Programs Overview Chart -->
-        <div style="
-            background: white;
-            border-radius: 18px;
-            padding: 20px 22px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-            border: 1px solid #e5e7eb;
-            transition: all 0.3s ease;
-        " onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.04)'">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                <h4 style="margin: 0; color: #0A3D62; font-size: 0.85rem; font-weight: 600;">
-                    <i class="fas fa-graduation-cap" style="color: #FDB913;"></i> Programs Overview
-                </h4>
-                <span style="font-size: 0.6rem; color: #94a3b8; background: #f8fafc; padding: 2px 10px; border-radius: 100px;">KRCHN vs TVET</span>
-            </div>
-            <div style="height: 220px; position: relative;">
-                <canvas id="programBreakdownChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- ====== SYSTEM PERFORMANCE TIMELINE ====== -->
-    <div style="
-        background: white;
-        border-radius: 18px;
-        padding: 20px 22px;
-        border: 1px solid #e5e7eb;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-        transition: all 0.3s ease;
-    " onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.04)'">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-            <h4 style="margin: 0; color: #0A3D62; font-size: 0.85rem; font-weight: 600;">
-                <i class="fas fa-chart-line" style="color: #FDB913;"></i> System Performance Timeline
-                <span style="font-size: 0.6rem; font-weight: 400; color: #94a3b8; margin-left: 8px;">Last 24 hours</span>
-            </h4>
-            <span style="font-size: 0.6rem; color: #94a3b8; background: #f8fafc; padding: 2px 10px; border-radius: 100px;">
-                <i class="fas fa-sync-alt fa-spin"></i> Live
-            </span>
-        </div>
-        <div style="height: 80px; position: relative;">
-            <canvas id="performanceChart"></canvas>
-        </div>
-    </div>
-
-</section>
-
-<!-- ====== KEYBOARD SHORTCUTS BAR ====== -->
-<div id="shortcutsBar" style="
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(10,61,98,0.92);
-    backdrop-filter: blur(20px);
-    padding: 8px 24px;
-    border-radius: 100px;
-    border: 1px solid rgba(255,255,255,0.08);
-    display: none;
-    z-index: 999;
-    color: rgba(255,255,255,0.7);
-    font-size: 0.7rem;
-    gap: 16px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: center;
-">
-    <span style="display: flex; align-items: center; gap: 4px;">
-        <kbd style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; color: white; font-size: 0.65rem;">Ctrl+1</kbd> Dashboard
-    </span>
-    <span style="display: flex; align-items: center; gap: 4px;">
-        <kbd style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; color: white; font-size: 0.65rem;">Ctrl+2</kbd> Users
-    </span>
-    <span style="display: flex; align-items: center; gap: 4px;">
-        <kbd style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; color: white; font-size: 0.65rem;">Ctrl+3</kbd> Marks
-    </span>
-    <span style="display: flex; align-items: center; gap: 4px;">
-        <kbd style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; color: white; font-size: 0.65rem;">Ctrl+4</kbd> Programs
-    </span>
-    <span style="display: flex; align-items: center; gap: 4px;">
-        <kbd style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; color: white; font-size: 0.65rem;">Ctrl+R</kbd> Refresh
-    </span>
-    <span style="display: flex; align-items: center; gap: 4px;">
-        <kbd style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; color: white; font-size: 0.65rem;">Esc</kbd> Close
-    </span>
-    <button onclick="toggleShortcutsBar()" style="
-        background: rgba(255,255,255,0.05);
-        border: none;
-        color: rgba(255,255,255,0.4);
-        padding: 2px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.7rem;
-    ">
-        <i class="fas fa-times"></i>
-    </button>
-</div>
-
-<!-- ====== NOTIFICATION BELL WITH BADGE ====== -->
-<!-- Replace the existing bell in header with this -->
-<span style="position: relative; margin-left: 10px; cursor: pointer;" onclick="toggleNotifications()">
-    <i class="fas fa-bell" style="font-size: 20px; color: #4C1D95; transition: all 0.3s ease;" onmouseover="this.style.color='#FDB913'" onmouseout="this.style.color='#4C1D95'"></i>
-    <span id="notificationBadge" style="
-        position: absolute;
-        top: -6px;
-        right: -8px;
-        background: #ef4444;
-        color: white;
-        border-radius: 50%;
-        padding: 2px 6px;
-        font-size: 9px;
-        font-weight: 700;
-        min-width: 18px;
-        text-align: center;
-        display: none;
-        box-shadow: 0 2px 8px rgba(239,68,68,0.3);
-    ">0</span>
-</span>
-
-<!-- ====== ANIMATIONS & STYLES ====== -->
-<style>
-    @keyframes pulse-dot {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(0.8); }
-    }
-    
-    @keyframes floatBg {
-        0%, 100% { transform: translate(0, 0) rotate(0deg); }
-        33% { transform: translate(-20px, -30px) rotate(5deg); }
-        66% { transform: translate(20px, 20px) rotate(-3deg); }
-    }
-    
-    @keyframes slideIn {
-        from { transform: translateX(20px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    @keyframes countUp {
-        from { opacity: 0; transform: scale(0.8); }
-        to { opacity: 1; transform: scale(1); }
-    }
-    
-    .data {
-        transition: all 0.3s ease;
-        animation: countUp 0.3s ease;
-    }
-    
-    .dashboard-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    .dashboard-card:hover {
-        transform: translateY(-4px);
-    }
-    
-    /* Scrollbar styling for activity feed */
-    #activityFeed::-webkit-scrollbar {
-        width: 4px;
-    }
-    #activityFeed::-webkit-scrollbar-track {
-        background: #f1f5f9;
-        border-radius: 10px;
-    }
-    #activityFeed::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-    }
-    #activityFeed::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-    }
-    
-    /* Dark mode styles */
-    body.dark-mode .dashboard-card {
-        background: #1e293b !important;
-        border-color: #334155 !important;
-    }
-    body.dark-mode .dashboard-card .data {
-        color: #e2e8f0 !important;
-    }
-    body.dark-mode .dashboard-card h3 {
-        color: #94a3b8 !important;
-    }
-    body.dark-mode .dashboard-card .minor-data {
-        color: #64748b !important;
-    }
-    body.dark-mode .dashboard-card:hover {
-        box-shadow: 0 12px 40px rgba(0,0,0,0.3) !important;
-    }
-    body.dark-mode #student-welcome-message {
-        background: #1e293b !important;
-        border-color: #334155 !important;
-    }
-    body.dark-mode #student-welcome-message p {
-        color: #e2e8f0 !important;
-    }
-    body.dark-mode #activityFeed {
-        background: #1e293b !important;
-        color: #e2e8f0 !important;
-    }
-    body.dark-mode .stats-card {
-        background: #1e293b !important;
-        border-color: #334155 !important;
-    }
-    
-    .loading-spinner {
-        display: inline-block;
-        width: 30px;
-        height: 30px;
-        border: 3px solid #e5e7eb;
-        border-top: 3px solid #4C1D95;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-</style>
 
 <!-- ============================================================ -->
 <!-- UNIT REGISTRATIONS & APPROVALS - WITH STUDENT GROUPING        -->
