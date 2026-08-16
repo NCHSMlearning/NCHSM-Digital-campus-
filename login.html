@@ -274,8 +274,8 @@
                     
                     <!-- ===== SECURE LOGIN FORM ===== -->
                     <form id="loginForm" class="login-form" novalidate>
-                        <!-- CSRF Token -->
-                        <input type="hidden" name="csrf_token" id="csrfToken" value="">
+                        <!-- ✅ FIXED: Changed ID from "csrfToken" to "csrf_token" -->
+                        <input type="hidden" name="csrf_token" id="csrf_token" value="">
                         
                         <!-- Email -->
                         <div class="form-group">
@@ -399,7 +399,7 @@
                         </a>
                     </div>
                     
-                    <!-- ===== 2FA ENABLE BUTTON - NOW VISIBLE ===== -->
+                    <!-- ===== 2FA ENABLE BUTTON ===== -->
                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
                         <button onclick="showQRCode()" 
                                 id="enable2FABtn"
@@ -477,7 +477,7 @@
                 <p style="color: #64748B; font-size: 0.9rem;">Secure your account with Google Authenticator</p>
             </div>
             
-            <!-- ===== STEP-BY-STEP INSTRUCTIONS ===== -->
+            <!-- Step-by-Step Instructions -->
             <div style="background: #f0f7ff; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
                 <h4 style="margin: 0 0 8px 0; color: #0A3D62;">📱 How to set up:</h4>
                 <ol style="margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 2;">
@@ -488,7 +488,7 @@
                 </ol>
             </div>
             
-            <!-- ===== QR CODE ===== -->
+            <!-- QR CODE -->
             <div style="text-align: center; margin: 20px 0;">
                 <div style="background: #ffffff; padding: 20px; border-radius: 16px; display: inline-block; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 2px solid #e2e8f0;">
                     <img id="qrCodeImage" src="" alt="QR Code" style="width: 220px; height: 220px;">
@@ -498,7 +498,7 @@
                 </p>
             </div>
             
-            <!-- ===== MANUAL ENTRY ===== -->
+            <!-- Manual Entry -->
             <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin: 15px 0; border: 1px solid #e2e8f0;">
                 <p style="font-size: 0.85rem; opacity: 0.7; margin: 0 0 8px 0;">
                     <strong>🔑 Can't scan? Enter this code manually:</strong>
@@ -511,7 +511,7 @@
                 </button>
             </div>
             
-            <!-- ===== VERIFICATION ===== -->
+            <!-- Verification -->
             <div style="margin-top: 20px; border-top: 2px solid #e2e8f0; padding-top: 20px;">
                 <p style="font-size: 0.9rem; text-align: center; font-weight: 600; color: #0A3D62;">
                     ✅ Enter the 6-digit code from Google Authenticator:
@@ -536,7 +536,7 @@
                 <div id="setupStatus" style="margin-top: 12px; text-align: center; font-size: 0.9rem; display: none;"></div>
             </div>
             
-            <!-- ===== TROUBLESHOOTING ===== -->
+            <!-- Troubleshooting -->
             <div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 3px solid #F59E0B; font-size: 0.8rem;">
                 <strong>💡 Troubleshooting:</strong>
                 <ul style="margin: 5px 0 0 0; padding-left: 18px; color: #92400E;">
