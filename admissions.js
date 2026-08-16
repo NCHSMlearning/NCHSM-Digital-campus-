@@ -25,26 +25,60 @@ let studentType = 'new';
 let kcseDataExtracted = {};
 
 // ================================================================
-// COURSE DATA
+// COURSE DATA - ALL 32+ COURSES FROM NCHSM DOCUMENT
 // ================================================================
 const courseData = {
+    // ==================== SCHOOL OF NURSING ====================
     nursing: [
         { code: 'CHN', name: 'Diploma Community Health Nursing (CHN)', duration: '3 Years', grade: 'C Plain', school: 'School of Nursing' }
     ],
+
+    // ==================== SCHOOL OF HEALTHCARE ASSISTANT ====================
     healthcare: [
         { code: 'CNA', name: 'Certificate in Nursing Assistant (CNA)', duration: '6 Months', grade: 'D-', school: 'School of Healthcare Assistant' },
         { code: 'ACG', name: 'Artisan in Caregiver', duration: '2 Modules', grade: 'D-', school: 'School of Healthcare Assistant' },
-        { code: 'HSS', name: 'Certificate in Health Services Support (Level 5)', duration: '4 Modules', grade: 'D Plain', school: 'School of Healthcare Assistant' }
+        { code: 'HSS', name: 'Certificate in Health Services Support (Level 5)', duration: '4 Modules', grade: 'D Plain', school: 'School of Healthcare Assistant' },
+        { code: 'HBC', name: 'Craft in Homebased Care Level 3', duration: '2 Modules', grade: 'D Plain', school: 'School of Healthcare Assistant' },
+        { code: 'HSSM', name: 'Health Systems Support Management (Level 6)', duration: '6 Modules', grade: 'C-', school: 'School of Healthcare Assistant' }
     ],
+
+    // ==================== SCHOOL OF HEALTH, SOCIAL & APPLIED SCIENCES ====================
     health_social: [
         { code: 'DPOTT', name: 'Diploma in Perioperative Theatre Technology (Level 6)', duration: '6 Modules', grade: 'C Plain', school: 'School of Health, Social & Applied Sciences' },
         { code: 'CPOTT', name: 'Certificate in Perioperative Theatre Technology (Level 5)', duration: '4 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
         { code: 'DCH', name: 'Diploma in Community Health (Level 6)', duration: '7 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'CCH', name: 'Certificate in Community Health (Level 5)', duration: '4 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' }
+        { code: 'CCH', name: 'Certificate in Community Health (Level 5)', duration: '4 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DSW', name: 'Diploma in Social Work & Community Devt (Level 6)', duration: '5 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CSW', name: 'Certificate in Social Work & Community Devt (Level 5)', duration: '3 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DHRIT', name: 'Diploma in Health Records & IT (Level 6)', duration: '7 Modules', grade: 'C Plain', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CHRIT', name: 'Certificate in Health Records & IT (Level 5)', duration: '4 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DOTM', name: 'Diploma in Orthopedic & Trauma Medicine (Level 6)', duration: '6 Modules', grade: 'C Plain', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'COTM', name: 'Certificate in Orthopedic & Trauma Medicine (Level 5)', duration: '4 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DBME', name: 'Diploma in Bio-Medical Engineering (Level 6)', duration: '7 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CBME', name: 'Certificate in Bio-Medical Engineering (Level 5)', duration: '4 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DSL', name: 'Diploma in Science Laboratory (Level 6)', duration: '5 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CSL', name: 'Certificate in Science Laboratory (Level 5)', duration: '3 Modules', grade: 'D Plain', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DCSJ', name: 'Diploma in Criminal Safety Justice (Level 6)', duration: '5 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CCSJ', name: 'Certificate in Criminal Safety Justice (Level 5)', duration: '4 Modules', grade: 'D Plain', school: 'School of Health, Social & Applied Sciences' }
     ],
+
+    // ==================== SCHOOL OF INFORMATION COMMUNICATION TECHNOLOGY ====================
     ict: [
         { code: 'DICT', name: 'Diploma in Information Communication Technology', duration: '6 Modules', grade: 'C-', school: 'School of ICT' },
-        { code: 'CICT', name: 'Certificate in Information Communication Technology', duration: '4 Modules', grade: 'D Plain', school: 'School of ICT' }
+        { code: 'CICT', name: 'Certificate in Information Communication Technology', duration: '4 Modules', grade: 'D Plain', school: 'School of ICT' },
+        { code: 'DCP', name: 'Diploma in Computer Programming', duration: '6 Modules', grade: 'C-', school: 'School of ICT' },
+        { code: 'DCS', name: 'Diploma in Computer Science', duration: '6 Modules', grade: 'C Plain', school: 'School of ICT' },
+        { code: 'NSA', name: 'Network System Administration', duration: '4 Modules', grade: 'C-', school: 'School of ICT' },
+        { code: 'DCSec', name: 'Diploma in Cyber Security (Level 6)', duration: '6 Modules', grade: 'C-', school: 'School of ICT' }
+    ],
+
+    // ==================== ICT - SHORT COURSES ====================
+    ict_short: [
+        { code: 'CCA', name: 'Certificate in Computer Applications', duration: '1 Month', grade: 'Open', school: 'ICT Short Courses' },
+        { code: 'CCE', name: 'Certificate in Advance Microsoft Excel', duration: '1 Month', grade: 'Open', school: 'ICT Short Courses' },
+        { code: 'CGD', name: 'Certificate in Graphic Design', duration: '3 Months', grade: 'D-', school: 'ICT Short Courses' },
+        { code: 'CDM', name: 'Certificate in Digital Marketing', duration: '2 Months', grade: 'Open', school: 'ICT Short Courses' },
+        { code: 'COA', name: 'Certificate in Office Administrator', duration: '3 Months', grade: 'D Plain', school: 'ICT Short Courses' }
     ]
 };
 
@@ -70,6 +104,16 @@ function navigateTo(page) {
     navItems.forEach(n => n.classList.remove('active'));
     const navLink = document.querySelector(`.nav-item[data-page="${page}"]`);
     if (navLink) navLink.classList.add('active');
+
+    // When clicking Apply Now, show register tab
+    if (page === 'register') {
+        const registerForm = document.getElementById('registerForm');
+        if (registerForm) {
+            registerForm.classList.add('active');
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) loginForm.classList.remove('active');
+        }
+    }
 
     if (page === 'login') {
         setTimeout(() => {
@@ -183,7 +227,6 @@ async function loginUser() {
             msg.textContent = '✅ Welcome! Please complete your application.';
             setTimeout(() => {
                 navigateTo('register');
-                // After navigation, check auth again
                 checkAuth();
             }, 500);
             return;
@@ -304,7 +347,6 @@ async function loginUser2() {
             msg.className = 'auth-message success';
             msg.textContent = '✅ Welcome! Loading your application...';
             setTimeout(() => {
-                // Reload to show application form
                 window.location.reload();
             }, 500);
             return;
@@ -774,7 +816,7 @@ async function loadUserApplication(userId) {
 }
 
 // ================================================================
-// COURSE SELECTOR
+// COURSE SELECTOR - Now shows ALL courses
 // ================================================================
 function updatePrograms() {
     const school = document.getElementById('school');
