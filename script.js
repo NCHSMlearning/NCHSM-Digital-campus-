@@ -2769,7 +2769,132 @@ if (typeof window.loadDashboardFast === 'undefined') {
                     console.error('Activity feed error:', error);
                 }
             }, 500);
+            // ============================================
+// 🔄 RECENT ACTIVITY FEED - FOR YOUR TABLE
+// ============================================
+
+if (typeof window.loadRecentActivity === 'undefined') {
+    window.loadRecentActivity = async function() {
+        try {
+            const client = window.sb || window.supabase;
+            if (!client) {
+                console.warn('Supabase client not available for activity feed');
+                return;
+            }
             
+            console.log('🔄 Loading activity feed from audit_logs...');
+            
+            // Use your actual column names from the table structure
+            const { data, error } = await client
+                .from('audit_logs')
+                .select('user_email, action_type, description, details, user_role, created_at, status, module')
+                .order('created_at', { ascending: false })
+                .limit(10);
+            
+            if (error) {
+                console.error('Error fetching from audit_logs:', error);
+                const feedEl = document.getElementById('activityFeed');
+                if (feedEl) {
+                    feedEl.innerHTML = `
+                        <div style="padding:20px;text-align:center;color:#94a3b8;">
+                            <i class="fas fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                            No recent activity
+                        </div>
+                    `;
+                }
+                return;
+            }
+            
+            const feedEl = document.getElementById('activityFeed');
+            if (!feedEl) {
+                console.warn('Activity feed element not found');
+                return;
+            }
+            
+            // If no data, show empty state
+            if (!data || data.length === 0) {
+                feedEl.innerHTML = `
+                    <div style="padding:20px;text-align:center;color:#94a3b8;">
+                        <i class="fas fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                        No recent activity
+                    </div>
+                `;
+                return;
+            }
+            
+            // Icons for different action types
+            const icons = {
+                'LOGIN': 'fa-sign-in-alt',
+                'LOGOUT': 'fa-sign-out-alt',
+                'USER_CREATED': 'fa-user-plus',
+                'USER_UPDATED': 'fa-user-edit',
+                'USER_DELETED': 'fa-user-minus',
+                'MARKS_ENTRY': 'fa-pen',
+                'MARKS_APPROVED': 'fa-check-circle',
+                'RESOURCE_UPLOADED': 'fa-upload',
+                'EXAM_CREATED': 'fa-file-alt',
+                'SYSTEM_START': 'fa-server',
+                'BACKUP_CREATED': 'fa-database',
+                'SYSTEM_ONLINE': 'fa-check-circle',
+                'USER_ACTIVITY': 'fa-user',
+                'default': 'fa-circle'
+            };
+            
+            let html = '';
+            data.forEach(log => {
+                const icon = icons[log.action_type] || icons.default;
+                const time = new Date(log.created_at).toLocaleTimeString();
+                const userDisplay = log.user_email || 'System';
+                const actionDisplay = log.action_type || 'Activity';
+                const description = log.description || log.details || '';
+                const status = log.status || '';
+                const statusColor = status === 'Failed' ? '#ef4444' : status === 'Success' ? '#10b981' : '#f59e0b';
+                const moduleName = log.module ? ` [${log.module}]` : '';
+                
+                html += `
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                        <div style="width:30px;height:30px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas ${icon}" style="color:#4C1D95;font-size:11px;"></i>
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:12px;color:#1e293b;font-weight:500;">
+                                ${window.escapeHtml(userDisplay)}
+                                <span style="font-weight:400;color:#94a3b8;font-size:11px;">${window.escapeHtml(actionDisplay)}${moduleName}</span>
+                                ${status ? `<span style="color:${statusColor};font-size:9px;margin-left:4px;">[${window.escapeHtml(status)}]</span>` : ''}
+                            </div>
+                            <div style="font-size:10px;color:#94a3b8;">
+                                ${time}
+                                ${description ? ` - ${window.escapeHtml(description.substring(0, 60))}` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            feedEl.innerHTML = html;
+            
+            // Update timestamp
+            const timestampEl = document.getElementById('feedTimestamp');
+            if (timestampEl) {
+                timestampEl.textContent = new Date().toLocaleTimeString();
+            }
+            
+            console.log(`✅ Activity feed loaded: ${data.length} entries`);
+            
+        } catch (error) {
+            console.error('Error loading activity feed:', error);
+            const feedEl = document.getElementById('activityFeed');
+            if (feedEl) {
+                feedEl.innerHTML = `
+                    <div style="padding:20px;text-align:center;color:#94a3b8;">
+                        <i class="fas fa-exclamation-circle" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                        Unable to load activity feed
+                    </div>
+                `;
+            }
+        }
+    };
+}
             // ============================================
             // 9. LOAD WELCOME MESSAGE
             // ============================================
