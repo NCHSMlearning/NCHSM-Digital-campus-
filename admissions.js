@@ -3,12 +3,14 @@
 // ============================================================
 
 // ============================================================
-// SUPABASE CONFIGURATION
+// SUPABASE CONFIGURATION - Use existing or create new
 // ============================================================
-const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Check if supabase is already defined, if not create it
+if (typeof supabase === 'undefined') {
+    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
 // ============================================================
 // STATE VARIABLES
@@ -95,38 +97,6 @@ const programNames = {
 };
 
 // ============================================================
-// AUTH FUNCTIONS
-// ============================================================
-async function checkAuth() {
-    try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        if (session) {
-            currentUser = session.user;
-            document.getElementById('userEmail').textContent = currentUser.email;
-            document.getElementById('userAvatar').textContent = currentUser.email.charAt(0).toUpperCase();
-            document.getElementById('email').value = currentUser.email;
-            document.getElementById('authContainer').style.display = 'none';
-            document.getElementById('admissionApp').style.display = 'block';
-            await loadUserApplication(currentUser.id);
-        } else {
-            document.getElementById('authContainer').style.display = 'block';
-            document.getElementById('admissionApp').style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Auth error:', error);
-        document.getElementById('authContainer').style.display = 'block';
-        document.getElementById('admissionApp').style.display = 'none';
-    }
-}
-
-function logoutUser() {
-    supabase.auth.signOut().then(() => {
-        window.location.reload();
-    });
-}
-
-// ============================================================
 // AUTH UI FUNCTIONS
 // ============================================================
 function switchAuthTab(tab) {
@@ -171,6 +141,16 @@ async function loginUser() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
 
+        // Check if user has an application
+        const { data: app } = await supabase
+            .from('applications')
+            .select('status')
+            .eq('user_id', data.user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        // Reload page to show admission form
         setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
         msg.className = 'auth-message error';
@@ -253,9 +233,19 @@ async function registerUser() {
 }
 
 // ============================================================
+// LOGOUT USER
+// ============================================================
+function logoutUser() {
+    supabase.auth.signOut().then(() => {
+        window.location.reload();
+    });
+}
+
+// ============================================================
 // REGISTER EMAIL VALIDATION
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
+    // Register email validation
     const regEmail = document.getElementById('regEmail');
     if (regEmail) {
         regEmail.addEventListener('input', function() {
@@ -356,7 +346,58 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Initialize PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    // Check authentication
+    checkAuth();
+
+    // Init form
+    updateProgramDesc();
+    updateIntakePreview();
+    updateSummary();
+
+    // Login form enter key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const activeTab = document.querySelector('.auth-tabs .tab.active');
+            if (activeTab && activeTab.dataset.tab === 'login') {
+                loginUser();
+            } else if (activeTab && activeTab.dataset.tab === 'register') {
+                registerUser();
+            }
+        }
+    });
+
+    console.log('✅ NCHSM Admission System loaded');
 });
+
+// ============================================================
+// CHECK AUTH
+// ============================================================
+async function checkAuth() {
+    try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (session) {
+            currentUser = session.user;
+            document.getElementById('authContainer').style.display = 'none';
+            document.getElementById('admissionApp').style.display = 'block';
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('userAvatar').textContent = currentUser.email.charAt(0).toUpperCase();
+            document.getElementById('email').value = currentUser.email;
+            await loadUserApplication(currentUser.id);
+        } else {
+            document.getElementById('authContainer').style.display = 'block';
+            document.getElementById('admissionApp').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Auth error:', error);
+        document.getElementById('authContainer').style.display = 'block';
+        document.getElementById('admissionApp').style.display = 'none';
+    }
+}
 
 // ============================================================
 // LOAD USER APPLICATION
@@ -667,11 +708,8 @@ function updateIntakePreview() {
     document.getElementById('intakePreview').textContent = `📅 Intake: ${month.options[month.selectedIndex]?.text || 'March'} ${year.value}`;
 }
 
-// ============================================================
-// EMAIL VALIDATION
-// ============================================================
-document.getElementById('email').addEventListener('input', function() {
-    const email = this.value.trim();
+function validateEmail() {
+    const email = document.getElementById('email').value.trim();
     const statusEl = document.getElementById('emailStatus');
     if (!email) {
         statusEl.textContent = '';
@@ -696,7 +734,7 @@ document.getElementById('email').addEventListener('input', function() {
             statusEl.className = 'email-status invalid';
         }
     }, 400);
-});
+}
 
 // ============================================================
 // OCR - KCSE DOCUMENT
@@ -841,7 +879,7 @@ function validateKCSEAgainstProgram(data) {
     const validationResult = document.getElementById('kcse_validation_result');
 
     if (!criteria || !data.overallGrade) {
-        validationResult.innerHTML = `<span style="color:var(--warning);">⚠️ Complete data not extracted.</span>`;
+        validationResult.innerHTML = `<span style="color:var(--warning);">⚠️ Complete data not extracted. Ensure document is clear.</span>`;
         return;
     }
 
@@ -1180,3 +1218,34 @@ document.getElementById('validationModal').addEventListener('click', function(e)
 document.getElementById('successOverlay').addEventListener('click', function(e) {
     if (e.target === this) this.classList.remove('show');
 });
+
+// Email validation on input
+document.getElementById('email').addEventListener('input', function() {
+    const email = this.value.trim();
+    const statusEl = document.getElementById('emailStatus');
+    if (!email) {
+        statusEl.textContent = '';
+        statusEl.className = 'email-status';
+        return;
+    }
+    if (!email.includes('@') || !email.includes('.')) {
+        statusEl.textContent = '❌ Invalid email';
+        statusEl.className = 'email-status invalid';
+        return;
+    }
+    statusEl.textContent = '⏳ Checking...';
+    statusEl.className = 'email-status checking';
+    setTimeout(() => {
+        const domain = email.split('@')[1];
+        if (domain && (['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke'].includes(domain) ||
+                domain.endsWith('.ac.ke') || domain.endsWith('.ke'))) {
+            statusEl.textContent = '✅ Valid email';
+            statusEl.className = 'email-status valid';
+        } else {
+            statusEl.textContent = '⚠️ Unusual domain';
+            statusEl.className = 'email-status invalid';
+        }
+    }, 400);
+});
+
+console.log('✅ admissions.js loaded successfully');
