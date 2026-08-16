@@ -1,13 +1,11 @@
 // ============================================================
-// RESOURCES MODULE - COMPLETE ENHANCED VERSION
-// ✅ Read Now - Opens resource (NO auto-play)
-// ✅ Listen - Dual-voice podcast style (Male + Female)
-// ✅ AI Summary - Generates summary
-// ✅ All buttons VISIBLE
+// RESOURCES MODULE - NOTEBOOKLM STYLE PODCAST
+// ✅ Dual-voice discussion (Male + Female)
+// ✅ Natural conversation, not just reading
+// ✅ Explains content like a podcast
+// ✅ Proper speed and pacing
+// ✅ Waveform visualization
 // ✅ Full PDF text extraction
-// ✅ Full document audio reading
-// ✅ Mobile responsive
-// ✅ NotebookLM-style dual-voice podcast audio
 // ============================================================
 
 class ResourcesModule {
@@ -89,13 +87,10 @@ class ResourcesModule {
         this.userProfile = null;
         
         // ===== Audio State =====
-        this.audioContext = null;
         this.audioSynth = null;
         this.isPlaying = false;
         this.isAudioPaused = false;
         this.currentAudioText = '';
-        this.audioTimeout = null;
-        this.currentAudioResource = null;
         this.audioStartTime = null;
         this.audioProgressInterval = null;
         this.audioVoicesLoaded = false;
@@ -106,10 +101,12 @@ class ResourcesModule {
         this.femaleVoice = null;
         this.currentDialogueIndex = 0;
         this.dialogueLines = [];
-        this.audioDialogueSpeed = 0.85;
+        this.audioDialogueSpeed = 0.95; // Natural speed
         this.waveAnimationId = null;
         this.audioWaveCanvas = null;
         this.audioWaveCtx = null;
+        this.podcastTopic = '';
+        this.extractedContent = '';
         
         // ===== TVET Program Codes =====
         this.TVET_PROGRAMS = [
@@ -174,7 +171,7 @@ class ResourcesModule {
     // INITIALIZATION
     // ============================================================
     initializeElements() {
-        console.log('📁 Initializing Student Resources Module with Dual-Voice Audio...');
+        console.log('📁 Initializing Student Resources Module with NotebookLM Podcast...');
         
         this.setupEventListeners();
         this.setupMobileReaderEvents();
@@ -338,7 +335,7 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 🎙️ DUAL-VOICE AUDIO ENGINE (NotebookLM Style)
+    // 🎙️ NOTEBOOKLM-STYLE PODCAST AUDIO ENGINE
     // ============================================================
     
     setupAudioEvents() {
@@ -361,12 +358,11 @@ class ResourcesModule {
                     this.audioSynth.rate = this.audioDialogueSpeed;
                 }
             });
-            // Set default
-            this.audioSpeed.value = '0.85';
+            // Default to natural speed
+            this.audioSpeed.value = '0.95';
         }
         if (this.audioProgressBar) {
             this.audioProgressBar.addEventListener('click', (e) => {
-                // Seek not supported with speech synthesis
                 this.showToast('Seeking is not supported in podcast mode', 'info');
             });
         }
@@ -411,12 +407,13 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 🎙️ GET MALE AND FEMALE VOICES
+    // 🎙️ GET BEST MALE AND FEMALE VOICES
     // ============================================================
     
     getMaleVoice() {
         const voices = window.speechSynthesis.getVoices();
         
+        // Priority order for natural male voices
         const malePatterns = [
             'Google UK English Male',
             'Google US English Male',
@@ -425,7 +422,8 @@ class ResourcesModule {
             'en-US Male',
             'en-GB Male',
             'Google UK',
-            'Google US'
+            'Google US',
+            'Samantha' // Fallback if no male voice
         ];
         
         for (const pattern of malePatterns) {
@@ -435,14 +433,13 @@ class ResourcesModule {
             if (found) return found;
         }
         
-        // Fallback: any English voice with lower pitch
-        const fallback = voices.find(v => v.lang.startsWith('en'));
-        return fallback;
+        return voices.find(v => v.lang.startsWith('en')) || null;
     }
     
     getFemaleVoice() {
         const voices = window.speechSynthesis.getVoices();
         
+        // Priority order for natural female voices
         const femalePatterns = [
             'Google UK English Female',
             'Google US English Female',
@@ -460,96 +457,126 @@ class ResourcesModule {
             if (found) return found;
         }
         
-        // Fallback: any English voice with higher pitch
-        const fallback = voices.find(v => v.lang.startsWith('en'));
-        return fallback;
+        return voices.find(v => v.lang.startsWith('en')) || null;
     }
     
     // ============================================================
-    // 🎙️ GENERATE DIALOGUE SCRIPT
+    // 🎙️ GENERATE NOTEBOOKLM-STYLE PODCAST SCRIPT
     // ============================================================
     
-    generateDialogueScript(text, title = '') {
+    generatePodcastScript(text, title = '') {
         const lines = [];
+        this.podcastTopic = title || 'this topic';
+        this.extractedContent = text;
         
-        // Clean and split text
+        // Clean and split text into meaningful chunks
         const cleanText = text.replace(/\s+/g, ' ').trim();
+        
+        // Split by sentences
         const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
         
-        // Generate podcast-style introduction
-        if (title) {
-            lines.push({
-                speaker: 'host1',
-                text: `Welcome to this deep dive. We're exploring "${title}".`,
-                pauseAfter: 0.8
-            });
-            lines.push({
-                speaker: 'host2',
-                text: `This is a fascinating topic. Let's break it down together.`,
-                pauseAfter: 0.6
-            });
-            lines.push({
-                speaker: 'host1',
-                text: `Let's start with the key concepts.`,
-                pauseAfter: 0.5
-            });
-        }
+        // Extract key concepts and definitions
+        const keyPoints = this.extractKeyConcepts(cleanText);
         
-        // Distribute sentences between speakers
-        let speakerToggle = 'host1';
-        let paragraphCount = 0;
-        let currentParagraph = '';
-        
-        for (let i = 0; i < sentences.length; i++) {
-            const sentence = sentences[i].trim();
-            if (!sentence) continue;
-            
-            currentParagraph += sentence + ' ';
-            paragraphCount++;
-            
-            if (paragraphCount >= 2 + Math.floor(Math.random() * 2)) {
-                let cleanParagraph = currentParagraph.trim();
-                
-                // Add conversational filler
-                if (i > 0 && i < sentences.length - 1 && Math.random() > 0.5) {
-                    const fillers = [
-                        'So, ', 'Now, ', 'You know, ',
-                        'Here\'s the thing: ', 'Essentially, ',
-                        'What\'s interesting is that ', 'The key point is that '
-                    ];
-                    cleanParagraph = fillers[Math.floor(Math.random() * fillers.length)] + 
-                                    cleanParagraph.charAt(0).toLowerCase() + cleanParagraph.slice(1);
-                }
-                
-                lines.push({
-                    speaker: speakerToggle,
-                    text: cleanParagraph,
-                    pauseAfter: 0.3 + Math.random() * 0.4
-                });
-                
-                speakerToggle = speakerToggle === 'host1' ? 'host2' : 'host1';
-                currentParagraph = '';
-                paragraphCount = 0;
-            }
-        }
-        
-        if (currentParagraph) {
-            lines.push({
-                speaker: speakerToggle,
-                text: currentParagraph.trim(),
-                pauseAfter: 0.5
-            });
-        }
-        
-        // Conclusion
+        // ===== INTRO - Like a real podcast =====
+        lines.push({
+            speaker: 'host1',
+            text: `Welcome back to the podcast. Today we're diving into "${title || 'this topic'}".`,
+            pauseAfter: 0.6
+        });
         lines.push({
             speaker: 'host2',
-            text: `That's the key takeaway from this topic.`,
+            text: `This is such an interesting subject. I've been looking forward to discussing this.`,
             pauseAfter: 0.5
         });
         lines.push({
             speaker: 'host1',
-            text: `Thanks for listening to this deep dive! Stay curious, and we'll see you next time.`,
+            text: `Let's start with the fundamentals and build from there.`,
+            pauseAfter: 0.4
+        });
+        
+        // ===== MAIN CONTENT - Discussion style =====
+        let paragraphBuffer = [];
+        let speakerToggle = 'host2';
+        let conceptIndex = 0;
+        
+        for (let i = 0; i < sentences.length; i++) {
+            const sentence = sentences[i].trim();
+            if (!sentence || sentence.length < 10) continue;
+            
+            paragraphBuffer.push(sentence);
+            
+            // Group 2-4 sentences per speaker turn
+            if (paragraphBuffer.length >= 2 + Math.floor(Math.random() * 3)) {
+                const combined = paragraphBuffer.join(' ');
+                const isKeyPoint = conceptIndex < keyPoints.length && combined.toLowerCase().includes(keyPoints[conceptIndex].toLowerCase().slice(0, 20));
+                
+                let textToSpeak = combined;
+                
+                // Add conversational transitions
+                if (i > 0 && i < sentences.length - 5) {
+                    const transitions = [
+                        'Now, ', 'So, ', 'What's interesting here is that ',
+                        'The key thing to understand is ', 'Essentially, ',
+                        'This means that ', 'In other words, ',
+                        'Building on that, ', 'To put it differently, '
+                    ];
+                    
+                    // Add transition randomly for natural flow
+                    if (Math.random() > 0.5) {
+                        const transition = transitions[Math.floor(Math.random() * transitions.length)];
+                        textToSpeak = transition + combined.charAt(0).toLowerCase() + combined.slice(1);
+                    }
+                }
+                
+                // If it's a key concept, emphasize it
+                if (isKeyPoint && conceptIndex < keyPoints.length) {
+                    const concept = keyPoints[conceptIndex];
+                    textToSpeak = `Now, let's talk about ${concept}. ` + textToSpeak;
+                    conceptIndex++;
+                }
+                
+                lines.push({
+                    speaker: speakerToggle,
+                    text: textToSpeak,
+                    pauseAfter: 0.3 + Math.random() * 0.3
+                });
+                
+                // Toggle speaker
+                speakerToggle = speakerToggle === 'host1' ? 'host2' : 'host1';
+                paragraphBuffer = [];
+            }
+        }
+        
+        // Handle remaining text
+        if (paragraphBuffer.length > 0) {
+            const combined = paragraphBuffer.join(' ');
+            lines.push({
+                speaker: speakerToggle,
+                text: combined,
+                pauseAfter: 0.5
+            });
+        }
+        
+        // ===== CONCLUSION - Wrap up naturally =====
+        lines.push({
+            speaker: 'host2',
+            text: `So, to wrap things up, we've covered the essential aspects of ${title || 'this topic'}.`,
+            pauseAfter: 0.5
+        });
+        lines.push({
+            speaker: 'host1',
+            text: `That's a great summary. I hope our listeners found this discussion helpful.`,
+            pauseAfter: 0.4
+        });
+        lines.push({
+            speaker: 'host2',
+            text: `Thanks for joining us today. If you have questions, feel free to reach out.`,
+            pauseAfter: 0.3
+        });
+        lines.push({
+            speaker: 'host1',
+            text: `Until next time, keep learning and stay curious!`,
             pauseAfter: 0.0
         });
         
@@ -557,10 +584,65 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 🎙️ PLAY DUAL-VOICE DIALOGUE
+    // 🎙️ EXTRACT KEY CONCEPTS FOR BETTER DISCUSSION
     // ============================================================
     
-    async playDualVoiceDialogue(lines) {
+    extractKeyConcepts(text) {
+        const concepts = [];
+        
+        // Look for definitions and key terms
+        const definitionPatterns = [
+            /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves|includes|comprises)/g,
+            /(?:called|known as|termed)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g,
+            /(?:key|main|important|essential)\s+(?:concept|principle|aspect|component|element)\s+(?:is|are)\s+([^.!?]+)/gi
+        ];
+        
+        for (const pattern of definitionPatterns) {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                const concept = match[1] || match[0];
+                if (concept && concept.length > 5 && concept.length < 100) {
+                    concepts.push(concept.trim());
+                }
+            }
+        }
+        
+        // Look for bullet points or numbered lists
+        const bulletMatches = text.match(/[•\-*]\s*([^.!?]+[.!?]?)/g) || [];
+        for (const bullet of bulletMatches) {
+            const clean = bullet.replace(/[•\-*]\s*/, '').trim();
+            if (clean && clean.length > 10 && clean.length < 150) {
+                concepts.push(clean);
+            }
+        }
+        
+        // If no concepts found, extract key sentences
+        if (concepts.length === 0) {
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+            const importantSentences = sentences.filter(s => 
+                s.length > 30 && 
+                (s.toLowerCase().includes('important') || 
+                 s.toLowerCase().includes('key') ||
+                 s.toLowerCase().includes('essential') ||
+                 s.toLowerCase().includes('critical') ||
+                 s.toLowerCase().includes('significant'))
+            );
+            
+            for (const sentence of importantSentences.slice(0, 5)) {
+                const clean = sentence.trim();
+                if (clean) concepts.push(clean);
+            }
+        }
+        
+        // Deduplicate and limit
+        return [...new Set(concepts)].slice(0, 8);
+    }
+    
+    // ============================================================
+    // 🎙️ PLAY NOTEBOOKLM-STYLE PODCAST
+    // ============================================================
+    
+    async playPodcastDialogue(lines) {
         if (!lines || lines.length === 0) {
             this.showToast('No dialogue to play', 'warning');
             return;
@@ -607,7 +689,7 @@ class ResourcesModule {
         const line = this.dialogueLines[this.currentDialogueIndex];
         const isMale = line.speaker === 'host1';
         const voice = isMale ? this.maleVoice : this.femaleVoice;
-        const speakerLabel = isMale ? '🎙️ Host 1' : '🎙️ Host 2';
+        const speakerLabel = isMale ? '🎙️ Host' : '🎙️ Co-host';
         const total = this.dialogueLines.length;
         const current = this.currentDialogueIndex + 1;
         
@@ -615,7 +697,7 @@ class ResourcesModule {
             this.audioStatus.textContent = `${speakerLabel} ${current}/${total}`;
         }
         if (this.audioSpeakerIndicator) {
-            this.audioSpeakerIndicator.textContent = isMale ? '👨 Host speaking...' : '👩 Co-host speaking...';
+            this.audioSpeakerIndicator.textContent = isMale ? '👨 Host explaining...' : '👩 Co-host explaining...';
             this.audioSpeakerIndicator.style.color = isMale ? '#4a90d9' : '#e84393';
         }
         
@@ -624,7 +706,7 @@ class ResourcesModule {
         const utterance = new SpeechSynthesisUtterance(line.text);
         if (voice) utterance.voice = voice;
         utterance.rate = this.audioDialogueSpeed;
-        utterance.pitch = isMale ? 0.85 : 1.15;
+        utterance.pitch = isMale ? 0.9 : 1.1;
         utterance.volume = 1;
         
         this.audioSynth = utterance;
@@ -676,10 +758,8 @@ class ResourcesModule {
             this.isAudioPaused = false;
             this.updateAudioUI('playing');
             this.startWaveformAnimation();
-            // Resume dialogue
             this.playDialogueLine();
         } else if (!this.isPlaying && this.dialogueLines.length > 0) {
-            // Restart from beginning
             this.currentDialogueIndex = 0;
             this.playDialogueLine();
         }
@@ -788,7 +868,7 @@ class ResourcesModule {
         if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
         if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
         if (this.audioDuration) {
-            const estimatedDuration = wordCount * 0.2;
+            const estimatedDuration = wordCount * 0.15;
             const minutes = Math.floor(estimatedDuration / 60);
             const seconds = Math.floor(estimatedDuration % 60);
             this.audioDuration.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -802,7 +882,6 @@ class ResourcesModule {
     initWaveformCanvas() {
         if (!this.audioWave) return;
         
-        // Clear existing content
         this.audioWave.innerHTML = '';
         
         this.audioWaveCanvas = document.createElement('canvas');
@@ -879,7 +958,7 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 🎙️ READ ALOUD WITH DUAL VOICES (Main Method)
+    // 🎙️ READ ALOUD - NOTEBOOKLM STYLE PODCAST
     // ============================================================
     
     async readAloud(resourceId) {
@@ -889,21 +968,19 @@ class ResourcesModule {
             return;
         }
         
-        this.showToast('🎙️ Generating podcast-style audio...', 'info');
+        this.showToast('🎙️ Generating NotebookLM-style podcast...', 'info');
         
         try {
             let fullText = '';
             const fileType = this.getFileType(resource.file_path);
             
-            fullText = `Document: ${resource.title}. `;
+            // Build content with proper context
+            fullText = `${resource.title}. `;
             
             if (resource.resource_type === 'pastpaper') {
-                fullText += `Past paper. `;
+                fullText += `This is a past paper for ${resource.course_name || 'nursing'}. `;
                 if (resource.exam_type) {
-                    fullText += `Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
-                }
-                if (resource.course_name) {
-                    fullText += `Course: ${resource.course_name}. `;
+                    fullText += `It covers ${this.getExamTypeLabel(resource.exam_type)} type questions. `;
                 }
             }
             
@@ -911,33 +988,16 @@ class ResourcesModule {
                 fullText += resource.description + ' ';
             }
             
-            if (resource.file_url || resource.file_path) {
-                const url = resource.file_url || this.getResourceUrl(resource.file_path);
-                
-                if (fileType === 'pdf') {
-                    try {
-                        const extractedText = await this.extractFullPDFText(url);
-                        if (extractedText && extractedText.length > 50) {
-                            fullText += extractedText;
-                            this.showToast('✅ PDF content extracted', 'success');
-                        }
-                    } catch (e) {
-                        console.warn('Could not extract PDF text:', e);
+            // Extract from PDF if available
+            if (resource.file_url && fileType === 'pdf') {
+                try {
+                    const extractedText = await this.extractFullPDFText(resource.file_url);
+                    if (extractedText && extractedText.length > 100) {
+                        fullText += extractedText;
+                        this.showToast('✅ PDF content extracted for podcast', 'success');
                     }
-                } else if (fileType === 'text' || fileType === 'file') {
-                    try {
-                        const extractedText = await this.extractTextFileContent(url);
-                        if (extractedText && extractedText.length > 50) {
-                            fullText += extractedText;
-                            this.showToast('✅ Text content extracted', 'success');
-                        }
-                    } catch (e) {
-                        console.warn('Could not extract text:', e);
-                    }
-                } else {
-                    if (fileType === 'image' || fileType === 'video') {
-                        fullText += `This is a ${fileType} file containing visual content. `;
-                    }
+                } catch (e) {
+                    console.warn('Could not extract PDF text:', e);
                 }
             }
             
@@ -947,20 +1007,20 @@ class ResourcesModule {
             
             fullText = fullText.replace(/\s+/g, ' ').trim();
             
-            // Generate dialogue script
-            const dialogueScript = this.generateDialogueScript(fullText, resource.title);
+            // Generate NotebookLM-style podcast script
+            const podcastScript = this.generatePodcastScript(fullText, resource.title);
             
             // Show audio player
-            this.showAudioPlayer(fullText, resource.title);
+            this.showAudioPlayer(fullText, `📚 ${resource.title}`);
             
-            // Play with dual voices
-            await this.playDualVoiceDialogue(dialogueScript);
+            // Play the podcast
+            await this.playPodcastDialogue(podcastScript);
             
         } catch (error) {
-            console.error('Dual-voice error:', error);
+            console.error('Podcast error:', error);
             this.showToast('Failed to generate podcast: ' + error.message, 'error');
             
-            // Fallback to regular TTS
+            // Fallback
             let fallbackText = `Document: ${resource.title}. `;
             if (resource.description) {
                 fallbackText += resource.description;
@@ -979,7 +1039,7 @@ class ResourcesModule {
         window.speechSynthesis.cancel();
         
         const utterance = new SpeechSynthesisUtterance(this.currentAudioText);
-        utterance.rate = parseFloat(this.audioSpeed?.value || 1);
+        utterance.rate = parseFloat(this.audioSpeed?.value || 0.95);
         utterance.pitch = 1;
         utterance.volume = 1;
         
@@ -1119,7 +1179,7 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 📄 OPEN RESOURCE - NO AUTO-PLAY
+    // 📄 OPEN RESOURCE
     // ============================================================
     
     async openResource(resourceId) {
@@ -1153,7 +1213,7 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 🤖 AI SUMMARY MODAL
+    // 🤖 AI SUMMARY
     // ============================================================
     
     setupSummaryEvents() {
@@ -1172,82 +1232,77 @@ class ResourcesModule {
         }
     }
     
-   // ============================================================
-// 🤖 AI SUMMARY - FIXED to accept resource ID
-// ============================================================
-
-async generateSummary(resourceId) {
-    // Find resource by ID
-    const resource = this.allResources.find(r => r.id == resourceId);
-    if (!resource) {
-        this.showToast('Resource not found', 'error');
-        return;
-    }
-    
-    if (!this.summaryModal) return;
-    
-    this.currentResource = resource;
-    this.summaryModal.style.display = 'flex';
-    
-    if (this.summaryTitle) {
-        this.summaryTitle.textContent = resource.title || 'Resource';
-    }
-    
-    if (this.summaryLoading) this.summaryLoading.style.display = 'flex';
-    if (this.summaryContent) this.summaryContent.style.display = 'none';
-    if (this.summaryActions) this.summaryActions.style.display = 'none';
-    
-    try {
-        let content = '';
-        
-        if (resource.description) {
-            content = resource.description;
+    async generateSummary(resourceId) {
+        const resource = this.allResources.find(r => r.id == resourceId);
+        if (!resource) {
+            this.showToast('Resource not found', 'error');
+            return;
         }
         
-        if (resource.file_path && resource.file_url) {
-            const fileType = this.getFileType(resource.file_path);
-            if (fileType === 'pdf') {
-                try {
-                    content = await this.extractPDFText(resource.file_url);
-                } catch (e) {
-                    console.warn('Could not extract PDF text:', e);
+        if (!this.summaryModal) return;
+        
+        this.currentResource = resource;
+        this.summaryModal.style.display = 'flex';
+        
+        if (this.summaryTitle) {
+            this.summaryTitle.textContent = resource.title || 'Resource';
+        }
+        
+        if (this.summaryLoading) this.summaryLoading.style.display = 'flex';
+        if (this.summaryContent) this.summaryContent.style.display = 'none';
+        if (this.summaryActions) this.summaryActions.style.display = 'none';
+        
+        try {
+            let content = '';
+            
+            if (resource.description) {
+                content = resource.description;
+            }
+            
+            if (resource.file_path && resource.file_url) {
+                const fileType = this.getFileType(resource.file_path);
+                if (fileType === 'pdf') {
+                    try {
+                        content = await this.extractPDFText(resource.file_url);
+                    } catch (e) {
+                        console.warn('Could not extract PDF text:', e);
+                    }
                 }
             }
-        }
-        
-        if (!content || content.length < 50) {
-            content = `Resource: ${resource.title || 'Untitled'}\n`;
-            content += `Course: ${resource.course_name || 'General'}\n`;
-            content += `Type: ${resource.resource_type || 'Material'}\n`;
-            content += `Block/Term: ${resource.block || resource.term || 'General'}\n`;
-            if (resource.description) {
-                content += `\nDescription: ${resource.description}`;
+            
+            if (!content || content.length < 50) {
+                content = `Resource: ${resource.title || 'Untitled'}\n`;
+                content += `Course: ${resource.course_name || 'General'}\n`;
+                content += `Type: ${resource.resource_type || 'Material'}\n`;
+                content += `Block/Term: ${resource.block || resource.term || 'General'}\n`;
+                if (resource.description) {
+                    content += `\nDescription: ${resource.description}`;
+                }
+            }
+            
+            const summary = this.generateSimpleSummary(content);
+            
+            if (this.summaryLoading) this.summaryLoading.style.display = 'none';
+            if (this.summaryContent) {
+                this.summaryContent.style.display = 'block';
+                this.summaryContent.innerHTML = summary;
+            }
+            if (this.summaryActions) this.summaryActions.style.display = 'flex';
+            
+        } catch (error) {
+            console.error('Summary error:', error);
+            if (this.summaryLoading) this.summaryLoading.style.display = 'none';
+            if (this.summaryContent) {
+                this.summaryContent.style.display = 'block';
+                this.summaryContent.innerHTML = `
+                    <div style="color:#ef4444;text-align:center;padding:20px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size:32px;display:block;margin-bottom:12px;"></i>
+                        <p>Unable to generate summary: ${error.message}</p>
+                    </div>
+                `;
             }
         }
-        
-        const summary = this.generateSimpleSummary(content);
-        
-        if (this.summaryLoading) this.summaryLoading.style.display = 'none';
-        if (this.summaryContent) {
-            this.summaryContent.style.display = 'block';
-            this.summaryContent.innerHTML = summary;
-        }
-        if (this.summaryActions) this.summaryActions.style.display = 'flex';
-        
-    } catch (error) {
-        console.error('Summary error:', error);
-        if (this.summaryLoading) this.summaryLoading.style.display = 'none';
-        if (this.summaryContent) {
-            this.summaryContent.style.display = 'block';
-            this.summaryContent.innerHTML = `
-                <div style="color:#ef4444;text-align:center;padding:20px;">
-                    <i class="fas fa-exclamation-triangle" style="font-size:32px;display:block;margin-bottom:12px;"></i>
-                    <p>Unable to generate summary: ${error.message}</p>
-                </div>
-            `;
-        }
     }
-}
     
     generateSimpleSummary(text) {
         if (!text || text.length < 10) {
@@ -1745,192 +1800,164 @@ async generateSummary(resourceId) {
     }
     
     // ============================================================
-    // 📄 RENDER RESOURCES - WITH VISIBLE BUTTONS
+    // 📄 RENDER RESOURCES - FIXED VERSION
     // ============================================================
     
-  // ============================================================
-// 📄 RENDER RESOURCES - FIXED VERSION
-// ============================================================
-
-renderResources() {
-    if (!this.resourcesGrid) return;
-    if (this.filteredResources.length === 0) {
-        this.showEmptyState();
-        return;
-    }
-    
-    let html = '';
-    for (const resource of this.filteredResources) {
-        const isPastPaper = resource.resource_type === 'pastpaper';
-        const fileIcon = this.getFileIcon(resource.file_path);
-        const fileType = this.getFileType(resource.file_path);
-        const iconColor = isPastPaper ? '#d97706' : '#4C1D95';
-        const bgColor = isPastPaper ? '#fef3c7' : '#dbeafe';
+    renderResources() {
+        if (!this.resourcesGrid) return;
+        if (this.filteredResources.length === 0) {
+            this.showEmptyState();
+            return;
+        }
         
-        html += `
-            <div class="resource-card" style="
-                display: flex !important;
-                flex-direction: column !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                min-height: 280px !important;
-                background: white !important;
-                border-radius: 12px !important;
-                border: 1px solid #e5e7eb !important;
-                overflow: hidden !important;
-                margin: 0 !important;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
-                transition: all 0.3s ease !important;
-            ">
-                <div style="
-                    padding: 16px 20px;
-                    background: #f8fafc;
-                    border-bottom: 1px solid #e5e7eb;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    flex-wrap: wrap;
-                    gap: 8px;
+        let html = '';
+        for (const resource of this.filteredResources) {
+            const isPastPaper = resource.resource_type === 'pastpaper';
+            const fileIcon = this.getFileIcon(resource.file_path);
+            const iconColor = isPastPaper ? '#d97706' : '#4C1D95';
+            const bgColor = isPastPaper ? '#fef3c7' : '#dbeafe';
+            
+            html += `
+                <div class="resource-card" style="
+                    display: flex !important;
+                    flex-direction: column !important;
+                    min-height: 280px !important;
+                    background: white !important;
+                    border-radius: 12px !important;
+                    border: 1px solid #e5e7eb !important;
+                    overflow: hidden !important;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+                    transition: all 0.3s ease !important;
                 ">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="
-                            width: 40px;
-                            height: 40px;
-                            border-radius: 8px;
-                            background: ${bgColor};
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            flex-shrink: 0;
-                        ">
-                            <i class="${fileIcon}" style="font-size: 20px; color: ${iconColor};"></i>
-                        </div>
-                        <div>
-                            <div style="font-weight: 600; color: #0A3D62; font-size: 14px;">${this.escapeHtml(resource.title)}</div>
-                            <div style="font-size: 11px; color: #94a3b8; display: flex; gap: 8px; flex-wrap: wrap;">
-                                <span>${this.escapeHtml(resource.intake || 'N/A')}</span>
-                                <span>•</span>
-                                <span>${isPastPaper ? '📄 Past Paper' : '📚 Material'}</span>
-                                ${resource.course_name ? `<span>• ${this.escapeHtml(resource.course_name)}</span>` : ''}
+                    <!-- Header -->
+                    <div style="
+                        padding: 16px 20px;
+                        background: #f8fafc;
+                        border-bottom: 1px solid #e5e7eb;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        flex-wrap: wrap;
+                        gap: 8px;
+                    ">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 8px;
+                                background: ${bgColor};
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                flex-shrink: 0;
+                            ">
+                                <i class="${fileIcon}" style="font-size: 20px; color: ${iconColor};"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; color: #0A3D62; font-size: 14px;">${this.escapeHtml(resource.title)}</div>
+                                <div style="font-size: 11px; color: #94a3b8; display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <span>${this.escapeHtml(resource.intake || 'N/A')}</span>
+                                    <span>•</span>
+                                    <span>${isPastPaper ? '📄 Past Paper' : '📚 Material'}</span>
+                                    ${resource.course_name ? `<span>• ${this.escapeHtml(resource.course_name)}</span>` : ''}
+                                </div>
                             </div>
                         </div>
+                        <span style="font-size: 11px; color: #94a3b8; background: #f1f5f9; padding: 2px 12px; border-radius: 12px;">
+                            <i class="fas fa-lock"></i> Read Only
+                        </span>
                     </div>
-                    <span style="font-size: 11px; color: #94a3b8; background: #f1f5f9; padding: 2px 12px; border-radius: 12px;">
-                        <i class="fas fa-lock"></i> Read Only
-                    </span>
-                </div>
-                
-                <div style="padding: 12px 20px; flex: 1;">
-                    <p style="color: #64748b; font-size: 13px; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                        ${this.escapeHtml(resource.description || 'No description available')}
-                    </p>
-                </div>
-                
-                <div class="resource-actions" style="
-                    display: flex !important;
-                    gap: 8px !important;
-                    flex-wrap: wrap !important;
-                    padding: 12px 16px 16px !important;
-                    border-top: 1px solid #f1f5f9 !important;
-                    visibility: visible !important;
-                    opacity: 1 !important;
-                    min-height: 50px !important;
-                    margin-top: auto !important;
-                    background: white !important;
-                ">
-                    <!-- READ NOW BUTTON -->
-                    <button onclick="window.resourcesModule?.openResource(${resource.id})" style="
-                        flex: 1 !important;
-                        min-width: 80px !important;
-                        padding: 10px 16px !important;
-                        border-radius: 8px !important;
-                        font-weight: 600 !important;
-                        font-size: 13px !important;
-                        cursor: pointer !important;
-                        display: inline-flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        gap: 6px !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        border: none !important;
-                        transition: all 0.2s ease !important;
-                        pointer-events: auto !important;
-                        position: relative !important;
-                        z-index: 10 !important;
-                        color: white !important;
-                        margin: 0 !important;
-                        background: #4C1D95 !important;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                        <i class="fas fa-eye"></i> Read Now
-                    </button>
                     
-                    <!-- PODCAST BUTTON -->
-                    <button onclick="window.resourcesModule?.readAloud(${resource.id})" style="
-                        flex: 1 !important;
-                        min-width: 80px !important;
-                        padding: 10px 16px !important;
-                        border-radius: 8px !important;
-                        font-weight: 600 !important;
-                        font-size: 13px !important;
-                        cursor: pointer !important;
-                        display: inline-flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        gap: 6px !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        border: none !important;
-                        transition: all 0.2s ease !important;
-                        pointer-events: auto !important;
-                        position: relative !important;
-                        z-index: 10 !important;
-                        color: white !important;
-                        margin: 0 !important;
-                        background: linear-gradient(135deg, #4a90d9, #e84393) !important;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(74,144,217,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                        <i class="fas fa-podcast"></i> Podcast
-                    </button>
+                    <!-- Description -->
+                    <div style="padding: 12px 20px; flex: 1;">
+                        <p style="color: #64748b; font-size: 13px; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            ${this.escapeHtml(resource.description || 'No description available')}
+                        </p>
+                    </div>
                     
-                    <!-- AI SUMMARY BUTTON - ✅ FIXED: No raw CSS inside the button -->
-                    <button onclick="window.resourcesModule?.generateSummary(${resource.id})" style="
-                        flex: 1 !important;
-                        min-width: 80px !important;
-                        padding: 10px 16px !important;
-                        border-radius: 8px !important;
-                        font-weight: 600 !important;
-                        font-size: 13px !important;
-                        cursor: pointer !important;
-                        display: inline-flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        gap: 6px !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        border: none !important;
-                        transition: all 0.2s ease !important;
-                        pointer-events: auto !important;
-                        position: relative !important;
-                        z-index: 10 !important;
-                        color: white !important;
-                        margin: 0 !important;
-                        background: #7c3aed !important;
-                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(124,58,237,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                        <i class="fas fa-robot"></i> AI Summary
-                    </button>
+                    <!-- Actions -->
+                    <div style="
+                        display: flex !important;
+                        gap: 8px !important;
+                        flex-wrap: wrap !important;
+                        padding: 12px 16px 16px !important;
+                        border-top: 1px solid #f1f5f9 !important;
+                        min-height: 50px !important;
+                        margin-top: auto !important;
+                        background: white !important;
+                    ">
+                        <!-- Read Now -->
+                        <button onclick="window.resourcesModule?.openResource(${resource.id})" style="
+                            flex: 1 !important;
+                            min-width: 80px !important;
+                            padding: 10px 16px !important;
+                            border-radius: 8px !important;
+                            font-weight: 600 !important;
+                            font-size: 13px !important;
+                            cursor: pointer !important;
+                            display: inline-flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            gap: 6px !important;
+                            border: none !important;
+                            transition: all 0.2s ease !important;
+                            color: white !important;
+                            background: #4C1D95 !important;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <i class="fas fa-eye"></i> Read Now
+                        </button>
+                        
+                        <!-- Podcast - NotebookLM Style -->
+                        <button onclick="window.resourcesModule?.readAloud(${resource.id})" style="
+                            flex: 1 !important;
+                            min-width: 80px !important;
+                            padding: 10px 16px !important;
+                            border-radius: 8px !important;
+                            font-weight: 600 !important;
+                            font-size: 13px !important;
+                            cursor: pointer !important;
+                            display: inline-flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            gap: 6px !important;
+                            border: none !important;
+                            transition: all 0.2s ease !important;
+                            color: white !important;
+                            background: linear-gradient(135deg, #4a90d9, #e84393) !important;
+                            background-size: 200% 200% !important;
+                            animation: gradientShift 3s ease infinite !important;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 20px rgba(232,67,147,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <i class="fas fa-podcast"></i> Podcast
+                        </button>
+                        
+                        <!-- AI Summary - FIXED -->
+                        <button onclick="window.resourcesModule?.generateSummary(${resource.id})" style="
+                            flex: 1 !important;
+                            min-width: 80px !important;
+                            padding: 10px 16px !important;
+                            border-radius: 8px !important;
+                            font-weight: 600 !important;
+                            font-size: 13px !important;
+                            cursor: pointer !important;
+                            display: inline-flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            gap: 6px !important;
+                            border: none !important;
+                            transition: all 0.2s ease !important;
+                            color: white !important;
+                            background: #7c3aed !important;
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(124,58,237,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <i class="fas fa-robot"></i> AI Summary
+                        </button>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
+        
+        this.resourcesGrid.innerHTML = html;
+        this.updateResourceCount();
     }
-    
-    this.resourcesGrid.innerHTML = html;
-    this.updateResourceCount();
-    
-    const cards = this.resourcesGrid.querySelectorAll('.resource-card');
-    cards.forEach((card, index) => {
-        card.style.animation = `fadeInUp 0.4s ease forwards ${index * 0.05}s`;
-    });
-}
     
     // ============================================================
     // 📄 OPEN PDF IN MODAL
@@ -2853,7 +2880,7 @@ renderResources() {
     // INITIALIZATION
     // ============================================================
     async initialize() {
-        console.log('📁 Initializing Student Resources Module with Podcast Audio...');
+        console.log('📁 Initializing Student Resources Module with NotebookLM Podcast...');
         this.detectUserProgram();
         await this.getUserProfile();
         
@@ -2942,6 +2969,24 @@ window.resetResourceFilters = function() {
 window.loadStudentResources = function() {
     if (resourcesModule) resourcesModule.loadResources();
 };
+
+// ============================================================
+// GRADIENT SHIFT ANIMATION
+// ============================================================
+
+const styleElement = document.createElement('style');
+styleElement.textContent = `
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    .podcast-btn-glow {
+        animation: gradientShift 3s ease infinite !important;
+    }
+`;
+document.head.appendChild(styleElement);
 
 // ============================================================
 // AUTO-INITIALIZE
