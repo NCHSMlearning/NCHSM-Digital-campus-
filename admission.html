@@ -34,721 +34,549 @@
     <div id="app">
 
         <!-- ============================================================ -->
-        <!-- TOP NAVIGATION -->
+        <!-- AUTH CONTAINER (Login/Register) -->
         <!-- ============================================================ -->
-        <nav class="top-nav">
-            <div class="nav-brand">
+        <div id="authContainer" class="auth-container">
+            <div class="logo">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" />
-                <div>
-                    <h2>NCHSM <span>Admission</span></h2>
-                    <span class="badge"><i class="fas fa-check-circle"></i> ISO 9001:2024</span>
-                </div>
+                <h1>NCHSM <span>Portal</span></h1>
+                <p id="authSubtitle">Sign in to continue your application</p>
             </div>
-            <div class="nav-links">
-                <button class="nav-item active" data-page="home" onclick="navigateTo('home')">
-                    <i class="fas fa-home"></i> Home
+
+            <!-- Auth Tabs -->
+            <div class="auth-tabs">
+                <button class="tab active" data-tab="login" onclick="switchAuthTab('login')">Sign In</button>
+                <button class="tab" data-tab="register" onclick="switchAuthTab('register')">Create Account</button>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <div class="auth-form active" id="loginForm">
+                <div class="form-group">
+                    <label>Email Address <span class="required">*</span></label>
+                    <input type="email" id="loginEmail" placeholder="your@email.com" />
+                </div>
+                <div class="form-group">
+                    <label>Password <span class="required">*</span></label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" />
+                </div>
+                <button class="btn btn-primary" onclick="loginUser()" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
                 </button>
-                <span class="divider">|</span>
-                <button class="nav-item" data-page="programs" onclick="navigateTo('programs')">
-                    <i class="fas fa-book"></i> Our Programs
-                </button>
-                <span class="divider">|</span>
-                <button class="nav-item" data-page="enquiry" onclick="navigateTo('enquiry')">
-                    <i class="fas fa-question-circle"></i> Enquiry
-                </button>
-                <span class="divider">|</span>
-                <button class="nav-item btn-nav" data-page="register" onclick="navigateTo('register')">
+                <div id="loginMessage" class="auth-message"></div>
+            </div>
+
+            <!-- REGISTER FORM -->
+            <div class="auth-form" id="registerForm">
+                <div class="form-group">
+                    <label>Full Name <span class="required">*</span></label>
+                    <input type="text" id="regName" placeholder="John Mwangi" />
+                </div>
+                <div class="form-group">
+                    <label>Email Address <span class="required">*</span></label>
+                    <input type="email" id="regEmail" placeholder="your@email.com" />
+                    <div id="regEmailStatus" class="help-text"></div>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number <span class="required">*</span></label>
+                    <input type="tel" id="regPhone" placeholder="07XXXXXXXX" />
+                </div>
+                <!-- ROLE - Hidden/Disabled (Student only) -->
+                <div class="form-group" style="display:none;">
+                    <label>Role <span class="required">*</span></label>
+                    <select id="regRole">
+                        <option value="student" selected>Student</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Role <span class="required">*</span></label>
+                    <input type="text" value="Student (only)" disabled style="width:100%; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0; background:#f3f4f6; font-size:14px; color:#6b7280;" />
+                    <input type="hidden" id="regRole" value="student" />
+                </div>
+                <div class="form-group">
+                    <label>Password <span class="required">*</span></label>
+                    <input type="password" id="regPassword" placeholder="Min 8 characters" />
+                    <div class="password-strength">
+                        <div class="strength-bar"><div class="bar" id="strengthBar"></div></div>
+                        <div class="strength-text" id="strengthText">Enter a password</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password <span class="required">*</span></label>
+                    <input type="password" id="regConfirmPassword" placeholder="Confirm your password" />
+                    <div class="password-match" id="passwordMatch"></div>
+                </div>
+                <button class="btn btn-primary" onclick="registerUser()" id="registerBtn">
                     <i class="fas fa-user-plus"></i> Create Account
                 </button>
-                <span class="divider">|</span>
-                <button class="nav-item btn-login" data-page="login" onclick="navigateTo('login')">
-                    <i class="fas fa-sign-in-alt"></i> Login
-                </button>
+                <div id="registerMessage" class="auth-message"></div>
             </div>
-        </nav>
+        </div>
 
         <!-- ============================================================ -->
-        <!-- PAGE: HOME -->
+        <!-- ADMISSION APP (Hidden until authenticated) -->
         <!-- ============================================================ -->
-        <div class="page-content active" id="page-home">
-            <div class="home-grid">
+        <div id="admissionApp" class="admission-wrapper" style="display:none;">
 
-                <!-- LEFT: Rich Information -->
-                <div class="info-section">
-                    <div class="info-header">
-                        <h3><i class="fas fa-graduation-cap"></i> ONLINE APPLICATION &amp; REGISTRATION GUIDELINES</h3>
-                        <p>Nakuru College of Health Sciences and Management · Centre of Excellence</p>
-                    </div>
-                    <div class="info-scroll">
-                        <!-- Application Process -->
-                        <div class="info-block">
-                            <h4><i class="fas fa-list-ol"></i> Application Process</h4>
-                            <p style="color:var(--gray-600);font-size:0.9rem;margin-bottom:0.5rem;">To join NCHSM, follow the steps below:</p>
-                            <ol>
-                                <li>Decide the program you want to undertake and ensure you meet the qualifications.</li>
-                                <li>Click on <strong>"Create Account"</strong> at the top or <strong>"Apply Now"</strong> below.</li>
-                                <li>Fill in the required information in each step of the application.</li>
-                                <li>Finish the application process and submit your application.</li>
-                                <li>Once submitted successfully, you will receive an email with your Application ID.</li>
-                                <li>Pay the indicated application fee (see payment details below).</li>
-                                <li>Track your application status by logging in with your Application ID and Password.</li>
-                            </ol>
-                        </div>
-
-                        <hr style="border:none;border-top:2px dashed var(--gray-200);margin:1.2rem 0;" />
-
-                        <!-- Requirements & Payment -->
-                        <div class="info-block">
-                            <h4><i class="fas fa-file-invoice"></i> Requirements &amp; Payment Details</h4>
-
-                            <h5 style="font-size:0.85rem;color:var(--gray-800);margin:0.8rem 0 0.3rem 0;">
-                                <i class="fas fa-folder-open text-primary"></i> Documents Required
-                            </h5>
-                            <ul>
-                                <li><strong>Passport Photo</strong> – Clear passport-sized photo (JPG, PNG)</li>
-                                <li><strong>National ID / Birth Certificate</strong> – Clear copy (both sides for ID)</li>
-                                <li><strong>KCSE Certificate / Results Slip</strong> – Final high school results</li>
-                                <li><strong>Recommendation Letter</strong> – From church or school</li>
-                                <li><strong>Academic Transcript</strong> – For transfer students only</li>
-                            </ul>
-
-                            <h5 style="font-size:0.85rem;color:var(--gray-800);margin:0.8rem 0 0.3rem 0;">
-                                <i class="fas fa-users text-primary"></i> Admission Criteria
-                            </h5>
-                            <div style="background:var(--gray-100);padding:1rem 1.5rem;border-radius:12px;border-left:4px solid var(--primary);">
-                                <p style="font-size:0.9rem;color:var(--gray-700);margin:0.3rem 0;">
-                                    <strong>Certificate &amp; Diploma:</strong> KCSE with minimum grade depending on program
-                                </p>
-                                <p style="font-size:0.9rem;color:var(--gray-700);margin:0.3rem 0;">
-                                    <strong>Higher Diploma:</strong> Diploma/Bachelor's degree + 2 years experience
-                                </p>
-                                <p style="font-size:0.9rem;color:var(--gray-700);margin:0.3rem 0;">
-                                    <strong>Artisan Programs:</strong> Minimum D plain
-                                </p>
-                            </div>
-
-                            <h5 style="font-size:0.85rem;color:var(--gray-800);margin:0.8rem 0 0.3rem 0;">
-                                <i class="fas fa-coins text-primary"></i> Application Fees (Non-Refundable)
-                            </h5>
-                            <div style="overflow-x:auto;">
-                                <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
-                                    <thead>
-                                        <tr style="background:var(--primary);color:#fff;">
-                                            <th style="padding:0.6rem 1rem;text-align:left;">Program Category</th>
-                                            <th style="padding:0.6rem 1rem;text-align:left;">Fee (Ksh.)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr><td style="padding:0.6rem 1rem;border-bottom:1px solid var(--gray-200);">Certificate / Diploma</td><td style="padding:0.6rem 1rem;border-bottom:1px solid var(--gray-200);"><strong>3,000</strong></td></tr>
-                                        <tr style="background:var(--gray-50);"><td style="padding:0.6rem 1rem;border-bottom:1px solid var(--gray-200);">Higher Diploma</td><td style="padding:0.6rem 1rem;border-bottom:1px solid var(--gray-200);"><strong>3,000</strong></td></tr>
-                                        <tr><td style="padding:0.6rem 1rem;border-bottom:1px solid var(--gray-200);">Artisan Programs</td><td style="padding:0.6rem 1rem;border-bottom:1px solid var(--gray-200);"><strong>2,000</strong></td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <hr style="border:none;border-top:2px dashed var(--gray-200);margin:1.2rem 0;" />
-
-                        <!-- Christian Experience -->
-                        <div class="info-block">
-                            <h4><i class="fas fa-church"></i> Christian Experience</h4>
-                            <p style="font-size:0.9rem;color:var(--gray-700);">
-                                All applicants must complete a personal Christian experience statement (minimum <strong>400 words</strong>)
-                                and give an assessment of personal strengths and weaknesses.
-                            </p>
-                            <div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:1rem;margin:0.8rem 0;">
-                                <p style="font-size:0.85rem;color:var(--gray-700);">
-                                    <i class="fas fa-quote-left text-primary"></i> "Write about your spiritual journey and how your program choice at NCHSM will assist with your development."
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Core Values -->
-                        <div class="info-block">
-                            <h4><i class="fas fa-handshake"></i> Code of Conduct &amp; Core Values</h4>
-                            <ul>
-                                <li>Respect established administrative and academic procedures.</li>
-                                <li>Respect rights and privileges of all College members.</li>
-                                <li>Refrain from conduct that brings the College into disrepute.</li>
-                                <li>Refrain from posting offensive or abusive content online.</li>
-                                <li>Wear appropriate attire and be modest at all times.</li>
-                            </ul>
-                            <p style="font-size:0.8rem;color:var(--gray-400);margin-top:0.5rem;">
-                                <i class="fas fa-bible"></i> All classes begin with devotions and prayer based on the Holy Bible.
-                            </p>
-                        </div>
-
-                        <div class="text-center mt-1">
-                            <span style="display:inline-block;background:var(--primary-light);color:var(--primary);font-size:0.65rem;font-weight:600;padding:0.2rem 0.8rem;border-radius:40px;">
-                                <i class="fas fa-check-circle"></i> Accredited by TVET · ISO 9001:2024
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RIGHT: Auth Card -->
-                <div class="auth-wrapper">
-                    <div class="auth-header">
+            <!-- HEADER -->
+            <div class="header">
+                <div class="header-left">
+                    <div class="logo-wrapper">
                         <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" />
-                        <h2>NCHSM <span>Portal</span></h2>
-                        <p id="authSubtitle">Sign in to continue your application</p>
                     </div>
-
-                    <div class="auth-tabs">
-                        <button class="tab active" data-tab="login" onclick="switchAuthTab('login')">
-                            <i class="fas fa-sign-in-alt"></i> Sign In
-                        </button>
-                        <button class="tab" data-tab="register" onclick="switchAuthTab('register')">
-                            <i class="fas fa-user-plus"></i> Create Account
-                        </button>
+                    <div>
+                        <h1>NCHSM <span>Admission</span></h1>
+                        <span class="sub">Smart OCR Admission System</span>
                     </div>
-
-                    <!-- LOGIN -->
-                    <div class="auth-form active" id="loginForm">
-                        <div class="form-group">
-                            <label>Email Address <span class="required">*</span></label>
-                            <input type="email" id="loginEmail" placeholder="your@email.com" />
-                        </div>
-                        <div class="form-group">
-                            <label>Password <span class="required">*</span></label>
-                            <input type="password" id="loginPassword" placeholder="Enter your password" />
-                        </div>
-                        <button class="btn btn-primary" onclick="loginUser()">
-                            <i class="fas fa-sign-in-alt"></i> Sign In
-                        </button>
-                        <div id="loginMessage" class="auth-message"></div>
-                        <div class="auth-footer">
-                            <i class="fas fa-shield-alt"></i> Secured by NCHSM ICT
-                        </div>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <div class="avatar" id="userAvatar">U</div>
+                        <span class="email" id="userEmail">user@email.com</span>
                     </div>
+                    <button class="btn-logout" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                </div>
+            </div>
 
-                    <!-- REGISTER -->
-                    <div class="auth-form" id="registerForm">
-                        <div class="form-group">
-                            <label>Full Name <span class="required">*</span></label>
-                            <input type="text" id="regName" placeholder="John Mwangi" />
-                        </div>
-                        <div class="form-group">
-                            <label>Email Address <span class="required">*</span></label>
-                            <input type="email" id="regEmail" placeholder="your@email.com" />
-                            <div id="regEmailStatus" class="help-text"></div>
-                        </div>
-                        <div class="form-group">
-                            <label>Phone Number <span class="required">*</span></label>
-                            <input type="tel" id="regPhone" placeholder="07XXXXXXXX" />
-                        </div>
-                        <div class="form-group">
-                            <label>Role <span class="required">*</span></label>
-                            <div class="role-readonly">
-                                <i class="fas fa-user-graduate"></i> Student (only)
-                            </div>
-                            <input type="hidden" id="regRole" value="student" />
-                        </div>
-                        <div class="form-group">
-                            <label>Password <span class="required">*</span></label>
-                            <input type="password" id="regPassword" placeholder="Min 8 characters" />
-                            <div class="password-strength">
-                                <div class="strength-bar"><div class="bar" id="strengthBar"></div></div>
-                                <div class="strength-text" id="strengthText">Enter a password</div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Confirm Password <span class="required">*</span></label>
-                            <input type="password" id="regConfirmPassword" placeholder="Confirm your password" />
-                            <div class="password-match" id="passwordMatch"></div>
-                        </div>
-                        <button class="btn btn-primary" onclick="registerUser()">
-                            <i class="fas fa-user-plus"></i> Create Account
-                        </button>
-                        <div id="registerMessage" class="auth-message"></div>
-                        <div class="auth-footer">
-                            <i class="fas fa-check-circle" style="color:var(--primary);"></i> By registering you accept our terms
-                        </div>
+            <!-- BRAND AREA -->
+            <div class="brand-area">
+                <div class="logo-main">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" />
+                    <div>
+                        <div class="college-name">NAKURU COLLEGE OF <span>HEALTH SCIENCES</span> AND MANAGEMENT</div>
+                        <div class="tagline">Centre of Nursing &amp; Health Sciences Excellence · ISO 9001:2024</div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ============================================================ -->
-        <!-- PAGE: PROGRAMS -->
-        <!-- ============================================================ -->
-        <div class="page-content" id="page-programs">
-            <div style="background:#fff;border-radius:var(--radius);padding:2rem;box-shadow:var(--shadow);">
-                <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:0.5rem;">
-                    <i class="fas fa-book text-primary"></i> Our Programs
-                </h2>
-                <p style="color:var(--gray-500);margin-bottom:1.5rem;">Choose from our wide range of health sciences and management programs.</p>
-
-                <div class="programs-grid">
-                    <!-- Nursing Programs -->
-                    <div class="program-card">
-                        <div class="icon">🎓</div>
-                        <h3>KRCHN Nursing</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min C+</span>
-                            <span class="duration">3.5 years</span>
-                        </div>
-                        <p>Kenya Registered Community Health Nursing. Comprehensive nursing training with clinical placement.</p>
-                    </div>
-
-                    <div class="program-card">
-                        <div class="icon">🎓</div>
-                        <h3>DCHN Nursing</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min C</span>
-                            <span class="duration">3.5 years</span>
-                        </div>
-                        <p>Diploma in Community Health Nursing. Focus on community-based healthcare delivery.</p>
-                    </div>
-
-                    <!-- TVET Diploma -->
-                    <div class="program-card">
-                        <div class="icon">🎯</div>
-                        <h3>Perioperative Theatre Technology</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min C-</span>
-                            <span class="duration">2 years</span>
-                        </div>
-                        <p>Specialized training in operating room procedures and patient care during surgery.</p>
-                    </div>
-
-                    <div class="program-card">
-                        <div class="icon">🎯</div>
-                        <h3>Community Health</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min C-</span>
-                            <span class="duration">2 years</span>
-                        </div>
-                        <p>Community-based health promotion, disease prevention, and primary healthcare.</p>
-                    </div>
-
-                    <div class="program-card">
-                        <div class="icon">🎯</div>
-                        <h3>Health Records &amp; IT</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min C-</span>
-                            <span class="duration">2 years</span>
-                        </div>
-                        <p>Health information management, medical records, and healthcare IT systems.</p>
-                    </div>
-
-                    <div class="program-card">
-                        <div class="icon">🎯</div>
-                        <h3>Social Work</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min C-</span>
-                            <span class="duration">2 years</span>
-                        </div>
-                        <p>Social welfare, counseling, and community development services.</p>
-                    </div>
-
-                    <!-- TVET Certificate -->
-                    <div class="program-card">
-                        <div class="icon">📜</div>
-                        <h3>Patient Care</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min D</span>
-                            <span class="duration">1 year</span>
-                        </div>
-                        <p>Basic patient care, hygiene, and support services in healthcare settings.</p>
-                    </div>
-
-                    <div class="program-card">
-                        <div class="icon">📜</div>
-                        <h3>ICT Certificate</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min D+</span>
-                            <span class="duration">1 year</span>
-                        </div>
-                        <p>Information technology fundamentals and computer applications.</p>
-                    </div>
-
-                    <!-- Artisan -->
-                    <div class="program-card">
-                        <div class="icon">🔧</div>
-                        <h3>Artisan in Community Health</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min D</span>
-                            <span class="duration">6 months</span>
-                        </div>
-                        <p>Entry-level community health worker training.</p>
-                    </div>
-
-                    <!-- Other -->
-                    <div class="program-card">
-                        <div class="icon">📊</div>
-                        <h3>Computer Applications</h3>
-                        <div class="meta">
-                            <span class="badge-min">No Minimum</span>
-                            <span class="duration">3 months</span>
-                        </div>
-                        <p>Basic computer skills and office applications certification.</p>
-                    </div>
+            <!-- PROGRESS -->
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-step active" data-step="1">
+                    <span class="step-icon">👤</span>
+                    <span class="step-label">Personal</span>
+                </div>
+                <div class="progress-step" data-step="2">
+                    <span class="step-icon">🎓</span>
+                    <span class="step-label">Academic</span>
+                </div>
+                <div class="progress-step" data-step="3">
+                    <span class="step-icon">📁</span>
+                    <span class="step-label">Documents</span>
+                </div>
+                <div class="progress-step" data-step="4">
+                    <span class="step-icon">✅</span>
+                    <span class="step-label">Review</span>
                 </div>
             </div>
-        </div>
 
-        <!-- ============================================================ -->
-        <!-- PAGE: ENQUIRY -->
-        <!-- ============================================================ -->
-        <div class="page-content" id="page-enquiry">
-            <div style="background:#fff;border-radius:var(--radius);padding:2rem;box-shadow:var(--shadow);">
-                <div class="enquiry-container">
-                    <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:0.5rem;">
-                        <i class="fas fa-question-circle text-primary"></i> Enquiry Form
-                    </h2>
-                    <p style="color:var(--gray-500);margin-bottom:1.5rem;">Have questions? Send us a message and we'll get back to you within 24 hours.</p>
+            <!-- FORM -->
+            <form id="admissionForm" enctype="multipart/form-data" novalidate>
 
-                    <form onsubmit="handleEnquiry(event)">
+                <!-- STEP 1: PERSONAL -->
+                <div class="form-section active" data-section="1">
+                    <div class="section-title"><i class="fas fa-user-circle"></i> Personal Information</div>
+                    <div class="section-desc">Fill in your details accurately. Fields marked <span style="color:var(--danger);">*</span> are required.</div>
+
+                    <div class="two-columns">
                         <div class="form-group">
-                            <label>Full Name <span class="required">*</span></label>
-                            <input type="text" id="enquiryName" placeholder="Your full name" required />
+                            <label><i class="fas fa-user"></i> Full Name <span class="required">*</span></label>
+                            <input type="text" id="fullName" placeholder="e.g., John Mwangi" required />
                         </div>
                         <div class="form-group">
-                            <label>Email Address <span class="required">*</span></label>
-                            <input type="email" id="enquiryEmail" placeholder="your@email.com" required />
-                        </div>
-                        <div class="form-group">
-                            <label>Phone Number</label>
-                            <input type="tel" id="enquiryPhone" placeholder="07XXXXXXXX" />
-                        </div>
-                        <div class="form-group">
-                            <label>Subject <span class="required">*</span></label>
-                            <input type="text" id="enquirySubject" placeholder="What is this about?" required />
-                        </div>
-                        <div class="form-group">
-                            <label>Message <span class="required">*</span></label>
-                            <textarea id="enquiryMessage" placeholder="Write your message here..." required></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-paper-plane"></i> Send Enquiry
-                        </button>
-                        <div id="enquiryMessageStatus" class="auth-message"></div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- ============================================================ -->
-        <!-- PAGE: CREATE ACCOUNT (Full Admission Form) -->
-        <!-- ============================================================ -->
-        <div class="page-content" id="page-register">
-            <div class="admission-wrapper">
-                <!-- Header -->
-                <div class="header">
-                    <div class="header-left">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" />
-                        <div>
-                            <h1>NCHSM <span>Admission</span></h1>
-                            <span class="sub">Smart OCR Admission System</span>
-                        </div>
-                    </div>
-                    <div class="header-right">
-                        <div class="user-info" id="appUserInfo" style="display:none;">
-                            <div class="avatar" id="userAvatar">U</div>
-                            <span class="email" id="userEmail">user@email.com</span>
-                        </div>
-                        <button class="btn-logout" onclick="logoutUser()" style="display:none;" id="logoutBtn">
-                            <i class="fas fa-sign-out-alt"></i> Logout
-                        </button>
-                        <button class="btn btn-secondary" onclick="navigateTo('home')" style="width:auto;padding:0.4rem 1.2rem;">
-                            <i class="fas fa-arrow-left"></i> Back
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Progress -->
-                <div class="progress-bar" id="progressBar">
-                    <div class="progress-step active" data-step="1" onclick="goToStep(1)">
-                        <span class="step-icon">👤</span>
-                        <span class="step-label">Personal</span>
-                    </div>
-                    <div class="progress-step" data-step="2" onclick="goToStep(2)">
-                        <span class="step-icon">🎓</span>
-                        <span class="step-label">Academic</span>
-                    </div>
-                    <div class="progress-step" data-step="3" onclick="goToStep(3)">
-                        <span class="step-icon">📁</span>
-                        <span class="step-label">Documents</span>
-                    </div>
-                    <div class="progress-step" data-step="4" onclick="goToStep(4)">
-                        <span class="step-icon">✅</span>
-                        <span class="step-label">Review</span>
-                    </div>
-                </div>
-
-                <form id="admissionForm" enctype="multipart/form-data" novalidate>
-
-                    <!-- STEP 1: PERSONAL -->
-                    <div class="form-section active" data-section="1">
-                        <div class="section-title"><i class="fas fa-user-circle"></i> Personal Information</div>
-                        <div class="section-desc">Fill in your details accurately. Fields marked <span style="color:var(--danger);">*</span> are required.</div>
-
-                        <div class="two-columns">
-                            <div class="form-group">
-                                <label>Full Name <span class="required">*</span></label>
-                                <input type="text" id="fullName" placeholder="e.g., John Mwangi" required />
-                            </div>
-                            <div class="form-group">
-                                <label>Email Address <span class="required">*</span></label>
-                                <input type="email" id="email" placeholder="your@email.com" required />
-                            </div>
-                        </div>
-
-                        <div class="two-columns">
-                            <div class="form-group">
-                                <label>Phone <span class="required">*</span></label>
-                                <input type="tel" id="phone" placeholder="07XXXXXXXX" required />
-                            </div>
-                            <div class="form-group">
-                                <label>Alternative Phone</label>
-                                <input type="tel" id="altPhone" placeholder="Alternative contact" />
-                            </div>
-                        </div>
-
-                        <div class="two-columns">
-                            <div class="form-group">
-                                <label>National ID / Birth Certificate <span class="required">*</span></label>
-                                <input type="text" id="nationalId" placeholder="e.g., 12345678" required />
-                            </div>
-                            <div class="form-group">
-                                <label>Date of Birth <span class="required">*</span></label>
-                                <input type="date" id="dob" required />
-                            </div>
-                        </div>
-
-                        <div class="two-columns">
-                            <div class="form-group">
-                                <label>Gender <span class="required">*</span></label>
-                                <select id="gender" required>
-                                    <option value="">— Select —</option>
-                                    <option value="M">Male</option>
-                                    <option value="F">Female</option>
-                                    <option value="O">Other</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Physical Address</label>
-                                <input type="text" id="address" placeholder="Residential address" />
-                            </div>
-                        </div>
-
-                        <div class="two-columns">
-                            <div class="form-group">
-                                <label>Parent / Guardian</label>
-                                <input type="text" id="guardianName" placeholder="Parent or guardian full name" />
-                            </div>
-                            <div class="form-group">
-                                <label>Guardian Phone</label>
-                                <input type="tel" id="guardianPhone" placeholder="e.g., 07XXXXXXXX" />
-                            </div>
-                        </div>
-
-                        <div class="flex-row">
-                            <button type="button" class="btn btn-primary" onclick="goToStep(2)">Continue <i class="fas fa-arrow-right"></i></button>
-                            <button type="button" class="btn btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
+                            <label><i class="fas fa-envelope"></i> Email Address <span class="required">*</span></label>
+                            <input type="email" id="email" placeholder="your@email.com" required />
+                            <div class="email-status" id="emailStatus"></div>
                         </div>
                     </div>
 
-                    <!-- STEP 2: ACADEMIC -->
-                    <div class="form-section" data-section="2">
-                        <div class="section-title"><i class="fas fa-graduation-cap"></i> Academic & Program Selection</div>
-                        <div class="section-desc">Choose your program. The system will validate your KCSE results against the program criteria.</div>
-
+                    <div class="two-columns">
                         <div class="form-group">
-                            <label>Student Type <span class="required">*</span></label>
-                            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
-                                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
-                                    <input type="radio" name="studentType" value="new" checked onchange="toggleTransferFields()" /> New Student
-                                </label>
-                                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
-                                    <input type="radio" name="studentType" value="transfer" onchange="toggleTransferFields()" /> Transfer Student
-                                </label>
-                            </div>
+                            <label><i class="fas fa-phone"></i> Phone <span class="required">*</span></label>
+                            <input type="tel" id="phone" placeholder="07XXXXXXXX" required />
                         </div>
-
                         <div class="form-group">
-                            <label>Program of Study <span class="required">*</span></label>
-                            <select id="program" required>
-                                <option value="">— Select Program —</option>
-                                <optgroup label="🎓 Nursing Programs">
-                                    <option value="KRCHN">KRCHN Nursing (3.5 yrs) - Min C+</option>
-                                    <option value="DCHN">DCHN Nursing (3.5 yrs) - Min C</option>
-                                </optgroup>
-                                <optgroup label="🎯 TVET Diploma">
-                                    <option value="DPOTT">Perioperative Theatre Technology - Min C-</option>
-                                    <option value="DCH">Community Health - Min C-</option>
-                                    <option value="DHRIT">Health Records &amp; IT - Min C-</option>
-                                    <option value="DSW">Social Work - Min C-</option>
-                                    <option value="DICT">ICT - Min C-</option>
-                                </optgroup>
-                                <optgroup label="📜 TVET Certificate">
-                                    <option value="CPC">Patient Care - Min D</option>
-                                    <option value="CICT">ICT - Min D+</option>
-                                    <option value="CCG">Caregiver - Min D</option>
-                                </optgroup>
-                                <optgroup label="🔧 Artisan Programs">
-                                    <option value="ACH">Community Health - Min D</option>
-                                    <option value="ASW">Social Work - Min D</option>
-                                </optgroup>
+                            <label><i class="fas fa-phone-alt"></i> Alternative Phone</label>
+                            <input type="tel" id="altPhone" placeholder="Alternative contact" />
+                        </div>
+                    </div>
+
+                    <div class="two-columns">
+                        <div class="form-group">
+                            <label><i class="fas fa-id-card"></i> National ID / Birth Certificate <span class="required">*</span></label>
+                            <input type="text" id="nationalId" placeholder="e.g., 12345678" required />
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-alt"></i> Date of Birth <span class="required">*</span></label>
+                            <input type="date" id="dob" required />
+                        </div>
+                    </div>
+
+                    <div class="two-columns">
+                        <div class="form-group">
+                            <label><i class="fas fa-venus-mars"></i> Gender <span class="required">*</span></label>
+                            <select id="gender" required>
+                                <option value="">— Select —</option>
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
                             </select>
                         </div>
-
-                        <div id="transferFields" style="display:none;background:var(--gray-50);padding:1rem;border-radius:12px;margin:0.5rem 0;">
-                            <div class="two-columns">
-                                <div class="form-group">
-                                    <label>Previous Institution <span class="required">*</span></label>
-                                    <input type="text" id="prevInstitution" placeholder="Name of previous institution" />
-                                </div>
-                                <div class="form-group">
-                                    <label>Previous Year of Study <span class="required">*</span></label>
-                                    <input type="text" id="prevYear" placeholder="e.g., Year 2" />
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Reason for Transfer</label>
-                                <input type="text" id="transferReason" placeholder="Briefly explain why you are transferring..." />
-                            </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-map-pin"></i> Physical Address</label>
+                            <input type="text" id="address" placeholder="Residential address" />
                         </div>
+                    </div>
 
+                    <div class="two-columns">
+                        <div class="form-group">
+                            <label><i class="fas fa-user-friends"></i> Parent / Guardian</label>
+                            <input type="text" id="guardianName" placeholder="Parent or guardian full name" />
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-phone"></i> Guardian Phone</label>
+                            <input type="tel" id="guardianPhone" placeholder="e.g., 07XXXXXXXX" />
+                        </div>
+                    </div>
+
+                    <!-- Emergency Contact -->
+                    <div class="emergency-section">
+                        <div class="emergency-header">
+                            <i class="fas fa-ambulance"></i> Emergency Contact
+                        </div>
                         <div class="two-columns">
                             <div class="form-group">
-                                <label>Intake Month <span class="required">*</span></label>
-                                <select id="intakeMonth">
-                                    <option value="01">January</option>
-                                    <option value="03" selected>March</option>
-                                    <option value="05">May</option>
-                                    <option value="07">July</option>
-                                    <option value="09">September</option>
-                                    <option value="11">November</option>
-                                </select>
+                                <label>Emergency Contact Name</label>
+                                <input type="text" id="emergencyName" placeholder="Full name" />
                             </div>
                             <div class="form-group">
-                                <label>Intake Year <span class="required">*</span></label>
-                                <select id="intakeYear">
-                                    <option value="2025">2025</option>
-                                    <option value="2026" selected>2026</option>
-                                    <option value="2027">2027</option>
-                                </select>
+                                <label>Emergency Contact Phone</label>
+                                <input type="tel" id="emergencyPhone" placeholder="07XXXXXXXX" />
                             </div>
                         </div>
-
-                        <div class="flex-row">
-                            <button type="button" class="btn btn-secondary" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Back</button>
-                            <button type="button" class="btn btn-primary" onclick="goToStep(3)">Next <i class="fas fa-arrow-right"></i></button>
-                        </div>
-                    </div>
-
-                    <!-- STEP 3: DOCUMENTS -->
-                    <div class="form-section" data-section="3">
-                        <div class="section-title"><i class="fas fa-file-upload"></i> Document Upload</div>
-                        <div class="section-desc">Upload your documents. Supports JPG, PNG, and PDF.</div>
-
-                        <div class="documents-grid">
-                            <div class="doc-card">
-                                <div class="doc-icon">📄</div>
-                                <div class="doc-name">KCSE Certificate <span style="color:var(--danger);">*</span></div>
-                                <div class="doc-status" id="doc_kcse_status">Not uploaded</div>
-                                <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="updateDocStatus(this, 'doc_kcse_status')" />
-                            </div>
-                            <div class="doc-card">
-                                <div class="doc-icon">🪪</div>
-                                <div class="doc-name">National ID <span style="color:var(--danger);">*</span></div>
-                                <div class="doc-status" id="doc_id_status">Not uploaded</div>
-                                <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="updateDocStatus(this, 'doc_id_status')" />
-                            </div>
-                            <div class="doc-card">
-                                <div class="doc-icon">📝</div>
-                                <div class="doc-name">Recommendation Letter <span style="color:var(--danger);">*</span></div>
-                                <div class="doc-status" id="doc_rec_status">Not uploaded</div>
-                                <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="updateDocStatus(this, 'doc_rec_status')" />
-                            </div>
-                            <div class="doc-card">
-                                <div class="doc-icon">📊</div>
-                                <div class="doc-name">Academic Transcript <span style="color:var(--gray-400);">(Transfer only)</span></div>
-                                <div class="doc-status" id="doc_transcript_status">Not uploaded</div>
-                                <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="updateDocStatus(this, 'doc_transcript_status')" />
-                            </div>
-                            <div class="doc-card">
-                                <div class="doc-icon">📎</div>
-                                <div class="doc-name">Other Documents</div>
-                                <div class="doc-status" id="doc_other_status">Not uploaded</div>
-                                <input type="file" accept=".pdf,.jpg,.png,.jpeg" onchange="updateDocStatus(this, 'doc_other_status')" />
-                            </div>
-                        </div>
-
-                        <div class="flex-row">
-                            <button type="button" class="btn btn-secondary" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Back</button>
-                            <button type="button" class="btn btn-primary" onclick="goToStep(4)">Review <i class="fas fa-arrow-right"></i></button>
+                        <div class="form-group">
+                            <label>Relationship</label>
+                            <select id="emergencyRelation">
+                                <option value="">— Select —</option>
+                                <option value="father">Father</option>
+                                <option value="mother">Mother</option>
+                                <option value="spouse">Spouse</option>
+                                <option value="sibling">Sibling</option>
+                                <option value="guardian">Guardian</option>
+                                <option value="other">Other</option>
+                            </select>
                         </div>
                     </div>
 
-                    <!-- STEP 4: REVIEW -->
-                    <div class="form-section" data-section="4">
-                        <div class="section-title"><i class="fas fa-clipboard-check"></i> Review & Submit</div>
-                        <div class="section-desc">Verify all details before submitting your application.</div>
+                    <div class="form-group">
+                        <label><i class="fas fa-bullhorn"></i> How did you hear about NCHSM?</label>
+                        <select id="hearAbout">
+                            <option value="">— Select —</option>
+                            <option value="social_media">Social Media</option>
+                            <option value="friend">Friend / Family</option>
+                            <option value="school_visit">School Visit</option>
+                            <option value="radio">Radio</option>
+                            <option value="newspaper">Newspaper</option>
+                            <option value="online_ad">Online Advertisement</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
 
-                        <div class="summary-box">
-                            <h4><i class="fas fa-file-alt"></i> Application Summary</h4>
-                            <div class="summary-grid">
-                                <p><strong>Name:</strong> <span id="sumName">—</span></p>
-                                <p><strong>Email:</strong> <span id="sumEmail">—</span></p>
-                                <p><strong>Phone:</strong> <span id="sumPhone">—</span></p>
-                                <p><strong>Program:</strong> <span id="sumProgram">—</span></p>
-                                <p><strong>Student Type:</strong> <span id="sumStudentType">—</span></p>
-                                <p><strong>Intake:</strong> <span id="sumIntake">—</span></p>
-                                <p><strong>Documents:</strong> <span id="sumDocs">0 uploaded</span></p>
+                    <div class="flex-row">
+                        <button type="button" class="btn btn-primary" onclick="goToStep(2)">Continue <i class="fas fa-arrow-right"></i></button>
+                        <button type="button" class="btn btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: ACADEMIC -->
+                <div class="form-section" data-section="2">
+                    <div class="section-title"><i class="fas fa-graduation-cap"></i> Academic & Program Selection</div>
+                    <div class="section-desc">Choose your program. The system will validate your KCSE results against the program criteria.</div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-users"></i> Student Type <span class="required">*</span></label>
+                        <div class="student-type-selector">
+                            <div class="student-type-card selected" data-type="new" onclick="selectType('new')">
+                                <input type="radio" name="studentType" value="new" checked />
+                                <span class="type-icon">✨</span>
+                                <div class="type-name">New Student</div>
+                                <div class="type-desc">First time applicant</div>
+                            </div>
+                            <div class="student-type-card" data-type="transfer" onclick="selectType('transfer')">
+                                <input type="radio" name="studentType" value="transfer" />
+                                <span class="type-icon">🔄</span>
+                                <div class="type-name">Transfer Student</div>
+                                <div class="type-desc">From another institution</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-book"></i> Program of Study <span class="required">*</span></label>
+                        <select id="program" required onchange="updateProgramDesc(); updateCriteria();">
+                            <option value="">— Select Program —</option>
+                            <optgroup label="🎓 Nursing Programs">
+                                <option value="KRCHN">KRCHN Nursing (3.5 yrs) - Min C+</option>
+                                <option value="DCHN">DCHN Nursing (3.5 yrs) - Min C</option>
+                            </optgroup>
+                            <optgroup label="🎯 TVET Diploma">
+                                <option value="DPOTT">Diploma in Perioperative Theatre Technology - Min C-</option>
+                                <option value="DCH">Diploma in Community Health - Min C-</option>
+                                <option value="DHRIT">Diploma in Health Records &amp; IT - Min C-</option>
+                                <option value="DSL">Diploma in Science Lab - Min C-</option>
+                                <option value="DSW">Diploma in Social Work - Min C-</option>
+                                <option value="DCJS">Diploma in Criminal Justice - Min C-</option>
+                                <option value="DHSS">Diploma in Health Support Services - Min C-</option>
+                                <option value="DICT">Diploma in ICT - Min C-</option>
+                                <option value="DME">Diploma in Medical Engineering - Min C</option>
+                            </optgroup>
+                            <optgroup label="📜 TVET Certificate">
+                                <option value="CPOTT">Certificate in Perioperative Theatre Technology - Min D+</option>
+                                <option value="CCH">Certificate in Community Health - Min D+</option>
+                                <option value="CHRIT">Certificate in Health Records &amp; IT - Min D+</option>
+                                <option value="CPC">Certificate in Patient Care - Min D</option>
+                                <option value="CSL">Certificate in Science Lab - Min D+</option>
+                                <option value="CSW">Certificate in Social Work - Min D+</option>
+                                <option value="CCJS">Certificate in Criminal Justice - Min D+</option>
+                                <option value="CAG">Certificate in Agriculture - Min D</option>
+                                <option value="CHSS">Certificate in Health Support Services - Min D+</option>
+                                <option value="CICT">Certificate in ICT - Min D+</option>
+                                <option value="CCG">Certificate in Caregiver - Min D</option>
+                                <option value="COMT">Certificate in Orthopedic Trauma Medicine - Min D+</option>
+                            </optgroup>
+                            <optgroup label="🔧 Artisan Programs">
+                                <option value="ACH">Artisan in Community Health - Min D</option>
+                                <option value="AAG">Artisan in Agriculture - Min D</option>
+                                <option value="ASW">Artisan in Social Work - Min D</option>
+                            </optgroup>
+                            <optgroup label="📊 Other">
+                                <option value="CCA">Certificate in Computer Applications - No minimum</option>
+                                <option value="PTE">TVET/CDACC (PTE) - No minimum</option>
+                            </optgroup>
+                        </select>
+                        <div class="program-desc-box" id="programDesc">Select a program to see details</div>
+                    </div>
+
+                    <div class="criteria-box" id="criteriaBox">
+                        <div class="criteria-title"><i class="fas fa-clipboard-list"></i> Admission Criteria</div>
+                        <div id="criteriaContent">
+                            <div class="criteria-item"><span class="criterion">Minimum Grade Required</span><span class="requirement">—</span></div>
+                            <div class="criteria-item"><span class="criterion">Subject Requirements</span><span class="requirement">English, Mathematics, Biology</span></div>
+                        </div>
+                    </div>
+
+                    <div class="two-columns">
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-alt"></i> Intake Month <span class="required">*</span></label>
+                            <select id="intakeMonth" required onchange="updateIntakePreview()">
+                                <option value="01">January</option>
+                                <option value="02">February</option>
+                                <option value="03" selected>March</option>
+                                <option value="04">April</option>
+                                <option value="05">May</option>
+                                <option value="06">June</option>
+                                <option value="07">July</option>
+                                <option value="08">August</option>
+                                <option value="09">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-alt"></i> Intake Year <span class="required">*</span></label>
+                            <select id="intakeYear" required onchange="updateIntakePreview()">
+                                <option value="2025">2025</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2027">2027</option>
+                                <option value="2028">2028</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="intake-preview" id="intakePreview">📅 Intake: March 2026</div>
+
+                    <div id="prevEducation" style="display:none;margin-top:1rem;">
+                        <div class="two-columns">
+                            <div class="form-group">
+                                <label><i class="fas fa-university"></i> Previous Institution <span class="required">*</span></label>
+                                <input type="text" id="prevInstitution" placeholder="Name of previous institution" />
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-calendar"></i> Previous Year of Study <span class="required">*</span></label>
+                                <input type="text" id="prevYear" placeholder="e.g., Year 2" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-file-alt"></i> Reason for Transfer</label>
+                            <textarea id="transferReason" rows="2" placeholder="Briefly explain why you are transferring..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex-row">
+                        <button type="button" class="btn btn-secondary" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button type="button" class="btn btn-primary" onclick="goToStep(3)">Next <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: DOCUMENTS -->
+                <div class="form-section" data-section="3">
+                    <div class="section-title"><i class="fas fa-file-upload"></i> Document Upload &amp; Scanning</div>
+                    <div class="section-desc" id="docSectionDesc">Upload your documents. The system will automatically scan and extract data. Supports JPG, PNG, and PDF.</div>
+
+                    <div class="documents-grid" id="documentsGrid">
+                        <!-- KCSE -->
+                        <div class="doc-card" id="doc_kcse">
+                            <div class="scanning-overlay" id="scanning_kcse">
+                                <div class="spinner"></div>
+                                <div class="scan-text">🔍 Scanning document...</div>
+                            </div>
+                            <div class="doc-icon">📄</div>
+                            <div class="doc-name">KCSE Certificate / Results Slip <span style="color:var(--danger);">*</span></div>
+                            <span class="doc-required-badge required">REQUIRED</span>
+                            <div class="doc-status" id="doc_kcse_status">Not uploaded</div>
+                            <div class="doc-badge">✓</div>
+                            <div class="doc-remove" onclick="removeDocument('kcse')">✕ Remove</div>
+                            <input type="file" id="doc_kcse_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleKCSEDocument(event)" />
+                            <div class="doc-file-name" id="doc_kcse_filename"></div>
+                            <div class="ocr-status" id="ocr_kcse_status"></div>
+                            <div class="ocr-result-box" id="ocr_kcse_result">
+                                <div class="ocr-title"><i class="fas fa-robot"></i> Extracted Data</div>
+                                <div class="extracted-data" id="kcse_extracted_data"></div>
+                                <div id="kcse_validation_result"></div>
                             </div>
                         </div>
 
-                        <div class="terms-container">
-                            <input type="checkbox" id="termsCheck" required />
-                            <label for="termsCheck">
-                                I confirm that all information provided is accurate and I have read the
-                                <a href="#" onclick="alert('📋 Terms & Conditions (Full version available)');return false;">Terms &amp; Conditions</a>.
-                                I consent to the processing of my data for admission purposes.
-                            </label>
+                        <!-- ID -->
+                        <div class="doc-card" id="doc_id">
+                            <div class="scanning-overlay" id="scanning_id">
+                                <div class="spinner"></div>
+                                <div class="scan-text">🔍 Scanning ID...</div>
+                            </div>
+                            <div class="doc-icon">🪪</div>
+                            <div class="doc-name">National ID / Birth Certificate <span style="color:var(--danger);">*</span></div>
+                            <span class="doc-required-badge required">REQUIRED</span>
+                            <div class="doc-status" id="doc_id_status">Not uploaded</div>
+                            <div class="doc-badge">✓</div>
+                            <div class="doc-remove" onclick="removeDocument('id')">✕ Remove</div>
+                            <input type="file" id="doc_id_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleIDDocument(event)" />
+                            <div class="doc-file-name" id="doc_id_filename"></div>
+                            <div class="ocr-status" id="ocr_id_status"></div>
+                            <div class="ocr-result-box" id="ocr_id_result">
+                                <div class="ocr-title"><i class="fas fa-robot"></i> Extracted Data</div>
+                                <div class="extracted-data" id="id_extracted_data"></div>
+                            </div>
                         </div>
 
-                        <button type="button" class="btn btn-primary" onclick="submitApplication()">
-                            <i class="fas fa-paper-plane"></i> Submit Application
-                        </button>
-
-                        <div class="flex-row">
-                            <button type="button" class="btn btn-secondary" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Back</button>
-                            <button type="button" class="btn btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
+                        <!-- Recommendation Letter -->
+                        <div class="doc-card" id="doc_recommendation">
+                            <div class="doc-icon">📝</div>
+                            <div class="doc-name">Recommendation Letter <span style="color:var(--danger);">*</span></div>
+                            <span class="doc-required-badge required">REQUIRED</span>
+                            <div class="doc-status" id="doc_recommendation_status">Not uploaded</div>
+                            <div class="doc-badge">✓</div>
+                            <div class="doc-remove" onclick="removeDocument('recommendation')">✕ Remove</div>
+                            <input type="file" id="doc_recommendation_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'recommendation')" />
+                            <div class="doc-file-name" id="doc_recommendation_filename"></div>
                         </div>
 
-                        <div id="submitMessage" class="auth-message"></div>
+                        <!-- Academic Transcript (Transfer only) -->
+                        <div class="doc-card" id="doc_transcript" style="display:none;">
+                            <div class="doc-icon">📊</div>
+                            <div class="doc-name">Academic Transcript <span style="color:var(--danger);">*</span></div>
+                            <span class="doc-required-badge transfer">TRANSFER STUDENTS ONLY</span>
+                            <div class="doc-status" id="doc_transcript_status">Not uploaded</div>
+                            <div class="doc-badge">✓</div>
+                            <div class="doc-remove" onclick="removeDocument('transcript')">✕ Remove</div>
+                            <input type="file" id="doc_transcript_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'transcript')" />
+                            <div class="doc-file-name" id="doc_transcript_filename"></div>
+                        </div>
+
+                        <!-- Other Documents -->
+                        <div class="doc-card" id="doc_other">
+                            <div class="doc-icon">📎</div>
+                            <div class="doc-name">Other Supporting Documents</div>
+                            <span class="doc-required-badge optional">OPTIONAL</span>
+                            <div class="doc-status" id="doc_other_status">Not uploaded</div>
+                            <div class="doc-badge">✓</div>
+                            <div class="doc-remove" onclick="removeDocument('other')">✕ Remove</div>
+                            <input type="file" id="doc_other_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'other')" />
+                            <div class="doc-file-name" id="doc_other_filename"></div>
+                        </div>
                     </div>
-                </form>
+
+                    <div class="help-text" style="text-align:center;margin:8px 0;">
+                        <i class="fas fa-info-circle"></i>
+                        <span id="docRequirementsText">KCSE certificate will be scanned to extract: Student Name, Index Number, Grades, and Subjects</span>
+                    </div>
+
+                    <div class="flex-row">
+                        <button type="button" class="btn btn-secondary" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button type="button" class="btn btn-primary" onclick="goToStep(4)">Review <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- STEP 4: REVIEW -->
+                <div class="form-section" data-section="4">
+                    <div class="section-title"><i class="fas fa-clipboard-check"></i> Review & Submit</div>
+                    <div class="section-desc">Verify all details. The system has validated your documents against program criteria.</div>
+
+                    <div class="summary-box">
+                        <h4><i class="fas fa-file-alt"></i> Application Summary</h4>
+                        <div class="summary-grid">
+                            <p><strong>Name:</strong> <span id="sumName">—</span></p>
+                            <p><strong>Email:</strong> <span id="sumEmail">—</span></p>
+                            <p><strong>Phone:</strong> <span id="sumPhone">—</span></p>
+                            <p><strong>Program:</strong> <span id="sumProgram">—</span></p>
+                            <p><strong>Student Type:</strong> <span id="sumStudentType">—</span></p>
+                            <p><strong>Intake:</strong> <span id="sumIntake">—</span></p>
+                            <p><strong>Documents:</strong> <span id="sumDocs">0 uploaded</span></p>
+                            <p><strong>KCSE Validation:</strong> <span id="sumValidation">Pending</span></p>
+                            <p><strong>Eligibility:</strong> <span id="sumEligibility">Pending</span></p>
+                        </div>
+                    </div>
+
+                    <div class="terms-container">
+                        <input type="checkbox" id="termsCheck" required />
+                        <label for="termsCheck">
+                            I confirm that all information provided is accurate and I have read the
+                            <a href="#" onclick="alert('📋 Terms & Conditions (Full version available)');return false;">Terms &amp; Conditions</a>.
+                            I consent to the processing of my data for admission purposes.
+                        </label>
+                    </div>
+
+                    <button type="button" id="submitBtn" class="btn btn-primary submit-btn" onclick="submitAdmission()">
+                        <i class="fas fa-paper-plane"></i> Submit Application
+                    </button>
+
+                    <div class="flex-row">
+                        <button type="button" class="btn btn-secondary" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button type="button" class="btn btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
+                    </div>
+
+                    <div id="message" class="message"></div>
+                </div>
+            </form>
+
+            <div class="footer">
+                <i class="fas fa-shield-alt"></i> Secured by NCHSM ICT · v5.0 · <span id="currentYear"></span>
             </div>
         </div>
-
-        <!-- ============================================================ -->
-        <!-- PAGE: LOGIN (Redirects to Home with login tab active) -->
-        <!-- ============================================================ -->
-        <div class="page-content" id="page-login">
-            <div style="text-align:center;padding:4rem 0;">
-                <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
-                <p style="margin-top:1rem;color:var(--gray-500);">Redirecting to login...</p>
-            </div>
-        </div>
-
-        <!-- ============================================================ -->
-        <!-- FOOTER -->
-        <!-- ============================================================ -->
-        <div class="footer">
-            <i class="fas fa-shield-alt"></i> Secured by NCHSM ICT · v5.0 · <span id="currentYear"></span>
-            <br>
-            <span style="font-size:0.7rem;">© Copyright 2026. All rights reserved by Nakuru College of Health Sciences and Management</span>
-        </div>
-
     </div>
 
     <!-- ============================================================ -->
-    <!-- SUCCESS OVERLAY -->
+    <!-- MODALS -->
     <!-- ============================================================ -->
+    <div class="modal-overlay" id="validationModal">
+        <div class="modal-content">
+            <div class="modal-icon">⚠️</div>
+            <h3 id="modalTitle">Cannot Proceed</h3>
+            <p class="modal-sub" id="modalSub">Please fix the following issues:</p>
+            <ul class="error-list" id="errorList"></ul>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="closeValidation()">Go Back &amp; Fix</button>
+                <button class="btn btn-secondary" onclick="closeValidation()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <div class="success-overlay" id="successOverlay">
         <div class="success-card">
             <div class="check-circle">🎉</div>
@@ -761,7 +589,7 @@
                 <span>👨‍⚖️ Admissions Review</span>
                 <span>📜 Decision</span>
             </div>
-            <button class="btn btn-primary" onclick="document.getElementById('successOverlay').classList.remove('show')">Done</button>
+            <button class="btn btn-success" onclick="window.location.reload();">Done</button>
             <p style="font-size:0.7rem;color:var(--gray-400);margin-top:10px;">You will receive email updates at each stage.</p>
         </div>
     </div>
