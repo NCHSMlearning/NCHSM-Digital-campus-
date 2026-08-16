@@ -1,6 +1,6 @@
 // ================================================================
 // ADMISSIONS.JS - Complete Application Logic
-// FIXED FLOW: Apply Now → Register → Application → Admin Approval → Profile Insert
+// FIXED FLOW: Apply Now → Register → Login → Application → Admin Approval → Profile Insert
 // ================================================================
 
 // ================================================================
@@ -34,36 +34,17 @@ const courseData = {
     healthcare: [
         { code: 'CNA', name: 'Certificate in Nursing Assistant (CNA)', duration: '6 Months', grade: 'D-', school: 'School of Healthcare Assistant' },
         { code: 'ACG', name: 'Artisan in Caregiver', duration: '2 Modules', grade: 'D-', school: 'School of Healthcare Assistant' },
-        { code: 'HSS', name: 'Certificate in Health Services Support (Level 5)', duration: '4 Modules', grade: 'D Plain', school: 'School of Healthcare Assistant' },
-        { code: 'HBC', name: 'Craft in Homebased Care Level 3', duration: '2 Modules', grade: 'D Plain', school: 'School of Healthcare Assistant' },
-        { code: 'HSSM', name: 'Health Systems Support Management (Level 6)', duration: '6 Modules', grade: 'C-', school: 'School of Healthcare Assistant' }
+        { code: 'HSS', name: 'Certificate in Health Services Support (Level 5)', duration: '4 Modules', grade: 'D Plain', school: 'School of Healthcare Assistant' }
     ],
     health_social: [
         { code: 'DPOTT', name: 'Diploma in Perioperative Theatre Technology (Level 6)', duration: '6 Modules', grade: 'C Plain', school: 'School of Health, Social & Applied Sciences' },
         { code: 'CPOTT', name: 'Certificate in Perioperative Theatre Technology (Level 5)', duration: '4 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
         { code: 'DCH', name: 'Diploma in Community Health (Level 6)', duration: '7 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'CCH', name: 'Certificate in Community Health (Level 5)', duration: '4 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'DSW', name: 'Diploma in Social Work & Community Devt (Level 6)', duration: '5 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'CSW', name: 'Certificate in Social Work & Community Devt (Level 5)', duration: '3 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'DHRIT', name: 'Diploma in Health Records & IT (Level 6)', duration: '7 Modules', grade: 'C Plain', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'CHRIT', name: 'Certificate in Health Records & IT (Level 5)', duration: '4 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'DOTM', name: 'Diploma in Orthopedic & Trauma Medicine (Level 6)', duration: '6 Modules', grade: 'C Plain', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'COTM', name: 'Certificate in Orthopedic & Trauma Medicine (Level 5)', duration: '4 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'DBME', name: 'Diploma in Bio-Medical Engineering (Level 6)', duration: '7 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'CBME', name: 'Certificate in Bio-Medical Engineering (Level 5)', duration: '4 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'DSL', name: 'Diploma in Science Laboratory (Level 6)', duration: '5 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
-        { code: 'CSL', name: 'Certificate in Science Laboratory (Level 5)', duration: '3 Modules', grade: 'D Plain', school: 'School of Health, Social & Applied Sciences' }
+        { code: 'CCH', name: 'Certificate in Community Health (Level 5)', duration: '4 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' }
     ],
     ict: [
         { code: 'DICT', name: 'Diploma in Information Communication Technology', duration: '6 Modules', grade: 'C-', school: 'School of ICT' },
-        { code: 'CICT', name: 'Certificate in Information Communication Technology', duration: '4 Modules', grade: 'D Plain', school: 'School of ICT' },
-        { code: 'DCP', name: 'Diploma in Computer Programming', duration: '6 Modules', grade: 'C-', school: 'School of ICT' },
-        { code: 'DCSec', name: 'Diploma in Cyber Security (Level 6)', duration: '6 Modules', grade: 'C-', school: 'School of ICT' }
-    ],
-    ict_short: [
-        { code: 'CCA', name: 'Certificate in Computer Applications', duration: '1 Month', grade: 'Open', school: 'ICT Short Courses' },
-        { code: 'CGD', name: 'Certificate in Graphic Design', duration: '3 Months', grade: 'D-', school: 'ICT Short Courses' },
-        { code: 'CDM', name: 'Certificate in Digital Marketing', duration: '2 Months', grade: 'Open', school: 'ICT Short Courses' }
+        { code: 'CICT', name: 'Certificate in Information Communication Technology', duration: '4 Modules', grade: 'D Plain', school: 'School of ICT' }
     ]
 };
 
@@ -90,17 +71,6 @@ function navigateTo(page) {
     const navLink = document.querySelector(`.nav-item[data-page="${page}"]`);
     if (navLink) navLink.classList.add('active');
 
-    // When clicking Apply Now, go to register page
-    if (page === 'register') {
-        // Show registration form
-        const registerForm = document.getElementById('registerForm');
-        if (registerForm) {
-            registerForm.classList.add('active');
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) loginForm.classList.remove('active');
-        }
-    }
-
     if (page === 'login') {
         setTimeout(() => {
             navigateTo('home');
@@ -112,12 +82,12 @@ function navigateTo(page) {
 }
 
 // ================================================================
-// AUTH TABS
+// AUTH TABS (Home Page)
 // ================================================================
 function switchAuthTab(tab) {
-    const tabs = document.querySelectorAll('.tab');
+    const tabs = document.querySelectorAll('.auth-tabs .tab');
     tabs.forEach(t => t.classList.remove('active'));
-    const activeTab = document.querySelector(`.tab[data-tab="${tab}"]`);
+    const activeTab = document.querySelector(`.auth-tabs .tab[data-tab="${tab}"]`);
     if (activeTab) activeTab.classList.add('active');
 
     const loginForm = document.getElementById('loginForm');
@@ -142,120 +112,23 @@ function switchAuthTab(tab) {
 }
 
 // ================================================================
-// PASSWORD STRENGTH
+// AUTH TABS (Application Page - Login Only)
 // ================================================================
-document.addEventListener('DOMContentLoaded', function() {
-    const pwdInput = document.getElementById('regPassword');
-    const confirmInput = document.getElementById('regConfirmPassword');
+function switchAuthTab2(tab) {
+    const tabs = document.querySelectorAll('#authContainer2 .tab');
+    tabs.forEach(t => t.classList.remove('active'));
+    const activeTab = document.querySelector(`#authContainer2 .tab[data-tab="${tab}"]`);
+    if (activeTab) activeTab.classList.add('active');
 
-    if (pwdInput) {
-        pwdInput.addEventListener('input', function() {
-            const val = this.value;
-            let strength = 0;
-            if (val.length >= 8) strength += 1;
-            if (/[a-z]/.test(val) && /[A-Z]/.test(val)) strength += 1;
-            if (/\d/.test(val)) strength += 1;
-            if (/[^a-zA-Z0-9]/.test(val)) strength += 1;
+    const loginForm = document.getElementById('loginForm2');
+    if (loginForm) loginForm.classList.add('active');
 
-            const percent = Math.min(strength * 25, 100);
-            const strengthBar = document.getElementById('strengthBar');
-            if (strengthBar) {
-                strengthBar.style.width = percent + '%';
-                let color = '#dc2626';
-                if (strength >= 4) color = '#0f7b3a';
-                else if (strength === 3) color = '#eab308';
-                else if (strength === 2) color = '#f59e0b';
-                strengthBar.style.background = color;
-            }
-            const strengthText = document.getElementById('strengthText');
-            if (strengthText) {
-                let label = 'Weak';
-                if (strength >= 4) label = 'Strong';
-                else if (strength === 3) label = 'Good';
-                else if (strength === 2) label = 'Fair';
-                strengthText.textContent = val.length === 0 ? 'Enter a password' : `${label} (${val.length} chars)`;
-            }
-            checkMatch();
-        });
-
-        confirmInput.addEventListener('input', checkMatch);
-    }
-
-    function checkMatch() {
-        const p = pwdInput ? pwdInput.value : '';
-        const c = confirmInput ? confirmInput.value : '';
-        const matchDiv = document.getElementById('passwordMatch');
-        if (!matchDiv) return;
-        if (c.length === 0) { matchDiv.textContent = ''; return; }
-        if (p === c) {
-            matchDiv.textContent = '✅ Passwords match';
-            matchDiv.style.color = '#0f7b3a';
-        } else {
-            matchDiv.textContent = '❌ Passwords do not match';
-            matchDiv.style.color = '#dc2626';
-        }
-    }
-
-    // Email availability check
-    const regEmail = document.getElementById('regEmail');
-    if (regEmail) {
-        regEmail.addEventListener('input', function() {
-            const status = document.getElementById('regEmailStatus');
-            if (!status) return;
-            const email = this.value.trim();
-            if (email.length === 0) { status.textContent = ''; status.className = 'help-text'; return; }
-            if (!email.includes('@') || !email.includes('.')) {
-                status.textContent = '⚠️ Please enter a valid email';
-                status.className = 'help-text error-text';
-                return;
-            }
-            status.textContent = '✅ Email format valid';
-            status.className = 'help-text success-text';
-        });
-    }
-
-    // Word count for Christian Experience
-    const expTextarea = document.getElementById('christianExperience');
-    if (expTextarea) {
-        expTextarea.addEventListener('input', function() {
-            const words = this.value.trim() ? this.value.trim().split(/\s+/).length : 0;
-            const wordCountEl = document.getElementById('wordCount');
-            if (wordCountEl) {
-                wordCountEl.textContent = `Words: ${words} (Minimum 400 required)`;
-                wordCountEl.className = `word-count ${words >= 400 ? 'valid' : 'invalid'}`;
-            }
-        });
-    }
-
-    // Course selector
-    const schoolSelect = document.getElementById('school');
-    if (schoolSelect) {
-        schoolSelect.addEventListener('change', updatePrograms);
-    }
-});
-
-function updatePrograms() {
-    const school = document.getElementById('school');
-    const programSelect = document.getElementById('program');
-    if (!school || !programSelect) return;
-    
-    const schoolValue = school.value;
-    programSelect.innerHTML = '<option value="">-- Select Course --</option>';
-
-    if (schoolValue && courseData[schoolValue]) {
-        courseData[schoolValue].forEach(course => {
-            const option = document.createElement('option');
-            option.value = course.code;
-            option.textContent = `${course.name} (${course.duration}) - ${course.grade}`;
-            option.dataset.duration = course.duration;
-            option.dataset.grade = course.grade;
-            programSelect.appendChild(option);
-        });
-    }
+    const loginMsg = document.getElementById('loginMessage2');
+    if (loginMsg) { loginMsg.textContent = ''; loginMsg.className = 'auth-message'; }
 }
 
 // ================================================================
-// LOGIN - Checks applications table for status
+// LOGIN (Home Page)
 // ================================================================
 async function loginUser() {
     const email = document.getElementById('loginEmail');
@@ -283,10 +156,10 @@ async function loginUser() {
         });
         if (error) throw error;
 
-        // ✅ Check applications table for this user
+        // Check applications table
         const { data: applications, error: appError } = await supabase
             .from('applications')
-            .select('status, id, full_name')
+            .select('status, id, full_name, phone')
             .eq('user_id', data.user.id)
             .order('created_at', { ascending: false })
             .limit(1);
@@ -295,43 +168,53 @@ async function loginUser() {
             console.warn('Application check error:', appError);
         }
 
-        // If no application found or status is 'draft' - they haven't submitted yet
         if (!applications || applications.length === 0) {
-            msg.className = 'auth-message info';
-            msg.textContent = '📝 Please complete and submit your application first.';
+            msg.className = 'auth-message error';
+            msg.textContent = '❌ No application found. Please register first.';
             await supabase.auth.signOut();
             return;
         }
 
         const app = applications[0];
 
-        // If application is still 'draft' - not submitted yet
+        // CASE 1: Application is 'draft' - User can access application form
         if (app.status === 'draft') {
+            msg.className = 'auth-message success';
+            msg.textContent = '✅ Welcome! Please complete your application.';
+            setTimeout(() => {
+                navigateTo('register');
+                // After navigation, check auth again
+                checkAuth();
+            }, 500);
+            return;
+        }
+
+        // CASE 2: Application is 'submitted' - Waiting for admin approval
+        if (app.status === 'submitted') {
             msg.className = 'auth-message info';
-            msg.textContent = '📝 Please complete and submit your application.';
+            msg.textContent = '⏳ Your application is under review. You will be notified once approved.';
             await supabase.auth.signOut();
             return;
         }
 
-        // If application is 'submitted' or 'accepted' - ✅ INSERT INTO consolidated_user_profiles_table
-        // This is the CRITICAL step: Only when application is approved do we insert into profiles
-        if (app.status === 'submitted' || app.status === 'accepted') {
-            // Check if already in consolidated_user_profiles_table
-            const { data: existingProfile, error: profileCheck } = await supabase
+        // CASE 3: Application is 'accepted' - Full access
+        if (app.status === 'accepted') {
+            // Check if profile exists
+            const { data: existingProfile } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('id')
                 .eq('user_id', data.user.id)
                 .maybeSingle();
 
+            // Insert into consolidated_user_profiles_table if not exists
             if (!existingProfile) {
-                // ✅ Insert into consolidated_user_profiles_table
                 const { error: insertError } = await supabase
                     .from('consolidated_user_profiles_table')
                     .insert([{
                         user_id: data.user.id,
                         email: emailVal,
                         full_name: app.full_name || 'Student',
-                        phone: '', // We can update this from application data
+                        phone: app.phone || '',
                         role: 'student',
                         status: 'active',
                         created_at: new Date().toISOString()
@@ -344,42 +227,22 @@ async function loginUser() {
                 }
             }
 
-            // If application is 'submitted' but not yet 'accepted'
-            if (app.status === 'submitted') {
-                msg.className = 'auth-message info';
-                msg.textContent = '⏳ Your application is under review. You will be notified once approved.';
-                await supabase.auth.signOut();
-                return;
-            }
-
-            // If status is 'accepted' - they can access the system
-            if (app.status === 'accepted') {
-                msg.className = 'auth-message success';
-                msg.textContent = '✅ Welcome! Your application has been approved.';
-                
-                // Update profile status to active if needed
-                await supabase
-                    .from('consolidated_user_profiles_table')
-                    .update({ status: 'active' })
-                    .eq('user_id', data.user.id);
-
-                setTimeout(() => window.location.reload(), 1000);
-                return;
-            }
-        }
-
-        // If application is 'rejected'
-        if (app.status === 'rejected') {
-            msg.className = 'auth-message error';
-            msg.textContent = '❌ Your application has been rejected. Please contact admissions for more information.';
-            await supabase.auth.signOut();
+            msg.className = 'auth-message success';
+            msg.textContent = '✅ Welcome! Your application has been approved.';
+            setTimeout(() => {
+                navigateTo('register');
+                checkAuth();
+            }, 500);
             return;
         }
 
-        // Fallback - if status is something else
-        msg.className = 'auth-message info';
-        msg.textContent = '⏳ Your application is being processed. Please wait for notification.';
-        await supabase.auth.signOut();
+        // CASE 4: Application is 'rejected'
+        if (app.status === 'rejected') {
+            msg.className = 'auth-message error';
+            msg.textContent = '❌ Your application has been rejected. Please contact admissions.';
+            await supabase.auth.signOut();
+            return;
+        }
 
     } catch (error) {
         msg.className = 'auth-message error';
@@ -388,7 +251,116 @@ async function loginUser() {
 }
 
 // ================================================================
-// REGISTER - Creates user with no profile yet
+// LOGIN (Application Page)
+// ================================================================
+async function loginUser2() {
+    const email = document.getElementById('loginEmail2');
+    const password = document.getElementById('loginPassword2');
+    const msg = document.getElementById('loginMessage2');
+    
+    if (!email || !password || !msg) return;
+
+    const emailVal = email.value.trim();
+    const passwordVal = password.value;
+
+    msg.className = 'auth-message';
+    msg.textContent = '';
+
+    if (!emailVal || !passwordVal) {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ Please enter both email and password.';
+        return;
+    }
+
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({ 
+            email: emailVal, 
+            password: passwordVal 
+        });
+        if (error) throw error;
+
+        // Check applications table
+        const { data: applications, error: appError } = await supabase
+            .from('applications')
+            .select('status, id, full_name, phone')
+            .eq('user_id', data.user.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (appError) {
+            console.warn('Application check error:', appError);
+        }
+
+        if (!applications || applications.length === 0) {
+            msg.className = 'auth-message error';
+            msg.textContent = '❌ No application found. Please register first.';
+            await supabase.auth.signOut();
+            return;
+        }
+
+        const app = applications[0];
+
+        if (app.status === 'draft') {
+            msg.className = 'auth-message success';
+            msg.textContent = '✅ Welcome! Loading your application...';
+            setTimeout(() => {
+                // Reload to show application form
+                window.location.reload();
+            }, 500);
+            return;
+        }
+
+        if (app.status === 'submitted') {
+            msg.className = 'auth-message info';
+            msg.textContent = '⏳ Your application is under review. You will be notified once approved.';
+            await supabase.auth.signOut();
+            return;
+        }
+
+        if (app.status === 'accepted') {
+            const { data: existingProfile } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('id')
+                .eq('user_id', data.user.id)
+                .maybeSingle();
+
+            if (!existingProfile) {
+                await supabase
+                    .from('consolidated_user_profiles_table')
+                    .insert([{
+                        user_id: data.user.id,
+                        email: emailVal,
+                        full_name: app.full_name || 'Student',
+                        phone: app.phone || '',
+                        role: 'student',
+                        status: 'active',
+                        created_at: new Date().toISOString()
+                    }]);
+            }
+
+            msg.className = 'auth-message success';
+            msg.textContent = '✅ Welcome! Your application has been approved.';
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+            return;
+        }
+
+        if (app.status === 'rejected') {
+            msg.className = 'auth-message error';
+            msg.textContent = '❌ Your application has been rejected. Please contact admissions.';
+            await supabase.auth.signOut();
+            return;
+        }
+
+    } catch (error) {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ ' + (error.message || 'Login failed.');
+    }
+}
+
+// ================================================================
+// REGISTER
 // ================================================================
 async function registerUser() {
     const name = document.getElementById('regName');
@@ -434,7 +406,6 @@ async function registerUser() {
     }
 
     try {
-        // Check if email exists in auth (we'll check via signup)
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email: emailVal,
             password: passwordVal,
@@ -461,10 +432,7 @@ async function registerUser() {
             return;
         }
 
-        // ✅ IMPORTANT: NO profile insertion yet!
-        // We only create the auth user and application
-
-        // Create application (draft)
+        // ✅ Create application (draft) - NO profile yet!
         const { error: appError } = await supabase
             .from('applications')
             .insert([{
@@ -481,7 +449,7 @@ async function registerUser() {
         }
 
         msg.className = 'auth-message success';
-        msg.textContent = '✅ Account created! Please complete and submit your application. You will be redirected to the application form.';
+        msg.textContent = '✅ Account created! Please login to start your application.';
 
         if (btn) {
             btn.disabled = false;
@@ -503,18 +471,19 @@ async function registerUser() {
         const regEmailStatus = document.getElementById('regEmailStatus');
         if (regEmailStatus) { regEmailStatus.textContent = ''; regEmailStatus.className = 'help-text'; }
 
-        // Redirect to application form
+        // ✅ Redirect to login - User MUST login first!
         setTimeout(() => {
-            navigateTo('register');
-            // The user is now logged in, show the application form
-            document.getElementById('authContainer').style.display = 'none';
-            document.getElementById('admissionApp').style.display = 'block';
-            document.getElementById('userEmail').textContent = emailVal;
-            document.getElementById('userAvatar').textContent = nameVal.charAt(0).toUpperCase();
-            document.getElementById('email').value = emailVal;
-            document.getElementById('fullName').value = nameVal;
-            document.getElementById('phone').value = phoneVal;
-            document.getElementById('applicationNumber').textContent = `ADM-${Date.now().toString().slice(-6)}`;
+            navigateTo('home');
+            switchAuthTab('login');
+            
+            const loginEmail = document.getElementById('loginEmail');
+            if (loginEmail) loginEmail.value = emailVal;
+            
+            const loginMsg = document.getElementById('loginMessage');
+            if (loginMsg) {
+                loginMsg.textContent = '✅ Account created! Please login to start your application.';
+                loginMsg.className = 'auth-message success';
+            }
         }, 1500);
 
     } catch (error) {
@@ -545,20 +514,22 @@ async function checkAuth() {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
         
-        const authContainer = document.getElementById('authContainer');
+        const authContainer2 = document.getElementById('authContainer2');
         const admissionApp = document.getElementById('admissionApp');
         const userEmail = document.getElementById('userEmail');
         const userAvatar = document.getElementById('userAvatar');
         const emailInput = document.getElementById('email');
         const appNumber = document.getElementById('applicationNumber');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const appUserInfo = document.getElementById('appUserInfo');
 
         if (session) {
             currentUser = session.user;
             
-            // Check if user has an application and what status
+            // Check applications table
             const { data: applications, error: appError } = await supabase
                 .from('applications')
-                .select('status, full_name, id')
+                .select('status, full_name, id, phone')
                 .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false })
                 .limit(1);
@@ -569,98 +540,86 @@ async function checkAuth() {
 
             const app = applications && applications.length > 0 ? applications[0] : null;
 
-            // If no application, redirect to create one
+            // No application - shouldn't happen
             if (!app) {
-                if (authContainer) authContainer.style.display = 'block';
+                if (authContainer2) authContainer2.style.display = 'block';
                 if (admissionApp) admissionApp.style.display = 'none';
-                const loginMsg = document.getElementById('loginMessage');
-                if (loginMsg) {
-                    loginMsg.textContent = '📝 Please create an application first.';
-                    loginMsg.className = 'auth-message info';
-                }
                 return;
             }
 
-            // If application is 'draft' - show application form
+            // CASE 1: Application is 'draft' - Show application form
             if (app.status === 'draft') {
-                if (authContainer) authContainer.style.display = 'none';
+                if (authContainer2) authContainer2.style.display = 'none';
                 if (admissionApp) admissionApp.style.display = 'block';
                 if (userEmail) userEmail.textContent = currentUser.email;
                 if (userAvatar) userAvatar.textContent = currentUser.email.charAt(0).toUpperCase();
                 if (emailInput) emailInput.value = currentUser.email;
                 if (appNumber) appNumber.textContent = `ADM-${Date.now().toString().slice(-6)}`;
                 
-                // Load application data
                 applicationId = app.id;
                 await loadUserApplication(currentUser.id);
                 
-                // Show logout button
-                const logoutBtn = document.getElementById('logoutBtn');
                 if (logoutBtn) logoutBtn.style.display = 'inline-flex';
-                const appUserInfo = document.getElementById('appUserInfo');
                 if (appUserInfo) appUserInfo.style.display = 'flex';
                 return;
             }
 
-            // If application is 'submitted' or 'accepted' - check profile
-            if (app.status === 'submitted' || app.status === 'accepted') {
-                // Check if in consolidated_user_profiles_table
-                const { data: profile, error: profileCheck } = await supabase
+            // CASE 2: Application is 'submitted' - Show waiting message
+            if (app.status === 'submitted') {
+                if (authContainer2) authContainer2.style.display = 'block';
+                if (admissionApp) admissionApp.style.display = 'none';
+                const loginMsg = document.getElementById('loginMessage2');
+                if (loginMsg) {
+                    loginMsg.textContent = '⏳ Your application is under review. You will be notified once approved.';
+                    loginMsg.className = 'auth-message info';
+                }
+                await supabase.auth.signOut();
+                return;
+            }
+
+            // CASE 3: Application is 'accepted' - Full access
+            if (app.status === 'accepted') {
+                // Check if profile exists
+                const { data: profile } = await supabase
                     .from('consolidated_user_profiles_table')
-                    .select('status, id')
+                    .select('id')
                     .eq('user_id', currentUser.id)
                     .maybeSingle();
 
                 if (!profile) {
-                    // User not in profiles table yet - they need to wait for approval
-                    if (authContainer) authContainer.style.display = 'block';
-                    if (admissionApp) admissionApp.style.display = 'none';
-                    const loginMsg = document.getElementById('loginMessage');
-                    if (loginMsg) {
-                        loginMsg.textContent = '⏳ Your application is under review. You will be notified once approved.';
-                        loginMsg.className = 'auth-message info';
-                    }
-                    await supabase.auth.signOut();
-                    return;
+                    // Insert profile if missing
+                    await supabase
+                        .from('consolidated_user_profiles_table')
+                        .insert([{
+                            user_id: currentUser.id,
+                            email: currentUser.email,
+                            full_name: app.full_name || 'Student',
+                            phone: app.phone || '',
+                            role: 'student',
+                            status: 'active',
+                            created_at: new Date().toISOString()
+                        }]);
                 }
 
-                // If profile exists and status is 'pending' or 'active'
-                if (profile.status === 'pending') {
-                    if (authContainer) authContainer.style.display = 'block';
-                    if (admissionApp) admissionApp.style.display = 'none';
-                    const loginMsg = document.getElementById('loginMessage');
-                    if (loginMsg) {
-                        loginMsg.textContent = '⏳ Your account is being activated. Please wait.';
-                        loginMsg.className = 'auth-message info';
-                    }
-                    await supabase.auth.signOut();
-                    return;
-                }
-
-                if (profile.status === 'active') {
-                    // Fully registered user - show dashboard/application
-                    if (authContainer) authContainer.style.display = 'none';
-                    if (admissionApp) admissionApp.style.display = 'block';
-                    if (userEmail) userEmail.textContent = currentUser.email;
-                    if (userAvatar) userAvatar.textContent = currentUser.email.charAt(0).toUpperCase();
-                    if (emailInput) emailInput.value = currentUser.email;
-                    if (appNumber) appNumber.textContent = `ADM-${Date.now().toString().slice(-6)}`;
-                    
-                    const logoutBtn = document.getElementById('logoutBtn');
-                    if (logoutBtn) logoutBtn.style.display = 'inline-flex';
-                    const appUserInfo = document.getElementById('appUserInfo');
-                    if (appUserInfo) appUserInfo.style.display = 'flex';
-                    
-                    await loadUserApplication(currentUser.id);
-                    return;
-                }
+                if (authContainer2) authContainer2.style.display = 'none';
+                if (admissionApp) admissionApp.style.display = 'block';
+                if (userEmail) userEmail.textContent = currentUser.email;
+                if (userAvatar) userAvatar.textContent = currentUser.email.charAt(0).toUpperCase();
+                if (emailInput) emailInput.value = currentUser.email;
+                if (appNumber) appNumber.textContent = `ADM-${Date.now().toString().slice(-6)}`;
+                
+                if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+                if (appUserInfo) appUserInfo.style.display = 'flex';
+                
+                await loadUserApplication(currentUser.id);
+                return;
             }
 
-            // If application is 'rejected'
+            // CASE 4: Application is 'rejected'
             if (app.status === 'rejected') {
-                if (authContainer) authContainer.style.display = 'block';
+                if (authContainer2) authContainer2.style.display = 'block';
                 if (admissionApp) admissionApp.style.display = 'none';
-                const loginMsg = document.getElementById('loginMessage');
+                const loginMsg = document.getElementById('loginMessage2');
                 if (loginMsg) {
                     loginMsg.textContent = '❌ Your application has been rejected. Please contact admissions.';
                     loginMsg.className = 'auth-message error';
@@ -670,15 +629,15 @@ async function checkAuth() {
             }
 
         } else {
-            // Not logged in
-            if (authContainer) authContainer.style.display = 'block';
+            // Not logged in - show login
+            if (authContainer2) authContainer2.style.display = 'block';
             if (admissionApp) admissionApp.style.display = 'none';
         }
     } catch (error) {
         console.error('Auth error:', error);
-        const authContainer = document.getElementById('authContainer');
+        const authContainer2 = document.getElementById('authContainer2');
         const admissionApp = document.getElementById('admissionApp');
-        if (authContainer) authContainer.style.display = 'block';
+        if (authContainer2) authContainer2.style.display = 'block';
         if (admissionApp) admissionApp.style.display = 'none';
     }
 }
@@ -717,10 +676,8 @@ async function loadUserApplication(userId) {
                 'marital_status': 'marital_status',
                 'hear_about': 'hear_about',
                 'sponsored': 'sponsored',
-                'father_alive': 'father_alive',
                 'father_name': 'father_name',
                 'father_phone': 'father_phone',
-                'mother_alive': 'mother_alive',
                 'mother_name': 'mother_name',
                 'mother_phone': 'mother_phone',
                 'guardian_name': 'guardian_name',
@@ -813,6 +770,29 @@ async function loadUserApplication(userId) {
         }
     } catch (error) {
         console.error('Load application error:', error);
+    }
+}
+
+// ================================================================
+// COURSE SELECTOR
+// ================================================================
+function updatePrograms() {
+    const school = document.getElementById('school');
+    const programSelect = document.getElementById('program');
+    if (!school || !programSelect) return;
+    
+    const schoolValue = school.value;
+    programSelect.innerHTML = '<option value="">-- Select Course --</option>';
+
+    if (schoolValue && courseData[schoolValue]) {
+        courseData[schoolValue].forEach(course => {
+            const option = document.createElement('option');
+            option.value = course.code;
+            option.textContent = `${course.name} (${course.duration}) - ${course.grade}`;
+            option.dataset.duration = course.duration;
+            option.dataset.grade = course.grade;
+            programSelect.appendChild(option);
+        });
     }
 }
 
@@ -993,7 +973,7 @@ function removeDocument(docKey) {
 }
 
 // ================================================================
-// OCR FUNCTIONS (KCSE and ID - same as before)
+// OCR - KCSE
 // ================================================================
 async function handleKCSEDocument(event) {
     const file = event.target.files[0];
@@ -1183,6 +1163,9 @@ function validateKCSEAgainstProgram(data) {
     updateSummary();
 }
 
+// ================================================================
+// OCR - ID
+// ================================================================
 async function handleIDDocument(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1315,10 +1298,8 @@ async function saveDraft() {
         marital_status: document.getElementById('maritalStatus')?.value || '',
         hear_about: document.getElementById('hearAbout')?.value || '',
         sponsored: document.getElementById('sponsored')?.value || '',
-        father_alive: document.getElementById('fatherAlive')?.value || '',
         father_name: document.getElementById('fatherName')?.value || '',
         father_phone: document.getElementById('fatherPhone')?.value || '',
-        mother_alive: document.getElementById('motherAlive')?.value || '',
         mother_name: document.getElementById('motherName')?.value || '',
         mother_phone: document.getElementById('motherPhone')?.value || '',
         guardian_name: document.getElementById('guardianName')?.value || '',
@@ -1410,7 +1391,7 @@ function updateSummary() {
 }
 
 // ================================================================
-// SUBMIT ADMISSION - Application submitted, waiting for admin approval
+// SUBMIT ADMISSION
 // ================================================================
 async function submitAdmission() {
     const termsCheck = document.getElementById('termsCheck');
@@ -1448,7 +1429,6 @@ async function submitAdmission() {
     }
 
     try {
-        // ✅ Update application status to 'submitted' - Waiting for admin approval
         const data = {
             status: 'submitted',
             submitted_at: new Date().toISOString(),
@@ -1469,10 +1449,6 @@ async function submitAdmission() {
 
         if (result.error) throw result.error;
 
-        // ✅ IMPORTANT: DO NOT insert into consolidated_user_profiles_table here!
-        // This will only happen AFTER admin approves the application
-
-        // Show success message
         document.getElementById('successOverlay').classList.add('show');
         const refNumber = document.getElementById('refNumber');
         if (refNumber) {
@@ -1484,13 +1460,11 @@ async function submitAdmission() {
             msg.textContent = '✅ Application submitted successfully! Please wait for admin approval.';
         }
 
-        // Disable submit button
         if (btn) {
             btn.disabled = true;
             btn.textContent = '✅ Submitted - Awaiting Approval';
         }
 
-        // Auto logout after 3 seconds since user needs to wait for approval
         setTimeout(() => {
             alert('Your application has been submitted. You will be notified via email once approved.');
             logoutUser();
@@ -1541,6 +1515,7 @@ document.addEventListener('DOMContentLoaded', function() {
         appNumber.textContent = `ADM-${Date.now().toString().slice(-6)}`;
     }
 
+    // Check auth on page load
     checkAuth();
     updateSummary();
 
@@ -1556,6 +1531,97 @@ document.addEventListener('DOMContentLoaded', function() {
             if (input) input.click();
         });
     });
+});
+
+// Password strength and match
+document.addEventListener('DOMContentLoaded', function() {
+    const pwdInput = document.getElementById('regPassword');
+    const confirmInput = document.getElementById('regConfirmPassword');
+
+    if (pwdInput) {
+        pwdInput.addEventListener('input', function() {
+            const val = this.value;
+            let strength = 0;
+            if (val.length >= 8) strength += 1;
+            if (/[a-z]/.test(val) && /[A-Z]/.test(val)) strength += 1;
+            if (/\d/.test(val)) strength += 1;
+            if (/[^a-zA-Z0-9]/.test(val)) strength += 1;
+
+            const percent = Math.min(strength * 25, 100);
+            const strengthBar = document.getElementById('strengthBar');
+            if (strengthBar) {
+                strengthBar.style.width = percent + '%';
+                let color = '#dc2626';
+                if (strength >= 4) color = '#0f7b3a';
+                else if (strength === 3) color = '#eab308';
+                else if (strength === 2) color = '#f59e0b';
+                strengthBar.style.background = color;
+            }
+            const strengthText = document.getElementById('strengthText');
+            if (strengthText) {
+                let label = 'Weak';
+                if (strength >= 4) label = 'Strong';
+                else if (strength === 3) label = 'Good';
+                else if (strength === 2) label = 'Fair';
+                strengthText.textContent = val.length === 0 ? 'Enter a password' : `${label} (${val.length} chars)`;
+            }
+            checkMatch();
+        });
+
+        confirmInput.addEventListener('input', checkMatch);
+    }
+
+    function checkMatch() {
+        const p = pwdInput ? pwdInput.value : '';
+        const c = confirmInput ? confirmInput.value : '';
+        const matchDiv = document.getElementById('passwordMatch');
+        if (!matchDiv) return;
+        if (c.length === 0) { matchDiv.textContent = ''; return; }
+        if (p === c) {
+            matchDiv.textContent = '✅ Passwords match';
+            matchDiv.style.color = '#0f7b3a';
+        } else {
+            matchDiv.textContent = '❌ Passwords do not match';
+            matchDiv.style.color = '#dc2626';
+        }
+    }
+
+    // Email availability check
+    const regEmail = document.getElementById('regEmail');
+    if (regEmail) {
+        regEmail.addEventListener('input', function() {
+            const status = document.getElementById('regEmailStatus');
+            if (!status) return;
+            const email = this.value.trim();
+            if (email.length === 0) { status.textContent = ''; status.className = 'help-text'; return; }
+            if (!email.includes('@') || !email.includes('.')) {
+                status.textContent = '⚠️ Please enter a valid email';
+                status.className = 'help-text error-text';
+                return;
+            }
+            status.textContent = '✅ Email format valid';
+            status.className = 'help-text success-text';
+        });
+    }
+
+    // Word count for Christian Experience
+    const expTextarea = document.getElementById('christianExperience');
+    if (expTextarea) {
+        expTextarea.addEventListener('input', function() {
+            const words = this.value.trim() ? this.value.trim().split(/\s+/).length : 0;
+            const wordCountEl = document.getElementById('wordCount');
+            if (wordCountEl) {
+                wordCountEl.textContent = `Words: ${words} (Minimum 400 required)`;
+                wordCountEl.className = `word-count ${words >= 400 ? 'valid' : 'invalid'}`;
+            }
+        });
+    }
+
+    // Course selector
+    const schoolSelect = document.getElementById('school');
+    if (schoolSelect) {
+        schoolSelect.addEventListener('change', updatePrograms);
+    }
 });
 
 // Modal close on overlay click
